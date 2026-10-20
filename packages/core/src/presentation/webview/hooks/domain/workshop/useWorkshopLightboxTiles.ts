@@ -7,7 +7,8 @@
  * only; the tile itself stays host-side). This hook claims it through the
  * seed protocol (`useWorkshopSeedClaim`, kind `lightbox-tile`); only on a
  * granted claim does it ask the host to stage it
- * (`WORKSHOP_ACCEPT_LIGHTBOX_TILE`), and it answers the provider with the
+ * (`WORKSHOP_ACCEPT_LIGHTBOX_TILE`, naming its receiver, which the provider
+ * holds to the grant: PR #151 F-06), and it answers the provider with the
  * host's word (`WORKSHOP_LIGHTBOX_TILE_STAGED`): staged, or busy, full or
  * duplicate. A denied claim is dropped without a word.
  *
@@ -82,11 +83,11 @@ export function useWorkshopLightboxTiles({ seedReceiver }: UseWorkshopLightboxTi
     const message: WorkshopAcceptLightboxTileMessage = {
       type: MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE,
       source: SOURCE,
-      payload: { deliveryId: granted.deliveryId },
+      payload: { deliveryId: granted.deliveryId, receiver: seedReceiver },
       timestamp: Date.now()
     };
     vscode.postMessage(message);
-  }, [granted, staging, vscode]);
+  }, [granted, seedReceiver, staging, vscode]);
 
   React.useEffect(() => {
     requestStagingWhenGranted();

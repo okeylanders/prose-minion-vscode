@@ -5,16 +5,19 @@
  * The Lightbox's host builds the tile from its current board, with quotes it
  * found again in the chapter. The Workshop trusts no other tab's shape, so
  * the tile is checked again here on arrival: exact keys, every bound in
- * `WORKSHOP_LIGHTBOX_TILE_LIMITS`, at least one quote. It is then rendered
+ * `WORKSHOP_LIGHTBOX_TILE_LIMITS`, at least one quote, and a said/meant
+ * pair led by its said line, the only quote that may be marked said (PR #151
+ * F-02): its meaning never arrives without the speech it reads. It is then rendered
  * here into a one-shot attachment the writer sends with a message or
  * removes. The attachment carries the claim, its labeled points and its
  * quotes, nothing else; its thread-artifact frame is kind `lightbox-tile`,
  * whose preamble says the claim is a model's reading, and the frame
  * neutralizes its body like any other.
  *
- * Its duplicate key is the board and tile ids, so the same tile cannot wait
- * twice above the composer; the same reading from a re-read board is a new
- * tile, with new ids.
+ * Its identity is the board and tile ids, so the same tile cannot wait
+ * twice above the composer, through staging, Rewind or any whole-room
+ * operation (`WorkshopMessageAttachmentIdentity`, PR #151 F-01); the same
+ * reading from a re-read board is a new tile, with new ids.
  */
 
 import {
@@ -24,6 +27,7 @@ import {
   type WorkshopLightboxTileQuote
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { LIGHTBOX_TILE_KIND_LABELS } from '@shared/constants/lightbox';
 import { countWords } from '@/utils/textUtils';
 import {
   boundedArrayAt,
@@ -32,11 +36,9 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import type { WorkshopMessageAttachmentInput } from '@/application/services/workshop/WorkshopSessionRecords';
+import { workshopLightboxTileSourceKey } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
-
-/** The duplicate-guard key's scheme: never a path, never shown. */
-const SOURCE_KEY_SCHEME = 'lightbox-tile:';
 
 /** A tile exactly as the contract allows it, trimmed; throws naming the field that is wrong, never its text. */
 export function validateWorkshopLightboxTile(value: unknown): WorkshopLightboxTile {
@@ -76,6 +78,15 @@ export function validateWorkshopLightboxTile(value: unknown): WorkshopLightboxTi
       ...(quote.said === true ? { said: true as const } : {})
     };
   });
+  const pair = typeof tile.kindLabel === 'string' && tile.kindLabel.trim() === LIGHTBOX_TILE_KIND_LABELS.subtext;
+  if (pair && quotes[0].said !== true) {
+    shapeError('tile.quotes[0].said', 'true: a said/meant pair leads with its said line');
+  }
+  quotes.forEach((quote, index) => {
+    if (quote.said && (!pair || index > 0)) {
+      shapeError(`tile.quotes[${index}].said`, 'absent: only a said/meant pair\'s first quote is its said line');
+    }
+  });
   return {
     origin: 'lightbox',
     boardId: text('boardId', LIMITS.idCharacters),
@@ -93,11 +104,6 @@ export function validateWorkshopLightboxTile(value: unknown): WorkshopLightboxTi
 /** The pill's label, and the frame's name: what kind of reading, and its title. */
 export function workshopLightboxTileLabel(tile: Pick<WorkshopLightboxTile, 'kindLabel' | 'title'>): string {
   return `Lightbox ${tile.kindLabel}: ${tile.title}`.slice(0, LIMITS.attachmentLabelCharacters).trim();
-}
-
-/** The host-private duplicate key: the board and the tile. */
-export function workshopLightboxTileSourceKey(tile: Pick<WorkshopLightboxTile, 'boardId' | 'tileId'>): string {
-  return `${SOURCE_KEY_SCHEME}${tile.boardId}:${tile.tileId}`;
 }
 
 /** The attachment's body: the claim, its points, its quotes. The frame adds its name, source and trust line. */

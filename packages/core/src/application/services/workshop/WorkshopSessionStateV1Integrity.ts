@@ -230,29 +230,29 @@ export function validateWorkshopSessionStateV1(
         `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
       );
     }
-    // A message attachment's kind follows from its own shape (a Lightbox tile's, Slice 4); a file has none.
-    if (!widgetReference && attachment && artifact.kind !== workshopMessageAttachmentKind(attachment)) {
+    // One owner per artifact (PR #151 F-05): a widget's artifact or a message
+    // attachment, never both, so neither owner's kind check can stand aside
+    // for the other.
+    if (attachmentReference && widgetReference) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} is referenced both as a message attachment and as a widget artifact`
+      );
+    }
+    if (widgetReference && turn.widgetCommit) {
+      if (artifact.kind === undefined) {
+        throw new Error(
+          `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
+        );
+      }
+      if (artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)) {
+        throw new Error(
+          `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
+        );
+      }
+    } else if (attachment && artifact.kind !== workshopMessageAttachmentKind(attachment)) {
+      // A message attachment's kind follows from its own shape (a Lightbox tile's, Slice 4); a file has none.
       throw new Error(
         `Persisted Workshop thread artifact ${artifact.id} has the wrong attachment kind`
-      );
-    }
-    if (
-      artifact.kind !== undefined
-      && !attachmentReference
-      && (
-        !widgetReference
-        || !turn.widgetCommit
-        || turn.widgetCommit.rail !== 'thread-artifact'
-        || artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)
-      )
-    ) {
-      throw new Error(
-        `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
-      );
-    }
-    if (widgetReference && artifact.kind === undefined) {
-      throw new Error(
-        `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
       );
     }
   }

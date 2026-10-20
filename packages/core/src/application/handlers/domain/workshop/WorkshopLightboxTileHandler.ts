@@ -12,7 +12,10 @@
  *    provider replaces an unclaimed seed.
  * 2. **Accept** (`WORKSHOP_ACCEPT_LIGHTBOX_TILE`, a mutation behind the
  *    session-operation gate). After a grant the webview asks for the held
- *    tile by delivery id. It is staged as a pending message attachment,
+ *    tile by delivery id, naming its receiver. The panel provider lets the
+ *    accept through only while that delivery is granted to that receiver
+ *    (`WorkshopSeedDelivery.isGranted`, PR #151 F-06), so a late accept from
+ *    a webview that was reloaded stages nothing. It is staged as a pending message attachment,
  *    above the composer, or refused: `busy` while a response runs or the
  *    session is being saved or replaced, `full` when the next message
  *    already carries as many attachments as one may, `duplicate` when that

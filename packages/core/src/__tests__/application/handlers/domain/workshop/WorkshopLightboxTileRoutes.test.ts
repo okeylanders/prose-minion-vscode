@@ -43,7 +43,7 @@ describe('Workshop routes — a Lightbox tile staged above the composer', () => 
     message(MessageType.WORKSHOP_STAGE_LIGHTBOX_TILE, { tile: offered, deliveryId }) as never
   );
   const accept = (deliveryId: string) => harness.router.route(
-    message(MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE, { deliveryId }) as never
+    message(MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE, { deliveryId, receiver: 'workshop-receiver-1' }) as never
   );
   const staged = () => harness.posted(MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED).map((entry) => entry.payload);
   const pending = () => harness.session.getSnapshot().pendingMessageAttachments;
@@ -191,7 +191,11 @@ describe('Workshop routes — a Lightbox tile staged above the composer', () => 
     await offer('lightbox-tile-1');
     await accept('lightbox-tile-1');
     await send('What do you make of this?');
-    await offer('lightbox-tile-2', tile({ tileId: 'tile-b-subtext-1', kindLabel: 'Said / meant', title: 'Late' }));
+    // A said/meant pair leads with its said line (PR #151 F-02).
+    await offer('lightbox-tile-2', tile({
+      tileId: 'tile-b-subtext-1', kindLabel: 'Said / meant', title: 'Late',
+      quotes: [{ paragraph: 4, text: 'Oh dear! Oh dear! I shall be late!', said: true }]
+    }));
     await accept('lightbox-tile-2');
 
     const raw = JSON.parse(JSON.stringify(harness.session.exportCommittedState()));

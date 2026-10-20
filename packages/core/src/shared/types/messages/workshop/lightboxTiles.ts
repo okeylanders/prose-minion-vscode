@@ -109,9 +109,15 @@ export interface WorkshopLightboxTileOfferedMessage extends MessageEnvelope<Work
   type: MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED;
 }
 
-/** Webview to its handler, after a granted claim: stage the tile held for this delivery. */
+/**
+ * Webview to its handler, after a granted claim: stage the tile held for this
+ * delivery. The panel provider lets it through only while that delivery is
+ * granted to `receiver` (PR #151 F-06).
+ */
 export interface WorkshopAcceptLightboxTilePayload {
   deliveryId: string;
+  /** The webview realm that holds the grant (`WORKSHOP_SEED_RECEIVER`). */
+  receiver: string;
 }
 
 export interface WorkshopAcceptLightboxTileMessage extends MessageEnvelope<WorkshopAcceptLightboxTilePayload> {

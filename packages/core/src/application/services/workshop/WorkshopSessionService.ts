@@ -74,6 +74,7 @@ import {
 import {
   normalizeWorkshopSessionCheckpointForHydration
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import { sameWorkshopMessageAttachmentSource } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 import type {
   WorkshopThreadArtifact,
   WorkshopThreadArtifactFrameInput
@@ -667,17 +668,10 @@ export class WorkshopSessionService {
    * (head-slice + truncation provenance) happens at read time in the handler.
    */
   addMessageAttachment(input: WorkshopMessageAttachmentInput): WorkshopMessageAttachmentResult {
-    const duplicates = (existing: WorkshopMessageAttachment): boolean => {
-      if (input.sourceUri !== undefined && existing.sourceUri === input.sourceUri) {
-        return true;
-      }
-      return input.configuredResource !== undefined &&
-        existing.configuredResource?.group === input.configuredResource.group &&
-        existing.configuredResource?.path === input.configuredResource.path;
-    };
     // Duplicate outranks the cap: "already attached" is the actionable error
-    // even when the list is also full.
-    if (this.pendingMessageAttachments.some(duplicates)) {
+    // even when the list is also full. A Lightbox tile is its board and tile
+    // ids, whatever its source key (PR #151 F-01).
+    if (this.pendingMessageAttachments.some((existing) => sameWorkshopMessageAttachmentSource(input, existing))) {
       return { ok: false, reason: 'duplicate' };
     }
     if (this.pendingMessageAttachments.length >= PROMPT_BUDGETS.workshopThreadArtifacts.itemsPerMessage) {
@@ -777,6 +771,11 @@ export class WorkshopSessionService {
       }
       suppliedIds.add(artifact.id);
       const widgetReference = threadWidgetCommit?.artifactId === artifact.id;
+      if (widgetReference && turn.messageAttachments?.some((candidate) => candidate.id === artifact.id)) {
+        throw new Error(
+          `Thread artifact ${artifact.id} is referenced both as a message attachment and as a widget artifact on ${turnId}`
+        );
+      }
       if (
         widgetReference
         && artifact.kind !== workshopWidgetArtifactKind(threadWidgetCommit.widgetId)

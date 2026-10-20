@@ -12,7 +12,9 @@
  * A tile stages only on a granted claim; one that timed out, was replaced or
  * lost its panel never stages, even when its message was already sent; a
  * grant crossing the panel's close stays `closed`; a reloaded webview
- * (F-08) releases the old grant as `reset`, and the next tile stages. An
+ * (F-08) releases the old grant as `reset`, and the next tile stages. A
+ * tile's accept reaches the session only while its delivery is granted to
+ * the receiver that sends it (PR #151 F-06). An
  * open sheet and the composer's draft are never disturbed. The reading is of
  * "Alice's Adventures in Wonderland" (1865, public domain).
  */
@@ -162,6 +164,9 @@ interface HostPanel {
 describe('a Lightbox tile from the Workshop panel provider to the Workshop composer', () => {
   let panels: HostPanel[];
   let fromWebview: unknown[];
+  /** Webview-to-host messages held back while `holding`, as a slow transport would. */
+  let heldFromWebview: unknown[];
+  let holding: boolean;
   let workshop: WorkshopPanelProvider;
   let unsettled: symbol;
   let unmountApp: () => void;
@@ -172,6 +177,8 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
     shared.session = new WorkshopSessionService(() => 1);
     panels = [];
     fromWebview = [];
+    heldFromWebview = [];
+    holding = false;
     unsettled = Symbol('unsettled');
     const disposable = { dispose: jest.fn() };
     Object.assign(vscode.workspace, { onDidChangeConfiguration: jest.fn(() => disposable) });
@@ -239,6 +246,10 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
     (useVSCodeApi as jest.Mock).mockReturnValue({
       postMessage: jest.fn((message: unknown) => {
         fromWebview.push(message);
+        if (holding) {
+          heldFromWebview.push(message);
+          return;
+        }
         panel.receive(message);
       }),
       getState: jest.fn(() => ({})),
@@ -275,6 +286,14 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
     .map((message) => message as { type: string; payload: { kind: string } })
     .filter((message) => message.type === MessageType.WORKSHOP_SEED_ANSWER && message.payload.kind === 'lightbox-tile')
     .map((message) => message.payload);
+  const accepts = () => fromWebview
+    .map((message) => message as { type: string; payload: { deliveryId: string; receiver?: string } })
+    .filter((message) => message.type === MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE)
+    .map((message) => message.payload);
+  const receivers = () => fromWebview
+    .map((message) => message as { type: string; payload: { receiver: string } })
+    .filter((message) => message.type === MessageType.WORKSHOP_SEED_RECEIVER)
+    .map((message) => message.payload.receiver);
   const offer = async (item: WorkshopLightboxTile) => {
     let outcome: WorkshopSeedOutcome | symbol = unsettled;
     void workshop.stageLightboxTile(item).then((settled) => {
@@ -417,6 +436,63 @@ describe('a Lightbox tile from the Workshop panel provider to the Workshop compo
       await drain(panel);
       expect(second()).toEqual({ opened: true });
       expect(staged()).toEqual(['Lightbox Open door: The empty jar', 'Lightbox Open door: Late for what?']);
+    });
+  });
+
+  describe('a tile\'s accept, held to its grant (PR #151 F-06)', () => {
+    it('names the receiver that holds the grant, and stages for it', async () => {
+      const panel = await openWorkshop();
+      const outcome = await offer(JAR);
+      await drain(panel);
+      expect(outcome()).toEqual({ opened: true });
+      expect(accepts()).toEqual([{ deliveryId: expect.any(String), receiver: receivers().at(-1) }]);
+      expect(staged()).toEqual(['Lightbox Open door: The empty jar']);
+    });
+
+    it('drops an old receiver\'s accept that arrives after its grant was reset, and the next tile stages', async () => {
+      const panel = await openWorkshop();
+      const first = await offer(JAR);
+      await release(panel);
+      expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_SEED_CLAIM_RESULT]);
+      // The grant reaches R1, which accepts; its accept is held on the way.
+      holding = true;
+      await release(panel);
+      holding = false;
+      expect(heldFromWebview.map((message) => (message as { type: string }).type)).toEqual([MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE]);
+      await reloadWebview();
+      expect(first()).toEqual({ opened: false, reason: 'reset' });
+
+      // R1's accept lands now: the provider no longer holds that grant, so nothing stages.
+      panel.receive(heldFromWebview.shift());
+      await flush();
+      expect(staged()).toEqual([]);
+      await drain(panel);
+      expect(staged()).toEqual([]);
+      expect(first()).toEqual({ opened: false, reason: 'reset' });
+
+      const second = await offer(LATE);
+      await drain(panel);
+      expect(second()).toEqual({ opened: true });
+      expect(staged()).toEqual(['Lightbox Open door: Late for what?']);
+    });
+
+    it('drops an accept for a tile whose claim was never granted, even from the current receiver', async () => {
+      const panel = await openWorkshop();
+      const outcome = await offer(JAR);
+      const offered = panel.outbox[0] as { payload: { deliveryId: string } };
+      const forged = {
+        type: MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE,
+        source: 'webview.workshop.lightbox-tile',
+        payload: { deliveryId: offered.payload.deliveryId, receiver: receivers().at(-1) },
+        timestamp: 0
+      };
+      panel.receive(forged);
+      await flush();
+      expect(staged()).toEqual([]);
+      // The offer still stands, and stages through its own claim.
+      await drain(panel);
+      expect(outcome()).toEqual({ opened: true });
+      expect(staged()).toEqual(['Lightbox Open door: The empty jar']);
     });
   });
 });

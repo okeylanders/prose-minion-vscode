@@ -6,6 +6,7 @@
 
 import { WORKSHOP_LIGHTBOX_TILE_LIMITS, type WorkshopLightboxTile } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   renderWorkshopLightboxTile,
   validateWorkshopLightboxTile,
@@ -97,5 +98,19 @@ describe('WorkshopLightboxTileAttachment', () => {
       sourceUri: 'lightbox-tile:board-1:tile-b-subtext-1',
       lightboxTile: { boardId: 'board-1', tileId: 'tile-b-subtext-1', kindLabel: 'Said / meant', quotes: 2 }
     });
+  });
+
+  it('keeps the session\'s own copy of a staged tile\'s meta, apart from its caller\'s and its readers\' (PR #151 review)', () => {
+    const session = new WorkshopSessionService(() => 1);
+    const input = workshopLightboxTileAttachmentInput(subtext);
+    const staged = session.addMessageAttachment(input);
+    if (!staged.ok) {
+      throw new Error(staged.reason);
+    }
+    input.lightboxTile!.tileId = 'changed-by-the-caller';
+    staged.attachment.lightboxTile!.tileId = 'changed-by-a-reader';
+    session.collectMessageAttachments()[0].lightboxTile!.tileId = 'changed-by-another-reader';
+    session.getSnapshot().pendingMessageAttachments[0].lightboxTile!.tileId = 'changed-in-a-snapshot';
+    expect(session.collectMessageAttachments()[0].lightboxTile?.tileId).toBe('tile-b-subtext-1');
   });
 });

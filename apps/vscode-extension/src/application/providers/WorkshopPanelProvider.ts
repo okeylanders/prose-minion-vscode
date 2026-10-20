@@ -192,6 +192,11 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         this.receiveSeedMessage(panel, shape.type, shape.payload);
         return;
       }
+      // A tile's accept stages it in the session: only under the grant it names (PR #151 F-06).
+      if (shape?.type === MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE && !this.acceptsLightboxTile(panel, shape.payload)) {
+        this.outputChannel.appendLine('[Workshop] A tile accept was dropped: its delivery is not granted to this webview');
+        return;
+      }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
     });
 
@@ -380,6 +385,21 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     delivery.answer(panel, shape.opened === true
       ? { deliveryId: shape.deliveryId, opened: true }
       : { deliveryId: shape.deliveryId, opened: false, reason: seedRefusalOf(shape.reason) }, receiver);
+  }
+
+  /**
+   * Whether a tile's accept may reach the session (PR #151 F-06): it names
+   * the tile delivery granted, now, to the receiver that sends it. The path
+   * from here to the staging mutation is synchronous (router, mutation gate,
+   * handler), so the grant checked is the grant the tile stages under. A
+   * late accept from a reloaded webview, or one for an offer never granted,
+   * stages nothing; the delivery has already settled, or is still waiting.
+   */
+  private acceptsLightboxTile(panel: vscode.WebviewPanel, payload: unknown): boolean {
+    const shape = payload as { deliveryId?: unknown; receiver?: unknown } | undefined;
+    return typeof shape?.deliveryId === 'string'
+      && typeof shape.receiver === 'string'
+      && this.seedDeliveries['lightbox-tile'].isGranted(panel, shape.deliveryId, shape.receiver);
   }
 
   public dispose(): void {

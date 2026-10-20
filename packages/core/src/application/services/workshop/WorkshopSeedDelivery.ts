@@ -37,6 +37,13 @@
  * answer, the panel closing, or a receiver reset; the deadline covers
  * unclaimed offers only.
  *
+ * **Acting on a grant (PR #151 F-06).** A seed whose follow-up changes
+ * session state (a tile's accept, which stages it) is acted on only while
+ * `isGranted` holds: the seed is opening, for this panel, under the receiver
+ * that sends the follow-up, and the panel still has that receiver. A late
+ * follow-up from a receiver that was reset, and one for a seed never
+ * granted, change nothing.
+ *
  * **Visibility.** Readiness (current, listening, visible) is checked when a
  * seed is sent, not when its claim is granted: the guarantee is "visible at
  * dispatch". A tab the writer hides between the two still holds a running
@@ -207,6 +214,16 @@ export class WorkshopSeedDelivery<TRecipient> {
       waiting.sentTo = undefined;
     }
     this.deliver(recipient);
+  }
+
+  /** Whether `deliveryId` is granted, now, to `receiver` on `recipient`: its follow-up may act on it. */
+  isGranted(recipient: TRecipient, deliveryId: string, receiver: string | undefined): boolean {
+    const opening = this.opening;
+    return opening !== undefined
+      && opening.recipient === recipient
+      && opening.deliveryId === deliveryId
+      && opening.receiver === receiver
+      && this.isCurrentReceiver(recipient, receiver);
   }
 
   /** The panel closed or was replaced, or the host is shutting down: nothing held here can open any more. */

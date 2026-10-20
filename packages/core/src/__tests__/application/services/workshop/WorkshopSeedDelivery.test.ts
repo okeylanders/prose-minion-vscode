@@ -250,6 +250,58 @@ describe('WorkshopSeedDelivery', () => {
       expect(outcomes.A).toEqual({ opened: false, reason: 'timeout' });
     });
 
+    it('says a delivery is granted only while it is opening for the receiver the panel has now (PR #151 F-06)', async () => {
+      const { delivery, offer, reload } = createReceivingDelivery();
+      const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
+      const other: ReceivingPanel = { name: 'two', ready: true, receiver: 'r1' };
+      offer(panel, 'A');
+      // Sent but not claimed: not granted.
+      expect(delivery.isGranted(panel, 'tile-1', 'r1')).toBe(false);
+      delivery.claim(panel, 'tile-1', 'r1');
+      expect(delivery.isGranted(panel, 'tile-1', 'r1')).toBe(true);
+      expect(delivery.isGranted(panel, 'tile-1', 'r0')).toBe(false);
+      expect(delivery.isGranted(panel, 'tile-2', 'r1')).toBe(false);
+      expect(delivery.isGranted(other, 'tile-1', 'r1')).toBe(false);
+      // Reset: the old receiver's grant is settled, and nobody holds it.
+      reload(panel, 'r2');
+      await settle();
+      expect(delivery.isGranted(panel, 'tile-1', 'r1')).toBe(false);
+      expect(delivery.isGranted(panel, 'tile-1', 'r2')).toBe(false);
+
+      offer(panel, 'B');
+      delivery.claim(panel, 'tile-2', 'r2');
+      expect(delivery.isGranted(panel, 'tile-2', 'r2')).toBe(true);
+      delivery.answer(panel, { deliveryId: 'tile-2', opened: true }, 'r2');
+      expect(delivery.isGranted(panel, 'tile-2', 'r2')).toBe(false);
+
+      offer(panel, 'C');
+      delivery.claim(panel, 'tile-3', 'r2');
+      delivery.close();
+      expect(delivery.isGranted(panel, 'tile-3', 'r2')).toBe(false);
+    });
+
+    it('keeps each kind\'s grants its own (PR #151 F-06)', () => {
+      const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
+      const ports = {
+        isReady: () => true,
+        postClaimResult: () => undefined,
+        receiverOf: (recipient: ReceivingPanel) => recipient.receiver
+      };
+      const build = new WorkshopSeedDelivery<ReceivingPanel>('lexical-gravity-build', ports, { mintDeliveryId: () => 'same-id' });
+      const tiles = new WorkshopSeedDelivery<ReceivingPanel>('lightbox-tile', ports, { mintDeliveryId: () => 'same-id' });
+      void build.offer(panel, () => undefined);
+      void tiles.offer(panel, () => undefined);
+      build.claim(panel, 'same-id', 'r1');
+      expect(build.isGranted(panel, 'same-id', 'r1')).toBe(true);
+      expect(tiles.isGranted(panel, 'same-id', 'r1')).toBe(false);
+      tiles.claim(panel, 'same-id', 'r1');
+      build.answer(panel, { deliveryId: 'same-id', opened: true }, 'r1');
+      expect(build.isGranted(panel, 'same-id', 'r1')).toBe(false);
+      expect(tiles.isGranted(panel, 'same-id', 'r1')).toBe(true);
+      tiles.close();
+      build.close();
+    });
+
     it('leaves a grant to the current receiver alone when that receiver announces itself again', async () => {
       const { delivery, outcomes, offer } = createReceivingDelivery();
       const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
