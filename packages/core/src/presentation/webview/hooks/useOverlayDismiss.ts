@@ -110,12 +110,16 @@ export function useOverlayDismiss({
     /* Only claim a return target if no overlay already has one: during a
        handoff the previous overlay has decremented but not yet restored, and
        the live activeElement is <body>. */
+    const focused = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
     if (openOverlays.length === 0 && focusBeforeFirstOverlay === null) {
-      focusBeforeFirstOverlay =
-        document.activeElement instanceof HTMLElement && document.activeElement !== document.body
-          ? document.activeElement
-          : null;
+      focusBeforeFirstOverlay = focused;
     }
+    /* An overlay opened over another (a model browser over a widget sheet)
+       remembers what it was opened from, so closing it returns focus there
+       rather than dropping it on the page behind both (PR #150 F-07). */
+    const nestedOpener = openOverlays.length > 0 ? focused : null;
     const overlay: OpenOverlay = { close: () => onCloseRef.current() };
     pushOverlay(overlay);
     closeButtonRef.current?.focus();
@@ -131,6 +135,14 @@ export function useOverlayDismiss({
         if (openOverlays.length === 0) {
           focusBeforeFirstOverlay = null;
           target?.focus();
+          return;
+        }
+        /* Another overlay is still open. Hand focus back to this one's opener
+           only if focus fell out of the page: an overlay opening in the same
+           commit has already taken it. */
+        const lost = document.activeElement === null || document.activeElement === document.body;
+        if (lost && nestedOpener?.isConnected) {
+          nestedOpener.focus();
         }
       });
     };

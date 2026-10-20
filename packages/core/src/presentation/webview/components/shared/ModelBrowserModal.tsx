@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ModelOption, ModelParameterConfidence, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
+import { useOverlayDismiss } from '@hooks/useOverlayDismiss';
 
 type ModelBrowserPivot = 'provider' | 'family' | 'release-date';
 
@@ -171,14 +172,10 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
   const [pivot, setPivot] = React.useState<ModelBrowserPivot>('provider');
   const [activeGroup, setActiveGroup] = React.useState('All');
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  /* The shared overlay stack (PR #150 F-07): Escape closes this browser only
+     when it is on top, a handed-over seed sees it as open, and focus returns
+     to whatever opened it, in the sidebar, the Workshop header or a sheet. */
+  const closeButtonRef = useOverlayDismiss({ open, onClose });
 
   React.useEffect(() => {
     setActiveGroup('All');
@@ -224,7 +221,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
             <div className="tm-title">Choose a Model</div>
             <div className="tm-subtitle">Live OpenRouter pricing and context, with curated parameter disclosures.</div>
           </div>
-          <button type="button" className="btn ghost tm-close" onClick={onClose} aria-label="Close">
+          <button ref={closeButtonRef} type="button" className="btn ghost tm-close" onClick={onClose} aria-label="Close">
             <Icon name="x" size={16} />
           </button>
         </div>

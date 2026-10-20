@@ -242,8 +242,9 @@ differs from the plan above, or the plan left a choice open:
 - The Workshop opens the sheet on Build lens, prefilled, once. It never
   covers or replaces a sheet, editor or browser that is already open (PR
   #150 F-02): Add text, the context and session editors, the widgets and
-  tools browsers, and every other `WorkshopModalShell` or
-  `useOverlayDismiss` user register on one overlay stack, and a seed that
+  tools browsers, the Model Browser (PR #150 F-07), and every other
+  `WorkshopModalShell` or `useOverlayDismiss` user register on one overlay
+  stack, and a seed that
   arrives while any is open is refused (answered `busy`, so the Lightbox
   says why) and dropped, never deferred. The Workshop says "A field from the
   Lightbox did not open over your open sheet. Close it, then build the field
