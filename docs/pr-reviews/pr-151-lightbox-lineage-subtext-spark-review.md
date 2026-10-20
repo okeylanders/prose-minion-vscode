@@ -545,3 +545,35 @@ The counterfactual runs use the same new independent assertions with production 
 ### Next step
 
 The original five blocking issues and qualified receiver hardening are clear. Keep F-07 as a nonblocking consistency follow-up. Native VS Code acceptance and the writer's real-chapter output checkpoint remain open; neither supplied screenshots, fixtures nor green CI constitutes that acceptance. In particular, do not freeze Slice 5's board file format on the strength of this review alone.
+
+## Author note (2026-10-20): F-07
+
+F-07 is fixed in `218656b` on `epic/lightbox-slice-4-followups`, branched from
+`epic/lightbox` at `1532a46` (PR #151 merged). The ledger status is left for
+re-verification.
+
+- **Root cause.** Stale carry re-found a pair's said line with the dialogue
+  filter, but re-checked its evidence, said line included, without the
+  filter. So `evidence[0]` could be the narration's exact copy.
+- **Fix.** One helper, `lightboxSaidLedEvidence` (with `lightboxSameQuote`)
+  in `LightboxDialogueAnchor`, builds a pair's evidence for fresh assembly
+  and stale carry alike: the said line as found, then every other found
+  quote once, without the said line again. Carry checks the pair's other
+  quotes on their own, then leads with the said line it found. A said line
+  that is gone still counts as the first lost quote.
+- **Tests** (`LightboxCarryParity.test.ts`):
+  - your reproduction, asserting the complete evidence list (`[“I don’t
+    know”, normalized]`) and the inspector projection ("found with
+    typography folded"), equal to a fresh read;
+  - context quotes kept after the said line, with the speech's copy
+    dropped as a fresh read drops it, on the card and in the inspector;
+  - a gone said line as the first lost quote (a control);
+  - a fresh/carry parity sweep over every drawn tile's full evidence, said
+    line and witness, on the worked examples, their four edits, and the
+    narration-first edit.
+
+  The three regression tests fail at `1532a46`. The control and the sweep's
+  worked-example part pass there; its narration-first case fails.
+- **The moved-speech diagnostic** stays as it is, as you noted. It is
+  recorded as Low tech debt:
+  `.todo/tech-debt/2026-10-20-lightbox-carried-said-line-moved-speech.md`.

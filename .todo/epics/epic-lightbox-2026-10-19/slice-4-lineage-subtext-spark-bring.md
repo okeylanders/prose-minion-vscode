@@ -224,6 +224,10 @@ detail and SHAs.
   provider forwards it only while `WorkshopSeedDelivery.isGranted` holds.
 - Also: the harness's lineage selector, and the session's own copy of a
   tile's attachment meta.
+- **F-07 (re-review, P3), on `epic/lightbox-slice-4-followups` (`218656b`).**
+  A carried pair's evidence now leads with the said line it found, through
+  the helper fresh assembly uses (`lightboxSaidLedEvidence`), so the card
+  and inspector never show the narration's copy as "found verbatim".
 
 ### Deviations
 
@@ -258,3 +262,5 @@ detail and SHAs.
 - [A seed offer the Workshop refuses only times out](../../tech-debt/2026-10-19-workshop-refused-seed-offer-times-out.md) (Low)
 - [Dialogue % ignores single-quoted dialogue](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md):
   now also withholds every subtext pair in single-quoted text (Low).
+- [A carried said line does not follow speech that moved past narration](../../tech-debt/2026-10-20-lightbox-carried-said-line-moved-speech.md)
+  (Low; pre-existing, noted in the PR #151 re-review).
