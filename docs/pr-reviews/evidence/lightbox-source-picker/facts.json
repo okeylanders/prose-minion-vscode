@@ -22,6 +22,11 @@
       "styled": true,
       "htmlSha256": "caa365ba1a2393acc2bf17719dfbfd5b5933b2495c4a61f34d8ffa8681386e7c"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -54,6 +59,11 @@
       "styled": true,
       "htmlSha256": "caa365ba1a2393acc2bf17719dfbfd5b5933b2495c4a61f34d8ffa8681386e7c"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -85,6 +95,11 @@
       },
       "styled": true,
       "htmlSha256": "caa365ba1a2393acc2bf17719dfbfd5b5933b2495c4a61f34d8ffa8681386e7c"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
@@ -133,6 +148,11 @@
       "styled": true,
       "htmlSha256": "4f5ec3156418507364dea1f82576df2b4e7989533cc41f6cfc6511cc5f0743fe"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -180,6 +200,11 @@
       "styled": true,
       "htmlSha256": "4f5ec3156418507364dea1f82576df2b4e7989533cc41f6cfc6511cc5f0743fe"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -226,6 +251,11 @@
       },
       "styled": true,
       "htmlSha256": "4f5ec3156418507364dea1f82576df2b4e7989533cc41f6cfc6511cc5f0743fe"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
@@ -283,6 +313,11 @@
       },
       "styled": true,
       "htmlSha256": "4531056a77facf5078d90d370ef73bfafff15939af2e4d4ad037bb4246a45806"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
@@ -342,6 +377,11 @@
       "styled": true,
       "htmlSha256": "4531056a77facf5078d90d370ef73bfafff15939af2e4d4ad037bb4246a45806"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -400,6 +440,11 @@
       "styled": true,
       "htmlSha256": "4531056a77facf5078d90d370ef73bfafff15939af2e4d4ad037bb4246a45806"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": "No source yet. Choose a file from your project, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
     "welcome": "Choose a chapter from your project, right-click one and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
     "context": [],
@@ -442,6 +487,11 @@
       },
       "styled": true,
       "htmlSha256": "cff0acf3d40d7256bdda4707916f92cf4a04aa843bb80a318dd692c35bcd0edd"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
@@ -487,6 +537,11 @@
       "styled": true,
       "htmlSha256": "cff0acf3d40d7256bdda4707916f92cf4a04aa843bb80a318dd692c35bcd0edd"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
     "context": [
@@ -531,6 +586,11 @@
       "styled": true,
       "htmlSha256": "cff0acf3d40d7256bdda4707916f92cf4a04aa843bb80a318dd692c35bcd0edd"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
     "context": [
@@ -544,6 +604,7 @@
   },
   "lightbox/context-rail@1440": {
     "dialog": null,
+    "backdrop": null,
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
     "context": [
@@ -583,6 +644,7 @@
   },
   "lightbox/context-rail@1000": {
     "dialog": null,
+    "backdrop": null,
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
     "context": [
@@ -622,6 +684,7 @@
   },
   "lightbox/context-rail@500": {
     "dialog": null,
+    "backdrop": null,
     "sourceEmpty": null,
     "welcome": "Solid tiles are counted by code and cost nothing. Dashed tiles are read by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.",
     "context": [
@@ -682,6 +745,11 @@
       "styled": true,
       "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": null,
     "context": [],
@@ -713,6 +781,48 @@
       },
       "styled": true,
       "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
+    "sourceEmpty": null,
+    "welcome": null,
+    "context": [],
+    "sourceButtonsInside": null,
+    "horizontalOverflow": false,
+    "posted": [
+      "workshop_request_context_catalog"
+    ]
+  },
+  "workshop/excerpt-browse-before@500": {
+    "dialog": {
+      "eyebrow": "Set excerpt",
+      "description": "Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.",
+      "rows": [],
+      "categories": [
+        "Characters3 files · 4.5 KB",
+        "Locations & Settings1 file · 980 B",
+        "Themes1 file · 760 B",
+        "Chapters & Scenes4 files · 47.6 KB",
+        "Manuscript1 file · 148.7 KB"
+      ],
+      "pills": [],
+      "footer": "Click a file to set it as the excerptCancel",
+      "box": {
+        "x": 12,
+        "y": 335,
+        "width": 476,
+        "height": 529
+      },
+      "styled": true,
+      "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": null,
     "welcome": null,
@@ -746,6 +856,11 @@
       "styled": true,
       "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": null,
     "context": [],
@@ -777,6 +892,48 @@
       },
       "styled": true,
       "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
+    "sourceEmpty": null,
+    "welcome": null,
+    "context": [],
+    "sourceButtonsInside": null,
+    "horizontalOverflow": false,
+    "posted": [
+      "workshop_request_context_catalog"
+    ]
+  },
+  "workshop/excerpt-browse-after@500": {
+    "dialog": {
+      "eyebrow": "Set excerpt",
+      "description": "Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.",
+      "rows": [],
+      "categories": [
+        "Characters3 files · 4.5 KB",
+        "Locations & Settings1 file · 980 B",
+        "Themes1 file · 760 B",
+        "Chapters & Scenes4 files · 47.6 KB",
+        "Manuscript1 file · 148.7 KB"
+      ],
+      "pills": [],
+      "footer": "Click a file to set it as the excerptCancel",
+      "box": {
+        "x": 12,
+        "y": 335,
+        "width": 476,
+        "height": 529
+      },
+      "styled": true,
+      "htmlSha256": "f755385d4053b1ca833c579cfbbe44acc3a6d771859856ad647011c55b01d464"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": null,
     "welcome": null,
@@ -834,6 +991,11 @@
       },
       "styled": true,
       "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": null,
     "welcome": null,
@@ -893,6 +1055,74 @@
       "styled": true,
       "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
+    "sourceEmpty": null,
+    "welcome": null,
+    "context": [],
+    "sourceButtonsInside": null,
+    "horizontalOverflow": false,
+    "posted": [
+      "workshop_request_context_catalog",
+      "workshop_search_context_resources"
+    ]
+  },
+  "workshop/excerpt-search-before@500": {
+    "dialog": {
+      "eyebrow": "Set excerpt",
+      "description": "Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.",
+      "rows": [
+        {
+          "role": "button",
+          "text": "Chapters/01-down-the-rabbit-hole.mdChapters & Scenes12.2 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Chapters/04-the-rabbit-sends-in-a-little-bill.mdChapters & Scenes13.7 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Characters/white-rabbit.mdCharacters1.2 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Chapters/02-the-pool-of-tears.mdChapters & Scenes11.7 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Themes/curiosity.mdThemes760 B",
+          "disabled": false
+        }
+      ],
+      "categories": [],
+      "pills": [
+        "All · 5",
+        "Characters · 1",
+        "Themes · 1",
+        "Chapters & Scenes · 3"
+      ],
+      "footer": "Click a file to set it as the excerptCancel",
+      "box": {
+        "x": 12,
+        "y": 340,
+        "width": 476,
+        "height": 521
+      },
+      "styled": true,
+      "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": null,
     "context": [],
@@ -951,6 +1181,11 @@
       "styled": true,
       "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
     },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
     "sourceEmpty": null,
     "welcome": null,
     "context": [],
@@ -1008,6 +1243,74 @@
       },
       "styled": true,
       "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
+    },
+    "sourceEmpty": null,
+    "welcome": null,
+    "context": [],
+    "sourceButtonsInside": null,
+    "horizontalOverflow": false,
+    "posted": [
+      "workshop_request_context_catalog",
+      "workshop_search_context_resources"
+    ]
+  },
+  "workshop/excerpt-search-after@500": {
+    "dialog": {
+      "eyebrow": "Set excerpt",
+      "description": "Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.",
+      "rows": [
+        {
+          "role": "button",
+          "text": "Chapters/01-down-the-rabbit-hole.mdChapters & Scenes12.2 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Chapters/04-the-rabbit-sends-in-a-little-bill.mdChapters & Scenes13.7 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Characters/white-rabbit.mdCharacters1.2 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Chapters/02-the-pool-of-tears.mdChapters & Scenes11.7 KB",
+          "disabled": false
+        },
+        {
+          "role": "button",
+          "text": "Themes/curiosity.mdThemes760 B",
+          "disabled": false
+        }
+      ],
+      "categories": [],
+      "pills": [
+        "All · 5",
+        "Characters · 1",
+        "Themes · 1",
+        "Chapters & Scenes · 3"
+      ],
+      "footer": "Click a file to set it as the excerptCancel",
+      "box": {
+        "x": 12,
+        "y": 340,
+        "width": 476,
+        "height": 521
+      },
+      "styled": true,
+      "htmlSha256": "6c242d7a0e4c21186ec8204a03facb74572fb038c3a4c45bafc8e9f2ce0bb6a3"
+    },
+    "backdrop": {
+      "probesOutsideDialog": 8,
+      "onTop": true,
+      "coversViewport": true
     },
     "sourceEmpty": null,
     "welcome": null,

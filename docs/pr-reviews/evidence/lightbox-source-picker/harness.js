@@ -10,10 +10,14 @@
  * panel, browsing, inside a category and searching names and content; then
  * the context list's attach picker over a counted board, and the rail after
  * the host's answer. The harness plays the host: it answers the catalog and
- * search requests the page posts with synthetic entries, and records what
- * the page posted. The Workshop (base and head bundles): the excerpt card's
- * "Choose from project…", browsing and searching, with the dialog's markup
- * recorded so the two bundles can be compared.
+ * search requests the page posts with synthetic entries, echoing each
+ * request's id as the host does (PR #154 F-01), gives each file a stand-in
+ * for the host's opaque file key (PR #154 F-02), and records what the page
+ * posted. The Workshop (base and head bundles): the excerpt card's "Choose
+ * from project…", browsing and searching at 1440, 1000 and 500 px, with the
+ * dialog's markup recorded so the two bundles can be compared. Every shot
+ * with a dialog also records whether the modal's backdrop is the top element
+ * outside the dialog (`document.elementFromPoint`) and covers the viewport.
  *
  * The model is the Slice 3 harness's stub, so no real model's name is drawn;
  * nothing is sent to a provider. File names are synthetic or from Lewis
@@ -82,6 +86,9 @@ const chrome = [
   message('token_usage_update', { totals: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } }, 'extension.handler')
 ];
 
+/** A stand-in for the host's opaque file key: 32 hex characters, the same for the same file. */
+const fileKey = (entryPath) => crypto.createHash('sha256').update(`synthetic:${entryPath}`).digest('hex').slice(0, 32);
+
 /** The configured catalog the host would send: chapters, a manuscript, characters, places, themes. */
 const CATALOG = [
   ['chapters', 'Chapters/01-down-the-rabbit-hole.md', 12_480],
@@ -98,8 +105,11 @@ const CATALOG = [
   group,
   path: entryPath,
   label: path.basename(entryPath, '.md').replace(/-/g, ' '),
-  sizeBytes
+  sizeBytes,
+  fileKey: fileKey(entryPath)
 }));
+/** The Workshop's catalog carries no file key. */
+const WORKSHOP_CATALOG = CATALOG.map(({ fileKey: _key, ...entry }) => entry);
 const workshopSession = message('workshop_session_state', {
   session: {
     scope: null, participantSubjectReady: true, excerptVersion: 0, replacementCount: 0, roomRevision: 1, contextRevision: 0,
@@ -115,10 +125,7 @@ const LIGHTBOX_WIDTHS = [
   { tag: '1000', width: 1000, height: 1000 },
   { tag: '500', width: 500, height: 1200 }
 ];
-const WORKSHOP_WIDTHS = [
-  { tag: '1440', width: 1440, height: 1000 },
-  { tag: '1000', width: 1000, height: 1000 }
-];
+const WORKSHOP_WIDTHS = LIGHTBOX_WIDTHS;
 
 /** Steps run in the page; each returns after the page has had a moment to render. */
 const post = async (tab, entry) => { await tab.evaluate((m) => window.postMessage(m, '*'), entry); await tab.waitForTimeout(150); };
@@ -131,6 +138,16 @@ const clickText = async (tab, scope, text) => {
   await tab.locator(scope).getByRole('button', { name: text }).first().click();
   await tab.waitForTimeout(150);
 };
+/** The host's answer to the page's latest request of `requestType`, echoing that request's id (PR #154 F-01). */
+const answer = async (tab, requestType, type, payload) => {
+  const requestId = await tab.evaluate(
+    (wanted) => window.__pmPosted.filter((m) => m.type === wanted).at(-1)?.payload?.requestId,
+    requestType
+  );
+  await post(tab, message(type, { ...payload, requestId }));
+};
+const catalogArrives = (tab) =>
+  answer(tab, 'lightbox_request_project_catalog', 'lightbox_project_catalog', { entries: CATALOG });
 const search = async (tab, query) => {
   await tab.fill('.pm-ws-ctxsel-search input', query);
   await clickText(tab, '.pm-ws-ctxsel-modes', 'Names + content');
@@ -146,21 +163,22 @@ const lightboxStart = (board, contextFiles) => [
     ceilingWords: 50_000
   })
 ];
-const RABBIT = { id: 'ctx-1', displayPath: 'Characters/white-rabbit.md', wordCount: 196 };
+const shelfFile = (id, displayPath, wordCount) => ({ id, displayPath, wordCount, fileKey: fileKey(displayPath) });
+const RABBIT = shelfFile('ctx-1', 'Characters/white-rabbit.md', 196);
 
 const shots = [
   {
     name: 'lightbox/source-browse', surface: 'lightbox', widths: LIGHTBOX_WIDTHS, start: lightboxStart(null, []),
     act: async (tab) => {
       await clickText(tab, '.pm-lb-source', 'Choose from project…');
-      await post(tab, message('lightbox_project_catalog', { entries: CATALOG }));
+      await catalogArrives(tab);
     }
   },
   {
     name: 'lightbox/source-chapters', surface: 'lightbox', widths: LIGHTBOX_WIDTHS, start: lightboxStart(null, []),
     act: async (tab) => {
       await clickText(tab, '.pm-lb-source', 'Choose from project…');
-      await post(tab, message('lightbox_project_catalog', { entries: CATALOG }));
+      await catalogArrives(tab);
       await clickText(tab, '.pm-ws-ctxsel-cats', /Chapters & Scenes/);
     }
   },
@@ -168,14 +186,14 @@ const shots = [
     name: 'lightbox/source-search', surface: 'lightbox', widths: LIGHTBOX_WIDTHS, start: lightboxStart(null, []),
     act: async (tab) => {
       await clickText(tab, '.pm-lb-source', 'Choose from project…');
-      await post(tab, message('lightbox_project_catalog', { entries: CATALOG }));
+      await catalogArrives(tab);
       await search(tab, 'rabbit');
       // The host's content answer: a theme whose text mentions the Rabbit.
-      await post(tab, message('lightbox_project_catalog_search_results', {
+      await answer(tab, 'lightbox_search_project_catalog', 'lightbox_project_catalog_search_results', {
         query: 'rabbit',
         matches: [{ group: 'chapters', path: 'Chapters/02-the-pool-of-tears.md' }, { group: 'themes', path: 'Themes/curiosity.md' }],
         bounded: false
-      }));
+      });
     }
   },
   {
@@ -183,7 +201,7 @@ const shots = [
     name: 'lightbox/context-attach', surface: 'lightbox', widths: LIGHTBOX_WIDTHS, start: lightboxStart(countedBoard, [RABBIT]),
     act: async (tab) => {
       await clickText(tab, '.pm-lb-context', 'Add from project…');
-      await post(tab, message('lightbox_project_catalog', { entries: CATALOG }));
+      await catalogArrives(tab);
       await clickText(tab, '.pm-ws-ctxsel-cats', /Locations/);
       await tab.locator('.pm-ws-ctxsel-body').getByRole('checkbox', { name: /the-long-hall/ }).click();
       await clickText(tab, '.pm-ws-ctxsel-body', /Back/);
@@ -196,7 +214,7 @@ const shots = [
     name: 'lightbox/context-rail', surface: 'lightbox', widths: LIGHTBOX_WIDTHS, start: lightboxStart(countedBoard, [RABBIT]),
     act: async (tab, facts) => {
       await clickText(tab, '.pm-lb-context', 'Add from project…');
-      await post(tab, message('lightbox_project_catalog', { entries: CATALOG }));
+      await catalogArrives(tab);
       await clickText(tab, '.pm-ws-ctxsel-cats', /Characters/);
       await tab.locator('.pm-ws-ctxsel-body').getByRole('checkbox', { name: /cheshire-cat/ }).click();
       await clickText(tab, '.pm-ws-ctxsel-body', /Back/);
@@ -207,7 +225,7 @@ const shots = [
       facts.postedOnAdd = await postedSince(tab, before);
       // The host's answer: the shelf with both added.
       await post(tab, message('lightbox_context_files', {
-        files: [RABBIT, { id: 'ctx-2', displayPath: 'Characters/cheshire-cat.md', wordCount: 241 }, { id: 'ctx-3', displayPath: 'Places/the-long-hall.md', wordCount: 158 }],
+        files: [RABBIT, shelfFile('ctx-2', 'Characters/cheshire-cat.md', 241), shelfFile('ctx-3', 'Places/the-long-hall.md', 158)],
         totalWords: 595,
         ceilingWords: 50_000
       }));
@@ -219,7 +237,7 @@ const shots = [
     start: [...chrome, workshopSession],
     act: async (tab) => {
       await clickText(tab, '.pm-ws-rail', 'Choose from project…');
-      await post(tab, message('workshop_context_catalog', { entries: CATALOG }, 'extension.workshop'));
+      await post(tab, message('workshop_context_catalog', { entries: WORKSHOP_CATALOG }, 'extension.workshop'));
     }
   },
   {
@@ -227,7 +245,7 @@ const shots = [
     start: [...chrome, workshopSession],
     act: async (tab) => {
       await clickText(tab, '.pm-ws-rail', 'Choose from project…');
-      await post(tab, message('workshop_context_catalog', { entries: CATALOG }, 'extension.workshop'));
+      await post(tab, message('workshop_context_catalog', { entries: WORKSHOP_CATALOG }, 'extension.workshop'));
       await search(tab, 'rabbit');
       await post(tab, message('workshop_context_search_results', {
         query: 'rabbit',
@@ -305,6 +323,24 @@ const shots = [
               styled: getComputedStyle(dialog).position !== 'static' || getComputedStyle(dialog.parentElement).position === 'fixed',
               html: dialog.outerHTML
             } : null,
+            // The modal's backdrop: the top element at probes outside the dialog, and as large as the viewport.
+            backdrop: (() => {
+              const backdrop = document.querySelector('.pm-ws-modal-backdrop');
+              if (!backdrop || !dialog) { return null; }
+              const edge = backdrop.getBoundingClientRect();
+              const inset = 4;
+              const w = window.innerWidth;
+              const h = window.innerHeight;
+              const probes = [[inset, inset], [w - inset, inset], [inset, h - inset], [w - inset, h - inset],
+                [w / 2, inset], [w / 2, h - inset], [inset, h / 2], [w - inset, h / 2]]
+                .filter(([x, y]) => x < box.left || x > box.right || y < box.top || y > box.bottom);
+              const hits = probes.map(([x, y]) => document.elementFromPoint(x, y));
+              return {
+                probesOutsideDialog: probes.length,
+                onTop: probes.length > 0 && hits.every((hit) => hit === backdrop),
+                coversViewport: edge.left <= 0 && edge.top <= 0 && edge.right >= w && edge.bottom >= h
+              };
+            })(),
             sourceEmpty: squash(document.querySelector('.pm-lb-source-empty')?.textContent) || null,
             welcome: squash(document.querySelector('.pm-lb-sub')?.textContent) || null,
             context: [...document.querySelectorAll('.pm-lb-context-item')].map((item) => squash(item.textContent)),
