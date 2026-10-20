@@ -715,10 +715,14 @@ with type diagnostics off, so failures are behavioral.
 | Check | Before | After |
 |---|---|---|
 | Jest | 367 suites, 5,237 tests, 2 snapshots | 370 suites, 5,257 tests, 2 snapshots |
-| Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings, identical per file and rule |
+| Lint | 0 errors, 1,135 warnings | 0 errors, 1,133 warnings |
 | `npm run typecheck` | Passes | Passes |
 | `npm run build` | Passes | Passes |
 | `git diff --check` | Passes | Passes |
+
+Lint per file and rule is identical except for `ModelBrowserModal.tsx`. It
+has two fewer `curly` warnings, because the removed Escape listener's two
+unbraced `if`s are gone. No file or rule gained a warning.
 
 No live or billable call was made. The fixtures are public-domain prose
 from "Alice's Adventures in Wonderland" (1865) or short synthetic strings,

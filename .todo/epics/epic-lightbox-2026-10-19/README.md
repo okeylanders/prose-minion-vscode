@@ -594,10 +594,11 @@ becomes a file format.
     | Check | Before | After |
     |---|---|---|
     | Jest | 367 suites, 5,237 tests, 2 snapshots | 370 suites, 5,257 tests, 2 snapshots |
-    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,133 warnings |
     | `npm run typecheck` | Passes | Passes |
     | `npm run build` | Passes | Passes |
 
-    - Lint warnings match per file and per rule.
+    - Lint warnings match per file and per rule, except two fewer `curly`
+      warnings in `ModelBrowserModal.tsx`, whose own Escape listener is gone.
     - No live or billable call; the evidence follows the claim protocol and
       no shot changed.
