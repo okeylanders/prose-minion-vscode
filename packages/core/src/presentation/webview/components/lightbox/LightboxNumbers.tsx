@@ -69,13 +69,17 @@ export const LightboxNumbers: React.FC<LightboxTileProps> = ({ board, bind }) =>
   const usages = view.phase === 'ok' ? lightboxTilesOfKind(board, 'number-usage') : [];
   const { numbers } = board.measured;
   const presetRanges = numbers.rows.some((row) => row.range !== undefined);
+  // An empty reading is honest either way, but it means something different when figures stood out.
+  const empty = numbers.rows.some((row) => row.standout)
+    ? 'The reading said nothing about how these figures are used.'
+    : 'Nothing in the numbers stands out, so there was nothing to read.';
   return (
     <LightboxReadingFrame
       kind="number-usage"
       span={6}
       title="What stands out in the numbers"
       view={view}
-      empty="Nothing in the numbers stands out, so there was nothing to read."
+      empty={empty}
       aside={(
         <div className="pm-lb-craft-part">
           <span className="pm-lb-craft-sub">

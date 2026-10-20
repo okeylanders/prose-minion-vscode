@@ -8,6 +8,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   LIGHTBOX_MINIMUM_GENRE_NEIGHBORS,
   LIGHTBOX_NEAR_MISS_AFFINITY,
+  LIGHTBOX_STOCK_MINIMUM_BEATS,
   LIGHTBOX_TENSION_TOP_SCORE
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { LIGHTBOX_PROMPT_FILES } from '@/infrastructure/lightbox/LightboxReadingPrompts';
@@ -106,5 +107,33 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(lens('spark')).toContain(`\`question\`: at most ${B.sparkCharacters} characters, ending with a question mark`);
     expect(lens('spark')).toContain(`\`terms\`: 1–${B.termsPerClaim} words or short phrases`);
     expect(lens('spark')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
+  });
+
+  it('states the craft lenses\' ceilings (Slice 4B)', () => {
+    const stock = lens('stock');
+    expect(stock).toContain(`\`beats\`: 0–${B.stockBeats} beats`);
+    expect(stock).toContain(`With fewer than ${LIGHTBOX_STOCK_MINIMUM_BEATS} beats found, no mix is drawn.`);
+    expect(stock).toContain(`\`note\`: at most ${B.claimCharacters} characters`);
+    expect(stock).toContain(`\`signature\`: 0–${B.signaturePhrases} signature phrases`);
+    expect(stock).toContain(`\`familiar\`: 0–${B.familiarPhrases} familiar phrases`);
+    expect(stock).toContain(`\`phrase\`: at most ${B.labelCharacters} characters`);
+    expect(stock).toContain(`\`airLocks\`: 0–${B.airLocks} air-lock passages`);
+    expect(stock).toContain(`\`echoes\`: 0–${B.echoes} aphoristic lines`);
+    expect(stock).toContain(`\`reminiscentOf\`, at most ${B.labelCharacters} characters`);
+    expect(stock).toContain(`a \`title\` of at most ${B.labelCharacters} characters, a \`note\` of one line of at most ${B.noteCharacters} characters`);
+    expect(stock).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
+
+    const rhythm = lens('rhythm');
+    expect(rhythm).toContain('`endings`: exactly one ending for each ribbon column, in column order.');
+    expect(rhythm).toContain(`\`movement\`: at most ${B.claimCharacters} characters`);
+    expect(rhythm).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes for \`movement\``);
+    expect(rhythm).toContain(`\`handoffs\`: 0–${B.handoffs} samples`);
+    expect(rhythm).toContain(`\`carried\`: one line of at most ${B.noteCharacters} characters`);
+    expect(rhythm).toContain(`\`changes\`: one line of at most ${B.noteCharacters} characters`);
+
+    const numbers = lens('numbers');
+    expect(numbers).toContain(`\`items\`: 0–${B.numberReadings} readings, at most one per figure`);
+    expect(numbers).toContain(`\`claim\`: at most ${B.claimCharacters} characters`);
+    expect(numbers).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes, each holding an instance of its figure`);
   });
 });

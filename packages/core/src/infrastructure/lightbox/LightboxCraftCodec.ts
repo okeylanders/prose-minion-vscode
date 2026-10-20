@@ -8,8 +8,10 @@
  * Rules enforced here, not only asked for in the prompt:
  * - **Stock.** The `economy` object is required (its beats may be empty);
  *   each beat's tier and each familiar phrase's kind is in its vocabulary.
- *   An echo carries no likelihood: a `%` or "percent" in what it sounds
- *   reminiscent of, or in its note, withholds it. Familiar phrasing names
+ *   An echo carries no likelihood: a `%` or "percent" in its title, in what
+ *   it sounds reminiscent of, or in its note, withholds it. A digit alone
+ *   does not: a source's name can hold one ("Nineteen Eighty-Four, chapter
+ *   1"). Familiar phrasing names
  *   its phrase as it stands, for the host to count.
  * - **Rhythm.** Exactly one ending per ribbon column, each in its
  *   vocabulary, or the block is withheld (the tension arc's rule). A
@@ -160,13 +162,14 @@ function decodeFamiliar(item: Record<string, unknown>, path: string): LightboxDe
 
 function decodeEcho(item: Record<string, unknown>, path: string): LightboxDecodedEcho {
   const echo = strictObject(item, path, ['title', 'reminiscentOf', 'note', 'evidence']);
+  const title = text(echo.title, `${path}.title`, B.labelCharacters);
   const reminiscentOf = text(echo.reminiscentOf, `${path}.reminiscentOf`, B.labelCharacters);
   const note = text(echo.note, `${path}.note`, B.noteCharacters);
-  if (LIKELIHOOD.test(reminiscentOf) || LIKELIHOOD.test(note)) {
+  if ([title, reminiscentOf, note].some((field) => LIKELIHOOD.test(field))) {
     throw new Error('An echo states no likelihood: it holds a percentage.');
   }
   return {
-    title: text(echo.title, `${path}.title`, B.labelCharacters),
+    title,
     reminiscentOf,
     note,
     evidence: evidence(echo.evidence, `${path}.evidence`, 1)

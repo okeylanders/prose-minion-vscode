@@ -10,7 +10,7 @@ Where the chapter spends the reader's attention: the convention that orients a r
     - `decorated`: stock with an elevation that draws attention to the convention it dresses;
     - `weighted`: stock carrying weight, a familiar beat asked to hold a peak, a turn or a coda;
     - `signature`: a line only this chapter would write.
-  - The host counts the tiers from the beats it finds, so the board shows a share of the beats you classified, never of the chapter. Never give a count, a ratio or a target mix.
+  - The host counts the tiers from the beats it finds, so the board shows a share of the beats you classified, never of the chapter. With fewer than 4 beats found, no mix is drawn. Never give a count, a ratio or a target mix.
   - `note`: at most 320 characters: where the chapter spends attention, in its own terms.
 - `signature`: 0–4 signature phrases, the most distinctive first. Each has a `title` of at most 60 characters, a `note` of one line of at most 120 characters saying what makes it the chapter's own, and `evidence`: 1–3 quotes.
 - `familiar`: 0–6 familiar phrases: idioms, clichés, stock phrases, and stock carrying weight.

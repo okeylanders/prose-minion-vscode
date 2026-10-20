@@ -41,7 +41,7 @@ export function lightboxTierShares(tile: Pick<LightboxStockTiersTile, 'tiers' | 
   }));
 }
 
-/** "51 beats the reading classified, found in the chapter: 31 functional stock …" for the bar's label. */
+/** "16 beats classified and found: 6 functional stock, 1 decorated, …" for the bar's label. */
 export function lightboxTierSummary(tile: Pick<LightboxStockTiersTile, 'tiers' | 'classified'>): string {
   const parts = lightboxTierShares(tile).map((share) => `${share.count} ${share.label.toLowerCase()}`);
   return `${pluralize(tile.classified, 'beat')} classified and found: ${parts.join(', ')}`;
