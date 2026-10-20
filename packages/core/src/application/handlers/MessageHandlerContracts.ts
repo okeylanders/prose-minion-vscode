@@ -75,7 +75,7 @@ export type MessageTransport = (
  */
 export interface WorkshopUiActions {
   openWorkshop?: () => void;
-  /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); no route calls it yet. */
+  /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
   openLightbox?: () => void;
   /**
    * Carries a Lightbox handoff into the Workshop (ADR 2026-10-19 D11): the

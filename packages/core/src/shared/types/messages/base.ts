@@ -48,6 +48,8 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum.
+  OPEN_LIGHTBOX = 'open_lightbox',
   OPEN_ASSISTANT_SETTINGS = 'open_assistant_settings',
   REQUEST_STARTUP_NOTICE = 'request_startup_notice',
   STARTUP_NOTICE_DATA = 'startup_notice_data',

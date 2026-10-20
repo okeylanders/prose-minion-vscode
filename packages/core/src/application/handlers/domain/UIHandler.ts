@@ -58,6 +58,7 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
+    router.register(MessageType.OPEN_LIGHTBOX, this.handleOpenLightbox.bind(this));
     router.register(
       MessageType.OPEN_ASSISTANT_SETTINGS,
       this.handleOpenAssistantSettings.bind(this)
@@ -310,6 +311,14 @@ export class UIHandler {
       return;
     }
     this.workshopUiActions.openWorkshop();
+  }
+
+  async handleOpenLightbox(): Promise<void> {
+    if (!this.workshopUiActions.openLightbox) {
+      this.sendError('ui.lightbox', 'Lightbox is not available from this surface.');
+      return;
+    }
+    this.workshopUiActions.openLightbox();
   }
 
   async handleOpenAssistantSettings(): Promise<void> {

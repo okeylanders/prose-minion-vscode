@@ -120,6 +120,11 @@ export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, neve
   type: MessageType.OPEN_WORKSHOP;
 }
 
+/** Ask the host shell to open or reveal the Lightbox tab (ADR 2026-10-19 D1). */
+export interface OpenLightboxMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.OPEN_LIGHTBOX;
+}
+
 /** Ask the host shell to reveal the existing Prose Minion settings overlay. */
 export interface OpenAssistantSettingsMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.OPEN_ASSISTANT_SETTINGS;
