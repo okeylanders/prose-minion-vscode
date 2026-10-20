@@ -266,6 +266,7 @@ import {
 } from './lightboxHandoff';
 import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
 import {
+  LightboxAddProjectContextMessage,
   LightboxChooseProjectSourceMessage,
   LightboxProjectCatalogMessage,
   LightboxProjectCatalogSearchResultsMessage,
@@ -401,7 +402,8 @@ export type WebviewToExtensionMessage =
   | LightboxOpenWorkshopMessage
   | LightboxRequestProjectCatalogMessage
   | LightboxSearchProjectCatalogMessage
-  | LightboxChooseProjectSourceMessage;
+  | LightboxChooseProjectSourceMessage
+  | LightboxAddProjectContextMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage

@@ -1042,6 +1042,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
+  'application/handlers/domain/LightboxContextIntake.ts',
   'application/handlers/domain/LightboxProjectFiles.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
@@ -1133,6 +1134,8 @@ const LIGHTBOX_ROUTE_OWNERS = [
       'LIGHTBOX_RUN',
       'LIGHTBOX_CANCEL_RUN',
       'LIGHTBOX_ADD_CONTEXT_FILES',
+      // Context from the shared project picker (2026-10-20)
+      'LIGHTBOX_ADD_PROJECT_CONTEXT',
       'LIGHTBOX_REMOVE_CONTEXT_FILE',
       'LIGHTBOX_SET_SPARK_DISMISSED'
     ]

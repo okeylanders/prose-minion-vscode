@@ -33,17 +33,18 @@ async function setup(options: LightboxReadingHostOptions = {}) {
 }
 
 describe('LightboxReadingHandler', () => {
-  it('registers the six reading routes', async () => {
+  it('registers the seven reading routes', async () => {
     const { router } = await setup();
     expect([
       MessageType.LIGHTBOX_SET_LENSES,
       MessageType.LIGHTBOX_RUN,
       MessageType.LIGHTBOX_CANCEL_RUN,
       MessageType.LIGHTBOX_ADD_CONTEXT_FILES,
+      MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT,
       MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE,
       MessageType.LIGHTBOX_SET_SPARK_DISMISSED
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(6);
+    expect(router.handlerCount).toBe(7);
   });
 
   it('answers the lens toggles with the context list and an estimate that leaves off lenses and empty groups out', async () => {
@@ -219,6 +220,7 @@ describe('LightboxReadingHandler', () => {
     const posted: unknown[] = [];
     const bystander = new LightboxReadingHandler(
       quiet.service, quiet.runner, quiet.shelf, {} as TextSourceResolver, { pickFile: jest.fn() },
+      { catalog: quiet.catalog, workspace: { workspaceFolders: () => [] } },
       async (message) => { posted.push(message); }, { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() }
     );
     await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [] });

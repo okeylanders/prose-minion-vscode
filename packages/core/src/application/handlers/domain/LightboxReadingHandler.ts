@@ -43,6 +43,8 @@
  * - **The Spark lane (Slice 4).** "Not for me" and its Undo mark the board's
  *   own spark (`LightboxSparkLane`), and the board is published like any
  *   other change to its readings.
+ * - **Context files** come by the system picker or the project picker (by
+ *   catalog key), through `LightboxContextIntake` under the shelf's rules.
  *
  * Logs name groups, lenses, counts, paths and reasons, never text.
  */
@@ -74,6 +76,7 @@ import {
 import {
   LightboxActiveRun,
   LightboxAddContextFilesMessage,
+  LightboxAddProjectContextMessage,
   LightboxCancelRunMessage,
   LightboxLensId,
   LightboxReadingGroupId,
@@ -86,6 +89,8 @@ import {
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
+import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
+import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
 
 const SOURCE = 'extension.lightbox';
 const STOPPED = 'Stopped before this group came back.';
@@ -106,22 +111,34 @@ export class LightboxReadingHandler {
   private disposed = false;
   /** The latest estimate request; an older one finishing late is not posted. */
   private estimateSequence = 0;
+  private readonly contextIntake: LightboxContextIntake;
 
   constructor(
     private readonly lightboxService: LightboxService,
     private readonly runner: LightboxReadingRunner,
     private readonly contextShelf: LightboxContextShelf,
-    private readonly textSourceResolver: TextSourceResolver,
-    private readonly shell: LightboxContextPicker,
+    textSourceResolver: TextSourceResolver,
+    shell: LightboxContextPicker,
+    projectFilePorts: LightboxProjectFilePorts,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink
-  ) {}
+  ) {
+    this.contextIntake = new LightboxContextIntake({
+      lightboxService,
+      shelf: contextShelf,
+      textSourceResolver,
+      shell,
+      projectFiles: new LightboxProjectFiles(projectFilePorts, outputChannel),
+      outputChannel
+    });
+  }
 
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.LIGHTBOX_SET_LENSES, this.handleSetLenses.bind(this));
     router.register(MessageType.LIGHTBOX_RUN, this.handleRun.bind(this));
     router.register(MessageType.LIGHTBOX_CANCEL_RUN, this.handleCancelRun.bind(this));
     router.register(MessageType.LIGHTBOX_ADD_CONTEXT_FILES, this.handleAddContextFiles.bind(this));
+    router.register(MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT, this.handleAddProjectContext.bind(this));
     router.register(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, this.handleRemoveContextFile.bind(this));
     router.register(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, this.handleSetSparkDismissed.bind(this));
   }
@@ -315,39 +332,21 @@ export class LightboxReadingHandler {
     this.stop(run, STOPPED);
   }
 
+  /** "Add file" through the system picker (and the project picker's escape hatch). */
   async handleAddContextFiles(_message: LightboxAddContextFilesMessage): Promise<void> {
     this.subscribe();
-    const picked = await this.shell.pickFile({
-      title: 'Add a context file to the Lightbox',
-      openLabel: 'Add',
-      // eslint-disable-next-line @typescript-eslint/naming-convention -- dialog filter keys are display names.
-      filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
-    });
-    if (!picked) {
-      return;
+    const outcome = await this.contextIntake.addPicked();
+    if (outcome) {
+      // The webview asks for a fresh estimate when it sees the list change.
+      this.postContextFiles(outcome.notice);
     }
-    if (this.lightboxService.currentRereadTarget()?.rereadPath === picked.fsPath) {
-      this.postContextFiles('That file is the board\'s own source. Context informs the chapter; it is not the chapter.');
-      return;
-    }
-    let resolved: { text: string; displayPath: string };
-    try {
-      const source = await this.textSourceResolver.resolve({ mode: 'activeFile', pathText: picked.fsPath });
-      resolved = { text: source.text, displayPath: source.displayPath ?? source.relativePaths[0] ?? picked.fsPath };
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[LightboxReadingHandler] Could not read a context file: ${detail}`);
-      this.postContextFiles('Could not read that file. Choose a text or Markdown file inside an open workspace folder.');
-      return;
-    }
-    const result = this.contextShelf.add({ ...resolved, sourceKey: picked.fsPath });
-    this.outputChannel.appendLine(
-      result.added
-        ? `[LightboxReadingHandler] Context added: ${result.file.displayPath} (${result.file.wordCount} words)`
-        : `[LightboxReadingHandler] Context refused for ${resolved.displayPath}`
-    );
-    // The webview asks for a fresh estimate when it sees the list change.
-    this.postContextFiles(result.added ? undefined : result.notice);
+  }
+
+  /** Files chosen in the project picker, by catalog key, in the writer's order. */
+  async handleAddProjectContext(message: LightboxAddProjectContextMessage): Promise<void> {
+    this.subscribe();
+    const outcome = await this.contextIntake.addFromProject(message.payload?.items);
+    this.postContextFiles(outcome.notice);
   }
 
   async handleRemoveContextFile(message: LightboxRemoveContextFileMessage): Promise<void> {

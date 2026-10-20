@@ -250,7 +250,9 @@ export enum MessageType {
   LIGHTBOX_PROJECT_CATALOG = 'lightbox_project_catalog',
   LIGHTBOX_SEARCH_PROJECT_CATALOG = 'lightbox_search_project_catalog',
   LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS = 'lightbox_project_catalog_search_results',
-  LIGHTBOX_CHOOSE_PROJECT_SOURCE = 'lightbox_choose_project_source'
+  LIGHTBOX_CHOOSE_PROJECT_SOURCE = 'lightbox_choose_project_source',
+  // Context from the project picker (2026-10-20); answered by LIGHTBOX_CONTEXT_FILES
+  LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

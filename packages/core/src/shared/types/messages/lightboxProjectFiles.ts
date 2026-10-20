@@ -52,3 +52,18 @@ export interface LightboxProjectCatalogSearchResultsMessage
 export interface LightboxChooseProjectSourceMessage extends MessageEnvelope<ConfiguredResourceRef> {
   type: MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE;
 }
+
+/**
+ * Add project files to the context shelf, in the writer's selection order.
+ * Each is resolved as a source is, then held to the shelf's own rules (not
+ * the board's source, not empty, not already there, within the word
+ * ceiling). The answer is `LIGHTBOX_CONTEXT_FILES`, whose notice names every
+ * file refused and why; the webview re-estimates when the list changes.
+ */
+export interface LightboxAddProjectContextPayload {
+  items: ConfiguredResourceRef[];
+}
+
+export interface LightboxAddProjectContextMessage extends MessageEnvelope<LightboxAddProjectContextPayload> {
+  type: MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT;
+}

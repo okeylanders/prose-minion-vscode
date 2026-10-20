@@ -365,6 +365,8 @@ export class MessageHandler {
       lightboxContextShelf,
       textSourceResolver,
       this.platform.shell,
+      // Context from the project picker: the same catalog, inside the open folders.
+      { catalog: workshopContextIntakeService, workspace: this.platform.workspace },
       this.postMessage.bind(this),
       outputChannel
     );

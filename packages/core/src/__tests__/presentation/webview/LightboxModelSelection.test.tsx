@@ -176,7 +176,8 @@ async function createHost() {
   ).registerRoutes(router);
   const projectFiles = { catalog: { openCatalog: jest.fn() }, workspace: { workspaceFolders: () => [] } };
   new LightboxHandler(service, resolver, picker, projectFiles as never, deliver, log).registerRoutes(router);
-  new LightboxReadingHandler(service, runner, new LightboxContextShelf(), resolver, picker, deliver, log).registerRoutes(router);
+  new LightboxReadingHandler(service, runner, new LightboxContextShelf(), resolver, picker, projectFiles as never, deliver, log)
+    .registerRoutes(router);
 
   await service.buildBoard({ kind: 'file', text: examples.A.paragraphs.join('\n\n'), displayPath: 'Drafts/alice-1.md' });
 
