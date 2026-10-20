@@ -8,20 +8,23 @@
 **Reviewed:** 2026-10-20 · **Reviewer:** Astra
 **Mode:** independent source/spec review; deterministic production service/handler and lifecycle probes; exact rebuilt-production-bundle DOM/protocol witnesses; inspection of all 33 supplied PNGs; full tests, typechecks, build and baseline-normalized lint comparison
 
+**Latest independent re-review:** `0e87c80163e901bf70af3a52ce8eca253fbd00af` (2026-10-20). **Current verdict: the original six findings are addressed; only nonblocking F-07 remains.** Original findings/history and author response are retained below. See [Independent re-review](#independent-re-review-2026-10-20) for current evidence and limits.
+
 ## Resolution ledger
 
 Status legend: **Open** = recommended action · **Addressed** = independently verified fix · **Deferred** = explicitly accepted follow-up. An author-proposed deferral is not acceptance on the writer's behalf.
 
-| ID | Severity | Finding | Status at `132aabbe` |
-| --- | --- | --- | --- |
-| F-01 | Medium / P2 | Rewind duplicates a Lightbox tile already pending and loses its duplicate identity | **Open** |
-| F-02 | Medium / P2 | Handoff bounding can remove a subtext pair's mandatory said line while reporting success | **Open** |
-| F-03 | Medium / P2 | Ordinary prefixed and comma-clause revision instructions pass the Spark validator | **Open** |
-| F-04 | Medium / P2 | A narration match can eclipse valid normalized dialogue and wrongly withhold Subtext | **Open** |
-| F-05 | Medium / P2 | An attachment reference bypasses the existing persisted widget-kind integrity check | **Open** |
-| F-06 | Low / P3 · nonblocking | A delayed old-receiver tile accept can mutate the session after delivery settled as reset | **Open — transport-ordering-qualified hardening** |
+| ID | Severity | Finding | Status at `132aabbe` | Status at `0e87c801` |
+| --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | Rewind duplicates a Lightbox tile already pending and loses its duplicate identity | **Open** | **Addressed** |
+| F-02 | Medium / P2 | Handoff bounding can remove a subtext pair's mandatory said line while reporting success | **Open** | **Addressed** |
+| F-03 | Medium / P2 | Ordinary prefixed and comma-clause revision instructions pass the Spark validator | **Open** | **Addressed** |
+| F-04 | Medium / P2 | A narration match can eclipse valid normalized dialogue and wrongly withhold Subtext | **Open** | **Addressed** |
+| F-05 | Medium / P2 | An attachment reference bypasses the existing persisted widget-kind integrity check | **Open** | **Addressed** |
+| F-06 | Low / P3 · nonblocking | A delayed old-receiver tile accept can mutate the session after delivery settled as reset | **Open — transport-ordering-qualified hardening** | **Addressed** |
+| F-07 | Low / P3 · nonblocking | Carried Subtext inspector evidence can select equivalent narration instead of the selected said span | Not previously reported | **Open — nonblocking consistency follow-up** |
 
-**Verdict: Changes requested.** F-01 through F-05 are independently reproduced and should be addressed before this slice is considered clear. F-06 is a narrower, explicitly qualified recovery concern; native cross-reload IPC ordering has not been established. All ordinary repository gates pass, but they do not cover these counterexamples.
+**Original verdict at `132aabbe`: Changes requested.** F-01 through F-05 are independently reproduced and should be addressed before this slice is considered clear. F-06 is a narrower, explicitly qualified recovery concern; native cross-reload IPC ordering has not been established. All ordinary repository gates pass, but they do not cover these counterexamples.
 
 The original **PR #150 F-08 queue-stranding issue is addressed**: a new receiver releases a grant belonging to a vanished receiver, unclaimed offers are resent without extending their deadline, and subsequent deliveries proceed. F-06 concerns the new tile mutation message beyond that corrected claim/answer protocol, not continued failure of the original fix.
 
@@ -194,7 +197,7 @@ It exactly matches the evidence README.
 
 JSDOM checks do not verify CSS layout, native focus/IPC behavior or Extension Development Host acceptance. No new Chromium capture, native VS Code run, live/billable provider call, user-machine access, writer-manuscript output assessment, code fix, PR comment/formal review, merge or deployment was performed. Public-domain and synthetic fixtures only.
 
-## Recommended next step
+## Original recommended next step
 
 Address F-01 through F-05, retain targeted regressions for each, and rerun the full gates on the resulting implementation head. F-06's qualified recovery case is worth hardening alongside the receiver work, without describing the original F-08 as still broken. Keep author responses and subsequent independent resolution evidence appended to this report. After the slice is clear, the separate writer real-chapter output checkpoint remains necessary before Slice 5.
 
@@ -474,3 +477,71 @@ new tests pass there on purpose. They are the controls you asked for:
   synthetic.
 - New production module: `WorkshopMessageAttachmentIdentity.ts` (89 lines).
   `WorkshopSessionService` is 2,555 lines, one fewer than at `132aabb`.
+
+## Independent re-review (2026-10-20)
+
+**Reviewer:** Astra · **Re-reviewed head:** `0e87c80163e901bf70af3a52ce8eca253fbd00af` · **Base:** `9e5363c398fd04ca578e207c47b429c59687ed8b`.
+
+Read the original report and the complete author response before reviewing the four commits after `f93e1b0`: Workshop fixes `a70d2a1`, Lightbox fixes `7241c83`, evidence/notes `971b95e`, and response `0e87c80`. The full PR is now 184 files, +9,306 / −585; this re-review concentrates on the fixes and their affected boundaries, with the unchanged original review retained above. Repository instructions, ADR D3/D7/D11/D12, Slice 4's updated spec, session codec evolution, and rewind/branch contracts informed the review.
+
+**Current verdict: No blocking review findings remain. F-01 through F-06 are independently Addressed.** F-07 below is a narrow, nonblocking P3 consistency follow-up, not a reopening of F-04. This is code-review clearance within the evidence below, not native VS Code acceptance, a merge instruction, live-provider quality validation, writer acceptance, or permission to skip the real-chapter output checkpoint before Slice 5.
+
+### Independently verified resolutions
+
+| Finding | Disposition and evidence |
+| --- | --- |
+| **F-01** | **Addressed.** [One durable board/tile identity](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/application/services/workshop/WorkshopMessageAttachmentIdentity.ts#L37-L59) is used by admission and [rewind restaging](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/application/services/workshop/session/WorkshopSessionRewind.ts#L457-L473). Independent real-coordinator rewind tests cover A already pending and A absent, then actually publish/commit the next send: exactly one Lightbox frame and an empty tray afterward. Re-bring with a deliberately different source key is still duplicate. Branch preserves the source named file and one keyed tile; an injected write failure rolls back state/counters/metadata, and retry succeeds. Normalization is idempotent, keeps the first body, preserves distinct-board tiles and ID counters, leaves ordinary files unchanged, and logs both repairs on actual open. A counter of 91 produces `ta-92`, not a reused ID. |
+| **F-02** | **Addressed.** [The post-bound anchor check](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/infrastructure/lightbox/LightboxTileHandoff.ts#L104-L126) refuses an oversized said line, and [Workshop requires the leading said quote](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/application/services/workshop/WorkshopLightboxTileAttachment.ts#L63-L89). Independent normalized-source cases span 239, 240 and 241+ characters, with short context still present. In-budget pairs retain verbatim said text; over-budget pairs return `saidTooLong`, not success. Missing/second/duplicate/foreign-kind said flags are rejected at the receiving boundary. |
+| **F-03** | **Addressed for the reported conservative-validator defect.** All four original command counterexamples plus five additional prefixed/comma command forms are withheld; eight additional genuine-question controls survive. The production codec/assembly path is exercised, not just the helper. The fix's explicit limits are retained: unlisted verbs and commands embedded in question-opening clauses can pass, while some declarative setup clauses can be over-withheld. Tests demonstrate those limits. This closes the ordinary-prefix/comma loopholes reported in F-03; it does **not** claim universal semantic intent classification, or establish model-output quality from fixtures. |
+| **F-04** | **Addressed for narration eclipsing the said anchor.** [Filtered matching stays inside the shared verifier](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/infrastructure/lightbox/LightboxQuoteVerifier.ts#L95-L157), preserving exact-before-normalized order, normalization-unit boundaries and fold-back validation. Independent probes cover apostrophe, whitespace, dash, NFKC and supplementary-character variants, multiple equivalent matches, explicit filter rejection, speech-only/narration-only controls, and repeated carry. The actual spoken said line survives. The full carried evidence list still has the narrower F-07 inconsistency below. |
+| **F-05** | **Addressed.** [Persisted dual ownership is rejected](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/application/services/workshop/WorkshopSessionStateV1Integrity.ts#L222-L256) for correct/different widget kinds, Lightbox kind and absent kind. The live recording path rejects a correct-kind dual reference atomically, even after a valid file artifact earlier in the batch. Separate file/widget owners in one turn remain valid; correcting a wrong attachment kind permits retry. Parsing does not mutate input. Baseline controls matter: absent persisted widget kinds and wrong/absent live widget kinds were already rejected before these fixes and are not counted as newly fixed defects. |
+| **F-06** | **Addressed, retaining the original transport qualification.** The actual rebuilt Workshop bundle includes the receiver in ACCEPT, and the real provider checks [the current tile grant](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/apps/vscode-extension/src/application/providers/WorkshopPanelProvider.ts#L192-L200) before routing. The held R1 ACCEPT delivered after R2 reset stages nothing; the outcome remains reset and the next tile works. Missing/wrong receiver, wrong delivery, never-granted and settled-replay accepts do not consume the valid offer; a gravity grant cannot authorize tile staging. Repeating the current receiver and hiding after dispatch preserve valid acceptance. Source review confirms no await before staging along provider → MessageHandler → router → production mutation gate → tile handler; the controlled callback witness observes staging before return. These checks do not establish native cross-reload IPC ordering. |
+
+**Defensive-copy note resolved.** Mutating exported pending state, hydration input, sent-reference input, returned turns, ledger reads or snapshots no longer aliases stored `lightboxTile` metadata. Its scalar fields need only the new one-level copy; existing recursive turn cloning still applies. Ordinary file/configured-resource identity controls retain their prior behavior. No new core `vscode` import or feature-owner monolith was introduced; the new identity module is 89 lines. The mutation/session boundary, one artifact-kind registry, frame neutralization and label-only transcript projection remain intact.
+
+### F-07 — Keep carried Subtext evidence aligned with its selected said span (P3, nonblocking)
+
+**Locations:** [LightboxStaleReadings.ts:173–188](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/infrastructure/lightbox/LightboxStaleReadings.ts#L173-L188), [219–220](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/infrastructure/lightbox/LightboxStaleReadings.ts#L219-L220). Presentation witness: [useLightboxInspector.ts:231–240](https://github.com/okeylanders/prose-minion-vscode/blob/0e87c80163e901bf70af3a52ce8eca253fbd00af/packages/core/src/presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts#L231-L240).
+
+1. Read `"I don't know," she said.` as Subtext with said quote `I don't know` and no extra context quote.
+2. Change the same paragraph to `I don't know was written all over her face. “I don’t know,” she said.` and carry the reading.
+3. The card's `said` is now correctly `I don’t know` with normalized matching. Its `evidence[0]`, however, is `I don't know` from narration with exact matching, because the carry loop rechecks evidence without the dialogue filter.
+4. The production inspector projection therefore shows the narration typography as “found verbatim”. A fresh assembly of the same paragraph leads its evidence with the selected speech instead.
+
+**Impact is limited:** the words and paragraph agree; the selected said line is real speech; no source quote is fabricated. The tile is explicitly stale and cannot be brought until reread, so this is not an invalid Workshop handoff. It is a visible card/inspector and fresh/carry evidence inconsistency. The author's parity regression checks said values and tile outcomes, not the complete evidence projection, which explains why it passes.
+
+**Recommended follow-up:** For a carried Subtext pair, make the newly selected said quote lead the evidence list and deduplicate the remainder just as fresh assembly does. Add an assertion on the complete evidence list and inspector projection. This can be handled as a nonblocking consistency cleanup; F-04's incorrect withholding is fixed.
+
+A separate diagnostic in which speech moves to another paragraph but nearer narration remains reproduces on both `132aabb` and the new head. That nearest-match carry behavior is pre-existing, not a new regression attributed to these fixes.
+
+### Fresh verification and counterfactuals
+
+The following commands were run in an isolated checkout of `0e87c801`, with no tracked implementation edits. Local runtime: Node `v24.19.0`, npm `11.9.0`. The repository's CI separately uses Node 18. Independent scratch suites were outside the repository and are excluded from the 385-suite repository count.
+
+| Check | Independently observed result |
+| --- | --- |
+| `npx jest --runInBand` | **385 suites / 5,457 tests / 2 snapshots passed**, 187.22 seconds |
+| `npm run typecheck` | **All three stages passed**: core, webview, extension |
+| `npm run build`, including `verify:bundle` | **Passed**; three webpack size/performance warnings, as before |
+| `npx eslint packages apps --ext ts,tsx --format json` | **0 errors / 1,133 warnings**; normalized file/rule/severity/message multiset exactly matches saved independently-run `132aabb` and base `9e5363c` lint evidence |
+| `git diff --check 9e5363c..0e87c801` | **Passed** |
+| Independent lens/boundary suite | **52/52 passed**; same applicable probes against archived exact `132aabb` production sources: **25 fail / 20 pass**; seven probes for the newly introduced filter API excluded from the old-source run |
+| Independent carry diagnostics | **2/2 observed-behavior assertions passed**: F-07 witness and explicitly pre-existing moved-speech control. These assertions demonstrate the residual behavior, not a safe-behavior pass |
+| Independent session/coordinator/store/frame suite | **16/16 passed**; identical probes against archived `132aabb` production sources: **11 behavioral failures / 5 passing controls**, excluding error-wording-only differences |
+| Rebuilt-production-bundle seed protocol | **17 scenarios passed**: eight original receiver/deadline controls, four cross-kind/recovery controls, five added accept-boundary cases |
+| Rebuilt-production-bundle Lightbox/Workshop DOM | **49 assertions passed**, rerun: pin/Escape, overlay dismissal, host-confirmed dismiss/undo, IDs-only Bring, repeated/foreign-result guards, tray changes, stale gating, pill removal, and no unintended send/run/install |
+| Implementation-head GitHub CI | Both exact `0e87c801` jobs passed all install/typecheck/test/lint/build steps: [PR verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39366694878/job/118445048895), [branch verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39366688516/job/118445029195) |
+
+The counterfactual runs use the same new independent assertions with production imports redirected to a clean archive of the old source. Type diagnostics were disabled where old/new APIs differ; those behavioral comparisons do not replace the successful production typechecks. The session run keeps the current scripted-room harness while all production aliases target the old code. Of the 25 lens counterfactual failures, 24 demonstrate corrected behavior (eight F-02, seven F-04, nine Spark command cases); one pins the newly documented conservative Spark false positive, not another fixed defect. The lens comparison excludes the seven new-filter-API cases rather than counting missing APIs as behavioral failures. No author assertion set was simply relabeled as independent coverage.
+
+### Visual provenance and limits
+
+- All **33 supplied PNGs are unchanged Git blobs** from the original reviewed evidence. The original report's inspection of all 33 is retained as historical evidence, not claimed as a fresh capture. This re-review directly reinspected five representative supplied images: Subtext at 1000 px, Lineage at 1000 px, Bound at 1440 px, dismissed Spark at 500 px, and Workshop composer at 500 px. The known narrow Workshop clipping remains visible and already tracked; no CSS or component markup changed in the fix series.
+- A fresh production build with dependencies materialized in this checkout yields `webview.js` SHA-256 **`dc53b9eaaf02eec6c7ac6e9225c9a6b5abb94445956745c130d68ef1d2b691a4`**, exactly the author's post-fix evidence hash. All 17 protocol scenarios and 49 DOM assertions above ran again against that exact bundle. These run the real frontend bundle, real provider/seed owner and feature handlers/session under controlled transport/routing seams; they are not a native extension-host run.
+- The harness selector is now `.pm-lb-lineage-set-aside`; the independent DOM replay finds its set-aside text. The updated recorded chapter state and harness/host-builder diff were reviewed. Full evidence state generation was **not** rerun here. The author's “33 pixel-identical” and “no page errors” capture claims remain attributed to the author, not converted into independent Chromium results.
+- Fresh Chromium was **not rerun** in this re-review after the prior same-environment review hit sandbox-denied socket creation and a `bwrap` failure on the escalated launch. No access denial was bypassed. JSDOM's unsupported-CSS parsing warnings are filtered from its runtime-error check; it establishes DOM/protocol behavior, not layout, clipping, visual pixels, native focus or native IPC.
+- No live or billable provider calls, user-computer access, native VS Code acceptance, writer-manuscript assessment, implementation changes, PR comments/formal reviews, merges or deployments were performed. Public-domain/synthetic fixtures only. Exact report-only remote commit and its CI are verified separately after publication; the implementation under review remains `0e87c801`.
+
+### Next step
+
+The original five blocking issues and qualified receiver hardening are clear. Keep F-07 as a nonblocking consistency follow-up. Native VS Code acceptance and the writer's real-chapter output checkpoint remain open; neither supplied screenshots, fixtures nor green CI constitutes that acceptance. In particular, do not freeze Slice 5's board file format on the strength of this review alone.
