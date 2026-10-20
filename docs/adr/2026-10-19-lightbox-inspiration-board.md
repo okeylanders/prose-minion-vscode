@@ -408,6 +408,22 @@ file is text and inside an open workspace folder. Every route is in the
 Lightbox route ledger in `boundaries.test.ts`, and no Lightbox module names a
 `WORKSHOP_*` route.
 
+Two rules came from the PR #154 review:
+- **Answers name their request (F-01).** Each catalog and search request
+  carries a `requestId` the webview mints for that opening and that
+  operation; the host echoes it and ignores a request without one. The
+  webview takes only the answer it is still waiting for. Opening or closing
+  a picker drops every pending answer, and clearing the search drops the
+  pending search, so an answer to a closed opening, an older query or a
+  cleared search never replaces what is on screen.
+- **Identity is the host's (F-02).** Catalog rows and the shelf's files
+  carry `fileKey`, an HMAC of the file's absolute path under a secret drawn
+  once per extension session (`LightboxFileKey`), computed from the same
+  path the shelf dedupes by. The Context picker marks a row attached only
+  when its key is a shelf file's, never by display path, which two workspace
+  folders can share. No absolute path crosses, and choices still name
+  catalog keys only.
+
 ### D11. Handoffs to the Workshop go through the Workshop's own message path
 
 **Bring to Workshop** (Slice 4) and **Build as a lens** (Slice 3) cross tabs.

@@ -85,7 +85,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -111,7 +111,7 @@ packages/core/src/
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
-            ├── lightboxProjectFiles.ts # The project picker's catalog and search, a source or context by catalog key
+            ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -225,6 +225,12 @@ Patterns and conventions:
     A change to the shared picker that alters the Workshop fails them; update
     them only with a deliberate Workshop change.
   - `boundaries.test.ts` pins its imports.
+  - The Lightbox's routes add two rules the Workshop's do not have (PR #154).
+    Each catalog and search request carries a webview-minted `requestId`
+    the host echoes, and `useLightboxProjectFiles` takes only the answer it
+    still waits for. Catalog rows and context-shelf files carry `fileKey`
+    (`LightboxFileKey`, a session-keyed HMAC of the absolute path), and
+    "attached" compares keys, never display paths.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
   registries; Gesture Playground, Creative Variations, Lexical Gravity, and Show

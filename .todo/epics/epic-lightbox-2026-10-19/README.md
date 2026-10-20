@@ -742,3 +742,37 @@ becomes a file format.
       rail. `f959b29` wraps them.
   - **Follow-up:** [the shared picker still leans on Workshop-named seams](../../tech-debt/2026-10-20-shared-picker-workshop-named-seams.md)
     (Low): the modal shell's folder and the catalog service's name.
+
+- **2026-10-20. Shared project picker: PR #154 review fixes.** Astra's
+  [review](../../../docs/pr-reviews/pr-154-lightbox-shared-project-picker-review.md)
+  of `2cf1f97` requested changes for two Medium findings and one Low note;
+  the author response at its end maps each to commits and tests.
+  1. **F-01, answers correlated.** Catalog and search requests carry a
+     webview-minted `requestId` (per webview, opening and operation) that
+     the host echoes. `useLightboxProjectFiles` takes only the answer still
+     pending; opening, closing and clearing drop pending answers, and a new
+     query takes down the old query's answer and bound note at once.
+  2. **F-02, host file identity.** Catalog rows and shelf files carry
+     `fileKey`, a session-keyed HMAC of the absolute path the shelf dedupes
+     by (`LightboxFileKey`). The Context picker compares keys, so a second
+     workspace folder's same-named file no longer disables the first's row.
+     The resolver's older cross-folder collapse is
+     [recorded](../../tech-debt/2026-10-20-context-catalog-cross-root-collapse.md)
+     (Low).
+  3. **N-01, backdrop evidence.** The harness now takes the Workshop at
+     500 px and records, per shot, that the backdrop is the top element
+     outside the dialog and spans the window: true in all 24 dialog shots.
+  - **Verification.** Reviewed head `2cf1f97` → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 395 suites, 5,587 tests, 59 snapshots | 397 suites, 5,597 tests, 59 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - The ten new tests failed against `2cf1f97`'s sources, each at its
+      behavioral assertion.
+    - The Workshop parity snapshots are unchanged; lint warnings match
+      `59b57b6` per file and per rule.
+    - No live or billable call.
