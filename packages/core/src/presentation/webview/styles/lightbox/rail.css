@@ -81,6 +81,15 @@
 [data-pm-surface="lightbox"] .pm-lb-button.is-grow {
   flex: 1;
 }
+/* The source's two actions ("Re-read file", "Choose from project…") wrap
+   onto two lines when the rail is too narrow for both, instead of running
+   past its edge: each grows from its own width, not from zero. */
+[data-pm-surface="lightbox"] .pm-lb-source .pm-lb-button-row {
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-source .pm-lb-button.is-grow {
+  flex: 1 1 auto;
+}
 [data-pm-surface="lightbox"] .pm-lb-caption {
   font-size: 11.5px;
   color: var(--pm-muted);
