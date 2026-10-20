@@ -31,7 +31,11 @@ import {
 import { __resetOverlayFocusStateForTests } from '@hooks/useOverlayDismiss';
 
 /** The one session the shim's tile handler stages into, shared across panels as the real bundle's is. */
-const shared: { session?: import('@/application/services/workshop/WorkshopSessionService').WorkshopSessionService } = {};
+const shared: {
+  session?: import('@/application/services/workshop/WorkshopSessionService').WorkshopSessionService;
+  /** The Workshop session state the shim posts, with the session's staged attachments. */
+  readySession?: (pending: unknown[]) => unknown;
+} = {};
 
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export names and stylesheet modules. */
 jest.mock('@prose-minion/core', () => {
@@ -53,10 +57,7 @@ jest.mock('@prose-minion/core', () => {
       const log = { appendLine: jest.fn() };
       const session = shared.session!;
       const postSessionState = () => {
-        const state = (globalThis as { __readySession?: (pending: unknown[]) => unknown }).__readySession!(
-          session.getSnapshot().pendingMessageAttachments
-        );
-        void postMessage(state);
+        void postMessage(shared.readySession!(session.getSnapshot().pendingMessageAttachments));
       };
       const handler = new WorkshopLightboxTileHandler(session, postMessage, log, {
         postSessionState,
@@ -149,7 +150,7 @@ const readySession = (pendingMessageAttachments: unknown[] = []) => ({
   },
   timestamp: 0
 });
-(globalThis as { __readySession?: (pending: unknown[]) => unknown }).__readySession = readySession;
+shared.readySession = readySession;
 
 interface HostPanel {
   visible: boolean;

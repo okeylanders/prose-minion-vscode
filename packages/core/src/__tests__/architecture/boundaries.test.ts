@@ -1052,6 +1052,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
@@ -1082,7 +1083,8 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
   'presentation/webview/components/lightbox/LightboxTiles.tsx',
   'presentation/webview/components/lightbox/LightboxTopWords.tsx',
-  'presentation/webview/components/lightbox/LightboxVoice.tsx'
+  'presentation/webview/components/lightbox/LightboxVoice.tsx',
+  'presentation/webview/components/lightbox/LightboxWorkshopTray.tsx'
 ] as const;
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
@@ -1091,6 +1093,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',

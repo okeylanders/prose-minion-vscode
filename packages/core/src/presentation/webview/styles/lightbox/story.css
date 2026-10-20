@@ -265,3 +265,37 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Bring to Workshop (Slice 4): the inspector's action, Bound while the Workshop holds it. */
+[data-pm-surface="lightbox"] .pm-lb-bring { flex-wrap: wrap; }
+[data-pm-surface="lightbox"] .pm-lb-bring .pm-lb-run-note.is-refused { color: var(--pm-amber); }
+[data-pm-surface="lightbox"] .pm-lb-bring.is-bound .pm-lb-run-note { color: var(--pm-green); }
+[data-pm-surface="lightbox"] .pm-lb-bring.is-bound .pm-lb-button:disabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 1;
+  border-color: var(--pm-lb-read);
+  color: var(--pm-lb-read);
+  background: var(--pm-lb-read-soft);
+}
+
+/* The header's tray: what the Workshop holds. */
+[data-pm-surface="lightbox"] .pm-lb-tray {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+  font-size: 12px;
+  color: var(--pm-text);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-tray > svg { color: var(--pm-lb-read); flex: none; }
+[data-pm-surface="lightbox"] .pm-lb-tray-count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
