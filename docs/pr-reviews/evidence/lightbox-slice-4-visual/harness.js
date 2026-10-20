@@ -251,7 +251,7 @@ const lightboxFacts = () => {
   return {
     runLine: text('.pm-lb-run'),
     lineage: all('[aria-label="Lineage · adjacent stories"] button'),
-    lineageFoot: text('[aria-label="Lineage · adjacent stories"] .pm-lb-set-aside') ?? null,
+    lineageFoot: text('[aria-label="Lineage · adjacent stories"] .pm-lb-lineage-set-aside') ?? null,
     subtext: all('[aria-label="Subtext · said and meant"] button'),
     sparks: all('.pm-lb-spark').map((card) => card),
     sparkSetAside: text('.pm-lb-spark-set-aside'),

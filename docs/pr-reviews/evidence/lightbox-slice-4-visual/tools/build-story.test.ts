@@ -189,7 +189,16 @@ it('dumps the story, spark lane, bring, bound, refusal and Workshop states', asy
     const offered = [...workshopPosted].reverse().find((message) => message.type === MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED);
     const deliveryId = offered?.payload.deliveryId as string;
     tiles.claim('workshop', deliveryId, RECEIVER);
-    await workshopRouter.route({ type: MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE, source: 'webview.workshop.lightbox-tile', payload: { deliveryId }, timestamp: 1 } as never);
+    // What WorkshopPanelProvider checks before an accept reaches the handler (PR #151 F-06).
+    if (!tiles.isGranted('workshop', deliveryId, RECEIVER)) {
+      throw new Error('the accept is not under a grant');
+    }
+    await workshopRouter.route({
+      type: MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE,
+      source: 'webview.workshop.lightbox-tile',
+      payload: { deliveryId, receiver: RECEIVER },
+      timestamp: 1
+    } as never);
     const staged = [...workshopPosted].reverse().find((message) => message.type === MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED);
     tiles.answer('workshop', staged?.payload.staged
       ? { deliveryId, opened: true }

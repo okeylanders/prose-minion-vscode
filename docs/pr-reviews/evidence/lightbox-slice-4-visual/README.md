@@ -65,8 +65,10 @@ real `WorkshopSeedDelivery` (kind `lightbox-tile`), which routes a synthetic
 `WORKSHOP_STAGE_LIGHTBOX_TILE`, with its delivery id, through the tile
 handler. The builder then plays the Workshop webview's side as
 `useWorkshopLightboxTiles` does: it claims the offer under its receiver id
-(PR #150 F-08), and after the grant asks the handler to stage it and answers
-the delivery with the handler's word. Only the provider is played.
+(PR #150 F-08), and after the grant asks the handler to stage it, naming
+that receiver, once the delivery says the grant holds, as the provider
+checks (PR #151 F-06), and answers the delivery with the handler's word.
+Only the provider is played.
 
 - **Groups B and C** answer with the prompt bundle's worked examples,
   verbatim; every quote is the chapter's own and the host checks each one.
@@ -116,6 +118,22 @@ slice's head (`webview.js` SHA-256
 - No page errors in any state or width.
 - `states/log.txt` names paths, counts, attachment ids and refusal reasons
   only; the builder asserts that no tile or chapter words appear in it.
+
+## After the PR #151 review (2026-10-20)
+
+The review fixes were rerun through this folder at the new head:
+
+- `states/chapter.json` was rebuilt. The Spark prompt gained one sentence
+  (F-03), so each group's estimate moved by 21 input tokens; the shown
+  estimate is still "est. $0.11". `states/workshop.json` and
+  `states/log.txt` came out byte-identical.
+- The harness reads the lineage foot by its real class
+  (`.pm-lb-lineage-set-aside`); before, `facts.json` recorded it as null.
+  It now reads "Checked and set aside: Persephone. No one takes her below:
+  she jumps in after the Rabbit herself. Orpheus. Nobody has been lost
+  below, so there is no one to bring back."
+- All 33 screenshots rendered pixel-identical to the ones here (bundle
+  SHA-256 `dc53b9eaaf02eec6c7ac6e9225c9a6b5abb94445956745c130d68ef1d2b691a4`), so they were not replaced. No page errors.
 
 ## Rerunning it
 

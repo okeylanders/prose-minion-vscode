@@ -915,6 +915,10 @@ Workshop:
   sent only after an announcement; a new receiver on the same panel settles
   what the old one held as `reset` and resends what it never claimed. Late
   replies from an old receiver are ignored.
+- **Acting on a grant.** A follow-up that changes session state (a tile's
+  `WORKSHOP_ACCEPT_LIGHTBOX_TILE`) names its receiver, and the provider
+  forwards it only while `WorkshopSeedDelivery.isGranted` holds for that
+  delivery and receiver (PR #151 F-06).
 - **Visibility** is checked at dispatch, not at the grant.
 - **A new kind** joins `WorkshopSeedKind`, gets a delivery in the provider's
   `Record`, a receiver hook composing `useWorkshopSeedClaim`, and an entry in
@@ -927,7 +931,13 @@ Workshop:
 - **Attachment kinds.** A staged attachment that is not a file declares its
   frame kind in `shared/constants/workshopThreadArtifactKinds.ts`; the frame
   builder, the session codec and the session's commit check all read that
-  registry, and the body is neutralized like any other.
+  registry, and the body is neutralized like any other. A committed artifact
+  has one owner, a widget commit or a message attachment, and each owner's
+  kind is checked (PR #151 F-05).
+- **Attachment identity.** A tile is its board and tile ids. Staging,
+  Rewind's restage and hydration all ask `WorkshopMessageAttachmentIdentity`
+  whether two attachments are one source, so no whole-room operation puts a
+  tile above the composer twice (PR #151 F-01).
 
 ### Workshop Transcript Export
 

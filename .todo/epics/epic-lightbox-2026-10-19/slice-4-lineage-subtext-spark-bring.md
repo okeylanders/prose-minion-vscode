@@ -2,7 +2,7 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3 (kinds), D7, D11
-**Status:** In review. Built on `epic/lightbox-slice-4-lineage`, now based on `epic/lightbox` at `9e5363c` (PR #150 merged); see [Implementation notes](#implementation-notes-2026-10-20). It also fixes PR #150's F-08.
+**Status:** In review. Built on `epic/lightbox-slice-4-lineage`, now based on `epic/lightbox` at `9e5363c` (PR #150 merged); see [Implementation notes](#implementation-notes-2026-10-20). It also fixes PR #150's F-08, and the PR #151 review's F-01 to F-06 ([Review fixes](#pr-151-review-fixes-2026-10-20)).
 
 ## Outcome
 
@@ -94,15 +94,25 @@ Commits on `epic/lightbox-slice-4-lineage`, in order:
   through stale carry and re-reads. A story also set aside, or named twice,
   is withheld. An empty lineage is valid; its friction says why.
 - **Subtext.** The said line must be found in its paragraph by the existing
-  verifier and lie inside a dialogue span there: `LightboxDialogueAnchor`
-  places the verifier's span among every occurrence against
-  `findDialogueSpans`, with no second matcher. The meant side is the tile's
-  claim, labeled a reading. The said line leads the evidence.
+  verifier and lie inside a dialogue span there (`findDialogueSpans`). The
+  verifier takes a span filter, and `LightboxDialogueAnchor` finds the said
+  line with a dialogue filter, so of every span the verifier accepts (exact
+  before folded) the first inside dialogue is chosen, with no second matcher
+  (PR #151 F-04). The meant side is the tile's claim, labeled a reading. The
+  said line leads the evidence.
 - **Spark.** A question, never an instruction: it must end with "?", no
   clause may open with an imperative from `LIGHTBOX_SPARK_IMPERATIVE_OPENERS`
   (tuned on fixtures), no directive phrase, and no number outside a ¶
-  address (`LightboxSparkPhrasing`). Each spark needs host-counted support
-  and found quotes.
+  address (`LightboxSparkPhrasing`). Softening words ("Please", "Now", "So",
+  "Then", "Maybe"…) are skipped before the check, and a clause that does not
+  open as a question is checked again after each comma (PR #151 F-03). Each
+  spark needs host-counted support and found quotes.
+  **The limit:** this is a word-list heuristic, not a parse. An unlisted
+  verb passes ("Sprinkle in a storm. What changes?"), as does a command
+  inside a clause that opens as a question ("What if you add a storm?",
+  "Does she fall, and add a line?"); a listed word opening a comma segment
+  of a set-up clause ("She could stop, look and listen: …") is withheld, the
+  safe failure. A test pins each of these.
 - **Shared.** `strictObject` on every block, host-owned reasons, undefined
   fields counted and never named, friction required, quotes verified, and
   the model never supplies counts. The gates live in `LightboxTileGates`,
@@ -129,7 +139,8 @@ Commits on `epic/lightbox-slice-4-lineage`, in order:
   on screen and the file unchanged; `prepareLightboxTileHandoff` resolves the
   tile, refuses a stale, re-reading or set-aside one, re-verifies the said
   line first and then the evidence, drops a quote longer than its bound
-  rather than cutting it, and builds the item: kind and lens labels, title,
+  rather than cutting it (a said line that is too long refuses the pair
+  instead, PR #151 F-02), and builds the item: kind and lens labels, title,
   claim, labeled points (a story's stances, a pair's speaker), at most four
   quotes and the source label, within `WORKSHOP_LIGHTBOX_TILE_LIMITS`.
 - **Delivery reuses Slice 3's helper.** `WorkshopSeedKind` gains
@@ -187,6 +198,33 @@ commit-point contract (the deadline covers unclaimed offers; the post-grant
 wait ends on an answer, a close or a reset) and that visibility is checked
 at dispatch.
 
+### PR #151 review fixes (2026-10-20)
+
+Astra's review
+([PR #151](../../../docs/pr-reviews/pr-151-lightbox-lineage-subtext-spark-review.md))
+found five P2 issues and one P3; each reproduction is a regression test that
+fails at `132aabb`. The author response at the end of the review has the
+detail and SHAs.
+
+- **F-01, tile identity across Rewind.** `WorkshopMessageAttachmentIdentity`
+  is the one rule for "the same source": a tile by its board and tile ids, a
+  configured resource by its path, any other file by its host source key.
+  Staging, Rewind's restage and hydration use it; a restaged tile gets its
+  key back; two logged normalizations repair development checkpoints an
+  earlier rewind left with a duplicate or unkeyed tile.
+- **F-02, the said anchor on Bring.** Checked after every bound; a said line
+  longer than a Workshop quote refuses the pair (`saidTooLong`). The
+  Workshop's validator requires a said/meant tile to lead with its said line.
+- **F-03, Spark phrasing.** Softening words and comma-led commands, above.
+- **F-04, said lines among equivalent spans.** The verifier's span filter,
+  above, used by fresh assembly and stale carry alike.
+- **F-05, artifact provenance.** One owner per committed artifact; a
+  widget's kind is checked whatever else references it.
+- **F-06, accepts held to their grant.** The accept names its receiver; the
+  provider forwards it only while `WorkshopSeedDelivery.isGranted` holds.
+- Also: the harness's lineage selector, and the session's own copy of a
+  tile's attachment meta.
+
 ### Deviations
 
 - **The request carries ids, not the tile.** This doc's
@@ -204,7 +242,7 @@ at dispatch.
 
 | Check | Base `9e5363c` | Head |
 |---|---|---|
-| Jest | 370 suites, 5,257 tests, 2 snapshots | 383 suites, 5,412 tests, 2 snapshots |
+| Jest | 370 suites, 5,257 tests, 2 snapshots | 383 suites, 5,412 tests, 2 snapshots; 385 suites, 5,457 tests, 2 snapshots after the PR #151 fixes |
 | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings, identical per file and rule |
 | `npm run typecheck` | Passes | Passes |
 | `npm run build` (with `verify:bundle`) | Passes | Passes |
