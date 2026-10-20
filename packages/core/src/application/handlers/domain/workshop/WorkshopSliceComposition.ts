@@ -16,6 +16,7 @@ import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/Worksho
 import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
+import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
   WorkshopGesturePlaygroundHandler
@@ -64,6 +65,7 @@ export class WorkshopSliceComposition {
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
+  private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
 
@@ -204,6 +206,17 @@ export class WorkshopSliceComposition {
         markDirty
       }
     );
+    // A Lightbox tile handed over (Lightbox Slice 4): staged above the composer only after a granted claim.
+    this.lightboxTileHandler = new WorkshopLightboxTileHandler(
+      session,
+      postMessage,
+      outputChannel,
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        isRoomRunActive: host.isRoomRunActive
+      }
+    );
     this.todoHandler = new WorkshopTodoHandler(
       session,
       outputChannel,
@@ -256,6 +269,10 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopTodoHandler')
     );
+    this.lightboxTileHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopLightboxTileHandler')
+    );
   }
 
   isContextRunActive(): boolean {
@@ -273,6 +290,7 @@ export class WorkshopSliceComposition {
     this.creativeVariationsHandler.dispose();
     this.showVsTellHandler.dispose();
     this.lexicalGravityHandler.dispose();
+    this.lightboxTileHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();

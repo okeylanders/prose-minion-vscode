@@ -97,6 +97,8 @@ const WORKSHOP_SHOW_VS_TELL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler.ts';
 const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
+const WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts';
 
 /**
  * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
@@ -251,6 +253,20 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES']
   },
   {
+    // Lightbox Slice 4 (ADR 2026-10-19 D11): the provider's offer is direct,
+    // since holding it changes no session state.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_STAGE_LIGHTBOX_TILE']
+  },
+  {
+    // Staging is a session mutation: persisted, so it waits behind a session
+    // save or replacement and is refused as busy while one is pending.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ACCEPT_LIGHTBOX_TILE']
+  },
+  {
     owner: WORKSHOP_STANDING_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
@@ -302,6 +318,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopCreativeVariationsHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
+  'WorkshopLightboxTileHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -588,7 +605,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity|lexical-gravity-build)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
@@ -1381,11 +1398,12 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(57);
+    // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
+    expect(expectedOwnerPairs).toHaveLength(59);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(37);
+      .toHaveLength(38);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(20);
+      .toHaveLength(21);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

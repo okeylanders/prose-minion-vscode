@@ -6,9 +6,11 @@
  * may see" is decided exactly once. The rule mirrors the thread
  * bubble (WorkshopTurnBubble) minus its chrome:
  *
- * - Writer messages export their visible text. Attached files and widget
- *   commits export as labels only; their bodies are host-private
- *   thread-artifacts and never leave the session.
+ * - Writer messages export their visible text. Attached files, Lightbox
+ *   tiles (Lightbox Slice 4: the pill's label, its kind and title) and
+ *   widget commits export as labels only; their bodies (a tile's claim,
+ *   points and quotes) are host-private thread-artifacts and never leave
+ *   the session.
  * - Participant replies export their display content, attribution, truncation
  *   notice, and web sources.
  * - Dividers (session start/resume, excerpt revisions, direct tool runs,
@@ -38,7 +40,7 @@ export interface WorkshopTranscriptWriterEntry {
   content: string;
   /** The instrument this message went to privately, when it bypassed the room. */
   privateWith?: string;
-  /** Files attached to this message, by label. Their text is never exported. */
+  /** Files and Lightbox tiles attached to this message, by label. Their text is never exported. */
   attachmentLabels: string[];
   /** The widget that composed this message. Its committed payload is never exported. */
   widget?: { label: string; detail: string };

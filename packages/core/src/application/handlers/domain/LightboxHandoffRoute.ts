@@ -50,6 +50,7 @@ import {
   LightboxHandOffResultMessage,
   LightboxWorkshopHandoff,
   LightboxWorkshopHandoffOutcome,
+  LightboxWorkshopHandoffRefusal,
   LightboxWorkshopTrayMessage,
   LightboxWorkshopTrayTile,
   MessageType
@@ -99,6 +100,9 @@ const WORDS = {
 } as const;
 
 type LightboxHandoffWords = (typeof WORDS)[keyof typeof WORDS];
+
+/** Outcomes after which a granted tile may have been staged though its answer never arrived (F-08). */
+const LOST_ANSWERS: ReadonlySet<LightboxWorkshopHandoffRefusal> = new Set<LightboxWorkshopHandoffRefusal>(['reset', 'closed']);
 
 export class LightboxHandoffRoute {
   /** True while a handoff is being checked or awaited; a second press is refused, not queued. */
@@ -237,6 +241,13 @@ export class LightboxHandoffRoute {
       return;
     }
     if (!outcome.opened) {
+      if (prepared.handoff.kind === 'tile' && LOST_ANSWERS.has(outcome.reason) && this.trayHolds(prepared.handoff.tile)) {
+        // The Workshop staged it, but its answer was lost: its webview reloaded or its panel
+        // closed in between. The session it staged into is its own record, so it counts.
+        outputChannel.appendLine(`[LightboxHandler] The Workshop staged a tile; its answer was lost (${outcome.reason}), the session holds it`);
+        this.postResult({ ...request, ok: true, message: lightboxTileStagedMessage(prepared.handoff) });
+        return;
+      }
       refuse(words.workshop[outcome.reason]);
       return;
     }
@@ -250,6 +261,11 @@ export class LightboxHandoffRoute {
       `[LightboxHandler] The Workshop opened a borrowed field: ${prepared.handoff.seed.terms.length} counted terms, ${found}`
     );
     this.postResult({ ...request, ok: true, message: lightboxHandoffSentMessage(prepared.handoff) });
+  }
+
+  /** Whether the Workshop's session holds this tile above its composer now. */
+  private trayHolds(tile: { boardId: string; tileId: string }): boolean {
+    return this.deps.tray?.read().some((held) => held.boardId === tile.boardId && held.tileId === tile.tileId) ?? false;
   }
 
   private postResult(payload: LightboxHandOffResultMessage['payload']): void {

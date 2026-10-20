@@ -53,6 +53,12 @@ import {
 import {
   dispatchWorkshopSelectionData
 } from '@hooks/domain/workshop/dispatchWorkshopSelectionData';
+import {
+  dispatchWorkshopSeedClaimResult
+} from '@hooks/domain/workshop/dispatchWorkshopSeedClaimResult';
+import type {
+  UseWorkshopLightboxTilesReturn
+} from '@hooks/domain/workshop/useWorkshopLightboxTiles';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 
 export interface WorkshopAppMessageRouterDeps {
@@ -61,6 +67,8 @@ export interface WorkshopAppMessageRouterDeps {
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
+  /** Lightbox tiles handed over (Lightbox Slice 4). */
+  lightboxTiles: UseWorkshopLightboxTilesReturn;
   creativeVariations: UseCreativeVariationsReturn;
   creativeVariationsAuthoring: UseCreativeVariationsAuthoringReturn;
   showVsTell: UseShowVsTellReturn;
@@ -85,6 +93,7 @@ export function buildWorkshopAppMessageRoutes(
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    lightboxTiles,
     creativeVariations,
     creativeVariationsAuthoring,
     showVsTell,
@@ -153,8 +162,17 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]: lexicalGravity.handleBuildSeed,
-    // Seed delivery's claim results; one seed kind today, so one receiver (PR #150 F-03).
-    [MessageType.WORKSHOP_SEED_CLAIM_RESULT]: lexicalGravity.handleSeedClaimResult,
+    // Seed delivery's claim results, each to its own kind's receiver (PR #150 F-03; Lightbox Slice 4).
+    [MessageType.WORKSHOP_SEED_CLAIM_RESULT]: (message) => {
+      dispatchWorkshopSeedClaimResult(message, {
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+        'lexical-gravity-build': lexicalGravity.handleSeedClaimResult,
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+        'lightbox-tile': lightboxTiles.handleSeedClaimResult
+      });
+    },
+    [MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]: lightboxTiles.handleTileOffered,
+    [MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]: lightboxTiles.handleTileStaged,
     [MessageType.STREAM_STARTED]: workshopRoom.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshopRoom.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,

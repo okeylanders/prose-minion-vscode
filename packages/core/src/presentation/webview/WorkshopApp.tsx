@@ -125,6 +125,7 @@ import {
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import { useWorkshopSeedReceiver } from '@hooks/domain/workshop/useWorkshopSeedReceiver';
+import { useWorkshopLightboxTiles } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
 import {
   useCreativeVariations
 } from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
@@ -230,6 +231,7 @@ export const WorkshopApp: React.FC = () => {
   // Seeds handed over from other tabs name this mount's receiver (PR #150 F-08).
   const { receiver: seedReceiver } = useWorkshopSeedReceiver();
   const lexicalGravity = useLexicalGravity({ seedReceiver });
+  const lightboxTiles = useWorkshopLightboxTiles({ seedReceiver });
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
@@ -396,6 +398,7 @@ export const WorkshopApp: React.FC = () => {
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    lightboxTiles,
     creativeVariations,
     creativeVariationsAuthoring,
     showVsTell,
