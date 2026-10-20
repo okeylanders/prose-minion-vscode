@@ -197,3 +197,280 @@ JSDOM checks do not verify CSS layout, native focus/IPC behavior or Extension De
 ## Recommended next step
 
 Address F-01 through F-05, retain targeted regressions for each, and rerun the full gates on the resulting implementation head. F-06's qualified recovery case is worth hardening alongside the receiver work, without describing the original F-08 as still broken. Keep author responses and subsequent independent resolution evidence appended to this report. After the slice is clear, the separate writer real-chapter output checkpoint remains necessary before Slice 5.
+
+## Author response (2026-10-20)
+
+All six findings and the harness nit are addressed on
+`epic/lightbox-slice-4-lineage`, in three commits on top of this report
+(`f93e1b0`):
+
+- `a70d2a1`: Workshop side. F-01, F-05, F-06, the Workshop half of F-02,
+  and the defensive copy of `lightboxTile` meta.
+- `7241c83`: Lightbox side. F-02, F-03 and F-04.
+- `971b95e`: evidence and notes. The harness selector, the evidence
+  builder's accept, the rebuilt `states/chapter.json`, the Slice 4 notes and
+  the agent setup.
+
+The ledger statuses above are left for re-verification.
+
+**How the regressions were checked.** Every new test was run against the
+reviewed head's sources. The `packages/core/src`, `apps/vscode-extension/src`
+and `packages/core/resources` trees came from `132aabb`, the tests from this
+branch, and ts-jest's type diagnostics were off so that failures are
+behavioral. 30 tests fail there: every regression test below, plus the
+dialogue-index unit test, which was rewritten for the new index API. Sixteen
+new tests pass there on purpose. They are the controls you asked for:
+
+- F-04: the speech-only and narration-only cases;
+- F-02: the in-budget pair;
+- F-05: the valid widget, file and Lightbox artifacts;
+- F-01: a second tile from the same board;
+- F-03: the nine genuine-question controls.
+
+### F-01: Rewind duplicates a pending tile
+
+- **Root cause.** Two places decided duplicates, each in its own way.
+  - `addMessageAttachment` compared only `sourceUri` and configured
+    resources.
+  - Rewind's `alreadyStaged` compared only configured resources.
+  - A sent message's attachment reference never carries the host-private
+    `sourceUri`, so a restaged tile came back without its key. Neither check
+    looked at the tile's durable `lightboxTile.boardId`/`tileId`.
+- **Fix** (`a70d2a1`).
+  - New module, `WorkshopMessageAttachmentIdentity`, with one rule for "the
+    same source": a tile by its board and tile ids, a configured resource by
+    its group and path, and any other file by its source key. Staging and
+    Rewind's restage both use it.
+  - Rewind no longer restages a tile beside a copy already waiting. That copy
+    stays, and the composer restore lists nothing for it, as configured
+    resources already did. A tile restaged with nothing waiting gets its
+    source key rebuilt from its ids (`withWorkshopMessageAttachmentSourceKey`).
+  - Hydration, which every whole-room operation ends in (open, rewind,
+    branch, rollback), repairs development checkpoints. The repairs are two
+    logged normalizations in `WorkshopSessionCheckpointNormalization`:
+    `dropped-duplicate-pending-lightbox-tiles` keeps a tile's first copy, and
+    `restored-lightbox-tile-source-keys` re-keys an unkeyed tile.
+  - `workshopLightboxTileSourceKey` moved into the identity module.
+  - Files and configured resources behave exactly as before. A file
+    restaged by Rewind still has no source key; that is the pre-existing
+    distinction you noted, and it is unchanged.
+- **Tests.** `session/WorkshopLightboxTileRewind.test.ts` uses the scripted
+  room, sends tile A, saves the room as a named session and opens it through
+  the real coordinator and store, then rewinds through `rewindTo`. It covers:
+  - rewind with A pending: one A, the tray reads 1, the next send's frames
+    hold one `kind="lightbox-tile"`, and bringing A again is a duplicate;
+  - rewind with nothing pending: A is restored with its key and meta, and
+    bringing it again is a duplicate;
+  - remove and bring again after a rewind: never two copies;
+  - a development checkpoint holding A twice, and one holding A unkeyed:
+    both are repaired on open, and the log line names each normalization;
+  - a control: another tile from the same board stages beside A.
+
+  The existing file-attachment rewind tests are unchanged and pass.
+  `ScriptedWorkshopRoom` gained an optional production attachment input,
+  and gives each artifact the kind its shape has, as the room handler does.
+
+### F-02: A subtext handoff can drop its said line
+
+- **Root cause.** `prepareLightboxTileHandoff` checked that the said line was
+  found, then bounded every quote to 240 characters, then required only a
+  non-empty list. The Workshop validator accepted a said/meant tile with no
+  said quote.
+- **Fix** (`7241c83` for the handoff, `a70d2a1` for the validator).
+  - The handoff checks the said line after all bounding and deduplication.
+    A said line longer than a Workshop quote, as the chapter has it, refuses
+    the pair with a new reason (`LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong`):
+    "Its said line, as the chapter has it, is longer than a Workshop quote
+    can carry, so the pair was not brought. Nothing was cut." No quote is
+    ever cut.
+  - `validateWorkshopLightboxTile` now requires a said/meant tile to lead
+    with its said quote, and allows `said` only on that first quote.
+- **Tests** (`LightboxTileHandoff.test.ts`). These run through the production
+  decoder, verifier, assembly and handoff, then the Workshop validator and
+  renderer.
+  - Your case. The 239-character said quote against the same speech
+    hard-wrapped after "of", "if" and "someone" with four-space
+    continuations. The board draws the 251-character span (normalized), and
+    the handoff refuses with `saidTooLong`.
+  - Control, the unwrapped speech: Bring succeeds, the Workshop validator
+    keeps `[{ said line, said: true }, "Her hands shook."]`, and the
+    rendered body ends with `- ¶1 (said): “…”` then `- ¶1: “Her hands shook.”`.
+  - At the Workshop boundary: a said/meant tile with no said quote, or with
+    it second, is refused (`tile.quotes[0].said`).
+
+  The route test's said/meant fixture now leads with its said line.
+
+### F-03: Spark lets ordinary instructions through
+
+- **Root cause.** The opener check looked only at the first one or two words
+  of each punctuation-delimited clause. A softening word ("Please", "Now")
+  or a set-up clause before a comma hid the command.
+- **Fix** (`7241c83`).
+  - Before the opener check, the clause drops leading softening words
+    (`LIGHTBOX_SPARK_SOFTENERS`: please, kindly, now, so, then, and, but, or,
+    yet, just, simply, also, first, next, finally, instead, perhaps, maybe,
+    again, possibly) and leading marks.
+  - A clause that does not open as a question is checked again after each
+    of its commas. A question opens with an interrogative or an auxiliary
+    (`LIGHTBOX_SPARK_QUESTION_OPENERS`); "when" and "where" count only before
+    an auxiliary.
+  - The prompt's rule says so too: "not even after a word like please, now
+    or so, or after a set-up clause and a comma".
+- **Tests.**
+  - `LightboxSparkPhrasing.test.ts` adds your four counterexamples and three
+    more ("Then, give…", "Maybe end…", "Alice, look back…").
+  - Genuine-question controls, which all pass:
+    - "Before she falls, what does she see on the shelves?"
+    - "The Rabbit is late, so who is waiting at the other end?"
+    - "Now that the jar is empty, what else might be?"
+    - "Does she, like the Rabbit, keep checking the time?"
+    - "When does she, at last, stop falling?"
+    - "What if she stayed, and let the Rabbit go?"
+    - "If the jar were full, would she take it?"
+    - "So, who is waiting?"
+    - "Perhaps the Rabbit, too, is late?"
+  - All 24 earlier questions still pass.
+  - `LightboxStoryReadings.test.ts` shows your four withheld through the
+    production codec and assembly, with the other sparks still drawn.
+- **The remaining limit, stated plainly** (module header, Slice 4 notes, and
+  a test that pins each case). This is a word-list heuristic, not a parse.
+  - These pass, though they instruct:
+    - an unlisted verb ("Sprinkle in a storm. What changes?");
+    - a command inside a clause that opens as a question ("What if you add
+      a storm?", "Does she fall, and add a line?").
+  - This is withheld, though it asks: a listed word opening a comma segment
+    of a set-up clause ("She could stop, look and listen: …"). That is the
+    safe failure.
+
+### F-04: Narration can hide valid dialogue
+
+- **Root cause.** The dialogue anchor took the verifier's first match and
+  then tried only exact occurrences of that one raw span. It never saw
+  other spans that are equivalent under the verifier's fold.
+- **Fix** (`7241c83`).
+  - `LightboxQuoteVerifier.verify` takes an optional span filter
+    (`LightboxSpanFilter`). With one, the verifier returns the first span the
+    filter accepts, among its exact matches and then its folded matches,
+    under the same unit-boundary and fold-back rules.
+  - The dialogue index is now built from the verifier, and has three
+    methods:
+    - `contains` places a span inside a dialogue span;
+    - `verifySaid` finds a said line with the dialogue filter first, and
+      falls back to the plain match only for the gate to refuse as
+      narration;
+    - `holds`, the gate's check, asks the verifier the same filtered
+      question.
+  - No text is matched outside the verifier. Fresh assembly
+    (`GroupAssembly.claim`) and stale carry (`recheckQuote` for the said
+    line) both use `verifySaid`.
+- **Tests** (`LightboxStoryReadings.test.ts`, `LightboxCarryParity.test.ts`).
+  - Your paragraph, exact narration plus normalized speech: the said line
+    is the curly-apostrophe speech, with nothing withheld.
+  - Normalized matches that differ in whitespace and typography
+    (`I  don’t\nknow` in narration, `I don‘t   know` in speech): the speech
+    is chosen.
+  - Controls:
+    - speech-only, exact and normalized, as before;
+    - narration-only, still withheld as narration.
+  - Fresh/carry parity: a reading of `"I don't know," he said.` carried
+    onto your paragraph keeps the speech, and equals a fresh read there.
+
+### F-05: Widget-kind integrity is bypassed
+
+- **Root cause.** The new attachment-kind check was skipped when a widget
+  reference existed, and the widget-kind check was skipped when an attachment
+  reference existed. An artifact with both references skipped both checks.
+- **Fix** (`a70d2a1`).
+  - A committed artifact has one owner. Referenced both as a message
+    attachment and as a widget artifact, it is refused ("…is referenced both
+    as a message attachment and as a widget artifact").
+  - A widget-owned artifact always has its widget's kind checked ("wrong
+    widget kind", "no widget kind"). An attachment-owned artifact keeps the
+    attachment-kind check.
+  - `recordRoomThreadArtifacts` refuses the same dual reference on the live
+    path.
+- **Tests** (`WorkshopThreadArtifactProvenance.test.ts`). They use a Gesture
+  Playground room built by the scripted room, edited as persisted JSON.
+  - Your repro: an added attachment reference with the widget artifact's id,
+    and kind `widget:show-vs-tell`. Refused.
+  - The same dual reference with the widget's own kind. Refused.
+  - Controls:
+    - a valid widget artifact passes, and its wrong kind (another widget,
+      or `lightbox-tile`) or missing kind is refused;
+    - a file's artifact passes with no kind, and a given kind is refused;
+    - a Lightbox tile's artifact passes as `lightbox-tile`, and a widget
+      kind or none is refused.
+
+### F-06 (P3): An old receiver can still stage a tile
+
+- **Root cause.** `WORKSHOP_ACCEPT_LIGHTBOX_TILE` carried no receiver and
+  reached the tile handler unchecked. The handler stages any accept that
+  names the offer it holds, and it held the offer across a receiver reset.
+- **Fix** (`a70d2a1`).
+  - **Contract.** `WorkshopAcceptLightboxTilePayload` gains a required
+    `receiver`, and `useWorkshopLightboxTiles` sends its seed receiver.
+  - **Delivery.** `WorkshopSeedDelivery.isGranted(recipient, deliveryId,
+    receiver)` is true only while that delivery is opening on that panel,
+    claimed by that receiver, and the panel still has that receiver.
+  - **Provider.** `WorkshopPanelProvider` forwards an accept to the panel's
+    MessageHandler only while `isGranted` holds for the tile delivery.
+    Otherwise it drops the accept and logs one line. This covers a late
+    accept from a reset receiver and one for an offer never granted.
+  - **Why the check holds at the mutation.** The path from the provider's
+    check to the staging mutation is synchronous: router, the mutation
+    gate's synchronous check, then the handler up to `addMessageAttachment`.
+    So the grant checked is the one the tile stages under.
+  - The tile handler is unchanged apart from its header. The offer it still
+    holds after a reset is inert, because no accept for it can reach it, and
+    the next offer replaces it.
+  - The evidence builder plays the same check.
+- **Tests.**
+  - `WorkshopSeedDelivery.test.ts`:
+    - `isGranted` is false while a delivery is only sent, false for another
+      receiver, delivery or panel, and false after a reset, an answer or a
+      close;
+    - kind independence: two kinds with the same delivery id keep their
+      grants apart.
+  - `WorkshopLightboxTileDelivery.integration.test.tsx` uses the real
+    provider, seed delivery, tile handler and session, the production
+    Workshop app, and held transport both ways:
+    - the accept names the receiver that holds the grant, and stages;
+    - your witness: R1's accept is held, the webview reloads, A settles as
+      `reset`, then R1's accept lands. Nothing stages, A stays `reset`, and
+      the next tile stages;
+    - a forged accept for an offer whose claim was never granted, even from
+      the current receiver, stages nothing, and the offer still stages
+      through its own claim.
+  - The existing reset-before-accept and lost-answer recovery tests are
+    unchanged and pass.
+
+### Harness nit and the defensive copy
+
+- `harness.js` reads `.pm-lb-lineage-set-aside` (`971b95e`). A rerun records
+  the lineage foot in `facts.json`.
+- The evidence was rerun at the new head:
+  - `states/chapter.json` was rebuilt. The Spark prompt's new sentence moves
+    each group's estimate by 21 input tokens; it still shows "est. $0.11".
+  - The other states came out byte-identical.
+  - All 33 screenshots rendered pixel-identical to the committed ones, so
+    they were not replaced. No page errors.
+- The record helpers (`cloneMessageAttachment`,
+  `cloneMessageAttachmentInput`, `cloneMessageAttachmentSnapshot`, and
+  through them `messageAttachmentSnapshot`) copy `lightboxTile`. A test
+  shows that mutating the input, a staged result, a collected copy or a
+  snapshot leaves the session's meta alone. It fails at `132aabb`.
+
+### Verification at the new head
+
+| Check | `132aabb` | New head |
+| --- | --- | --- |
+| Jest | 383 suites / 5,412 tests / 2 snapshots | 385 suites / 5,457 tests / 2 snapshots |
+| `npm run typecheck` (core, webview, extension) | Passes | Passes |
+| Lint | 0 errors / 1,133 warnings | 0 errors / 1,133 warnings, identical per file and rule |
+| `npm run build` with `verify:bundle` | Passes | Passes |
+| `git diff --check` | Passes | Passes |
+
+- No live or billable provider call. Fixtures are public-domain or
+  synthetic.
+- New production module: `WorkshopMessageAttachmentIdentity.ts` (89 lines).
+  `WorkshopSessionService` is 2,555 lines, one fewer than at `132aabb`.
