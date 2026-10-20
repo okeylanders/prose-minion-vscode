@@ -177,11 +177,15 @@ describe('app-shell provider assembly', () => {
     );
   });
 
-  it('seeds Lightbox sources through the panel\'s own handler under the webview lightbox source', () => {
+  it('seeds Lightbox sources through the panel\'s own handler, under the ticket the command took (PR #152 F-01)', () => {
     const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
     const seed = providerSource.slice(providerSource.indexOf('public seedSource('));
-    expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.LIGHTBOX_SET_SOURCE,\s*source: 'webview\.lightbox'/);
-    expect(seed).toMatch(/this\.messageHandler\?\.handleMessage\(message\)/);
+    // An overtaken ticket opens nothing; a current one reveals the tab, then boards under that ticket.
+    expect(seed).toMatch(
+      /if \(!this\.coreServices\.lightboxService\.isCurrentRequest\(ticket\)\) \{\s*return false;\s*\}\s*this\.openOrReveal\(\);\s*void this\.messageHandler\?\.seedLightboxSource\(payload, ticket\);/
+    );
+    // The ticket never travels in a message a webview could also send.
+    expect(seed).not.toMatch(/LIGHTBOX_SET_SOURCE|handleMessage\(/);
     // The Lightbox never reaches into the Workshop's session (D10).
     expect(providerSource).not.toMatch(/WORKSHOP_|workshopSessionService/);
   });
@@ -285,7 +289,11 @@ describe('app-shell provider assembly', () => {
     expect(extensionSource).toMatch(
       /const handleOpenFileInLightbox = \(target\?: unknown\) => openFileInLightbox\(target, openFileInLightboxHost\);/
     );
-    expect(extensionSource).toMatch(/seedSource: \(payload\) => lightboxPanelProvider\?\.seedSource\(payload\)/);
+    // The launch takes the shared service's ticket and hands it to the panel with the payload (PR #152 F-01).
+    expect(extensionSource).toMatch(/beginSourceRequest: \(\) => lightboxService\.beginSourceRequest\(\)/);
+    expect(extensionSource).toMatch(
+      /seedSource: \(payload, ticket\) => lightboxPanelProvider\?\.seedSource\(payload, ticket\) \?\? false/
+    );
     const selection = extensionSource.slice(
       extensionSource.indexOf('const handleLightboxSelection = () => {'),
       extensionSource.indexOf('const handleWordLookupSelection')
