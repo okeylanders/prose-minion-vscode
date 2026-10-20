@@ -92,6 +92,9 @@ elsewhere.
 | Low | [The engine logs a provider's error type verbatim after an interrupted stream](2026-10-19-agent-run-engine-provider-error-log.md) | Identified |
 | Medium | [A long unbroken run of word characters stalls word frequency for minutes](2026-10-19-pos-tagger-long-token-backtracking.md) | Identified |
 | Low | [Lightbox run accounting on its exceptional paths](2026-10-19-lightbox-exceptional-path-accounting.md) | Identified |
+| Low | [Dialogue % ignores single-quoted dialogue](2026-10-19-dialogue-single-quote-convention.md) (also withholds Lightbox subtext pairs in single-quoted text) | Identified |
+| Low | [The Workshop does not reflow at narrow widths](2026-10-19-workshop-narrow-width-reflow.md) | Identified |
+| Low | [A seed offer the Workshop refuses only times out](2026-10-19-workshop-refused-seed-offer-times-out.md) | Identified |
 
 ## Review Guidance
 

@@ -270,6 +270,7 @@
 [data-pm-surface="lightbox"] .pm-lb-bring { flex-wrap: wrap; }
 [data-pm-surface="lightbox"] .pm-lb-bring .pm-lb-run-note.is-refused { color: var(--pm-amber); }
 [data-pm-surface="lightbox"] .pm-lb-bring.is-bound .pm-lb-run-note { color: var(--pm-green); }
+[data-pm-surface="lightbox"] .pm-lb-bring .pm-lb-link { font-size: 12.5px; }
 [data-pm-surface="lightbox"] .pm-lb-bring.is-bound .pm-lb-button:disabled {
   display: inline-flex;
   align-items: center;

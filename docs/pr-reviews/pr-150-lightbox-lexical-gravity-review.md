@@ -791,3 +791,34 @@ unbraced `if`s are gone. No file or rule gained a warning.
 No live or billable call was made. The fixtures are public-domain prose
 from "Alice's Adventures in Wonderland" (1865) or short synthetic strings,
 and models are stub ids.
+
+### Author note (2026-10-20): F-08 fixed in Slice 4
+
+F-08 is fixed on `epic/lightbox-slice-4-lineage` at `a7a368b`, for both
+seed kinds (the Build lens seed, and Slice 4's Lightbox tile). The ledger
+status above is left for re-verification.
+
+- Each Workshop mount announces a receiver id once it is listening
+  (`WORKSHOP_SEED_RECEIVER`), and every claim and answer names it. A seed is
+  sent only after an announcement.
+- A new receiver on the same panel settles a seed granted to the old one as
+  `reset` (a new failure reason) and frees the slot. A seed sent to the old
+  receiver but never claimed is sent again to the new one, under its first
+  deadline. Late claims and answers from the old receiver are ignored. A
+  grant to the current receiver is never touched.
+- The ADR's D11 now states the commit-point contract: the 20-second
+  deadline covers unclaimed offers only, and a granted seed waits for an
+  answer, its panel closing or a receiver reset. Visibility is described as
+  **visible at dispatch**: hiding the tab between dispatch and claim still
+  lets the running webview open the seed and answer, and nothing reaches a
+  model or is saved without the writer's action there.
+- For a tile, the Workshop may have staged it before its answer was lost.
+  The Lightbox then counts the Workshop session holding the tile as the
+  confirmation, so it never reports a staged tile as refused.
+- Tests: delivery unit tests per rule; a provider test with late
+  old-receiver replies and a newer seed dispatching after the reset; and
+  integration tests through the provider, the real handler and the
+  production `WorkshopApp` receiver. For the Build lens seed: reload after
+  claim, after an unclaimed send, and after an answered grant. For a tile:
+  reload after claim, and after the grant was acted on (the tile staged,
+  its answer lost). Each ends with a newer seed reaching the new webview.
