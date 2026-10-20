@@ -115,6 +115,23 @@ describe('LightboxHandler', () => {
     expect(panel.logged()).not.toContain(text.slice(0, 40));
   });
 
+  it('refuses a file sent by URI over the ceiling the same way (Open File in Lightbox counts nothing itself)', async () => {
+    const host = createLightboxHost();
+    const text = aliceWords(60_000);
+    host.addFile('Drafts/whole-book.md', text);
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, host.fileSource('Drafts/whole-book.md'));
+
+    expect(panel.refusals()).toEqual([expect.objectContaining({
+      reason: 'over-ceiling',
+      wordCount: 60_000,
+      ceilingWords: 50_000,
+      displayPath: 'Drafts/whole-book.md'
+    })]);
+    expect(host.service.currentBoard()).toBeUndefined();
+    expect(panel.logged()).not.toContain(text.slice(0, 40));
+  });
+
   it('does nothing when the writer dismisses the picker, and boards the chosen file', async () => {
     const host = createLightboxHost();
     const panel = host.openPanel();

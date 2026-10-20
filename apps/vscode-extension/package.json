@@ -101,10 +101,12 @@
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
     "onCommand:prose-minion.showOutputChannel",
+    "onCommand:prose-minion.openSettingsOverlay",
     "onCommand:prose-minion.openWorkshop",
     "onCommand:prose-minion.workshopSelection",
     "onCommand:prose-minion.openLightbox",
-    "onCommand:prose-minion.lightboxSelection"
+    "onCommand:prose-minion.lightboxSelection",
+    "onCommand:prose-minion.openFileInLightbox"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -160,9 +162,28 @@
       {
         "command": "prose-minion.lightboxSelection",
         "title": "Prose Minion: Open Selection in Lightbox"
+      },
+      {
+        "command": "prose-minion.openFileInLightbox",
+        "title": "Prose Minion: Open File in Lightbox",
+        "icon": "$(layout)"
       }
     ],
     "menus": {
+      "explorer/context": [
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
+          "group": "prose-minion@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
         {
           "when": "editorHasSelection",
@@ -177,6 +198,11 @@
         {
           "when": "editorHasSelection",
           "command": "prose-minion.lightboxSelection",
+          "group": "prose-minion@3"
+        },
+        {
+          "when": "!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
           "group": "prose-minion@3"
         },
         {
