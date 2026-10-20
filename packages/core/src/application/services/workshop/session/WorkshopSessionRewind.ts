@@ -39,6 +39,10 @@ import {
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
 import { clonePersistedJson } from '@/application/services/workshop/persistedJson';
 import {
+  sameWorkshopMessageAttachmentSource,
+  withWorkshopMessageAttachmentSourceKey
+} from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
+import {
   findUnverifiableRetainedHistoryMarkKeys,
   lastRetainedHistoryMarksAtOrBefore
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
@@ -452,10 +456,11 @@ function composerRestoreFor(
   const unrestoredAttachmentLabels: string[] = [];
   for (const ref of writerTurn.messageAttachments ?? []) {
     const body = bodies.get(ref.id);
-    const alreadyStaged = ref.configuredResource !== undefined
-      && source.pendingMessageAttachments.some((pending) =>
-        pending.configuredResource?.group === ref.configuredResource?.group
-        && pending.configuredResource?.path === ref.configuredResource?.path);
+    // The admission rule: a configured resource by its path, a Lightbox tile
+    // by its board and tile ids (PR #151 F-01). A ref carries no host source
+    // key, so a plain file is never taken for one already waiting.
+    const alreadyStaged = source.pendingMessageAttachments.some((pending) =>
+      sameWorkshopMessageAttachmentSource(ref, pending));
     if (alreadyStaged) {
       continue;
     }
@@ -463,7 +468,8 @@ function composerRestoreFor(
       unrestoredAttachmentLabels.push(ref.label);
       continue;
     }
-    restaged.push({ ...ref, content: body.content });
+    // A tile's source key follows from its ids, so it is rebuilt here.
+    restaged.push(withWorkshopMessageAttachmentSourceKey({ ...ref, content: body.content }));
     capacity -= 1;
   }
   return {

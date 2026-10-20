@@ -34,6 +34,7 @@ import {
   type PersistedWorkshopWidgetId
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 import { workshopWidgetDescriptor } from '@shared/constants/workshopWidgets';
+import { MessageType } from '@messages';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -96,6 +97,8 @@ const WORKSHOP_SHOW_VS_TELL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler.ts';
 const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
+const WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts';
 
 /**
  * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
@@ -250,6 +253,20 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: ['WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES']
   },
   {
+    // Lightbox Slice 4 (ADR 2026-10-19 D11): the provider's offer is direct,
+    // since holding it changes no session state.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_STAGE_LIGHTBOX_TILE']
+  },
+  {
+    // Staging is a session mutation: persisted, so it waits behind a session
+    // save or replacement and is refused as busy while one is pending.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ACCEPT_LIGHTBOX_TILE']
+  },
+  {
     owner: WORKSHOP_STANDING_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
@@ -301,6 +318,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopCreativeVariationsHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
+  'WorkshopLightboxTileHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -587,7 +605,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity|lexical-gravity-build)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
@@ -984,7 +1002,9 @@ const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
 const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
   'shared/types/messages/lightboxReadings.ts',
+  'shared/types/messages/lightboxEstimate.ts',
   'shared/types/messages/lightboxGravity.ts',
+  'shared/types/messages/lightboxStoryTiles.ts',
   'shared/types/messages/lightboxStale.ts',
   'shared/types/messages/lightboxHandoff.ts',
   'shared/constants/lightbox.ts',
@@ -997,8 +1017,14 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxGravityCodec.ts',
   'infrastructure/lightbox/LightboxGravityCounts.ts',
   'infrastructure/lightbox/LightboxGravityTiles.ts',
+  'infrastructure/lightbox/LightboxStoryCodec.ts',
+  'infrastructure/lightbox/LightboxStoryTiles.ts',
+  'infrastructure/lightbox/LightboxSparkPhrasing.ts',
+  'infrastructure/lightbox/LightboxDialogueAnchor.ts',
+  'infrastructure/lightbox/LightboxSparkLane.ts',
   'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',
+  'infrastructure/lightbox/LightboxTileHandoff.ts',
   'infrastructure/lightbox/LightboxQuoteVerifier.ts',
   'infrastructure/lightbox/LightboxTermCounts.ts',
   'infrastructure/lightbox/LightboxReadingTiles.ts',
@@ -1014,14 +1040,19 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxTileCounts.ts',
   'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
+  'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
+  'presentation/webview/hooks/domain/useLightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
@@ -1035,6 +1066,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
   'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
+  'presentation/webview/components/lightbox/LightboxLineage.tsx',
   'presentation/webview/components/lightbox/LightboxMotifs.tsx',
   'presentation/webview/components/lightbox/LightboxPalette.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
@@ -1044,12 +1076,15 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxRibbon.tsx',
   'presentation/webview/components/lightbox/LightboxRunLine.tsx',
   'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
+  'presentation/webview/components/lightbox/LightboxSparkLane.tsx',
   'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxSubtext.tsx',
   'presentation/webview/components/lightbox/LightboxTensionArc.tsx',
   'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
   'presentation/webview/components/lightbox/LightboxTiles.tsx',
   'presentation/webview/components/lightbox/LightboxTopWords.tsx',
-  'presentation/webview/components/lightbox/LightboxVoice.tsx'
+  'presentation/webview/components/lightbox/LightboxVoice.tsx',
+  'presentation/webview/components/lightbox/LightboxWorkshopTray.tsx'
 ] as const;
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
@@ -1058,9 +1093,12 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
-  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts'
 ] as const;
 const LIGHTBOX_FEATURE_DIRECTORIES = [
   'infrastructure/lightbox',
@@ -1363,11 +1401,12 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(57);
+    // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
+    expect(expectedOwnerPairs).toHaveLength(59);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(37);
+      .toHaveLength(38);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(20);
+      .toHaveLength(21);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1694,10 +1733,15 @@ describe('architectural boundaries', () => {
     expect(LIGHTBOX_TRANSPORT_FREE_MODULES
       .filter((file) => transportReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
       .toEqual([]);
-    // D10: the Lightbox's source is its own, never the Workshop's excerpt.
+    // D10: the Lightbox's source is its own, never the Workshop's excerpt; it
+    // names no Workshop route. (Slice 4's tile bounds, a shared contract
+    // constant, are not a route.)
+    const workshopRoutes = new Set(Object.keys(MessageType).filter((name) => name.startsWith('WORKSHOP_')));
     expect(LIGHTBOX_MODULES
-      .filter((file) => /\bWORKSHOP_[A-Z_]+\b/.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
+      .filter((file) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').matchAll(/\bWORKSHOP_[A-Z_]+\b/g)]
+        .some(([name]) => workshopRoutes.has(name))))
       .toEqual([]);
+    expect(workshopRoutes.has('WORKSHOP_STAGE_LIGHTBOX_TILE')).toBe(true);
   });
 
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {
@@ -1867,6 +1911,7 @@ describe('architectural boundaries', () => {
       'gesturePlayground.ts',
       'index.ts',
       'lexicalGravity.ts',
+      'lightboxTiles.ts',
       'participants.ts',
       'recovery.ts',
       'seedDelivery.ts',

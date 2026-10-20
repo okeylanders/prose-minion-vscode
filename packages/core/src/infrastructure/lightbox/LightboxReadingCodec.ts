@@ -53,6 +53,7 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
+import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
 /** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
@@ -209,6 +210,12 @@ function decodeBlock(
       return decodeGravityBlock(value, path, friction);
     case 'palette':
       return decodePaletteBlock(value, path, friction);
+    case 'subtext':
+      return decodeSubtextBlock(value, path, friction);
+    case 'lineage':
+      return decodeLineageBlock(value, path, friction);
+    case 'spark':
+      return decodeSparkBlock(value, path, friction);
   }
 }
 

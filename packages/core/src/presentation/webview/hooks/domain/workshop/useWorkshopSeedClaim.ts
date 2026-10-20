@@ -7,7 +7,9 @@
  * busy, and answers.
  *
  * Generic over the seed kind: each feature that accepts a handoff composes
- * one of these with its own `WorkshopSeedKind`.
+ * one of these with its own `WorkshopSeedKind`, and the receiver id this
+ * mount announced (`useWorkshopSeedReceiver`, F-08), which every claim and
+ * answer names so the host can tell this webview from a reloaded one.
  */
 
 import * as React from 'react';
@@ -48,7 +50,10 @@ export type UseWorkshopSeedClaimReturn<TSeed> = WorkshopSeedClaimState<TSeed> &
     persistedState: WorkshopSeedClaimPersistence;
   };
 
-export function useWorkshopSeedClaim<TSeed>(kind: WorkshopSeedKind): UseWorkshopSeedClaimReturn<TSeed> {
+export function useWorkshopSeedClaim<TSeed>(
+  kind: WorkshopSeedKind,
+  receiver: string
+): UseWorkshopSeedClaimReturn<TSeed> {
   const vscode = useVSCodeApi();
   // The seed being claimed. Messages arrive in order, so a newer seed
   // replaces an older one here, and the older one's claim result is ignored.
@@ -61,8 +66,8 @@ export function useWorkshopSeedClaim<TSeed>(kind: WorkshopSeedKind): UseWorkshop
 
   const receive = React.useCallback((deliveryId: string, seed: TSeed) => {
     claiming.current = { deliveryId, seed };
-    post(MessageType.WORKSHOP_SEED_CLAIM, { kind, deliveryId });
-  }, [kind, post]);
+    post(MessageType.WORKSHOP_SEED_CLAIM, { kind, deliveryId, receiver });
+  }, [kind, post, receiver]);
 
   const handleClaimResult = React.useCallback((message: WorkshopSeedClaimResultMessage) => {
     const result = message.payload;
@@ -78,8 +83,8 @@ export function useWorkshopSeedClaim<TSeed>(kind: WorkshopSeedKind): UseWorkshop
 
   const answer = React.useCallback((reply: WorkshopSeedAnswer) => {
     setGranted((current) => (current?.deliveryId === reply.deliveryId ? null : current));
-    post(MessageType.WORKSHOP_SEED_ANSWER, { kind, ...reply });
-  }, [kind, post]);
+    post(MessageType.WORKSHOP_SEED_ANSWER, { kind, ...reply, receiver });
+  }, [kind, post, receiver]);
 
   return { granted, receive, handleClaimResult, answer, persistedState: {} };
 }

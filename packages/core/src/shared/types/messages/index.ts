@@ -31,6 +31,8 @@ export * from './streaming';
 export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
+export * from './lightboxEstimate';
+export * from './lightboxStoryTiles';
 export * from './lightboxGravity';
 export * from './lightboxStale';
 export * from './lightboxHandoff';
@@ -221,6 +223,11 @@ import {
   WorkshopSeedClaimMessage,
   WorkshopSeedClaimResultMessage,
   WorkshopSeedAnswerMessage,
+  WorkshopSeedReceiverMessage,
+  WorkshopStageLightboxTileMessage,
+  WorkshopLightboxTileOfferedMessage,
+  WorkshopAcceptLightboxTileMessage,
+  WorkshopLightboxTileStagedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -249,7 +256,13 @@ import {
   LightboxRemoveContextFileMessage,
   LightboxContextFilesMessage
 } from './lightboxReadings';
-import { LightboxHandOffMessage, LightboxHandOffResultMessage } from './lightboxHandoff';
+import {
+  LightboxHandOffMessage,
+  LightboxHandOffResultMessage,
+  LightboxOpenWorkshopMessage,
+  LightboxWorkshopTrayMessage
+} from './lightboxHandoff';
+import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -357,6 +370,9 @@ export type WebviewToExtensionMessage =
   | WorkshopOpenLexicalGravityBuildMessage
   | WorkshopSeedClaimMessage
   | WorkshopSeedAnswerMessage
+  | WorkshopSeedReceiverMessage
+  | WorkshopStageLightboxTileMessage
+  | WorkshopAcceptLightboxTileMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
@@ -371,7 +387,9 @@ export type WebviewToExtensionMessage =
   | LightboxCancelRunMessage
   | LightboxAddContextFilesMessage
   | LightboxRemoveContextFileMessage
-  | LightboxHandOffMessage;
+  | LightboxHandOffMessage
+  | LightboxSetSparkDismissedMessage
+  | LightboxOpenWorkshopMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -429,6 +447,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityLensesSavedMessage
   | WorkshopLexicalGravityBuildSeedMessage
   | WorkshopSeedClaimResultMessage
+  | WorkshopLightboxTileOfferedMessage
+  | WorkshopLightboxTileStagedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
@@ -438,4 +458,5 @@ export type ExtensionToWebviewMessage =
   | LightboxRunProgressMessage
   | LightboxGroupResultMessage
   | LightboxContextFilesMessage
-  | LightboxHandOffResultMessage;
+  | LightboxHandOffResultMessage
+  | LightboxWorkshopTrayMessage;

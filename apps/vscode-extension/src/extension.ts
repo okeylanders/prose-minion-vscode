@@ -473,8 +473,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           case 'lexical-gravity-seed':
             return workshopPanelProvider?.seedLexicalGravityBuild(handoff.seed)
               ?? Promise.resolve({ opened: false, reason: 'unavailable' });
+          case 'tile':
+            return workshopPanelProvider?.stageLightboxTile(handoff.tile)
+              ?? Promise.resolve({ opened: false, reason: 'unavailable' });
         }
-      }
+      },
+      // The tray's "Open Workshop →" (Slice 4): reveal it; nothing is sent.
+      openWorkshop: () => workshopPanelProvider?.openOrReveal()
     }
   );
   context.subscriptions.push(

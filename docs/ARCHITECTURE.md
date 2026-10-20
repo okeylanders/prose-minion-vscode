@@ -276,8 +276,11 @@ Workshop is internally sliced under `application/handlers/domain/workshop/`.
 `WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
 the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
 and registers the context, excerpt/scope, session, todo, standing-directive,
-widget-host, Gesture Playground, Creative Variations, Lexical Gravity, and Show
-vs. Tell route owners behind the shared session-operation mutation gate.
+widget-host, Gesture Playground, Creative Variations, Lexical Gravity, Show
+vs. Tell and Lightbox-tile route owners behind the shared session-operation
+mutation gate. A seed handed over from another tab (a Build lens subject, a
+Lightbox tile) reaches its owner only through the panel provider's
+claim-before-open delivery (ADR 2026-10-19 D11).
 `WorkshopWidgetHostHandler` owns the single family commit route, while
 `WorkshopOneShotWidgetCommitCoordinator` owns retry-config, turn/artifact
 acceptance, and linkage mechanics; named feature compilers retain feature
@@ -305,6 +308,7 @@ workshop/
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── recovery.ts              # Rejected response repair-contract registry
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
+├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 

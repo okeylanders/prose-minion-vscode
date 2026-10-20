@@ -33,21 +33,22 @@ async function setup(options: LightboxReadingHostOptions = {}) {
 }
 
 describe('LightboxReadingHandler', () => {
-  it('registers the five reading routes', async () => {
+  it('registers the six reading routes', async () => {
     const { router } = await setup();
     expect([
       MessageType.LIGHTBOX_SET_LENSES,
       MessageType.LIGHTBOX_RUN,
       MessageType.LIGHTBOX_CANCEL_RUN,
       MessageType.LIGHTBOX_ADD_CONTEXT_FILES,
-      MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE
+      MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE,
+      MessageType.LIGHTBOX_SET_SPARK_DISMISSED
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(5);
+    expect(router.handlerCount).toBe(6);
   });
 
   it('answers the lens toggles with the context list and an estimate that leaves off lenses and empty groups out', async () => {
     const { route, ofType, board } = await setup();
-    await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: ['genre', 'voice', 'nonsense'] });
+    await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: ['genre', 'voice', 'subtext', 'lineage', 'spark', 'nonsense'] });
     expect(ofType(MessageType.LIGHTBOX_CONTEXT_FILES)[0].payload).toEqual({ files: [], totalWords: 0, ceilingWords: 50_000 });
     const estimate = ofType(MessageType.LIGHTBOX_RUN_ESTIMATE)[0].payload.estimate;
     expect(estimate).toMatchObject({ boardId: board.boardId, fit: 'fits', model: 'provider/model-v1', contextLength: 200_000 });

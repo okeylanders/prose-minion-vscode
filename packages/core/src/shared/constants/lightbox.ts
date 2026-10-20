@@ -12,6 +12,7 @@
 import type {
   LightboxGravityDegree,
   LightboxLensId,
+  LightboxLineageStance,
   LightboxReadingGroup,
   LightboxReadingGroupId,
   LightboxReadingTileKind,
@@ -37,7 +38,11 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   // The voice tile sets host-measured sentence figures beside the reading.
   voice: 'counted-read',
   'genre-neighbor': 'read',
-  'reader-promise': 'read'
+  'reader-promise': 'read',
+  subtext: 'read',
+  lineage: 'read',
+  // A reading's offer, standing on terms code counted.
+  spark: 'counted-read'
 };
 
 /** The lens each reading kind belongs to. */
@@ -53,7 +58,10 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   character: 'characters',
   voice: 'voice',
   'genre-neighbor': 'genre',
-  'reader-promise': 'genre'
+  'reader-promise': 'genre',
+  subtext: 'subtext',
+  lineage: 'lineage',
+  spark: 'spark'
 };
 
 /** What one reading of each kind is called, e.g. in the inspector's "Theme & motif · Motif". */
@@ -69,7 +77,10 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   character: 'Vibe',
   voice: 'Narration',
   'genre-neighbor': 'Neighbor',
-  'reader-promise': 'Reader promise'
+  'reader-promise': 'Reader promise',
+  subtext: 'Said / meant',
+  lineage: 'Adjacent story',
+  spark: 'Open door'
 };
 
 /**
@@ -84,6 +95,13 @@ export const LIGHTBOX_GRAVITY_DEGREES: Readonly<Record<LightboxGravityDegree, st
   1: 'latent',
   2: 'felt',
   3: 'overt'
+};
+
+/** How a lineage stance reads on the board (Slice 4). */
+export const LIGHTBOX_LINEAGE_STANCE_LABELS: Readonly<Record<LightboxLineageStance, string>> = {
+  matches: 'Matches',
+  departs: 'Departs',
+  subverts: 'Subverts'
 };
 
 /** The reading groups, in board order (D6). */
@@ -104,7 +122,10 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   palette: { label: 'Palette', group: 'A' },
   characters: { label: 'Characters', group: 'B' },
   voice: { label: 'Voice', group: 'B' },
-  genre: { label: 'Genre neighborhood', group: 'C' }
+  subtext: { label: 'Subtext', group: 'B' },
+  genre: { label: 'Genre neighborhood', group: 'C' },
+  lineage: { label: 'Lineage', group: 'C' },
+  spark: { label: 'Spark', group: 'C' }
 };
 
 /** Every lens, in rail order (which is also group order). */

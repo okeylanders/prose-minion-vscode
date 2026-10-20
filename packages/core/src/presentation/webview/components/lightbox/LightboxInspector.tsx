@@ -10,7 +10,9 @@
  * withheld and why, its own fields, where it strains, and "Re-read this
  * tile": one call for that lens. A borrowed field (Slice 3) adds its terms
  * by degree and "Build as a lens", which the host carries into the Workshop.
- * Other actions that cross into the Workshop or the editor arrive later.
+ * Every reading (Slice 4) adds "Bring to Workshop" ("Bring as a question"
+ * for a spark), and shows **Bound for Workshop** while the Workshop holds it
+ * above its composer, with the way there.
  *
  * The addresses render a page at a time (PR #148 F-04). With more than one
  * page, a pager steps between them and jumps to a paragraph number, all by
@@ -20,8 +22,9 @@
  * the paged addresses.
  */
 import * as React from 'react';
-import type { LightboxGravityFieldTile, LightboxLensId } from '@messages';
+import type { LightboxGravityFieldTile, LightboxLensId, LightboxReadingTile } from '@messages';
 import type { LightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
+import type { LightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
 import type {
   LightboxInspectorView,
   LightboxParagraphPage
@@ -49,6 +52,13 @@ export interface LightboxBuildLensControl {
   onBuild: (fieldId: string) => void;
 }
 
+/** "Bring to Workshop": its view for a pinned reading, the press, and the way to the Workshop once it is there. */
+export interface LightboxBringControl {
+  view: (tile: LightboxReadingTile) => LightboxBringView;
+  onBring: (tileId: string) => void;
+  onOpenWorkshop: () => void;
+}
+
 export interface LightboxInspectorProps {
   view: LightboxInspectorView | null;
   /** The page of `view.paragraphs` to render. */
@@ -60,6 +70,7 @@ export interface LightboxInspectorProps {
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
   reread: LightboxRereadControl;
   buildLens?: LightboxBuildLensControl;
+  bring?: LightboxBringControl;
 }
 
 /** "¶765–¶812 (337–347 of 347)": the addresses on show, then where they sit in the list. */
@@ -172,7 +183,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   onJumpToParagraph,
   bind,
   reread,
-  buildLens
+  buildLens,
+  bring
 }) => {
   if (!view) {
     return (
@@ -209,6 +221,7 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   const rereadNote = reading ? reread.note(reading.lens) : undefined;
   const field = reading?.tile.kind === 'gravity-field' ? reading.tile : undefined;
   const build = field && buildLens ? buildLens.view(field) : undefined;
+  const brought = reading && bring ? bring.view(reading.tile) : undefined;
   const rereadReason = reading ? reread.reason(reading.lens) : undefined;
 
   return (
@@ -343,6 +356,31 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
           >
             {build.note}
           </span>
+        </div>
+      )}
+
+      {reading && brought && bring && (
+        <div className={`pm-lb-inspector-actions pm-lb-bring is-${brought.state}`}>
+          <button
+            type="button"
+            className="pm-lb-button"
+            disabled={brought.disabled}
+            aria-describedby="pm-lb-bring-note"
+            onClick={() => bring.onBring(reading.tile.id)}
+          >
+            {brought.state === 'bound' && <Icon name="pin" size={12} />}
+            {brought.state === 'bound' ? brought.label : `${brought.label} →`}
+          </button>
+          <span
+            id="pm-lb-bring-note"
+            className={`pm-lb-run-note${brought.state === 'refused' ? ' is-refused' : ''}`}
+            role={brought.state === 'refused' || brought.state === 'bound' ? 'status' : undefined}
+          >
+            {brought.note}
+          </span>
+          {brought.state === 'bound' && (
+            <button type="button" className="pm-lb-link" onClick={bring.onOpenWorkshop}>Open Workshop →</button>
+          )}
         </div>
       )}
 

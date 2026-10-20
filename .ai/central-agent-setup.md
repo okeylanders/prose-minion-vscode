@@ -58,9 +58,10 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes, Build-as-a-lens handoff (ADR 2026-10-19)
-│           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files (Slice 2B)
-│           └── workshop/                  # Room owner + 11 composed route owners
+│           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
+│           ├── LightboxHandoffRoute.ts    # Its handoffs to the Workshop (Build as a lens, Bring to Workshop) and the Workshop tray
+│           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files, spark set-aside
+│           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -70,6 +71,7 @@ packages/core/src/
 │               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
 │               ├── WorkshopTodoHandler.ts
+│               ├── WorkshopLightboxTileHandler.ts # A Lightbox tile offered, then staged above the composer (seed kind `lightbox-tile`)
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
@@ -81,7 +83,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette blocks), quote verifier, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, handoff checks
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -103,7 +105,9 @@ packages/core/src/
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
-            ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF request/result and the seed handed to the Workshop
+            ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
+            ├── lightboxEstimate.ts # Fit and per-call/run estimates
+            ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -120,6 +124,7 @@ packages/core/src/
                 ├── showVsTell.ts
                 ├── recovery.ts
                 ├── seedDelivery.ts
+                ├── lightboxTiles.ts
                 └── settings.ts
 ```
 
@@ -163,13 +168,19 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
 │       │   ├── lightboxGravity.ts      # Orbit placements, pull/drift/degree wording (pure)
-│       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request (pure)
-│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)
+│       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request; handoff state matching (pure)
+│       │   ├── lightboxBring.ts        # "Bring to Workshop" view and request; Bound from the Workshop tray (pure)
+│       │   ├── lightboxSparks.ts       # The spark lane: shown and set aside (pure)
+│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape
+│       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
 │           ├── useWorkshopSessions.ts  # Named-session lifecycle
 │           ├── useWorkshopWidgetHost.ts
 │           ├── useWorkshopStandingDirectives.ts
+│           ├── useWorkshopSeedReceiver.ts  # This mount's seed receiver id, announced once listening (PR #150 F-08)
+│           ├── useWorkshopSeedClaim.ts     # Hold, claim and answer a handed-over seed, per kind
+│           ├── useWorkshopLightboxTiles.ts # A Lightbox tile: claim, accept after the grant, answer
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
 │           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
@@ -279,6 +290,8 @@ useMessageRouter({
 | useSelection | UIHandler | Selection/paste operations |
 | useAccountBalance | AccountBalanceHandler | OpenRouter account balance |
 | useLightbox | LightboxHandler, LightboxReadingHandler (+ `LightboxService`, `LightboxReadingRunner`) | Lightbox counted board and readings |
+| useLightboxHandoff | LightboxHandoffRoute (in LightboxHandler) | Lightbox handoffs to the Workshop and its tray |
+| useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -758,7 +771,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's eleven route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's twelve route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -884,6 +897,47 @@ touching retained histories or whole-room operations:
   unnamed room, a named room with unsaved work, and a room whose file on
   disk no longer matches it. It checks the file again at the commit that
   replaces `current.json`, through the store's `beforeCommit` seam.
+
+### Workshop Seed Delivery
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D11
+(PR #150 F-03 and F-08) when handing anything from another tab into the
+Workshop:
+
+- **Claim before open.** The panel provider offers a seed through the
+  panel's own MessageHandler (`WorkshopSeedDelivery`, one per
+  `WorkshopSeedKind`); the webview holds it and claims it, and opens or
+  stages it only on a grant. A grant is the commit point and cannot be
+  revoked: a newer seed waits behind it. The 20-second deadline covers
+  unclaimed offers only.
+- **Receivers.** Each Workshop mount announces a receiver id once listening
+  (`useWorkshopSeedReceiver`), and every claim and answer names it. A seed is
+  sent only after an announcement; a new receiver on the same panel settles
+  what the old one held as `reset` and resends what it never claimed. Late
+  replies from an old receiver are ignored.
+- **Acting on a grant.** A follow-up that changes session state (a tile's
+  `WORKSHOP_ACCEPT_LIGHTBOX_TILE`) names its receiver, and the provider
+  forwards it only while `WorkshopSeedDelivery.isGranted` holds for that
+  delivery and receiver (PR #151 F-06).
+- **Visibility** is checked at dispatch, not at the grant.
+- **A new kind** joins `WorkshopSeedKind`, gets a delivery in the provider's
+  `Record`, a receiver hook composing `useWorkshopSeedClaim`, and an entry in
+  `dispatchWorkshopSeedClaimResult`'s receivers; one kind's claim result
+  never reaches another's receiver.
+- **The Lightbox sends ids only.** Its host resolves the item, re-checks its
+  quotes and builds the payload; the Workshop checks it again on arrival.
+  "Sent" or "staged" waits for the Workshop's own answer, or for its session
+  holding the tile when that answer was lost.
+- **Attachment kinds.** A staged attachment that is not a file declares its
+  frame kind in `shared/constants/workshopThreadArtifactKinds.ts`; the frame
+  builder, the session codec and the session's commit check all read that
+  registry, and the body is neutralized like any other. A committed artifact
+  has one owner, a widget commit or a message attachment, and each owner's
+  kind is checked (PR #151 F-05).
+- **Attachment identity.** A tile is its board and tile ids. Staging,
+  Rewind's restage and hydration all ask `WorkshopMessageAttachmentIdentity`
+  whether two attachments are one source, so no whole-room operation puts a
+  tile above the composer twice (PR #151 F-01).
 
 ### Workshop Transcript Export
 

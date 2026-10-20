@@ -47,20 +47,33 @@ interface MockPanel {
 }
 
 const firstMessage = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', payload: {}, timestamp: 1 };
-const claim = (deliveryId: string) => ({
+/** The receiver every test's webview announces, unless it names another (F-08). */
+const RECEIVER = 'receiver-1';
+const announce = (receiver = RECEIVER) => ({
+  type: MessageType.WORKSHOP_SEED_RECEIVER,
+  source: 'webview.workshop.seed-delivery',
+  payload: { receiver },
+  timestamp: 1
+});
+const claim = (deliveryId: string, receiver = RECEIVER) => ({
   type: MessageType.WORKSHOP_SEED_CLAIM,
   source: 'webview.workshop.seed-delivery',
-  payload: { kind: 'lexical-gravity-build', deliveryId },
+  payload: { kind: 'lexical-gravity-build', deliveryId, receiver },
   timestamp: 2
 });
-const answer = (deliveryId: string, opened: boolean) => ({
+const answer = (deliveryId: string, opened: boolean, receiver = RECEIVER) => ({
   type: MessageType.WORKSHOP_SEED_ANSWER,
   source: 'webview.workshop.seed-delivery',
   payload: opened
-    ? { kind: 'lexical-gravity-build', deliveryId, opened }
-    : { kind: 'lexical-gravity-build', deliveryId, opened, reason: 'busy' },
+    ? { kind: 'lexical-gravity-build', deliveryId, opened, receiver }
+    : { kind: 'lexical-gravity-build', deliveryId, opened, reason: 'busy', receiver },
   timestamp: 3
 });
+/** A Workshop webview mounting: it asks for its session, then announces itself once listening, as WorkshopApp does. */
+const mount = (target: { receive: (message: unknown) => void }, receiver = RECEIVER) => {
+  target.receive(firstMessage);
+  target.receive(announce(receiver));
+};
 const seedsIn = (target: MockPanel) => target.handler.handleMessage.mock.calls
   .map(([message]) => message as { type: string; payload: { seed: unknown; deliveryId: string } })
   .filter((message) => message.type === MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD);
@@ -172,7 +185,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(panels).toHaveLength(1);
     expect(panel.handler.handleMessage).not.toHaveBeenCalled();
 
-    panel.receive(firstMessage);
+    mount(panel);
     expect(panel.handler.handleMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: MessageType.WORKSHOP_REQUEST_SESSION }));
     expect(panel.handler.handleMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({
       type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
@@ -199,7 +212,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   it('routes a seed at once to a Workshop already listening and visible, without a second panel', async () => {
     const workshop = provider();
     const panel = open(workshop);
-    panel.receive(firstMessage);
+    mount(panel);
     const { outcome } = seedInto(workshop);
     expect(panels).toHaveLength(1);
     expect(seedsIn(panel)).toHaveLength(1);
@@ -211,7 +224,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   it('holds a seed for a ready but hidden Workshop tab until it is shown, then delivers it once', () => {
     const workshop = provider();
     const panel = open(workshop);
-    panel.receive(firstMessage);
+    mount(panel);
     panel.visible = false;
     seedInto(workshop);
     panel.viewStateChanged();
@@ -230,7 +243,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     panel.visible = false;
     panel.viewStateChanged();
 
-    panel.receive(firstMessage);
+    mount(panel);
     expect(seedsIn(panel)).toHaveLength(0);
 
     panel.visible = true;
@@ -249,7 +262,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
     const second = open(workshop);
     expect(second).not.toBe(first);
-    second.receive(firstMessage);
+    mount(second);
     second.viewStateChanged();
     expect(seedsIn(second)).toHaveLength(0);
   });
@@ -269,7 +282,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(panels).toHaveLength(2);
 
     // The older panel's events arrive late.
-    older.receive(firstMessage);
+    mount(older);
     older.viewStateChanged();
     older.receive(claim('lexical-gravity-build-anything'));
     older.receive(answer('lexical-gravity-build-anything', true));
@@ -280,7 +293,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(await peek(outcome)).toBe(unsettled);
 
     // A claim the older panel sends with the current seed's id grants nothing.
-    currentPanel.receive(firstMessage);
+    mount(currentPanel);
     const [sent] = seedsIn(currentPanel);
     older.receive(claim(sent.payload.deliveryId));
     expect(claimResultsIn(older)).toEqual([]);
@@ -296,7 +309,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     const { outcome: second } = seedInto(workshop);
     await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
 
-    panel.receive(firstMessage);
+    mount(panel);
     expect(seedsIn(panel)).toHaveLength(1);
     claimAndAnswer(panel, true);
     await expect(second).resolves.toEqual({ opened: true });
@@ -305,7 +318,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
   it('a newer seed replaces a sent but unclaimed one, whose late claim is denied', async () => {
     const workshop = provider();
     const panel = open(workshop);
-    panel.receive(firstMessage);
+    mount(panel);
     const { outcome: first } = seedInto(workshop);
     const { outcome: second } = seedInto(workshop);
     await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
@@ -324,7 +337,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     jest.useFakeTimers();
     const workshop = provider();
     const panel = open(workshop);
-    panel.receive(firstMessage);
+    mount(panel);
     const { outcome: sent } = seedInto(workshop);
     jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS);
     await expect(sent).resolves.toEqual({ opened: false, reason: 'timeout' });
@@ -348,5 +361,41 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     const { outcome } = seedInto(workshop);
     workshop.dispose();
     await expect(outcome).resolves.toEqual({ opened: false, reason: 'closed' });
+  });
+
+  it('a reloaded webview (F-08): releases the old grant as reset, ignores the old receiver, and sends the next seed to the new one', async () => {
+    const workshop = provider();
+    const panel = open(workshop);
+    mount(panel, 'receiver-old');
+    const { outcome: first } = seedInto(workshop);
+    const [sentA] = seedsIn(panel);
+    panel.receive(claim(sentA.payload.deliveryId, 'receiver-old'));
+    expect(claimResultsIn(panel)).toEqual([expect.objectContaining({ granted: true })]);
+    const { outcome: second } = seedInto(workshop);
+    // B waits behind A's grant.
+    expect(seedsIn(panel)).toHaveLength(1);
+
+    // The webview reloads on the same panel; the fresh one never saw A's grant.
+    mount(panel, 'receiver-new');
+    await expect(first).resolves.toEqual({ opened: false, reason: 'reset' });
+    const [, sentB] = seedsIn(panel);
+    expect(sentB).toBeDefined();
+
+    // The old realm's late claim and answer reach nothing.
+    panel.receive(answer(sentA.payload.deliveryId, true, 'receiver-old'));
+    panel.receive(claim(sentB.payload.deliveryId, 'receiver-old'));
+    expect(claimResultsIn(panel)).toHaveLength(1);
+    await expect(first).resolves.toEqual({ opened: false, reason: 'reset' });
+
+    panel.receive(claim(sentB.payload.deliveryId, 'receiver-new'));
+    panel.receive(answer(sentB.payload.deliveryId, true, 'receiver-new'));
+    await expect(second).resolves.toEqual({ opened: true });
+    // The announcements and claims are the provider's; only the session request and the seeds reach the handler.
+    expect(panel.handler.handleMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
+      MessageType.WORKSHOP_REQUEST_SESSION,
+      MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+      MessageType.WORKSHOP_REQUEST_SESSION,
+      MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD
+    ]);
   });
 });

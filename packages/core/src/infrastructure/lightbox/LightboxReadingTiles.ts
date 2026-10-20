@@ -9,8 +9,9 @@
  *   become withheld quotes with their reason, never their text;
  * - a claim left with no found quote is withheld by its title, and each
  *   kind's own rules (a motif recurs, a collision shares a sentence, a
- *   palette's words are in the text) run through `LightboxTileGates`, the
- *   same rules stale carry applies (PR #150 F-05);
+ *   palette's words are in the text, a said line is dialogue, a spark is
+ *   counted) run through `LightboxTileGates`, the same rules stale carry
+ *   applies (PR #150 F-05);
  * - terms the reading names are counted by the host (the counter), and a
  *   tile's paragraphs are its found quotes' and counted terms' paragraphs,
  *   never a list the model supplied;
@@ -30,10 +31,12 @@ import type {
   LightboxWithheldClaim,
   LightboxWithheldQuote
 } from '@messages';
-import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import type { LightboxQuoteVerdict, LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
+import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryTiles';
+import { createLightboxDialogueIndex, type LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import {
   LIGHTBOX_VOICE_TRAITS,
@@ -53,7 +56,10 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   gravity: 'gravity-field',
   characters: 'character',
   voice: 'voice',
-  genre: 'genre-neighbor'
+  subtext: 'subtext',
+  genre: 'genre-neighbor',
+  lineage: 'lineage',
+  spark: 'spark'
 };
 
 export interface LightboxTileAssemblyContext {
@@ -96,7 +102,12 @@ export function assembleLightboxGroup(
     tiles: assembly.tiles,
     withheldBlocks: assembly.withheldBlocks,
     withheldClaims: assembly.withheldClaims,
-    frictions: decoded.blocks.map((block) => ({ lens: block.lens, friction: block.friction })),
+    frictions: decoded.blocks.map((block) => ({
+      lens: block.lens,
+      friction: block.friction,
+      // Lineage keeps what it checked and set aside with its friction: the block's own notes.
+      ...(block.lens === 'lineage' ? { setAside: block.setAside.map((entry) => ({ ...entry })) } : {})
+    })),
     quoteChecks: decoded.blocks.map((block) => ({ lens: block.lens, ...(assembly.checks.get(block.lens) ?? { checked: 0, withheld: 0 }) })),
     quotesChecked: assembly.quotesChecked,
     quotesWithheld: assembly.quotesWithheld
@@ -121,13 +132,16 @@ export interface LightboxClaimDraft {
   support?: LightboxCountedSupport[];
   /** A collision's two field names, for its gate (`LightboxTileGates`). */
   fields?: readonly [string, string];
+  /** A subtext pair's said line, checked first and held to the dialogue rule (`LightboxTileGates`). */
+  said?: LightboxWireQuote;
 }
 
 export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
 
-/** What the gate found while accepting a tile: a collision's witness. */
+/** What the gate found while accepting a tile: a collision's witness, a pair's said line. */
 export interface LightboxAcceptedClaim {
   witness?: LightboxVerifiedQuote;
+  said?: LightboxVerifiedQuote;
 }
 
 /** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
@@ -152,8 +166,12 @@ class GroupAssembly implements LightboxClaimAssembler {
   quotesWithheld = 0;
   /** The borrowed fields drawn so far, for a collision's gate. */
   private readonly drawnFields = new Map<string, readonly string[]>();
+  /** Where the chapter's dialogue stands, for a said line's gate. */
+  private readonly dialogue: LightboxDialogueIndex;
 
-  constructor(readonly context: LightboxTileAssemblyContext) {}
+  constructor(readonly context: LightboxTileAssemblyContext) {
+    this.dialogue = createLightboxDialogueIndex(context.verifier);
+  }
 
   block(block: LightboxDecodedBlock): void {
     switch (block.lens) {
@@ -236,6 +254,15 @@ class GroupAssembly implements LightboxClaimAssembler {
       case 'palette':
         assemblePaletteBlock(block, this);
         return;
+      case 'subtext':
+        assembleSubtextBlock(block, this);
+        return;
+      case 'lineage':
+        assembleLineageBlock(block, this);
+        return;
+      case 'spark':
+        assembleSparkBlock(block, this);
+        return;
     }
   }
 
@@ -251,11 +278,20 @@ class GroupAssembly implements LightboxClaimAssembler {
     draft: LightboxClaimDraft,
     build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
   ): LightboxReadingTile | undefined {
-    const checked = this.check(draft.lens, draft.quotes);
+    // A said line is checked first, so it leads the tile's evidence; it is found in speech where the verifier can (PR #151 F-04).
+    const saidCheck = draft.said
+      ? this.check(draft.lens, [draft.said], (paragraph, quote) => this.dialogue.verifySaid(paragraph, quote))
+      : undefined;
+    const rest = this.check(draft.lens, draft.quotes);
+    const said = saidCheck ? (saidCheck.evidence[0] ?? null) : undefined;
+    const checked: CheckedEvidence = {
+      evidence: said ? [said, ...rest.evidence.filter((quote) => !sameQuote(quote, said))] : rest.evidence,
+      withheld: [...(saidCheck?.withheld ?? []), ...rest.withheld]
+    };
     const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
     const verdict = lightboxTileGate(
-      { kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields },
-      { phase: 'fresh', drawnFields: this.drawnFields }
+      { kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields, ...(said !== undefined ? { said } : {}) },
+      { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue }
     );
     if (!verdict.ok) {
       this.withhold(draft, verdict.reason, checked.withheld);
@@ -275,7 +311,7 @@ class GroupAssembly implements LightboxClaimAssembler {
       withheldQuotes: checked.withheld,
       support,
       friction: draft.friction
-    }, { witness: verdict.witness });
+    }, { witness: verdict.witness, ...(said ? { said } : {}) });
     if (tile.kind === 'gravity-field') {
       this.drawnFields.set(lightboxFieldKey(tile.title), tile.support.map((term) => term.term));
     }
@@ -287,7 +323,11 @@ class GroupAssembly implements LightboxClaimAssembler {
     this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
   }
 
-  private check(lens: LightboxLensId, quotes: readonly (LightboxWireQuote | LightboxWirePeak)[]): CheckedEvidence {
+  private check(
+    lens: LightboxLensId,
+    quotes: readonly (LightboxWireQuote | LightboxWirePeak)[],
+    verify: (paragraph: number, quote: string) => LightboxQuoteVerdict = (paragraph, quote) => this.context.verifier.verify(paragraph, quote)
+  ): CheckedEvidence {
     const evidence: LightboxVerifiedQuote[] = [];
     const withheld: LightboxWithheldQuote[] = [];
     const seen = new Set<string>();
@@ -296,7 +336,7 @@ class GroupAssembly implements LightboxClaimAssembler {
     for (const wire of quotes) {
       this.quotesChecked += 1;
       counts.checked += 1;
-      const verdict = this.context.verifier.verify(wire.para, wire.quote);
+      const verdict = verify(wire.para, wire.quote);
       if (!verdict.found) {
         this.quotesWithheld += 1;
         counts.withheld += 1;
@@ -321,4 +361,8 @@ class GroupAssembly implements LightboxClaimAssembler {
     }
     return { evidence, withheld };
   }
+}
+
+function sameQuote(a: LightboxVerifiedQuote, b: LightboxVerifiedQuote): boolean {
+  return a.paragraph === b.paragraph && a.text === b.text;
 }

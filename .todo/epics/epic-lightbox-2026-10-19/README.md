@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), and Slice 3 is in review (PR #150)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), and Slice 4 is in review
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -54,8 +54,8 @@ carried into the Workshop.
 | 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Merged (PR #147) |
 | 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Merged (PR #148) |
 | 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Merged (PR #149) |
-| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | In review (PR #150) |
-| 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
+| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Merged (PR #150) |
+| 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | In review |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare | Planned (last, by decision 5) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -647,3 +647,39 @@ becomes a file format.
       warnings in `ModelBrowserModal.tsx`, whose own Escape listener is gone.
     - No live or billable call; the evidence follows the claim protocol and
       no shot changed.
+
+- **2026-10-20. Slice 4 (lineage, subtext, Spark, Bring to Workshop).** On
+  `epic/lightbox-slice-4-lineage`, merged with `epic/lightbox` at `9e5363c`;
+  see the [slice notes](slice-4-lineage-subtext-spark-bring.md#implementation-notes-2026-10-20).
+  1. **Readings.** Subtext (group B), lineage and Spark (group C), with the
+     B and C worked examples extended, their bounds pinned, and every gate
+     shared by fresh assembly and stale carry. A said line must sit inside
+     dialogue; a spark must be a question.
+  2. **The Spark lane.** Its own lane under the grid; "Not for me" and Undo
+     are host-owned marks on the board's own spark.
+  3. **Bring to Workshop.** The webview names a tile by id; the host checks
+     it and offers it through Slice 3's claim-before-open delivery as a
+     second seed kind, `lightbox-tile`. The Workshop stages it as a pending
+     attachment above the composer (a `lightbox-tile` thread-artifact frame,
+     persisted, removable, sent only with the writer's message). The
+     Lightbox shows **Bound** only while the Workshop holds it, and the
+     header tray counts confirmed stages.
+  4. **PR #150 F-08.** Each Workshop mount announces a receiver id; a
+     reloaded webview releases what was granted to the old one as `reset`,
+     and the queue moves on.
+  - **Verification.** Base `9e5363c` → head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 370 suites, 5,257 tests, 2 snapshots | 383 suites, 5,412 tests, 2 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match `0b03f1e` per file and per rule.
+    - No live or billable call; the evidence plays the provider:
+      [`lightbox-slice-4-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4-visual/README.md).
+  - **Follow-ups:** [Workshop narrow-width reflow](../../tech-debt/2026-10-19-workshop-narrow-width-reflow.md)
+    and [a refused seed offer only times out](../../tech-debt/2026-10-19-workshop-refused-seed-offer-times-out.md)
+    (both Low); the [single-quote dialogue](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md)
+    item now covers subtext too.

@@ -90,12 +90,15 @@ describe('reading-group transitions', () => {
   });
 
   it('plans calls from the lens toggles: off lenses left out, empty groups dropped, landed groups skipped by "rest"', () => {
-    expect(lightboxPlannedCalls(['genre', 'voice'], { mode: 'all' })).toEqual([
+    expect(lightboxPlannedCalls(['genre', 'voice', 'lineage', 'spark'], { mode: 'all' })).toEqual([
       { group: 'A', lenses: ['headline', 'motif', 'tension', 'gravity', 'palette'] },
-      { group: 'B', lenses: ['characters'] }
+      { group: 'B', lenses: ['characters', 'subtext'] }
     ]);
     expect(lightboxPlannedCalls([], { mode: 'rest' }, [{ group: 'A', status: 'ok' }, { group: 'B', status: 'cancelled' }]))
-      .toEqual([{ group: 'B', lenses: ['characters', 'voice'] }, { group: 'C', lenses: ['genre'] }]);
+      .toEqual([
+        { group: 'B', lenses: ['characters', 'voice', 'subtext'] },
+        { group: 'C', lenses: ['genre', 'lineage', 'spark'] }
+      ]);
     expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'voice' })).toEqual([{ group: 'B', lenses: ['voice'] }]);
     expect(lightboxPlannedCalls(['voice'], { mode: 'lens', lens: 'voice' })).toEqual([]);
   });

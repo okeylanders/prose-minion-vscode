@@ -29,9 +29,10 @@
  * message from a stopped or replaced run is ignored, and Stop is built from
  * the board's own run.
  *
- * Handoffs (Slice 3, D11): `buildLens` names a pinned borrowed field on the
- * board on screen; the host does the rest and answers opened or refused. The
- * answer is transient, never persisted.
+ * Handoffs to the Workshop (D11) are `useLightboxHandoff`'s. The Spark
+ * lane's "Not for me" and its Undo (Slice 4) ask the host, which marks the
+ * board's own spark and answers with the board; nothing about a dismissal is
+ * kept here.
  *
  * **The selected, confirmed model (PR #149 F-03 re-review).** The shared
  * model picker updates its selection at once, while the host saves it and
@@ -54,7 +55,6 @@ import {
   LightboxContextFile,
   LightboxContextFilesMessage,
   LightboxGroupResultMessage,
-  LightboxHandOffResultMessage,
   LightboxLensId,
   LightboxRunEstimate,
   LightboxRunEstimateMessage,
@@ -71,11 +71,6 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { mergeLightboxGroupResult } from '@hooks/domain/lightbox/lightboxReadings';
-import {
-  LightboxHandOffState,
-  lightboxBuildLensRequest,
-  lightboxHandOffAnswers
-} from '@hooks/domain/lightbox/lightboxHandoff';
 import {
   NO_LIGHTBOX_RUNS,
   applyLightboxRunProgress,
@@ -118,8 +113,6 @@ export interface LightboxState {
   /** A press on the current board was sent and the host has not answered it yet. */
   awaitingStart: boolean;
   context: LightboxContextState;
-  /** The latest handoff this webview asked for, and the host's answer. */
-  handoff: LightboxHandOffState | null;
 }
 
 export interface LightboxActions {
@@ -147,9 +140,8 @@ export interface LightboxActions {
   cancelRun: (token: string) => void;
   addContextFile: () => void;
   removeContextFile: (id: string) => void;
-  handleHandOffResult: (message: LightboxHandOffResultMessage) => void;
-  /** Ask the host to build a pinned borrowed field as a lens in the Workshop. */
-  buildLens: (fieldId: string) => void;
+  /** "Not for me" (`true`) or its Undo (`false`) for a spark on the board on screen; the host answers with the board. */
+  setSparkDismissed: (tileId: string, dismissed: boolean) => void;
 }
 
 /** UI preferences only. The board is the host's (D12). */
@@ -188,7 +180,7 @@ type LightboxRequestType =
   | MessageType.LIGHTBOX_CANCEL_RUN
   | MessageType.LIGHTBOX_ADD_CONTEXT_FILES
   | MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE
-  | MessageType.LIGHTBOX_HAND_OFF;
+  | MessageType.LIGHTBOX_SET_SPARK_DISMISSED;
 
 export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn {
   const selectedModel = options.assistantModel;
@@ -213,7 +205,6 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
   const [runs, setRuns] = React.useState<LightboxRunsByBoard>(NO_LIGHTBOX_RUNS);
   const [awaitingStartFor, setAwaitingStartFor] = React.useState<string | null>(null);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
-  const [handoff, setHandoff] = React.useState<LightboxHandOffState | null>(null);
   // The assistant model as the host last confirmed it, and how many confirmations have arrived.
   const [confirmedModel, setConfirmedModel] = React.useState<string | undefined>(undefined);
   const [confirmations, setConfirmations] = React.useState(0);
@@ -387,22 +378,16 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
     post(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, { id });
   }, [post]);
 
-  // One handoff at a time, as the host takes them; an answer counts only for
-  // the request it answers.
-  const handleHandOffResult = React.useCallback((message: LightboxHandOffResultMessage) => {
-    const result = message.payload;
-    if (!result) {
+  // The pin goes with a spark set aside, since it is no longer on the board's face.
+  const setSparkDismissed = React.useCallback((tileId: string, dismissed: boolean) => {
+    if (!boardId) {
       return;
     }
-    setHandoff((current) => (lightboxHandOffAnswers(current, result) ? { status: 'answered', result } : current));
-  }, []);
-  const buildLens = React.useCallback((fieldId: string) => {
-    if (!boardId || handoff?.status === 'sending') {
-      return;
+    if (dismissed) {
+      setSelected((current) => (current?.kind === 'reading' && current.tileId === tileId ? null : current));
     }
-    setHandoff({ status: 'sending', boardId, fieldId });
-    post(MessageType.LIGHTBOX_HAND_OFF, lightboxBuildLensRequest(boardId, fieldId));
-  }, [boardId, handoff, post]);
+    post(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, { boardId, tileId, dismissed });
+  }, [boardId, post]);
 
   // The outcome is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {
@@ -459,7 +444,6 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
     progress: (boardId ? runs[boardId]?.progress : undefined) ?? null,
     awaitingStart: awaitingStartFor !== null && awaitingStartFor === boardId,
     context,
-    handoff,
     handleBoard,
     handleSourceRefused,
     handleRunEstimate,
@@ -479,8 +463,7 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
     cancelRun,
     addContextFile,
     removeContextFile,
-    handleHandOffResult,
-    buildLens,
+    setSparkDismissed,
     persistedState
   };
 }

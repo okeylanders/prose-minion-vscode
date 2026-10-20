@@ -22,7 +22,8 @@ describe('the host answers estimate requests, and only the newest (PR #149 F-03)
   it('echoes the request id with its estimate', async () => {
     const host = await createLightboxReadingHost();
     const tab = host.openTab();
-    await tab.setLenses(['genre'], 'tab-1');
+    // Group C's every lens off: genre, and Slice 4's lineage and Spark.
+    await tab.setLenses(['genre', 'lineage', 'spark'], 'tab-1');
     const [answer] = tab.ofType(MessageType.LIGHTBOX_RUN_ESTIMATE);
     expect(answer.payload).toMatchObject({ requestId: 'tab-1', estimate: { boardId: host.board.boardId } });
     expect(answer.payload.estimate?.groups.map((call) => call.group)).toEqual(['A', 'B']);

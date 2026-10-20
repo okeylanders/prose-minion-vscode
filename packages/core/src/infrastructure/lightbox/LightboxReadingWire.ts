@@ -6,7 +6,13 @@
  * what was decoded. The ceilings are `PROMPT_BUDGETS.lightbox`.
  */
 
-import type { LightboxGravityDegree, LightboxLensId, LightboxReadingGroupId } from '@messages';
+import type {
+  LightboxGravityDegree,
+  LightboxLensId,
+  LightboxLineageSetAside,
+  LightboxLineageStanceNote,
+  LightboxReadingGroupId
+} from '@messages';
 
 /** The protocol version every group's JSON carries. */
 export const LIGHTBOX_READING_PROTOCOL_VERSION = 1;
@@ -47,7 +53,10 @@ export const LIGHTBOX_LENS_KEYS: Readonly<Record<LightboxLensId, string>> = {
   palette: 'palette',
   characters: 'characters',
   voice: 'voice',
-  genre: 'genre'
+  subtext: 'subtext',
+  genre: 'genre',
+  lineage: 'lineage',
+  spark: 'spark'
 };
 
 export function lightboxGroupSentinels(group: LightboxReadingGroupId): { start: string; end: string } {
@@ -169,6 +178,57 @@ export interface LightboxDecodedPaletteBlock {
   friction: string;
 }
 
+export interface LightboxDecodedLineageStory {
+  title: string;
+  source: string;
+  /** One to three, each stance at most once, in the reading's order. */
+  stances: LightboxLineageStanceNote[];
+  claim: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedLineageBlock {
+  lens: 'lineage';
+  items: LightboxDecodedLineageStory[];
+  /** Stories checked and set aside; required as a list, possibly empty. */
+  setAside: LightboxLineageSetAside[];
+  malformed: LightboxMalformedItem[];
+  friction: string;
+}
+
+export interface LightboxDecodedSubtextPair {
+  speaker: string;
+  /** The line as spoken: checked against its paragraph, and inside dialogue there. */
+  said: LightboxWireQuote;
+  /** What the line is read as meaning: a claim. */
+  meant: string;
+  /** Quotes from around the line that the reading leans on; possibly none. */
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedSubtextBlock {
+  lens: 'subtext';
+  items: LightboxDecodedSubtextPair[];
+  malformed: LightboxMalformedItem[];
+  friction: string;
+}
+
+export interface LightboxDecodedSpark {
+  title: string;
+  /** A question, already held to the Spark phrasing rules (`LightboxSparkPhrasing`). */
+  question: string;
+  /** The words it stands on; the host counts them. */
+  terms: string[];
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedSparkBlock {
+  lens: 'spark';
+  items: LightboxDecodedSpark[];
+  malformed: LightboxMalformedItem[];
+  friction: string;
+}
+
 export type LightboxDecodedBlock =
   | { lens: 'headline'; sentence: string; terms: string[]; evidence: LightboxWireQuote[]; friction: string }
   | { lens: 'motif'; items: LightboxDecodedMotif[]; malformed: LightboxMalformedItem[]; friction: string }
@@ -195,7 +255,10 @@ export type LightboxDecodedBlock =
       friction: string;
     }
   | LightboxDecodedGravityBlock
-  | LightboxDecodedPaletteBlock;
+  | LightboxDecodedPaletteBlock
+  | LightboxDecodedLineageBlock
+  | LightboxDecodedSubtextBlock
+  | LightboxDecodedSparkBlock;
 
 export interface LightboxGroupDecodeContext {
   group: LightboxReadingGroupId;

@@ -22,6 +22,8 @@ const NON_PROMPT_LIMITS = new Set([
   'application/services/workshop/WorkshopSessionTitles.ts:WORKSHOP_SESSION_TITLE_MAX_LENGTH',
   // A Build lens seed's delivery id is a host-minted correlation id; no prompt sees it.
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
+  // So is a Lightbox tile's (Slice 4).
+  'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',
@@ -93,8 +95,19 @@ describe('prompt budgets', () => {
       paletteClusters: 4,
       clusterWords: 6,
       swatches: 6,
-      swatchWords: 3
+      swatchWords: 3,
+      lineageStories: 4,
+      lineageStances: 3,
+      lineageSetAsides: 3,
+      subtextPairs: 4,
+      subtextContextQuotes: 2,
+      sparks: 4,
+      sparkCharacters: 240
     });
+    // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.
+    expect(1 + PROMPT_BUDGETS.lightbox.subtextContextQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
+    // One story carries each of the three stances at most once.
+    expect(PROMPT_BUDGETS.lightbox.lineageStances).toBe(3);
     // The writer's ceiling matches the other whole-document inputs.
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.contextFiles.words);

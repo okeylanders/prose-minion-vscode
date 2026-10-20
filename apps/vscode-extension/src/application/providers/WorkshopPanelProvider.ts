@@ -29,16 +29,22 @@ import {
   SURFACE_WORKSHOP,
   WorkshopExcerptSource,
   WorkshopLexicalGravityBuildSeed,
+  WorkshopLightboxTile,
   WorkshopOpenLexicalGravityBuildMessage,
   WorkshopSeedClaimResultMessage,
   WorkshopSeedDelivery,
   WorkshopSeedKind,
   WorkshopSeedOutcome,
+  WorkshopSeedRefusal,
+  WorkshopStageLightboxTileMessage,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
+
+/** The longest receiver id a webview mints, with room to spare. */
+const MAX_RECEIVER = 80;
 
 export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
   public static readonly viewType = 'prose-minion.workshop';
@@ -47,11 +53,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private messageHandler?: MessageHandler;
   private configWatcher?: vscode.Disposable;
   /**
-   * Whether the current panel's webview has sent its first message, so its
-   * listeners are attached. A handoff that is not session state (a Build
-   * lens subject) waits for it, since a booting webview would drop it.
+   * The current panel's seed receiver: the webview realm that announced
+   * itself (`WORKSHOP_SEED_RECEIVER`) once its listeners were attached. A
+   * handed-over seed waits for one, since a booting webview would drop it,
+   * and a new one on the same panel means the webview was reloaded: what
+   * was granted to the old one is released (PR #150 F-08).
    */
-  private webviewListening = false;
+  private seedReceiver?: string;
   /**
    * Handed-over seeds, one delivery per kind (PR #150 F-03). Each seed
    * belongs to the panel that accepted it, is sent to that panel only when it
@@ -60,18 +68,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
    */
   private readonly seedDeliveries: Record<WorkshopSeedKind, WorkshopSeedDelivery<vscode.WebviewPanel>> = {
     // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
-    'lexical-gravity-build': new WorkshopSeedDelivery<vscode.WebviewPanel>('lexical-gravity-build', {
-      isReady: (panel) => this.panel === panel && this.webviewListening && panel.visible,
-      postClaimResult: (panel, result) => {
-        const message: WorkshopSeedClaimResultMessage = {
-          type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
-          source: 'extension.workshop',
-          payload: result,
-          timestamp: Date.now()
-        };
-        void panel.webview.postMessage(message);
-      }
-    })
+    'lexical-gravity-build': this.createSeedDelivery('lexical-gravity-build'),
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+    'lightbox-tile': this.createSeedDelivery('lightbox-tile')
   };
 
   constructor(
@@ -137,7 +136,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     };
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
-    this.webviewListening = false;
+    this.seedReceiver = undefined;
 
     // The per-webview message seam, over the ONE injected CoreServices bundle.
     // Two MessageHandlers may now be live (sidebar + Workshop); shared-service
@@ -185,15 +184,20 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       }
       // A handed-over seed's claim and answer are the provider's to take: they
       // decide, for the panel that accepted it, whether it opens, and go no further.
-      if (shape?.type === MessageType.WORKSHOP_SEED_CLAIM || shape?.type === MessageType.WORKSHOP_SEED_ANSWER) {
+      if (
+        shape?.type === MessageType.WORKSHOP_SEED_CLAIM
+        || shape?.type === MessageType.WORKSHOP_SEED_ANSWER
+        || shape?.type === MessageType.WORKSHOP_SEED_RECEIVER
+      ) {
         this.receiveSeedMessage(panel, shape.type, shape.payload);
         return;
       }
-      void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
-      if (!this.webviewListening) {
-        this.webviewListening = true;
-        this.deliverSeeds(panel);
+      // A tile's accept stages it in the session: only under the grant it names (PR #151 F-06).
+      if (shape?.type === MessageType.WORKSHOP_ACCEPT_LIGHTBOX_TILE && !this.acceptsLightboxTile(panel, shape.payload)) {
+        this.outputChannel.appendLine('[Workshop] A tile accept was dropped: its delivery is not granted to this webview');
+        return;
       }
+      void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
     });
 
     // Messages posted while an editor tab is hidden can be dropped even under
@@ -284,6 +288,51 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     });
   }
 
+  /**
+   * Stage a Lightbox tile above the Workshop composer (ADR 2026-10-19 D11;
+   * Slice 4). Opens/reveals the panel, then offers the tile to it, the way
+   * `seedLexicalGravityBuild` offers a Build lens subject: when the panel is
+   * ready, a synthetic WORKSHOP_STAGE_LIGHTBOX_TILE goes through the panel's
+   * OWN MessageHandler, whose tile handler checks the item, holds it and tells
+   * the webview it is waiting. Only after the webview's claim is granted does
+   * it ask the handler to stage it, as a pending message attachment; nothing
+   * is sent until the writer sends. The promise settles with the webview's
+   * answer (staged, or busy, full or duplicate), or why the tile did not arrive.
+   */
+  public stageLightboxTile(tile: WorkshopLightboxTile): Promise<WorkshopSeedOutcome> {
+    this.openOrReveal();
+    const panel = this.panel;
+    if (!panel || !this.messageHandler) {
+      return Promise.resolve({ opened: false, reason: 'unavailable' });
+    }
+    return this.seedDeliveries['lightbox-tile'].offer(panel, (deliveryId) => {
+      const message: WorkshopStageLightboxTileMessage = {
+        type: MessageType.WORKSHOP_STAGE_LIGHTBOX_TILE,
+        source: 'extension.lightbox',
+        payload: { tile, deliveryId },
+        timestamp: Date.now()
+      };
+      void this.messageHandler?.handleMessage(message);
+    });
+  }
+
+  /** One kind's delivery: ready only for the current, listening, visible panel. */
+  private createSeedDelivery(kind: WorkshopSeedKind): WorkshopSeedDelivery<vscode.WebviewPanel> {
+    return new WorkshopSeedDelivery<vscode.WebviewPanel>(kind, {
+      isReady: (panel) => this.panel === panel && this.seedReceiver !== undefined && panel.visible,
+      receiverOf: (panel) => (this.panel === panel ? this.seedReceiver : undefined),
+      postClaimResult: (panel, result) => {
+        const message: WorkshopSeedClaimResultMessage = {
+          type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+          source: 'extension.workshop',
+          payload: result,
+          timestamp: Date.now()
+        };
+        void panel.webview.postMessage(message);
+      }
+    });
+  }
+
   /** Send every waiting seed this panel accepted, if it is ready for it. */
   private deliverSeeds(panel: vscode.WebviewPanel): void {
     Object.values(this.seedDeliveries).forEach((delivery) => delivery.deliver(panel));
@@ -294,22 +343,63 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     Object.values(this.seedDeliveries).forEach((delivery) => delivery.close());
   }
 
-  /** A claim or answer from the current panel's webview, routed to its kind's delivery. */
+  /**
+   * A receiver's announcement, claim or answer from the current panel's
+   * webview. An announcement from a new receiver means the webview was
+   * replaced: every kind's delivery releases what the old one held, then
+   * sends what waits. A claim or answer goes to its kind's delivery, which
+   * ignores one from a receiver the panel no longer has.
+   */
   private receiveSeedMessage(panel: vscode.WebviewPanel, type: MessageType, payload: unknown): void {
-    const shape = payload as { kind?: unknown; deliveryId?: unknown; opened?: unknown } | undefined;
+    const shape = payload as {
+      kind?: unknown; deliveryId?: unknown; opened?: unknown; reason?: unknown; receiver?: unknown;
+    } | undefined;
+    const receiver = typeof shape?.receiver === 'string' && shape.receiver.length > 0 && shape.receiver.length <= MAX_RECEIVER
+      ? shape.receiver
+      : undefined;
+    if (type === MessageType.WORKSHOP_SEED_RECEIVER) {
+      if (!receiver) {
+        return;
+      }
+      if (receiver !== this.seedReceiver) {
+        const replaced = this.seedReceiver !== undefined;
+        this.seedReceiver = receiver;
+        if (replaced) {
+          this.outputChannel.appendLine('[Workshop] The webview was reloaded; handoffs granted to the old one were released');
+        }
+        Object.values(this.seedDeliveries).forEach((delivery) => delivery.resetReceiver(panel));
+      }
+      this.deliverSeeds(panel);
+      return;
+    }
     const delivery = typeof shape?.kind === 'string' && Object.prototype.hasOwnProperty.call(this.seedDeliveries, shape.kind)
       ? this.seedDeliveries[shape.kind as WorkshopSeedKind]
       : undefined;
-    if (!delivery || typeof shape?.deliveryId !== 'string') {
+    if (!delivery || typeof shape?.deliveryId !== 'string' || !receiver) {
       return;
     }
     if (type === MessageType.WORKSHOP_SEED_CLAIM) {
-      delivery.claim(panel, shape.deliveryId);
+      delivery.claim(panel, shape.deliveryId, receiver);
       return;
     }
     delivery.answer(panel, shape.opened === true
       ? { deliveryId: shape.deliveryId, opened: true }
-      : { deliveryId: shape.deliveryId, opened: false, reason: 'busy' });
+      : { deliveryId: shape.deliveryId, opened: false, reason: seedRefusalOf(shape.reason) }, receiver);
+  }
+
+  /**
+   * Whether a tile's accept may reach the session (PR #151 F-06): it names
+   * the tile delivery granted, now, to the receiver that sends it. The path
+   * from here to the staging mutation is synchronous (router, mutation gate,
+   * handler), so the grant checked is the grant the tile stages under. A
+   * late accept from a reloaded webview, or one for an offer never granted,
+   * stages nothing; the delivery has already settled, or is still waiting.
+   */
+  private acceptsLightboxTile(panel: vscode.WebviewPanel, payload: unknown): boolean {
+    const shape = payload as { deliveryId?: unknown; receiver?: unknown } | undefined;
+    return typeof shape?.deliveryId === 'string'
+      && typeof shape.receiver === 'string'
+      && this.seedDeliveries['lightbox-tile'].isGranted(panel, shape.deliveryId, shape.receiver);
   }
 
   public dispose(): void {
@@ -325,5 +415,16 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     this.messageHandler?.dispose();
     this.messageHandler = undefined;
     panel?.dispose();
+  }
+}
+
+/** A refusal the webview named, when it is one; anything else reads as busy. */
+function seedRefusalOf(reason: unknown): WorkshopSeedRefusal {
+  switch (reason) {
+    case 'full':
+    case 'duplicate':
+      return reason;
+    default:
+      return 'busy';
   }
 }
