@@ -52,6 +52,7 @@ import {
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { workshopCapabilityFamilyLabel } from '@shared/constants/workshopCapabilityLabels';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopContextDelivery } from '@/application/services/workshop/WorkshopContextDelivery';
 import {
@@ -230,6 +231,8 @@ export class WorkshopSessionService {
   private readonly contextDelivery = new WorkshopContextDelivery();
   private attachmentCounter = 0;
   private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
+  /** Told (after the change, on a microtask) whenever the pending list may have changed. */
+  private readonly pendingMessageAttachmentListeners = new Set<() => void>();
   /** Monotonic `ta-N` mint — never reused within a session (surgery address). */
   private threadArtifactCounter = 0;
   /**
@@ -686,6 +689,7 @@ export class WorkshopSessionService {
       id: `ta-${this.threadArtifactCounter}`
     };
     this.pendingMessageAttachments.push(attachment);
+    this.announcePendingMessageAttachments();
     return { ok: true, attachment: cloneMessageAttachment(attachment) };
   }
 
@@ -695,7 +699,37 @@ export class WorkshopSessionService {
       return undefined;
     }
     const [removed] = this.pendingMessageAttachments.splice(index, 1);
+    this.announcePendingMessageAttachments();
     return cloneMessageAttachment(removed);
+  }
+
+  /**
+   * Hear when the pending list may have changed: staged, removed, sent, or a
+   * different room (reset, open, rewind, branch). Read it again with
+   * `collectMessageAttachments()`. Listeners run on a microtask after the
+   * change, never inside it, and a listener that throws is ignored (the
+   * Lightbox's tray, Slice 4). Returns the unsubscribe closure.
+   */
+  addPendingMessageAttachmentsListener(listener: () => void): () => void {
+    this.pendingMessageAttachmentListeners.add(listener);
+    return () => {
+      this.pendingMessageAttachmentListeners.delete(listener);
+    };
+  }
+
+  private announcePendingMessageAttachments(): void {
+    if (this.pendingMessageAttachmentListeners.size === 0) {
+      return;
+    }
+    queueMicrotask(() => {
+      for (const listener of Array.from(this.pendingMessageAttachmentListeners)) {
+        try {
+          listener();
+        } catch {
+          // A listener's failure is its own; the session never depends on one.
+        }
+      }
+    });
   }
 
   /** Pure read for send assembly — nothing is consumed until the turn succeeds. */
@@ -751,9 +785,13 @@ export class WorkshopSessionService {
           `Thread artifact ${artifact.id} does not match its widget reference on ${turnId}`
         );
       }
-      if (!widgetReference && artifact.kind !== undefined) {
+      // A message attachment's kind follows from its own shape (a Lightbox tile's, Slice 4); a file has none.
+      const attachment = widgetReference
+        ? undefined
+        : turn.messageAttachments?.find((candidate) => candidate.id === artifact.id);
+      if (attachment && artifact.kind !== workshopMessageAttachmentKind(attachment)) {
         throw new Error(
-          `Message attachment ${artifact.id} cannot carry a widget kind on ${turnId}`
+          `Message attachment ${artifact.id} carries the wrong attachment kind on ${turnId}`
         );
       }
     }
@@ -856,9 +894,13 @@ export class WorkshopSessionService {
         this.hostWriterSources.push(...entries);
       }
     }
+    const before = this.pendingMessageAttachments.length;
     this.pendingMessageAttachments = this.pendingMessageAttachments.filter(
       (attachment) => !shipped.has(attachment.id)
     );
+    if (this.pendingMessageAttachments.length !== before) {
+      this.announcePendingMessageAttachments();
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1865,6 +1907,7 @@ export class WorkshopSessionService {
     this.turnLedger.reset();
     this.activeRun = undefined;
     this.pendingMessageAttachments = [];
+    this.announcePendingMessageAttachments();
     this.threadArtifacts = [];
     this.widgetConfigLedger.reset();
     this.standingDirectiveLedger.reset();
@@ -2183,6 +2226,7 @@ export class WorkshopSessionService {
     this.participantRoster.installPreparedState(rosterState);
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
+    this.announcePendingMessageAttachments();
 
     return {
       discardedConversationIds,

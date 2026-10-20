@@ -34,6 +34,7 @@ import {
   type PersistedWorkshopWidgetId
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 import { workshopWidgetDescriptor } from '@shared/constants/workshopWidgets';
+import { MessageType } from '@messages';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -1006,6 +1007,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxSparkLane.ts',
   'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',
+  'infrastructure/lightbox/LightboxTileHandoff.ts',
   'infrastructure/lightbox/LightboxQuoteVerifier.ts',
   'infrastructure/lightbox/LightboxTermCounts.ts',
   'infrastructure/lightbox/LightboxReadingTiles.ts',
@@ -1021,6 +1023,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxTileCounts.ts',
   'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
+  'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
@@ -1709,10 +1712,15 @@ describe('architectural boundaries', () => {
     expect(LIGHTBOX_TRANSPORT_FREE_MODULES
       .filter((file) => transportReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
       .toEqual([]);
-    // D10: the Lightbox's source is its own, never the Workshop's excerpt.
+    // D10: the Lightbox's source is its own, never the Workshop's excerpt; it
+    // names no Workshop route. (Slice 4's tile bounds, a shared contract
+    // constant, are not a route.)
+    const workshopRoutes = new Set(Object.keys(MessageType).filter((name) => name.startsWith('WORKSHOP_')));
     expect(LIGHTBOX_MODULES
-      .filter((file) => /\bWORKSHOP_[A-Z_]+\b/.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
+      .filter((file) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').matchAll(/\bWORKSHOP_[A-Z_]+\b/g)]
+        .some(([name]) => workshopRoutes.has(name))))
       .toEqual([]);
+    expect(workshopRoutes.has('WORKSHOP_STAGE_LIGHTBOX_TILE')).toBe(true);
   });
 
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {
@@ -1882,6 +1890,7 @@ describe('architectural boundaries', () => {
       'gesturePlayground.ts',
       'index.ts',
       'lexicalGravity.ts',
+      'lightboxTiles.ts',
       'participants.ts',
       'recovery.ts',
       'seedDelivery.ts',

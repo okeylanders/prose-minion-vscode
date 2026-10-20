@@ -1,0 +1,172 @@
+/**
+ * What a reading tile hands to the Workshop (ADR 2026-10-19 D11; Slice 4).
+ * Pure: no host, no I/O.
+ *
+ * The webview names a tile by its id on the board it shows. Everything that
+ * leaves is resolved and checked here, against the host's current board and
+ * its text:
+ * - the tile must be a reading on that board; a withheld claim has no tile,
+ *   and a measured item is not a reading, so neither can be named;
+ * - a tile read against an earlier version of the text (stale, D4), one whose
+ *   lens is being read again, and a spark the writer set aside are refused;
+ * - every quote is checked once more against the current paragraphs, and
+ *   only quotes found again travel, as the chapter has them; a tile none of
+ *   whose quotes is found, or a said/meant pair whose said line is gone, is
+ *   refused;
+ * - the item carries the claim (with a story's stances, or a pair's
+ *   speaker, as labeled points) and those quotes: never the board, its
+ *   counts or any other tile; and it is bounded by
+ *   `WORKSHOP_LIGHTBOX_TILE_LIMITS`, a quote longer than its bound dropped
+ *   rather than cut, so every quote stays verbatim.
+ * The Workshop decides what to do with it: a pending attachment above its
+ * composer, sent only when the writer sends.
+ */
+
+import {
+  WORKSHOP_LIGHTBOX_TILE_LIMITS,
+  type LightboxBoard,
+  type LightboxHandOffPayload,
+  type LightboxReadingTile,
+  type LightboxWorkshopHandoff,
+  type WorkshopLightboxTile,
+  type WorkshopLightboxTilePoint,
+  type WorkshopLightboxTileQuote,
+  type WorkshopSeedFailure
+} from '@messages';
+import {
+  LIGHTBOX_LINEAGE_STANCE_LABELS,
+  LIGHTBOX_TILE_KIND_LABELS,
+  lightboxLensLabel
+} from '@shared/constants/lightbox';
+import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { locateLightboxTile } from '@/infrastructure/lightbox/LightboxHandoff';
+
+const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
+
+export type LightboxTileHandOffRequest = Extract<LightboxHandOffPayload, { kind: 'tile' }>;
+export type LightboxTileWorkshopHandoff = Extract<LightboxWorkshopHandoff, { kind: 'tile' }>;
+
+/** Writer-facing refusals, in the order they are checked. */
+export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
+  busy: 'A tile is already on its way to the Workshop. Wait for it, then try again.',
+  boardChanged: 'The board changed. Bring a tile from the board on screen.',
+  notOnBoard: 'That tile is not on the board: it was withheld, or its lens was read again since.',
+  stale: 'This tile was read against an earlier version of the chapter. Re-read it, then bring it.',
+  reading: 'This lens is being read again. Wait for it to land, then bring it.',
+  setAside: 'You set this spark aside. Bring it back first.',
+  saidGone: 'Its said line is no longer in the chapter, so it was not brought.',
+  quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
+  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
+} as const;
+
+/** Why the Workshop did not stage a tile, in the writer's words. */
+export const LIGHTBOX_TILE_WORKSHOP_REFUSALS: Readonly<Record<WorkshopSeedFailure, string>> = {
+  unavailable: 'The Workshop could not be opened.',
+  busy: 'The Workshop is busy: a response is running, or the session is being saved or replaced. Bring the tile again when it finishes.',
+  full: 'The next Workshop message already carries as many attachments as one can. Send it, or remove one there, then bring the tile again.',
+  duplicate: 'That tile is already waiting above the Workshop composer.',
+  closed: 'The Workshop closed before it staged the tile.',
+  replaced: 'Another tile went to the Workshop before this one was staged.',
+  timeout: 'The Workshop did not confirm it staged the tile. Open the Workshop to check; nothing was sent.'
+};
+
+export type LightboxTileHandoffPreparation =
+  | { ok: true; handoff: LightboxTileWorkshopHandoff; quotesChecked: number; quotesFound: number }
+  | { ok: false; reason: string };
+
+/** Resolve, check and bound the tile the request names, on `board` with its current text. */
+export function prepareLightboxTileHandoff(
+  request: LightboxTileHandOffRequest,
+  board: LightboxBoard,
+  paragraphTexts: readonly string[]
+): LightboxTileHandoffPreparation {
+  const refuse = (reason: string): LightboxTileHandoffPreparation => ({ ok: false, reason });
+  const located = locateLightboxTile(board, request.tileId);
+  if (!located) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.notOnBoard);
+  }
+  const { group, tile } = located;
+  if (group.staleLenses?.some((mark) => mark.lens === tile.lens)) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.stale);
+  }
+  if (group.status === 'running' && group.pending?.includes(tile.lens)) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.reading);
+  }
+  if (tile.kind === 'spark' && tile.dismissedOrder !== undefined) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.setAside);
+  }
+  const verifier = createLightboxQuoteVerifier(paragraphTexts);
+  const said = tile.kind === 'subtext' ? foundAgain(verifier, tile.said) : undefined;
+  if (tile.kind === 'subtext' && !said) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidGone);
+  }
+  const quotes: WorkshopLightboxTileQuote[] = said ? [{ ...said, said: true }] : [];
+  for (const quote of tile.evidence) {
+    const found = foundAgain(verifier, quote);
+    if (found && !quotes.some((kept) => kept.paragraph === found.paragraph && kept.text === found.text)) {
+      quotes.push(found);
+    }
+  }
+  const quotesFound = quotes.length;
+  const bounded = quotes.filter((quote) => quote.text.length <= LIMITS.quoteCharacters).slice(0, LIMITS.quotes);
+  if (bounded.length === 0) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
+  }
+  return {
+    ok: true,
+    handoff: { kind: 'tile', tile: tileOf(request, tile, bounded, board) },
+    quotesChecked: tile.evidence.length,
+    quotesFound
+  };
+}
+
+/** Said to the writer when a visible Workshop staged the tile. */
+export function lightboxTileStagedMessage(handoff: LightboxTileWorkshopHandoff): string {
+  return `Staged “${handoff.tile.title}” above the Workshop composer. Nothing is sent until you send it there, ` +
+    'and you can remove it there.';
+}
+
+/** The quote as it stands in the current chapter, or undefined when it is gone. */
+function foundAgain(
+  verifier: LightboxQuoteVerifier,
+  quote: { paragraph: number; text: string }
+): WorkshopLightboxTileQuote | undefined {
+  const verdict = verifier.verify(quote.paragraph, quote.text);
+  return verdict.found ? { paragraph: verdict.paragraph, text: verdict.text } : undefined;
+}
+
+function tileOf(
+  request: LightboxTileHandOffRequest,
+  tile: LightboxReadingTile,
+  quotes: WorkshopLightboxTileQuote[],
+  board: LightboxBoard
+): WorkshopLightboxTile {
+  return {
+    origin: 'lightbox',
+    boardId: request.boardId.slice(0, LIMITS.idCharacters),
+    tileId: tile.id.slice(0, LIMITS.idCharacters),
+    kindLabel: LIGHTBOX_TILE_KIND_LABELS[tile.kind].slice(0, LIMITS.labelCharacters),
+    lensLabel: lightboxLensLabel(tile.lens).slice(0, LIMITS.labelCharacters),
+    title: tile.title.slice(0, LIMITS.titleCharacters).trim(),
+    claim: tile.claim.slice(0, LIMITS.claimCharacters).trim(),
+    points: pointsOf(tile),
+    quotes,
+    sourceLabel: board.source.displayPath.slice(0, LIMITS.sourceLabelCharacters)
+  };
+}
+
+/** What a claim says in its own right: a story's stances, or who says a line. */
+function pointsOf(tile: LightboxReadingTile): WorkshopLightboxTilePoint[] {
+  const point = (label: string, text: string): WorkshopLightboxTilePoint => ({
+    label: label.slice(0, LIMITS.pointLabelCharacters),
+    text: text.slice(0, LIMITS.pointCharacters).trim()
+  });
+  switch (tile.kind) {
+    case 'lineage':
+      return tile.stances.slice(0, LIMITS.points).map((row) => point(LIGHTBOX_LINEAGE_STANCE_LABELS[row.stance], row.note));
+    case 'subtext':
+      return [point('Speaker', tile.speaker)];
+    default:
+      return [];
+  }
+}

@@ -120,6 +120,7 @@ packages/core/src/
                 ├── showVsTell.ts
                 ├── recovery.ts
                 ├── seedDelivery.ts
+                ├── lightboxTiles.ts
                 └── settings.ts
 ```
 

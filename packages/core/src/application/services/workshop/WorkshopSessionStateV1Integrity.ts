@@ -13,6 +13,7 @@ import {
 import {
   workshopWidgetArtifactKind
 } from '@shared/constants/workshopWidgets';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -218,9 +219,10 @@ export function validateWorkshopSessionStateV1(
         `Persisted Workshop thread artifact ${artifact.id} references a private turn`
       );
     }
-    const attachmentReference = (turn.messageAttachments ?? []).some(
-      (attachment) => attachment.id === artifact.id
+    const attachment = (turn.messageAttachments ?? []).find(
+      (candidate) => candidate.id === artifact.id
     );
+    const attachmentReference = attachment !== undefined;
     const widgetReference = turn.widgetCommit?.rail === 'thread-artifact'
       && turn.widgetCommit.artifactId === artifact.id;
     if (!attachmentReference && !widgetReference) {
@@ -228,8 +230,15 @@ export function validateWorkshopSessionStateV1(
         `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
       );
     }
+    // A message attachment's kind follows from its own shape (a Lightbox tile's, Slice 4); a file has none.
+    if (!widgetReference && attachment && artifact.kind !== workshopMessageAttachmentKind(attachment)) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} has the wrong attachment kind`
+      );
+    }
     if (
       artifact.kind !== undefined
+      && !attachmentReference
       && (
         !widgetReference
         || !turn.widgetCommit

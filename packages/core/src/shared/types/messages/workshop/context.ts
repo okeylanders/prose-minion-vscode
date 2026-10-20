@@ -2,6 +2,7 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 import { ContextPathGroup } from '../../context';
+import type { WorkshopLightboxTileAttachmentMeta } from './lightboxTiles';
 /**
  * Canonical configured-resource key from the context-path resolver, stamped
  * during source resolution so model-requested reads can cite `{ group, path }`
@@ -41,6 +42,8 @@ export interface WorkshopMessageAttachmentSnapshot {
   relativePath?: string;
   configuredResource?: WorkshopConfiguredResourceRef;
   truncation?: WorkshopMessageAttachmentTruncation;
+  /** A Lightbox reading brought here (Slice 4), rather than a file. */
+  lightboxTile?: WorkshopLightboxTileAttachmentMeta;
 }
 
 /**

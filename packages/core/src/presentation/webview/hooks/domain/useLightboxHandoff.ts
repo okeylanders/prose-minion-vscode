@@ -64,11 +64,12 @@ export function useLightboxHandoff({ boardId }: UseLightboxHandoffOptions): UseL
     if (!boardId || handoff?.status === 'sending') {
       return;
     }
-    setHandoff({ status: 'sending', boardId, fieldId });
+    const request = lightboxBuildLensRequest(boardId, fieldId);
+    setHandoff({ status: 'sending', request });
     vscode.postMessage({
       type: MessageType.LIGHTBOX_HAND_OFF,
       source: SOURCE,
-      payload: lightboxBuildLensRequest(boardId, fieldId),
+      payload: request,
       timestamp: Date.now()
     });
   }, [boardId, handoff, vscode]);

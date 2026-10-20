@@ -31,9 +31,14 @@ import {
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 
-/** The one handoff Slice 3 offers: a borrowed field, as a Build lens seed. */
-export const LIGHTBOX_SEED_HAND_OFF_KIND: LightboxHandOffPayload['kind'] = 'lexical-gravity-seed';
+/** Slice 3's handoff: a borrowed field, as a Build lens seed. */
+export const LIGHTBOX_SEED_HAND_OFF_KIND = 'lexical-gravity-seed' satisfies LightboxHandOffPayload['kind'];
 const SEED_KIND = LIGHTBOX_SEED_HAND_OFF_KIND;
+
+/** A request to build a borrowed field as a lens. */
+export type LightboxFieldHandOffRequest = Extract<LightboxHandOffPayload, { kind: 'lexical-gravity-seed' }>;
+/** The seed a field's handoff carries. */
+export type LightboxSeedWorkshopHandoff = Extract<LightboxWorkshopHandoff, { kind: 'lexical-gravity-seed' }>;
 
 /** Writer-facing refusals, in the order they are checked. */
 export const LIGHTBOX_HANDOFF_REFUSALS = {
@@ -52,7 +57,10 @@ export const LIGHTBOX_HANDOFF_REFUSALS = {
   workshopBusy: 'The Workshop has a sheet or editor open, and the field never covers one. Close it there, then build the field again.',
   workshopClosed: 'The Workshop closed before it opened the field.',
   workshopReplaced: 'Another field went to the Workshop before this one opened.',
-  workshopSilent: 'The Workshop did not confirm it opened the field. Open the Workshop to check; nothing was built.'
+  workshopSilent: 'The Workshop did not confirm it opened the field. Open the Workshop to check; nothing was built.',
+  // A field never stages an attachment, so these two cannot happen to one; they are worded for completeness.
+  workshopFull: 'The Workshop could not take the field.',
+  workshopDuplicate: 'The Workshop already has that field open.'
 } as const;
 
 /** Why the Workshop did not open a field, in the writer's words (PR #150 F-03). */
@@ -61,31 +69,38 @@ export const LIGHTBOX_WORKSHOP_REFUSALS: Readonly<Record<LightboxWorkshopHandoff
   busy: LIGHTBOX_HANDOFF_REFUSALS.workshopBusy,
   closed: LIGHTBOX_HANDOFF_REFUSALS.workshopClosed,
   replaced: LIGHTBOX_HANDOFF_REFUSALS.workshopReplaced,
-  timeout: LIGHTBOX_HANDOFF_REFUSALS.workshopSilent
+  timeout: LIGHTBOX_HANDOFF_REFUSALS.workshopSilent,
+  full: LIGHTBOX_HANDOFF_REFUSALS.workshopFull,
+  duplicate: LIGHTBOX_HANDOFF_REFUSALS.workshopDuplicate
 };
 
-/** The request as the webview sent it, or undefined when it is not one the host understands. */
+/** The request as the webview sent it (ids only), or undefined when it is not one the host understands. */
 export function parseLightboxHandOffRequest(payload: unknown): LightboxHandOffPayload | undefined {
   if (!payload || typeof payload !== 'object') {
     return undefined;
   }
-  const { kind, boardId, fieldId } = payload as Record<string, unknown>;
-  return kind === SEED_KIND && typeof boardId === 'string' && boardId.length > 0 && typeof fieldId === 'string' && fieldId.length > 0
-    ? { kind: SEED_KIND, boardId, fieldId }
-    : undefined;
+  const { kind, boardId, fieldId, tileId } = payload as Record<string, unknown>;
+  const id = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+  if (!id(boardId)) {
+    return undefined;
+  }
+  if (kind === SEED_KIND) {
+    return id(fieldId) ? { kind: SEED_KIND, boardId, fieldId } : undefined;
+  }
+  return kind === 'tile' && id(tileId) ? { kind: 'tile', boardId, tileId } : undefined;
 }
 
 export type LightboxHandoffPreparation =
-  | { ok: true; handoff: LightboxWorkshopHandoff; quotesChecked: number; quotesFound: number }
+  | { ok: true; handoff: LightboxSeedWorkshopHandoff; quotesChecked: number; quotesFound: number }
   | { ok: false; reason: string };
 
 /** Resolve, check and bound the field the request names, on `board` with its current text. */
 export function prepareLightboxHandoff(
-  request: LightboxHandOffPayload,
+  request: LightboxFieldHandOffRequest,
   board: LightboxBoard,
   paragraphTexts: readonly string[]
 ): LightboxHandoffPreparation {
-  const located = locate(board, request.fieldId);
+  const located = locateLightboxTile(board, request.fieldId);
   if (!located) {
     return { ok: false, reason: LIGHTBOX_HANDOFF_REFUSALS.notOnBoard };
   }
@@ -113,12 +128,16 @@ export function prepareLightboxHandoff(
 }
 
 /** Said to the writer when a visible Workshop opened the field. */
-export function lightboxHandoffSentMessage(handoff: LightboxWorkshopHandoff): string {
+export function lightboxHandoffSentMessage(handoff: LightboxSeedWorkshopHandoff): string {
   return `Opened “${handoff.seed.field}” in Build lens in the Workshop’s Lexical Gravity. ` +
     'Nothing is built until you press Build there.';
 }
 
-function locate(board: LightboxBoard, tileId: string): { group: LightboxReadingGroup; tile: LightboxReadingGroup['tiles'][number] } | undefined {
+/** The reading tile with this id on the board, with its group. */
+export function locateLightboxTile(
+  board: LightboxBoard,
+  tileId: string
+): { group: LightboxReadingGroup; tile: LightboxReadingGroup['tiles'][number] } | undefined {
   for (const group of board.readings) {
     const tile = group.tiles.find((candidate) => candidate.id === tileId);
     if (tile) {
@@ -128,7 +147,7 @@ function locate(board: LightboxBoard, tileId: string): { group: LightboxReadingG
   return undefined;
 }
 
-function seedOf(tile: LightboxGravityFieldTile, board: LightboxBoard, paragraphTexts: readonly string[]): LightboxWorkshopHandoff['seed'] {
+function seedOf(tile: LightboxGravityFieldTile, board: LightboxBoard, paragraphTexts: readonly string[]): LightboxSeedWorkshopHandoff['seed'] {
   const limits = LEXICAL_GRAVITY_BUILD_SEED_LIMITS;
   const counter = createLightboxTermCounter(paragraphTexts);
   const terms: WorkshopLexicalGravityBuildSeedTerm[] = tile.support

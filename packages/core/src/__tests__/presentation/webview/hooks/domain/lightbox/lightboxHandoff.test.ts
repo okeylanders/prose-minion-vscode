@@ -16,7 +16,8 @@ import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lig
 const board = makeReadBoard();
 const fields = board.readings[0].tiles.filter((tile): tile is LightboxGravityFieldTile => tile.kind === 'gravity-field');
 const [ledger, fire] = fields;
-const answer = (over: Partial<LightboxHandOffResultPayload> = {}): LightboxHandOffResultPayload => ({
+type FieldAnswer = Extract<LightboxHandOffResultPayload, { kind: 'lexical-gravity-seed' }>;
+const answer = (over: Partial<Omit<FieldAnswer, 'kind'>> = {}): LightboxHandOffResultPayload => ({
   ...lightboxBuildLensRequest(board.boardId, ledger.id),
   ok: true,
   message: 'Sent.',
@@ -42,7 +43,7 @@ describe('Build as a lens in the webview', () => {
   });
 
   it('waits on one handoff at a time, for every field', () => {
-    const sending = { status: 'sending' as const, boardId: board.boardId, fieldId: ledger.id };
+    const sending = { status: 'sending' as const, request: lightboxBuildLensRequest(board.boardId, ledger.id) };
     expect(lightboxBuildLensView(board, ledger, sending)).toMatchObject({ disabled: true, reason: 'Opening the Workshop…' });
     expect(lightboxBuildLensView(board, fire, sending)).toMatchObject({
       disabled: true, reason: 'Another field is on its way to the Workshop.'
@@ -50,7 +51,7 @@ describe('Build as a lens in the webview', () => {
   });
 
   it('takes only the answer to the request it is waiting on', () => {
-    const sending = { status: 'sending' as const, boardId: board.boardId, fieldId: ledger.id };
+    const sending = { status: 'sending' as const, request: lightboxBuildLensRequest(board.boardId, ledger.id) };
     expect(lightboxHandOffAnswers(sending, answer())).toBe(true);
     expect(lightboxHandOffAnswers(sending, answer({ fieldId: fire.id }))).toBe(false);
     expect(lightboxHandOffAnswers(sending, answer({ boardId: 'board-old' }))).toBe(false);

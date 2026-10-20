@@ -15,17 +15,25 @@
  * answer settles the handoff the sender is waiting on.
  *
  * Every kind of seed runs the same protocol. Slice 3 has one kind, a Build
- * lens subject handed over from the Lightbox; a new kind joins
+ * lens subject handed over from the Lightbox; Slice 4 adds a Lightbox tile,
+ * staged above the composer (`lightboxTiles.ts`). A new kind joins
  * `WorkshopSeedKind`.
  */
 
 import { MessageEnvelope, MessageType } from '../base';
 
 /** What a seed opens in the Workshop. */
-export type WorkshopSeedKind = 'lexical-gravity-build';
+export type WorkshopSeedKind = 'lexical-gravity-build' | 'lightbox-tile';
 
-/** Why the Workshop webview did not open a granted seed: a sheet the writer is using is open. */
-export type WorkshopSeedRefusal = 'busy';
+/**
+ * Why the Workshop did not open a granted seed:
+ * - `busy`: a sheet the writer is using is open (Build lens), or the room is
+ *   busy: a response is running, or the session is being saved or replaced
+ *   (a staged tile);
+ * - `full`: the next message already carries as many attachments as one may;
+ * - `duplicate`: that tile is already waiting above the composer.
+ */
+export type WorkshopSeedRefusal = 'busy' | 'full' | 'duplicate';
 
 /**
  * Why the provider denied a claim: the seed timed out, a newer one replaced
@@ -36,7 +44,7 @@ export type WorkshopSeedClaimDenial = 'timeout' | 'replaced' | 'closed' | 'unkno
 /**
  * Why a seed did not open, as the sender learns it:
  * - `unavailable`: no Workshop panel could take it;
- * - `busy`: a sheet or editor was open there, and the seed never covers one;
+ * - `busy`, `full`, `duplicate`: the Workshop refused it (`WorkshopSeedRefusal`);
  * - `closed`: the panel closed before it opened the seed;
  * - `replaced`: a newer seed replaced it before it was claimed;
  * - `timeout`: the Workshop did not claim it in time.

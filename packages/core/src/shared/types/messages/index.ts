@@ -222,6 +222,10 @@ import {
   WorkshopSeedClaimMessage,
   WorkshopSeedClaimResultMessage,
   WorkshopSeedAnswerMessage,
+  WorkshopStageLightboxTileMessage,
+  WorkshopLightboxTileOfferedMessage,
+  WorkshopAcceptLightboxTileMessage,
+  WorkshopLightboxTileStagedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -250,7 +254,12 @@ import {
   LightboxRemoveContextFileMessage,
   LightboxContextFilesMessage
 } from './lightboxReadings';
-import { LightboxHandOffMessage, LightboxHandOffResultMessage } from './lightboxHandoff';
+import {
+  LightboxHandOffMessage,
+  LightboxHandOffResultMessage,
+  LightboxOpenWorkshopMessage,
+  LightboxWorkshopTrayMessage
+} from './lightboxHandoff';
 import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
 
 export type WebviewToExtensionMessage =
@@ -358,6 +367,8 @@ export type WebviewToExtensionMessage =
   | WorkshopOpenLexicalGravityBuildMessage
   | WorkshopSeedClaimMessage
   | WorkshopSeedAnswerMessage
+  | WorkshopStageLightboxTileMessage
+  | WorkshopAcceptLightboxTileMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
@@ -373,7 +384,8 @@ export type WebviewToExtensionMessage =
   | LightboxAddContextFilesMessage
   | LightboxRemoveContextFileMessage
   | LightboxHandOffMessage
-  | LightboxSetSparkDismissedMessage;
+  | LightboxSetSparkDismissedMessage
+  | LightboxOpenWorkshopMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -431,6 +443,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityLensesSavedMessage
   | WorkshopLexicalGravityBuildSeedMessage
   | WorkshopSeedClaimResultMessage
+  | WorkshopLightboxTileOfferedMessage
+  | WorkshopLightboxTileStagedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
@@ -440,4 +454,5 @@ export type ExtensionToWebviewMessage =
   | LightboxRunProgressMessage
   | LightboxGroupResultMessage
   | LightboxContextFilesMessage
-  | LightboxHandOffResultMessage;
+  | LightboxHandOffResultMessage
+  | LightboxWorkshopTrayMessage;
