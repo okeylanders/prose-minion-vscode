@@ -31,7 +31,7 @@ import type {
   LightboxWithheldClaim,
   LightboxWithheldQuote
 } from '@messages';
-import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import type { LightboxQuoteVerdict, LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
@@ -170,7 +170,7 @@ class GroupAssembly implements LightboxClaimAssembler {
   private readonly dialogue: LightboxDialogueIndex;
 
   constructor(readonly context: LightboxTileAssemblyContext) {
-    this.dialogue = createLightboxDialogueIndex(context.verifier.paragraphs);
+    this.dialogue = createLightboxDialogueIndex(context.verifier);
   }
 
   block(block: LightboxDecodedBlock): void {
@@ -278,8 +278,10 @@ class GroupAssembly implements LightboxClaimAssembler {
     draft: LightboxClaimDraft,
     build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
   ): LightboxReadingTile | undefined {
-    // A said line is checked first, so it leads the tile's evidence.
-    const saidCheck = draft.said ? this.check(draft.lens, [draft.said]) : undefined;
+    // A said line is checked first, so it leads the tile's evidence; it is found in speech where the verifier can (PR #151 F-04).
+    const saidCheck = draft.said
+      ? this.check(draft.lens, [draft.said], (paragraph, quote) => this.dialogue.verifySaid(paragraph, quote))
+      : undefined;
     const rest = this.check(draft.lens, draft.quotes);
     const said = saidCheck ? (saidCheck.evidence[0] ?? null) : undefined;
     const checked: CheckedEvidence = {
@@ -321,7 +323,11 @@ class GroupAssembly implements LightboxClaimAssembler {
     this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
   }
 
-  private check(lens: LightboxLensId, quotes: readonly (LightboxWireQuote | LightboxWirePeak)[]): CheckedEvidence {
+  private check(
+    lens: LightboxLensId,
+    quotes: readonly (LightboxWireQuote | LightboxWirePeak)[],
+    verify: (paragraph: number, quote: string) => LightboxQuoteVerdict = (paragraph, quote) => this.context.verifier.verify(paragraph, quote)
+  ): CheckedEvidence {
     const evidence: LightboxVerifiedQuote[] = [];
     const withheld: LightboxWithheldQuote[] = [];
     const seen = new Set<string>();
@@ -330,7 +336,7 @@ class GroupAssembly implements LightboxClaimAssembler {
     for (const wire of quotes) {
       this.quotesChecked += 1;
       counts.checked += 1;
-      const verdict = this.context.verifier.verify(wire.para, wire.quote);
+      const verdict = verify(wire.para, wire.quote);
       if (!verdict.found) {
         this.quotesWithheld += 1;
         counts.withheld += 1;

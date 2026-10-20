@@ -41,7 +41,7 @@ import type {
   LightboxWithheldQuote
 } from '@messages';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
-import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { createLightboxQuoteVerifier, type LightboxQuoteVerdict, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
@@ -76,10 +76,11 @@ export function carryLightboxReadings(
   readings: readonly LightboxReadingGroup[],
   context: LightboxCarryContext
 ): LightboxReadingGroup[] {
+  const verifier = createLightboxQuoteVerifier(context.paragraphs);
   const tools: CarryTools = {
-    verifier: createLightboxQuoteVerifier(context.paragraphs),
+    verifier,
     counter: createLightboxTermCounter(context.paragraphs),
-    dialogue: createLightboxDialogueIndex(context.paragraphs),
+    dialogue: createLightboxDialogueIndex(verifier),
     context,
     columnKeys: lightboxColumnKeys(
       context.paragraphs,
@@ -170,7 +171,7 @@ function carryTile(
   const lost: LightboxWithheldQuote[] = [];
   const seen = new Set<string>();
   for (const quote of tile.evidence) {
-    const found = recheckQuote(quote, tools.verifier);
+    const found = recheckQuote(quote, (paragraph, text) => tools.verifier.verify(paragraph, text));
     if (!found) {
       lost.push({ paragraph: quote.paragraph, reason: 'no-longer-in-chapter' });
       continue;
@@ -182,8 +183,10 @@ function carryTile(
     }
   }
   const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
-  // A said line is held to its own rule: found again, and inside dialogue where it now stands.
-  const said = tile.kind === 'subtext' ? recheckQuote(tile.said, tools.verifier) ?? null : undefined;
+  // A said line is held to its own rule: found again, in speech where the verifier can (PR #151 F-04), and inside dialogue.
+  const said = tile.kind === 'subtext'
+    ? recheckQuote(tile.said, (paragraph, text) => tools.dialogue.verifySaid(paragraph, text)) ?? null
+    : undefined;
   const recounted = recountLightboxTile(tile, tools.counter, {
     paragraphCount: tools.context.paragraphs.length,
     averageWordsPerSentence: tools.context.averageWordsPerSentence,
@@ -227,9 +230,12 @@ function carryTile(
  * paragraph that holds them (the earlier one on a tie). Undefined when the
  * words are gone.
  */
-function recheckQuote(quote: LightboxVerifiedQuote, verifier: LightboxQuoteVerifier): LightboxVerifiedQuote | undefined {
+function recheckQuote(
+  quote: LightboxVerifiedQuote,
+  verify: (paragraph: number, text: string) => LightboxQuoteVerdict
+): LightboxVerifiedQuote | undefined {
   const note = quote.note !== undefined ? { note: quote.note } : {};
-  const verdict = verifier.verify(quote.paragraph, quote.text);
+  const verdict = verify(quote.paragraph, quote.text);
   if (verdict.found) {
     return { paragraph: verdict.paragraph, text: verdict.text, match: verdict.match, ...note };
   }
@@ -238,7 +244,7 @@ function recheckQuote(quote: LightboxVerifiedQuote, verifier: LightboxQuoteVerif
   if (nearest === undefined) {
     return undefined;
   }
-  const moved = verifier.verify(nearest, quote.text);
+  const moved = verify(nearest, quote.text);
   return moved.found ? { paragraph: moved.paragraph, text: moved.text, match: moved.match, ...note } : undefined;
 }
 

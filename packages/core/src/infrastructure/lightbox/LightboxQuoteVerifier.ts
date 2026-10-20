@@ -19,6 +19,13 @@
  * says whether its words stand in another paragraph, which helps the writer
  * read the reason; it never moves the quote there.
  *
+ * **Choosing among equivalent spans (PR #151 F-04).** A paragraph can hold
+ * the same words more than once, in different typography. A caller that
+ * needs one particular kind of span (a said line must be speech) passes a
+ * filter, and the verifier returns the first span, exact before folded, that
+ * the filter accepts. The caller never matches text itself: every span it is
+ * offered is one this verifier found, under these same rules.
+ *
  * **The span map (PR #149 F-01).** The fold is addressed in UTF-16 code
  * units, as `indexOf` and `length` are, so every emitted code unit (both
  * halves of a supplementary character included) maps to the source span of
@@ -43,9 +50,12 @@ export type LightboxQuoteVerdict =
   | { found: true; paragraph: number; text: string; match: LightboxQuoteMatch }
   | { found: false; paragraph: number; reason: LightboxQuoteFailure; foundIn?: number[] };
 
+/** Whether a found span may stand: its paragraph (1-based) and its UTF-16 offsets there. */
+export type LightboxSpanFilter = (paragraph: number, start: number, end: number) => boolean;
+
 export interface LightboxQuoteVerifier {
-  /** `paragraph` is 1-based. */
-  verify(paragraph: number, quote: string): LightboxQuoteVerdict;
+  /** `paragraph` is 1-based. With `accept`, only a span it accepts is found, in this paragraph or any other. */
+  verify(paragraph: number, quote: string, accept?: LightboxSpanFilter): LightboxQuoteVerdict;
   readonly paragraphCount: number;
   /** The paragraphs it checks against, as given (index 0 is ¶1), so a found span can be placed in its paragraph. */
   readonly paragraphs: readonly string[];
@@ -87,13 +97,18 @@ const FIRST_COMBINING_CODE_POINT = 0x300;
 export function createLightboxQuoteVerifier(paragraphs: readonly string[]): LightboxQuoteVerifier {
   const folded = paragraphs.map((paragraph) => foldWithMap(paragraph));
 
-  /** Exact first; then folded, with the quote's own wrapping marks, then without them. */
-  const locate = (index: number, quote: string, foldedForms: readonly string[]): LightboxQuoteVerdict | undefined => {
+  /** Exact first; then folded, with the quote's own wrapping marks, then without them; each only where `accept` allows. */
+  const locate = (
+    index: number,
+    quote: string,
+    foldedForms: readonly string[],
+    accept: LightboxSpanFilter
+  ): LightboxQuoteVerdict | undefined => {
     const paragraph = paragraphs[index];
     const target = folded[index];
     // Exact, but never half of a unit: "cafe" does not quote "cafe\u0301".
     for (let at = paragraph.indexOf(quote); at >= 0; at = paragraph.indexOf(quote, at + 1)) {
-      if (target.boundaries.has(at) && target.boundaries.has(at + quote.length)) {
+      if (target.boundaries.has(at) && target.boundaries.has(at + quote.length) && accept(index + 1, at, at + quote.length)) {
         return { found: true, paragraph: index + 1, text: paragraph.slice(at, at + quote.length), match: 'exact' };
       }
     }
@@ -101,7 +116,7 @@ export function createLightboxQuoteVerifier(paragraphs: readonly string[]): Ligh
       for (let at = target.folded.indexOf(form); at >= 0; at = target.folded.indexOf(form, at + 1)) {
         const span = sourceSpan(target, at, form.length);
         // The span must fold back to the form that matched: the writer sees exactly what matched.
-        if (span && foldWithMap(paragraph.slice(span.start, span.end)).folded === form) {
+        if (span && foldWithMap(paragraph.slice(span.start, span.end)).folded === form && accept(index + 1, span.start, span.end)) {
           return { found: true, paragraph: index + 1, text: paragraph.slice(span.start, span.end), match: 'normalized' };
         }
       }
@@ -112,7 +127,7 @@ export function createLightboxQuoteVerifier(paragraphs: readonly string[]): Ligh
   return {
     paragraphCount: paragraphs.length,
     paragraphs,
-    verify(paragraph: number, rawQuote: string): LightboxQuoteVerdict {
+    verify(paragraph: number, rawQuote: string, accept: LightboxSpanFilter = anySpan): LightboxQuoteVerdict {
       const quote = rawQuote.trim();
       const foldedQuote = foldWithMap(quote).folded;
       const inner = unwrapQuoted(foldedQuote);
@@ -122,14 +137,14 @@ export function createLightboxQuoteVerifier(paragraphs: readonly string[]): Ligh
       const foldedForms = inner === foldedQuote ? [foldedQuote] : [foldedQuote, inner];
       const declared = Number.isSafeInteger(paragraph) && paragraph >= 1 && paragraph <= paragraphs.length;
       if (declared) {
-        const hit = locate(paragraph - 1, quote, foldedForms);
+        const hit = locate(paragraph - 1, quote, foldedForms, accept);
         if (hit) {
           return hit;
         }
       }
       const foundIn: number[] = [];
       paragraphs.forEach((_, index) => {
-        if (index !== paragraph - 1 && locate(index, quote, foldedForms)) {
+        if (index !== paragraph - 1 && locate(index, quote, foldedForms, accept)) {
           foundIn.push(index + 1);
         }
       });
@@ -141,6 +156,10 @@ export function createLightboxQuoteVerifier(paragraphs: readonly string[]): Ligh
         : { found: false, paragraph, reason: 'not-in-chapter' };
     }
   };
+}
+
+function anySpan(): boolean {
+  return true;
 }
 
 /**

@@ -42,7 +42,17 @@ const QUESTIONS = [
   'Is the narrator’s “(Which was very likely true.)” on her side, or the reader’s?',
   'The hot day made her sleepy; how much of what follows is the afternoon’s doing?',
   'What does the chapter let her not think about?',
-  '“Well!” she thinks. Is that relief, or the start of a boast?'
+  '“Well!” she thinks. Is that relief, or the start of a boast?',
+  // Set-up clauses and commas around a real question (PR #151 F-03 controls).
+  'Before she falls, what does she see on the shelves?',
+  'The Rabbit is late, so who is waiting at the other end?',
+  'Now that the jar is empty, what else might be?',
+  'Does she, like the Rabbit, keep checking the time?',
+  'When does she, at last, stop falling?',
+  'What if she stayed, and let the Rabbit go?',
+  'If the jar were full, would she take it?',
+  'So, who is waiting?',
+  'Perhaps the Rabbit, too, is late?'
 ];
 
 /** Instructions the lane must refuse, each for the rule named. */
@@ -69,7 +79,15 @@ const INSTRUCTIONS: Array<[string, string]> = [
   ['The jar is empty.', R.notQuestion],
   ['Write the moment she lands.', R.notQuestion],
   ['Light has as many words as darkness, 8 and 8. What happens if light comes down?', R.number],
-  ['She falls for 3 paragraphs: is that long?', R.number]
+  ['She falls for 3 paragraphs: is that long?', R.number],
+  // A softening word, or a set-up clause and a comma, before the command (PR #151 F-03).
+  ['Please add a line where Alice notices the cold. What does she fear?', R.instruction],
+  ['The Rabbit is late, so add a deadline. Who is waiting?', R.instruction],
+  ['Before she falls, show the sister looking up. What might she notice?', R.instruction],
+  ['Now cut the jar from the scene. What remains on the shelves?', R.instruction],
+  ['Then, give the Rabbit a reason: what is it late for?', R.instruction],
+  ['Maybe end the chapter at the bottom of the well?', R.instruction],
+  ['Alice, look back once. Who is behind her?', R.instruction]
 ];
 
 describe('Spark phrasing', () => {
@@ -89,6 +107,15 @@ describe('Spark phrasing', () => {
   it('ends as a question even inside closing quotes or brackets', () => {
     expect(lightboxSparkPhrasingFault('Who asks “what is the use of a book?”')).toBeUndefined();
     expect(lightboxSparkPhrasingFault('(Who is it late for?)')).toBeUndefined();
+  });
+
+  it('is a word-list heuristic, and its documented limits hold as stated (PR #151 F-03)', () => {
+    // Misses: an unlisted verb, and a command inside a clause that opens as a question.
+    expect(lightboxSparkPhrasingFault('Sprinkle in a storm. What changes?')).toBeUndefined();
+    expect(lightboxSparkPhrasingFault('What if you add a storm?')).toBeUndefined();
+    expect(lightboxSparkPhrasingFault('Does she fall, and add a line?')).toBeUndefined();
+    // The safe failure: a listed word opening a comma segment of a set-up clause.
+    expect(lightboxSparkPhrasingFault('She could stop, look and listen: would that change the fall?')).toBe(R.instruction);
   });
 
   it('does not mistake a word inside another for a directive', () => {

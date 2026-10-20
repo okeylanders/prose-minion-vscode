@@ -4,7 +4,8 @@
  * aside, and its quotes are checked again against the current paragraphs,
  * a said line first; only quotes found travel, verbatim and bounded.
  * Worked example group B, verified against its own excerpt of "Alice's
- * Adventures in Wonderland" (1865, public domain).
+ * Adventures in Wonderland" (1865, public domain); the long said line is a
+ * sentence written for these tests.
  */
 import type { LightboxBoard, LightboxReadingGroup, LightboxSubtextTile, LightboxVerifiedQuote } from '@messages';
 import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
@@ -12,7 +13,15 @@ import {
   LIGHTBOX_TILE_HANDOFF_REFUSALS,
   prepareLightboxTileHandoff
 } from '@/infrastructure/lightbox/LightboxTileHandoff';
-import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
+import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
+import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import {
+  renderWorkshopLightboxTile,
+  validateWorkshopLightboxTile
+} from '@/application/services/workshop/WorkshopLightboxTileAttachment';
+import { frame, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
 const PARAGRAPHS = readWorkedExample('B').paragraphs;
@@ -81,5 +90,67 @@ describe('prepareLightboxTileHandoff', () => {
     // Every quote travels as the chapter has it.
     expect(quotes.every((quote) => paragraphs[quote.paragraph - 1].includes(quote.text))).toBe(true);
     expect(prepared.quotesChecked).toBe(tile.evidence.length);
+  });
+
+  describe('a said line the Workshop cannot carry whole (PR #151 F-02)', () => {
+    const SAID = 'I have told you everything I remember about that night, from the sound of the rain against the windows ' +
+      'to the empty chair beside the fire, and if there is anything else you want from me, you will have to ask ' +
+      'someone who was actually there.';
+    /** The same speech hard-wrapped after "of", "if" and "someone", indented: still one paragraph. */
+    const WRAPPED = SAID.replace('sound of ', 'sound of\n    ').replace('and if ', 'and if\n    ').replace('someone ', 'someone\n    ');
+    function pairOn(speech: string) {
+      const paragraphs = [`“${speech}” Her hands shook.`];
+      const decoded = decodeLightboxGroup(frame('B', { version: 1, subtext: {
+        items: [{
+          speaker: 'Mara',
+          said: { para: 1, quote: SAID },
+          meant: 'She is asking him to stop.',
+          evidence: [{ para: 1, quote: 'Her hands shook.' }]
+        }],
+        friction: 'One line is thin ground for a reading.'
+      } }), { group: 'B', lenses: ['subtext'], columnCount: paragraphs.length });
+      const assembled = assembleLightboxGroup(decoded, {
+        verifier: createLightboxQuoteVerifier(paragraphs),
+        counter: createLightboxTermCounter(paragraphs),
+        mintId: () => 'pair-1'
+      });
+      const board = boardWith((group) => ({ ...group, tiles: assembled.tiles }));
+      return { board, paragraphs, tile: subtextOf(board) };
+    }
+
+    it('refuses the pair when its said line, found as the chapter has it, is longer than a Workshop quote', () => {
+      expect(SAID).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters - 1);
+      const { board, paragraphs, tile } = pairOn(WRAPPED);
+      // The board draws it: the verifier finds the wrapped speech, 251 characters as the chapter has them.
+      expect(tile.said).toEqual({ paragraph: 1, text: WRAPPED, match: 'normalized' });
+      expect(tile.said.text).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters + 11);
+      expect(prepareLightboxTileHandoff(request(board, tile.id), board, paragraphs))
+        .toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong });
+    });
+
+    it('brings the same pair when its said line fits, leading with it verbatim at the Workshop boundary', () => {
+      const { board, paragraphs, tile } = pairOn(SAID);
+      const prepared = prepareLightboxTileHandoff(request(board, tile.id), board, paragraphs);
+      if (!prepared.ok) {
+        throw new Error(prepared.reason);
+      }
+      const staged = validateWorkshopLightboxTile(prepared.handoff.tile);
+      expect(staged.quotes).toEqual([{ paragraph: 1, text: SAID, said: true }, { paragraph: 1, text: 'Her hands shook.' }]);
+      const body = renderWorkshopLightboxTile(staged);
+      expect(body).toContain('Claim: She is asking him to stop.');
+      expect(body.split('\n').slice(-2)).toEqual([`- ¶1 (said): “${SAID}”`, '- ¶1: “Her hands shook.”']);
+    });
+
+    it('refuses at the Workshop a said/meant tile that does not lead with its said line', () => {
+      const { board, paragraphs, tile } = pairOn(SAID);
+      const prepared = prepareLightboxTileHandoff(request(board, tile.id), board, paragraphs);
+      if (!prepared.ok) {
+        throw new Error(prepared.reason);
+      }
+      const withoutSaid = { ...prepared.handoff.tile, quotes: [{ paragraph: 1, text: 'Her hands shook.' }] };
+      expect(() => validateWorkshopLightboxTile(withoutSaid)).toThrow(/tile\.quotes\[0\]\.said/);
+      const saidSecond = { ...prepared.handoff.tile, quotes: [...prepared.handoff.tile.quotes].reverse() };
+      expect(() => validateWorkshopLightboxTile(saidSecond)).toThrow(/tile\.quotes\[0\]\.said/);
+    });
   });
 });

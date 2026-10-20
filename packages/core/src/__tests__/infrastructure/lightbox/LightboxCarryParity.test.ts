@@ -205,6 +205,22 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         .toEqual(['spark:Late for what?', 'spark:Nobody at home', 'spark:The empty jar']);
     });
 
+    it('finds a carried said line in speech when the edit puts the same words in narration first (PR #151 F-04)', () => {
+      const pair: Body = { version: 1, subtext: {
+        items: [{ speaker: 'Bill', said: { para: 1, quote: 'I don\'t know' }, meant: 'He knows, and will not say.', evidence: [] }],
+        friction: 'One line is thin ground for a reading.'
+      } };
+      const before = ['"I don\'t know," he said.'];
+      const after = ['I don\'t know was written all over his face. “I don’t know,” he said.'];
+      const { read, carried, fresh } = parity('B', ['subtext'], pair, before, after);
+      const saidOf = (group: { tiles: LightboxReadingGroup['tiles'] }) =>
+        group.tiles.map((tile) => (tile.kind === 'subtext' ? tile.said : undefined));
+      expect(saidOf(read)).toEqual([{ paragraph: 1, text: 'I don\'t know', match: 'exact' }]);
+      expect(saidOf(carried)).toEqual([{ paragraph: 1, text: 'I don’t know', match: 'normalized' }]);
+      expect(saidOf(fresh)).toEqual(saidOf(carried));
+      expect(outcome(carried)).toEqual(outcome(fresh));
+    });
+
     it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
       const lenses = readWorkedExample('A').lenses;
       const drawnKinds = new Set((['A', 'B', 'C'] as const).flatMap((group) => {

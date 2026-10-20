@@ -183,13 +183,51 @@ describe('subtext', () => {
     })]);
   });
 
-  it('places a span within dialogue by every occurrence of it, never a model\'s words', () => {
-    const index = createLightboxDialogueIndex(['She said she was late. “I am late,” she said.', 'No speech here at all.']);
+  it('places a span within dialogue by every span the verifier finds for it, never a model\'s words', () => {
+    const verifier = createLightboxQuoteVerifier(['She said she was late. “I am late,” she said.', 'No speech here at all.']);
+    const index = createLightboxDialogueIndex(verifier);
     expect(index.holds({ paragraph: 1, text: 'late' })).toBe(true);
+    expect(index.contains(1, 24, 34)).toBe(true);
+    expect(index.contains(1, 0, 8)).toBe(false);
+    expect(index.contains(3, 0, 1)).toBe(false);
     expect(index.holds({ paragraph: 1, text: 'she said' })).toBe(false);
     expect(index.holds({ paragraph: 1, text: '“I am late,”' })).toBe(true);
     expect(index.holds({ paragraph: 2, text: 'speech' })).toBe(false);
     expect(index.holds({ paragraph: 3, text: 'late' })).toBe(false);
+  });
+
+  describe('a said line chosen among every span the verifier finds (PR #151 F-04)', () => {
+    const NARRATED = 'I don\'t know was written all over his face. “I don’t know,” he said.';
+    const pairOn = (paragraphs: readonly string[], quote: string) => read('B', ['subtext'], {
+      version: 1,
+      subtext: {
+        items: [{ speaker: 'Bill', said: { para: 1, quote }, meant: 'He knows, and will not say.', evidence: [] }],
+        friction: 'One line is thin ground for a reading.'
+      }
+    }, paragraphs).assembled;
+    const saidOf = (assembled: ReturnType<typeof pairOn>) => pairs(assembled.tiles).map((tile) => tile.said);
+
+    it('finds the speech when an exact match in narration comes first', () => {
+      const assembled = pairOn([NARRATED], 'I don\'t know');
+      expect(saidOf(assembled)).toEqual([{ paragraph: 1, text: 'I don’t know', match: 'normalized' }]);
+      expect(assembled.withheldClaims).toEqual([]);
+    });
+
+    it('chooses among normalized matches that differ in whitespace and typography', () => {
+      const paragraph = 'I  don’t\nknow, he thought. “I don‘t   know,” he said.';
+      expect(saidOf(pairOn([paragraph], 'I don\'t know'))).toEqual([{ paragraph: 1, text: 'I don‘t   know', match: 'normalized' }]);
+    });
+
+    it('takes speech that is the only match, exact or normalized, as before', () => {
+      expect(saidOf(pairOn(['“I don’t know,” he said.'], 'I don’t know'))).toEqual([{ paragraph: 1, text: 'I don’t know', match: 'exact' }]);
+      expect(saidOf(pairOn(['“I don’t know,” he said.'], 'I don\'t know'))).toEqual([{ paragraph: 1, text: 'I don’t know', match: 'normalized' }]);
+    });
+
+    it('still withholds a line found only in narration', () => {
+      const assembled = pairOn(['I don\'t know was written all over his face.'], 'I don\'t know');
+      expect(assembled.tiles).toEqual([]);
+      expect(assembled.withheldClaims.map((claim) => claim.reason)).toEqual([LIGHTBOX_GATE_REASONS.saidNotDialogue.fresh]);
+    });
   });
 });
 
@@ -225,6 +263,23 @@ describe('Spark', () => {
       title: 'The empty jar',
       reason: `It broke the format: ${LIGHTBOX_SPARK_PHRASING_REASONS.instruction}`
     }]);
+  });
+
+  it.each([
+    'Please add a line where Alice notices the cold. What does she fear?',
+    'The Rabbit is late, so add a deadline. Who is waiting?',
+    'Before she falls, show the sister looking up. What might she notice?',
+    'Now cut the jar from the scene. What remains on the shelves?'
+  ])('withholds an instruction behind a softening word or a set-up clause: %s (PR #151 F-03)', (question) => {
+    const { decoded, assembled } = spark((body) => {
+      body.spark.items[0].question = question;
+    });
+    const block = decoded.blocks[0];
+    expect(block.lens === 'spark' && block.malformed).toEqual([{
+      title: 'The empty jar',
+      reason: `It broke the format: ${LIGHTBOX_SPARK_PHRASING_REASONS.instruction}`
+    }]);
+    expect(sparks(assembled.tiles).map((tile) => tile.title)).toEqual(['Late for what?', 'Nobody at home']);
   });
 
   it('withholds a spark that states a number or is not a question', () => {

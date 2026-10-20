@@ -13,6 +13,11 @@
  *   only quotes found again travel, as the chapter has them; a tile none of
  *   whose quotes is found, or a said/meant pair whose said line is gone, is
  *   refused;
+ * - a said/meant pair travels with its said line first or not at all: the
+ *   line is checked after every bound, so a line the verifier found longer
+ *   than a Workshop quote (a hard-wrapped speech grows by its indentation)
+ *   refuses the pair rather than sending its meaning without its speech
+ *   (PR #151 F-02);
  * - the item carries the claim (with a story's stances, or a pair's
  *   speaker, as labeled points) and those quotes: never the board, its
  *   counts or any other tile; and it is bounded by
@@ -55,6 +60,7 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   reading: 'This lens is being read again. Wait for it to land, then bring it.',
   setAside: 'You set this spark aside. Bring it back first.',
   saidGone: 'Its said line is no longer in the chapter, so it was not brought.',
+  saidTooLong: 'Its said line, as the chapter has it, is longer than a Workshop quote can carry, so the pair was not brought. Nothing was cut.',
   quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
   fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
 } as const;
@@ -110,6 +116,10 @@ export function prepareLightboxTileHandoff(
   }
   const quotesFound = quotes.length;
   const bounded = quotes.filter((quote) => quote.text.length <= LIMITS.quoteCharacters).slice(0, LIMITS.quotes);
+  // A pair's said line is its anchor: checked after every bound, never dropped or cut to fit.
+  if (said && bounded[0]?.said !== true) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong);
+  }
   if (bounded.length === 0) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
   }
