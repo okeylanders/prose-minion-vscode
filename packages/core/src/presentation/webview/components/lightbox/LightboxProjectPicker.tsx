@@ -8,22 +8,25 @@
  *   host boards. "Explore project folders…" is the source's system picker.
  * - **Context** (the context list): several files, as the Workshop attaches
  *   context, with the files already on the shelf shown attached and the
- *   Workshop's running ~estimate against the words the shelf has left.
+ *   Workshop's running ~estimate against the words the shelf has left. A row
+ *   is attached when its host-keyed `fileKey` is a shelf file's, never by
+ *   its display path, which two workspace folders can share (PR #154 F-02).
  *   "Explore project folders…" is the context list's system picker. The host
  *   applies the shelf's real limits and names anything it refuses.
  */
 import * as React from 'react';
 import type {
-  ConfiguredResourceEntry,
   ConfiguredResourceRef,
   ConfiguredResourceSearchResults,
-  LightboxContextFile
+  LightboxContextFile,
+  LightboxProjectCatalogEntry
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   ProjectResourcePickerCopy,
   ProjectResourcePickerFooterState,
-  ProjectResourcePickerModal
+  ProjectResourcePickerModal,
+  projectResourceKey
 } from '@components/fulltab/ProjectResourcePickerModal';
 import { ProjectResourceAttachFooter } from '@components/fulltab/ProjectResourceAttachFooter';
 import type { LightboxProjectPicker as LightboxProjectPickerPurpose } from '@hooks/domain/useLightboxProjectFiles';
@@ -44,7 +47,7 @@ const CONTEXT_COPY: ProjectResourcePickerCopy = {
 export interface LightboxProjectPickerProps {
   /** The picker on screen, if any. */
   picker: LightboxProjectPickerPurpose | null;
-  catalog: ConfiguredResourceEntry[] | null;
+  catalog: LightboxProjectCatalogEntry[] | null;
   catalogUnreadable: boolean;
   searchResults: ConfiguredResourceSearchResults | null;
   /** The context shelf as the host last sent it. */
@@ -88,8 +91,13 @@ export const LightboxProjectPicker: React.FC<LightboxProjectPickerProps> = ({
     onClose
   };
   if (picker === 'context') {
-    // The shelf names a file by its workspace-relative path, as the catalog does.
-    const onShelf = new Set(context.files.map((file) => file.displayPath));
+    // The same file on disk carries the same host key in the catalog and on the shelf.
+    const onShelf = new Set(context.files.map((file) => file.fileKey));
+    const fileKeyOf = new Map((catalog ?? []).map((entry) => [projectResourceKey(entry), entry.fileKey]));
+    const isAttached = (entry: ConfiguredResourceRef) => {
+      const fileKey = fileKeyOf.get(projectResourceKey(entry));
+      return fileKey !== undefined && onShelf.has(fileKey);
+    };
     const ceiling = context.ceilingWords > 0 ? context.ceilingWords : PROMPT_BUDGETS.contextFiles.words;
     const remainingWords = Math.max(0, ceiling - context.totalWords);
     return (
@@ -97,7 +105,7 @@ export const LightboxProjectPicker: React.FC<LightboxProjectPickerProps> = ({
         {...shared}
         selection="multiple"
         copy={CONTEXT_COPY}
-        isAttached={(entry) => onShelf.has(entry.path)}
+        isAttached={isAttached}
         onConfirm={onAddContext}
         onExplore={onExploreContext}
         renderFooter={(state: ProjectResourcePickerFooterState) => (

@@ -1040,6 +1040,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxStaleReadings.ts',
   'infrastructure/lightbox/LightboxTileCounts.ts',
   'infrastructure/lightbox/LightboxContextShelf.ts',
+  'infrastructure/lightbox/LightboxFileKey.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',

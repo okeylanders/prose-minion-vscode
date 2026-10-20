@@ -34,10 +34,11 @@ jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmL
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { LightboxApp } from '@/presentation/webview/LightboxApp';
 
+/** `fileKey` stands in for the host's opaque key: the webview only compares it. */
 const CATALOG = [
-  { group: 'chapters', path: 'Chapters/01-down-the-rabbit-hole.md', label: '01 down the rabbit hole', sizeBytes: 12_400 },
-  { group: 'chapters', path: 'Chapters/02-the-pool-of-tears.md', label: '02 the pool of tears', sizeBytes: 11_900 },
-  { group: 'characters', path: 'Characters/white-rabbit.md', label: 'white rabbit', sizeBytes: 900 }
+  { group: 'chapters', path: 'Chapters/01-down-the-rabbit-hole.md', label: '01 down the rabbit hole', sizeBytes: 12_400, fileKey: 'key-chapter-1' },
+  { group: 'chapters', path: 'Chapters/02-the-pool-of-tears.md', label: '02 the pool of tears', sizeBytes: 11_900, fileKey: 'key-chapter-2' },
+  { group: 'characters', path: 'Characters/white-rabbit.md', label: 'white rabbit', sizeBytes: 900, fileKey: 'key-white-rabbit' }
 ];
 
 const fromHost = (type: MessageType, payload: object) =>
@@ -225,7 +226,7 @@ describe('LightboxApp context: Add from project…', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null });
     fromHost(MessageType.LIGHTBOX_CONTEXT_FILES, {
-      files: [{ id: 'ctx-1', displayPath: 'Characters/white-rabbit.md', wordCount: shelf.totalWords }],
+      files: [{ id: 'ctx-1', displayPath: 'Characters/white-rabbit.md', wordCount: shelf.totalWords, fileKey: 'key-white-rabbit' }],
       totalWords: shelf.totalWords,
       ceilingWords: shelf.ceilingWords
     });
@@ -280,8 +281,8 @@ describe('LightboxApp context: Add from project…', () => {
 
     fromHost(MessageType.LIGHTBOX_CONTEXT_FILES, {
       files: [
-        { id: 'ctx-1', displayPath: 'Characters/white-rabbit.md', wordCount: 15 },
-        { id: 'ctx-2', displayPath: 'Chapters/02-the-pool-of-tears.md', wordCount: 1_980 }
+        { id: 'ctx-1', displayPath: 'Characters/white-rabbit.md', wordCount: 15, fileKey: 'key-white-rabbit' },
+        { id: 'ctx-2', displayPath: 'Chapters/02-the-pool-of-tears.md', wordCount: 1_980, fileKey: 'key-chapter-2' }
       ],
       totalWords: 1_995,
       ceilingWords: 10_000,

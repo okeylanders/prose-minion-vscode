@@ -23,6 +23,7 @@ import type {
   LightboxProjectCatalogPayload
 } from '@/shared/types/messages';
 import { ALICE_OPENING_CURLY, aliceWords } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import {
   createLightboxHost,
   deferred,
@@ -58,7 +59,8 @@ describe('Lightbox Choose from project: the catalog', () => {
         expect.objectContaining({ group: 'general', path: 'References/notes.markdown' })
       ]
     });
-    expect(Object.keys(catalog.entries[0]).sort()).toEqual(['group', 'label', 'path', 'sizeBytes']);
+    expect(Object.keys(catalog.entries[0]).sort()).toEqual(['fileKey', 'group', 'label', 'path', 'sizeBytes']);
+    expect(catalog.entries[0].fileKey).toBe(lightboxFileKey(`${WORKSPACE}/Chapters/01-down-the-rabbit-hole.md`));
     expect(JSON.stringify(panel.posted)).not.toContain(`${WORKSPACE}/`);
     expect(panel.logged()).toContain('[LightboxProjectFiles] Catalog: 3 text file(s); 1 other file(s) left out');
     // Asking for the catalog is not a source choice: nothing is boarded or refused.

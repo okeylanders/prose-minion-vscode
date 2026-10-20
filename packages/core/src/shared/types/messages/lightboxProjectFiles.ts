@@ -16,11 +16,18 @@
  * (PR #154 F-01). The webview takes an answer only when its id is the one it
  * is still waiting for, so an answer to a closed opening, an older query or
  * a cleared search is dropped without touching the one on screen.
+ *
+ * Each catalog entry carries a `fileKey`: an opaque, host-keyed identity for
+ * the file on disk (PR #154 F-02). The context shelf's files carry the same
+ * key, so the picker marks a row attached only when it is the very file the
+ * shelf holds, never because another workspace folder has a file with the
+ * same display path. Choices still name catalog keys only.
  */
 
 import { MessageEnvelope, MessageType } from './base';
 import type {
   ConfiguredResourceCatalogPayload,
+  ConfiguredResourceEntry,
   ConfiguredResourceRef,
   ConfiguredResourceSearchPayload,
   ConfiguredResourceSearchResults
@@ -42,8 +49,20 @@ export interface LightboxRequestProjectCatalogMessage extends MessageEnvelope<Li
   type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG;
 }
 
+/** One readable project file, as the Lightbox's picker browses it. */
+export interface LightboxProjectCatalogEntry extends ConfiguredResourceEntry {
+  /**
+   * The file's identity on disk, keyed by the host for this session: equal
+   * for the same file, unequal for files in different workspace folders that
+   * share a display path, and no use for recovering the path (PR #154 F-02).
+   * The webview only compares it with `LightboxContextFile.fileKey`.
+   */
+  fileKey: string;
+}
+
 export interface LightboxProjectCatalogPayload
   extends ConfiguredResourceCatalogPayload, LightboxProjectRequestCorrelation {
+  entries: LightboxProjectCatalogEntry[];
   /** The configured folders could not be read; `entries` is empty. */
   unreadable?: boolean;
 }

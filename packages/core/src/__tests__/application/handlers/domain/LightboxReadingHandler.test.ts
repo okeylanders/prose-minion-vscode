@@ -13,6 +13,7 @@ jest.mock('p-limit', () => ({
 
 import { LightboxReadingHandler } from '@/application/handlers/domain/LightboxReadingHandler';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import { LightboxReadingGroupId, MessageType } from '@/shared/types/messages';
 import {
@@ -235,7 +236,7 @@ describe('LightboxReadingHandler', () => {
     const { route, ofType, shelf, pickFile, setLenses } = await setup();
     await route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
     expect(ofType(MessageType.LIGHTBOX_CONTEXT_FILES).pop()?.payload.files).toEqual([
-      { id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }
+      { id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15, fileKey: lightboxFileKey('/workspace/Notes/cast.md') }
     ]);
     // The webview asks for the estimate when it sees the list change (PR #149 F-03).
     expect(ofType(MessageType.LIGHTBOX_RUN_ESTIMATE)).toEqual([]);

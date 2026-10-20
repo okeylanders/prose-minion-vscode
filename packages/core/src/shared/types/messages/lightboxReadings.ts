@@ -314,6 +314,11 @@ export interface LightboxContextFile {
   id: string;
   displayPath: string;
   wordCount: number;
+  /**
+   * The file's opaque identity (`LightboxProjectCatalogEntry.fileKey`), so the
+   * project picker marks attached only the very file on the shelf (PR #154 F-02).
+   */
+  fileKey: string;
 }
 
 // ---------------------------------------------------------------------------

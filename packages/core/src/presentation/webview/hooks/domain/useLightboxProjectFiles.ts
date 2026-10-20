@@ -26,8 +26,8 @@
 
 import * as React from 'react';
 import {
-  ConfiguredResourceEntry,
   ConfiguredResourceRef,
+  LightboxProjectCatalogEntry,
   LightboxProjectCatalogMessage,
   LightboxProjectCatalogSearchResultsMessage,
   LightboxProjectCatalogSearchResultsPayload,
@@ -42,7 +42,7 @@ export interface LightboxProjectFilesState {
   /** The picker on screen, if any. */
   openPicker: LightboxProjectPicker | null;
   /** The readable files; null until the host answers the latest opening. */
-  catalog: ConfiguredResourceEntry[] | null;
+  catalog: LightboxProjectCatalogEntry[] | null;
   /** The host could not read the configured folders. */
   catalogUnreadable: boolean;
   /** The answer to the pending search's query in this opening, if one has come. */
@@ -91,7 +91,7 @@ type LightboxProjectFilesRequest =
 export function useLightboxProjectFiles(): UseLightboxProjectFilesReturn {
   const vscode = useVSCodeApi();
   const [openPicker, setOpenPicker] = React.useState<LightboxProjectPicker | null>(null);
-  const [catalog, setCatalog] = React.useState<ConfiguredResourceEntry[] | null>(null);
+  const [catalog, setCatalog] = React.useState<LightboxProjectCatalogEntry[] | null>(null);
   const [catalogUnreadable, setCatalogUnreadable] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<LightboxProjectCatalogSearchResultsPayload | null>(null);
 

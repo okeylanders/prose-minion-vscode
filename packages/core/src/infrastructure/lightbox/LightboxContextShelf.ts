@@ -8,7 +8,9 @@
  * quote verifier never searches it. Its words count toward the fit check, and
  * together they are bounded by `PROMPT_BUDGETS.contextFiles.words`. The shelf
  * belongs to the Lightbox, not to a board, so it stays as the source changes.
- * The text is host-private: only paths, ids and word counts are posted.
+ * The text is host-private: only paths, ids and word counts are posted, and
+ * each file's opaque key (`lightboxFileKey` of the path it dedupes by), so
+ * the project picker can mark exactly that file attached (PR #154 F-02).
  */
 
 import { randomUUID } from 'node:crypto';
@@ -16,11 +18,12 @@ import type { LightboxContextFile } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 import type { LightboxContextMaterial } from '@/infrastructure/lightbox/LightboxReadingPrompts';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 
 export interface LightboxContextInput {
   displayPath: string;
   text: string;
-  /** What makes two picks the same file (its absolute path). Never posted. */
+  /** What makes two picks the same file (its absolute path). Never posted; its `lightboxFileKey` is. */
   sourceKey: string;
 }
 
@@ -51,7 +54,7 @@ export class LightboxContextShelf {
   }
 
   list(): LightboxContextFile[] {
-    return this.entries.map(({ id, displayPath, wordCount }) => ({ id, displayPath, wordCount }));
+    return this.entries.map(({ id, displayPath, wordCount, fileKey }) => ({ id, displayPath, wordCount, fileKey }));
   }
 
   totalWords(): number {
@@ -80,10 +83,17 @@ export class LightboxContextShelf {
           `${total.toLocaleString('en-US')} of its ${ceiling.toLocaleString('en-US')}. Remove a file, or choose a shorter one.`
       };
     }
-    const entry: ShelfEntry = { id: this.mintId(), displayPath: input.displayPath, wordCount, text: input.text, sourceKey: input.sourceKey };
+    const entry: ShelfEntry = {
+      id: this.mintId(),
+      displayPath: input.displayPath,
+      wordCount,
+      fileKey: lightboxFileKey(input.sourceKey),
+      text: input.text,
+      sourceKey: input.sourceKey
+    };
     this.entries = [...this.entries, entry];
     this.revisionCount += 1;
-    return { added: true, file: { id: entry.id, displayPath: entry.displayPath, wordCount } };
+    return { added: true, file: { id: entry.id, displayPath: entry.displayPath, wordCount, fileKey: entry.fileKey } };
   }
 
   remove(id: string): boolean {

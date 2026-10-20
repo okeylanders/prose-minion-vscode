@@ -27,6 +27,7 @@ jest.mock('p-limit', () => ({
 
 import { MessageType } from '@/shared/types/messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import { frame, framedJson } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import {
   CONTEXT_TEXT,
@@ -60,7 +61,7 @@ describe('Lightbox context from the project picker', () => {
     await attach(item('characters', 'Characters/dormouse.md'));
 
     expect(lastList()).toEqual({
-      files: [{ id: 'ctx-1', displayPath: 'Characters/dormouse.md', wordCount: 16 }],
+      files: [{ id: 'ctx-1', displayPath: 'Characters/dormouse.md', wordCount: 16, fileKey: lightboxFileKey('/workspace/Characters/dormouse.md') }],
       totalWords: 16,
       ceilingWords: PROMPT_BUDGETS.contextFiles.words
     });
@@ -164,7 +165,9 @@ describe('Lightbox context from the project picker', () => {
     // Explore project folders… sends LIGHTBOX_ADD_CONTEXT_FILES: the system picker, as before.
     await tab.route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
     expect(host.pickFile).toHaveBeenCalledTimes(1);
-    expect(lastList()?.files).toEqual([{ id: 'ctx-2', displayPath: 'Notes/cast.md', wordCount: 15 }]);
+    expect(lastList()?.files).toEqual([
+      { id: 'ctx-2', displayPath: 'Notes/cast.md', wordCount: 15, fileKey: lightboxFileKey('/workspace/Notes/cast.md') }
+    ]);
     // A dismissed picker changes nothing and posts nothing.
     const before = tab.ofType(MessageType.LIGHTBOX_CONTEXT_FILES).length;
     host.pickFile.mockResolvedValueOnce(undefined as never);

@@ -22,6 +22,10 @@
  *   `requestId` the webview minted for it, and its answer echoes that id
  *   (PR #154 F-01), so the webview can drop an answer it no longer waits
  *   for. A request with no id is ignored: nothing could claim its answer.
+ * - **Identity without paths.** Each row carries `lightboxFileKey` of its
+ *   absolute path, the key the context shelf gives the same file, so the
+ *   webview can mark the row attached without either path being posted
+ *   (PR #154 F-02).
  *
  * Nothing here posts, takes a source-request ticket or touches the board:
  * the handlers that own those do. Logs name paths and counts, never text.
@@ -35,10 +39,11 @@ import { searchConfiguredResourceContent } from '@/application/services/Configur
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { isContextPathGroup } from '@shared/types/context';
 import { isLightboxTextFile } from '@shared/constants/lightbox';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import type {
-  ConfiguredResourceEntry,
   ConfiguredResourceRef,
   ConfiguredResourceSearchResults,
+  LightboxProjectCatalogEntry,
   LightboxProjectCatalogPayload,
   LightboxProjectCatalogSearchResultsPayload
 } from '@messages';
@@ -112,13 +117,19 @@ export class LightboxProjectFiles {
 
   /** The readable files, as the picker browses them; empty and `unreadable` when the folders could not be read. */
   private async catalog(): Promise<LightboxProjectCatalogListing> {
-    let entries: ConfiguredResourceEntry[];
+    let entries: LightboxProjectCatalogEntry[];
     let left = 0;
     try {
       const all = (await this.ports.catalog.openCatalog()).entries();
       const text = all.filter((entry) => isLightboxTextFile(entry.path));
       left = all.length - text.length;
-      entries = text.map(({ group, path: entryPath, label, sizeBytes }) => ({ group, path: entryPath, label, sizeBytes }));
+      entries = text.map(({ group, path: entryPath, label, sizeBytes, absolutePath }) => ({
+        group,
+        path: entryPath,
+        label,
+        sizeBytes,
+        fileKey: lightboxFileKey(absolutePath)
+      }));
     } catch (error) {
       this.outputChannel.appendLine(`${LOG} Could not read the configured resource catalog: ${detailOf(error)}`);
       return { entries: [], unreadable: true };

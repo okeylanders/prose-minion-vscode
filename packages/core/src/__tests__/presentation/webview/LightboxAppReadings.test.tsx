@@ -230,7 +230,7 @@ describe('LightboxApp readings', () => {
     confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     fromHost(MessageType.LIGHTBOX_CONTEXT_FILES, {
-      files: [{ id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }],
+      files: [{ id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15, fileKey: 'key-cast' }],
       totalWords: 15,
       ceilingWords: 50_000
     });
