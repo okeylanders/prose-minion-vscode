@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5, and 4B is in progress
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5, and 4B is implemented and awaiting review
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -64,7 +64,7 @@ carried into the Workshop.
 | 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Merged (PR #149) |
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Merged (PR #150) |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Merged (PR #151) |
-| 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | In progress (`epic/lightbox-slice-4b-craft`) |
+| 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Planned (after 4B) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Planned (after 4C) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
@@ -813,3 +813,40 @@ land before Slice 5 (decision 14).
   - **Left out on purpose:** the two-level ribbon above 96 paragraphs,
     multi-file boards and movements as a ribbon overlay, in a
     [feature note](../../features/feature-lightbox-ribbon-structure/README.md).
+
+- **2026-10-20. Slice 4B (Group D, craft) is implemented** on
+  `epic/lightbox-slice-4b-craft`. A press now reads four groups; group D
+  reads stock and signature, rhythm and handoffs, and the numbers, from one
+  call with a worked example (*Alice* ch. I, ¶1–¶8) that decodes through the
+  production codec and verifier with every quote exact.
+  - **Host.** Eight tile kinds, all through `LightboxTileGates`, fresh and
+    carried. A handoff's quotes must be adjacent sentences of one paragraph
+    (`LightboxSentencePairs`, through the verifier's span filter). A numbers
+    reading names a figure the board measured as standing out, and each of
+    its quotes holds an instance by the detector that counted it
+    (`LightboxNumberInstances`). The tier mix and familiar phrases are
+    counted by the host. Endings follow their column's text on a stale
+    carry.
+  - **Measured.** Per-paragraph sentence lengths, and six figures against
+    the preset's ranges and the writer's own average
+    (`LightboxWriterBaseline`: the configured chapters, else manuscript,
+    files, the board's own left out; bounded, cached, no model; absent with
+    a host note). Style Flags' detectors are exported unchanged; being verbs
+    is a new detector.
+  - **Webview.** Stock, rhythm and numbers tiles with register chips, the
+    Endings lane on the ribbon, inspector details and Bring for every kind.
+  - **Deviations and limits** are in the slice's
+    [implementation notes](slice-4b-craft-lenses.md#implementation-notes-2026-10-20);
+    one item went to [tech debt](../../tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md).
+  - **Verification.**
+
+    | Check | `eca952a` | Slice 4B head |
+    |---|---|---|
+    | `npx jest` | 397 suites / 5,597 tests / 59 snapshots | 407 suites / 5,693 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Visual evidence at 1440, 1000 and 500 px from real host output with a
+      stub model: [`lightbox-slice-4b-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4b-visual/README.md).
+    - No live or billable call.

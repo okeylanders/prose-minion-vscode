@@ -4,7 +4,7 @@
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3 (kinds), D4 (stale carry), D6 (groups), D7 (and its 2026-10-20 addendum), D11
 **Design:** [`NewLenses.dc.html`](../../../docs/design/lightbox/NewLenses.dc.html) sections 2, 3 and 6 (draft, 2026-10-20)
 **Writer decisions:** 10–14 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** In progress on `epic/lightbox-slice-4b-craft`, from `epic/lightbox` at `eca952a`
+**Status:** Implemented on `epic/lightbox-slice-4b-craft`, from `epic/lightbox` at `eca952a`; awaiting review. See [Implementation notes](#implementation-notes-2026-10-20)
 **Before:** Slice 5. The saved-board format must hold these kinds (decision 14).
 
 ## Outcome
@@ -143,19 +143,23 @@ no unchecked words are shown as a title.
 - Each list is bounded; an item that breaks its own rules is withheld by its
   title while its siblings survive.
 - **Stock.** A beat's tier and a phrase's kind must be in their vocabulary.
-  An echo whose `reminiscentOf` or `note` holds a `%`, the word "percent" or
-  a digit is withheld (no likelihoods). The `economy` object is required;
-  its `beats` may be empty.
+  An echo whose `title`, `reminiscentOf` or `note` holds a `%` or the word
+  "percent" is withheld (no likelihoods). A digit alone is allowed: a
+  source's name can hold one ("Nineteen Eighty-Four, chapter 1"). The
+  `economy` object is required; its `beats` may be empty.
 - **Rhythm.** `endings` has exactly one entry per ribbon column, each in the
   vocabulary, or the block is withheld (the tension rule). A handoff's
   effect must be in its vocabulary.
 - **Numbers.** `stat` must be one of the host's ids; a stat given twice
   keeps its first reading. A claim holding a directive word from
   `LIGHTBOX_NUMBERS_DIRECTIVE_WORDS` (fix, cut, trim, remove, reduce,
-  replace, rewrite, delete, should, must, avoid…) is withheld. **The limit,
-  stated:** a word list, not a parse; a directive phrased without a listed
-  word passes, and a listed word used descriptively ("the cut of her coat")
-  is withheld, the safe failure. Tests pin both.
+  replace, rewrite, revise, delete, tighten, eliminate, should, must,
+  consider, try) is withheld, and so is a claim that states a figure: a
+  digit outside a ¶ address, a `%` or "percent" (the spark's bare-digit
+  rule, shared). **The limit, stated:** word lists, not a parse; a
+  directive phrased without a listed word passes, as does a figure in words
+  ("twice as often"), and a listed word used descriptively ("the cut of her
+  coat") is withheld, the safe failure. Tests pin each.
 - The model never supplies a count: no field carries one.
 
 ## Measured parts (host only, no model)
@@ -329,6 +333,53 @@ meaningless without them. It never carries the board or another tile.
   refused rather than halved.
 - Webview: the new tiles, the endings lane, the inspector's details, the
   layout placing every kind once.
+
+## Implementation notes (2026-10-20)
+
+What landed, and where it differs from the plan above:
+
+- **Echoes allow a digit.** The plan withheld an echo with a digit; a
+  source's name can hold one, so only `%` and "percent" withhold it, now in
+  its title too. The withheld list still shows the reading's own title, as
+  every lens's does.
+- **Numbers claims state no figure.** Beyond the directive list, a numbers
+  claim with a digit outside a ¶ address, a `%` or "percent" is withheld,
+  and the prompt says so (pinned). The bare-digit rule moved to
+  `LightboxReadingFields.LIGHTBOX_BARE_DIGIT`, shared with Spark.
+- **A word pattern's instance is matched over the whole paragraph**, as the
+  figure was counted, so a quote cut mid-word ("nly tired" of "only tired",
+  "very" of "every") holds no instance. Found while writing the tests.
+- **The tier mix's minimum** (four found beats) is stated in the stock
+  prompt and pinned to `LIGHTBOX_STOCK_MINIMUM_BEATS` by the sync test.
+- **Titles of malformed items** come from the shared decoder: an item with no
+  `title` field is named by its noun and position ("Reading 1", "Familiar
+  phrase 2", "Beat 3"); a familiar phrase withheld by a gate is named by its
+  kind and position ("Idiom 3"), never its words.
+- **Carry maps the groups it is given.** A board always carries four groups
+  (boards live in host memory and are built with every group), so the
+  carry does not add a missing group.
+- **The numbers tile's empty answer** reads "The reading said nothing about
+  how these figures are used." when figures stood out, and "Nothing in the
+  numbers stands out…" only when none did.
+- **Accessibility.** The rhythm tile's sentence-length bars are named
+  "Sentence lengths in paragraph n", so they no longer share the ribbon
+  columns' names.
+- **Styles.** Tier and ending colors are scoped to the tier bar, its key and
+  the ending marks; on bare `.is-*` classes they painted the familiar
+  phrase's "weighted" tag unreadable (found in the visual evidence).
+- **Limits, stated:** a whole-book manuscript file that also holds this
+  chapter cannot be split, so with no `chapters` group the chapter counts
+  once inside the writer's own average; being verbs do not count
+  contractions; a pattern rarer than usual is shown, never read. A maximal
+  group D response can exceed the per-group response cap
+  ([tech debt](../../tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md)).
+
+**Verification.** `npm run typecheck`; full `npx jest`, 407 suites / 5,693
+tests / 59 snapshots (from 397 / 5,597 / 59 at `eca952a`); `npm run lint`
+0 errors and 1,133 warnings, identical per file and rule to `eca952a`;
+`npm run build` with `verify:bundle`; `git diff --check`. Visual evidence:
+[`lightbox-slice-4b-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4b-visual/README.md).
+No live or billable call.
 
 ## Done when
 
