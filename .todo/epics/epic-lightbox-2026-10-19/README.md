@@ -850,3 +850,13 @@ land before Slice 5 (decision 14).
     - Visual evidence at 1440, 1000 and 500 px from real host output with a
       stub model: [`lightbox-slice-4b-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4b-visual/README.md).
     - No live or billable call.
+  - **PR #155 review (2026-10-20).** Astra requested changes (F-01 to F-04,
+    N-01). Fixed in `fc4c564`: number usages belong to the measurement they
+    were read against and are withheld when it changes, on a same-text
+    rebuild and on landing; Bring keeps both sentences of a handoff; a
+    familiar phrase is witnessed by a whole occurrence in a quote's span;
+    standouts are decided from counts and rounded only for display; a
+    relocated pair reads "no longer adjacent". The three nonblocking notes
+    were taken. After the fixes: 411 suites / 5,712 tests / 59 snapshots;
+    lint identical. See the review's
+    [author response](../../../docs/pr-reviews/pr-155-lightbox-craft-lenses-review.md#author-response-2026-10-20).

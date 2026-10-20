@@ -381,6 +381,47 @@ tests / 59 snapshots (from 397 / 5,597 / 59 at `eca952a`); `npm run lint`
 [`lightbox-slice-4b-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4b-visual/README.md).
 No live or billable call.
 
+**After the PR #155 review (2026-10-20).** The four findings and the
+recommended note are fixed in `fc4c564`; the
+[review's author response](../../../docs/pr-reviews/pr-155-lightbox-craft-lenses-review.md#author-response-2026-10-20)
+gives root cause, fix and tests for each.
+
+- **Numbers readings belong to a measurement (F-01).** A usage stays only
+  while its figure stands out the same way (direction, bases, reference),
+  checked by `holdLightboxNumberUsages` on a same-text rebuild and when a
+  group lands (the press's figures against the board's now). Otherwise it is
+  withheld: `numberNotStandout.carried` when the figure no longer stands out,
+  `numberRemeasured` when it stands out differently. Bring refuses a usage
+  with no standout, and the numbers tile draws a usage only under a figure
+  that stands out.
+- **Witnesses (F-02, F-03, N-01).** Bring prepares a handoff through the pair
+  verifier and keeps both ordered roles, so two sentences with the same words
+  travel as two quotes. A familiar phrase is witnessed only by a quote whose
+  source span holds a whole occurrence, found over the full paragraph with
+  the term counter's own tokens (`lightboxTermSpans`, `lightboxPhraseHeld`),
+  fresh, carried and brought. A carried handoff searches every other
+  paragraph holding its first sentence, and a pair whose words still stand is
+  "no longer adjacent", never "gone".
+- **Numbers never decided from a rounded figure (F-04).** Standouts and
+  ratios are decided from the counts, cross-multiplied, and "none" from a
+  zero count. `LightboxNumberRow.value` and the writer's `average` and
+  `ratio` stay unrounded; the webview rounds them for display only
+  (`formatLightboxFigure`, `formatLightboxRatio`, "<0.1" and "<0.01" for a
+  nonzero figure below the shown precision).
+- **Nonblocking notes, taken.** A below-dialogue witness must come from a
+  paragraph with no dialogue, as the row counts and lights (task line, prompt
+  and worked example updated). The writer's baseline says `capped` whenever a
+  bound limited the reading, including whole files that carried the words
+  past the word bound. The numbers tile warns it is stale before its first
+  figure.
+
+Verification after the fixes: full `npx jest` 411 suites / 5,712 tests / 59
+snapshots; `npm run lint` identical per file and rule (0 errors / 1,133
+warnings); `npm run typecheck`, `npm run build` with `verify:bundle` and
+`git diff --check` pass. The evidence was regenerated. Every new regression
+test fails against `8b930fb`'s sources at its assertion (the term-span
+helper's two tests fail there because the helper is new).
+
 ## Done when
 
 On the *Alice* fixture, one press reads four groups. The board shows a tier
