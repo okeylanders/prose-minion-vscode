@@ -143,3 +143,115 @@ No user-computer access, live/billable provider calls, private manuscripts, impl
 ## Next step
 
 Fix F-01 and F-02, then rerun their adversarial order/multi-root witnesses along with the unchanged Workshop parity suite and ordinary gates. Keep the native VS Code acceptance and writer real-chapter output checkpoint explicitly open. Neither green CI nor pixel-identical excerpt screenshots substitute for those decisions.
+
+## Author response (2026-10-20)
+
+**F-01, F-02 and N-01: addressed.** The fixes are `044907b` (F-01), `1c2897a` (F-02) and `50520c9` (N-01). `6e2befd` lists F-01's new request-id bound with the prompt-budget guard's other non-prompt limits, and `8eccf49` updates the ADR, the agents guide and the epic README. Nothing above this section was edited.
+
+### F-01: answers correlated with their opening and request
+
+**Root cause.** The finding is correct. `useLightboxProjectFiles` treated every `LIGHTBOX_PROJECT_CATALOG` and `LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS` as the answer to the request on screen, and the contracts carried nothing that could say otherwise. The host's routes await independently and post every completed answer, so the hook's single slot took whichever answer finished last. The shared component's query check kept an old query's matches out of the rows, but it could not stop the hook from overwriting the newer result, and nothing told one opening from the next.
+
+**Correlation design.**
+- **The webview mints the ids.** Each id is `lbp-<random>:<opening>:<kind>-<n>`. The random prefix is drawn once per webview, so a reloaded webview never takes an answer meant for the one before it. `<opening>` moves on every open and every close, and `<n>` counts every request the hook has made.
+- **At most one answer is pending per kind.** The hook keeps one pending catalog id and one pending search id.
+  - `open(picker)` starts a new opening. Its catalog id becomes the only pending answer, and the catalog, the unreadable flag and the search result are cleared.
+  - `close()` starts a new opening and drops every pending answer.
+  - `search(query)` replaces the pending search id, so an older query's answer is dropped. A stored result for a different query (trimmed, case-folded) is taken down at once, with its bounded note.
+  - `clearSearch()` drops the pending search and the stored result.
+- **An answer is taken only when its id is the one pending.** Once taken, nothing is pending for that kind, so a duplicate is dropped too. Any other answer is ignored and leaves what is on screen alone. Query equality plays no part, so the same query in a new opening, or retyped after a clear, is a new request.
+- **The host echoes the ids.** `LightboxProjectFiles.catalogReply` and `searchReply` echo `requestId` on the answer. A request with no id, or one over 200 characters, is logged and answered with nothing, because no webview could claim the answer.
+- **Shared code is unchanged.** `ProjectResourcePickerModal`, the Workshop's routes and the parity snapshots are as they were at `2cf1f97`.
+- **`bounded`.** It shows only on the stored result, and that result is now always the accepted answer to the latest search this opening sent.
+  - One residual remains, and it is the shared component's. The component owns the query text and the 350 ms debounce. While a newly typed query waits out the debounce, the previous query's accepted answer is still stored. Its matches are not merged, because of the component's query check, but its bounded note can show until `search()` fires and takes it down.
+  - Closing that window needs a per-keystroke callback from the shared component, which would change the Workshop. The Workshop has the same single-slot behavior, which the review's base distinction already notes.
+
+**Tests.** `LightboxProjectPickerReplies.test.tsx` (7 tests) renders the real `LightboxApp` over the real `LightboxHandler`, `LightboxService` and `WorkshopContextIntakeService`. It holds catalog opens through `lightboxHandlerHarness` and delivers host answers in the order each case needs. `LightboxProjectSource.test.ts` gains a host test. I ran all eight over `2cf1f97`'s sources with type diagnostics off. Each failed at its behavioral assertion:
+
+| Test | Result on `2cf1f97` |
+| --- | --- |
+| A canceled opening's late failure | The catalog on screen was replaced by the failure's empty, unreadable one |
+| A canceled opening's late success, with a stale listing | Categories became the stale "Themes" |
+| Source picker → Context picker reopened | The Context picker's catalog was emptied by the source picker's late failure |
+| `amberneedle` answered after `violetneedle` | The `violetneedle` match vanished |
+| The same query in a new opening, with different file text by the time the old one reads | The old opening's answer (`second.md`) replaced the new one's (`first.md`) |
+| A search cleared while it ran, then retyped | The cleared search's match showed before the new search answered |
+| Bound note only for the current answer | The older query's bounded answer raised the note over the current, unbounded one |
+| Host echoes ids as sent, ignores an id-less request | Answers carried no `requestId`, and id-less requests were answered |
+
+The existing webview tests now echo the posted id from the host, and the existing host tests send one.
+
+### F-02: host file identity, not display text
+
+**Root cause.** The finding is correct. `LightboxProjectPicker` built its "on the shelf" set from `LightboxContextFile.displayPath` and compared it with each row's `path`. A display path omits its workspace folder, while the shelf dedupes by absolute path (`sourceKey`). So a second folder's same-named file disabled the first folder's row, which the host would have accepted.
+
+**Identity design.**
+- **The key.** The new `infrastructure/lightbox/LightboxFileKey.ts` exports `lightboxFileKey(absolutePath)`. It is an HMAC-SHA256 of the path under a 32-byte secret drawn once per extension session, truncated to 32 hex characters. The same file gets the same key, different files get different keys, and a key cannot recover a path or test a guessed one.
+  - The secret is module state, so no service is constructed in `MessageHandler` or at the composition root.
+  - It is never posted or logged.
+- **Both sides key the same string.** `LightboxProjectFiles` keys each catalog row from the resolver's `absolutePath`. `LightboxContextShelf` keys each file at add time from the very `sourceKey` it dedupes by, whichever door added it.
+  - So a row shows "attached" exactly when the shelf would refuse that file as "already in the context". I did not normalize the key separately, because a key normalized differently from the shelf's dedupe could disagree with the host.
+- **Choices are unchanged.** They still name `{ group, path }` only, and no absolute path crosses the wire.
+- **No host-side recompute is needed.** The attached state is derived in the webview on every render, from two host-derived inputs:
+  - the catalog, fetched fresh on each opening;
+  - the shelf with its keys, which `LIGHTBOX_CONTEXT_FILES` reposts after every add and removal.
+
+  In practice the shelf cannot change while the picker is open. The Lightbox is a single tab, the picker's confirm and Explore both close it, and the rail's Remove sits behind the backdrop. If a shelf update did arrive, the next render would compare against it.
+- **The cross-folder collapse is recorded, not fixed.** The resolver's older collapse, which lists only the first folder's file, is out of scope as you said. It was not tracked, so it is now [Low debt](../../.todo/tech-debt/2026-10-20-context-catalog-cross-root-collapse.md).
+
+**Tests.** `LightboxProjectPickerMultiRoot.test.tsx` (2 tests) builds two workspace folders, each with `Notes/cast.md`. It uses the real `ContextResourceResolver`, `WorkshopContextIntakeService`, `TextSourceResolver`, `LightboxContextShelf`, `LightboxService`, `LightboxReadingRunner`, `LightboxHandler` and `LightboxReadingHandler`, rendered through `LightboxApp`. Only the platform ports are fakes: the file system, the workspace, the settings and the system picker. The engine is never reached.
+
+| Test | Result on `2cf1f97` |
+| --- | --- |
+| Attach root B natively; root A's row stays selectable; adding it keeps both (the shelf holds both texts, and the rail lists `Notes/cast.md` twice); root A's row is then attached | Root A's row was disabled after root B's native attach |
+| Attach root A natively; its row is attached, its catalog key equals the shelf file's, and no `/root-a` or `/root-b` path is posted | The catalog row had no `fileKey` |
+
+Existing context-file fixtures and assertions gained their keys. The catalog's field list in `LightboxProjectSource.test.ts` now includes `fileKey`, and the boundary list includes `LightboxFileKey.ts`.
+
+### N-01: the backdrop check is now in the harness
+
+The harness now takes the Workshop's before and after shots at 500 px as well as at 1440 and 1000. Every shot with a dialog records `backdrop` in `facts.json`:
+- `onTop` is true when `document.elementFromPoint` returns the backdrop at each of eight points outside the dialog;
+- `coversViewport` is true when the backdrop's box spans the window.
+
+Both are true in all 24 dialog shots: 12 Lightbox, and 12 Workshop before and after. The README cites those facts instead of a run-time observation.
+
+The harness also plays the host as it now behaves: it echoes ids and adds stand-in keys. `compare.py` now also counts pixels inside the dialog's box:
+- **Inside the dialog:** 0 differing pixels in all six Workshop pairs, and the dialog markup is identical.
+- **Outside the dialog:** up to 20 pixels in the header's pills, under the backdrop, vary by one level between two runs of the same bundle (base or head). The README therefore no longer claims byte-identical Workshop runs. The Lightbox shots were byte-identical across the two runs.
+
+Against the first evidence set, only `context-attach-1000` changed: 10 pixels of raster noise at the logo's edge, under the backdrop. `facts.json` only gained the new fields and entries. The regenerated set was built from the fix head's bundle, `webview.js` SHA-256 `56749f8e761a1c38d762233ee947506a31a1d7c1cea829ac7961d6b88031e826`, which the final build reproduced.
+
+### Contract changes
+
+| Contract | Change |
+| --- | --- |
+| `LIGHTBOX_REQUEST_PROJECT_CATALOG` | Payload goes from `{}` to `LightboxRequestProjectCatalogPayload`, `{ requestId }` |
+| `LIGHTBOX_SEARCH_PROJECT_CATALOG` | Payload goes from `{ query }` to `LightboxSearchProjectCatalogPayload`, `{ requestId, query }` |
+| `LIGHTBOX_PROJECT_CATALOG` | Gains `requestId`; `entries` become `LightboxProjectCatalogEntry[]`, which adds `fileKey` |
+| `LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS` | Gains `requestId` (`LightboxProjectCatalogSearchResultsPayload`) |
+| `LightboxContextFile`, in `LIGHTBOX_CONTEXT_FILES` | Gains `fileKey` |
+| `LightboxProjectFiles` (host) | `catalog()` and `search()` become private behind `catalogReply(request)` and `searchReply(request)` |
+| `LightboxContextShelf` (host) | `list()` and `add()` return each file's `fileKey` |
+
+- There is a new type, `LightboxProjectRequestCorrelation`, and a new module, `LightboxFileKey.ts`.
+- No message type or route was added. `LIGHTBOX_CHOOSE_PROJECT_SOURCE` and `LIGHTBOX_ADD_PROJECT_CONTEXT` still carry catalog keys only.
+- `configuredResources.ts` and every Workshop contract are unchanged.
+- Nothing here is persisted. The shelf lives in memory, and keys last one session.
+
+### Verification
+
+| Check | `2cf1f97` (this review) | Fix head `8eccf49` |
+| --- | --- | --- |
+| Full Jest | 395 suites / 5,587 tests / 59 snapshots | **397 suites / 5,597 tests / 59 snapshots passed** |
+| Workshop parity | 2 suites / 10 tests / 57 snapshots | **Unchanged.** No `.snap`, shared-picker or Workshop component or handler file changed since `2cf1f97` |
+| `npm run typecheck` | Passed | **Passed**: core, webview and extension |
+| `npm run lint` | 0 errors / 1,133 warnings | **0 errors / 1,133 warnings**, identical per file, rule and severity to `59b57b6` |
+| `npm run build`, including `verify:bundle` | Passed | **Passed**, with the same three webpack size warnings |
+| `git diff --check` | Clean | **Clean**, from `59b57b6` and from `2cf1f97` |
+
+- The suite gains 2 suites and 10 tests, and every snapshot is unchanged.
+- `044907b` on its own fails the prompt-budget guard; `6e2befd` lists the bound.
+- `packages/core/src` still has no `vscode` import.
+- The run used Node 22.22.0 and npm 10.9.4. No live or billable call was made, and no lockfile changed.
+- This response is the only commit after `8eccf49`, and it changes nothing but this report.
