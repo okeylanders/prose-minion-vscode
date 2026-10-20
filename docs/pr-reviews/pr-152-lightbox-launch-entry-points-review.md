@@ -2,19 +2,23 @@
 
 **Author:** okeylanders · **PR:** [#152](https://github.com/okeylanders/prose-minion-vscode/pull/152) (open, unmerged at review)
 **Branches:** `epic/lightbox-launch-entry-points` → `epic/lightbox`
-**Reviewed implementation head:** `9399736ba14946f16a74de3d20363ef5718ca508`
-**Verified base / merge-base:** `9e5363c398fd04ca578e207c47b429c59687ed8b`
-**Scope:** 30 files · +1,359 / −44 · 4 commits before this report
-**Reviewed:** 2026-10-20 · **Reviewer:** Astra
+**Initial implementation head:** `9399736ba14946f16a74de3d20363ef5718ca508`
+**Re-reviewed implementation head:** `03e9b5b21e7e241dbddc43f853a48e1a0de69948`
+**Verified current base / merge-base:** `1532a465d3090d9c0edbe1ab9020d83d06b6b71d` (includes merged PR #151)
+**Initial base:** `9e5363c398fd04ca578e207c47b429c59687ed8b`
+**Initial scope:** 30 files · +1,359 / −44 · 4 commits; **current scope:** 42 files · +2,400 / −86, including the initial report and author response, before this re-review update
+**Reviewed and re-reviewed:** 2026-10-20 · **Reviewer:** Astra
 **Mode:** independent source/spec review, real adapter/handler/service ordering probes, rebuilt-production-bundle DOM witnesses, supplied-image inspection, deterministic verification, and read-only Slice 4 integration checks
 
 ## Resolution ledger
 
-| ID | Sev | Finding | Status at `9399736` |
+| ID | Sev | Finding | Status at `03e9b5b` |
 | --- | --- | --- | --- |
-| F-01 | Medium / P2 | An older file launch can replace a newer source after its asynchronous document load completes | **Open** |
+| F-01 | Medium / P2 | An older file launch can replace a newer source after its asynchronous document load completes | **Addressed** |
 
-**Verdict: Request changes.** The launch surfaces match the approved decision, and the ordinary deterministic checks pass, but the new adapter creates an unowned asynchronous interval before the existing source-ordering protection. Two independent integration witnesses reproduce the wrong-source replacement. This is a code-review verdict, not a formal GitHub review, merge authorization, native VS Code acceptance, or acceptance of the writer-output checkpoint before Slice 5.
+**Current verdict: No blocking findings remain at `03e9b5b`.** F-01 is independently addressed. The retained regressions and expanded ownership, refusal, lifecycle and host-boundary probes pass on the merged implementation; no new blocker was found. The independent re-review below the preserved author response records current-head verification and limits. This remains a code-review conclusion, not a formal GitHub review, merge authorization, native VS Code acceptance, or acceptance of the writer-output checkpoint before Slice 5.
+
+**Initial verdict at `9399736`: Request changes.** The initial launch surfaces matched the approved decision and ordinary deterministic checks passed, but two integration witnesses reproduced the wrong-source replacement. The initial finding and verification below are retained as historical evidence, not claims that the corrected head still fails.
 
 ## F-01 — Preserve source intent before asynchronous document loading
 
@@ -195,3 +199,61 @@ Before the merge, `git merge-tree --write-tree` from `0bb7ed3` was clean against
 The run used Node 22.22.0 and npm 10.9.4 (CI uses Node 18). Dependencies came from the committed lockfile with install scripts disabled. No live or billable provider call was made, and no lockfile changed. This response is the only commit after `38bfb2e`, and it changes nothing but this report.
 
 Still unverified: native VS Code menus, real `openTextDocument` latency, and real tab closing and reopening. The witnesses order these events with held promises; they do not measure a host. This response does not satisfy the writer's real-chapter output checkpoint required before Slice 5.
+
+## Independent re-review — F-01 addressed at `03e9b5b`
+
+The correction commits `6832664`, `8df5f07` and `0bb7ed3` were reviewed independently, together with their integration in `38bfb2e`. The latter's tree is `75129d7755d7e1e716cd6d10c467cb31a9ee9cf2`; `03e9b5b` adds only the author response. The actual current merge-base is `1532a46`, not the initial review's `9e5363c` or the earlier trial-merge Slice 4 head.
+
+### Ownership and host boundary
+
+The concrete target is checked synchronously, then [`openFileInLightbox.ts:123–129`](https://github.com/okeylanders/prose-minion-vscode/blob/03e9b5b21e7e241dbddc43f853a48e1a0de69948/apps/vscode-extension/src/application/commands/openFileInLightbox.ts#L123-L129) obtains the shared service's ticket **before** document loading. The same object crosses the host-only chain:
+
+- [`LightboxPanelProvider.ts:189–198`](https://github.com/okeylanders/prose-minion-vscode/blob/03e9b5b21e7e241dbddc43f853a48e1a0de69948/apps/vscode-extension/src/application/providers/LightboxPanelProvider.ts#L189-L198) rejects stale tickets before opening or revealing a panel.
+- [`MessageHandler.ts:431–438`](https://github.com/okeylanders/prose-minion-vscode/blob/03e9b5b21e7e241dbddc43f853a48e1a0de69948/packages/core/src/application/handlers/MessageHandler.ts#L431-L438) forwards that ticket without minting another.
+- [`LightboxHandler.ts:148–159`](https://github.com/okeylanders/prose-minion-vscode/blob/03e9b5b21e7e241dbddc43f853a48e1a0de69948/packages/core/src/application/handlers/domain/LightboxHandler.ts#L148-L159) separates the host seed from the webview route. The webview route always creates a new ticket, ignoring purported ticket fields.
+- [`LightboxService.ts:200–208`](https://github.com/okeylanders/prose-minion-vscode/blob/03e9b5b21e7e241dbddc43f853a48e1a0de69948/packages/core/src/infrastructure/lightbox/LightboxService.ts#L200-L208) compares ticket object identity, not a caller-supplied sequence number.
+
+This closes the original gap without adding a second board implementation or a transport-visible capability. The provider's return value also prevents a superseded dirty launch from reporting that its saved copy was boarded.
+
+### Independent adversarial verification
+
+**Twenty-nine adapter/provider/handler/service probes passed.** These preserve the two original expected-latest-source assertions and exercise the real `openFileInLightbox`, real `LightboxPanelProvider` including its stale gate, real `LightboxHandler`, real `LightboxService`, and real measurement services. The panel's `MessageHandler` is a minimal bridge; native VS Code, loading, file I/O, picker, standards enrichment and transport are controlled stand-ins.
+
+**Negative control:** Substituting only the original `9399736` command adapter, while retaining the corrected provider/handler/service and disabling type diagnostics for the old port shape, makes both original assertions fail again with `older-A.md` replacing the newer file/selection. The other 27 tests were skipped in that control. Restoring the current adapter returns all 29 to passing. This confirms that the probes detect the pre-await ownership defect rather than merely accepting a mocked provider rule; no checkout implementation was changed for the control.
+
+Coverage includes:
+
+- File → file, file → webview selection, and file → host selection; all six completion orders of three overlapping launches keep the last chosen source.
+- A newer picked file or re-read defeats the pending older launch. A picker opened earlier but chosen later becomes newest; dismissing it creates no competing choice.
+- A newer launch owns intent while still in document preflight, so an older already-dispatched disk read cannot adopt meanwhile.
+- No-file, non-URI, untitled, non-file and unsupported active-document refusals take no ticket. Unreadable/unsupported loaded targets do take a ticket, suppress older pending sources, and do not block a subsequent valid choice.
+- Stale loading failures and unsupported-language results leave the newer board and standing refusal unchanged. A newer refused re-read also retains its refusal instead of allowing the older file to replace it.
+- Current work remains deliverable after close/reopen, but stale work neither reopens nor reveals a tab. A late old-panel disposal cannot tear down the replacement. A source already measuring publishes only to the live recipient.
+- Superseded dirty launches emit no misleading saved-copy notice, and a wire payload cannot reuse an earlier host ticket.
+
+**Five separate host-boundary/lifecycle probes passed.** These additionally use the actual `MessageHandler.seedLightboxSource` and `handleMessage` methods on a controlled handler instance, rather than the adapter suite's minimal bridge. They verify copied-ticket rejection before panel creation, correct current/stale same-panel reveal behavior, inability to call the host-only method through an invented message type, malformed/wire-ticket isolation and recovery, and in-flight publication to a reopened panel. The merged Slice 4 tray still subscribes, replays on reveal, routes Open Workshop and unsubscribes on disposal.
+
+**Refusal and close semantics, verified rather than silently assumed:** A superseded document-load failure can still produce a warning naming the failed older file. It does not publish a Lightbox refusal, replace the board, clear the newer refusal, open a panel or issue the dirty saved-copy notice. This is retained feedback about the failed launch, not an unresolved F-01 source replacement. A current launch may reopen a tab closed while loading because closure is not a new source choice; that behavior is explicitly documented and tested. Neither result measures native-host timing.
+
+### Current-head gates and merge interaction
+
+| Check at `03e9b5b` | Independent result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **389 suites / 5,512 tests / 2 snapshots passed** (188.569 seconds) |
+| All three typechecks | **Passed** |
+| Production build and `verify:bundle` | **Passed**; the same three webpack size/performance warnings |
+| Lint against the actual merged base `1532a46` | **0 errors / 1,133 warnings** on both; zero additions or removals in normalized file/rule/severity/message comparison |
+| Independent ownership and host-boundary probes | **2 suites / 34 tests passed**, separate from the repository suite |
+| Current production-bundle sidebar DOM replay | **Passed**: repeated Lightbox presses and Workshop press emit distinct correct envelopes; `ui.lightbox` error renders |
+| Whitespace, merge-base and reviewer scope | **Passed**; report-only changes, no implementation or lockfile edits |
+| Exact implementation-head CI | Both `verify` jobs **succeeded** |
+
+Current implementation-head CI: [PR verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39368843390/job/118451835717), [branch verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39368841166/job/118451828217). The subsequent report-only commit needs its own post-publication CI check. Local runtime remains Node 24.19.0 / npm 11.9.0; CI uses Node 18.
+
+This is verification of the **actual merged branch**, not a repeat of the first review's prospective merge. The source-ticket changes coexist with Slice 4's handoff owner and seventh constructor argument; tray behavior is independently covered above. The separate [PR #151 review](pr-151-lightbox-lineage-subtext-spark-review.md) records its resolved originals and inherited nonblocking F-07 stale-Subtext typography consistency note. That presentation follow-up is not a new #152 regression and is not duplicated in this ledger.
+
+### Visual provenance and remaining acceptance
+
+The six launch-entry PNGs and their harness/facts are unchanged from the initial implementation. They remain the original inspected evidence, **not captures of the merged head**. The current rebuilt `webview.js` has SHA-256 `1f78a57895662bd001d4d69037b98e887c2c6183af4bce2eb49bba24dd55129b`; its sidebar DOM/message replay passes, with JSDOM's expected unsupported-CSS parser warning. The earlier Chromium restriction was not retried, and no fresh pixel/overflow or native VS Code claim is made.
+
+No live/billable provider calls, private manuscript fixtures, implementation edits, PR comments, formal reviews, merge or deployment were performed. Native menu/title interaction and real tab timing remain unverified. The writer's real-chapter output checkpoint still precedes Slice 5. The author's response above is preserved verbatim.
