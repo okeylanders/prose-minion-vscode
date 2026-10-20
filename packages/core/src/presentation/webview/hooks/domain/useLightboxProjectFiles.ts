@@ -3,10 +3,12 @@
  * project picker browses them (2026-10-20), mirroring the host's
  * `LightboxProjectFiles` behind `LightboxHandler`.
  *
- * It owns which picker is open, the catalog the host sent for it (Markdown
- * and plain text only) and the latest content-search answer, and it sends
- * the Lightbox's own routes: never a Workshop one. A choice names a catalog
- * key only; the host resolves it. Opening a picker asks for a fresh catalog
+ * It owns which picker is open (the source's, or the context list's), the
+ * catalog the host sent for it (Markdown and plain text only) and the latest
+ * content-search answer, and it sends the Lightbox's own routes: never a
+ * Workshop one. A choice names catalog keys only; the host resolves them.
+ * Context added this way comes back as the shelf (`LIGHTBOX_CONTEXT_FILES`,
+ * `useLightbox`), which re-estimates when the list changes. Opening a picker asks for a fresh catalog
  * and shows "Reading…" until it arrives, so the list is the list now.
  *
  * Nothing persists: the catalog is the host's, and a picker is transient.
@@ -23,8 +25,8 @@ import {
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 
-/** What a project picker is for. */
-export type LightboxProjectPicker = 'source';
+/** What a project picker is for: the board's source (one file) or its context (several). */
+export type LightboxProjectPicker = 'source' | 'context';
 
 export interface LightboxProjectFilesState {
   /** The picker on screen, if any. */
@@ -45,6 +47,8 @@ export interface LightboxProjectFilesActions {
   clearSearch: () => void;
   /** Board the file a row names. */
   chooseSource: (item: ConfiguredResourceRef) => void;
+  /** Add the files the rows name to the context, in the writer's order. */
+  addContext: (items: ConfiguredResourceRef[]) => void;
   handleCatalog: (message: LightboxProjectCatalogMessage) => void;
   handleSearchResults: (message: LightboxProjectCatalogSearchResultsMessage) => void;
 }
@@ -62,7 +66,8 @@ const NO_PERSISTENCE: LightboxProjectFilesPersistence = {};
 type LightboxProjectFilesRequest =
   | MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG
   | MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG
-  | MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE;
+  | MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE
+  | MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT;
 
 export function useLightboxProjectFiles(): UseLightboxProjectFilesReturn {
   const vscode = useVSCodeApi();
@@ -92,6 +97,11 @@ export function useLightboxProjectFiles(): UseLightboxProjectFilesReturn {
     ({ group, path }: ConfiguredResourceRef) => post(MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE, { group, path }),
     [post]
   );
+  const addContext = React.useCallback((items: ConfiguredResourceRef[]) => {
+    if (items.length > 0) {
+      post(MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT, { items: items.map(({ group, path }) => ({ group, path })) });
+    }
+  }, [post]);
 
   const handleCatalog = React.useCallback((message: LightboxProjectCatalogMessage) => {
     const payload = message.payload;
@@ -117,6 +127,7 @@ export function useLightboxProjectFiles(): UseLightboxProjectFilesReturn {
     search,
     clearSearch,
     chooseSource,
+    addContext,
     handleCatalog,
     handleSearchResults,
     persistedState: NO_PERSISTENCE

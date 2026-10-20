@@ -8,7 +8,8 @@
  * the shared full-tab `ProjectResourcePickerModal`, which the Lightbox's
  * source uses too (2026-10-20). This wrapper keeps what is the Workshop's
  * own: its three modes, their copy, which rows read as already attached, and
- * the attach and message footers with their budgets.
+ * the message footer with its slot cap (the attach footer is the shared
+ * ProjectResourceAttachFooter, which the Lightbox's context uses too).
  *
  * Word counts happen at attach time host-side; browse rows show byte sizes
  * and the running selection total is an honest ~estimate.
@@ -33,9 +34,7 @@ import {
   ProjectResourcePickerModal,
   projectResourceKey
 } from '@components/fulltab/ProjectResourcePickerModal';
-
-/** Honest rough words-per-byte for the running selection estimate only. */
-const ESTIMATE_BYTES_PER_WORD = 6;
+import { ProjectResourceAttachFooter } from '@components/fulltab/ProjectResourceAttachFooter';
 
 /** Every mode's escape hatch: the system picker, with the budget checked on add. */
 const EXPLORE_NOTE = 'opens the system picker; budget checked on add';
@@ -190,39 +189,9 @@ export const WorkshopContextSelectorModal: React.FC<WorkshopContextSelectorModal
     );
   };
 
-  const attachFooter = ({ selected, confirm, close }: ProjectResourcePickerFooterState) => {
-    const estimatedWords = Math.round(
-      selected.reduce((total, entry) => total + entry.sizeBytes, 0) / ESTIMATE_BYTES_PER_WORD
-    );
-    const overEstimate = estimatedWords > remainingWords;
-    return (
-      <div className="pm-ws-ctxsel-foot">
-        <span className={`pm-ws-ctxsel-total${overEstimate ? ' pm-ws-ctxsel-total-over' : ''}`}>
-          {selected.length === 0
-            ? 'Nothing selected'
-            : `${selected.length} file${selected.length === 1 ? '' : 's'} · ~${estimatedWords.toLocaleString()} words est.`}
-        </span>
-        <span className="pm-ws-ctxsel-spacer" />
-        {overEstimate ? (
-          <span className="pm-ws-ctxsel-overmsg">
-            Likely over the remaining {remainingWords.toLocaleString()}-word budget
-          </span>
-        ) : null}
-        <button className="pm-ws-action-btn" type="button" onClick={close}>
-          Cancel
-        </button>
-        <button
-          className="pm-ws-primary-btn"
-          type="button"
-          disabled={selected.length === 0}
-          onClick={confirm}
-        >
-          <Icon name="check" size={13} /> Add {selected.length}{' '}
-          file{selected.length === 1 ? '' : 's'}
-        </button>
-      </div>
-    );
-  };
+  const attachFooter = (state: ProjectResourcePickerFooterState) => (
+    <ProjectResourceAttachFooter {...state} remainingWords={remainingWords} />
+  );
 
   return (
     <ProjectResourcePickerModal

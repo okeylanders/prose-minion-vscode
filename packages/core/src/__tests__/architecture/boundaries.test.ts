@@ -1157,13 +1157,15 @@ const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
  * The project picker the Workshop's context selector and the Lightbox share
  * (2026-10-20). It is presentation only: every host effect is a callback.
  */
-const SHARED_PROJECT_PICKER = 'presentation/webview/components/fulltab/ProjectResourcePickerModal.tsx';
-const SHARED_PROJECT_PICKER_IMPORTS = [
-  'react',
-  '@components/shared/Icon',
-  '@components/workshop/WorkshopModalShell',
-  '@messages',
-  '@shared/types/context'
+const SHARED_PROJECT_PICKER_MODULES = [
+  {
+    file: 'presentation/webview/components/fulltab/ProjectResourcePickerModal.tsx',
+    imports: ['react', '@components/shared/Icon', '@components/workshop/WorkshopModalShell', '@messages', '@shared/types/context']
+  },
+  {
+    file: 'presentation/webview/components/fulltab/ProjectResourceAttachFooter.tsx',
+    imports: ['react', '@components/shared/Icon', '@components/fulltab/ProjectResourcePickerModal']
+  }
 ] as const;
 const LIGHTBOX_FEATURE_DIRECTORIES = [
   'infrastructure/lightbox',
@@ -1828,12 +1830,14 @@ describe('architectural boundaries', () => {
   });
 
   it('keeps the shared project picker presentation-only: no transport, no route, no feature imports (2026-10-20)', () => {
-    const file = path.join(SRC_ROOT, SHARED_PROJECT_PICKER);
-    const source = fs.readFileSync(file, 'utf8');
-    expect(source).not.toMatch(/useVSCodeApi|MessageType|postMessage|acquireVsCodeApi/);
-    expect(source).not.toMatch(/\b(WORKSHOP|LIGHTBOX)_[A-Z_]+\b/);
-    expect(moduleImports(file, source).map(({ module }) => module).sort())
-      .toEqual([...SHARED_PROJECT_PICKER_IMPORTS].sort());
+    for (const { file: relative, imports: allowed } of SHARED_PROJECT_PICKER_MODULES) {
+      const file = path.join(SRC_ROOT, relative);
+      const source = fs.readFileSync(file, 'utf8');
+      expect({ relative, transport: /useVSCodeApi|MessageType|postMessage|acquireVsCodeApi/.test(source) })
+        .toEqual({ relative, transport: false });
+      expect({ relative, routes: source.match(/\b(WORKSHOP|LIGHTBOX)_[A-Z_]+\b/g) ?? [] }).toEqual({ relative, routes: [] });
+      expect(moduleImports(file, source).map(({ module }) => module).sort()).toEqual([...allowed].sort());
+    }
   });
 
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {

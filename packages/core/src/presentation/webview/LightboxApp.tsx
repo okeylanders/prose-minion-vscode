@@ -13,10 +13,11 @@
  * the Lightbox, which treats it as the host's confirmation of the model and
  * its prices and asks for a fresh estimate (PR #149 F-03 re-review).
  *
- * "Choose from project…" opens the shared project picker (2026-10-20) as an
- * overlay inside the frame: `useLightboxProjectFiles` owns its catalog and
- * routes, and its escape hatch is the source panel's system picker. The
- * picker is on the overlay stack, so Escape closes it before the pin.
+ * "Choose from project…" and the context list's "Add from project…" open the
+ * shared project picker (2026-10-20) as an overlay inside the frame:
+ * `useLightboxProjectFiles` owns its catalog and routes, and each use's
+ * escape hatch is its own system picker. The picker is on the overlay stack,
+ * so Escape closes it before the pin.
  *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
@@ -193,6 +194,7 @@ export const LightboxApp: React.FC = () => {
 
   const { open: openProjectPicker } = projectFiles;
   const chooseFromProject = React.useCallback(() => openProjectPicker('source'), [openProjectPicker]);
+  const addContextFromProject = React.useCallback(() => openProjectPicker('context'), [openProjectPicker]);
 
   const source = board?.source ?? null;
   const subtitle = source ? (
@@ -238,7 +240,7 @@ export const LightboxApp: React.FC = () => {
             />
             <LightboxContextList
               context={lightbox.context}
-              onAdd={lightbox.addContextFile}
+              onAddFromProject={addContextFromProject}
               onRemove={lightbox.removeContextFile}
             />
             <LightboxLensesPanel
@@ -293,10 +295,13 @@ export const LightboxApp: React.FC = () => {
         catalog={projectFiles.catalog}
         catalogUnreadable={projectFiles.catalogUnreadable}
         searchResults={projectFiles.searchResults}
+        context={lightbox.context}
         onSearch={projectFiles.search}
         onClearSearch={projectFiles.clearSearch}
         onChooseSource={projectFiles.chooseSource}
         onExploreSource={lightbox.pickSourceFile}
+        onAddContext={projectFiles.addContext}
+        onExploreContext={lightbox.addContextFile}
         onClose={projectFiles.close}
       />
     </FullTabShell>
