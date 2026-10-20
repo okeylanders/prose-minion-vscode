@@ -85,7 +85,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -106,11 +106,14 @@ packages/core/src/
             ├── accountBalance.ts # OpenRouter account balance
             ├── configuredResources.ts # The configured-resource catalog shapes the shared project picker browses (Workshop and Lightbox)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
-            ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
+            ├── lightboxReadings.ts # Lightbox reading tiles, groups, lenses and the estimate's shapes
+            ├── lightboxRuns.ts   # Lightbox run messages: scope, phases, progress, set lenses, estimate answer, run, cancel, group result
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
             ├── lightboxCraftTiles.ts # Group D tiles: tier mix, signature, familiar phrase, air-lock, echo, endings, handoff, number usage
             ├── lightboxNumbers.ts  # The measured numbers: rows, standouts, the writer's baseline summary, sentence summary
+            ├── lightboxPlotTiles.ts # Group E tiles: template (freshness, engagement by movement tile id), template beat, pressure thread, artifact, synopsis, movement
+            ├── lightboxSections.ts # The measured Sections lane: signal, sections, and where each signal fired
             ├── lightboxContextFiles.ts # Lightbox context files and their messages
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
@@ -179,6 +182,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxBring.ts        # "Bring to Workshop" view and request; Bound from the Workshop tray (pure)
 │       │   ├── lightboxSparks.ts       # The spark lane: shown and set aside (pure)
 │       │   ├── lightboxCraft.ts        # Group D as drawn: tier shares, endings tally and lane, sentence columns, number bars (pure)
+│       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
@@ -796,8 +800,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-20, Lightbox Slice 4B after the PR #155 review):
-- 411 suites / 5,712 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-20, Lightbox Slice 4C):
+- 419 suites / 5,802 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1054,6 +1058,41 @@ adding a way to put a source on the Lightbox board:
 - **Witnesses.** Order a new entry point against the others with held
   promises through `lightboxHandlerHarness`, as
   `openFileInLightboxOwnership.integration.test.ts` does.
+
+### Lightbox Reading Groups
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D3, D4 and D7 (Slices 4B and 4C) when adding a lens or a reading tile kind:
+
+- **Everything a kind joins.** A lens belongs to one group
+  (`LIGHTBOX_LENSES`), with that group's numbered prompt files, its worked
+  example (a request byte-identical to the builder's, decoding through the
+  production codec and verifier) and a codec block. A new kind joins
+  `LightboxReadingTile`, `LIGHTBOX_TILE_REGISTER`, `LIGHTBOX_TILE_RENDERERS`,
+  `LightboxTileGates` (one gate, fresh and carried), the carry in
+  `LightboxStaleReadings`, the carry parity sweep and every-kind test, and
+  Bring's points. Its bounds live in `PROMPT_BUDGETS.lightbox`, pinned to
+  the prompt text by `lightboxPromptBudgetsSync.test.ts`.
+- **Lenses read together.** When one lens's reading names another's items
+  (engagement names movements), the two are read in one call:
+  `LIGHTBOX_READ_TOGETHER` in `shared/constants/lightbox.ts`, through
+  `lightboxRereadLenses`, which the planner, the estimate's re-read prices
+  and the webview's re-read line all use. With the partner lens off, the
+  task asks for nothing that needs it.
+- **Cross-group figures are host joins.** A figure joining two groups' tiles
+  (the freshness basis) is one shared pure function over the board
+  (`shared/constants/lightboxPlot.ts`), used by the webview and by Bring
+  alike. It is shown only while both halves are current, and it never enters
+  a model's task.
+- **References by tile id.** A reading that refers to another tile
+  (engagement on a movement) stores the host's tile id, never the reading's
+  label or a position, so a re-read or a carry cannot attach it to the wrong
+  item.
+- **Sets gate as sets.** Items that only mean something together (movements
+  tiling the chapter) pass one set gate, fresh and carried alike, and a
+  failure withholds the whole set as one claim naming the rule it broke.
+- **Measured lanes are recomputed, never carried.** The Sections lane
+  (`LightboxSections`) is measured with every board and is never stale.
 
 ### Operational Tips
 

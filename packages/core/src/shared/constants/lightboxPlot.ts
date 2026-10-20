@@ -132,6 +132,7 @@ export const LIGHTBOX_BASIS_LINES = {
   noBeats: 'No template beat was found, so there is no subversion count.',
   staleStock: 'Stock & signature was read against an earlier version of this chapter, so the basis is not counted. Re-read it to count it.',
   staleTemplate: 'Template & freshness was read against an earlier version of this chapter, so the basis is not counted. Re-read it to count it.',
+  staleBoth: 'Stock & signature and Template & freshness were read against an earlier version of this chapter, so the basis is not counted. Re-read them to count it.',
   reading: 'A half of the basis is being read again; it is counted when the reading lands.'
 } as const;
 
@@ -156,11 +157,9 @@ export function lightboxFreshnessBasis(readings: readonly LightboxReadingGroup[]
   if (stock === 'reading' || read === 'reading') {
     return { status: 'reading', line: LIGHTBOX_BASIS_LINES.reading };
   }
-  if (stock === 'stale') {
-    return { status: 'stale', line: LIGHTBOX_BASIS_LINES.staleStock };
-  }
-  if (read === 'stale') {
-    return { status: 'stale', line: LIGHTBOX_BASIS_LINES.staleTemplate };
+  if (stock === 'stale' || read === 'stale') {
+    const line = stock !== 'stale' ? 'staleTemplate' : read !== 'stale' ? 'staleStock' : 'staleBoth';
+    return { status: 'stale', line: LIGHTBOX_BASIS_LINES[line] };
   }
   const beats = tilesOfKind(readings, 'template-beat');
   if (beats.length === 0) {

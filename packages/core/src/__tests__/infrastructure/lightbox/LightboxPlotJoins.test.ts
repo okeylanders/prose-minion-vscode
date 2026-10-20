@@ -44,6 +44,8 @@ describe('the freshness basis: a host join of groups D and E (Slice 4C)', () => 
     expect(lightboxFreshnessBasis([D()])).toEqual({ status: 'missing', line: LIGHTBOX_BASIS_LINES.missingTemplate });
     expect(lightboxFreshnessBasis([stale(D(), 'stock'), storyGroup()])).toEqual({ status: 'stale', line: LIGHTBOX_BASIS_LINES.staleStock });
     expect(lightboxFreshnessBasis([D(), stale(storyGroup(), 'template')])).toEqual({ status: 'stale', line: LIGHTBOX_BASIS_LINES.staleTemplate });
+    // After a carry both halves are stale, and the line names both.
+    expect(lightboxFreshnessBasis([stale(D(), 'stock'), stale(storyGroup(), 'template')])).toEqual({ status: 'stale', line: LIGHTBOX_BASIS_LINES.staleBoth });
     // A stale lens elsewhere in the group leaves the basis current.
     expect(lightboxFreshnessBasis([D(), stale(storyGroup(), 'pressure')]).status).toBe('current');
     const rereading: LightboxReadingGroup = { ...D(), status: 'running', pending: ['stock'] };

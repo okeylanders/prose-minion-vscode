@@ -4,7 +4,7 @@
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3, D4, D6, D7 (and its 2026-10-20 addendum), D11
 **Design:** [`NewLenses.dc.html`](../../../docs/design/lightbox/NewLenses.dc.html) sections 1, 4, 5 and 7 (draft, 2026-10-20)
 **Writer decisions:** 10, 11 and 14 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Planned. Stacked on Slice 4B (it joins the freshness basis to 4B's tier counts).
+**Status:** Implemented, awaiting review (`epic/lightbox-slice-4c-story`). Stacked on Slice 4B (it joins the freshness basis to 4B's tier counts); 4B's PR #155 fixes are merged in.
 **Before:** Slice 5.
 
 ## Outcome
@@ -156,6 +156,151 @@ grade" and its basis line only when both halves are current.
 - The freshness basis join: both present, one stale, one missing, never sent
   to a model.
 - Parity sweep and every-kind test include group E.
+
+## Implementation notes (2026-10-20)
+
+What landed, and where it differs from the plan above. Where the
+coordinator's brief added detail to this spec, the brief was followed; each
+such point is marked *(brief)*.
+
+**Contracts and files**
+
+- **Prompt files are 53–56** *(brief)*, after group D's 50–52, not 60–63:
+  `53-template.md`, `54-pressure.md`, `55-artifacts.md`,
+  `56-summary-movements.md`, with `44-example-group-e.md`. The shared prompt
+  names sentinel `E`.
+- **Splits to stay under 500 lines.** Run messages moved from
+  `lightboxReadings.ts` to `lightboxRuns.ts`, and Slice 2B's lens cases from
+  `LightboxReadingTiles.ts` to `LightboxFirstReadingTiles.ts`. Group E is
+  `LightboxPlotWire`, `LightboxPlotCodec`, `LightboxPlotGates`,
+  `LightboxPlotTiles`, `LightboxPlotCarry`, `LightboxPlotHandoff` and
+  `LightboxSections` on the host, `shared/constants/lightboxPlot.ts` shared,
+  and `lightboxPlot.ts` plus five components in the webview; all joined
+  `LIGHTBOX_MODULES` and the boundary lists.
+- **Typical output tokens** are guesses from the worked example's length,
+  labelled so: template 1,100, pressure 1,100, artifacts 1,300, summary 900.
+
+**Template and engagement**
+
+- **A third stance, `departs`** *(brief)*: a beat the template has no beat
+  for. The basis counts `subverts` over all found beats, `departs` included.
+- **Engagement is keyed by movement id, not title** *(brief)*. Each movement
+  carries an `id` (1–12 letters, digits or hyphens, unique in the block),
+  and engagement entries name it. The host checks every entry names a
+  movement the same response drew, and each drawn movement has exactly one
+  entry; otherwise the whole engagement is withheld (one claim,
+  "Engagement", with the rule), never a partial set. This is stricter than
+  the plan's "a movement with no entry has no mark": a missing entry
+  withholds the engagement.
+- **Engagement lives on the template tile** (`engagement:
+  LightboxEngagementMark[]`), keyed by the movement's **tile id**, not a kind
+  of its own. A re-read movement set never inherits old marks; a carry keeps
+  them, since carried movements keep their tile ids, and a withheld set
+  takes engagement with it.
+- **Template and summary are read together.** Engagement needs the same
+  response's movements, so a single-lens re-read of either is one call with
+  both (`LIGHTBOX_READ_TOGETHER`, `lightboxRereadLenses`), and the estimate
+  prices re-reads that way. With Summary & movements off, the template is
+  read alone, its task asks for an empty engagement list, and the tile and
+  lane say engagement needs the movements; the template tile hides
+  engagement while that lens is off, as the lane does. A template re-read
+  alone with summary off leaves the board's movements without engagement:
+  that reading saw no movements.
+- **The freshness basis is a shared pure join**, `lightboxFreshnessBasis`
+  in `shared/constants/lightboxPlot.ts`, computed from the board's tiles by
+  the webview (tile, inspector) and by the host (Bring). No protocol field
+  carries it, so it cannot drift from the tiles. It counts only found beats,
+  is shown only when both halves are on the board, current and not being
+  read again, and otherwise says which half is missing or stale (both, when
+  both are). The tier mix is **referenced, not repeated**: the tile links to
+  Stock & signature, where it was counted.
+
+**Pressure**
+
+- **Order** *(brief)*: planted ≤ every escalation ≤ resolution, in
+  paragraph order, else the thread is withheld (`threadOrder`). A thread
+  whose resolution is not found is withheld rather than shown open.
+- **Dormant consistency is checked by the codec** (no escalation, no
+  resolution), so an inconsistent thread is withheld as malformed under its
+  question. "No quote after the plant" is exactly that check.
+- **Span** is planted ¶ to resolution ¶, or to the last paragraph while
+  open. A thread is open across a column when planted at or before its last
+  paragraph and not resolved by its first: it closes in the paragraph that
+  resolves it, so a thread planted and resolved in one paragraph adds
+  nothing to the lane.
+
+**Artifacts**
+
+- **Mentions and first paragraph** use the gravity lens's field counter
+  (each occurrence once, under its longest term), so they agree with the
+  term counter everywhere else. The rabbit-hole's first mention is the
+  chapter heading; it counts.
+- **The arc needs 1–5 steps.** A step whose quote fails, or that stands
+  before the step it follows, is withheld at its paragraph with a new quote
+  failure, `out-of-order`; the arc keeps the rest.
+- **"Planted, unused" is defined in code**: kept only when every mention and
+  every arc step stands within 2 paragraphs after the first
+  (`LIGHTBOX_UNUSED_REACH`). Otherwise the flag is not shown and the
+  inspector gives the host's reason; carried back onto text where it holds,
+  it stands again.
+- **No quote-holds-term rule.** The artifact's gate is "counted at least
+  once" by the shared counter, so 4B's `lightboxTermSpans` and
+  `lightboxPhraseHeld` (PR #155 F-03) were not needed.
+
+**Summary and movements**
+
+- **Synopsis**: at most 320 characters and 4 sentences (the codec counts
+  with the prose sentence splitter), with 2–3 quotes; fewer than two found
+  withholds it.
+- **The movement set** is gated as a set, fresh and carried alike: a
+  malformed movement, a boundary not found, a boundary outside its first
+  paragraph, not starting at ¶1, a range ending before it starts, an
+  overlap, a gap, not ending at the last paragraph. Fresh, movements are
+  sorted by `from`; carried, each keeps its place and starts where its
+  boundary quote now stands, ending before the next. A set that fails is
+  withheld as one claim, "Movements", with the rule it broke (a malformed
+  movement also under its own title). There is one tile per movement,
+  numbered by the host (I, II, III); the reading's ids are never shown.
+
+**Sections (measured)**
+
+- Read per paragraph of the board's model (blank-line split), front matter
+  skipped. ATX headings take up to three leading spaces, one to six `#` and
+  a space, closing hashes dropped; setext needs an underline of three or
+  more `=` or `-` under text in the same paragraph.
+- Scene breaks: three or more `*`, `-` or `_` (spaces allowed), or a lone
+  `#` or `§`, as a paragraph's first line. `---` after a blank line is a
+  break; under text in the same paragraph it is a setext underline. A break
+  that ends the chapter or follows another opens nothing.
+- Chapter lines: "Chapter" (any case) and a number in digits, roman numerals
+  or words up to ninety-nine, alone or with a title after `.`, `:` or a
+  spaced dash, at most 80 characters. "Chapter 12 was where…" is prose.
+- Headings at the highest level that divides the chapter in two or more,
+  then scene breaks, then chapter lines; text before the first marker is an
+  "Opening" section. What fired is reported for every signal, used or not.
+- **Not detected**, as the module states: a break or heading that is not a
+  paragraph's first line, `# # #`, `⁂`, ornaments, blank-line runs,
+  "Part"/"Book"/"Prologue"/"Epilogue" lines, numbers alone, setext
+  underlines shorter than three.
+
+**Webview**
+
+- The Sections note sits beside Summary & movements and in the ribbon's
+  Sections lane; the lane keeps it when the lens is off.
+- The two-level ribbon above 96 paragraphs stays out of scope (feature
+  note above).
+
+**Limits, stated.** A maximal group E response can exceed the per-group
+response cap: 39,853 characters at every bound against 32,000, artifacts the
+long block
+([tech debt](../../tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md)).
+
+**Verification.** The counts are in the epic's progress note. Typecheck;
+the full jest suite; lint identical per file and rule to `8b930fb` (0 errors
+/ 1,133 warnings); the production build with `verify:bundle`; the diff
+whitespace check. Visual evidence:
+[`lightbox-slice-4c-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4c-visual/README.md).
+No live or billable call.
 
 ## Done when
 

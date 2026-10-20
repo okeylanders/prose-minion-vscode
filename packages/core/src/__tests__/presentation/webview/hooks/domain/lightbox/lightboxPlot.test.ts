@@ -31,7 +31,7 @@ describe('the Sections note', () => {
   it('names the signal that divides the chapter, and how many sections it makes', () => {
     const two = [{ from: 1, to: 2, label: 'A' }, { from: 3, to: 4, label: 'B' }];
     expect(lightboxSectionsNote({ signal: 'headings', level: 2, sections: two, fired })).toBe('2 sections from headings (level 2 and above), found by code.');
-    expect(lightboxSectionsNote({ signal: 'scene-breaks', sections: two, fired })).toBe('2 scenes from scene-break lines (*** · # · §), found by code.');
+    expect(lightboxSectionsNote({ signal: 'scene-breaks', sections: two, fired })).toBe('2 scenes from scene-break lines, found by code.');
     expect(lightboxSectionsNote({ signal: 'chapter-lines', sections: two, fired })).toBe('2 sections from chapter lines, found by code.');
   });
 

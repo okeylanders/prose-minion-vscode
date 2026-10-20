@@ -79,7 +79,7 @@ export function lightboxSectionsNote(sections: LightboxSectionsMeasure): string 
     case 'headings':
       return `${count} sections from headings (level ${sections.level ?? 1} and above), found by code.`;
     case 'scene-breaks':
-      return `${count} scenes from scene-break lines (*** · # · §), found by code.`;
+      return `${count} scenes from scene-break lines, found by code.`;
     case 'chapter-lines':
       return `${count} sections from chapter lines, found by code.`;
     case 'none': {

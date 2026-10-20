@@ -65,7 +65,7 @@ carried into the Workshop.
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Merged (PR #150) |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Merged (PR #151) |
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
-| 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Planned (after 4B) |
+| 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Planned (after 4C) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
@@ -860,3 +860,45 @@ land before Slice 5 (decision 14).
     were taken. After the fixes: 411 suites / 5,712 tests / 59 snapshots;
     lint identical. See the review's
     [author response](../../../docs/pr-reviews/pr-155-lightbox-craft-lenses-review.md#author-response-2026-10-20).
+
+- **2026-10-20. Slice 4C (Group E, story) is implemented** on
+  `epic/lightbox-slice-4c-story`, stacked on 4B with its PR #155 fixes
+  (`16e85b1`) merged in. A press now reads five groups; group E reads
+  template and freshness, pressure, artifacts, and summary and movements,
+  from one call with a worked example (*Alice* ch. I, ¶1–¶8) whose request is
+  the builder's byte for byte and which decodes through the production codec
+  and verifier with every quote exact.
+  - **Host.** Six tile kinds (template, template beat, pressure thread,
+    artifact, synopsis, movement), all through `LightboxTileGates`, fresh and
+    carried. Movements are gated as a set (boundaries in their first
+    paragraphs, contiguous, covering) and withheld whole when they do not
+    tile the chapter; carried, each starts where its boundary quote now
+    stands. Engagement sits on the template tile, keyed by movement tile id,
+    one level per movement or none. Threads keep paragraph order and get
+    host spans; artifacts get host mentions and first paragraphs, and
+    "planted, unused" only where code bears it out. Template and summary
+    are read together on a re-read.
+  - **Measured.** The Sections lane (`LightboxSections`): headings, then
+    scene breaks, then chapter lines, recomputed with every board.
+  - **Joined.** The freshness basis, D's signature share and E's subverted
+    beats, a shared pure join shown only while both halves are current,
+    never sent to a model.
+  - **Webview.** Template & freshness, Pressure, Artifacts and Summary &
+    movements tiles with register chips; Sections, Movements, Pressure and
+    Engagement lanes on the ribbon; inspector details and Bring by id for
+    every kind.
+  - **Deviations and limits** are in the slice's
+    [implementation notes](slice-4c-story-lenses.md#implementation-notes-2026-10-20);
+    one item went to [tech debt](../../tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md).
+  - **Verification.**
+
+    | Check | `8b930fb` (4B) | `16e85b1` (4B, PR #155 fixes) | Slice 4C head |
+    |---|---|---|---|
+    | `npx jest` | 407 suites / 5,693 tests / 59 snapshots | 411 / 5,712 / 59 | 419 suites / 5,802 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes | Passes |
+
+    - Visual evidence at 1440, 1000 and 500 px from real host output with a
+      stub model: [`lightbox-slice-4c-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4c-visual/README.md).
+    - No live or billable call.
