@@ -34,7 +34,7 @@ import type {
   LightboxWithheldQuote
 } from '@messages';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { lightboxPhraseHeld, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
 import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryTiles';
@@ -335,7 +335,8 @@ class GroupAssembly implements LightboxClaimAssembler {
         ...(said !== undefined ? { said } : {}),
         ...(pairCheck ? { pair: pairCheck.pair } : {}),
         ...(draft.stat ? { stat: draft.stat } : {}),
-        ...(draft.phrase !== undefined ? { phrase: draft.phrase } : {})
+        // A familiar phrase is held to a whole occurrence inside a found quote's span (PR #155 F-03).
+        ...(draft.phrase !== undefined ? { phraseHeld: lightboxPhraseHeld(this.context.verifier, checked.evidence, draft.phrase) } : {})
       },
       { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue, standouts: this.context.standouts ?? new Map() }
     );

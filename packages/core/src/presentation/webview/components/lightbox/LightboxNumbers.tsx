@@ -77,6 +77,7 @@ export const LightboxNumbers: React.FC<LightboxTileProps> = ({ board, bind }) =>
     <LightboxReadingFrame
       kind="number-usage"
       span={6}
+      staleFirst
       title="What stands out in the numbers"
       view={view}
       empty={empty}
@@ -88,7 +89,8 @@ export const LightboxNumbers: React.FC<LightboxTileProps> = ({ board, bind }) =>
           </span>
           <span className="pm-lb-craft-note">{lightboxBaselineLine(numbers, presetRanges)}</span>
           {numbers.rows.map((row) => (
-            <NumberRow key={row.stat} row={row} usage={usages.find((tile) => tile.stat === row.stat)} bind={bind} />
+            // A reading is drawn only under a figure that stands out now (PR #155 F-01).
+            <NumberRow key={row.stat} row={row} usage={row.standout ? usages.find((tile) => tile.stat === row.stat) : undefined} bind={bind} />
           ))}
         </div>
       )}

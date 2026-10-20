@@ -19,6 +19,12 @@
  * sides. A word pattern stands out only above its average: a pattern rarer
  * than usual has no instance to quote, so the board shows it but does not
  * ask how it is used.
+ *
+ * **Never decided from a rounded figure (PR #155 F-04).** Ratios and
+ * thresholds are compared from the counts themselves (cross-multiplied),
+ * "none in your other chapters" means a zero count, and every value and
+ * ratio is kept unrounded; the board rounds only what it shows
+ * (`formatLightboxFigure`, `formatLightboxRatio`).
  */
 
 import type {
@@ -39,7 +45,7 @@ import { findBeingVerbs } from '@/tools/measure/beingVerbs';
 import { lightboxSentenceWords } from '@/infrastructure/lightbox/LightboxParagraphs';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
 
-/** How far from the writer's average a figure must be to stand out: this many times, or its inverse. */
+/** How far from the writer's average a figure must be to stand out: this many times, or its inverse (compared as 3/2). */
 export const LIGHTBOX_STANDOUT_RATIO = 1.5;
 /** A word pattern needs this many instances in the chapter to stand out against an average. */
 export const LIGHTBOX_STANDOUT_MINIMUM_INSTANCES = 3;
@@ -122,14 +128,35 @@ export function addLightboxFigureCounts(into: LightboxFigureCounts, more: Lightb
   }
 }
 
-/** A figure's value from counts: a mean, a percentage, or a rate per 1,000 words; one decimal. */
-export function lightboxFigureValue(stat: LightboxNumberStatId, counts: LightboxFigureCounts): number {
-  const value = stat === 'sentence-length'
-    ? (counts.sentences > 0 ? counts.words / counts.sentences : 0)
+/**
+ * A figure as a fraction of counts, never rounded: a mean (words over
+ * sentences), a percentage, or a rate per 1,000 words. Standouts and ratios
+ * are decided from these (PR #155 F-04); rounding is for display only
+ * (`formatLightboxFigure`).
+ */
+export interface LightboxFigureFraction {
+  numerator: number;
+  /** Never 0: an empty text's figure is 0 over 1. */
+  denominator: number;
+}
+
+export function lightboxFigureFraction(stat: LightboxNumberStatId, counts: LightboxFigureCounts): LightboxFigureFraction {
+  const [numerator, denominator] = stat === 'sentence-length'
+    ? [counts.words, counts.sentences]
     : stat === 'dialogue'
-      ? (counts.words > 0 ? (counts.dialogueWords / counts.words) * 100 : 0)
-      : (counts.words > 0 ? (counts.patterns[stat] / counts.words) * 1000 : 0);
-  return round(value, 1);
+      ? [counts.dialogueWords * 100, counts.words]
+      : [counts.patterns[stat] * 1000, counts.words];
+  return denominator > 0 ? { numerator, denominator } : { numerator: 0, denominator: 1 };
+}
+
+/** The fraction's value, unrounded. */
+export function lightboxFigureRate(fraction: LightboxFigureFraction): number {
+  return fraction.numerator / fraction.denominator;
+}
+
+/** Whether `a` is at least `LIGHTBOX_STANDOUT_RATIO` (3/2) times `b`, by cross-multiplying the counts. */
+function atLeastStandoutRatio(a: LightboxFigureFraction, b: LightboxFigureFraction): boolean {
+  return a.numerator * b.denominator * 2 >= 3 * b.numerator * a.denominator;
 }
 
 /** The writer's own average, as the baseline service measured it. */
@@ -162,10 +189,13 @@ export function measureLightboxNumbers(input: LightboxNumbersInput): LightboxNum
   const writerCounts = input.writer.summary.kind === 'measured' && input.writer.counts &&
     input.writer.counts.words >= LIGHTBOX_BASELINE_MINIMUM_WORDS ? input.writer.counts : undefined;
   const rows = LIGHTBOX_NUMBER_STATS.map(({ stat, label, unit }) => {
-    const value = stat === 'sentence-length' ? round(input.averageWordsPerSentence, 1) : lightboxFigureValue(stat, counts);
+    const chapter = lightboxFigureFraction(stat, counts);
+    // Sentence length shows the headline's mean, the figure the preset compares; the rest show their exact rate.
+    const value = stat === 'sentence-length' ? input.averageWordsPerSentence : lightboxFigureRate(chapter);
     const range = rangeOf(input.standards?.find((item) => item.key === STANDARDS_KEYS[stat]));
-    const writer = writerCounts ? writerAverage(value, lightboxFigureValue(stat, writerCounts)) : undefined;
-    const standout = standoutOf(stat, value, counts, range, writer);
+    const average = writerCounts ? lightboxFigureFraction(stat, writerCounts) : undefined;
+    const writer = average ? writerAverage(chapter, average) : undefined;
+    const standout = standoutOf(stat, chapter, counts, range, average);
     return { stat, label, unit, value, ...(range ? { range } : {}), ...(writer ? { writer } : {}), ...(standout ? { standout } : {}),
       ...lightboxNumberInstances(stat, input.paragraphs, standout) };
   });
@@ -248,27 +278,32 @@ function rangeOf(item: LightboxStandardsItem | undefined): LightboxNumberRange |
   return { ...item.standard, status: item.status };
 }
 
-function writerAverage(value: number, average: number): LightboxNumberRow['writer'] {
-  return { average, ...(average > 0 ? { ratio: round(value / average, 2) } : {}) };
+/** The writer's average and the chapter's ratio to it, unrounded; no ratio when the writer's count is zero. */
+function writerAverage(chapter: LightboxFigureFraction, average: LightboxFigureFraction): LightboxNumberRow['writer'] {
+  return {
+    average: lightboxFigureRate(average),
+    ...(average.numerator > 0 ? { ratio: lightboxFigureRate(chapter) / lightboxFigureRate(average) } : {})
+  };
 }
 
 function standoutOf(
   stat: LightboxNumberStatId,
-  value: number,
+  chapter: LightboxFigureFraction,
   counts: LightboxFigureCounts,
   range: LightboxNumberRange | undefined,
-  writer: LightboxNumberRow['writer']
+  average: LightboxFigureFraction | undefined
 ): LightboxNumberStandout | undefined {
   const pattern = stat !== 'sentence-length' && stat !== 'dialogue';
   const byStandards = range && range.status !== 'within' ? range.status : undefined;
   let byWriter: 'above' | 'below' | undefined;
-  if (writer && counts.words >= LIGHTBOX_STANDOUT_MINIMUM_WORDS &&
+  if (average && counts.words >= LIGHTBOX_STANDOUT_MINIMUM_WORDS &&
     (!pattern || counts.patterns[stat as LightboxNumberPatternId] >= LIGHTBOX_STANDOUT_MINIMUM_INSTANCES)) {
-    if (writer.average === 0) {
-      byWriter = value > 0 ? 'above' : undefined;
-    } else if (value >= writer.average * LIGHTBOX_STANDOUT_RATIO) {
+    // "None in your other chapters" is an actual zero count, never a rate that rounds to zero.
+    if (average.numerator === 0) {
+      byWriter = chapter.numerator > 0 ? 'above' : undefined;
+    } else if (atLeastStandoutRatio(chapter, average)) {
       byWriter = 'above';
-    } else if (!pattern && value <= writer.average / LIGHTBOX_STANDOUT_RATIO) {
+    } else if (!pattern && atLeastStandoutRatio(average, chapter)) {
       byWriter = 'below';
     }
   }
@@ -288,7 +323,7 @@ function standoutOf(
   }
   // In whole words: an instance is one sentence, and a sentence has a whole number of them.
   const bound = byStandards === 'above' ? range?.max : byStandards === 'below' ? range?.min : undefined;
-  return { direction, against, reference: Math.round(bound ?? writer?.average ?? value) };
+  return { direction, against, reference: Math.round(bound ?? lightboxFigureRate(average ?? chapter)) };
 }
 
 function baselineSummary(summary: LightboxWriterBaselineSummary, enough: boolean): LightboxWriterBaselineSummary {
@@ -299,9 +334,4 @@ function baselineSummary(summary: LightboxWriterBaselineSummary, enough: boolean
     };
   }
   return summary;
-}
-
-function round(value: number, decimals: number): number {
-  const scale = 10 ** decimals;
-  return Math.round(value * scale) / scale;
 }

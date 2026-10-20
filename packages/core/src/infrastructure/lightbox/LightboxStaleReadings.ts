@@ -53,7 +53,7 @@ import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { carryLightboxCraftEvidence, recheckLightboxQuote } from '@/infrastructure/lightbox/LightboxCarryQuotes';
 import { lightboxStandoutRows, type LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
-import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { createLightboxTermCounter, lightboxPhraseHeld, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import {
@@ -236,7 +236,7 @@ function carryTile(
       ...(said !== undefined ? { said } : {}),
       ...(craft?.pair ? { pair: craft.pair } : {}),
       ...(tile.kind === 'number-usage' ? { stat: tile.stat } : {}),
-      ...(tile.kind === 'familiar-phrase' ? { phrase: tile.phrase } : {})
+      ...(tile.kind === 'familiar-phrase' ? { phraseHeld: lightboxPhraseHeld(tools.verifier, evidence, tile.phrase) } : {})
     },
     { phase: 'carried', drawnFields, dialogue: tools.dialogue, standouts: tools.standouts }
   );

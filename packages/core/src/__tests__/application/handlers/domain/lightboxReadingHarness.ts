@@ -83,6 +83,8 @@ export interface LightboxReadingHostOptions {
   text?: string;
   /** The writer's other chapters, by path under `/workspace/`, read for the writer's average (Slice 4B). */
   writerChapters?: Record<string, string>;
+  /** A stand-in for the writer's average, in place of the real baseline (PR #155 F-01: one a test can change). */
+  writerBaseline?: Pick<LightboxWriterBaseline, 'measure'>;
 }
 
 /** One webview tab: its own handler, router, transport and log, over the host's shared services. */
@@ -204,7 +206,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
     new StyleFlagsService(),
     { enrichWithStandards: async (stats: object) => stats } as never,
     { mintBoardId: () => `board-${++boardIds}` },
-    writerBaseline
+    options.writerBaseline ?? writerBaseline
   );
 
   const openTab = (): LightboxReadingTab => {

@@ -62,6 +62,7 @@ import {
   setLightboxSparkDismissed
 } from '@/infrastructure/lightbox/LightboxSparkLane';
 import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
+import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   settleLightboxGroup,
@@ -279,10 +280,12 @@ export class LightboxReadingHandler {
           return;
         }
         // Published to the subscribed webviews when this is still the current board.
+        // Its number usages are held to what stands out on the board now, not at the press (PR #155 F-01).
         const board = this.lightboxService.updateReadings(
           boardId,
-          (readings) => readings.map((group) =>
-            (group.group === outcome.group ? settleLightboxGroup(group, outcome, lens) : group)),
+          (readings, current) => readings.map((group) => (group.group === outcome.group
+            ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), lens)
+            : group)),
           { token: started.token, group: outcome.group }
         );
         if (!board) {

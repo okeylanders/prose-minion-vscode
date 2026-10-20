@@ -103,7 +103,8 @@ describe('bringing a group D reading to the Workshop', () => {
     ]);
     const intensifiers = board.measured.numbers.rows.find((row) => row.stat === 'intensifiers');
     expect(pointsOf('number-usage')).toEqual([
-      { label: 'Figure', text: `Intensifiers and fillers: ${intensifiers?.value} per 1,000 words; your average ${intensifiers?.writer?.average}` },
+      // Rounded only as shown (PR #155 F-04).
+      { label: 'Figure', text: 'Intensifiers and fillers: 21.7 per 1,000 words; your average 3' },
       { label: 'Reads as', text: 'deliberate' }
     ]);
   });
