@@ -157,4 +157,110 @@ describe('WorkshopSeedDelivery', () => {
     await settle();
     expect(outcomes.A).toEqual({ opened: true });
   });
+
+  describe('receivers (PR #150 F-08)', () => {
+    /** A panel whose webview realm announces itself; `receiver` changes when the webview is replaced. */
+    type ReceivingPanel = Panel & { receiver?: string };
+    function createReceivingDelivery() {
+      const results: Array<{ panel: ReceivingPanel; result: WorkshopSeedClaimResultPayload }> = [];
+      let minted = 0;
+      const delivery = new WorkshopSeedDelivery<ReceivingPanel>('lightbox-tile', {
+        isReady: (panel) => panel.ready && panel.receiver !== undefined,
+        postClaimResult: (panel, result) => results.push({ panel, result }),
+        receiverOf: (panel) => panel.receiver
+      }, { mintDeliveryId: () => `tile-${++minted}` });
+      const sent: string[] = [];
+      const outcomes: Record<string, WorkshopSeedOutcome | undefined> = {};
+      const offer = (panel: ReceivingPanel, name: string) => {
+        void delivery.offer(panel, (deliveryId) => sent.push(`${name}:${deliveryId}@${panel.receiver}`)).then((outcome) => {
+          outcomes[name] = outcome;
+        });
+      };
+      /** The webview is replaced: the panel stays, its receiver is new. */
+      const reload = (panel: ReceivingPanel, receiver: string) => {
+        panel.receiver = receiver;
+        delivery.resetReceiver(panel);
+      };
+      return { delivery, results, sent, outcomes, offer, reload };
+    }
+
+    it('waits for a receiver, and grants a claim only from the receiver the seed was sent to', async () => {
+      const { delivery, results, sent, outcomes, offer } = createReceivingDelivery();
+      const panel: ReceivingPanel = { name: 'one', ready: true };
+      offer(panel, 'A');
+      expect(sent).toEqual([]);
+      panel.receiver = 'r1';
+      delivery.resetReceiver(panel);
+      expect(sent).toEqual(['A:tile-1@r1']);
+
+      delivery.claim(panel, 'tile-1', 'r0');
+      expect(results).toEqual([]);
+      delivery.claim(panel, 'tile-1', 'r1');
+      expect(results.map(({ result }) => result.granted)).toEqual([true]);
+      delivery.answer(panel, { deliveryId: 'tile-1', opened: true }, 'r0');
+      await settle();
+      expect(outcomes.A).toBeUndefined();
+      delivery.answer(panel, { deliveryId: 'tile-1', opened: true }, 'r1');
+      await settle();
+      expect(outcomes.A).toEqual({ opened: true });
+    });
+
+    it('reload after claim: settles the old grant as reset, sends the seed that waited behind it, and ignores the old receiver', async () => {
+      const { delivery, results, sent, outcomes, offer, reload } = createReceivingDelivery();
+      const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
+      offer(panel, 'A');
+      delivery.claim(panel, 'tile-1', 'r1');
+      offer(panel, 'B');
+      // B waits behind A's grant: the grant cannot be revoked while its receiver lives.
+      expect(sent).toEqual(['A:tile-1@r1']);
+
+      reload(panel, 'r2');
+      await settle();
+      expect(outcomes.A).toEqual({ opened: false, reason: 'reset' });
+      expect(sent).toEqual(['A:tile-1@r1', 'B:tile-2@r2']);
+
+      // The old receiver's late answer and claim change nothing.
+      delivery.answer(panel, { deliveryId: 'tile-1', opened: true }, 'r1');
+      delivery.claim(panel, 'tile-2', 'r1');
+      await settle();
+      expect(outcomes.A).toEqual({ opened: false, reason: 'reset' });
+      expect(results).toHaveLength(1);
+
+      // A claim of A from the new receiver is denied as reset; B is the new receiver's.
+      delivery.claim(panel, 'tile-1', 'r2');
+      expect(results.at(-1)?.result).toEqual({ kind: 'lightbox-tile', deliveryId: 'tile-1', granted: false, reason: 'reset' });
+      delivery.claim(panel, 'tile-2', 'r2');
+      delivery.answer(panel, { deliveryId: 'tile-2', opened: false, reason: 'duplicate' }, 'r2');
+      await settle();
+      expect(outcomes.B).toEqual({ opened: false, reason: 'duplicate' });
+    });
+
+    it('reload after an unclaimed send: sends the seed again to the new receiver, under its first deadline', async () => {
+      jest.useFakeTimers();
+      const { delivery, results, sent, outcomes, offer, reload } = createReceivingDelivery();
+      const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
+      offer(panel, 'A');
+      reload(panel, 'r2');
+      expect(sent).toEqual(['A:tile-1@r1', 'A:tile-1@r2']);
+      delivery.claim(panel, 'tile-1', 'r1');
+      expect(results).toEqual([]);
+
+      jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS);
+      await settle();
+      expect(outcomes.A).toEqual({ opened: false, reason: 'timeout' });
+    });
+
+    it('leaves a grant to the current receiver alone when that receiver announces itself again', async () => {
+      const { delivery, outcomes, offer } = createReceivingDelivery();
+      const panel: ReceivingPanel = { name: 'one', ready: true, receiver: 'r1' };
+      offer(panel, 'A');
+      delivery.claim(panel, 'tile-1', 'r1');
+      delivery.resetReceiver(panel);
+      await settle();
+      expect(outcomes.A).toBeUndefined();
+      delivery.answer(panel, { deliveryId: 'tile-1', opened: true }, 'r1');
+      await settle();
+      expect(outcomes.A).toEqual({ opened: true });
+    });
+  });
 });

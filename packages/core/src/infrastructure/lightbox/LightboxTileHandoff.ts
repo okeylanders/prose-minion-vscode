@@ -67,7 +67,8 @@ export const LIGHTBOX_TILE_WORKSHOP_REFUSALS: Readonly<Record<WorkshopSeedFailur
   duplicate: 'That tile is already waiting above the Workshop composer.',
   closed: 'The Workshop closed before it staged the tile.',
   replaced: 'Another tile went to the Workshop before this one was staged.',
-  timeout: 'The Workshop did not confirm it staged the tile. Open the Workshop to check; nothing was sent.'
+  timeout: 'The Workshop did not confirm it staged the tile. Open the Workshop to check; nothing was sent.',
+  reset: 'The Workshop reloaded before it confirmed the tile. Open the Workshop to check; nothing was sent.'
 };
 
 export type LightboxTileHandoffPreparation =

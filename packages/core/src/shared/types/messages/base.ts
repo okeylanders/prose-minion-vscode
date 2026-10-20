@@ -198,6 +198,7 @@ export enum MessageType {
   WORKSHOP_SEED_CLAIM = 'workshop_seed_claim',
   WORKSHOP_SEED_CLAIM_RESULT = 'workshop_seed_claim_result',
   WORKSHOP_SEED_ANSWER = 'workshop_seed_answer',
+  WORKSHOP_SEED_RECEIVER = 'workshop_seed_receiver',
   // A Lightbox tile staged above the composer, through seed delivery (Lightbox Slice 4)
   WORKSHOP_STAGE_LIGHTBOX_TILE = 'workshop_stage_lightbox_tile',
   WORKSHOP_LIGHTBOX_TILE_OFFERED = 'workshop_lightbox_tile_offered',

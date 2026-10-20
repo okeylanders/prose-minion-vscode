@@ -183,8 +183,13 @@ describe('app-shell provider assembly', () => {
     expect(seed).toMatch(/\.offer\(panel, \(deliveryId\) => \{[\s\S]*?this\.messageHandler\?\.handleMessage\(message\)/);
     // Delivery is gated on the accepting panel, its readiness and its visibility, and a
     // seed opens only on a granted claim (PR #150 F-03).
-    expect(providerSource).toMatch(/isReady: \(panel\) => this\.panel === panel && this\.webviewListening && panel\.visible/);
-    expect(providerSource).toMatch(/MessageType\.WORKSHOP_SEED_CLAIM \|\| shape\?\.type === MessageType\.WORKSHOP_SEED_ANSWER/);
+    // A seed waits for the panel's receiver to announce itself, so it is listening (F-08).
+    expect(providerSource).toMatch(/isReady: \(panel\) => this\.panel === panel && this\.seedReceiver !== undefined && panel\.visible/);
+    expect(providerSource).toMatch(
+      /MessageType\.WORKSHOP_SEED_CLAIM\s*\|\| shape\?\.type === MessageType\.WORKSHOP_SEED_ANSWER\s*\|\| shape\?\.type === MessageType\.WORKSHOP_SEED_RECEIVER/
+    );
+    // A Lightbox tile (Slice 4) takes the same path: offered, then routed through the panel's own handler.
+    expect(seed).toMatch(/public stageLightboxTile\([\s\S]*?this\.openOrReveal\(\);[\s\S]*?\['lightbox-tile'\]\.offer\(panel, \(deliveryId\) => \{[\s\S]*?type: MessageType\.WORKSHOP_STAGE_LIGHTBOX_TILE[\s\S]*?this\.messageHandler\?\.handleMessage\(message\)/);
     // The seed is not written into the Workshop session from outside.
     expect(seed).not.toMatch(/workshopSessionService|coreServices\./);
 
@@ -192,6 +197,7 @@ describe('app-shell provider assembly', () => {
     const start = extensionSource.indexOf('new LightboxPanelProvider(');
     const lightboxArgs = extensionSource.slice(start, extensionSource.indexOf('\n  );', start));
     expect(lightboxArgs).toMatch(/handOffToWorkshop: \(handoff\) => \{[\s\S]*?workshopPanelProvider\?\.seedLexicalGravityBuild\(handoff\.seed\)/);
+    expect(lightboxArgs).toMatch(/case 'tile':\s*return workshopPanelProvider\?\.stageLightboxTile\(handoff\.tile\)/);
     // The Lightbox's own provider never names a Workshop route.
     const lightboxProvider = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
     expect(lightboxProvider).not.toMatch(/WORKSHOP_|seedLexicalGravityBuild/);

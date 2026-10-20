@@ -222,6 +222,7 @@ import {
   WorkshopSeedClaimMessage,
   WorkshopSeedClaimResultMessage,
   WorkshopSeedAnswerMessage,
+  WorkshopSeedReceiverMessage,
   WorkshopStageLightboxTileMessage,
   WorkshopLightboxTileOfferedMessage,
   WorkshopAcceptLightboxTileMessage,
@@ -367,6 +368,7 @@ export type WebviewToExtensionMessage =
   | WorkshopOpenLexicalGravityBuildMessage
   | WorkshopSeedClaimMessage
   | WorkshopSeedAnswerMessage
+  | WorkshopSeedReceiverMessage
   | WorkshopStageLightboxTileMessage
   | WorkshopAcceptLightboxTileMessage
   | WorkshopRequestWidgetConfigMessage

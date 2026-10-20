@@ -357,12 +357,22 @@ Neither lets Lightbox change Workshop state directly:
   arrival: it claims it, and the provider grants the claim only while that
   delivery is still the one it waits on for that panel, so a seed that timed
   out, was replaced or lost its panel never opens, even when its message was
-  already sent. A grant cannot be revoked, so a newer handoff waits for the
-  granted one's answer. The Workshop webview answers whether it opened the
-  seed, and the Lightbox says the field was sent only on that answer, with a
-  bounded wait (PR #150 F-03). Every seed kind uses this protocol
-  (`WorkshopSeedDelivery`, `seedDelivery.ts`); Slice 4's tiles join it as a
-  new kind.
+  already sent. The grant is the commit point and cannot be revoked, so a
+  newer handoff waits for the granted one's answer. The Workshop webview
+  answers whether it opened the seed, and the Lightbox says the field was
+  sent only on that answer (PR #150 F-03). The 20-second deadline covers
+  unclaimed offers only; a granted seed waits for its answer, its panel
+  closing, or its receiver resetting. Each webview realm announces itself
+  with a receiver id once it is listening, and names it in every claim and
+  answer; a seed is sent only after an announcement, and a new receiver on
+  the same panel (a reloaded webview) settles what was granted to the old
+  one as `reset`, sends again what was sent to it unclaimed, and ignores its
+  late replies (PR #150 F-08). Readiness is checked when a seed is sent, so
+  the guarantee is *visible at dispatch*: a tab the writer hides before the
+  claim still runs, may open the seed and answer, and the writer finds it
+  there; nothing reaches a model or is saved without their action. Every
+  seed kind uses this protocol (`WorkshopSeedDelivery`, `seedDelivery.ts`);
+  Slice 4's tiles join it as a new kind.
 - The Workshop decides what arrives. A tile is staged above the composer, as
   an attachment the writer sends or removes. A gravity seed opens Lexical
   Gravity's **Build lens** with the subject filled in. Nothing is sent or

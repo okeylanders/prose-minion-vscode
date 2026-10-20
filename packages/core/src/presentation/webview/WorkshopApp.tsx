@@ -124,6 +124,7 @@ import {
   useGesturePlayground
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
+import { useWorkshopSeedReceiver } from '@hooks/domain/workshop/useWorkshopSeedReceiver';
 import {
   useCreativeVariations
 } from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
@@ -226,7 +227,9 @@ export const WorkshopApp: React.FC = () => {
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
-  const lexicalGravity = useLexicalGravity();
+  // Seeds handed over from other tabs name this mount's receiver (PR #150 F-08).
+  const { receiver: seedReceiver } = useWorkshopSeedReceiver();
+  const lexicalGravity = useLexicalGravity({ seedReceiver });
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();

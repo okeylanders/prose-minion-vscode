@@ -19,8 +19,30 @@
  * - **Opening.** Its claim was granted. The grant is the commit point: it
  *   cannot be revoked once posted, so the seed is no longer replaced or
  *   timed out, and a newer offer waits until the webview answers (opened, or
- *   busy over a sheet the writer is using) or the panel closes. A newer offer
- *   that waits still has its own deadline.
+ *   refused: busy over a sheet the writer is using, or a staged tile's
+ *   full or duplicate), the panel closes, or its receiver resets. A newer
+ *   offer that waits still has its own deadline.
+ *
+ * **Receivers (PR #150 F-08).** The webview inside a panel can be replaced
+ * without the panel closing (Developer: Reload Webview, or a reload after a
+ * render failure). Each webview realm announces itself with a receiver id,
+ * and every claim and answer names it. A seed is sent to the receiver the
+ * host knows at that moment, and granted only to that receiver's claim.
+ * When a new receiver announces itself on the same panel, the old one is
+ * gone: a seed granted to it settles as `reset` (nothing can answer for it
+ * any more) and frees the slot, a seed sent to it but not claimed is sent
+ * again to the new one, still under its own deadline, and a late claim or
+ * answer from the old receiver is ignored. A grant made to the current
+ * receiver is never touched. So the post-grant wait is bounded by an
+ * answer, the panel closing, or a receiver reset; the deadline covers
+ * unclaimed offers only.
+ *
+ * **Visibility.** Readiness (current, listening, visible) is checked when a
+ * seed is sent, not when its claim is granted: the guarantee is "visible at
+ * dispatch". A tab the writer hides between the two still holds a running
+ * webview that may open the seed (a sheet, or a staged pill) and answer; the
+ * writer finds it there on return, and nothing reaches a model or is saved
+ * without their action.
  */
 
 import type {
@@ -42,6 +64,8 @@ export interface WorkshopSeedDeliveryPorts<TRecipient> {
   isReady(recipient: TRecipient): boolean;
   /** Post a claim's result to `recipient`'s webview. */
   postClaimResult(recipient: TRecipient, result: WorkshopSeedClaimResultPayload): void;
+  /** The receiver (webview realm) `recipient` has now, as it announced itself; undefined before it has. */
+  receiverOf?(recipient: TRecipient): string | undefined;
 }
 
 export interface WorkshopSeedDeliveryOptions {
@@ -55,6 +79,8 @@ interface Waiting<TRecipient> {
   recipient: TRecipient;
   send: (deliveryId: string) => void;
   sent: boolean;
+  /** The receiver it was sent to. */
+  sentTo?: string;
   settle: (outcome: WorkshopSeedOutcome) => void;
   timer: ReturnType<typeof setTimeout>;
 }
@@ -62,6 +88,8 @@ interface Waiting<TRecipient> {
 interface Opening<TRecipient> {
   deliveryId: string;
   recipient: TRecipient;
+  /** The receiver whose claim was granted: only its answer counts. */
+  receiver?: string;
   settle: (outcome: WorkshopSeedOutcome) => void;
 }
 
@@ -105,16 +133,31 @@ export class WorkshopSeedDelivery<TRecipient> {
       return;
     }
     waiting.sent = true;
+    waiting.sentTo = this.ports.receiverOf?.(recipient);
     waiting.send(waiting.deliveryId);
   }
 
-  /** The webview asks to open a seed: granted only for the waiting seed it was sent, else denied with why. */
-  claim(recipient: TRecipient, deliveryId: string): void {
+  /**
+   * The webview asks to open a seed: granted only for the waiting seed sent
+   * to this receiver, else denied with why. A claim from a receiver the
+   * panel no longer has is ignored: nobody is there to read the answer.
+   */
+  claim(recipient: TRecipient, deliveryId: string, receiver?: string): void {
+    if (!this.isCurrentReceiver(recipient, receiver)) {
+      return;
+    }
     const waiting = this.waiting;
-    if (waiting && waiting.deliveryId === deliveryId && waiting.recipient === recipient && waiting.sent && !this.opening) {
+    if (
+      waiting
+      && waiting.deliveryId === deliveryId
+      && waiting.recipient === recipient
+      && waiting.sent
+      && waiting.sentTo === receiver
+      && !this.opening
+    ) {
       clearTimeout(waiting.timer);
       this.waiting = undefined;
-      this.opening = { deliveryId, recipient, settle: waiting.settle };
+      this.opening = { deliveryId, recipient, receiver, settle: waiting.settle };
       this.ports.postClaimResult(recipient, { kind: this.kind, deliveryId, granted: true });
       return;
     }
@@ -126,15 +169,43 @@ export class WorkshopSeedDelivery<TRecipient> {
     });
   }
 
-  /** The webview's answer to the seed it was granted; anything else is ignored. */
-  answer(recipient: TRecipient, answer: WorkshopSeedAnswer): void {
+  /** The webview's answer to the seed it was granted, from the receiver it was granted to; anything else is ignored. */
+  answer(recipient: TRecipient, answer: WorkshopSeedAnswer, receiver?: string): void {
     const opening = this.opening;
-    if (!opening || opening.recipient !== recipient || opening.deliveryId !== answer.deliveryId) {
+    if (
+      !opening
+      || opening.recipient !== recipient
+      || opening.deliveryId !== answer.deliveryId
+      || opening.receiver !== receiver
+    ) {
       return;
     }
     this.opening = undefined;
     opening.settle(answer.opened ? { opened: true } : { opened: false, reason: answer.reason });
     // A newer seed waited for this one to settle.
+    this.deliver(recipient);
+  }
+
+  /**
+   * `recipient` has a new receiver (`receiverOf`): its webview realm was
+   * replaced while the panel stayed open (F-08). A seed granted to an older
+   * receiver settles as `reset` and frees the slot; a seed sent to an older
+   * receiver but never claimed is sent again, now, if the panel is ready.
+   * A seed granted to the current receiver is untouched.
+   */
+  resetReceiver(recipient: TRecipient): void {
+    const current = this.ports.receiverOf?.(recipient);
+    const opening = this.opening;
+    if (opening && opening.recipient === recipient && opening.receiver !== current) {
+      this.opening = undefined;
+      this.remember(opening.deliveryId, 'reset');
+      opening.settle({ opened: false, reason: 'reset' });
+    }
+    const waiting = this.waiting;
+    if (waiting && waiting.recipient === recipient && waiting.sent && waiting.sentTo !== current) {
+      waiting.sent = false;
+      waiting.sentTo = undefined;
+    }
     this.deliver(recipient);
   }
 
@@ -147,6 +218,11 @@ export class WorkshopSeedDelivery<TRecipient> {
       this.remember(opening.deliveryId, 'closed');
       opening.settle({ opened: false, reason: 'closed' });
     }
+  }
+
+  /** A claim or answer counts only from the receiver the panel has now (any, before one announced itself). */
+  private isCurrentReceiver(recipient: TRecipient, receiver: string | undefined): boolean {
+    return !this.ports.receiverOf || this.ports.receiverOf(recipient) === receiver;
   }
 
   /** Settle the waiting seed (the one named, when `deliveryId` is given) and remember why. */

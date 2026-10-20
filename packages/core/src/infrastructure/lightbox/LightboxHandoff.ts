@@ -58,6 +58,7 @@ export const LIGHTBOX_HANDOFF_REFUSALS = {
   workshopClosed: 'The Workshop closed before it opened the field.',
   workshopReplaced: 'Another field went to the Workshop before this one opened.',
   workshopSilent: 'The Workshop did not confirm it opened the field. Open the Workshop to check; nothing was built.',
+  workshopReset: 'The Workshop reloaded before it confirmed it opened the field. Open the Workshop to check; nothing was built.',
   // A field never stages an attachment, so these two cannot happen to one; they are worded for completeness.
   workshopFull: 'The Workshop could not take the field.',
   workshopDuplicate: 'The Workshop already has that field open.'
@@ -70,6 +71,7 @@ export const LIGHTBOX_WORKSHOP_REFUSALS: Readonly<Record<LightboxWorkshopHandoff
   closed: LIGHTBOX_HANDOFF_REFUSALS.workshopClosed,
   replaced: LIGHTBOX_HANDOFF_REFUSALS.workshopReplaced,
   timeout: LIGHTBOX_HANDOFF_REFUSALS.workshopSilent,
+  reset: LIGHTBOX_HANDOFF_REFUSALS.workshopReset,
   full: LIGHTBOX_HANDOFF_REFUSALS.workshopFull,
   duplicate: LIGHTBOX_HANDOFF_REFUSALS.workshopDuplicate
 };
