@@ -5,7 +5,7 @@ import {
   DEFAULT_CONTEXT_GROUPS
 } from '@/domain/models/ContextGeneration';
 import { FileSystem, FileType, Workspace } from '@/platform';
-import { WorkshopConfiguredResourceRef, WorkshopExcerptSource } from '@messages';
+import { ConfiguredResourceRef, WorkshopExcerptSource } from '@messages';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { createHash } from 'crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -54,7 +54,7 @@ export type WorkshopConfiguredSourceMatch =
   | {
       kind: 'matched';
       source: WorkshopExcerptSource;
-      configuredResource: WorkshopConfiguredResourceRef;
+      configuredResource: ConfiguredResourceRef;
     }
   | { kind: 'unmatched'; source: WorkshopExcerptSource }
   | { kind: 'ambiguous'; source: WorkshopExcerptSource; matchCount: number }
@@ -161,12 +161,12 @@ export class WorkshopContextIntakeCatalog {
     return [...this.entriesByKey.values()];
   }
 
-  find(ref: WorkshopConfiguredResourceRef): ContextResourceSummary | undefined {
+  find(ref: ConfiguredResourceRef): ContextResourceSummary | undefined {
     return this.entriesByKey.get(this.key(ref));
   }
 
   async load(
-    ref: WorkshopConfiguredResourceRef,
+    ref: ConfiguredResourceRef,
     bounds: WorkshopConfiguredResourceBounds
   ): Promise<WorkshopConfiguredResourceLoadResult> {
     const summary = this.find(ref);
@@ -213,7 +213,7 @@ export class WorkshopContextIntakeCatalog {
     };
   }
 
-  private key(ref: WorkshopConfiguredResourceRef): string {
+  private key(ref: ConfiguredResourceRef): string {
     return `${ref.group}\u0000${ref.path}`;
   }
 }

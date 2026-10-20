@@ -9,7 +9,7 @@ import {
 } from '@shared/types/workshopCapabilities';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
-  WorkshopConfiguredResourceRef,
+  ConfiguredResourceRef,
   WorkshopExcerpt
 } from '@messages';
 import { countWords } from '@/utils/textUtils';
@@ -19,7 +19,7 @@ export interface WorkshopPersonaAnalysisRunInputs {
   excerptText: string;
   context?: string;
   excerptSourceFrame?: string;
-  workshopSource?: WorkshopConfiguredResourceRef;
+  workshopSource?: ConfiguredResourceRef;
   provenance: {
     excerpt: WorkshopAnalysisInputProvenance;
     context: WorkshopAnalysisInputProvenance;

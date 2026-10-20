@@ -20,7 +20,7 @@ import type {
   WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
   WorkshopContextAttachmentTruncation,
-  WorkshopConfiguredResourceRef,
+  ConfiguredResourceRef,
   WorkshopExcerpt,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -144,7 +144,7 @@ export interface WorkshopContextFileRefreshInput {
   /** Re-authorized source, which may reconnect a moved workspace file. */
   sourceUri: string;
   relativePath: string;
-  configuredResource?: WorkshopConfiguredResourceRef;
+  configuredResource?: ConfiguredResourceRef;
 }
 
 export type WorkshopContextFileRefreshResult =

@@ -28,6 +28,7 @@ export * from './sources';
 export * from './ui';
 export * from './results';
 export * from './streaming';
+export * from './configuredResources';
 export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
