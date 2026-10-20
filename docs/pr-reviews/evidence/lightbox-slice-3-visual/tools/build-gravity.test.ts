@@ -39,6 +39,7 @@ import {
   WorkshopLexicalGravityHandler
 } from '@/application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
+import { WorkshopSeedDelivery } from '@/application/services/workshop/WorkshopSeedDelivery';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -385,6 +386,21 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
   workshop.registerRoutes(workshopRouter, ((type: MessageType, handle: (message: never) => unknown) =>
     workshopRouter.register(type, handle as never)) as never);
   const handoffs: unknown[] = [];
+  // The Workshop panel provider's seed delivery, real, for a panel that is ready: the
+  // seed opens only on a granted claim (PR #150 F-03). The grant joins what the Workshop
+  // webview is sent, after the seed, so the harness replays both.
+  const DELIVERY_ID = 'lexical-build-seed-evidence-1';
+  const seeds = new WorkshopSeedDelivery<'workshop'>('lexical-gravity-build', {
+    isReady: () => true,
+    postClaimResult: (_panel, result) => {
+      workshopPosted.push({
+        type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+        source: 'extension.workshop',
+        payload: result,
+        timestamp: 1
+      } as never);
+    }
+  }, { mintDeliveryId: () => DELIVERY_ID });
 
   const posted: ExtensionToWebviewMessage[] = [];
   const transport = async (message: ExtensionToWebviewMessage) => { posted.push(message); };
@@ -394,18 +410,19 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
     { pickFile: async () => undefined },
     transport,
     log,
-    async (handoff) => {
-      // What extension.ts and the Workshop panel provider do: a synthetic message through the
-      // Workshop panel's own handler, carrying the provider's delivery id. The Workshop webview
-      // (harness.js renders it) opens the sheet and answers "opened", which settles the handoff.
+    (handoff) => {
+      // What extension.ts and the Workshop panel provider do: offer the seed to the panel,
+      // which routes a synthetic message through the Workshop panel's own handler with
+      // the delivery id. The handoff settles on the Workshop webview's claim and answer.
       handoffs.push(handoff);
-      await workshopRouter.route({
-        type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
-        source: 'extension.lightbox',
-        payload: { seed: handoff.seed, deliveryId: 'lexical-build-seed-evidence-1' },
-        timestamp: 1
-      } as never);
-      return { opened: true as const };
+      return seeds.offer('workshop', (deliveryId) => {
+        void workshopRouter.route({
+          type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+          source: 'extension.lightbox',
+          payload: { seed: handoff.seed, deliveryId },
+          timestamp: 1
+        } as never);
+      });
     }
   );
   const reading = new LightboxReadingHandler(
@@ -476,14 +493,25 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
   const telescope = field('Telescope');
   // The Workshop's messages carry the clock; fix it so the file diffs cleanly.
   const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 9, 19, 15, 45));
-  await route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'lexical-gravity-seed', boardId: board().boardId, fieldId: telescope.id });
+  const handingOff = route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'lexical-gravity-seed', boardId: board().boardId, fieldId: telescope.id });
+  await settle();
+  // The Workshop webview claims the seed it was sent; the grant is recorded for the
+  // harness, and the webview's answer (the harness's page posts the same) settles it.
+  expect(posted.slice(mark)).toEqual([]);
+  seeds.claim('workshop', DELIVERY_ID);
+  seeds.answer('workshop', { deliveryId: DELIVERY_ID, opened: true });
+  await handingOff;
   await settle();
   clock.mockRestore();
   const sent = since(posted, mark);
   expect(sent.map((message) => message.type)).toEqual([MessageType.LIGHTBOX_HAND_OFF_RESULT]);
   expect(handoffs).toHaveLength(1);
   const seedMessages = since(workshopPosted, 0);
-  expect(seedMessages.map((message) => message.type)).toEqual([MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]);
+  expect(seedMessages.map((message) => message.type)).toEqual([
+    MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+    MessageType.WORKSHOP_SEED_CLAIM_RESULT
+  ]);
+  expect((seedMessages[1] as unknown as { payload: unknown }).payload).toEqual({ kind: 'lexical-gravity-build', deliveryId: DELIVERY_ID, granted: true });
   await workshopRouter.route({
     type: MessageType.WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES,
     source: 'webview.workshop.lexical-gravity',

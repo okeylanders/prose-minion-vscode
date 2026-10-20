@@ -323,18 +323,18 @@ export const LEXICAL_GRAVITY_BUILD_SEED_LIMITS = {
 /**
  * Host-to-host: routed through the Workshop panel's own MessageHandler by its
  * provider (the `seedExcerpt` pattern), never posted by a webview.
- */
-/**
- * The panel provider's synthetic message for one handoff. `deliveryId` is the
- * provider's, one per handoff: the Workshop's answer names it, so only the
- * panel that accepted the seed can settle it (PR #150 F-03).
+ * `deliveryId` is the provider's, one per handoff: the webview claims and
+ * answers by it (seed delivery, `seedDelivery.ts`; PR #150 F-03).
  */
 export interface WorkshopOpenLexicalGravityBuildMessage
   extends MessageEnvelope<{ seed: WorkshopLexicalGravityBuildSeed; deliveryId: string }> {
   type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD;
 }
 
-/** The Workshop opens Build lens with `subject` in the field; `seedId` is the provider's delivery id. */
+/**
+ * The Workshop opens Build lens with `subject` in the field once the panel
+ * provider grants its claim; `seedId` is the provider's delivery id.
+ */
 export interface WorkshopLexicalGravityBuildSeedPayload {
   seedId: string;
   seed: WorkshopLexicalGravityBuildSeed;
@@ -345,28 +345,6 @@ export interface WorkshopLexicalGravityBuildSeedPayload {
 export interface WorkshopLexicalGravityBuildSeedMessage
   extends MessageEnvelope<WorkshopLexicalGravityBuildSeedPayload> {
   type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED;
-}
-
-/**
- * Why the Workshop did not open a seed: `busy`, another sheet or editor is
- * open there, and the seed never covers or replaces it (PR #150 F-02).
- */
-export type WorkshopLexicalGravityBuildSeedRefusal = 'busy';
-
-/**
- * The Workshop webview's answer to one seed: it opened Build lens with it, or
- * did not, and why. The panel provider takes it (it never reaches a domain
- * handler) and settles the handoff the Lightbox is waiting on (PR #150 F-03).
- */
-export interface WorkshopLexicalGravityBuildSeedAnswerPayload {
-  seedId: string;
-  opened: boolean;
-  reason?: WorkshopLexicalGravityBuildSeedRefusal;
-}
-
-export interface WorkshopLexicalGravityBuildSeedAnswerMessage
-  extends MessageEnvelope<WorkshopLexicalGravityBuildSeedAnswerPayload> {
-  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER;
 }
 
 export interface WorkshopLexicalGravityApplyStandingWidgetPayload {

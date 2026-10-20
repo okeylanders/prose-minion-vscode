@@ -1,22 +1,24 @@
 import * as vscode from 'vscode';
-import { WORKSHOP_BUILD_SEED_TIMEOUT_MS, WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
-import { CoreServices, MessageHandler, MessageType, Platform } from '@prose-minion/core';
+import { WorkshopPanelProvider } from '@app/application/providers/WorkshopPanelProvider';
+import { CoreServices, MessageHandler, MessageType, Platform, WORKSHOP_SEED_TIMEOUT_MS } from '@prose-minion/core';
 
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export and enum member names. */
-jest.mock('@prose-minion/core', () => ({
-  MessageType: {
-    WEBVIEW_ERROR: 'webview_error',
-    WORKSHOP_REQUEST_SESSION: 'workshop_request_session',
-    WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD: 'workshop_open_lexical_gravity_build',
-    WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER: 'workshop_lexical_gravity_build_seed_answer'
-  },
-  SURFACE_WORKSHOP: 'workshop',
-  MessageHandler: jest.fn(() => ({
-    handleMessage: jest.fn().mockResolvedValue(undefined),
-    flushCachedResults: jest.fn(),
-    dispose: jest.fn()
-  }))
-}));
+jest.mock('@prose-minion/core', () => {
+  // The real seed delivery and message types; only the panel's MessageHandler is a
+  // mock. The whole barrel cannot load under jest, so these modules are required directly.
+  const delivery = jest.requireActual('@/application/services/workshop/WorkshopSeedDelivery');
+  return {
+    MessageType: jest.requireActual('@messages').MessageType,
+    SURFACE_WORKSHOP: 'workshop',
+    WORKSHOP_SEED_TIMEOUT_MS: delivery.WORKSHOP_SEED_TIMEOUT_MS,
+    WorkshopSeedDelivery: delivery.WorkshopSeedDelivery,
+    MessageHandler: jest.fn(() => ({
+      handleMessage: jest.fn().mockResolvedValue(undefined),
+      flushCachedResults: jest.fn(),
+      dispose: jest.fn()
+    }))
+  };
+});
 jest.mock('@app/application/providers/webviewHtml', () => ({ getWebviewHtml: () => '<html></html>' }));
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -41,26 +43,39 @@ interface MockPanel {
   viewStateChanged: () => void;
   disposed: () => void;
   dispose: jest.Mock;
+  postMessage: jest.Mock;
 }
 
-const firstMessage = { type: 'workshop_request_session', source: 'webview.workshop', payload: {}, timestamp: 1 };
-const answer = (seedId: string, opened: boolean) => ({
-  type: 'workshop_lexical_gravity_build_seed_answer',
-  source: 'webview.workshop',
-  payload: opened ? { seedId, opened } : { seedId, opened, reason: 'busy' },
+const firstMessage = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', payload: {}, timestamp: 1 };
+const claim = (deliveryId: string) => ({
+  type: MessageType.WORKSHOP_SEED_CLAIM,
+  source: 'webview.workshop.seed-delivery',
+  payload: { kind: 'lexical-gravity-build', deliveryId },
   timestamp: 2
+});
+const answer = (deliveryId: string, opened: boolean) => ({
+  type: MessageType.WORKSHOP_SEED_ANSWER,
+  source: 'webview.workshop.seed-delivery',
+  payload: opened
+    ? { kind: 'lexical-gravity-build', deliveryId, opened }
+    : { kind: 'lexical-gravity-build', deliveryId, opened, reason: 'busy' },
+  timestamp: 3
 });
 const seedsIn = (target: MockPanel) => target.handler.handleMessage.mock.calls
   .map(([message]) => message as { type: string; payload: { seed: unknown; deliveryId: string } })
   .filter((message) => message.type === MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD);
+const claimResultsIn = (target: MockPanel) => target.postMessage.mock.calls
+  .map(([message]) => message as { type: string; payload: Record<string, unknown> })
+  .filter((message) => message.type === MessageType.WORKSHOP_SEED_CLAIM_RESULT)
+  .map((message) => message.payload);
 
 /**
  * Build as a lens (ADR 2026-10-19 D11, PR #150 F-03): the seed reaches the
  * Workshop only as a synthetic message through the Workshop panel's OWN
  * MessageHandler (the `seedExcerpt` pattern). It belongs to the panel that
- * accepted it, is delivered once, only to a listening and visible webview,
- * and the handoff settles only on that webview's answer, a replacement,
- * that panel's closing, or a timeout.
+ * accepted it and is sent once, only to a listening and visible webview,
+ * which opens it only if its claim is granted. The handoff settles on that
+ * webview's answer, a replacement, that panel's closing, or a timeout.
  */
 describe('WorkshopPanelProvider Build lens seed', () => {
   let panels: MockPanel[];
@@ -83,7 +98,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
 
   function mockPanel(): MockPanel {
     const disposable = { dispose: jest.fn() };
-    const record = { visible: true, dispose: jest.fn() } as unknown as MockPanel;
+    const record = { visible: true, dispose: jest.fn(), postMessage: jest.fn() } as unknown as MockPanel;
     const panel = {
       get visible() {
         return record.visible;
@@ -91,7 +106,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
       webview: {
         options: {},
         html: '',
-        postMessage: jest.fn(),
+        postMessage: record.postMessage,
         onDidReceiveMessage: jest.fn((callback: (message: unknown) => void) => {
           record.receive = callback;
           return disposable;
@@ -141,8 +156,17 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     return { outcome, panel: panels.at(-1)! };
   };
   const peek = <T>(promise: Promise<T>) => Promise.race([promise, Promise.resolve(unsettled)]);
+  /** The webview's side: claim the latest seed sent, and answer if the claim is granted. */
+  const claimAndAnswer = (panel: MockPanel, opened: boolean) => {
+    const [sent] = seedsIn(panel).slice(-1);
+    panel.receive(claim(sent.payload.deliveryId));
+    if (claimResultsIn(panel).at(-1)?.granted) {
+      panel.receive(answer(sent.payload.deliveryId, opened));
+    }
+    return sent.payload.deliveryId;
+  };
 
-  it('holds the seed until its webview is listening, routes it through the panel\'s own handler, and settles on its answer', async () => {
+  it('holds the seed until its webview is listening, routes it through the panel\'s own handler, and opens it only on a granted claim', async () => {
     const workshop = provider();
     const { outcome, panel } = seedInto(workshop);
     expect(panels).toHaveLength(1);
@@ -152,18 +176,23 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(panel.handler.handleMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: MessageType.WORKSHOP_REQUEST_SESSION }));
     expect(panel.handler.handleMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({
       type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
-      payload: { seed, deliveryId: expect.stringMatching(/^lexical-build-seed-/) }
+      payload: { seed, deliveryId: expect.stringMatching(/^lexical-gravity-build-/) }
     }));
-    // Delivered is not opened: the Lightbox still waits for the Workshop's word.
+    // Sent is not opened: the Lightbox still waits for the Workshop's word.
     expect(await peek(outcome)).toBe(unsettled);
 
-    const [delivered] = seedsIn(panel);
-    panel.receive(answer(delivered.payload.deliveryId, true));
+    const [sent] = seedsIn(panel);
+    // An answer before a granted claim settles nothing.
+    panel.receive(answer(sent.payload.deliveryId, true));
+    expect(await peek(outcome)).toBe(unsettled);
+    panel.receive(claim(sent.payload.deliveryId));
+    expect(claimResultsIn(panel)).toEqual([{ kind: 'lexical-gravity-build', deliveryId: sent.payload.deliveryId, granted: true }]);
+    panel.receive(answer(sent.payload.deliveryId, true));
     await expect(outcome).resolves.toEqual({ opened: true });
-    // The answer is the provider's; it never reaches a domain handler.
+    // The claim and answer are the provider's; they never reach a domain handler.
     expect(panel.handler.handleMessage).toHaveBeenCalledTimes(2);
 
-    panel.receive({ ...firstMessage, timestamp: 3 });
+    panel.receive({ ...firstMessage, timestamp: 4 });
     expect(seedsIn(panel)).toHaveLength(1);
   });
 
@@ -175,7 +204,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(panels).toHaveLength(1);
     expect(seedsIn(panel)).toHaveLength(1);
 
-    panel.receive(answer(seedsIn(panel)[0].payload.deliveryId, false));
+    claimAndAnswer(panel, false);
     await expect(outcome).resolves.toEqual({ opened: false, reason: 'busy' });
   });
 
@@ -207,7 +236,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     panel.visible = true;
     panel.viewStateChanged();
     expect(seedsIn(panel)).toHaveLength(1);
-    panel.receive({ ...firstMessage, timestamp: 3 });
+    panel.receive({ ...firstMessage, timestamp: 4 });
     panel.viewStateChanged();
     expect(seedsIn(panel)).toHaveLength(1);
   });
@@ -225,7 +254,7 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     expect(seedsIn(second)).toHaveLength(0);
   });
 
-  it('ignores late callbacks from an older panel: they neither deliver, answer, nor cancel the current panel\'s seed', async () => {
+  it('ignores late callbacks from an older panel: they neither deliver, claim, answer, nor cancel the current panel\'s seed', async () => {
     const workshop = provider();
     const { outcome: abandoned, panel: older } = seedInto(workshop);
     // VS Code restores a second Workshop tab; the older one is replaced and its seed with it.
@@ -242,52 +271,73 @@ describe('WorkshopPanelProvider Build lens seed', () => {
     // The older panel's events arrive late.
     older.receive(firstMessage);
     older.viewStateChanged();
-    older.receive(answer('lexical-build-seed-anything', true));
+    older.receive(claim('lexical-gravity-build-anything'));
+    older.receive(answer('lexical-gravity-build-anything', true));
     older.disposed();
     expect(seedsIn(older)).toHaveLength(0);
+    expect(claimResultsIn(older)).toEqual([]);
     expect(currentPanel.handler.handleMessage).not.toHaveBeenCalled();
     expect(await peek(outcome)).toBe(unsettled);
 
-    // An answer the older panel sends with the current seed's id still settles nothing.
+    // A claim the older panel sends with the current seed's id grants nothing.
     currentPanel.receive(firstMessage);
-    const [delivered] = seedsIn(currentPanel);
-    older.receive(answer(delivered.payload.deliveryId, true));
-    expect(await peek(outcome)).toBe(unsettled);
+    const [sent] = seedsIn(currentPanel);
+    older.receive(claim(sent.payload.deliveryId));
+    expect(claimResultsIn(older)).toEqual([]);
+    expect(claimResultsIn(currentPanel)).toEqual([]);
 
-    currentPanel.receive(answer(delivered.payload.deliveryId, true));
+    claimAndAnswer(currentPanel, true);
     await expect(outcome).resolves.toEqual({ opened: true });
   });
 
-  it('a newer seed replaces a pending one, and the replaced seed\'s answer settles nothing', async () => {
+  it('a newer seed replaces an unsent one, and the replaced seed is never sent', async () => {
     const workshop = provider();
     const { outcome: first, panel } = seedInto(workshop);
     const { outcome: second } = seedInto(workshop);
     await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
 
     panel.receive(firstMessage);
-    const delivered = seedsIn(panel);
-    expect(delivered).toHaveLength(1);
-    panel.receive(answer('lexical-build-seed-0-1', true));
-    expect(await peek(second)).toBe(unsettled);
-    panel.receive(answer(delivered[0].payload.deliveryId, true));
+    expect(seedsIn(panel)).toHaveLength(1);
+    claimAndAnswer(panel, true);
     await expect(second).resolves.toEqual({ opened: true });
   });
 
-  it('times out a seed the Workshop never confirms, and never delivers it afterwards', async () => {
+  it('a newer seed replaces a sent but unclaimed one, whose late claim is denied', async () => {
+    const workshop = provider();
+    const panel = open(workshop);
+    panel.receive(firstMessage);
+    const { outcome: first } = seedInto(workshop);
+    const { outcome: second } = seedInto(workshop);
+    await expect(first).resolves.toEqual({ opened: false, reason: 'replaced' });
+    const [sentA, sentB] = seedsIn(panel);
+
+    panel.receive(claim(sentA.payload.deliveryId));
+    expect(claimResultsIn(panel)).toEqual([
+      { kind: 'lexical-gravity-build', deliveryId: sentA.payload.deliveryId, granted: false, reason: 'replaced' }
+    ]);
+    panel.receive(claim(sentB.payload.deliveryId));
+    panel.receive(answer(sentB.payload.deliveryId, true));
+    await expect(second).resolves.toEqual({ opened: true });
+  });
+
+  it('times out an unclaimed seed, never sends it afterwards, and denies a late claim of a sent one', async () => {
     jest.useFakeTimers();
     const workshop = provider();
-    const { outcome, panel } = seedInto(workshop);
+    const panel = open(workshop);
     panel.receive(firstMessage);
-    panel.visible = false;
-    // Delivered at once to the visible listener; hide another seed to test the undelivered case.
-    const { outcome: hidden } = seedInto(workshop);
-    await expect(outcome).resolves.toEqual({ opened: false, reason: 'replaced' });
+    const { outcome: sent } = seedInto(workshop);
+    jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS);
+    await expect(sent).resolves.toEqual({ opened: false, reason: 'timeout' });
+    const [delivered] = seedsIn(panel);
+    panel.receive(claim(delivered.payload.deliveryId));
+    expect(claimResultsIn(panel).at(-1)).toMatchObject({ granted: false, reason: 'timeout' });
 
-    jest.advanceTimersByTime(WORKSHOP_BUILD_SEED_TIMEOUT_MS - 1);
+    panel.visible = false;
+    const { outcome: hidden } = seedInto(workshop);
+    jest.advanceTimersByTime(WORKSHOP_SEED_TIMEOUT_MS - 1);
     expect(await peek(hidden)).toBe(unsettled);
     jest.advanceTimersByTime(1);
     await expect(hidden).resolves.toEqual({ opened: false, reason: 'timeout' });
-
     panel.visible = true;
     panel.viewStateChanged();
     expect(seedsIn(panel)).toHaveLength(1);

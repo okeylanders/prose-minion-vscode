@@ -572,3 +572,33 @@ becomes a file format.
       [`lightbox-slice-3-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-3-visual/README.md).
   - **Follow-up:** [Lightbox run accounting on its exceptional paths](../../tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md)
     (Low), from PR #149's third re-review.
+
+- **2026-10-20. Slice 3: PR #150 re-review fixes.** The
+  [re-review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)
+  found F-01, F-02, F-04, F-05 and F-06 addressed, kept an F-03 residual
+  open and added F-07 (nonblocking); both are fixed, and the author
+  response to the re-review maps them to commits and tests.
+  1. **F-03, claim before opening.** The Workshop webview holds an arriving
+     seed and claims it; the panel provider grants the claim only while
+     that delivery is still the one it waits on, so a seed whose message
+     was already sent when it timed out, was replaced or lost its panel
+     never opens. A grant cannot be revoked, so a newer seed waits for the
+     granted one's answer. The protocol is generic over the seed kind
+     (`WorkshopSeedDelivery`, `useWorkshopSeedClaim`) for Slice 4's Bring
+     to Workshop.
+  2. **F-07, the Model Browser in the overlay stack.** It registers with
+     `useOverlayDismiss`, so a seed never opens over it and Escape closes
+     only the top surface; focus returns to its opener, nested or not.
+  - **Verification.** Re-reviewed head (`524a961`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 367 suites, 5,237 tests, 2 snapshots | 370 suites, 5,257 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file and per rule, except two fewer `curly`
+      warnings in `ModelBrowserModal.tsx`, whose own Escape listener is gone.
+    - No live or billable call; the evidence follows the claim protocol and
+      no shot changed.

@@ -194,7 +194,10 @@ export enum MessageType {
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD = 'workshop_open_lexical_gravity_build',
   WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED = 'workshop_lexical_gravity_build_seed',
-  WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER = 'workshop_lexical_gravity_build_seed_answer',
+  // Seed delivery: claim before opening, then answer (PR #150 F-03)
+  WORKSHOP_SEED_CLAIM = 'workshop_seed_claim',
+  WORKSHOP_SEED_CLAIM_RESULT = 'workshop_seed_claim_result',
+  WORKSHOP_SEED_ANSWER = 'workshop_seed_answer',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',

@@ -304,6 +304,7 @@ workshop/
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── recovery.ts              # Rejected response repair-contract registry
+├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 
