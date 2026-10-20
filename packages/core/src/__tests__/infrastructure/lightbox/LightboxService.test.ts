@@ -364,6 +364,20 @@ describe('LightboxService boards per source (D12)', () => {
     expect(lightboxSourceKey({ kind: 'file', displayPath: 'a.md' })).toBe('file:a.md');
   });
 
+  it('keys a file by its decoded path, so VS Code\'s and Node\'s file URIs for one file agree (2026-10-20)', () => {
+    const key = (sourceUri: string) => lightboxSourceKey({ kind: 'file', displayPath: 'x.md', sourceUri });
+    // POSIX: VS Code escapes parentheses, Node's pathToFileURL does not.
+    expect(key('file:///workspace/Chapters/01%20the%20river%20%28draft%29.md'))
+      .toBe(key('file:///workspace/Chapters/01%20the%20river%20(draft).md'));
+    // Windows: VS Code escapes the drive colon and lowercases the drive; Node keeps both.
+    expect(key('file:///c%3A/Users/writer/Chapters/one.md')).toBe(key('file:///C:/Users/writer/Chapters/one.md'));
+    // Different files and different roots stay apart; other schemes are kept as they are.
+    expect(key('file:///root-a/a.md')).not.toBe(key('file:///root-b/a.md'));
+    expect(key('file:///root-a/a.md')).toBe('file:file:///root-a/a.md');
+    expect(lightboxSourceKey({ kind: 'selection', displayPath: 'a.md', sourceUri: 'untitled:Untitled-1', startLine: 1, endLine: 2 }))
+      .toBe('selection:untitled:Untitled-1:1-2');
+  });
+
   it('keeps separate boards for same-named files in two workspace roots', async () => {
     const { service } = createService();
     const inRoot = (root: string): LightboxSourceInput => ({

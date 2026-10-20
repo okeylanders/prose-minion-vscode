@@ -4,6 +4,11 @@
  * resolver), the picker and the standards enrichment are stand-ins, and each
  * can be held open, so a test can order reads, builds and failures exactly.
  *
+ * The project picker's catalog is the real WorkshopContextIntakeService over
+ * a stand-in context-path provider: `addProjectFile` lists a file in a
+ * configured group and registers its text with the same reads, so a project
+ * pick can be held like any other read.
+ *
  * Each `openPanel()` is one webview: its own handler, router, transport and
  * log, all over the one shared service, as the panel provider builds them.
  */
@@ -23,6 +28,9 @@ import { WordFrequencyService } from '@services/measurement/WordFrequencyService
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import type { PickedFile } from '@/platform';
 import { ExtensionToWebviewMessage, LightboxBoard, LightboxSourceRefusal, MessageType } from '@/shared/types/messages';
+import type { ContextPathGroup } from '@/shared/types/context';
+import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
 
 export const WORKSPACE = '/workspace';
@@ -99,6 +107,61 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
     return absolute;
   };
 
+  // The configured catalog: the real intake service over a stand-in provider.
+  const projectFiles: ContextResourceSummary[] = [];
+  const catalogFailure: { error?: Error } = {};
+  const catalogText = async (absolutePath: string): Promise<string> => {
+    const entry = files.get(absolutePath);
+    if (entry === undefined || entry instanceof Error) {
+      throw entry ?? new Error(`No file at ${absolutePath}`);
+    }
+    return typeof entry === 'string' ? entry : entry.promise;
+  };
+  const openProvider = jest.fn(async () => {
+    if (catalogFailure.error) {
+      throw catalogFailure.error;
+    }
+    const listed = [...projectFiles];
+    return {
+      listResources: () => listed,
+      loadResources: async (paths: string[]) => Promise.all(
+        listed
+          .filter((summary) => paths.includes(summary.path))
+          .map(async (summary) => ({ ...summary, content: await catalogText(summary.absolutePath) }))
+      )
+    };
+  });
+  const catalog = new WorkshopContextIntakeService(
+    { createProvider: openProvider },
+    createFakeFileSystem(),
+    createFakeWorkspace()
+  );
+  const workspaceFolders = jest.fn(() => [{ path: WORKSPACE, name: 'workspace' }]);
+
+  /**
+   * List a file in a configured group and register its text; returns its
+   * absolute path. `absolutePath` places it somewhere else (outside the
+   * workspace, say) while the catalog still names it by `relativePath`.
+   */
+  const addProjectFile = (
+    group: ContextPathGroup,
+    relativePath: string,
+    entry: LightboxFileEntry,
+    options: { absolutePath?: string; sizeBytes?: number } = {}
+  ): string => {
+    const absolute = options.absolutePath ?? path.posix.join(WORKSPACE, relativePath);
+    files.set(absolute, entry);
+    projectFiles.push({
+      group,
+      path: relativePath,
+      label: path.posix.basename(relativePath, path.posix.extname(relativePath)),
+      sizeBytes: options.sizeBytes ?? (typeof entry === 'string' ? Buffer.byteLength(entry) : 1_000),
+      absolutePath: absolute,
+      workspaceFolder: 'workspace'
+    });
+    return absolute;
+  };
+
   const openPanel = (
     options: { handOff?: LightboxWorkshopHandoffPort; workshop?: LightboxWorkshopPorts } = {}
   ): LightboxPanel => {
@@ -108,6 +171,7 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
       service,
       { resolve } as unknown as TextSourceResolver,
       { pickFile },
+      { catalog, workspace: { workspaceFolders } },
       async (message: ExtensionToWebviewMessage) => {
         posted.push(message);
       },
@@ -143,5 +207,41 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
     relativePath
   });
 
-  return { service, enrich, files, resolve, pickFile, addFile, fileSource, openPanel };
+  /** Hold the next catalog open until the test releases it. */
+  const holdCatalog = () => {
+    const opened = deferred<void>();
+    openProvider.mockImplementationOnce(async () => {
+      await opened.promise;
+      const listed = [...projectFiles];
+      return {
+        listResources: () => listed,
+        loadResources: async (paths: string[]) => Promise.all(
+          listed
+            .filter((summary) => paths.includes(summary.path))
+            .map(async (summary) => ({ ...summary, content: await catalogText(summary.absolutePath) }))
+        )
+      };
+    });
+    return { release: () => opened.resolve() };
+  };
+
+  return {
+    service,
+    enrich,
+    files,
+    resolve,
+    pickFile,
+    addFile,
+    fileSource,
+    openPanel,
+    catalog,
+    openProvider,
+    workspaceFolders,
+    addProjectFile,
+    holdCatalog,
+    /** Every later catalog open fails, as an unreadable settings folder would. */
+    failCatalog: (error = new Error('The context paths could not be read')) => {
+      catalogFailure.error = error;
+    }
+  };
 }

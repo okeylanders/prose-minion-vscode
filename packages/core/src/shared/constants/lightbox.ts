@@ -21,6 +21,21 @@ import type {
   LightboxTileKind
 } from '@messages';
 
+/**
+ * The files the Lightbox reads, as a source or as context: Markdown and plain
+ * text, by extension (no dot). These are the extensions VS Code opens as the
+ * `markdown` and `plaintext` languages that Open File in Lightbox accepts.
+ * The pickers offer them first, and the project picker's catalog holds only
+ * these (2026-10-20).
+ */
+export const LIGHTBOX_TEXT_FILE_EXTENSIONS = ['md', 'markdown', 'txt'] as const;
+
+/** Whether a path names a file the Lightbox reads (its extension, case-insensitively). */
+export function isLightboxTextFile(filePath: string): boolean {
+  const extension = /\.([^./\\]+)$/.exec(filePath)?.[1]?.toLowerCase();
+  return extension !== undefined && (LIGHTBOX_TEXT_FILE_EXTENSIONS as readonly string[]).includes(extension);
+}
+
 export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxRegister>> = {
   stats: 'measured',
   'top-words': 'measured',

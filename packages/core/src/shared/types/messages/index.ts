@@ -37,6 +37,7 @@ export * from './lightboxStoryTiles';
 export * from './lightboxGravity';
 export * from './lightboxStale';
 export * from './lightboxHandoff';
+export * from './lightboxProjectFiles';
 
 // Union types for message routing
 import {
@@ -264,6 +265,13 @@ import {
   LightboxWorkshopTrayMessage
 } from './lightboxHandoff';
 import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
+import {
+  LightboxChooseProjectSourceMessage,
+  LightboxProjectCatalogMessage,
+  LightboxProjectCatalogSearchResultsMessage,
+  LightboxRequestProjectCatalogMessage,
+  LightboxSearchProjectCatalogMessage
+} from './lightboxProjectFiles';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -390,7 +398,10 @@ export type WebviewToExtensionMessage =
   | LightboxRemoveContextFileMessage
   | LightboxHandOffMessage
   | LightboxSetSparkDismissedMessage
-  | LightboxOpenWorkshopMessage;
+  | LightboxOpenWorkshopMessage
+  | LightboxRequestProjectCatalogMessage
+  | LightboxSearchProjectCatalogMessage
+  | LightboxChooseProjectSourceMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -460,4 +471,6 @@ export type ExtensionToWebviewMessage =
   | LightboxGroupResultMessage
   | LightboxContextFilesMessage
   | LightboxHandOffResultMessage
-  | LightboxWorkshopTrayMessage;
+  | LightboxWorkshopTrayMessage
+  | LightboxProjectCatalogMessage
+  | LightboxProjectCatalogSearchResultsMessage;

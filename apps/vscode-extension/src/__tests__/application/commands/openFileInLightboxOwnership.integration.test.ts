@@ -151,6 +151,12 @@ function createScene() {
     warnings,
     logs,
     addFile: (relativePath: string, text: string) => mockLightbox.addFile(relativePath, text),
+    /** List a file in the project picker's catalog; its read can be held. */
+    addProjectFile: (relativePath: string, entry: string | Deferred<string>) =>
+      mockLightbox.addProjectFile('chapters', relativePath, entry),
+    /** The writer picks a row in the Lightbox's project picker. */
+    choose: (relativePath: string) =>
+      mockPanels.at(-1)!.route(MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE, { group: 'chapters', path: relativePath }),
     /** Hold VS Code's load of a file until the test releases it. */
     hold: (relativePath: string) => {
       const uri = fileUri(relativePath);
@@ -415,6 +421,49 @@ describe('Open File in Lightbox owns its source before the document loads (PR #1
     await settle();
     expect(scene.board()).toBe('later.md');
     expect(scene.panel().boardPaths()).toEqual([null, 'later.md']);
+  });
+});
+
+describe('Open File in Lightbox and Choose from project order by when the writer chose (2026-10-20)', () => {
+  it('pick → Open File: a launch made while a picked row reads keeps the board', async () => {
+    const scene = createScene();
+    const read = deferred<string>();
+    scene.addProjectFile('Chapters/picked-older.md', read);
+    scene.addFile('newer-B.md', NEWER);
+    await scene.openLightbox();
+
+    const pick = scene.choose('Chapters/picked-older.md');
+    await settle();
+    expect((await scene.launch('newer-B.md')).kind).toBe('seeded');
+    await settle();
+    read.resolve(OLDER);
+    await pick;
+    await settle();
+
+    expect(scene.board()).toBe('newer-B.md');
+    expect(scene.panel().boardPaths()).toEqual([null, 'newer-B.md']);
+    expect(scene.panel().refusals()).toEqual([]);
+  });
+
+  it('Open File → pick: a row picked while the launch loads keeps the board, and the launch opens nothing', async () => {
+    const scene = createScene();
+    scene.addFile('older-A.md', OLDER);
+    scene.addProjectFile('Chapters/picked-newer.md', NEWER);
+    await scene.openLightbox();
+
+    const a = scene.hold('older-A.md');
+    const earlier = scene.launch('older-A.md');
+    await scene.choose('Chapters/picked-newer.md');
+    expect(scene.board()).toBe('Chapters/picked-newer.md');
+
+    a.release();
+    expect((await earlier).kind).toBe('superseded');
+    await settle();
+
+    expect(scene.board()).toBe('Chapters/picked-newer.md');
+    expect(scene.panel().boardPaths()).toEqual([null, 'Chapters/picked-newer.md']);
+    expect(scene.tabs).toHaveLength(1);
+    expect(scene.logs).toContain(DROPPED_A);
   });
 });
 

@@ -1007,6 +1007,7 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxStoryTiles.ts',
   'shared/types/messages/lightboxStale.ts',
   'shared/types/messages/lightboxHandoff.ts',
+  'shared/types/messages/lightboxProjectFiles.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
@@ -1041,6 +1042,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
+  'application/handlers/domain/LightboxProjectFiles.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
@@ -1099,6 +1101,64 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts'
+] as const;
+/**
+ * Complete Lightbox route ledger (2026-10-20). Every `LIGHTBOX_*` message type
+ * is either inbound, with the one handler that registers it, or outbound
+ * (host to webview); a new type fails here until it is placed.
+ */
+const LIGHTBOX_ROUTE_OWNERS = [
+  {
+    owner: 'application/handlers/domain/LightboxHandler.ts',
+    messageTypes: [
+      'LIGHTBOX_REQUEST_BOARD',
+      'LIGHTBOX_SET_SOURCE',
+      'LIGHTBOX_PICK_SOURCE_FILE',
+      'LIGHTBOX_REFRESH_SOURCE',
+      'LIGHTBOX_DISMISS_REFUSAL',
+      'LIGHTBOX_HAND_OFF',
+      'LIGHTBOX_OPEN_WORKSHOP',
+      // Choose from project (the shared project picker, 2026-10-20)
+      'LIGHTBOX_REQUEST_PROJECT_CATALOG',
+      'LIGHTBOX_SEARCH_PROJECT_CATALOG',
+      'LIGHTBOX_CHOOSE_PROJECT_SOURCE'
+    ]
+  },
+  {
+    owner: 'application/handlers/domain/LightboxReadingHandler.ts',
+    messageTypes: [
+      'LIGHTBOX_SET_LENSES',
+      'LIGHTBOX_RUN',
+      'LIGHTBOX_CANCEL_RUN',
+      'LIGHTBOX_ADD_CONTEXT_FILES',
+      'LIGHTBOX_REMOVE_CONTEXT_FILE',
+      'LIGHTBOX_SET_SPARK_DISMISSED'
+    ]
+  }
+] as const;
+const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
+  'LIGHTBOX_BOARD',
+  'LIGHTBOX_SOURCE_REFUSED',
+  'LIGHTBOX_RUN_ESTIMATE',
+  'LIGHTBOX_RUN_PROGRESS',
+  'LIGHTBOX_GROUP_RESULT',
+  'LIGHTBOX_CONTEXT_FILES',
+  'LIGHTBOX_HAND_OFF_RESULT',
+  'LIGHTBOX_WORKSHOP_TRAY',
+  'LIGHTBOX_PROJECT_CATALOG',
+  'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS'
+] as const;
+/**
+ * The project picker the Workshop's context selector and the Lightbox share
+ * (2026-10-20). It is presentation only: every host effect is a callback.
+ */
+const SHARED_PROJECT_PICKER = 'presentation/webview/components/fulltab/ProjectResourcePickerModal.tsx';
+const SHARED_PROJECT_PICKER_IMPORTS = [
+  'react',
+  '@components/shared/Icon',
+  '@components/workshop/WorkshopModalShell',
+  '@messages',
+  '@shared/types/context'
 ] as const;
 const LIGHTBOX_FEATURE_DIRECTORIES = [
   'infrastructure/lightbox',
@@ -1742,6 +1802,33 @@ describe('architectural boundaries', () => {
         .some(([name]) => workshopRoutes.has(name))))
       .toEqual([]);
     expect(workshopRoutes.has('WORKSHOP_STAGE_LIGHTBOX_TILE')).toBe(true);
+  });
+
+  it('keeps every Lightbox route with its one owner, and every Lightbox message type placed (2026-10-20)', () => {
+    const registration = /router\.register\(\s*MessageType\.(LIGHTBOX_[A-Z0-9_]+)\b/g;
+    const actual = collectSourceFiles(SRC_ROOT)
+      .flatMap((file) => [...fs.readFileSync(file, 'utf8').matchAll(registration)]
+        .map((match) => `${match[1]} ${path.relative(SRC_ROOT, file)}`))
+      .filter((pair) => !pair.includes('__tests__'))
+      .sort();
+    const expected = LIGHTBOX_ROUTE_OWNERS
+      .flatMap(({ owner, messageTypes }) => messageTypes.map((messageType) => `${messageType} ${owner}`))
+      .sort();
+    expect(actual).toEqual(expected);
+
+    const inbound: string[] = LIGHTBOX_ROUTE_OWNERS.flatMap(({ messageTypes }) => [...messageTypes]);
+    const placed = [...inbound, ...LIGHTBOX_OUTBOUND_MESSAGE_TYPES];
+    expect(placed.filter((name, index) => placed.indexOf(name) !== index)).toEqual([]);
+    expect(placed.sort()).toEqual(Object.keys(MessageType).filter((name) => name.startsWith('LIGHTBOX_')).sort());
+  });
+
+  it('keeps the shared project picker presentation-only: no transport, no route, no feature imports (2026-10-20)', () => {
+    const file = path.join(SRC_ROOT, SHARED_PROJECT_PICKER);
+    const source = fs.readFileSync(file, 'utf8');
+    expect(source).not.toMatch(/useVSCodeApi|MessageType|postMessage|acquireVsCodeApi/);
+    expect(source).not.toMatch(/\b(WORKSHOP|LIGHTBOX)_[A-Z_]+\b/);
+    expect(moduleImports(file, source).map(({ module }) => module).sort())
+      .toEqual([...SHARED_PROJECT_PICKER_IMPORTS].sort());
   });
 
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {

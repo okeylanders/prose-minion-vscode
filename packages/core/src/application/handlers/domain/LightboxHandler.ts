@@ -31,6 +31,16 @@
  * A refusal produced before the webview was listening is therefore shown
  * when it asks, and `LIGHTBOX_DISMISS_REFUSAL` is what stops it returning.
  *
+ * Choose from project (2026-10-20). The source panel opens the shared
+ * project picker. `LIGHTBOX_REQUEST_PROJECT_CATALOG` and
+ * `LIGHTBOX_SEARCH_PROJECT_CATALOG` answer from the configured catalog,
+ * Markdown and plain text only (`LightboxProjectFiles`). A row picked
+ * arrives as `LIGHTBOX_CHOOSE_PROJECT_SOURCE` naming its catalog key: the
+ * writer's choice is concrete, so the ticket is taken first, before the
+ * catalog is opened, and the file is resolved inside the workspace and
+ * boarded under it like any picked file. The picker's "Explore project
+ * folders…" is `LIGHTBOX_PICK_SOURCE_FILE`.
+ *
  * Handoffs (Slices 3 and 4, D11). `LIGHTBOX_HAND_OFF` names a borrowed field
  * or a reading tile on the board the webview shows, and `LIGHTBOX_OPEN_WORKSHOP`
  * is the tray's way there. Both run in `LightboxHandoffRoute`, which this
@@ -61,17 +71,23 @@ import type {
 } from '@/infrastructure/lightbox/LightboxService';
 import {
   LightboxBoardMessage,
+  LightboxChooseProjectSourceMessage,
   LightboxDismissRefusalMessage,
   LightboxHandOffMessage,
   LightboxOpenWorkshopMessage,
   LightboxPickSourceFileMessage,
+  LightboxProjectCatalogMessage,
+  LightboxProjectCatalogSearchResultsMessage,
   LightboxRefreshSourceMessage,
   LightboxRequestBoardMessage,
+  LightboxRequestProjectCatalogMessage,
+  LightboxSearchProjectCatalogMessage,
   LightboxSetSourceMessage,
   LightboxSourceRefusal,
   LightboxSourceRefusedMessage,
   MessageType
 } from '@messages';
+import { LIGHTBOX_TEXT_FILE_EXTENSIONS } from '@shared/constants/lightbox';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import {
@@ -79,8 +95,14 @@ import {
   type LightboxWorkshopHandoffPort,
   type LightboxWorkshopPorts
 } from '@handlers/domain/LightboxHandoffRoute';
+import {
+  LightboxProjectFiles,
+  lightboxProjectFileRef,
+  type LightboxProjectFilePorts
+} from '@handlers/domain/LightboxProjectFiles';
 
 export type { LightboxWorkshopHandoffPort, LightboxWorkshopPorts } from '@handlers/domain/LightboxHandoffRoute';
+export type { LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
 
 const SOURCE = 'extension.lightbox';
 
@@ -98,16 +120,19 @@ export class LightboxHandler {
   private unsubscribe?: () => void;
   private disposed = false;
   private readonly handoffs: LightboxHandoffRoute;
+  private readonly projectFiles: LightboxProjectFiles;
 
   constructor(
     private readonly lightboxService: LightboxService,
     private readonly textSourceResolver: TextSourceResolver,
     private readonly shell: LightboxFilePicker,
+    projectFilePorts: LightboxProjectFilePorts,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     handOffToWorkshop?: LightboxWorkshopHandoffPort,
     workshop: LightboxWorkshopPorts = {}
   ) {
+    this.projectFiles = new LightboxProjectFiles(projectFilePorts, outputChannel);
     this.handoffs = new LightboxHandoffRoute({
       lightboxService,
       textSourceResolver,
@@ -127,6 +152,9 @@ export class LightboxHandler {
     router.register(MessageType.LIGHTBOX_DISMISS_REFUSAL, this.handleDismissRefusal.bind(this));
     router.register(MessageType.LIGHTBOX_HAND_OFF, this.handleHandOff.bind(this));
     router.register(MessageType.LIGHTBOX_OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
+    router.register(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, this.handleRequestProjectCatalog.bind(this));
+    router.register(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, this.handleSearchProjectCatalog.bind(this));
+    router.register(MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE, this.handleChooseProjectSource.bind(this));
   }
 
   /** Stop hearing the service's outcomes and the Workshop's tray; a disposed handler posts nothing more. */
@@ -195,7 +223,7 @@ export class LightboxHandler {
       title: 'Open a file in the Lightbox',
       openLabel: 'Open',
       // eslint-disable-next-line @typescript-eslint/naming-convention -- dialog filter keys are display names.
-      filters: { 'Text files': ['md', 'markdown', 'txt'], 'All files': ['*'] }
+      filters: { 'Text files': [...LIGHTBOX_TEXT_FILE_EXTENSIONS], 'All files': ['*'] }
     });
     if (!picked) {
       return;
@@ -226,6 +254,63 @@ export class LightboxHandler {
       sourceUri: target.sourceUri,
       displayPath: target.displayPath
     });
+  }
+
+  /** The project picker opened: answer with the readable files in the configured catalog. */
+  async handleRequestProjectCatalog(_message: LightboxRequestProjectCatalogMessage): Promise<void> {
+    this.subscribe();
+    const payload = await this.projectFiles.catalog();
+    if (this.disposed) {
+      return;
+    }
+    const message: LightboxProjectCatalogMessage = {
+      type: MessageType.LIGHTBOX_PROJECT_CATALOG,
+      source: SOURCE,
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  /** "Names + content": the readable files whose text holds the query. */
+  async handleSearchProjectCatalog(message: LightboxSearchProjectCatalogMessage): Promise<void> {
+    this.subscribe();
+    const payload = await this.projectFiles.search(message.payload?.query);
+    if (!payload || this.disposed) {
+      return;
+    }
+    const results: LightboxProjectCatalogSearchResultsMessage = {
+      type: MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS,
+      source: SOURCE,
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(results);
+  }
+
+  /**
+   * A row picked in the project picker. The writer's choice is concrete, so
+   * the ticket is taken now, before the catalog is opened (PR #148 F-01,
+   * PR #152 F-01): a later file, selection, pick or re-read wins over this
+   * one while it loads. A payload that names no catalog key is no choice:
+   * it takes no ticket and changes nothing.
+   */
+  async handleChooseProjectSource(message: LightboxChooseProjectSourceMessage): Promise<void> {
+    this.subscribe();
+    const ref = lightboxProjectFileRef(message.payload);
+    if (!ref) {
+      this.outputChannel.appendLine('[LightboxHandler] Ignored a project source that named no catalog file');
+      return;
+    }
+    const ticket = this.lightboxService.beginSourceRequest();
+    const resolved = await this.projectFiles.resolve(ref);
+    if (resolved.kind === 'refused') {
+      const { message: why, displayPath, suggestion } = resolved.refusal;
+      this.refuse(ticket, { reason: 'unreadable', message: why, displayPath, suggestion });
+      return;
+    }
+    const { absolutePath, sourceUri, displayPath } = resolved.file;
+    await this.boardFile(ticket, { filePath: absolutePath, sourceUri, displayPath });
   }
 
   /** The writer dismissed a refusal; the host stops serving it. */
