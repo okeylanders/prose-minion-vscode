@@ -27,6 +27,7 @@ import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import { workshopAttachmentSize, workshopAttachmentTitle } from '@components/workshop/workshopAttachmentPills';
 import {
   workshopWidgetLabel,
   workshopWidgetSelectionUnitLabel
@@ -481,10 +482,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           {turn.messageAttachments && turn.messageAttachments.length > 0 && (
             <div className="pm-ws-turn-attachments" aria-label="Message attachments">
               {turn.messageAttachments.map((attachment) => (
-                <span key={attachment.id} className="pm-ws-turn-attachment" title={attachment.relativePath ?? attachment.label}>
-                  <Icon name="doc" size={11} /> {attachment.label} ·{' '}
-                  {attachment.words.toLocaleString()} words
-                  {attachment.truncation ? ' (head slice)' : ''}
+                <span key={attachment.id} className="pm-ws-turn-attachment" title={workshopAttachmentTitle(attachment)}>
+                  <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} /> {attachment.label} ·{' '}
+                  {workshopAttachmentSize(attachment, 'turn')}
                 </span>
               ))}
             </div>

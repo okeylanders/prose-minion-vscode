@@ -100,7 +100,11 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   gravity: 1_500,
   characters: 1_000,
   voice: 420,
-  genre: 820
+  // Slice 4: guesses from the worked examples' lengths, like Slice 3's, until Slice 6 measures them.
+  subtext: 640,
+  genre: 820,
+  lineage: 900,
+  spark: 620
 };
 
 /** Each tension score and its comma. */

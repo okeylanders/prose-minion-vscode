@@ -143,6 +143,18 @@ export interface PromptBudgets {
     clusterWords: number;
     swatches: number;
     swatchWords: number;
+    /** Adjacent stories one lineage block may draw (Slice 4). */
+    lineageStories: number;
+    /** Stances one story may carry: matches, departs, subverts, each at most once. */
+    lineageStances: number;
+    /** Stories a lineage block may list as checked and set aside. */
+    lineageSetAsides: number;
+    subtextPairs: number;
+    /** Quotes a said/meant pair may add beside its said line, from the narration around it. */
+    subtextContextQuotes: number;
+    sparks: number;
+    /** One spark's question. */
+    sparkCharacters: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -392,7 +404,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     paletteClusters: 4,
     clusterWords: 6,
     swatches: 6,
-    swatchWords: 3
+    swatchWords: 3,
+    lineageStories: 4,
+    lineageStances: 3,
+    lineageSetAsides: 3,
+    subtextPairs: 4,
+    subtextContextQuotes: 2,
+    sparks: 4,
+    sparkCharacters: 240
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

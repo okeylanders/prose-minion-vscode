@@ -24,6 +24,7 @@ import './styles/lightbox/rail.css';
 import './styles/lightbox/inspector.css';
 import './styles/lightbox/readings.css';
 import './styles/lightbox/gravity.css';
+import './styles/lightbox/story.css';
 import * as React from 'react';
 import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
@@ -35,16 +36,20 @@ import { LightboxLensesPanel } from '@components/lightbox/LightboxLensesPanel';
 import { LightboxContextList } from '@components/lightbox/LightboxContextList';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
+import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
 import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import { useLightbox } from '@hooks/domain/useLightbox';
+import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
+import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
 import {
   buildLightboxRunLine,
   lightboxCallsNote,
   lightboxRereadAvailability
 } from '@hooks/domain/lightbox/lightboxRunLine';
 import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
+import { lightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import { usePersistence } from '@hooks/usePersistence';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -55,8 +60,11 @@ export const LightboxApp: React.FC = () => {
   const chrome = useFullTabChrome({ source: 'webview.lightbox' });
   const lightbox = useLightbox({ assistantModel: chrome.modelsSettings.modelSelections.assistant });
   const board = lightbox.board ?? null;
+  const handoffs = useLightboxHandoff({ boardId: board?.boardId });
   const focus = useLightboxFocus({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
+  // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
+  const escape = useLightboxEscape({ pinned: lightbox.selected !== null, onClear: inspector.clear });
 
   const routes = React.useMemo<MessageHandlerMap>(() => {
     const chromeRoutes = buildFullTabChromeRoutes(chrome);
@@ -74,7 +82,8 @@ export const LightboxApp: React.FC = () => {
       [MessageType.LIGHTBOX_RUN_PROGRESS]: lightbox.handleRunProgress,
       [MessageType.LIGHTBOX_GROUP_RESULT]: lightbox.handleGroupResult,
       [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles,
-      [MessageType.LIGHTBOX_HAND_OFF_RESULT]: lightbox.handleHandOffResult
+      [MessageType.LIGHTBOX_HAND_OFF_RESULT]: handoffs.handleHandOffResult,
+      [MessageType.LIGHTBOX_WORKSHOP_TRAY]: handoffs.handleWorkshopTray
     };
   }, [
     chrome,
@@ -84,7 +93,8 @@ export const LightboxApp: React.FC = () => {
     lightbox.handleRunProgress,
     lightbox.handleGroupResult,
     lightbox.handleContextFiles,
-    lightbox.handleHandOffResult,
+    handoffs.handleHandOffResult,
+    handoffs.handleWorkshopTray,
     lightbox.handleModelData
   ]);
   useMessageRouter(routes);
@@ -114,7 +124,7 @@ export const LightboxApp: React.FC = () => {
     };
   }, [chrome.providerPaused, estimate, lensesOff, run, running]);
 
-  const { handoff, buildLens: requestBuildLens } = lightbox;
+  const { handoff, tray, buildLens: requestBuildLens, bringTile, openWorkshop } = handoffs;
   const buildLens = React.useMemo(() => (board
     ? {
         view: (field: Parameters<typeof lightboxBuildLensView>[1]) => lightboxBuildLensView(board, field, handoff),
@@ -122,10 +132,34 @@ export const LightboxApp: React.FC = () => {
       }
     : undefined), [board, handoff, requestBuildLens]);
 
+  // Bring to Workshop (Slice 4): the inspector's action and the spark lane's, from one view.
+  const bring = React.useMemo(() => (board
+    ? {
+        view: (tile: Parameters<typeof lightboxBringView>[1]) => lightboxBringView(board, tile, handoff, tray),
+        onBring: bringTile,
+        onOpenWorkshop: openWorkshop
+      }
+    : undefined), [board, bringTile, handoff, openWorkshop, tray]);
+
+  const { setSparkDismissed } = lightbox;
+  const tileActions = React.useMemo(() => ({
+    onDismissSpark: setSparkDismissed,
+    bringSpark: bring && {
+      view: (spark: Parameters<typeof lightboxBringView>[1]) => {
+        const view = bring.view(spark);
+        // Under a card, only what happened: on its way, refused, or where it waits.
+        return { label: view.label, disabled: view.disabled, pressed: view.state === 'bound', note: view.state === 'ready' ? undefined : view.note };
+      },
+      onBring: bring.onBring
+    }
+  }), [bring, setSparkDismissed]);
+
   usePersistence({
     ...lightbox.persistedState,
+    ...handoffs.persistedState,
     ...focus.persistedState,
     ...inspector.persistedState,
+    ...escape.persistedState,
     ...chrome.persistedState
   });
 
@@ -158,11 +192,14 @@ export const LightboxApp: React.FC = () => {
     <FullTabShell
       brand={{ eyebrow: 'Prose Minion · Inspiration & Mood Board', title: 'Lightbox', subtitle }}
       headerActions={
-        <FullTabHeaderStatus
-          models={chrome.modelsSettings}
-          tokens={chrome.tokenTracking}
-          balance={chrome.accountBalance}
-        />
+        <>
+          <LightboxWorkshopTray tiles={tray} onOpenWorkshop={openWorkshop} />
+          <FullTabHeaderStatus
+            models={chrome.modelsSettings}
+            tokens={chrome.tokenTracking}
+            balance={chrome.accountBalance}
+          />
+        </>
       }
       banners={
         chrome.providerPaused && (
@@ -211,6 +248,7 @@ export const LightboxApp: React.FC = () => {
             onDismissRefusal={lightbox.dismissRefusal}
             onRun={lightbox.run}
             onStop={lightbox.cancelRun}
+            actions={tileActions}
           />
         )
       }}
@@ -228,6 +266,7 @@ export const LightboxApp: React.FC = () => {
             bind={focus.bind}
             reread={reread}
             buildLens={buildLens}
+            bring={bring}
           />
         )
       }}

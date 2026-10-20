@@ -77,7 +77,12 @@ export type UseLexicalGravityReturn = LexicalGravityState & LexicalGravityAction
   persistedState: LexicalGravityPersistence;
 };
 
-export function useLexicalGravity(): UseLexicalGravityReturn {
+export interface UseLexicalGravityOptions {
+  /** This Workshop mount's seed receiver (`useWorkshopSeedReceiver`): a Build lens seed's claim and answer name it. */
+  seedReceiver: string;
+}
+
+export function useLexicalGravity({ seedReceiver }: UseLexicalGravityOptions): UseLexicalGravityReturn {
   const vscode = useVSCodeApi();
   const latestApplyRequestTokenRef = React.useRef<string>();
   const [lenses, setLenses] = React.useState<WorkshopLexicalGravityLens[]>([]);
@@ -93,7 +98,10 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     React.useState<WorkshopLexicalGravityLensesSavedPayload | null>(null);
   const [actionResult, setActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
-  const buildSeeds = useWorkshopSeedClaim<WorkshopLexicalGravityBuildSeedPayload>('lexical-gravity-build');
+  const buildSeeds = useWorkshopSeedClaim<WorkshopLexicalGravityBuildSeedPayload>(
+    'lexical-gravity-build',
+    seedReceiver
+  );
 
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({ type, source: 'webview.workshop.lexical-gravity', payload, timestamp: Date.now() });

@@ -1,7 +1,7 @@
 # Dialogue % Ignores Single-Quoted Dialogue
 
 **Date Identified**: 2026-10-19 (split from [Dialogue % Misses Curly Quotes](2026-10-19-prose-stats-dialogue-curly-quotes.md))
-**Reviewed**: 2026-10-19
+**Reviewed**: 2026-10-20 (Lightbox Slice 4)
 **Status**: Identified
 **Priority**: Low
 **Estimated Effort**: Small to Medium (a text-level heuristic, plus fixtures)
@@ -13,6 +13,13 @@ quotes, straight `"…"` and curly `“…”`. Manuscripts that use single quot
 dialogue (`‘…’`, common in UK publishing) still report little or no dialogue
 on the Metrics tab, in the publishing-standards comparison and, from Lightbox
 Slice 2A, in the per-paragraph dialogue share.
+
+From Lightbox Slice 4 the matcher also anchors the subtext lens: a pair's
+*said* line must lie inside a dialogue span (`LightboxDialogueAnchor`). In a
+single-quoted manuscript every said line is outside any span, so every
+pair is withheld with "said line is not inside dialogue", by name. The
+withholding is honest (no pair is shown on a line code could not place),
+but the lens yields nothing for UK-style text until this is fixed.
 
 Single quotes were left out on purpose. Both marks are also apostrophes:
 
@@ -48,9 +55,11 @@ matcher.
 - `packages/core/src/utils/dialogueSpans.ts`
 - `packages/core/src/__tests__/utils/dialogueSpans.test.ts`
 - `packages/core/src/tools/measure/passageProseStats/index.ts`
+- `packages/core/src/infrastructure/lightbox/LightboxDialogueAnchor.ts` (subtext's said-line anchor)
 
 ## Completion Criteria
 
 - A UK-style single-quoted fixture reports a nonzero dialogue %.
 - Every existing double-quote test passes unchanged.
 - A dialogue-free chapter with curled elisions (`‘cause`, `‘em`) reports 0%.
+- A subtext pair on a single-quoted line in a UK-style fixture is kept.

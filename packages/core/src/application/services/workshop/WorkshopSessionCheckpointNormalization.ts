@@ -20,6 +20,7 @@ import {
   findInconsistentRetainedHistoryMarkKeys,
   withoutRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import { repairPendingLightboxTiles } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -33,6 +34,10 @@ export type WorkshopSessionCheckpointNormalization =
   | 'discarded-nonpersona-widget-recommendation'
   | WorkshopWidgetCheckpointNormalization
   | 'headed-missing-room-offsets'
+  // Lightbox Slice 4 development checkpoints (PR #151 F-01): a rewind could
+  // restage a tile beside a copy already waiting, without its source key.
+  | 'dropped-duplicate-pending-lightbox-tiles'
+  | 'restored-lightbox-tile-source-keys'
   // Not development drift: ADR 2026-09-30 §3 degrades a mark that cannot be
   // trusted by dropping its key's marks, so it can never refuse a session.
   | 'dropped-inconsistent-retained-history-marks'
@@ -210,8 +215,17 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   delete revisions.pendingExcerptChange;
   delete revisions.pendingExcerptWithdrawal;
 
+  const pendingTiles = repairPendingLightboxTiles(state.pendingMessageAttachments);
+  if (pendingTiles.droppedDuplicates) {
+    normalizations.push('dropped-duplicate-pending-lightbox-tiles');
+  }
+  if (pendingTiles.restoredKeys) {
+    normalizations.push('restored-lightbox-tile-source-keys');
+  }
+
   const normalized: WorkshopSessionStateV1 = {
     ...state,
+    pendingMessageAttachments: pendingTiles.pending,
     turns,
     excerpt,
     scope,

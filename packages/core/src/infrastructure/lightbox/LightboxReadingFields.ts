@@ -104,7 +104,7 @@ export function decodeItems<T>(
 function itemTitle(item: unknown, fallback: string): string {
   if (item && typeof item === 'object' && !Array.isArray(item)) {
     const record = item as Record<string, unknown>;
-    for (const key of ['title', 'name', 'genre']) {
+    for (const key of ['title', 'name', 'genre', 'speaker']) {
       const value = record[key];
       if (typeof value === 'string' && value.trim().length > 0) {
         return value.trim().slice(0, B.labelCharacters);

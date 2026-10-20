@@ -29,13 +29,13 @@
  * A refusal produced before the webview was listening is therefore shown
  * when it asks, and `LIGHTBOX_DISMISS_REFUSAL` is what stops it returning.
  *
- * Handoffs (Slice 3, D11). `LIGHTBOX_HAND_OFF` names a tile on the board the
- * webview shows. This handler checks that board is still current and, for a
- * file, that the file on disk still has the board's hash; the pure
- * `LightboxHandoff` resolves the field, refuses a stale or withheld one,
- * re-checks its quotes and bounds the seed; and the composition root's
- * `handOffToWorkshop` carries it into the Workshop's own message path. The
- * answer, sent or refused with its reason, is `LIGHTBOX_HAND_OFF_RESULT`.
+ * Handoffs (Slices 3 and 4, D11). `LIGHTBOX_HAND_OFF` names a borrowed field
+ * or a reading tile on the board the webview shows, and `LIGHTBOX_OPEN_WORKSHOP`
+ * is the tray's way there. Both run in `LightboxHandoffRoute`, which this
+ * handler owns: it checks the board is still current and the file unchanged,
+ * prepares the item through the pure checks for its kind, waits for the
+ * Workshop's answer and posts `LIGHTBOX_HAND_OFF_RESULT`; and it posts the
+ * Workshop's tray (`LIGHTBOX_WORKSHOP_TRAY`) on mount and whenever it changes.
  *
  * Logs name paths, counts and refusal reasons. They never carry the writer's
  * text.
@@ -44,15 +44,6 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LogSink, ShellService } from '@/platform';
-import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
-import {
-  LIGHTBOX_HANDOFF_REFUSALS,
-  LIGHTBOX_SEED_HAND_OFF_KIND,
-  LIGHTBOX_WORKSHOP_REFUSALS,
-  lightboxHandoffSentMessage,
-  parseLightboxHandOffRequest,
-  prepareLightboxHandoff
-} from '@/infrastructure/lightbox/LightboxHandoff';
 import {
   isTextSourceValidationError,
   TextSourceResolver
@@ -70,11 +61,8 @@ import {
   LightboxBoardMessage,
   LightboxDismissRefusalMessage,
   LightboxHandOffMessage,
-  LightboxHandOffPayload,
-  LightboxHandOffResultMessage,
+  LightboxOpenWorkshopMessage,
   LightboxPickSourceFileMessage,
-  LightboxWorkshopHandoff,
-  LightboxWorkshopHandoffOutcome,
   LightboxRefreshSourceMessage,
   LightboxRequestBoardMessage,
   LightboxSetSourceMessage,
@@ -84,14 +72,18 @@ import {
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
+import {
+  LightboxHandoffRoute,
+  type LightboxWorkshopHandoffPort,
+  type LightboxWorkshopPorts
+} from '@handlers/domain/LightboxHandoffRoute';
+
+export type { LightboxWorkshopHandoffPort, LightboxWorkshopPorts } from '@handlers/domain/LightboxHandoffRoute';
 
 const SOURCE = 'extension.lightbox';
 
 /** The parts of the picker port this handler uses. */
 type LightboxFilePicker = Pick<ShellService, 'pickFile'>;
-
-/** The composition root's handoff into the Workshop; settles with the Workshop's answer (PR #150 F-03). */
-export type LightboxWorkshopHandoffPort = (handoff: LightboxWorkshopHandoff) => Promise<LightboxWorkshopHandoffOutcome>;
 
 /** A file to read: where to read it, its URI, and the name the writer sees. */
 interface LightboxFileRequest {
@@ -103,8 +95,7 @@ interface LightboxFileRequest {
 export class LightboxHandler {
   private unsubscribe?: () => void;
   private disposed = false;
-  /** True while a handoff is being checked; a second press is refused, not queued. */
-  private handingOff = false;
+  private readonly handoffs: LightboxHandoffRoute;
 
   constructor(
     private readonly lightboxService: LightboxService,
@@ -112,8 +103,19 @@ export class LightboxHandler {
     private readonly shell: LightboxFilePicker,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    private readonly handOffToWorkshop?: LightboxWorkshopHandoffPort
-  ) {}
+    handOffToWorkshop?: LightboxWorkshopHandoffPort,
+    workshop: LightboxWorkshopPorts = {}
+  ) {
+    this.handoffs = new LightboxHandoffRoute({
+      lightboxService,
+      textSourceResolver,
+      postMessage,
+      outputChannel,
+      handOffToWorkshop,
+      tray: workshop.tray,
+      openWorkshop: workshop.openWorkshop
+    });
+  }
 
   registerRoutes(router: MessageRouter): void {
     router.register(MessageType.LIGHTBOX_REQUEST_BOARD, this.handleRequestBoard.bind(this));
@@ -122,19 +124,22 @@ export class LightboxHandler {
     router.register(MessageType.LIGHTBOX_REFRESH_SOURCE, this.handleRefreshSource.bind(this));
     router.register(MessageType.LIGHTBOX_DISMISS_REFUSAL, this.handleDismissRefusal.bind(this));
     router.register(MessageType.LIGHTBOX_HAND_OFF, this.handleHandOff.bind(this));
+    router.register(MessageType.LIGHTBOX_OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
   }
 
-  /** Stop hearing the service's outcomes; a disposed handler posts nothing more. */
+  /** Stop hearing the service's outcomes and the Workshop's tray; a disposed handler posts nothing more. */
   dispose(): void {
     this.disposed = true;
     this.unsubscribe?.();
     this.unsubscribe = undefined;
+    this.handoffs.dispose();
   }
 
-  /** Mount and reveal: answer with the current outcome (the board, and any undismissed refusal). */
+  /** Mount and reveal: answer with the current outcome (the board, and any undismissed refusal) and the tray. */
   async handleRequestBoard(_message: LightboxRequestBoardMessage): Promise<void> {
     this.subscribe();
     this.postBoard(this.lightboxService.currentOutcome());
+    this.handoffs.postTray();
   }
 
   /**
@@ -226,104 +231,19 @@ export class LightboxHandler {
     }
   }
 
-  /**
-   * Hand a board item to the Workshop (D11). Every check runs against the
-   * host's current board and text; the webview only names the item. One
-   * handoff at a time per tab, and none from a closed tab: a tab closed while
-   * its file is re-read hands nothing over.
-   */
+  /** Hand a board item to the Workshop (D11): the webview names it by id; everything else is the host's. */
   async handleHandOff(message: LightboxHandOffMessage): Promise<void> {
     if (this.disposed) {
       return;
     }
     this.subscribe();
-    const request = parseLightboxHandOffRequest(message.payload);
-    const echo: LightboxHandOffPayload = request ?? {
-      kind: LIGHTBOX_SEED_HAND_OFF_KIND,
-      boardId: String((message.payload as { boardId?: unknown } | undefined)?.boardId ?? ''),
-      fieldId: String((message.payload as { fieldId?: unknown } | undefined)?.fieldId ?? '')
-    };
-    const refuse = (reason: string): void => {
-      this.outputChannel.appendLine(`[LightboxHandler] Handoff refused: ${reason}`);
-      this.postHandOffResult({ ...echo, ok: false, message: reason });
-    };
-    if (!request) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.unknown);
-      return;
-    }
-    if (this.handingOff) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.busy);
-      return;
-    }
-    this.handingOff = true;
-    try {
-      await this.handOff(request, refuse);
-    } finally {
-      this.handingOff = false;
-    }
+    await this.handoffs.handle(message.payload);
   }
 
-  private async handOff(request: LightboxHandOffPayload, refuse: (reason: string) => void): Promise<void> {
-    const onScreen = () => this.lightboxService.currentBoard()?.boardId === request.boardId;
-    if (!onScreen()) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.boardChanged);
-      return;
-    }
-    // A file may have changed on disk since it was boarded: check before anything leaves (D4).
-    const target = this.lightboxService.currentRereadTarget();
-    if (target) {
-      let current: string;
-      try {
-        current = (await this.textSourceResolver.resolve({ mode: 'activeFile', pathText: target.rereadPath })).text;
-      } catch {
-        // The resolver's own wording stays out of the log; the path and the refusal say enough.
-        this.outputChannel.appendLine(`[LightboxHandler] Could not read ${target.displayPath} to check a handoff`);
-        refuse(LIGHTBOX_HANDOFF_REFUSALS.fileUnreadable);
-        return;
-      }
-      if (this.disposed) {
-        this.outputChannel.appendLine('[LightboxHandler] Handoff dropped: the Lightbox closed while its file was checked');
-        return;
-      }
-      const board = this.lightboxService.currentBoard();
-      if (!onScreen() || !board) {
-        refuse(LIGHTBOX_HANDOFF_REFUSALS.boardChanged);
-        return;
-      }
-      if (lightboxContentHash(current) !== board.source.contentHash) {
-        refuse(LIGHTBOX_HANDOFF_REFUSALS.fileChanged);
-        return;
-      }
-    }
-    const reading = this.lightboxService.readingSource(request.boardId);
-    if (!reading || !onScreen()) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.boardChanged);
-      return;
-    }
-    const prepared = prepareLightboxHandoff(request, reading.board, reading.paragraphTexts);
-    if (!prepared.ok) {
-      refuse(prepared.reason);
-      return;
-    }
-    if (!this.handOffToWorkshop) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.noWorkshop);
-      return;
-    }
-    // "Sent" means a visible Workshop opened it: wait for its answer, bounded by the provider.
-    const outcome = await this.handOffToWorkshop(prepared.handoff);
-    if (this.disposed) {
-      this.outputChannel.appendLine('[LightboxHandler] Handoff answered after the Lightbox closed; nothing posted');
-      return;
-    }
-    if (!outcome.opened) {
-      refuse(LIGHTBOX_WORKSHOP_REFUSALS[outcome.reason]);
-      return;
-    }
-    this.outputChannel.appendLine(
-      `[LightboxHandler] The Workshop opened a borrowed field: ${prepared.handoff.seed.terms.length} counted terms, ` +
-        `${prepared.quotesFound} of ${prepared.quotesChecked} quotes found again`
-    );
-    this.postHandOffResult({ ...request, ok: true, message: lightboxHandoffSentMessage(prepared.handoff) });
+  /** The tray's "Open Workshop →". */
+  async handleOpenWorkshop(_message: LightboxOpenWorkshopMessage): Promise<void> {
+    this.subscribe();
+    this.handoffs.openWorkshop();
   }
 
   /** Subscribe once, on this webview's first Lightbox message. */
@@ -332,6 +252,7 @@ export class LightboxHandler {
       return;
     }
     this.unsubscribe = this.lightboxService.addOutcomeListener((change) => this.publish(change));
+    this.handoffs.subscribeTray();
   }
 
   private publish(change: LightboxOutcomeChange): void {
@@ -429,16 +350,6 @@ export class LightboxHandler {
       type: MessageType.LIGHTBOX_SOURCE_REFUSED,
       source: SOURCE,
       payload: { refusal },
-      timestamp: Date.now()
-    };
-    void this.postMessage(message);
-  }
-
-  private postHandOffResult(payload: LightboxHandOffResultMessage['payload']): void {
-    const message: LightboxHandOffResultMessage = {
-      type: MessageType.LIGHTBOX_HAND_OFF_RESULT,
-      source: SOURCE,
-      payload,
       timestamp: Date.now()
     };
     void this.postMessage(message);

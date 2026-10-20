@@ -28,6 +28,8 @@ export interface LightboxReadingFrameProps {
   /** A note beside the badge row, e.g. "affinity is a claim, not a score". */
   aside?: React.ReactNode;
   footnote?: React.ReactNode;
+  /** Shown whenever the lens has been read, tiles or none (lineage's set-aside list). */
+  after?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -40,6 +42,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   empty,
   aside,
   footnote,
+  after,
   children
 }) => {
   const read = view.phase === 'ok';
@@ -47,12 +50,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   return (
     <LightboxTileFrame kind={kind} span={span} title={title} footnote={read && view.tiles.length > 0 ? footnote : undefined}>
       {aside}
-      {view.stale && (
-        <p className="pm-lb-stale-note">
-          <b>Stale</b> Read against an earlier version of this chapter. Its quotes were checked again against
-          this one, and its counts recounted. Re-read to read it fresh.
-        </p>
-      )}
+      {view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
       {view.notice && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>
@@ -67,10 +65,20 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
         </div>
       )}
       {read && view.tiles.length > 0 && children}
+      {read && after}
       <LightboxWithheldClaims claims={view.withheldClaims} />
     </LightboxTileFrame>
   );
 };
+
+/** A lens read against an earlier version of the text (D4): every reading's frame, and the Spark lane, say so. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+export const LightboxStaleNote: React.FC = () => (
+  <p className="pm-lb-stale-note">
+    <b>Stale</b> Read against an earlier version of this chapter. Its quotes were checked again against
+    this one, and its counts recounted. Re-read to read it fresh.
+  </p>
+);
 
 /** Lens blocks withheld by kind, each with its reason. */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.

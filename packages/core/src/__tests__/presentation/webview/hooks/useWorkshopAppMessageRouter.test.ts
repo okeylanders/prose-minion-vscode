@@ -39,7 +39,14 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleLensesData: jest.fn(),
     handlePreviewResult: jest.fn(),
     handleCandidates: jest.fn(),
-    handleLensesSaved: jest.fn()
+    handleLensesSaved: jest.fn(),
+    handleBuildSeed: jest.fn(),
+    handleSeedClaimResult: jest.fn()
+  } as never,
+  lightboxTiles: {
+    handleTileOffered: jest.fn(),
+    handleSeedClaimResult: jest.fn(),
+    handleTileStaged: jest.fn()
   } as never,
   creativeVariations: {
     handleGenerationProgress: jest.fn(),
@@ -274,5 +281,33 @@ describe('buildWorkshopAppMessageRoutes', () => {
       .toHaveBeenCalledWith(selection);
     expect(deps.excerptVerify.handleSelectionData).not.toHaveBeenCalled();
     expect(deps.creativeVariations.handleGenerationProgress).toHaveBeenCalledWith(progress);
+  });
+
+  it('routes each seed kind\'s claim result to its own receiver only (Lightbox Slice 4)', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const result = (kind: string) => ({
+      type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { kind, deliveryId: `${kind}-1`, granted: true }
+    });
+    const lexical = deps.lexicalGravity.handleSeedClaimResult as jest.Mock;
+    const tiles = deps.lightboxTiles.handleSeedClaimResult as jest.Mock;
+
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('lightbox-tile') as never);
+    expect(tiles).toHaveBeenCalledTimes(1);
+    expect(lexical).not.toHaveBeenCalled();
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('lexical-gravity-build') as never);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(tiles).toHaveBeenCalledTimes(1);
+    // A kind nobody receives reaches nobody, including a prototype key.
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('toString') as never);
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('another-kind') as never);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(tiles).toHaveBeenCalledTimes(1);
+
+    expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]).toBe(deps.lightboxTiles.handleTileOffered);
+    expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]).toBe(deps.lightboxTiles.handleTileStaged);
   });
 });

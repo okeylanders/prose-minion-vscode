@@ -9,7 +9,11 @@
  */
 
 import * as path from 'node:path';
-import { LightboxHandler, type LightboxWorkshopHandoffPort } from '@/application/handlers/domain/LightboxHandler';
+import {
+  LightboxHandler,
+  type LightboxWorkshopHandoffPort,
+  type LightboxWorkshopPorts
+} from '@/application/handlers/domain/LightboxHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
@@ -95,7 +99,9 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
     return absolute;
   };
 
-  const openPanel = (options: { handOff?: LightboxWorkshopHandoffPort } = {}): LightboxPanel => {
+  const openPanel = (
+    options: { handOff?: LightboxWorkshopHandoffPort; workshop?: LightboxWorkshopPorts } = {}
+  ): LightboxPanel => {
     const posted: ExtensionToWebviewMessage[] = [];
     const log = { appendLine: jest.fn() };
     const handler = new LightboxHandler(
@@ -106,7 +112,8 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
         posted.push(message);
       },
       log as never,
-      options.handOff
+      options.handOff,
+      options.workshop
     );
     const router = new MessageRouter();
     handler.registerRoutes(router);

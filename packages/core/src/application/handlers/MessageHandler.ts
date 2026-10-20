@@ -49,6 +49,7 @@ import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 import { LightboxHandler } from './domain/LightboxHandler';
+import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
 
 export class MessageHandler {
@@ -349,7 +350,9 @@ export class MessageHandler {
       this.platform.shell,
       this.postMessage.bind(this),
       outputChannel,
-      this.uiActions.handOffToWorkshop
+      this.uiActions.handOffToWorkshop,
+      // Slice 4: the tiles the Workshop holds, read from the shared session, and the way there.
+      { tray: workshopLightboxTray(workshopSessionService), openWorkshop: this.uiActions.openWorkshop }
     );
     // Its readings (Slice 2B) beside it: lenses, estimate, runs, context files.
     this.lightboxReadingHandler = new LightboxReadingHandler(

@@ -198,6 +198,12 @@ export enum MessageType {
   WORKSHOP_SEED_CLAIM = 'workshop_seed_claim',
   WORKSHOP_SEED_CLAIM_RESULT = 'workshop_seed_claim_result',
   WORKSHOP_SEED_ANSWER = 'workshop_seed_answer',
+  WORKSHOP_SEED_RECEIVER = 'workshop_seed_receiver',
+  // A Lightbox tile staged above the composer, through seed delivery (Lightbox Slice 4)
+  WORKSHOP_STAGE_LIGHTBOX_TILE = 'workshop_stage_lightbox_tile',
+  WORKSHOP_LIGHTBOX_TILE_OFFERED = 'workshop_lightbox_tile_offered',
+  WORKSHOP_ACCEPT_LIGHTBOX_TILE = 'workshop_accept_lightbox_tile',
+  WORKSHOP_LIGHTBOX_TILE_STAGED = 'workshop_lightbox_tile_staged',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
@@ -231,7 +237,12 @@ export enum MessageType {
   LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files',
   // Slice 3: handoffs to the Workshop, through its own message path (D11)
   LIGHTBOX_HAND_OFF = 'lightbox_hand_off',
-  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result'
+  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result',
+  // Slice 4: the Spark lane's "Not for me" and its Undo
+  LIGHTBOX_SET_SPARK_DISMISSED = 'lightbox_set_spark_dismissed',
+  // Slice 4: the tiles waiting above the Workshop composer, and the way there
+  LIGHTBOX_WORKSHOP_TRAY = 'lightbox_workshop_tray',
+  LIGHTBOX_OPEN_WORKSHOP = 'lightbox_open_workshop'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

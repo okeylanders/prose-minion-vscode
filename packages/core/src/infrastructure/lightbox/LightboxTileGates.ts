@@ -14,7 +14,16 @@
  *   on the board, and one sentence of a found quote, by the prose-stats
  *   sentence rule (`proseSentenceSpans`), holds a term of each. That sentence
  *   is the collision's witness, kept on the tile and shown on the board;
- * - a palette cluster or swatch needs at least one of its words in the text.
+ * - a palette cluster or swatch needs at least one of its words in the text;
+ * - a subtext pair's said line is found in the paragraph it names and lies
+ *   inside dialogue there (`LightboxDialogueAnchor`); the meant side is a
+ *   claim and is not checked against the text (Slice 4);
+ * - a spark stands on counted support: at least one term it names is in the
+ *   text, besides its found quote, so it has paragraph addresses and counts
+ *   (Slice 4).
+ * Lineage has no rule beyond a found quote: its stances are the reading's
+ * claim about a story, decoded strictly (`LightboxStoryCodec`), and nothing
+ * in them changes with the text.
  * Every reason is host-owned: none echoes a model's names or words.
  */
 
@@ -22,6 +31,7 @@ import type { LightboxCountedSupport, LightboxReadingTileKind, LightboxVerifiedQ
 import { lightboxTextHoldsTerm } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
+import type { LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 
 /** A first reading (`fresh`), or a reading carried onto changed text (`carried`). */
 export type LightboxGatePhase = 'fresh' | 'carried';
@@ -39,7 +49,19 @@ export const LIGHTBOX_GATE_REASONS = {
   collisionFieldWithheld: 'One of the fields it names is not on the board.',
   noSharedSentence: 'No sentence of its quotes holds a term of each field, so the board cannot show them sharing one.',
   clusterWordsGone: 'None of its words are in the chapter.',
-  swatchWordsGone: 'Its color words are not in the chapter.'
+  swatchWordsGone: 'Its color words are not in the chapter.',
+  saidNotFound: {
+    fresh: 'Its said line was not found in the paragraph it named.',
+    carried: 'Its said line is no longer in the chapter.'
+  },
+  saidNotDialogue: {
+    fresh: 'Its said line is not inside quoted dialogue in that paragraph, so it is not something a character says.',
+    carried: 'Its said line no longer stands inside quoted dialogue, so it is not something a character says.'
+  },
+  sparkUncounted: {
+    fresh: 'None of the words it stands on is in the chapter, so it has no counted support.',
+    carried: 'None of the words it stands on is still in the chapter, so it has no counted support.'
+  }
 } as const;
 
 /** A tile as the gate sees it: its kind, its found quotes and its host counts. */
@@ -49,12 +71,16 @@ export interface LightboxGateCandidate {
   support: readonly LightboxCountedSupport[];
   /** A collision's two field names, as the reading named them. */
   fields?: readonly [string, string];
+  /** A subtext pair's said line: the quote the verifier found, or `null` when it found none. */
+  said?: LightboxVerifiedQuote | null;
 }
 
 export interface LightboxGateContext {
   phase: LightboxGatePhase;
   /** The borrowed fields on the board, by `lightboxFieldKey`, with their terms. */
   drawnFields: ReadonlyMap<string, readonly string[]>;
+  /** Where the current text's dialogue stands, for a said line. */
+  dialogue: LightboxDialogueIndex;
 }
 
 export type LightboxGateVerdict =
@@ -91,6 +117,15 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
       return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.clusterWordsGone);
     case 'swatch':
       return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.swatchWordsGone);
+    case 'subtext': {
+      const said = candidate.said;
+      if (!said) {
+        return refuse(LIGHTBOX_GATE_REASONS.saidNotFound[context.phase]);
+      }
+      return context.dialogue.holds(said) ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.saidNotDialogue[context.phase]);
+    }
+    case 'spark':
+      return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.sparkUncounted[context.phase]);
     default:
       return { ok: true };
   }

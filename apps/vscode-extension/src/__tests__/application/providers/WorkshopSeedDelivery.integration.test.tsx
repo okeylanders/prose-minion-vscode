@@ -8,8 +8,11 @@
  * WorkshopApp as the receiver, with every message from the host to the
  * webview held in a queue the test releases. A seed whose message was
  * already sent when it timed out, was replaced, or lost its panel never
- * opens; the newer seed opens with its own subject. Fields are from
- * "Alice's Adventures in Wonderland" (1865, public domain).
+ * opens; the newer seed opens with its own subject. A webview replaced
+ * while its panel stays open (F-08: a reload, modeled as a fresh WorkshopApp
+ * mount on the same panel) releases what was granted to the old one, and
+ * the next seed reaches the new one. Fields are from "Alice's Adventures in
+ * Wonderland" (1865, public domain).
  */
 
 import * as React from 'react';
@@ -134,6 +137,7 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
   let fromWebview: unknown[];
   let workshop: WorkshopPanelProvider;
   let unsettled: symbol;
+  let unmountApp: () => void;
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -208,13 +212,27 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
       getState: jest.fn(() => ({})),
       setState: jest.fn()
     });
-    render(<WorkshopApp />);
-    act(() => {
-      window.dispatchEvent(new MessageEvent('message', { data: readySession }));
-    });
+    mountApp();
     await flush();
     return panel;
   };
+  /** Mount a WorkshopApp, as a webview realm does: it asks for its session and announces its receiver. */
+  const mountApp = () => {
+    unmountApp = render(<WorkshopApp />).unmount;
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: readySession }));
+    });
+  };
+  /** The webview is replaced on the same panel (Developer: Reload Webview): the old realm goes, a fresh one mounts. */
+  const reloadWebview = async () => {
+    unmountApp();
+    mountApp();
+    await flush();
+  };
+  const receivers = () => fromWebview
+    .map((message) => message as { type: string; payload: { receiver?: string } })
+    .filter((message) => message.type === MessageType.WORKSHOP_SEED_RECEIVER)
+    .map((message) => message.payload.receiver);
   /** Deliver the next held message, or all of them, to the webview, in the order they were sent. */
   const release = async (panel: HostPanel, count = panel.outbox.length) => {
     for (let index = 0; index < count; index += 1) {
@@ -352,5 +370,69 @@ describe('seed delivery from the Workshop panel provider to the Workshop webview
     reopened.receive({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', payload: {}, timestamp: 1 });
     await flush();
     expect(reopened.outbox).toEqual([]);
+  });
+
+  describe('when the webview is replaced on the same panel (PR #150 F-08)', () => {
+    it('reload after claim: the old grant is released as reset, the fresh webview ignores it, and the next seed opens there', async () => {
+      const panel = await openWorkshop();
+      const first = await offer(TELESCOPE);
+      await release(panel);
+      expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_SEED_CLAIM_RESULT]);
+      // The grant is posted to the realm that claimed it; that realm is gone before it lands.
+      await reloadWebview();
+      expect(new Set(receivers()).size).toBe(2);
+      expect(first()).toEqual({ opened: false, reason: 'reset' });
+
+      await release(panel);
+      expect(sheet()).toBeNull();
+      expect(answers()).toEqual([]);
+
+      const second = await offer(CANDLE);
+      expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]);
+      await release(panel);
+      await release(panel);
+      expect(subject()).toMatch(/^Candle/);
+      expect(second()).toEqual({ opened: true });
+      expect(first()).toEqual({ opened: false, reason: 'reset' });
+    });
+
+    it('reload after an unclaimed send: the seed is sent again to the fresh webview, which opens it', async () => {
+      const panel = await openWorkshop();
+      const outcome = await offer(TELESCOPE);
+      expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]);
+      await reloadWebview();
+      // The first copy was for the old realm; a second goes to the fresh one.
+      expect(heldTypes(panel)).toEqual([
+        MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+        MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED
+      ]);
+      // The old realm's copy was lost with it; the fresh one claims its own.
+      panel.outbox.shift();
+      await release(panel);
+      expect(outcome()).toBe(unsettled);
+      expect(heldTypes(panel)).toEqual([MessageType.WORKSHOP_SEED_CLAIM_RESULT]);
+      await release(panel);
+      expect(subject()).toMatch(/^Telescope/);
+      expect(outcome()).toEqual({ opened: true });
+      // One opening, one answer, from the fresh receiver.
+      expect(fromWebview.filter((message) => (message as { type: string }).type === MessageType.WORKSHOP_SEED_ANSWER))
+        .toEqual([expect.objectContaining({ payload: expect.objectContaining({ receiver: receivers().at(-1) }) })]);
+    });
+
+    it('reload after an answered grant changes nothing, and the next seed reaches the fresh webview', async () => {
+      const panel = await openWorkshop();
+      const first = await offer(TELESCOPE);
+      await release(panel);
+      await release(panel);
+      expect(first()).toEqual({ opened: true });
+
+      await reloadWebview();
+      expect(first()).toEqual({ opened: true });
+      const second = await offer(CANDLE);
+      await release(panel);
+      await release(panel);
+      expect(subject()).toMatch(/^Candle/);
+      expect(second()).toEqual({ opened: true });
+    });
   });
 });

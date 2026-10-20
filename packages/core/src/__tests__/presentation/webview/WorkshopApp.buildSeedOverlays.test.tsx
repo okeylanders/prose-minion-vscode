@@ -128,10 +128,20 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
       payload: { kind: 'lexical-gravity-build', deliveryId: seedId, granted: true }
     });
   };
-  const answers = () => (vscode.postMessage as jest.Mock).mock.calls
-    .map(([message]) => message as { type: string; payload: unknown })
-    .filter((message) => message.type === MessageType.WORKSHOP_SEED_ANSWER)
-    .map((message) => message.payload);
+  /** The answers sent, each naming the receiver this mount announced (F-08), shown without it. */
+  const answers = () => {
+    const posted = (vscode.postMessage as jest.Mock).mock.calls
+      .map(([message]) => message as { type: string; payload: Record<string, unknown> });
+    const receivers = posted
+      .filter((message) => message.type === MessageType.WORKSHOP_SEED_RECEIVER)
+      .map((message) => message.payload.receiver);
+    return posted
+      .filter((message) => message.type === MessageType.WORKSHOP_SEED_ANSWER)
+      .map(({ payload: { receiver, ...answer } }) => {
+        expect(receivers).toContain(receiver);
+        return answer;
+      });
+  };
   const lexicalGravitySheet = () => screen.queryByRole('dialog', { name: LEXICAL_GRAVITY_TITLE });
   const pressEscape = () => act(() => {
     fireEvent.keyDown(window, { key: 'Escape' });

@@ -33,7 +33,10 @@ export const LIGHTBOX_PROMPT_FILES = {
     palette: 'lightbox/14-palette.md',
     characters: 'lightbox/20-characters.md',
     voice: 'lightbox/21-voice.md',
-    genre: 'lightbox/30-genre.md'
+    subtext: 'lightbox/22-subtext.md',
+    genre: 'lightbox/30-genre.md',
+    lineage: 'lightbox/31-lineage.md',
+    spark: 'lightbox/32-spark.md'
   } satisfies Record<LightboxLensId, string>,
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by the protocol's group ids. */
   examples: {
@@ -53,7 +56,10 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   gravity: 'lexical gravity',
   characters: 'characters',
   voice: 'voice',
-  genre: 'genre neighborhood'
+  subtext: 'subtext',
+  genre: 'genre neighborhood',
+  lineage: 'lineage',
+  spark: 'spark'
 };
 
 /** A context file as the prompt carries it. */

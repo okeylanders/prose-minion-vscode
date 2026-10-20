@@ -40,6 +40,9 @@
  *   do) and posts what it hears: a settled group as `LIGHTBOX_GROUP_RESULT`,
  *   a run starting or stopping as the board. Progress, refusals and the
  *   estimate are the run's and the request's own answers.
+ * - **The Spark lane (Slice 4).** "Not for me" and its Undo mark the board's
+ *   own spark (`LightboxSparkLane`), and the board is published like any
+ *   other change to its readings.
  *
  * Logs name groups, lenses, counts, paths and reasons, never text.
  */
@@ -51,6 +54,11 @@ import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxCon
 import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import type { LightboxRunReservation } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import { estimateLightboxRun } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import {
+  LIGHTBOX_SPARK_LANE_REFUSALS,
+  parseLightboxSparkDismissal,
+  setLightboxSparkDismissed
+} from '@/infrastructure/lightbox/LightboxSparkLane';
 import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -73,6 +81,7 @@ import {
   LightboxRunMessage,
   LightboxRunProgress,
   LightboxSetLensesMessage,
+  LightboxSetSparkDismissedMessage,
   MessageType
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
@@ -114,6 +123,7 @@ export class LightboxReadingHandler {
     router.register(MessageType.LIGHTBOX_CANCEL_RUN, this.handleCancelRun.bind(this));
     router.register(MessageType.LIGHTBOX_ADD_CONTEXT_FILES, this.handleAddContextFiles.bind(this));
     router.register(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, this.handleRemoveContextFile.bind(this));
+    router.register(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, this.handleSetSparkDismissed.bind(this));
   }
 
   /** Closing the tab stops the runs it started; finished groups stay on their boards. */
@@ -133,6 +143,32 @@ export class LightboxReadingHandler {
     this.postContextFiles();
     const requestId = typeof message.payload?.requestId === 'string' ? message.payload.requestId : undefined;
     await this.postEstimate(requestId);
+  }
+
+  /** "Not for me", or its Undo, on the board on screen: the host marks the spark and publishes the board. */
+  async handleSetSparkDismissed(message: LightboxSetSparkDismissedMessage): Promise<void> {
+    this.subscribe();
+    const request = parseLightboxSparkDismissal(message.payload);
+    const refuse = (reason: string): void => this.outputChannel.appendLine(`[LightboxReadingHandler] Spark lane refused: ${reason}`);
+    if (!request) {
+      refuse(LIGHTBOX_SPARK_LANE_REFUSALS.unknown);
+      return;
+    }
+    const board = this.lightboxService.currentBoard();
+    if (board?.boardId !== request.boardId) {
+      refuse(LIGHTBOX_SPARK_LANE_REFUSALS.boardChanged);
+      return;
+    }
+    // Read and write with nothing awaited between, so no run can land in the middle.
+    const result = setLightboxSparkDismissed(board.readings, request.tileId, request.dismissed);
+    if (!result.ok) {
+      refuse(result.reason);
+      return;
+    }
+    if (result.changed) {
+      this.lightboxService.updateReadings(request.boardId, () => result.readings);
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Spark ${request.dismissed ? 'set aside' : 'brought back'}`);
+    }
   }
 
   async handleRun(message: LightboxRunMessage): Promise<void> {

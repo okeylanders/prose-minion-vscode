@@ -81,4 +81,30 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(lens('palette')).toContain(`\`note\`: one line of at most ${B.noteCharacters} characters`);
     expect(lens('palette')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
   });
+
+  it('states subtext\'s, lineage\'s and Spark\'s ceilings (Slice 4)', () => {
+    expect(lens('subtext')).toContain(`\`items\`: 0–${B.subtextPairs} said/meant pairs`);
+    expect(lens('subtext')).toContain(`\`speaker\`: at most ${B.labelCharacters} characters`);
+    expect(lens('subtext')).toContain(`\`meant\`: one line of at most ${B.noteCharacters} characters`);
+    expect(lens('subtext')).toContain(`\`evidence\`: 0–${B.subtextContextQuotes} more quotes`);
+
+    expect(lens('lineage')).toContain(`\`items\`: 0–${B.lineageStories} adjacent stories`);
+    expect(lens('lineage')).toContain(`\`title\`: at most ${B.labelCharacters} characters`);
+    expect(lens('lineage')).toContain(`\`source\`: at most ${B.labelCharacters} characters`);
+    expect(lens('lineage')).toContain(`\`stances\`: 1–${B.lineageStances} ways the chapter stands to the story`);
+    expect(lens('lineage')).toContain(`a \`note\`, one line of at most ${B.noteCharacters} characters`);
+    expect(lens('lineage')).toContain(`\`claim\`: at most ${B.claimCharacters} characters`);
+    expect(lens('lineage')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
+    expect(lens('lineage')).toContain(
+      `\`setAside\`: required, 0–${B.lineageSetAsides} stories you checked and set aside, each with a \`title\` of at most ` +
+        `${B.labelCharacters} characters and a \`reason\` of one line of at most ${B.noteCharacters} characters`
+    );
+    expect(lens('lineage')).toContain('Only these three words are stances: any other withholds the story.');
+
+    expect(lens('spark')).toContain(`\`items\`: 0–${B.sparks} sparks`);
+    expect(lens('spark')).toContain(`\`title\`: at most ${B.labelCharacters} characters`);
+    expect(lens('spark')).toContain(`\`question\`: at most ${B.sparkCharacters} characters, ending with a question mark`);
+    expect(lens('spark')).toContain(`\`terms\`: 1–${B.termsPerClaim} words or short phrases`);
+    expect(lens('spark')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
+  });
 });
