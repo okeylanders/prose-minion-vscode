@@ -91,3 +91,107 @@ The harness, README and `facts.json` were inspected. They explicitly use synthet
 The fresh Chromium replay could not launch because this review environment denied the browser sandbox's `socket()` operation. An escalated launch also failed during sandbox setup before the harness ran. Consequently, the author's no-overflow, page-error and pixel-stability claims were **not independently rerun**. The successful JSDOM replay is DOM/message evidence only, not layout evidence; it reported the expected unsupported-CSS parser warning.
 
 Native VS Code menu rendering, editor-title interaction, focus/activation behavior, and live provider output remain **unverified**. No live/billable calls, private manuscript fixtures, implementation edits, merge, deployment, PR comment or formal review were made. The writer's real-chapter output checkpoint is still required before Slice 5; this launch-entry-point review does not satisfy it.
+
+## Author response (2026-10-20)
+
+**F-01: addressed.** The fix is `6832664`. The docs follow in `8df5f07`, and `0bb7ed3` updates two provider-assembly witnesses that still pinned the old seed. `38bfb2e` merges `epic/lightbox` (PR #151) into this branch. Nothing above this section was edited.
+
+### Root cause
+
+The finding is correct. `openFileInLightbox` awaited `workspace.openTextDocument` before it called `seedSource`. The source-request ticket was taken only later, when the synthetic `LIGHTBOX_SET_SOURCE` reached `LightboxHandler.handleSetSource`. While a launch's document loaded, the shared `LightboxService` had no record of it. Its latest-request-wins rule, correct inside the handler since PR #148 F-01, therefore ordered launches by when their loads finished.
+
+The earlier whole-file fallback seeded synchronously, so the gap arrived with this PR's adapter. The fix sits upstream of the handler. PR #148's ticket rule in the handler and service is unchanged.
+
+### Fix
+
+- **The ticket is taken before the first await.** `openFileInLightbox` now runs its checks in two stages.
+  - `chooseTarget` makes every check that needs no loading.
+  - Then the command calls `host.beginSourceRequest()`, which is the composition root's `lightboxService.beginSourceRequest()`. This call is synchronous and comes before any await.
+  - `loadDocument` then opens the document and checks its scheme and language.
+  - Finally, `host.seedSource(payload, ticket)` boards under that same ticket.
+  - The palette path has nothing to load, so it takes its ticket immediately before seeding.
+- **A refusal made without loading takes no ticket.** This covers no file, an argument that is not a URI, an untitled document, a non-`file:` scheme, and an active document in another language. None of these changes anything, so an older launch still loading still lands. An untitled URI is still refused before `openTextDocument`.
+- **A refusal made after loading has already taken a ticket (a deliberate choice).** This covers a file that cannot be read as text and a loaded file in another language.
+  - Such a launch counts as the writer's newest choice. The same is already true when the Lightbox itself refuses a newer source, for example one over the ceiling. So an older launch still loading is dropped.
+  - Nothing is sent and nothing is published. The board and any standing refusal stay as they were.
+  - The abandoned ticket blocks nothing. The next choice takes a newer ticket, and no other code checks which ticket is current.
+  - I rejected restoring the previous ticket on refusal. An older request that finished while the newer launch loaded would already have been dropped, so the result would depend on timing.
+- **The ticket travels host-side only and is never a payload field.**
+  - The chain is `LightboxPanelProvider.seedSource(payload, ticket)`, then `MessageHandler.seedLightboxSource(payload, ticket)`, then `LightboxHandler.seedSource(payload, ticket)`. `MessageHandler.seedLightboxSource` is a new host-only method, not a route.
+  - `handleSetSource` is now the route's one-line entry: it takes a new ticket and delegates. So a webview's `LIGHTBOX_SET_SOURCE` always gets a ticket of its own, whatever its payload says.
+  - The selection, Choose file and Re-read file routes each still take a ticket at their own start, so any later choice holds a newer one.
+  - The Open Selection command's `seedSource(payload)` takes its ticket at the call, through a default argument.
+- **An overtaken seed opens nothing.**
+  - `seedSource` returns `false` for a ticket that a newer choice has overtaken. It then does not open the tab, reveal it, or send anything.
+  - The command logs the drop and returns a new `superseded` outcome. It does not claim a board or show the saved-copy notice.
+- **Tab lifecycle.**
+  - The ticket lives in the shared service, so closing, replacing or reopening the tab does not change it.
+  - A launch that is still current when its document loads lands in whichever Lightbox tab is open. If the writer closed the tab meanwhile, the launch opens a new one, because closing a tab is not a source choice.
+  - A launch overtaken while it loaded opens nothing.
+
+### Contract changes
+
+- `OpenFileInLightboxHost` gains `beginSourceRequest(): LightboxSourceTicket`. Its `seedSource` becomes `seedSource(payload, ticket): boolean`.
+- `OpenFileInLightboxOutcome` gains `{ kind: 'superseded'; payload }`.
+- `LightboxPanelProvider.seedSource(payload, ticket = taken now): boolean` no longer builds a synthetic `LIGHTBOX_SET_SOURCE` envelope.
+- There are two new host-only methods: `MessageHandler.seedLightboxSource(payload, ticket)` and `LightboxHandler.seedSource(payload, ticket)`.
+- The core barrel now exports the `LightboxSourceTicket` type.
+- No message type, payload field, route or persisted format changed.
+
+### Tests
+
+The new `openFileInLightboxOwnership.integration.test.ts` drives the real code throughout:
+- the real command;
+- the real `LightboxPanelProvider`, including its tab lifecycle;
+- the real `LightboxHandler`, `LightboxService` and measurement services, through `lightboxHandlerHarness`.
+
+Each `openTextDocument` is held until the test releases it. Only the panel's `MessageHandler` is a small routing stand-in. All prose is synthetic.
+
+To check the first block against `9399736`, I ran these tests over the old implementation files with type diagnostics off. All ten failed for a behavioral reason:
+
+| Witness | Result on `9399736` |
+| --- | --- |
+| file → file | Board became `older-A.md` |
+| file → selection, through Open Selection in Lightbox | Board became `older-A.md` |
+| file → selection, through `LIGHTBOX_SET_SOURCE` | Board became `older-A.md` |
+| file → picked file (Choose file) | Board became `older-A.md` |
+| file → re-read (Re-read file) | Board became `older-A.md` |
+| Launch overtaken while its tab was closed | The tab reopened and the stale launch reported `seeded` |
+| Tab replaced during a pending load: a current launch lands, an overtaken one does not | The overtaken launch boarded |
+| Refused older launches, by the Lightbox and by the host | A stale `empty` refusal was published |
+| An older launch never clears a newer source's standing refusal | The older launch boarded and cleared the refusal |
+| A launch refused after loading still counts as the newer choice and blocks no later one | The older launch boarded |
+
+Three more tests pin what the fix keeps, and pass both on `9399736` and with the fix:
+- a refusal made without loading leaves a pending launch alone;
+- a dismissed picker leaves a pending launch alone;
+- a launch with nothing newer opens the Lightbox when its document loads.
+
+Unit tests:
+- **Adapter: 11 new.** They check that the ticket is taken before `openTextDocument`, that no refusal made without loading takes one, that a refusal after loading sends nothing, and that a superseded launch is dropped without the saved-copy notice. The 16 existing tests pass with unchanged assertions; only the fake host gained the ticket port and the service's newest-ticket rule.
+- **Provider: one test rewritten, one added.** The selection seed now boards under a ticket taken at the call. A launch's ticket boards, and an overtaken one opens nothing.
+- **`LightboxHandler`: 2 new.** A host seed boards under the host's ticket. A webview route takes its own ticket even when its payload names one.
+- **`MessageHandler`: 1 new.** It delegates without taking a ticket.
+- **Provider-assembly witnesses: 2 updated** to the ticketed seed.
+
+### Verification
+
+PR #151 has since merged into `epic/lightbox` at `1532a46`. Before pushing, I merged it into this branch in `38bfb2e`. There were no conflicts: Slice 4's `LightboxHandler` tray, its seventh `workshop` constructor parameter and `LightboxHandoffRoute` sit beside the ticketed `seedSource`. The full verification ran once, on that merge commit.
+
+| Check | `9399736` (this review) | Fix alone, `0bb7ed3` | Merged with `epic/lightbox`, `38bfb2e` |
+| --- | --- | --- | --- |
+| Full Jest | 373 suites / 5,284 tests / 2 snapshots | 374 / 5,312 / 2 passed | **389 suites / 5,512 tests / 2 snapshots passed** |
+| `npm run typecheck` | Passed | Passed | **Passed** for core, webview and extension |
+| `npm run lint` | 0 errors / 1,133 warnings | 0 / 1,133, identical per file and rule to `859bd0f` | **0 errors / 1,133 warnings**, identical per file, rule and severity to both `1532a46` and `859bd0f` |
+| `npm run build`, including `verify:bundle` | Passed | Passed | **Passed**, with the same three webpack size warnings |
+| `git diff --check` | Clean | Clean | **Clean** |
+
+Across the fix, the suite gains 1 suite and 28 tests, and nothing else changes. `6832664` on its own fails the two provider-assembly witnesses; `0bb7ed3` fixes them.
+
+Before the merge, `git merge-tree --write-tree` from `0bb7ed3` was clean against all three PR #151 heads:
+- `f93e1b0`, the head this review used, gave tree `89a18e4`;
+- `1040b88` and `1532a46` both gave tree `75129d7`. That is the tree of `38bfb2e`.
+
+The run used Node 22.22.0 and npm 10.9.4 (CI uses Node 18). Dependencies came from the committed lockfile with install scripts disabled. No live or billable provider call was made, and no lockfile changed. This response is the only commit after `38bfb2e`, and it changes nothing but this report.
+
+Still unverified: native VS Code menus, real `openTextDocument` latency, and real tab closing and reopening. The witnesses order these events with held promises; they do not measure a host. This response does not satisfy the writer's real-chapter output checkpoint required before Slice 5.
