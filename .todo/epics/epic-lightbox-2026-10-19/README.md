@@ -610,6 +610,13 @@ becomes a file format.
   - **Follow-up:** the Marketplace README describes neither the Workshop's nor
     the Lightbox's launch commands. The Lightbox's release notes should name
     these entry points.
+  - **PR #152 F-01 fix.** The
+    [review](../../../docs/pr-reviews/pr-152-lightbox-launch-entry-points-review.md)
+    found that a file launch took its source-request ticket only after VS Code
+    loaded the document, so an older, slower launch could replace a newer
+    source. The launch now takes the ticket before the load and boards under
+    it, and a seed whose ticket was overtaken opens nothing. The report's
+    author response lists the tests and verification.
 
 - **2026-10-20. Slice 3: PR #150 re-review fixes.** The
   [re-review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)

@@ -101,6 +101,11 @@ ways in beyond the Command Palette:
   anything is sent. The word ceiling stays the Lightbox's own refusal.
 - A dirty file boards its saved copy, the one "Re-read file" and D4's hash
   read, and the writer is told that unsaved changes are not on the board.
+- The launch owns its source request from the moment its file is chosen. It
+  takes the Lightbox's ticket before VS Code loads the document and boards
+  under it, so a slow load never replaces a newer file, selection, picked
+  file or re-read (PR #152 F-01). A refusal made without loading takes no
+  ticket.
 
 The tab does **not** get its own webpack entry. It is a third
 `WebviewSurface`, `'lightbox'`, rendered by a new `LightboxApp` root in the
