@@ -31,6 +31,8 @@ export * from './streaming';
 export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
+export * from './lightboxEstimate';
+export * from './lightboxStoryTiles';
 export * from './lightboxGravity';
 export * from './lightboxStale';
 export * from './lightboxHandoff';
@@ -247,6 +249,7 @@ import {
   LightboxContextFilesMessage
 } from './lightboxReadings';
 import { LightboxHandOffMessage, LightboxHandOffResultMessage } from './lightboxHandoff';
+import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -366,7 +369,8 @@ export type WebviewToExtensionMessage =
   | LightboxCancelRunMessage
   | LightboxAddContextFilesMessage
   | LightboxRemoveContextFileMessage
-  | LightboxHandOffMessage;
+  | LightboxHandOffMessage
+  | LightboxSetSparkDismissedMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage

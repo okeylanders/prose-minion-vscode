@@ -108,7 +108,7 @@ describe('LightboxReadingCodec', () => {
       const broken = body(exampleB);
       delete broken.voice.friction;
       const decoded = decodeLightboxGroup(frame('B', broken), contextB);
-      expect(decoded.blocks.map((block) => block.lens)).toEqual(['characters']);
+      expect(decoded.blocks.map((block) => block.lens)).toEqual(['characters', 'subtext']);
       expect(decoded.withheld).toEqual([
         { lens: 'voice', reason: 'The voice block names no friction; every lens must say where it strains.' }
       ]);
@@ -191,7 +191,7 @@ describe('LightboxReadingCodec', () => {
       const affinity = body(exampleC);
       affinity.genre.neighbors[0].affinity = 1.4;
       const decoded = decodeLightboxGroup(frame('C', affinity), contextC);
-      expect(decoded.blocks).toHaveLength(1);
+      expect(decoded.blocks.map((block) => block.lens)).toEqual(['genre', 'lineage', 'spark']);
       expect(decoded.blocks[0].lens === 'genre' && decoded.blocks[0].malformed[0].reason).toContain('from 0 to 1');
 
       const paragraph = body(exampleA);

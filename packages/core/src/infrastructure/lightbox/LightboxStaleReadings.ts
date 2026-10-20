@@ -18,8 +18,12 @@
  * - holds every tile to the rules a first reading meets, through the same
  *   `LightboxTileGates` fresh assembly uses (PR #150 F-05): a claim left with
  *   no quote, a motif in one paragraph, a collision with no sentence its
- *   fields still share (or a field that did not survive), and a palette tile
- *   whose words are gone are withheld, by title, with a host-owned reason;
+ *   fields still share (or a field that did not survive), a palette tile
+ *   whose words are gone, a said line that is gone or no longer inside
+ *   dialogue, and a spark whose counted words are gone are withheld, by
+ *   title, with a host-owned reason;
+ * - keeps the writer's own marks on what survives: a spark set aside stays
+ *   set aside (Slice 4), since its id and its words are unchanged;
  * - sets aside a group that was still being read when the text changed: its
  *   run read the old text, and nothing it returns is attached here.
  * A fresh reading of a lens replaces its stale readings and clears the mark
@@ -41,6 +45,7 @@ import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infra
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
+import { createLightboxDialogueIndex, type LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 
 export interface LightboxCarryContext {
   /** The hash of the text the readings were read against (the replaced board's). */
@@ -61,6 +66,7 @@ export const LIGHTBOX_CHANGED_WHILE_READING =
 interface CarryTools {
   verifier: LightboxQuoteVerifier;
   counter: LightboxTermCounter;
+  dialogue: LightboxDialogueIndex;
   context: LightboxCarryContext;
   columnKeys: string[];
 }
@@ -73,6 +79,7 @@ export function carryLightboxReadings(
   const tools: CarryTools = {
     verifier: createLightboxQuoteVerifier(context.paragraphs),
     counter: createLightboxTermCounter(context.paragraphs),
+    dialogue: createLightboxDialogueIndex(context.paragraphs),
     context,
     columnKeys: lightboxColumnKeys(
       context.paragraphs,
@@ -175,6 +182,8 @@ function carryTile(
     }
   }
   const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
+  // A said line is held to its own rule: found again, and inside dialogue where it now stands.
+  const said = tile.kind === 'subtext' ? recheckQuote(tile.said, tools.verifier) ?? null : undefined;
   const recounted = recountLightboxTile(tile, tools.counter, {
     paragraphCount: tools.context.paragraphs.length,
     averageWordsPerSentence: tools.context.averageWordsPerSentence,
@@ -186,9 +195,10 @@ function carryTile(
       kind: tile.kind,
       evidence,
       support: recounted.support,
-      ...(tile.kind === 'gravity-collision' ? { fields: tile.fields } : {})
+      ...(tile.kind === 'gravity-collision' ? { fields: tile.fields } : {}),
+      ...(said !== undefined ? { said } : {})
     },
-    { phase: 'carried', drawnFields }
+    { phase: 'carried', drawnFields, dialogue: tools.dialogue }
   );
   if (!verdict.ok) {
     return {
@@ -203,6 +213,9 @@ function carryTile(
     withheldQuotes,
     paragraphs: paragraphsOf(foundParagraphs, recounted.support)
   };
+  if (kept.kind === 'subtext' && said) {
+    return { tile: { ...kept, said }, lost: lost.length };
+  }
   return {
     tile: kept.kind === 'gravity-collision' && verdict.witness ? { ...kept, witness: verdict.witness } : kept,
     lost: lost.length

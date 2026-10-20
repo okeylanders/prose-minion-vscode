@@ -29,6 +29,7 @@ import {
 } from '@hooks/domain/lightbox/lightboxItems';
 import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
+import { LIGHTBOX_LINEAGE_STANCE_LABELS } from '@shared/constants/lightbox';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
   measured: 'Measured',
@@ -206,6 +207,19 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
       return [{ label: 'Hits', value: `${tile.hits} counted by code; literal in the scene, so nothing is borrowed` }];
     case 'swatch':
       return [{ label: 'Swatch color', value: `${tile.hex} · the reading's choice; only the words are counted` }];
+    case 'subtext':
+      return [
+        { label: 'Who says it', value: tile.speaker },
+        { label: 'Said', value: `¶${tile.said.paragraph}, inside quoted dialogue, found by code` },
+        { label: 'Reads as', value: 'The claim above is a reading of the line, not what the character thinks' }
+      ];
+    case 'lineage':
+      return [
+        { label: 'Source', value: tile.source },
+        ...tile.stances.map((row) => ({ label: LIGHTBOX_LINEAGE_STANCE_LABELS[row.stance], value: row.note }))
+      ];
+    case 'spark':
+      return [{ label: 'An open door', value: 'A question to think with: an offer, never an instruction' }];
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':

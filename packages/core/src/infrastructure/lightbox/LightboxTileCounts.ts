@@ -141,6 +141,9 @@ export function recountLightboxTile(
     case 'character':
     case 'genre-neighbor':
     case 'reader-promise':
+    case 'subtext':
+    case 'lineage':
+    case 'spark':
       return { ...tile, support };
   }
 }

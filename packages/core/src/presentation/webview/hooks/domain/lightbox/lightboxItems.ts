@@ -9,7 +9,8 @@
  * nothing if the word is gone. Every count shown here was computed by the
  * host; the lanes only select paragraphs from the host's metrics. A reading
  * tile is named by its host-minted id, which is unique per run, so a pin
- * from an earlier reading resolves to nothing rather than to a newer one.
+ * from an earlier reading resolves to nothing rather than to a newer one. A
+ * spark the writer set aside is not an item until it is brought back.
  */
 
 import type {
@@ -26,6 +27,7 @@ import {
   lightboxLensLabel
 } from '@shared/constants/lightbox';
 import { findLightboxTile } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 
 export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
 
@@ -160,7 +162,7 @@ export function resolveLightboxItem(
       return paragraphsItem(board, ref);
     case 'reading': {
       const tile = findLightboxTile(board, ref.tileId);
-      return tile ? readingItem(ref, tile) : undefined;
+      return tile && !lightboxIsSetAside(tile) ? readingItem(ref, tile) : undefined;
     }
   }
 }
@@ -180,7 +182,7 @@ export function lightboxItemsTouching(board: LightboxBoard, index: number): Ligh
   }
   for (const group of board.readings) {
     for (const tile of group.tiles) {
-      if (tile.paragraphs.includes(index)) {
+      if (tile.paragraphs.includes(index) && !lightboxIsSetAside(tile)) {
         touching.push(readingItem({ kind: 'reading', tileId: tile.id }, tile));
       }
     }

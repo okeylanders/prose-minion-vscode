@@ -14,6 +14,7 @@ import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTer
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
+import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 import { WITNESS_PARAGRAPHS, witnessBody } from './lightboxWitnessFixtures';
 
@@ -127,6 +128,19 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       }
       return index === 7 ? text.replace('tumbling down stairs', 'tumbling') : text;
     });
+    // Slice 4: the speech marks come off ¶4 and ¶8, so the Rabbit's line and
+    // Alice's ¶8 thought still stand word for word but are no longer dialogue.
+    const unquoted = paragraphs.map((text, index) => (index === 3 || index === 7 ? text.replace(/[“”]/g, '') : text));
+    // Group C with a spark that stands on "sleepy", which `edited` removes
+    // while the spark's quote stands.
+    const sparkBody = (): Body => {
+      const body = framedJson(readWorkedExample('C').response) as Body;
+      body.spark.items.push({
+        title: 'Sleepy hours', question: 'What does the hot afternoon do to what Alice is willing to believe?',
+        terms: ['sleepy'], evidence: [{ para: 3, quote: 'So she was considering in her own mind' }]
+      });
+      return body;
+    };
     const collisionBody = (): Body => {
       const body = framedJson(readWorkedExample('A').response) as Body;
       body.gravity.fields.push({
@@ -148,21 +162,47 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       return body;
     };
 
-    // One property over every group: B's and C's kinds have no rule beyond a
-    // found quote, so only group A's edits can tell the two paths apart.
+    // One property over every group: A's edits test its fields, collisions
+    // and palette; B's subtext and C's sparks have rules of their own too
+    // (Slice 4), which `unquoted` and `edited` exercise.
     it('carry and a fresh reading agree for groups A, B and C, including partial evidence survival', () => {
       const groups = [
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
-        ['C', () => framedJson(readWorkedExample('C').response) as Body]
+        ['C', sparkBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
-        for (const after of [paragraphs, edited, thinned]) {
+        for (const after of [paragraphs, edited, thinned, unquoted]) {
           const { carried, fresh } = parity(group, lenses, body(), paragraphs, after);
           expect({ group, ...outcome(carried) }).toEqual({ group, ...outcome(fresh) });
         }
       }
+    });
+
+    it('holds a said line to dialogue and a spark to its counted words, fresh and carried alike (Slice 4)', () => {
+      const lensesB = readWorkedExample('B').lenses;
+      const subtextB = framedJson(readWorkedExample('B').response) as Body;
+      const { read, carried, fresh } = parity('B', lensesB, subtextB, paragraphs, unquoted);
+      expect(outcome(read).drawn.filter((tile) => tile.startsWith('subtext:'))).toEqual(['subtext:Alice', 'subtext:Alice', 'subtext:White Rabbit']);
+      // ¶2's line keeps its marks; the Rabbit's and ¶8's lose theirs.
+      expect(outcome(carried).drawn.filter((tile) => tile.startsWith('subtext:'))).toEqual(['subtext:Alice']);
+      expect(carried.withheldClaims.filter((claim) => claim.kind === 'subtext').map((claim) => claim.reason))
+        .toEqual([LIGHTBOX_GATE_REASONS.saidNotDialogue.carried, LIGHTBOX_GATE_REASONS.saidNotDialogue.carried]);
+      expect(fresh.withheldClaims.filter((claim) => claim.kind === 'subtext').map((claim) => claim.reason))
+        .toEqual([LIGHTBOX_GATE_REASONS.saidNotDialogue.fresh, LIGHTBOX_GATE_REASONS.saidNotDialogue.fresh]);
+
+      const lensesC = readWorkedExample('C').lenses;
+      const sparks = parity('C', lensesC, sparkBody(), paragraphs, edited);
+      expect(outcome(sparks.read).drawn).toContain('spark:Sleepy hours');
+      expect(sparks.carried.withheldClaims).toEqual(expect.arrayContaining([expect.objectContaining({
+        kind: 'spark', title: 'Sleepy hours', reason: LIGHTBOX_GATE_REASONS.sparkUncounted.carried
+      })]));
+      expect(sparks.fresh.withheldClaims).toEqual(expect.arrayContaining([expect.objectContaining({
+        kind: 'spark', title: 'Sleepy hours', reason: LIGHTBOX_GATE_REASONS.sparkUncounted.fresh
+      })]));
+      expect(outcome(sparks.carried).drawn.filter((tile) => tile.startsWith('spark:')))
+        .toEqual(['spark:Late for what?', 'spark:Nobody at home', 'spark:The empty jar']);
     });
 
     it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
@@ -171,9 +211,11 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         const body = group === 'A' ? collisionBody() : framedJson(readWorkedExample(group).response) as Body;
         return readOn(group, readWorkedExample(group).lenses, paragraphs, body).tiles.map((tile) => tile.kind);
       }));
+      // Every reading kind the board can draw, so a new kind cannot skip this sweep.
+      expect([...drawnKinds].sort()).toEqual(Object.keys(LIGHTBOX_TILE_LENS).sort());
       expect([...drawnKinds].sort()).toEqual([
-        'character', 'genre-neighbor', 'gravity-collision', 'gravity-field', 'gravity-literal', 'headline', 'motif',
-        'palette-cluster', 'reader-promise', 'swatch', 'tension-arc', 'voice'
+        'character', 'genre-neighbor', 'gravity-collision', 'gravity-field', 'gravity-literal', 'headline', 'lineage',
+        'motif', 'palette-cluster', 'reader-promise', 'spark', 'subtext', 'swatch', 'tension-arc', 'voice'
       ]);
       const once = parity('A', lenses, collisionBody(), paragraphs, edited).carried;
       expect(outcome(once).drawn).toEqual(expect.arrayContaining([

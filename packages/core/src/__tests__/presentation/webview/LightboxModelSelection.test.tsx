@@ -60,6 +60,7 @@ jest.mock('../../../presentation/webview/styles/lightbox/rail.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/inspector.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/readings.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/gravity.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/lightbox/story.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
@@ -267,7 +268,10 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     pick('Expensive new model');
     await settle();
     // A lens toggle asks again while the selection saves; the host can only price the model it still has.
-    fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Genre neighborhood/ }));
+    // Group C's lenses all off (genre, and Slice 4's lineage and Spark), so a press makes two calls.
+    for (const lens of [/Genre neighborhood/, /^Lineage/, /^Spark/]) {
+      fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: lens }));
+    }
     await settle();
     const request = host.sent(MessageType.LIGHTBOX_SET_LENSES).at(-1)?.payload as { requestId: string };
     const reply = host.answers().at(-1);

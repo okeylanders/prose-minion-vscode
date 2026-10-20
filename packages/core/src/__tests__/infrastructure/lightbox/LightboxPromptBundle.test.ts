@@ -187,6 +187,46 @@ describe('Lightbox prompt bundle', () => {
     expect(assembled.tiles.filter((tile) => tile.kind === 'reader-promise')).toHaveLength(1);
   });
 
+  it('reads group B\'s subtext into said lines found in dialogue, each with its meant side as a claim (Slice 4)', () => {
+    const { assembled } = decodeExample('B');
+    const pairs = assembled.tiles.filter((tile) => tile.kind === 'subtext');
+    expect(pairs.map((tile) => (tile.kind === 'subtext' ? [tile.speaker, tile.said.paragraph] : []))).toEqual([
+      ['White Rabbit', 4], ['Alice', 8], ['Alice', 2]
+    ]);
+  });
+
+  it('reads group C\'s lineage with its stances and set-asides, and its sparks with counted support (Slice 4)', () => {
+    const { assembled } = decodeExample('C');
+    const stories = assembled.tiles.filter((tile) => tile.kind === 'lineage');
+    expect(stories.map((tile) => (tile.kind === 'lineage' ? [tile.title, tile.stances.map((row) => row.stance)] : []))).toEqual([
+      ['The white hart', ['matches', 'departs']],
+      ['The descent to the underworld', ['matches', 'subverts']]
+    ]);
+    expect(assembled.frictions.find((entry) => entry.lens === 'lineage')?.setAside?.map((entry) => entry.title))
+      .toEqual(['Persephone', 'Orpheus']);
+    const sparks = assembled.tiles.filter((tile) => tile.kind === 'spark');
+    expect(sparks).toHaveLength(3);
+    for (const spark of sparks) {
+      expect(spark.claim.endsWith('?')).toBe(true);
+      expect(spark.support.some((term) => term.count > 0)).toBe(true);
+    }
+  });
+
+  it('asks subtext for dialogue and a labeled reading, lineage for stances and set-asides, and Spark for questions only', () => {
+    const subtext = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.subtext);
+    expect(subtext).toContain('The host checks that it stands inside quoted speech there.');
+    expect(subtext).toContain('It is a reading, and the board labels it so ("reads as").');
+    expect(subtext).toContain('Never suggest a line to write instead.');
+    const lineage = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.lineage);
+    expect(lineage).toContain('"no strong echo" is an honest lineage');
+    expect(lineage).toContain('`setAside`: required');
+    expect(lineage).toContain('Never tell the writer to borrow, follow, honor or avoid a story.');
+    const spark = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.spark);
+    expect(spark).toContain('A spark is an offer, never an instruction.');
+    expect(spark).toContain('never say what to write, keep, cut or change, and never grade the chapter');
+    expect(spark).toContain('A ¶ address is the only number allowed.');
+  });
+
   it('assembles a group system prompt from the shared rules, the lenses that are on, and the example', () => {
     expect(lightboxSystemPromptFiles({ group: 'A', lenses: ['headline', 'tension'] })).toEqual([
       LIGHTBOX_PROMPT_FILES.shared,

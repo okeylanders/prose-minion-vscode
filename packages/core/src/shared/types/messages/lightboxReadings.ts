@@ -17,6 +17,13 @@
 import { MessageEnvelope, MessageType } from './base';
 import type { TokenUsage } from './tokenUsage';
 import type { LightboxStaleLens } from './lightboxStale';
+import type { LightboxRunEstimate } from './lightboxEstimate';
+import type {
+  LightboxLineageSetAside,
+  LightboxLineageTile,
+  LightboxSparkTile,
+  LightboxSubtextTile
+} from './lightboxStoryTiles';
 import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
@@ -32,12 +39,23 @@ import type {
 export type LightboxReadingGroupId = 'A' | 'B' | 'C';
 
 /**
- * The lenses, each in one reading group: Slice 2B's six, and Slice 3's
- * lexical gravity and palette in group A. A lens the writer turns off is left
- * out of its group's prompt, and a group with no lens on is not called.
+ * The lenses, each in one reading group: Slice 2B's six, Slice 3's lexical
+ * gravity and palette in group A, and Slice 4's subtext in group B and
+ * lineage and Spark in group C. A lens the writer turns off is left out of
+ * its group's prompt, and a group with no lens on is not called.
  */
 export type LightboxLensId =
-  'headline' | 'motif' | 'tension' | 'gravity' | 'palette' | 'characters' | 'voice' | 'genre';
+  | 'headline'
+  | 'motif'
+  | 'tension'
+  | 'gravity'
+  | 'palette'
+  | 'characters'
+  | 'voice'
+  | 'subtext'
+  | 'genre'
+  | 'lineage'
+  | 'spark';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -104,7 +122,8 @@ export interface LightboxCountedSupport {
  * is its own claim, with its own quotes, and can be withheld on its own; the
  * genre tile draws it below the neighbors. Slice 3: a borrowed field, a
  * collision, a literal set-aside, a diction cluster and a swatch
- * (`lightboxGravity.ts`).
+ * (`lightboxGravity.ts`). Slice 4: an adjacent story, a said/meant pair and
+ * a spark (`lightboxStoryTiles.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
@@ -118,7 +137,10 @@ export type LightboxReadingTileKind =
   | 'character'
   | 'voice'
   | 'genre-neighbor'
-  | 'reader-promise';
+  | 'reader-promise'
+  | 'subtext'
+  | 'lineage'
+  | 'spark';
 
 export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
@@ -201,7 +223,10 @@ export type LightboxReadingTile =
   | LightboxCharacterTile
   | LightboxVoiceTile
   | LightboxGenreNeighborTile
-  | LightboxReaderPromiseTile;
+  | LightboxReaderPromiseTile
+  | LightboxSubtextTile
+  | LightboxLineageTile
+  | LightboxSparkTile;
 
 /** A lens block that failed validation, withheld by kind with its reason (D7). */
 export interface LightboxWithheldBlock {
@@ -210,10 +235,17 @@ export interface LightboxWithheldBlock {
   reason: string;
 }
 
-/** A lens block's friction, kept apart from its tiles so an empty block still says where it strains. */
+/**
+ * A lens block's own notes, kept apart from its tiles so an empty block still
+ * says where it strains: its friction and, for lineage alone, the stories it
+ * checked and set aside. They follow the block's lifecycle exactly (replaced
+ * with its lens, carried stale with it), which is why they share one record.
+ */
 export interface LightboxLensFriction {
   lens: LightboxLensId;
   friction: string;
+  /** Lineage only: stories the reading considered and set aside, with why. The model's notes, never quoted evidence. */
+  setAside?: LightboxLineageSetAside[];
 }
 
 /**
@@ -270,61 +302,6 @@ export interface LightboxReadingGroup {
   error?: string;
   /** Lenses read against an earlier version of the text; absent when every reading is current. */
   staleLenses?: LightboxStaleLens[];
-}
-
-// ---------------------------------------------------------------------------
-// The estimate (D8)
-// ---------------------------------------------------------------------------
-
-/** Whether a request fits the model's window: known yes, known no, or unknown (no live catalog). */
-export type LightboxFit = 'fits' | 'too-large' | 'unknown';
-
-/** One prospective call: a group with its lenses, or a single-lens re-read. */
-export interface LightboxCallEstimate {
-  group: LightboxReadingGroupId;
-  lenses: LightboxLensId[];
-  /** The engine's own estimate of the request (system and user messages). */
-  inputTokens: number;
-  /** What the reply typically runs to; prices the call. */
-  expectedOutputTokens: number;
-  /** What the engine reserves for the reply in its fit check (the call's output ceiling). */
-  reservedOutputTokens: number;
-  fit: LightboxFit;
-  /** Absent when the catalog has no live pricing. */
-  costUsd?: number;
-}
-
-export interface LightboxRunEstimate {
-  boardId: string;
-  /**
-   * The identity of every input this estimate priced: the board and its
-   * text, the lenses that are on, the context files, and the assistant model
-   * with its window and prices (PR #149 F-02). Host-computed and opaque. A
-   * press names the key of the estimate it was shown, and the host runs it
-   * only while that key is still the current one, so a press never inherits
-   * another model's price or another input's call count.
-   */
-  key: string;
-  /** The assistant model the press would use. */
-  model?: string;
-  /** The model's live context length; absent when unknown. */
-  contextLength?: number;
-  /** One per group with a lens on, in group order. */
-  groups: LightboxCallEstimate[];
-  /** One per lens that is on: what "Re-read this tile" would send. */
-  rereads: LightboxCallEstimate[];
-  /** The worst fit across `groups`. */
-  fit: LightboxFit;
-  /** The groups' summed cost; absent when unavailable. */
-  costUsd?: number;
-  /** The source is over `PROMPT_BUDGETS.lightbox.chapterWords` (a warning, not a refusal). */
-  bookSized: boolean;
-  sourceWords: number;
-  contextWords: number;
-  /** When too large: about how many chapter words would fit with these lenses and this context. */
-  largestFittingWords?: number;
-  /** Writer-facing, when too large. */
-  reason?: string;
 }
 
 // ---------------------------------------------------------------------------

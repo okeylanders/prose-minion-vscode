@@ -93,8 +93,19 @@ describe('prompt budgets', () => {
       paletteClusters: 4,
       clusterWords: 6,
       swatches: 6,
-      swatchWords: 3
+      swatchWords: 3,
+      lineageStories: 4,
+      lineageStances: 3,
+      lineageSetAsides: 3,
+      subtextPairs: 4,
+      subtextContextQuotes: 2,
+      sparks: 4,
+      sparkCharacters: 240
     });
+    // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.
+    expect(1 + PROMPT_BUDGETS.lightbox.subtextContextQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
+    // One story carries each of the three stances at most once.
+    expect(PROMPT_BUDGETS.lightbox.lineageStances).toBe(3);
     // The writer's ceiling matches the other whole-document inputs.
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.contextFiles.words);

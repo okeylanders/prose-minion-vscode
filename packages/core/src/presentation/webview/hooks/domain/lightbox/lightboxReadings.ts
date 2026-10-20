@@ -12,6 +12,7 @@ import type {
   LightboxBoard,
   LightboxGroupResultPayload,
   LightboxLensId,
+  LightboxLineageSetAside,
   LightboxReadingTile,
   LightboxReadingTileKind,
   LightboxWithheldBlock,
@@ -69,6 +70,8 @@ export interface LightboxLensView {
   withheldClaims: LightboxWithheldClaim[];
   /** The lens block's friction, even when it holds no tile. */
   friction?: string;
+  /** Lineage: the stories its reading checked and set aside, even when it drew none. */
+  setAside?: LightboxLineageSetAside[];
   /** The group's failure or stop, writer-facing. */
   notice?: string;
   /** Read against an earlier version of the text; its quotes were checked again against this one (D4). */
@@ -80,9 +83,14 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
   const tiles = group?.tiles.filter((tile) => tile.lens === lens) ?? [];
   const withheldBlocks = group?.withheldBlocks.filter((block) => block.lens === lens) ?? [];
   const withheldClaims = group?.withheldClaims.filter((claim) => claim.lens === lens) ?? [];
-  const friction = group?.frictions.find((entry) => entry.lens === lens)?.friction;
+  const notes = group?.frictions.find((entry) => entry.lens === lens);
+  const friction = notes?.friction;
   const stale = group?.staleLenses?.some((mark) => mark.lens === lens) ?? false;
-  const base = { lens, tiles, withheldBlocks, withheldClaims, stale, ...(friction ? { friction } : {}) };
+  const base = {
+    lens, tiles, withheldBlocks, withheldClaims, stale,
+    ...(friction ? { friction } : {}),
+    ...(notes?.setAside ? { setAside: notes.setAside } : {})
+  };
   if (!group) {
     return { ...base, phase: 'not-run' };
   }

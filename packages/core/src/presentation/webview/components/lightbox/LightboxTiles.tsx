@@ -6,12 +6,15 @@
  * heading, under the ribbon, and in the grid. The reader promise is drawn
  * inside the genre tile, below its neighbors; gravity's collisions and literal
  * set-asides inside the gravity tile, and swatches inside the palette (Slice 3).
+ * Lineage and subtext join the grid, and sparks are drawn in a lane of their
+ * own under it, with the lane's actions (Slice 4).
  */
 import * as React from 'react';
 import type {
   LightboxBoard,
   LightboxMeasuredTileKind,
   LightboxReadingTileKind,
+  LightboxSparkTile,
   LightboxTileKind
 } from '@messages';
 import type { LightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
@@ -27,11 +30,27 @@ import { LightboxGenre, LightboxReaderPromise } from '@components/lightbox/Light
 import { LightboxVoice } from '@components/lightbox/LightboxVoice';
 import { LightboxGravity, LightboxGravityCollisions, LightboxGravityLiterals } from '@components/lightbox/LightboxGravity';
 import { LightboxPalette, LightboxSwatches } from '@components/lightbox/LightboxPalette';
+import { LightboxLineage } from '@components/lightbox/LightboxLineage';
+import { LightboxSubtext } from '@components/lightbox/LightboxSubtext';
+import { LightboxSparkLane, type LightboxSparkBring } from '@components/lightbox/LightboxSparkLane';
+
+/** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring. */
+export interface LightboxTileActions {
+  onDismissSpark?: (tileId: string, dismissed: boolean) => void;
+  bringSpark?: { view: (spark: LightboxSparkTile) => LightboxSparkBring; onBring: (tileId: string) => void };
+}
 
 export interface LightboxTileProps {
   board: LightboxBoard;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
+  actions?: LightboxTileActions;
 }
+
+/** The Spark lane through the renderer map, with the board's actions. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const LightboxSparkLaneTile: React.FC<LightboxTileProps> = ({ board, bind, actions }) => (
+  <LightboxSparkLane board={board} bind={bind} onDismiss={actions?.onDismissSpark} bring={actions?.bringSpark} />
+);
 
 export type LightboxTileRenderer = React.ComponentType<LightboxTileProps>;
 
@@ -51,7 +70,10 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   character: LightboxCharacters,
   voice: LightboxVoice,
   'genre-neighbor': LightboxGenre,
-  'reader-promise': LightboxReaderPromise
+  'reader-promise': LightboxReaderPromise,
+  subtext: LightboxSubtext,
+  lineage: LightboxLineage,
+  spark: LightboxSparkLaneTile
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -67,17 +89,20 @@ export const LIGHTBOX_MEASURED_LAYOUT: Readonly<{
 /**
  * Where each reading sits: the headline takes the board's heading, the
  * tension arc's line sits under the ribbon, the rest join the grid after the
- * counted tiles, and the reader promise is drawn by the genre tile.
+ * counted tiles, the reader promise is drawn by the genre tile, and the
+ * sparks take the lane under the grid.
  */
 export const LIGHTBOX_READING_LAYOUT: Readonly<{
   heading: LightboxReadingTileKind;
   underRibbon: LightboxReadingTileKind;
   grid: readonly LightboxReadingTileKind[];
+  lane: LightboxReadingTileKind;
   within: Readonly<Partial<Record<LightboxReadingTileKind, LightboxReadingTileKind>>>;
 }> = {
   heading: 'headline',
   underRibbon: 'tension-arc',
-  grid: ['motif', 'gravity-field', 'palette-cluster', 'character', 'genre-neighbor', 'voice'],
+  grid: ['motif', 'gravity-field', 'palette-cluster', 'character', 'lineage', 'genre-neighbor', 'voice', 'subtext'],
+  lane: 'spark',
   /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals. */
   within: {
     'reader-promise': 'genre-neighbor',

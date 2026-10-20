@@ -5,8 +5,8 @@
  * it is read), any refusal (naming the refused source and, over a retained
  * board, the source still shown), the toolbar (tile filter, register legend,
  * and the run line), the sticky paragraph ribbon and the tension arc's line,
- * the counted tiles, then the readings, all through the exhaustive renderer
- * map. A lens that is off is not drawn.
+ * the counted tiles, then the readings, and the Spark lane under them, all
+ * through the exhaustive renderer map. A lens that is off is not drawn.
  */
 import * as React from 'react';
 import type {
@@ -28,7 +28,8 @@ import { LIGHTBOX_PLAIN_HEADLINE } from '@components/lightbox/LightboxHeadline';
 import {
   LIGHTBOX_MEASURED_LAYOUT,
   LIGHTBOX_READING_LAYOUT,
-  LIGHTBOX_TILE_RENDERERS
+  LIGHTBOX_TILE_RENDERERS,
+  type LightboxTileActions
 } from '@components/lightbox/LightboxTiles';
 
 export interface LightboxBoardMainProps {
@@ -43,6 +44,8 @@ export interface LightboxBoardMainProps {
   onDismissRefusal: () => void;
   onRun: (scope: LightboxRunScope) => void;
   onStop: (token: string) => void;
+  /** The Spark lane's actions ("Not for me", Bring). */
+  actions?: LightboxTileActions;
 }
 
 const FILTERS: ReadonlyArray<{ id: LightboxFilter; label: string }> = [
@@ -77,7 +80,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   onPickFile,
   onDismissRefusal,
   onRun,
-  onStop
+  onStop,
+  actions
 }) => {
   const refusalNotice = refusal && (
     <div className="pm-lb-refusal" role="alert">
@@ -122,7 +126,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   const [tensionArc] = lightboxTilesOfKind(board, 'tension-arc');
   const trim = board.measured.standards?.publishingFormat?.trimLabel;
   const drawReading = (kind: LightboxReadingTileKind) =>
-    React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind });
+    React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind, actions });
+  const laneOn = lensOn(LIGHTBOX_TILE_LENS[LIGHTBOX_READING_LAYOUT.lane]);
 
   return (
     <div className="pm-lb-scroll">
@@ -186,7 +191,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         )}
         {showRead && readingGrid.map(drawReading)}
       </div>
-      {showRead && readingGrid.length === 0 && (
+      {showRead && laneOn && drawReading(LIGHTBOX_READING_LAYOUT.lane)}
+      {showRead && readingGrid.length === 0 && !laneOn && (
         <p className="pm-lb-empty-note">Every reading lens is off. Turn one on in the rail to see where it will land.</p>
       )}
     </div>

@@ -228,7 +228,9 @@ export enum MessageType {
   LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files',
   // Slice 3: handoffs to the Workshop, through its own message path (D11)
   LIGHTBOX_HAND_OFF = 'lightbox_hand_off',
-  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result'
+  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result',
+  // Slice 4: the Spark lane's "Not for me" and its Undo
+  LIGHTBOX_SET_SPARK_DISMISSED = 'lightbox_set_spark_dismissed'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

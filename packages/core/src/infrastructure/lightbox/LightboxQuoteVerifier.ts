@@ -47,6 +47,8 @@ export interface LightboxQuoteVerifier {
   /** `paragraph` is 1-based. */
   verify(paragraph: number, quote: string): LightboxQuoteVerdict;
   readonly paragraphCount: number;
+  /** The paragraphs it checks against, as given (index 0 is ¶1), so a found span can be placed in its paragraph. */
+  readonly paragraphs: readonly string[];
 }
 
 interface FoldedText {
@@ -109,6 +111,7 @@ export function createLightboxQuoteVerifier(paragraphs: readonly string[]): Ligh
 
   return {
     paragraphCount: paragraphs.length,
+    paragraphs,
     verify(paragraph: number, rawQuote: string): LightboxQuoteVerdict {
       const quote = rawQuote.trim();
       const foldedQuote = foldWithMap(quote).folded;
