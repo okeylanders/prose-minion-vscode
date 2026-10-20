@@ -2,30 +2,94 @@
 
 **Author:** okeylanders · **PR:** [#150](https://github.com/okeylanders/prose-minion-vscode/pull/150) (open, unmerged at re-review)
 **Branches:** `epic/lightbox-slice-3-gravity` → `epic/lightbox`
-**Re-reviewed implementation head:** `524a961c8d87749fdbe10dfefecf7e3f24a67fd8`
+**Re-reviewed implementation head:** `0b03f1e473a0d9e80620a1c13a447aae079dec08`
 **Verified current base / merge-base:** `c6d4411076b4a3acbf4b555765ac77d8971f70ca`
-**Current scope:** 149 files · +8,726 / −268 · 23 commits from the merge-base, including the existing review and author response
+**Current scope:** 159 files · +10,291 / −281 · 29 commits from the merge-base, including the existing review and author responses
 **Initial implementation head:** `4150c8c10d74a14fb74e185595af2af9e0b0e586`; initial scope 126 files · +6,108 / −189 · 11 commits from `bf8f1ca`
-**Reviewed and re-reviewed:** 2026-10-19 · **Reviewer:** Astra
+**Reviewed:** 2026-10-19 · **Latest re-review:** 2026-10-20 · **Reviewer:** Astra
 **Mode:** independent source/spec and merge-resolution review; production service/handler/engine probes with synthetic transport; rebuilt-production-bundle DOM witnesses; supplied-image inspection; Workshop parity; full deterministic verification
 
 ## Resolution ledger
 
 Status legend: **Open** = recommended action · **Partially addressed** = original cases fixed but a reproduced residual remains · **Addressed** = independently verified fix · **Deferred** = explicitly accepted follow-up. Author-proposed deferrals are not acceptance on the writer's behalf.
 
-| ID | Sev | Finding | Status at `524a961c` |
+| ID | Sev | Finding | Status at `0b03f1e` |
 | --- | --- | --- | --- |
 | F-01 | Medium / P2 | A Telescope-seeded Build sheet can install Photography before any build or explicit lens selection | **Addressed** |
-| F-02 | Medium / P2 | An incoming seed opens over an unsaved text sheet; one Escape discards both | **Addressed**; separate browser-only limitation is F-07 |
-| F-03 | Medium / P2 | Handoff lifecycle ownership: an already-dispatched seed can still open after timeout/replacement | **Partially addressed — Open residual** |
+| F-02 | Medium / P2 | An incoming seed opens over an unsaved text sheet; one Escape discards both | **Addressed** |
+| F-03 | Medium / P2 | Handoff lifecycle ownership: an already-dispatched seed can still open after timeout/replacement | **Addressed** |
 | F-04 | Medium / P2 | Collision cards assert a shared sentence without selecting and validating that sentence | **Addressed** |
 | F-05 | Medium / P2 | Stale carry retains collisions and palette claims after their required support disappears | **Addressed** |
 | F-06 | Medium / P2 | Stale tension scores are assigned to changed paragraphs, while headline and tension omit local stale labels | **Addressed** |
-| F-07 | Low / P3 · nonblocking | The header Model Browser is outside the overlay stack; a seed overlaps it and one Escape closes both | **Open** |
+| F-07 | Low / P3 · nonblocking | The header Model Browser is outside the overlay stack; a seed overlaps it and one Escape closes both | **Addressed** |
+| F-08 | Low / P3 · nonblocking | A receiver reset after a grant strands delivery until the Workshop panel closes | **Open — recovery follow-up** |
 
-**Current verdict: Request changes.** Five original findings are independently addressed. F-03 still permits an expired or replaced in-flight seed to open the wrong Build subject and block its replacement. No automatic build, installation or paid call is demonstrated by that residual. F-07 is a bounded, nonblocking modal-coordination issue. Green checks do not resolve F-03; this report is not merge or later-slice authorization.
+**Current verdict: No blocking findings remain at `0b03f1e`.** F-01 through F-07 are independently addressed. F-08 is a narrow, nonblocking receiver-reset recovery issue, not a continuation of the original P2 cancelled-seed opening. All complete local gates and both implementation-head CI checks pass. This is a code-review conclusion, not merge authorization, native VS Code acceptance or permission to skip the writer-output checkpoint before Slice 5.
 
-**PR #149 integration is verified.** Its completed corrections are included through merge `567506a0`, whose second parent is `c6d4411`; that is now this PR's actual base and merge-base. The model-intent, Unicode and terminal-run protections survive the conflict resolutions and independent regression probes below. The earlier pending-prerequisite statement is superseded. The PR body's opening stacked/pending-149 paragraph and old verification figures have not been refreshed, but the repository history and appended author response establish the actual integration. Two inherited nonblocking accounting notes are now recorded in [exceptional-path accounting debt](../../.todo/tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md): setup failure still displays three planned calls despite zero sends; a synthetic reply-check failure drops board-only usage while engine accounting remains intact.
+**PR #149 integration remains verified.** The base/merge-base is still `c6d4411`, integrated through `567506a0`. The current correction does not change the Lightbox reading handler, runner, Unicode verifier or model-intent implementation; retained real-host and rebuilt-bundle regression probes pass again. The two inherited accounting notes remain in [exceptional-path accounting debt](../../.todo/tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md). The PR body now correctly names the merged base, but its detailed handoff message names, timeout wording and verification table still describe `524a961`; the current source, revised slice notes and appended author response establish the new protocol.
+
+## Second re-review — F-03 and F-07 addressed
+
+**F-03 (`4e70193`).** A received seed is held until its claim is granted. Expired or replaced deliveries are denied before opening; a stale claim cannot displace the newer one. The host-agnostic `WorkshopSeedDelivery` owns waiting/opening state, and the provider binds it to the current panel. Claims and answers terminate at that provider rather than entering domain handlers.
+
+The retained real-provider → real lexical handler → exact production-bundle witness now verifies:
+
+- Post-dispatch timeout and a claim arriving after timeout open nothing and emit no opened answer.
+- Pre-claim A/B replacement, including held A claims and FIFO delivery, opens only B with B's subject.
+- A grant is the declared commit point. A granted A is no longer replaced or timed out; B waits for A's answer and retains its own deadline. Releasing a delayed grant opens the still-valid A, rather than reviving a cancelled request. Delayed answers and duplicate claims preserve one opening.
+- Closing/disposal settles ownership, late claims/answers and old panel callbacks cannot affect the reopened panel, and a new handoff to that panel succeeds.
+
+This fixes the original wrong-subject/cancelled-seed cases. It intentionally narrows the 20-second deadline to **unclaimed** offers, not the whole handoff. A post-grant wait is unbounded until answer or panel close; F-08 records the concrete reset consequence. Merely holding and eventually releasing a grant is not a failure.
+
+**F-07 (`ceb5d6e`).** The shared Model Browser registers with the same overlay stack. The original header-browser witness now keeps the typed search as the sole dialog and answers the seed `busy`. Header and nested widget paths preserve selection routing; Escape closes only the top browser, then the parent sheet on a second press. Focus returns to the appropriate opener, including nested and same-commit overlay transitions. Existing Add text draft protection and seeded Build's no-implicit-lens behavior remain intact. Rejected seeds are dropped rather than appearing after an editor closes.
+
+## F-08 — Recover a granted handoff when the receiver resets (P3, nonblocking)
+
+**Locations:** [WorkshopSeedDelivery.ts:102–118](https://github.com/okeylanders/prose-minion-vscode/blob/0b03f1e473a0d9e80620a1c13a447aae079dec08/packages/core/src/application/services/workshop/WorkshopSeedDelivery.ts#L102-L118), release paths at [130–148](https://github.com/okeylanders/prose-minion-vscode/blob/0b03f1e473a0d9e80620a1c13a447aae079dec08/packages/core/src/application/services/workshop/WorkshopSeedDelivery.ts#L130-L148), transient receiver identity at [useWorkshopSeedClaim.ts:55–75](https://github.com/okeylanders/prose-minion-vscode/blob/0b03f1e473a0d9e80620a1c13a447aae079dec08/packages/core/src/presentation/webview/hooks/domain/workshop/useWorkshopSeedClaim.ts#L55-L75).
+
+**Controlled production-bundle reproduction, with every queued wire delivered:**
+
+1. Offer A. The real receiver claims it; hold the host's granted claim result.
+2. Destroy and recreate only the frontend realm on the **same** live panel/provider, then deliver the queued grant.
+3. The fresh hook has no `claiming` ref and ignores the grant. No sheet opens and no answer is sent.
+4. After 60 seconds A is still pending. A new provider-level offer B never dispatches and reaches its own 20-second timeout. Closing the Workshop panel finally settles A as `closed`.
+
+This models the documented [Developer: Reload Webview state reset](https://code.visualstudio.com/api/extension-guides/webview#inspecting-and-debugging-webviews); the native command was **not** executed. The repository also exposes `window.location.reload()` in its existing error fallback, conditional on an unrelated render failure. No ordinary room operation, settings change or hide/reveal was found to reset this realm. The same existing Lightbox handler would refuse another request as busy while its original await remains; the B timeout above is the independently tested provider-level case, as a fresh sender would encounter it.
+
+**Severity and workaround:** P3/nonblocking because it requires a receiver reset in the grant window, loses no demonstrated writer text, performs no build/install/provider call, and closing/reopening Workshop restores delivery. It is not evidence that normal hiding drops messages. A separate synthetic `postMessage(false)` probe produces the same pending state, but no ordinary operation causing that transport failure was established.
+
+**Follow-up:** Give a receiver restart a new generation or equivalent recovery handshake so the host can release ownership held for a vanished receiver without revoking a grant still actionable in the current one. Cover reload after claim, reload after grant and late old-generation replies. Align the ADR's remaining “bounded wait” wording with the actual commit-point contract.
+
+**Visibility nuance, not another blocker:** Readiness/visibility is checked when the seed is dispatched, not when its later claim is granted. Hiding between those steps still permits the retained receiver to open and answer `opened: true` while `panel.visible` is false. This is an observed controlled ordering, not message loss; [retained webviews may continue running and receiving messages while hidden](https://code.visualstudio.com/api/extension-guides/webview#retaincontextwhenhidden). Prefer describing the guarantee as visible-at-dispatch rather than visible-at-acknowledgement, or explicitly extend the policy if stricter visibility is wanted.
+
+## Second re-review verification and provenance
+
+| Check at `0b03f1e` | Independent result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **370 suites / 5,257 tests / 2 snapshots passed** (171.455 seconds) |
+| All three typechecks; production build and bundle sentinels | **Passed**; three webpack size/performance warnings |
+| Full lint | **0 errors / 1,133 warnings**; normalized file/message/rule comparison shows exactly two removed `curly` warnings in `ModelBrowserModal.tsx`, no additions |
+| Provider/receiver source checks | **4 suites / 29 tests passed**, included in the full-suite count |
+| Overlay/seeded-install repository checks | **4 suites / 22 tests passed**, included in the full-suite count; some focused coverage overlaps other checks |
+| Independent overlay checks | **6 production-root ordering/cleanup tests and 71 rebuilt-bundle assertions passed**, covering all four widgets' nested browsers, model routing, search/draft retention, focus and same-batch admission |
+| Independent exact-bundle transport checks | **13 scenarios passed their assertions**; includes explicitly labeled reset, visibility and synthetic failed-post diagnostics, not 13 expected-safe claims |
+| Retained gravity/carry/merged-column probes | **2 suites / 14 tests passed** |
+| Retained PR #149 host boundaries | **178 assertions passed** |
+| Exact-bundle model/host and exceptional-run UI integration | **72 assertions / 8 scenarios** and **39 assertions / 3 scenarios passed**; no unhandled rejections |
+| Lightbox evidence/inspector/stale replay | **28 assertions passed** |
+| Ordinary Workshop parity against corrected PR #149 | **9 checkpoints / 27 DOM, persistence and outbound-message assertions passed** |
+| Retained Unicode/evidence probes | All previous closure/boundary, 20,000 stress, 5,768 whole-string, 25,000 fragment and seven long-run probes pass again; zero stress fold differences, misses or wrong source spans |
+| Diff whitespace, source ownership and base identity | **Passed**; no reviewer functional edits; merge-base remains `c6d4411` |
+
+Both exact implementation-head CI runs succeeded: [PR verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39351229384/job/118395615523), [branch verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39351224754/job/118395600693). The report-only publication head needs its own CI check. Local runtime remains Node 24.19.0/npm 11.9.0 versus CI Node 18.
+
+**Visual provenance:** No PNG bytes changed in this correction; the previously inspected 21 images remain the supplied pixel evidence, and the 500 px Workshop image was inspected again. The independently rebuilt bundle hash is `b5e5a1fbadcdc50e468ca7025d4931d2dcedad8fa4ffbe1426ab77a17b175f9b`, exactly matching the revised README. The builder now uses the real delivery owner and records a grant after the handler's seed, but still plays the webview's claim/answer in the builder; replayed recorded messages are not a live connected transport test. The independent bundle witness exercises that transport separately. No fresh Chromium capture or the author's 69-pixel anti-aliasing comparison was independently rerun.
+
+Public-domain and synthetic fixtures, mocked provider/VS Code transport and JSDOM remain the limits. No native VS Code acceptance, live/billable inference or writer-output acceptance is claimed. All author responses below are preserved verbatim.
+
+## Previous re-review at `524a961c` — historical evidence
+
+The following F-03/F-07 open statuses and verification are retained as history; the current ledger and second re-review above supersede them.
 
 ## Re-review — F-03 remains open after dispatch
 
