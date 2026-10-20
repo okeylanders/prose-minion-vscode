@@ -10,14 +10,20 @@
 /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals (ADR 2026-10-19 D3). */
 
 import type {
+  LightboxFamiliarKind,
   LightboxGravityDegree,
+  LightboxHandoffEffect,
   LightboxLensId,
   LightboxLineageStance,
+  LightboxNumberStatId,
+  LightboxNumberUsage,
+  LightboxParagraphEnding,
   LightboxReadingGroup,
   LightboxReadingGroupId,
   LightboxReadingTileKind,
   LightboxRegister,
   LightboxRunScope,
+  LightboxStockTier,
   LightboxTileKind
 } from '@messages';
 
@@ -57,7 +63,17 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   subtext: 'read',
   lineage: 'read',
   // A reading's offer, standing on terms code counted.
-  spark: 'counted-read'
+  spark: 'counted-read',
+  // Slice 4B: the tier mix and familiar phrases are counted by code from what the reading names.
+  'stock-tiers': 'counted-read',
+  signature: 'read',
+  'familiar-phrase': 'counted-read',
+  'air-lock': 'read',
+  echo: 'read',
+  'rhythm-endings': 'read',
+  handoff: 'read',
+  // A figure code measured as standing out, read for how it is used.
+  'number-usage': 'counted-read'
 };
 
 /** The lens each reading kind belongs to. */
@@ -76,7 +92,15 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   'reader-promise': 'genre',
   subtext: 'subtext',
   lineage: 'lineage',
-  spark: 'spark'
+  spark: 'spark',
+  'stock-tiers': 'stock',
+  signature: 'stock',
+  'familiar-phrase': 'stock',
+  'air-lock': 'stock',
+  echo: 'stock',
+  'rhythm-endings': 'rhythm',
+  handoff: 'rhythm',
+  'number-usage': 'numbers'
 };
 
 /** What one reading of each kind is called, e.g. in the inspector's "Theme & motif · Motif". */
@@ -95,7 +119,15 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   'reader-promise': 'Reader promise',
   subtext: 'Said / meant',
   lineage: 'Adjacent story',
-  spark: 'Open door'
+  spark: 'Open door',
+  'stock-tiers': 'Cognitive economy',
+  signature: 'Signature',
+  'familiar-phrase': 'Familiar phrasing',
+  'air-lock': 'Air-lock',
+  echo: 'Echo',
+  'rhythm-endings': 'How paragraphs end',
+  handoff: 'Handoff',
+  'number-usage': 'How it is used'
 };
 
 /**
@@ -119,8 +151,68 @@ export const LIGHTBOX_LINEAGE_STANCE_LABELS: Readonly<Record<LightboxLineageStan
   subverts: 'Subverts'
 };
 
+/**
+ * What an echo always says beside it (Slice 4B; ADR D7 addendum): echoes
+ * replace provenance, and the board never presents one as a finding.
+ */
+export const LIGHTBOX_ECHO_ACCURACY =
+  'The quote is checked against your chapter; the resemblance is not. A model’s memory of sources is often wrong, ' +
+  'so read this as worth a look, never as a finding.';
+
+/** The cognitive-economy tiers, in display order, as the board names them (Slice 4B). */
+export const LIGHTBOX_STOCK_TIER_LABELS: Readonly<Record<LightboxStockTier, string>> = {
+  functional: 'Functional stock',
+  decorated: 'Decorated',
+  weighted: 'Stock carrying weight',
+  signature: 'Signature'
+};
+
+/** Familiar phrasing's kinds. Familiar means familiar to the reader, not a fault. */
+export const LIGHTBOX_FAMILIAR_KIND_LABELS: Readonly<Record<LightboxFamiliarKind, string>> = {
+  idiom: 'Idiom',
+  cliche: 'Cliché',
+  stock: 'Stock phrase',
+  weighted: 'Stock carrying weight'
+};
+
+/** How a paragraph ends, as the board names it. */
+export const LIGHTBOX_ENDING_LABELS: Readonly<Record<LightboxParagraphEnding, string>> = {
+  lands: 'Lands',
+  holds: 'Holds',
+  opens: 'Opens'
+};
+
+/** What a sentence handoff does, in Craft Steering's terms. */
+export const LIGHTBOX_HANDOFF_EFFECT_LABELS: Readonly<Record<LightboxHandoffEffect, string>> = {
+  continues: 'Continues',
+  pause: 'Holds a pause',
+  closure: 'Earns closure',
+  loses: 'Loses the connection'
+};
+
+/** The figures the numbers tile measures, as the board names them (Slice 4B). */
+export const LIGHTBOX_NUMBER_STAT_LABELS: Readonly<Record<LightboxNumberStatId, string>> = {
+  'sentence-length': 'Sentence length',
+  dialogue: 'Dialogue',
+  'passive-voice': 'Passive voice',
+  'being-verbs': 'Being verbs',
+  adverbs: 'Adverbs (-ly)',
+  intensifiers: 'Intensifiers and fillers'
+};
+
+export function isLightboxNumberStat(value: unknown): value is LightboxNumberStatId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(LIGHTBOX_NUMBER_STAT_LABELS, value);
+}
+
+/** How a standout figure reads in use: a reading, never a fix. */
+export const LIGHTBOX_NUMBER_USAGE_LABELS: Readonly<Record<LightboxNumberUsage, string>> = {
+  deliberate: 'Reads as deliberate',
+  mixed: 'Reads as mixed',
+  habit: 'Reads as habit'
+};
+
 /** The reading groups, in board order (D6). */
-export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C'];
+export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D'];
 
 export interface LightboxLensDescriptor {
   id: LightboxLensId;
@@ -140,7 +232,10 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   subtext: { label: 'Subtext', group: 'B' },
   genre: { label: 'Genre neighborhood', group: 'C' },
   lineage: { label: 'Lineage', group: 'C' },
-  spark: { label: 'Spark', group: 'C' }
+  spark: { label: 'Spark', group: 'C' },
+  stock: { label: 'Stock & signature', group: 'D' },
+  rhythm: { label: 'Rhythm & handoffs', group: 'D' },
+  numbers: { label: 'The numbers', group: 'D' }
 };
 
 /** Every lens, in rail order (which is also group order). */

@@ -63,6 +63,7 @@ import {
   LightboxService,
   LightboxReadingRunner,
   LightboxContextShelf,
+  LightboxWriterBaseline,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -350,11 +351,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Lightbox boards (ADR 2026-10-19 D5, D12): the counted board from the same
   // measurement services the Metrics tab uses, kept in memory per source.
+  // The writer's own average (Slice 4B): their other configured chapters,
+  // measured with the board's own detectors, bounded and cached; no model.
+  const lightboxWriterBaseline = new LightboxWriterBaseline({
+    catalog: workshopContextIntakeService,
+    fileSystem: platform.fileSystem,
+    outputChannel
+  });
   const lightboxService = new LightboxService(
     proseStatsService,
     wordFrequencyService,
     styleFlagsService,
-    standardsService
+    standardsService,
+    {},
+    lightboxWriterBaseline
   );
   // Lightbox readings (Slice 2B, D6–D9): the assistant model scope, one
   // active run per board, unusable paid bodies quarantined for recovery.

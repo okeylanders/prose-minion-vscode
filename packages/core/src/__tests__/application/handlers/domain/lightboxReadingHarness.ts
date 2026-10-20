@@ -12,6 +12,11 @@
  * a stand-in context-path provider (2026-10-20): `addProjectFile` lists a
  * file and gives the reads its text, so context can be added by catalog key.
  *
+ * The writer's average (Slice 4B) is the real LightboxWriterBaseline over
+ * that catalog: `writerChapters` lists files in the `chapters` group before
+ * the board is built, and the baseline reads them through a seeded file
+ * system. With none, the board measures no average of the writer's own.
+ *
  * Callers mock `p-limit` (ESM) as the other Lightbox tests do.
  */
 
@@ -20,6 +25,7 @@ import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 import type { LightboxModelPricing } from '@/infrastructure/lightbox/LightboxRunEstimate';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -36,13 +42,13 @@ import {
   MessageType
 } from '@/shared/types/messages';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
-import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
+import { LIGHTBOX_LENSES, LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { ContextPathGroup } from '@/shared/types/context';
 
 export const examples = Object.fromEntries(
-  (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
+  LIGHTBOX_READING_GROUPS.map((group) => [group, readWorkedExample(group)])
 ) as Record<LightboxReadingGroupId, ReturnType<typeof readWorkedExample>>;
 export const CHAPTER = examples.A.paragraphs.join('\n\n');
 export const CONTEXT_TEXT = 'Notes for the reader: the White Rabbit is a royal herald who fears the Queen.';
@@ -75,6 +81,8 @@ export interface LightboxReadingHostOptions {
   contextLength?: number;
   /** The board's text; the worked examples' chapter by default. */
   text?: string;
+  /** The writer's other chapters, by path under `/workspace/`, read for the writer's average (Slice 4B). */
+  writerChapters?: Record<string, string>;
 }
 
 /** One webview tab: its own handler, router, transport and log, over the host's shared services. */
@@ -96,13 +104,6 @@ export interface LightboxReadingTab {
 
 export async function createLightboxReadingHost(options: LightboxReadingHostOptions = {}) {
   let boardIds = 0;
-  const service = new LightboxService(
-    new ProseStatsService(createFakeFileSystem(), createFakeWorkspace()),
-    new WordFrequencyService({} as ToolOptionsProvider),
-    new StyleFlagsService(),
-    { enrichWithStandards: async (stats: object) => stats } as never,
-    { mintBoardId: () => `board-${++boardIds}` }
-  );
   const runInitial = jest.fn(async (request: InitialRunRequest) =>
     (options.respond ?? ((call) => ok(groupOf(call))))(request)
   );
@@ -186,6 +187,25 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
     return absolutePath;
   };
   const pickFile = jest.fn(async () => ({ fsPath: '/workspace/Notes/cast.md', uri: 'file:///workspace/Notes/cast.md' }));
+
+  // The writer's other chapters, listed in the catalog and readable by the real baseline.
+  const chapterFiles: Record<string, string> = {};
+  for (const [relativePath, text] of Object.entries(options.writerChapters ?? {})) {
+    chapterFiles[addProjectFile('chapters', relativePath, text)] = text;
+  }
+  const writerBaseline = new LightboxWriterBaseline({
+    catalog,
+    fileSystem: createFakeFileSystem({}, chapterFiles),
+    outputChannel: log
+  });
+  const service = new LightboxService(
+    new ProseStatsService(createFakeFileSystem(), createFakeWorkspace()),
+    new WordFrequencyService({} as ToolOptionsProvider),
+    new StyleFlagsService(),
+    { enrichWithStandards: async (stats: object) => stats } as never,
+    { mintBoardId: () => `board-${++boardIds}` },
+    writerBaseline
+  );
 
   const openTab = (): LightboxReadingTab => {
     const posted: ExtensionToWebviewMessage[] = [];

@@ -17,6 +17,7 @@ import type {
   LightboxBoard,
   LightboxCountedSupport,
   LightboxCountedTerm,
+  LightboxNumberStatId,
   LightboxParagraphMetric,
   LightboxReadingTile,
   LightboxRegister
@@ -24,6 +25,7 @@ import type {
 import {
   LIGHTBOX_TILE_KIND_LABELS,
   LIGHTBOX_TILE_REGISTER,
+  isLightboxNumberStat,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
 import { findLightboxTile } from '@hooks/domain/lightbox/lightboxReadings';
@@ -40,7 +42,9 @@ export type LightboxItemRef =
   | { kind: 'phrase'; phrase: string }
   | { kind: 'lane'; lane: LightboxMeasuredLane }
   | { kind: 'paragraphs'; from: number; to: number }
-  | { kind: 'reading'; tileId: string };
+  | { kind: 'reading'; tileId: string }
+  /** A measured figure on the numbers tile (Slice 4B): it lights the paragraphs holding an instance. */
+  | { kind: 'standout'; stat: LightboxNumberStatId };
 
 export interface LightboxResolvedItem {
   ref: LightboxItemRef;
@@ -87,6 +91,8 @@ export function lightboxItemKey(ref: LightboxItemRef): string {
       return `paragraphs:${ref.from}-${ref.to}`;
     case 'reading':
       return `reading:${ref.tileId}`;
+    case 'standout':
+      return `standout:${ref.stat}`;
   }
 }
 
@@ -132,6 +138,8 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
       const tileId = text('tileId');
       return tileId ? { kind: 'reading', tileId } : null;
     }
+    case 'standout':
+      return isLightboxNumberStat(record.stat) ? { kind: 'standout', stat: record.stat } : null;
     default:
       return null;
   }
@@ -164,7 +172,35 @@ export function resolveLightboxItem(
       const tile = findLightboxTile(board, ref.tileId);
       return tile && !lightboxIsSetAside(tile) ? readingItem(ref, tile) : undefined;
     }
+    case 'standout':
+      return standoutItem(board, ref);
   }
+}
+
+/** A measured figure: what it is, against what, and the paragraphs holding an instance of it. */
+function standoutItem(board: LightboxBoard, ref: Extract<LightboxItemRef, { kind: 'standout' }>): LightboxResolvedItem | undefined {
+  const row = board.measured.numbers.rows.find((candidate) => candidate.stat === ref.stat);
+  if (!row) {
+    return undefined;
+  }
+  const against = [
+    ...(row.writer ? [`your average ${row.writer.average}`] : []),
+    ...(row.range ? [`the preset's ${row.range.min ?? '…'}–${row.range.max ?? '…'}`] : [])
+  ];
+  return {
+    ref,
+    register: 'measured',
+    where: 'Measure · The numbers',
+    title: row.label,
+    claim:
+      `${row.value} ${row.unit}` + (against.length > 0 ? `, against ${against.join(' and ')}` : '') + '. ' +
+      (row.standout
+        ? `It stands out ${row.standout.direction}; ${paragraphCountLabel(row.paragraphs.length)} hold ${row.instanceLabel}, lit here.`
+        : 'It does not stand out.') +
+      ' Counted by code; nothing here is a reading.',
+    paragraphs: [...row.paragraphs],
+    support: [`${row.value} ${row.unit}`, ...(row.instances > 0 ? [`${row.instances} ${row.instanceLabel}`] : [])]
+  };
 }
 
 /** The measured items whose paragraphs include `index`, for "Also in this paragraph". */

@@ -45,6 +45,10 @@
  *   that retained board silently, so a stale run never publishes over a
  *   newer board, and switching back to its source shows what it read.
  *
+ * - **The writer's own average (Slice 4B).** Measured with the board, by
+ *   `LightboxWriterBaseline` over the writer's other chapters (this source
+ *   left out), so the board's numbers are fixed with the board.
+ *
  * The source text never leaves this service except as the board's short
  * preview; the host-private re-read path and each retained board's
  * paragraph texts (what a reading run reads) are never posted.
@@ -78,6 +82,8 @@ import {
   LightboxEnrichedStats,
   buildLightboxMeasuredSet
 } from '@/infrastructure/lightbox/LightboxMeasures';
+import { checkLightboxSource, lightboxSourcePreview } from '@/infrastructure/lightbox/LightboxSourceChecks';
+import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -147,7 +153,6 @@ export interface LightboxServiceOptions {
   retainedBoards?: number;
 }
 
-const PREVIEW_CHARACTERS = 360;
 const DEFAULT_RETAINED_BOARDS = 12;
 
 interface BoardEntry {
@@ -183,7 +188,9 @@ export class LightboxService {
     private readonly wordFrequencyService: Pick<WordFrequencyService, 'analyze'>,
     private readonly styleFlagsService: Pick<StyleFlagsService, 'analyze'>,
     private readonly standardsService: Pick<StandardsService, 'enrichWithStandards'>,
-    options: LightboxServiceOptions = {}
+    options: LightboxServiceOptions = {},
+    /** The writer's own average for the numbers tile; without it the tile says none is measured. */
+    private readonly writerBaseline?: Pick<LightboxWriterBaseline, 'measure'>
   ) {
     this.now = options.now ?? Date.now;
     this.mintBoardId = options.mintBoardId ?? randomUUID;
@@ -221,7 +228,7 @@ export class LightboxService {
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
-    const refusal = checkSource(input);
+    const refusal = checkLightboxSource(input);
     if (refusal) {
       return this.refuseSource(ticket, refusal);
     }
@@ -250,7 +257,8 @@ export class LightboxService {
           readAgainst: latest.source.contentHash,
           paragraphs: paragraphTexts,
           averageWordsPerSentence: board.measured.headline.averageWordsPerSentence,
-          columns: board.ribbon
+          columns: board.ribbon,
+          numbers: board.measured.numbers.rows
         })
       };
       carried = true;
@@ -379,6 +387,7 @@ export class LightboxService {
     const enriched = (await this.standardsService.enrichWithStandards(stats)) as LightboxEnrichedStats;
     const frequency = this.wordFrequencyService.analyze(input.text, LIGHTBOX_WORD_FREQUENCY_OPTIONS);
     const flags = this.styleFlagsService.analyze(input.text);
+    const writer = await this.writerBaseline?.measure({ absolutePath: input.rereadPath, sourceUri: input.sourceUri });
 
     const source: LightboxSource = {
       kind: input.kind,
@@ -390,7 +399,7 @@ export class LightboxService {
       wordCount: countWords(input.text),
       paragraphCount: paragraphs.length,
       capturedAt: this.now(),
-      preview: previewOf(input.text)
+      preview: lightboxSourcePreview(input.text)
     };
 
     return {
@@ -399,7 +408,9 @@ export class LightboxService {
       source,
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
-      measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs, text: input.text }),
+      measured: buildLightboxMeasuredSet({
+        stats: enriched, frequency, flags, paragraphs, text: input.text, writer
+      }),
       readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
     };
   }
@@ -414,31 +425,6 @@ export class LightboxService {
       this.entries.delete(this.entries.keys().next().value as string);
     }
   }
-}
-
-/** Why a resolved source cannot be boarded (D8), or undefined when it can. */
-function checkSource(input: LightboxSourceInput): LightboxSourceRefusalDraft | undefined {
-  if (input.text.trim().length === 0) {
-    return {
-      reason: 'empty',
-      message: 'That source has no text to board.',
-      displayPath: input.displayPath
-    };
-  }
-  const ceilingWords = PROMPT_BUDGETS.lightbox.sourceWords;
-  const wordCount = countWords(input.text);
-  if (wordCount > ceilingWords) {
-    return {
-      reason: 'over-ceiling',
-      message: `This source has ${wordCount.toLocaleString('en-US')} words. ` +
-        `The Lightbox boards up to ${ceilingWords.toLocaleString('en-US')} words at a time.`,
-      displayPath: input.displayPath,
-      wordCount,
-      ceilingWords,
-      suggestion: 'Choose a single chapter, or select a passage and open the selection in the Lightbox.'
-    };
-  }
-  return undefined;
 }
 
 /**
@@ -477,15 +463,4 @@ function lightboxDocumentKey(sourceUri: string): string {
   } catch {
     return sourceUri;
   }
-}
-
-/** The opening of the text, cut at a word boundary. */
-function previewOf(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= PREVIEW_CHARACTERS) {
-    return trimmed;
-  }
-  const cut = trimmed.slice(0, PREVIEW_CHARACTERS);
-  const lastSpace = cut.search(/\s\S*$/);
-  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }

@@ -91,17 +91,22 @@ describe('reading-group transitions', () => {
   });
 
   it('plans calls from the lens toggles: off lenses left out, empty groups dropped, landed groups skipped by "rest"', () => {
-    expect(lightboxPlannedCalls(['genre', 'voice', 'lineage', 'spark'], { mode: 'all' })).toEqual([
+    expect(lightboxPlannedCalls(['genre', 'voice', 'lineage', 'spark', 'rhythm'], { mode: 'all' })).toEqual([
       { group: 'A', lenses: ['headline', 'motif', 'tension', 'gravity', 'palette'] },
-      { group: 'B', lenses: ['characters', 'subtext'] }
+      { group: 'B', lenses: ['characters', 'subtext'] },
+      { group: 'D', lenses: ['stock', 'numbers'] }
     ]);
     expect(lightboxPlannedCalls([], { mode: 'rest' }, [{ group: 'A', status: 'ok' }, { group: 'B', status: 'cancelled' }]))
       .toEqual([
         { group: 'B', lenses: ['characters', 'voice', 'subtext'] },
-        { group: 'C', lenses: ['genre', 'lineage', 'spark'] }
+        { group: 'C', lenses: ['genre', 'lineage', 'spark'] },
+        { group: 'D', lenses: ['stock', 'rhythm', 'numbers'] }
       ]);
     expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'voice' })).toEqual([{ group: 'B', lenses: ['voice'] }]);
     expect(lightboxPlannedCalls(['voice'], { mode: 'lens', lens: 'voice' })).toEqual([]);
+    // Slice 4B: the craft lenses are one call of their own, and read alone like any lens.
+    expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'numbers' })).toEqual([{ group: 'D', lenses: ['numbers'] }]);
+    expect(lightboxPlannedCalls(['stock', 'rhythm', 'numbers'], { mode: 'all' }).map((call) => call.group)).toEqual(['A', 'B', 'C']);
   });
 });
 

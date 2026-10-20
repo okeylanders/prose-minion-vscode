@@ -7,21 +7,36 @@
  * "Alice's Adventures in Wonderland" (1865, public domain); the witness and
  * palette fixtures are synthetic sentences written for these tests.
  */
-import type { LightboxLensId, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
+import type { LightboxLensId, LightboxNumberRow, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
+import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 import { WITNESS_PARAGRAPHS, witnessBody } from './lightboxWitnessFixtures';
+import { boardWithNumbers } from './lightboxCraftFixtures';
 import { buildLightboxInspectorView } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- worked-example bodies are edited as plain JSON. */
 type Body = Record<string, any>;
+
+/**
+ * Each text's measured figures (Slice 4B): group D is read, and carried,
+ * against what stands out in the text it lands on, as the host does. A text
+ * the sweep never measured has none, so a numbers reading on it is withheld.
+ */
+const MEASURED = new Map<readonly string[], LightboxNumberRow[]>();
+
+async function measure(...texts: Array<readonly string[]>): Promise<void> {
+  for (const text of texts) {
+    MEASURED.set(text, (await boardWithNumbers(text)).measured.numbers.rows);
+  }
+}
 
 function assembleOn(group: LightboxReadingGroupId, lenses: LightboxLensId[], paragraphs: readonly string[], body: Body) {
   const decoded = decodeLightboxGroup(frame(group, body), { group, lenses, columnCount: paragraphs.length });
@@ -30,7 +45,8 @@ function assembleOn(group: LightboxReadingGroupId, lenses: LightboxLensId[], par
     verifier: createLightboxQuoteVerifier(paragraphs),
     counter: createLightboxTermCounter(paragraphs),
     mintId: () => `p${++id}`,
-    averageWordsPerSentence: 8.4
+    averageWordsPerSentence: 8.4,
+    standouts: lightboxStandoutRows(MEASURED.get(paragraphs))
   });
 }
 
@@ -56,7 +72,12 @@ const outcome = (group: { tiles: Array<{ kind: string; title: string }>; withhel
 /** Read `before`, then compare carrying that reading onto `after` with reading `after` afresh. */
 function parity(group: LightboxReadingGroupId, lenses: LightboxLensId[], body: Body, before: readonly string[], after: readonly string[]) {
   const read = readOn(group, lenses, before, body);
-  const [carried] = carryLightboxReadings([read], { readAgainst: 'old', paragraphs: after, averageWordsPerSentence: 9 });
+  const [carried] = carryLightboxReadings([read], {
+    readAgainst: 'old',
+    paragraphs: after,
+    averageWordsPerSentence: 9,
+    numbers: MEASURED.get(after)
+  });
   const fresh = assembleOn(group, lenses, after, body);
   return { read, carried, fresh };
 }
@@ -133,6 +154,9 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
     // Slice 4: the speech marks come off ¶4 and ¶8, so the Rabbit's line and
     // Alice's ¶8 thought still stand word for word but are no longer dialogue.
     const unquoted = paragraphs.map((text, index) => (index === 3 || index === 7 ? text.replace(/[“”]/g, '') : text));
+    // Slice 4B: group D reads the same eight paragraphs, against each text's own measured figures.
+    beforeAll(() => measure(paragraphs, edited, thinned, unquoted));
+    const craftBody = (): Body => framedJson(readWorkedExample('D').response) as Body;
     // Group C with a spark that stands on "sleepy", which `edited` removes
     // while the spark's quote stands.
     const sparkBody = (): Body => {
@@ -166,12 +190,16 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
 
     // One property over every group: A's edits test its fields, collisions
     // and palette; B's subtext and C's sparks have rules of their own too
-    // (Slice 4), which `unquoted` and `edited` exercise.
-    it('carry and a fresh reading agree for groups A, B and C, including partial evidence survival', () => {
+    // (Slice 4), which `unquoted` and `edited` exercise; D's tier mix,
+    // handoffs and numbers readings (Slice 4B) lose beats, sentences and
+    // measured instances under the same edits.
+    it('carry and a fresh reading agree for groups A, B, C and D, including partial evidence survival', () => {
+      expect(readWorkedExample('D').paragraphs).toEqual(paragraphs);
       const groups = [
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
-        ['C', sparkBody]
+        ['C', sparkBody],
+        ['D', craftBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -283,7 +311,8 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       const groups = [
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
-        ['C', sparkBody]
+        ['C', sparkBody],
+        ['D', craftBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -314,15 +343,16 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
 
     it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
       const lenses = readWorkedExample('A').lenses;
-      const drawnKinds = new Set((['A', 'B', 'C'] as const).flatMap((group) => {
+      const drawnKinds = new Set((['A', 'B', 'C', 'D'] as const).flatMap((group) => {
         const body = group === 'A' ? collisionBody() : framedJson(readWorkedExample(group).response) as Body;
         return readOn(group, readWorkedExample(group).lenses, paragraphs, body).tiles.map((tile) => tile.kind);
       }));
       // Every reading kind the board can draw, so a new kind cannot skip this sweep.
       expect([...drawnKinds].sort()).toEqual(Object.keys(LIGHTBOX_TILE_LENS).sort());
       expect([...drawnKinds].sort()).toEqual([
-        'character', 'genre-neighbor', 'gravity-collision', 'gravity-field', 'gravity-literal', 'headline', 'lineage',
-        'motif', 'palette-cluster', 'reader-promise', 'spark', 'subtext', 'swatch', 'tension-arc', 'voice'
+        'air-lock', 'character', 'echo', 'familiar-phrase', 'genre-neighbor', 'gravity-collision', 'gravity-field',
+        'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'number-usage', 'palette-cluster', 'reader-promise',
+        'rhythm-endings', 'signature', 'spark', 'stock-tiers', 'subtext', 'swatch', 'tension-arc', 'voice'
       ]);
       const once = parity('A', lenses, collisionBody(), paragraphs, edited).carried;
       expect(outcome(once).drawn).toEqual(expect.arrayContaining([
@@ -338,6 +368,24 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         expect.objectContaining({ kind: 'gravity-collision', reason: LIGHTBOX_GATE_REASONS.noSharedSentence })
       ]));
       expect(outcome(twice).drawn).toEqual(expect.arrayContaining(['gravity-field:Fire', 'gravity-field:Animals']));
+
+      // Slice 4B: the tier mix keeps the beats that stand and counts its
+      // tiers again from them; a numbers reading keeps the quote that still
+      // holds an instance and counts the one that is gone.
+      const craft = parity('D', readWorkedExample('D').lenses, craftBody(), paragraphs, thinned).carried;
+      const tiers = craft.tiles.find((tile) => tile.kind === 'stock-tiers');
+      expect(tiers?.kind === 'stock-tiers' && { beats: tiers.beats.length, tiers: tiers.tiers }).toEqual({
+        beats: 13,
+        tiers: { functional: 5, decorated: 1, weighted: 1, signature: 6 }
+      });
+      expect(tiers?.withheldQuotes).toEqual([
+        { paragraph: 3, reason: 'no-longer-in-chapter' },
+        { paragraph: 3, reason: 'no-longer-in-chapter' },
+        { paragraph: 8, reason: 'no-longer-in-chapter' }
+      ]);
+      const length = craft.tiles.find((tile) => tile.kind === 'number-usage' && tile.stat === 'sentence-length');
+      expect(length?.evidence.map((quote) => quote.paragraph)).toEqual([7]);
+      expect(length?.withheldQuotes).toEqual([{ paragraph: 4, reason: 'no-longer-in-chapter' }]);
     });
   });
 });

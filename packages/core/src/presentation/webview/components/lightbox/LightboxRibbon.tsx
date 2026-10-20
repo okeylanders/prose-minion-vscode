@@ -7,14 +7,20 @@
  * dashed from the tension arc's read score per column (0–9) once it lands,
  * and empty before. A stale arc (D4) draws only the scores whose paragraphs
  * are unchanged, says so on its label, and leaves a changed paragraph
- * unscored (PR #150 F-06). Focus lights the columns whose paragraphs the hovered
- * or pinned item touches, in its register's color. Columns, the measured
- * lane labels and a read tension lane are hoverable and pinnable.
+ * unscored (PR #150 F-06). Endings (Slice 4B) is a read lane too: how each
+ * column's paragraphs end, as the rhythm lens read them (Lands filled, Holds
+ * half, Opens hollow), stale-labelled and blank on columns whose text
+ * changed; a read mark is never drawn in the measured rhythm lane. Focus
+ * lights the columns whose paragraphs the hovered or pinned item touches, in
+ * its register's color. Columns, the measured lane labels and the read
+ * lanes are hoverable and pinnable.
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxRibbonColumn } from '@messages';
 import type { LightboxItemRef, LightboxResolvedItem } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxTensionLane } from '@hooks/domain/lightbox/lightboxReadings';
+import type { LightboxEndingsLane } from '@hooks/domain/lightbox/lightboxCraft';
+import { LIGHTBOX_ENDING_LABELS } from '@shared/constants/lightbox';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 
@@ -29,6 +35,8 @@ export interface LightboxRibbonProps {
   tension: LightboxTensionLane;
   /** The tension arc tile, so its lane label pins it. */
   tensionTileId?: string;
+  /** How each column's paragraphs end, once the rhythm lens has read them (Slice 4B). */
+  endings?: LightboxEndingsLane;
 }
 
 const RHYTHM_LANE_HEIGHT = 34;
@@ -70,13 +78,20 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
   bind,
   tensionLensOn,
   tension,
-  tensionTileId
+  tensionTileId,
+  endings
 }) => {
   const { ribbon } = board;
   const hasFocus = focusedItem !== null;
   const focusTone = focusedItem?.register === 'measured' ? 'is-measured' : 'is-read';
   const scores = tensionLensOn && tension.scores?.length === ribbon.length ? tension.scores : undefined;
   const staleKey = tension.stale ? <span className="pm-lb-lane-stale">stale</span> : null;
+  const endingMarks = endings?.endings?.length === ribbon.length ? endings.endings : undefined;
+  const endingsLabel = (
+    <>
+      <i className="pm-lb-lane-key is-read" />Endings{endings?.stale ? <span className="pm-lb-lane-stale">stale</span> : null}
+    </>
+  );
   const scale = Math.max(RHYTHM_SCALE_FLOOR, ...ribbon.map((column) => column.avgWordsPerSentence));
   const step = labelStep(ribbon.length);
   const bucketed = ribbon.some((column) => column.to > column.from);
@@ -114,6 +129,17 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
               <i className="pm-lb-lane-key is-read" />Tension{staleKey}
             </span>
           )}
+          {endings && (endingMarks && endings.tileId ? (
+            <LightboxItemButton
+              binding={bind({ kind: 'reading', tileId: endings.tileId })}
+              className="pm-lb-lane-label pm-lb-h12"
+              title={endings.note}
+            >
+              {endingsLabel}
+            </LightboxItemButton>
+          ) : (
+            <span className="pm-lb-lane-label pm-lb-h12 is-static" title={endings.note}>{endingsLabel}</span>
+          ))}
           <span className="pm-lb-lane-label pm-lb-h10 is-static">Focus</span>
           <span className="pm-lb-lane-label pm-lb-h12 is-static">¶</span>
         </div>
@@ -132,6 +158,12 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
             const height = score !== null
               ? Math.max(2, Math.round((score / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
               : 0;
+            const ending = endingMarks?.[columnIndex] ?? null;
+            const endingTitle = !endingMarks
+              ? ''
+              : ending === null
+                ? ' · ending not read: this paragraph changed since the reading'
+                : ` · ends, as read: ${LIGHTBOX_ENDING_LABELS[ending].toLowerCase()}`;
             const tensionTitle = !scores
               ? ''
               : score === null
@@ -144,13 +176,16 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
                 className={`pm-lb-col${hasFocus && !lit ? ' is-dim' : ''}`}
                 label={columnLabel(column)}
                 title={`${columnLabel(column)} · ${column.avgWordsPerSentence} words per sentence · ` +
-                  `${Math.round(column.dialogueShare * 100)}% dialogue${tensionTitle}`}
+                  `${Math.round(column.dialogueShare * 100)}% dialogue${tensionTitle}${endingTitle}`}
               >
                 <span className="pm-lb-col-rhythm"><i style={{ height: `${rhythm}px` }} /></span>
                 <span className="pm-lb-col-dialogue"><i style={{ opacity: dialogue }} /></span>
                 <span className={`pm-lb-col-tension${score !== null ? ' is-read' : scores ? ' is-unscored' : ''}`}>
                   {score !== null && <i style={{ height: `${height}px` }} />}
                 </span>
+                {endings && (
+                  <span className="pm-lb-col-ending">{ending !== null && <i className={`is-${ending}`} />}</span>
+                )}
                 <span className={`pm-lb-col-focus${lit ? ` is-lit ${focusTone}` : ''}`} />
                 <span className="pm-lb-col-index">
                   {columnIndex === 0 || (columnIndex + 1) % step === 0 ? column.from : ''}

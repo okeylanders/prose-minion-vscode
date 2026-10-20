@@ -18,9 +18,12 @@
  *   than a Workshop quote (a hard-wrapped speech grows by its indentation)
  *   refuses the pair rather than sending its meaning without its speech
  *   (PR #151 F-02);
- * - the item carries the claim (with a story's stances, or a pair's
- *   speaker, as labeled points) and those quotes: never the board, its
- *   counts or any other tile; and it is bounded by
+ * - a handoff sample (Slice 4B) travels with both its sentences or not at
+ *   all, and a numbers reading's quotes are checked again with its figure's
+ *   instance filter, as the board measures it now;
+ * - the item carries the claim (with a story's stances, a pair's speaker,
+ *   or a craft tile's own host counts, as labeled points) and those quotes:
+ *   never the board or any other tile; and it is bounded by
  *   `WORKSHOP_LIGHTBOX_TILE_LIMITS`, a quote longer than its bound dropped
  *   rather than cut, so every quote stays verbatim.
  * The Workshop decides what to do with it: a pending attachment above its
@@ -31,6 +34,7 @@ import {
   WORKSHOP_LIGHTBOX_TILE_LIMITS,
   type LightboxBoard,
   type LightboxHandOffPayload,
+  type LightboxNumberRow,
   type LightboxReadingTile,
   type LightboxWorkshopHandoff,
   type WorkshopLightboxTile,
@@ -39,12 +43,19 @@ import {
   type WorkshopSeedFailure
 } from '@messages';
 import {
+  LIGHTBOX_ENDING_LABELS,
+  LIGHTBOX_FAMILIAR_KIND_LABELS,
+  LIGHTBOX_HANDOFF_EFFECT_LABELS,
   LIGHTBOX_LINEAGE_STANCE_LABELS,
+  LIGHTBOX_NUMBER_USAGE_LABELS,
+  LIGHTBOX_STOCK_TIER_LABELS,
   LIGHTBOX_TILE_KIND_LABELS,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { locateLightboxTile } from '@/infrastructure/lightbox/LightboxHandoff';
+import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
 
@@ -62,6 +73,7 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   saidGone: 'Its said line is no longer in the chapter, so it was not brought.',
   saidTooLong: 'Its said line, as the chapter has it, is longer than a Workshop quote can carry, so the pair was not brought. Nothing was cut.',
   quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
+  handoffIncomplete: 'Its two sentences, as the chapter has them, cannot both travel to the Workshop, so the handoff was not brought. Nothing was cut.',
   fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
 } as const;
 
@@ -108,8 +120,9 @@ export function prepareLightboxTileHandoff(
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidGone);
   }
   const quotes: WorkshopLightboxTileQuote[] = said ? [{ ...said, said: true }] : [];
-  for (const quote of tile.evidence) {
-    const found = foundAgain(verifier, quote);
+  const standout = tile.kind === 'number-usage' ? lightboxStandoutRows(board.measured.numbers.rows).get(tile.stat) : undefined;
+  for (const quote of travelOrder(tile)) {
+    const found = standout ? foundWithInstance(verifier, standout, quote) : foundAgain(verifier, quote);
     if (found && !quotes.some((kept) => kept.paragraph === found.paragraph && kept.text === found.text)) {
       quotes.push(found);
     }
@@ -119,6 +132,10 @@ export function prepareLightboxTileHandoff(
   // A pair's said line is its anchor: checked after every bound, never dropped or cut to fit.
   if (said && bounded[0]?.said !== true) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong);
+  }
+  // A handoff is its two sentences, in order: never half of one.
+  if (tile.kind === 'handoff' && !(bounded.length === 2 && sameSpan(bounded[0], tile.from) && sameSpan(bounded[1], tile.to))) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete);
   }
   if (bounded.length === 0) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
@@ -135,6 +152,31 @@ export function prepareLightboxTileHandoff(
 export function lightboxTileStagedMessage(handoff: LightboxTileWorkshopHandoff): string {
   return `Staged “${handoff.tile.title}” above the Workshop composer. Nothing is sent until you send it there, ` +
     'and you can remove it there.';
+}
+
+/** The order a tile's quotes travel in: a tier mix leads with one beat of each tier, signature first. */
+function travelOrder(tile: LightboxReadingTile): ReadonlyArray<{ paragraph: number; text: string }> {
+  if (tile.kind !== 'stock-tiers') {
+    return tile.evidence;
+  }
+  const leads = [...LIGHTBOX_STOCK_TIERS].reverse()
+    .map((tier) => tile.beats.find((beat) => beat.tier === tier))
+    .filter((beat): beat is (typeof tile.beats)[number] => beat !== undefined);
+  return [...leads, ...tile.beats.filter((beat) => !leads.includes(beat))].map((beat) => beat.quote);
+}
+
+function sameSpan(a: { paragraph: number; text: string }, b: { paragraph: number; text: string }): boolean {
+  return a.paragraph === b.paragraph && a.text === b.text;
+}
+
+/** A numbers reading's quote as it stands now, holding an instance of its figure, or undefined. */
+function foundWithInstance(
+  verifier: LightboxQuoteVerifier,
+  row: LightboxNumberRow,
+  quote: { paragraph: number; text: string }
+): WorkshopLightboxTileQuote | undefined {
+  const verdict = verifyLightboxInstance(verifier, row, quote.paragraph, quote.text);
+  return verdict.found ? { paragraph: verdict.paragraph, text: verdict.text } : undefined;
 }
 
 /** The quote as it stands in the current chapter, or undefined when it is gone. */
@@ -160,14 +202,14 @@ function tileOf(
     lensLabel: lightboxLensLabel(tile.lens).slice(0, LIMITS.labelCharacters),
     title: tile.title.slice(0, LIMITS.titleCharacters).trim(),
     claim: tile.claim.slice(0, LIMITS.claimCharacters).trim(),
-    points: pointsOf(tile),
+    points: pointsOf(tile, board),
     quotes,
     sourceLabel: board.source.displayPath.slice(0, LIMITS.sourceLabelCharacters)
   };
 }
 
-/** What a claim says in its own right: a story's stances, or who says a line. */
-function pointsOf(tile: LightboxReadingTile): WorkshopLightboxTilePoint[] {
+/** What a claim says in its own right: a story's stances, who says a line, or a craft tile's own counts and fields. */
+function pointsOf(tile: LightboxReadingTile, board: LightboxBoard): WorkshopLightboxTilePoint[] {
   const point = (label: string, text: string): WorkshopLightboxTilePoint => ({
     label: label.slice(0, LIMITS.pointLabelCharacters),
     text: text.slice(0, LIMITS.pointCharacters).trim()
@@ -177,6 +219,44 @@ function pointsOf(tile: LightboxReadingTile): WorkshopLightboxTilePoint[] {
       return tile.stances.slice(0, LIMITS.points).map((row) => point(LIGHTBOX_LINEAGE_STANCE_LABELS[row.stance], row.note));
     case 'subtext':
       return [point('Speaker', tile.speaker)];
+    case 'stock-tiers':
+      return [
+        point('Tiers', LIGHTBOX_STOCK_TIERS.map((tier) => `${LIGHTBOX_STOCK_TIER_LABELS[tier]} ${tile.tiers[tier]}`).join(' · ')),
+        point('Classified', `${tile.classified} beats the reading classified, counted by code`)
+      ];
+    case 'familiar-phrase': {
+      const counted = tile.support[0];
+      return [
+        point('Kind', LIGHTBOX_FAMILIAR_KIND_LABELS[tile.familiar]),
+        ...(counted ? [point('Counted', `×${counted.count} · ${counted.paragraphs.slice(0, 12).map((index) => `¶${index}`).join(' ')}`)] : [])
+      ];
+    }
+    case 'echo':
+      return [
+        point('Sounds like', tile.reminiscentOf),
+        point('Accuracy', 'The quote is checked against the chapter; the resemblance is not.')
+      ];
+    case 'rhythm-endings':
+      return [point('Endings', (['lands', 'holds', 'opens'] as const)
+        .map((ending) => `${LIGHTBOX_ENDING_LABELS[ending]} ${tile.endings.filter((value) => value === ending).length}`)
+        .join(' · '))];
+    case 'handoff':
+      return [
+        point('Carried', tile.carried),
+        point('Changes', tile.claim),
+        point('Effect', LIGHTBOX_HANDOFF_EFFECT_LABELS[tile.effect])
+      ];
+    case 'number-usage': {
+      const row = board.measured.numbers.rows.find((candidate) => candidate.stat === tile.stat);
+      const figure = row
+        ? `${row.label}: ${row.value} ${row.unit}` +
+          (row.writer ? `; your average ${row.writer.average}` : '') +
+          (row.range && (row.range.min !== undefined || row.range.max !== undefined)
+            ? `; preset ${row.range.min ?? ''}–${row.range.max ?? ''}`
+            : '')
+        : tile.title;
+      return [point('Figure', figure), point('Reads as', LIGHTBOX_NUMBER_USAGE_LABELS[tile.usage].replace(/^Reads as /, ''))];
+    }
     default:
       return [];
   }

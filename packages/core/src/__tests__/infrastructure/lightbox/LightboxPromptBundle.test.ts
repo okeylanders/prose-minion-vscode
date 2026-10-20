@@ -4,9 +4,11 @@
  * response must pass: its request is exactly what the host would send for
  * those paragraphs, its response decodes through the production codec, and
  * every quote is found by the production verifier in the paragraph it
- * names. The bundle's honesty rules are pinned in its text.
+ * names. The bundle's honesty rules are pinned in its text. Group D's
+ * example (Slice 4B) is built and read against the figures the production
+ * board measures in its paragraphs, against a synthetic writer's average.
  */
-import type { LightboxReadingGroupId } from '@messages';
+import type { LightboxNumberRow, LightboxReadingGroupId } from '@messages';
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
@@ -17,16 +19,16 @@ import {
   buildLightboxUserMessage,
   lightboxSystemPromptFiles
 } from '@/infrastructure/lightbox/LightboxReadingPrompts';
-import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
-import { ProseStatsService } from '@services/measurement/ProseStatsService';
-import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
-import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { LIGHTBOX_NUMBERS_DIRECTIVE_WORDS } from '@/infrastructure/lightbox/LightboxCraftCodec';
 import { framedJson, readLightboxPrompt, readWorkedExample } from './lightboxReadingFixtures';
+import { boardWithNumbers } from './lightboxCraftFixtures';
 
 /** Words a reading may never use about the writing (D7: describe, never grade). */
 const GRADING = /\b(good|bad|better|best|worse|worst|strong|stronger|weak|weaker|effective|ineffective|flawed|clumsy|polished|should|must improve|fix)\b/i;
+
+/** The figures the production board measures in each example's paragraphs, by group. */
+const MEASURED = new Map<LightboxReadingGroupId, LightboxNumberRow[]>();
 
 function decodeExample(group: LightboxReadingGroupId) {
   const example = readWorkedExample(group);
@@ -40,34 +42,32 @@ function decodeExample(group: LightboxReadingGroupId) {
     verifier: createLightboxQuoteVerifier(example.paragraphs),
     counter: createLightboxTermCounter(example.paragraphs),
     mintId: () => `t${++id}`,
-    averageWordsPerSentence: 21.4
+    averageWordsPerSentence: 21.4,
+    standouts: lightboxStandoutRows(MEASURED.get(group))
   });
   return { example, decoded, assembled };
 }
 
-/** The words the host's board counts most often in the example's excerpt (what the palette is offered). */
-async function countedWordsOf(paragraphs: readonly string[]): Promise<string[]> {
-  const service = new LightboxService(
-    new ProseStatsService(createFakeFileSystem(), createFakeWorkspace()),
-    new WordFrequencyService({} as ToolOptionsProvider),
-    new StyleFlagsService(),
-    { enrichWithStandards: async (stats: object) => stats } as never
-  );
-  const built = await service.buildBoard({ kind: 'file', text: paragraphs.join('\n\n'), displayPath: 'example.md' });
-  return built.kind === 'board' ? built.board.measured.topWords.map((term) => term.term) : [];
-}
-
 describe('Lightbox prompt bundle', () => {
+  beforeAll(async () => {
+    for (const group of LIGHTBOX_READING_GROUPS) {
+      MEASURED.set(group, (await boardWithNumbers(readWorkedExample(group).paragraphs)).measured.numbers.rows);
+    }
+  });
+
   describe.each(LIGHTBOX_READING_GROUPS.map((group) => [group]))('worked example, group %s', (group) => {
     it('shows exactly the request the host sends for its paragraphs', async () => {
       const { example } = decodeExample(group);
       expect(example.paragraphs).toHaveLength(8);
+      // What the palette is offered, and what the numbers lens may read: the production board's.
+      const board = await boardWithNumbers(example.paragraphs);
       const built = buildLightboxUserMessage(
         {
           paragraphs: example.paragraphs,
           columns: example.paragraphs.map((_, index) => ({ from: index + 1, to: index + 1 })),
           context: [],
-          countedWords: await countedWordsOf(example.paragraphs)
+          countedWords: board.measured.topWords.map((term) => term.term),
+          numbers: board.measured.numbers.rows
         },
         { group, lenses: example.lenses }
       );
@@ -209,6 +209,63 @@ describe('Lightbox prompt bundle', () => {
     for (const spark of sparks) {
       expect(spark.claim.endsWith('?')).toBe(true);
       expect(spark.support.some((term) => term.count > 0)).toBe(true);
+    }
+  });
+
+  it('reads group D into a counted tier mix, phrases the chapter holds, adjacent handoffs and numbers that stand out (Slice 4B)', () => {
+    const { assembled } = decodeExample('D');
+    const kinds = new Set(assembled.tiles.map((tile) => tile.kind));
+    expect([...kinds].sort()).toEqual([
+      'air-lock', 'echo', 'familiar-phrase', 'handoff', 'number-usage', 'rhythm-endings', 'signature', 'stock-tiers'
+    ]);
+    const mix = assembled.tiles.find((tile) => tile.kind === 'stock-tiers');
+    // The host's count of the sixteen beats it found, never the model's.
+    expect(mix?.kind === 'stock-tiers' && { tiers: mix.tiers, classified: mix.classified }).toEqual({
+      tiers: { functional: 6, decorated: 1, weighted: 1, signature: 8 },
+      classified: 16
+    });
+    const familiar = assembled.tiles.filter((tile) => tile.kind === 'familiar-phrase');
+    for (const phrase of familiar) {
+      expect(phrase.support.length).toBeGreaterThan(0);
+      expect(phrase.support.every((term) => term.count > 0)).toBe(true);
+    }
+    const handoffs = assembled.tiles.filter((tile) => tile.kind === 'handoff');
+    expect(handoffs.map((tile) => (tile.kind === 'handoff' ? [tile.from.paragraph, tile.to.paragraph, tile.effect] : [])))
+      .toEqual([[4, 4, 'continues'], [7, 7, 'continues'], [8, 8, 'closure']]);
+    // The board measured sentence length, dialogue and intensifiers as standing out; each reading names one.
+    const standouts = (MEASURED.get('D') ?? []).filter((row) => row.standout).map((row) => row.stat);
+    expect(standouts).toEqual(['sentence-length', 'dialogue', 'intensifiers']);
+    const readings = assembled.tiles.filter((tile) => tile.kind === 'number-usage');
+    expect(readings.map((tile) => (tile.kind === 'number-usage' ? [tile.stat, tile.usage] : []))).toEqual([
+      ['intensifiers', 'deliberate'], ['sentence-length', 'deliberate'], ['dialogue', 'mixed']
+    ]);
+  });
+
+  it('asks the craft lenses for host-checked quotes and readings that never direct the writer (Slice 4B)', () => {
+    const stock = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.stock);
+    expect(stock).toContain('Familiar is not a fault.');
+    expect(stock).toContain('The host counts the tiers from the beats it finds');
+    expect(stock).toContain('An echo is worth a look, never a finding.');
+    expect(stock).toContain('Never say that a line is copied, borrowed, plagiarized or taken from anywhere');
+    expect(stock).toContain('An echo with a percentage is withheld.');
+    expect(stock).toContain('Never advise stripping, upgrading, replacing or protecting anything.');
+    const rhythm = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.rhythm);
+    expect(rhythm).toContain('Never impersonate Le Guin, never quote her or invent a quotation or page reference, never reproduce her exercises, and never present these categories as her rubric.');
+    expect(rhythm).toContain('The host checks that the two sentences are adjacent in that paragraph; a pair that is not is withheld.');
+    expect(rhythm).toContain('Never equate length with pace');
+    expect(rhythm).toContain('Never score the prose, set an ideal sentence length, or suggest an edit.');
+    const numbers = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.numbers);
+    expect(numbers).toContain('A reading of a figure the task does not list is withheld.');
+    expect(numbers).toContain('Never state a figure, a count or a ratio: the board shows them, and a claim with a number in it other than a ¶ address is withheld.');
+    expect(numbers).toContain('The host checks every quote with the detector that counted the figure');
+    // Every word the prompt forbids, the codec withholds.
+    expect(numbers).toContain('Never tell the writer to fix, cut, trim, reduce, replace or change anything');
+    for (const word of ['fix', 'cut', 'trim', 'reduce', 'replace']) {
+      expect(LIGHTBOX_NUMBERS_DIRECTIVE_WORDS).toContain(word);
+    }
+    for (const word of ['should', 'must', 'consider', 'try']) {
+      expect(numbers).toContain(`"${word}"`);
+      expect(LIGHTBOX_NUMBERS_DIRECTIVE_WORDS).toContain(word);
     }
   });
 

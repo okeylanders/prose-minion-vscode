@@ -41,6 +41,8 @@
  * Every reason is host-owned: none quotes the spark.
  */
 
+import { LIGHTBOX_BARE_DIGIT } from '@/infrastructure/lightbox/LightboxReadingFields';
+
 /** First words (or two-word starts) that make a clause an instruction. Lower case. */
 export const LIGHTBOX_SPARK_IMPERATIVE_OPENERS: readonly string[] = [
   'add', 'avoid', 'begin', 'bring', 'build', 'change', 'check', 'choose', 'clarify', 'consider', 'continue',
@@ -91,8 +93,6 @@ const CLAUSE_BREAK = /[.!?;:]+|\s[-–—]+\s|[–—]+/u;
 /** What may wrap a clause's first word: quotes, brackets, emphasis marks, spaces. */
 const LEADING_MARKS = /^[\s"'“”‘’([{*_]+/u;
 const CLOSING_MARKS = /[\s"'“”‘’)\]}*_]+$/u;
-/** A digit outside a ¶ address. */
-const BARE_DIGIT = /(?<!¶\s?\d*)\d/u;
 
 /** Why the spark cannot be shown as written, or undefined when it can. */
 export function lightboxSparkPhrasingFault(question: string): string | undefined {
@@ -107,7 +107,7 @@ export function lightboxSparkPhrasingFault(question: string): string | undefined
   if (LIGHTBOX_SPARK_DIRECTIVE_PHRASES.some((phrase) => holdsPhrase(folded, phrase))) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.directive;
   }
-  if (BARE_DIGIT.test(text)) {
+  if (LIGHTBOX_BARE_DIGIT.test(text)) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.number;
   }
   return undefined;

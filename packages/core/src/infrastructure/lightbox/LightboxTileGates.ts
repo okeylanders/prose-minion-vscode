@@ -21,15 +21,29 @@
  * - a spark stands on counted support: at least one term it names is in the
  *   text, besides its found quote, so it has paragraph addresses and counts
  *   (Slice 4).
- * Lineage has no rule beyond a found quote: its stances are the reading's
- * claim about a story, decoded strictly (`LightboxStoryCodec`), and nothing
- * in them changes with the text.
+ * - group D (Slice 4B): a familiar phrase is counted in the text and a
+ *   found quote holds it; a tier mix stands on at least
+ *   `LIGHTBOX_STOCK_MINIMUM_BEATS` found beats; a handoff's two sentences
+ *   are adjacent in one paragraph (`LightboxSentencePairs`); a numbers
+ *   reading reads a figure that stands out on the board it is drawn on, and
+ *   keeps only quotes holding an instance of it (`LightboxNumberInstances`).
+ * Lineage, signature phrases, air-locks, echoes and paragraph endings have
+ * no rule beyond a found quote: what they add is the reading's claim,
+ * decoded strictly, and nothing in it changes with the text (an ending
+ * follows its column's text, `LightboxTileCounts`).
  * Every reason is host-owned: none echoes a model's names or words.
  */
 
-import type { LightboxCountedSupport, LightboxReadingTileKind, LightboxVerifiedQuote } from '@messages';
+import type {
+  LightboxCountedSupport,
+  LightboxNumberStatId,
+  LightboxReadingTileKind,
+  LightboxVerifiedQuote
+} from '@messages';
 import { lightboxTextHoldsTerm } from '@/infrastructure/lightbox/LightboxTermCounts';
-import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS } from '@/infrastructure/lightbox/LightboxReadingWire';
+import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS, LIGHTBOX_STOCK_MINIMUM_BEATS } from '@/infrastructure/lightbox/LightboxReadingWire';
+import type { LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
+import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import type { LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 
@@ -61,6 +75,31 @@ export const LIGHTBOX_GATE_REASONS = {
   sparkUncounted: {
     fresh: 'None of the words it stands on is in the chapter, so it has no counted support.',
     carried: 'None of the words it stands on is still in the chapter, so it has no counted support.'
+  },
+  familiarUncounted: {
+    fresh: 'The phrase it names is not in the chapter.',
+    carried: 'The phrase it names is no longer in the chapter.'
+  },
+  familiarUnquoted: 'None of its found quotes holds the phrase it names.',
+  tiersTooFew: {
+    fresh: `Fewer than ${LIGHTBOX_STOCK_MINIMUM_BEATS} of its classified beats were found in the chapter, too few to count a mix.`,
+    carried: `Fewer than ${LIGHTBOX_STOCK_MINIMUM_BEATS} of its classified beats are still in the chapter, too few to count a mix.`
+  },
+  handoffGone: {
+    fresh: 'One of its two sentences was not found in the paragraph it named.',
+    carried: 'One of its two sentences is no longer in the chapter.'
+  },
+  handoffNotAdjacent: {
+    fresh: 'Its two quotes were not found in sentences side by side in one paragraph, so it is not a handoff.',
+    carried: 'Its two quotes no longer stand in sentences side by side in one paragraph.'
+  },
+  numberNotStandout: {
+    fresh: 'It reads a figure the board did not measure as standing out.',
+    carried: 'The figure it reads no longer stands out in the chapter.'
+  },
+  numberNoInstance: {
+    fresh: 'None of its quotes was found holding an instance of the figure it reads.',
+    carried: 'None of its quotes still holds an instance of the figure it reads.'
   }
 } as const;
 
@@ -73,6 +112,12 @@ export interface LightboxGateCandidate {
   fields?: readonly [string, string];
   /** A subtext pair's said line: the quote the verifier found, or `null` when it found none. */
   said?: LightboxVerifiedQuote | null;
+  /** A handoff's adjacent sentences, or why there are none (Slice 4B). */
+  pair?: LightboxSentencePair | 'gone' | 'not-adjacent';
+  /** A numbers reading's figure. */
+  stat?: LightboxNumberStatId;
+  /** A familiar phrase, as named. */
+  phrase?: string;
 }
 
 export interface LightboxGateContext {
@@ -81,6 +126,8 @@ export interface LightboxGateContext {
   drawnFields: ReadonlyMap<string, readonly string[]>;
   /** Where the current text's dialogue stands, for a said line. */
   dialogue: LightboxDialogueIndex;
+  /** The figures that stand out on the board being drawn (Slice 4B). */
+  standouts: LightboxStandoutRows;
 }
 
 export type LightboxGateVerdict =
@@ -95,6 +142,20 @@ export function lightboxFieldKey(name: string): string {
 /** Whether a reading can stand on the board, and a collision's witness when it can. */
 export function lightboxTileGate(candidate: LightboxGateCandidate, context: LightboxGateContext): LightboxGateVerdict {
   const refuse = (reason: string): LightboxGateVerdict => ({ ok: false, reason });
+  if (candidate.kind === 'number-usage') {
+    if (!candidate.stat || !context.standouts.has(candidate.stat)) {
+      return refuse(LIGHTBOX_GATE_REASONS.numberNotStandout[context.phase]);
+    }
+    return candidate.evidence.length > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.numberNoInstance[context.phase]);
+  }
+  if (candidate.kind === 'stock-tiers' && candidate.evidence.length < LIGHTBOX_STOCK_MINIMUM_BEATS) {
+    return refuse(LIGHTBOX_GATE_REASONS.tiersTooFew[context.phase]);
+  }
+  if (candidate.kind === 'handoff' && typeof candidate.pair !== 'object') {
+    return refuse(candidate.pair === 'not-adjacent'
+      ? LIGHTBOX_GATE_REASONS.handoffNotAdjacent[context.phase]
+      : LIGHTBOX_GATE_REASONS.handoffGone[context.phase]);
+  }
   if (candidate.evidence.length === 0) {
     return refuse(LIGHTBOX_GATE_REASONS.noQuote[context.phase]);
   }
@@ -126,6 +187,15 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
     }
     case 'spark':
       return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.sparkUncounted[context.phase]);
+    case 'familiar-phrase': {
+      if (!counted(candidate.support)) {
+        return refuse(LIGHTBOX_GATE_REASONS.familiarUncounted[context.phase]);
+      }
+      const phrase = candidate.phrase ?? '';
+      return candidate.evidence.some((quote) => lightboxTextHoldsTerm(quote.text, phrase))
+        ? { ok: true }
+        : refuse(LIGHTBOX_GATE_REASONS.familiarUnquoted);
+    }
     default:
       return { ok: true };
   }

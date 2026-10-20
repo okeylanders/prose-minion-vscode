@@ -61,6 +61,7 @@ jest.mock('../../../presentation/webview/styles/lightbox/inspector.css', () => (
 jest.mock('../../../presentation/webview/styles/lightbox/readings.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/gravity.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/story.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/lightbox/craft.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
@@ -253,8 +254,8 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     expect(lensCost()).not.toBe(cheapCost);
 
     fireEvent.click(press());
-    await eventually(() => expect(host.runInitial).toHaveBeenCalledTimes(3));
-    expect(host.models).toEqual([EXPENSIVE, EXPENSIVE, EXPENSIVE]);
+    await eventually(() => expect(host.runInitial).toHaveBeenCalledTimes(4));
+    expect(host.models).toEqual([EXPENSIVE, EXPENSIVE, EXPENSIVE, EXPENSIVE]);
     expect(host.sent(MessageType.LIGHTBOX_RUN).map((message) => (message.payload as { model: string }).model)).toEqual([EXPENSIVE]);
     expect(host.posted.some((message) => message.type === MessageType.LIGHTBOX_RUN_PROGRESS && message.payload.phase === 'refused')).toBe(false);
   });
@@ -270,7 +271,7 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     pick('Expensive new model');
     await settle();
     // A lens toggle asks again while the selection saves; the host can only price the model it still has.
-    // Group C's lenses all off (genre, and Slice 4's lineage and Spark), so a press makes two calls.
+    // Group C's lenses all off (genre, and Slice 4's lineage and Spark), so a press makes three calls (A, B and D).
     for (const lens of [/Genre neighborhood/, /^Lineage/, /^Spark/]) {
       fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: lens }));
     }
@@ -283,7 +284,7 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     host.releaseWrites();
     await eventually(() => expect(press().disabled).toBe(false));
     expect(host.answers().at(-1)?.payload).toMatchObject({ estimate: { model: EXPENSIVE } });
-    expect(lensCost()).toMatch(/^2 calls · /);
+    expect(lensCost()).toMatch(/^3 calls · /);
   });
 
   it('withdraws the price on a same-model catalog refresh until the new price is estimated', async () => {
@@ -309,8 +310,8 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     await eventually(() => expect(press().disabled).toBe(false));
     expect(lensCost()).not.toBe(before);
     fireEvent.click(press());
-    await eventually(() => expect(host.runInitial).toHaveBeenCalledTimes(3));
-    expect(host.models).toEqual([CHEAP, CHEAP, CHEAP]);
+    await eventually(() => expect(host.runInitial).toHaveBeenCalledTimes(4));
+    expect(host.models).toEqual([CHEAP, CHEAP, CHEAP, CHEAP]);
     expect(host.posted.some((message) => message.type === MessageType.LIGHTBOX_RUN_PROGRESS && message.payload.phase === 'refused')).toBe(false);
   });
 });

@@ -196,6 +196,7 @@ export { ContextResourceResolver } from '@/infrastructure/context/ContextResourc
 export { LightboxService, type LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
 export { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 export { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+export { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 export {
   AccountBalanceService,
   OpenRouterAccountClient

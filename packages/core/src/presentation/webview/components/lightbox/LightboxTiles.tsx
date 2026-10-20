@@ -7,7 +7,10 @@
  * inside the genre tile, below its neighbors; gravity's collisions and literal
  * set-asides inside the gravity tile, and swatches inside the palette (Slice 3).
  * Lineage and subtext join the grid, and sparks are drawn in a lane of their
- * own under it, with the lane's actions (Slice 4).
+ * own under it, with the lane's actions (Slice 4). Group D's tiles join the
+ * grid (Slice 4B): stock and signature draws its signature phrases,
+ * familiar phrasing, air-locks and echoes inside it, rhythm its handoffs, and
+ * the numbers tile its readings under the measured figures.
  */
 import * as React from 'react';
 import type {
@@ -33,6 +36,15 @@ import { LightboxPalette, LightboxSwatches } from '@components/lightbox/Lightbox
 import { LightboxLineage } from '@components/lightbox/LightboxLineage';
 import { LightboxSubtext } from '@components/lightbox/LightboxSubtext';
 import { LightboxSparkLane, type LightboxSparkBring } from '@components/lightbox/LightboxSparkLane';
+import {
+  LightboxAirLocks,
+  LightboxEchoes,
+  LightboxFamiliarPhrasing,
+  LightboxSignaturePhrases,
+  LightboxStock
+} from '@components/lightbox/LightboxStock';
+import { LightboxHandoffs, LightboxRhythm } from '@components/lightbox/LightboxRhythm';
+import { LightboxNumbers } from '@components/lightbox/LightboxNumbers';
 
 /** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring. */
 export interface LightboxTileActions {
@@ -73,7 +85,15 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   'reader-promise': LightboxReaderPromise,
   subtext: LightboxSubtext,
   lineage: LightboxLineage,
-  spark: LightboxSparkLaneTile
+  spark: LightboxSparkLaneTile,
+  'stock-tiers': LightboxStock,
+  signature: LightboxSignaturePhrases,
+  'familiar-phrase': LightboxFamiliarPhrasing,
+  'air-lock': LightboxAirLocks,
+  echo: LightboxEchoes,
+  'rhythm-endings': LightboxRhythm,
+  handoff: LightboxHandoffs,
+  'number-usage': LightboxNumbers
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -101,14 +121,22 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
 }> = {
   heading: 'headline',
   underRibbon: 'tension-arc',
-  grid: ['motif', 'gravity-field', 'palette-cluster', 'character', 'lineage', 'genre-neighbor', 'voice', 'subtext'],
+  grid: [
+    'motif', 'gravity-field', 'palette-cluster', 'character', 'lineage', 'genre-neighbor', 'voice', 'subtext',
+    'stock-tiers', 'rhythm-endings', 'number-usage'
+  ],
   lane: 'spark',
   /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals. */
   within: {
     'reader-promise': 'genre-neighbor',
     'gravity-collision': 'gravity-field',
     'gravity-literal': 'gravity-field',
-    swatch: 'palette-cluster'
+    swatch: 'palette-cluster',
+    signature: 'stock-tiers',
+    'familiar-phrase': 'stock-tiers',
+    'air-lock': 'stock-tiers',
+    echo: 'stock-tiers',
+    handoff: 'rhythm-endings'
   }
   /* eslint-enable @typescript-eslint/naming-convention */
 };

@@ -129,7 +129,7 @@ describe('LightboxService measured set (D5)', () => {
     expect(board).toEqual(expect.objectContaining({
       boardVersion: 0,
       boardId: 'board-1',
-      readings: ['A', 'B', 'C'].map((group) => ({
+      readings: ['A', 'B', 'C', 'D'].map((group) => ({
         group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []
       }))
     }));
@@ -160,6 +160,22 @@ describe('LightboxService measured set (D5)', () => {
       }
     });
     expect(board.measured.styleFlags.length).toBeGreaterThan(0);
+    // Slice 4B: every standout figure is measured on every board; with no
+    // writer's baseline wired, the board says so instead of inventing one.
+    expect(board.measured.numbers.rows.map((row) => row.stat)).toEqual([
+      'sentence-length', 'dialogue', 'passive-voice', 'being-verbs', 'adverbs', 'intensifiers'
+    ]);
+    expect(board.measured.numbers.rows.find((row) => row.stat === 'dialogue')).toMatchObject({
+      value: stats.dialoguePercentage,
+      range: { min: 40, max: 55, status: 'below' }
+    });
+    expect(board.measured.numbers.baseline).toEqual({ kind: 'absent', note: expect.any(String) });
+    expect(board.paragraphs.map((paragraph) => paragraph.sentenceWords.length))
+      .toEqual(board.paragraphs.map((paragraph) => paragraph.sentences));
+    expect(board.measured.sentences.longest).toEqual({
+      words: Math.max(...board.paragraphs.flatMap((paragraph) => paragraph.sentenceWords)),
+      paragraph: expect.any(Number)
+    });
   });
 
   it('places every counted word and phrase in the paragraphs that hold it', async () => {

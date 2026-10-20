@@ -4,8 +4,9 @@
  * the line that says how many of its quotes were checked and withheld.
  */
 import * as React from 'react';
-import type { LightboxBoard, LightboxReadingTile } from '@messages';
+import type { LightboxBoard, LightboxReadingTile, LightboxRegister } from '@messages';
 import { lightboxLitColumns } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
+import { LIGHTBOX_REGISTER_BADGES } from '@components/lightbox/LightboxTileFrame';
 import { supportLabel } from '@hooks/domain/lightbox/lightboxItems';
 import { pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
@@ -27,6 +28,15 @@ export const LightboxParagraphStrip: React.FC<LightboxParagraphStripProps> = ({ 
     </span>
   );
 };
+
+/**
+ * A register chip for one part of a tile that mixes registers (Slice 4B):
+ * a measured part beside a read one, each chip from the board's own words.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+export const LightboxRegisterChip: React.FC<{ register: LightboxRegister; label?: string }> = ({ register, label }) => (
+  <span className={`pm-lb-reg-chip is-${register}`}>{label ?? LIGHTBOX_REGISTER_BADGES[register]}</span>
+);
 
 /** "3 quotes checked · 1 withheld". */
 export function lightboxEvidenceNote(tile: LightboxReadingTile): string {

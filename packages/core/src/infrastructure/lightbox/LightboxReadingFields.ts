@@ -20,6 +20,12 @@ import {
 
 const B = PROMPT_BUDGETS.lightbox;
 
+/**
+ * A digit outside a ¶ address: a reading that states a number where the
+ * board's counts belong (a spark, Slice 4; a numbers reading, Slice 4B).
+ */
+export const LIGHTBOX_BARE_DIGIT = /(?<!¶\s?\d*)\d/u;
+
 /** A nonblank string within its ceiling, trimmed. */
 export function text(value: unknown, path: string, maximum: number): string {
   boundedStringAt(value, path, maximum, false);

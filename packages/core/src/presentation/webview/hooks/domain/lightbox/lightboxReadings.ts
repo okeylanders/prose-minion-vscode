@@ -159,6 +159,8 @@ export function lightboxWithheldQuoteText(quote: LightboxWithheldQuote): string 
       return 'Too short to anchor anything.';
     case 'no-longer-in-chapter':
       return 'No longer in the chapter: the text changed after this was read, and these words are gone.';
+    case 'no-instance':
+      return 'Found, but it holds no instance of the measured figure, so it cannot show how that figure is used.';
   }
 }
 

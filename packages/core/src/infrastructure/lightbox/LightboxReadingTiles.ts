@@ -10,8 +10,9 @@
  * - a claim left with no found quote is withheld by its title, and each
  *   kind's own rules (a motif recurs, a collision shares a sentence, a
  *   palette's words are in the text, a said line is dialogue, a spark is
- *   counted) run through `LightboxTileGates`, the same rules stale carry
- *   applies (PR #150 F-05);
+ *   counted, a handoff's sentences are adjacent, a numbers reading's quotes
+ *   hold an instance) run through `LightboxTileGates`, the same rules stale
+ *   carry applies (PR #150 F-05);
  * - terms the reading names are counted by the host (the counter), and a
  *   tile's paragraphs are its found quotes' and counted terms' paragraphs,
  *   never a list the model supplied;
@@ -23,6 +24,7 @@ import type {
   LightboxCountedSupport,
   LightboxLensFriction,
   LightboxLensId,
+  LightboxNumberStatId,
   LightboxLensQuoteChecks,
   LightboxReadingTile,
   LightboxReadingTileKind,
@@ -36,6 +38,9 @@ import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTerm
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
 import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryTiles';
+import { assembleNumbersBlock, assembleRhythmBlock, assembleStockBlock } from '@/infrastructure/lightbox/LightboxCraftTiles';
+import { findLightboxSentencePair, type LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
+import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import {
   createLightboxDialogueIndex,
   lightboxSaidLedEvidence,
@@ -63,7 +68,10 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   subtext: 'subtext',
   genre: 'genre-neighbor',
   lineage: 'lineage',
-  spark: 'spark'
+  spark: 'spark',
+  stock: 'stock-tiers',
+  rhythm: 'rhythm-endings',
+  numbers: 'number-usage'
 };
 
 export interface LightboxTileAssemblyContext {
@@ -73,8 +81,10 @@ export interface LightboxTileAssemblyContext {
   mintId: () => string;
   /** The board's measured average words per sentence, set beside the voice's sentence music. */
   averageWordsPerSentence?: number;
-  /** Each ribbon column's key (`lightboxColumnKeys`), kept on the tension arc so its scores can follow their text. */
+  /** Each ribbon column's key (`lightboxColumnKeys`), kept on the tension arc and the endings so they follow their text. */
   columnKeys?: readonly string[];
+  /** The figures that stand out on the board read (Slice 4B): what a numbers reading may name, and its quotes' instance checks. */
+  standouts?: LightboxStandoutRows;
 }
 
 export interface LightboxAssembledGroup {
@@ -121,6 +131,8 @@ export function assembleLightboxGroup(
 interface CheckedEvidence {
   evidence: LightboxVerifiedQuote[];
   withheld: LightboxWithheldQuote[];
+  /** Each quote as found, in input order (undefined where it was not). */
+  found: Array<LightboxVerifiedQuote | undefined>;
 }
 
 /** Claim fields every tile shares; the kind-specific fields are added by each block. */
@@ -138,6 +150,16 @@ export interface LightboxClaimDraft {
   fields?: readonly [string, string];
   /** A subtext pair's said line, checked first and held to the dialogue rule (`LightboxTileGates`). */
   said?: LightboxWireQuote;
+  /** A handoff's two quotes, checked as adjacent sentences of one paragraph (`LightboxSentencePairs`). */
+  pair?: { from: LightboxWireQuote; to: LightboxWireQuote };
+  /** How each of `quotes` is verified, when not plainly (a numbers reading's instance check). */
+  verifyQuote?: (paragraph: number, quote: string) => LightboxQuoteVerdict;
+  /** A numbers reading's figure, for its gate. */
+  stat?: LightboxNumberStatId;
+  /** A familiar phrase, for its gate. */
+  phrase?: string;
+  /** The title a withheld claim is shown by, when the tile's own would show unchecked words as the chapter's. */
+  withheldTitle?: string;
 }
 
 export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
@@ -146,6 +168,9 @@ export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headli
 export interface LightboxAcceptedClaim {
   witness?: LightboxVerifiedQuote;
   said?: LightboxVerifiedQuote;
+  pair?: LightboxSentencePair;
+  /** Each of the draft's `quotes` as found, in order (undefined where it was not). */
+  found: Array<LightboxVerifiedQuote | undefined>;
 }
 
 /** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
@@ -267,6 +292,15 @@ class GroupAssembly implements LightboxClaimAssembler {
       case 'spark':
         assembleSparkBlock(block, this);
         return;
+      case 'stock':
+        assembleStockBlock(block, this);
+        return;
+      case 'rhythm':
+        assembleRhythmBlock(block, this);
+        return;
+      case 'numbers':
+        assembleNumbersBlock(block, this);
+        return;
     }
   }
 
@@ -286,16 +320,24 @@ class GroupAssembly implements LightboxClaimAssembler {
     const saidCheck = draft.said
       ? this.check(draft.lens, [draft.said], (paragraph, quote) => this.dialogue.verifySaid(paragraph, quote))
       : undefined;
-    const rest = this.check(draft.lens, draft.quotes);
+    const pairCheck = draft.pair ? this.checkPair(draft.lens, draft.pair) : undefined;
+    const rest = this.check(draft.lens, draft.quotes, draft.verifyQuote);
     const said = saidCheck ? (saidCheck.evidence[0] ?? null) : undefined;
     const checked: CheckedEvidence = {
-      evidence: lightboxSaidLedEvidence(said, rest.evidence),
-      withheld: [...(saidCheck?.withheld ?? []), ...rest.withheld]
+      evidence: lightboxSaidLedEvidence(said, [...(pairCheck?.evidence ?? []), ...rest.evidence]),
+      withheld: [...(saidCheck?.withheld ?? []), ...(pairCheck?.withheld ?? []), ...rest.withheld],
+      found: rest.found
     };
     const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
     const verdict = lightboxTileGate(
-      { kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields, ...(said !== undefined ? { said } : {}) },
-      { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue }
+      {
+        kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields,
+        ...(said !== undefined ? { said } : {}),
+        ...(pairCheck ? { pair: pairCheck.pair } : {}),
+        ...(draft.stat ? { stat: draft.stat } : {}),
+        ...(draft.phrase !== undefined ? { phrase: draft.phrase } : {})
+      },
+      { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue, standouts: this.context.standouts ?? new Map() }
     );
     if (!verdict.ok) {
       this.withhold(draft, verdict.reason, checked.withheld);
@@ -315,7 +357,12 @@ class GroupAssembly implements LightboxClaimAssembler {
       withheldQuotes: checked.withheld,
       support,
       friction: draft.friction
-    }, { witness: verdict.witness, ...(said ? { said } : {}) });
+    }, {
+      witness: verdict.witness,
+      found: checked.found,
+      ...(said ? { said } : {}),
+      ...(pairCheck && typeof pairCheck.pair === 'object' ? { pair: pairCheck.pair } : {})
+    });
     if (tile.kind === 'gravity-field') {
       this.drawnFields.set(lightboxFieldKey(tile.title), tile.support.map((term) => term.term));
     }
@@ -324,7 +371,29 @@ class GroupAssembly implements LightboxClaimAssembler {
   }
 
   private withhold(draft: LightboxClaimDraft, reason: string, quotes: LightboxWithheldQuote[]): void {
-    this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
+    this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.withheldTitle ?? draft.title, reason, quotes });
+  }
+
+  /** A handoff's two quotes, as one check of two quotes: adjacent sentences of one paragraph, or why not. */
+  private checkPair(
+    lens: LightboxLensId,
+    pair: { from: LightboxWireQuote; to: LightboxWireQuote }
+  ): CheckedEvidence & { pair: LightboxSentencePair | 'gone' | 'not-adjacent' } {
+    const counts = this.checks.get(lens) ?? { checked: 0, withheld: 0 };
+    this.checks.set(lens, counts);
+    const verdict = findLightboxSentencePair(
+      this.context.verifier,
+      { paragraph: pair.from.para, text: pair.from.quote },
+      { paragraph: pair.to.para, text: pair.to.quote }
+    );
+    const withheld = verdict.ok ? [] : verdict.withheld;
+    this.quotesChecked += 2;
+    counts.checked += 2;
+    this.quotesWithheld += withheld.length;
+    counts.withheld += withheld.length;
+    return verdict.ok
+      ? { evidence: [verdict.pair.from, verdict.pair.to], withheld, found: [], pair: verdict.pair }
+      : { evidence: verdict.found, withheld, found: [], pair: verdict.why };
   }
 
   private check(
@@ -334,6 +403,7 @@ class GroupAssembly implements LightboxClaimAssembler {
   ): CheckedEvidence {
     const evidence: LightboxVerifiedQuote[] = [];
     const withheld: LightboxWithheldQuote[] = [];
+    const found: Array<LightboxVerifiedQuote | undefined> = [];
     const seen = new Set<string>();
     const counts = this.checks.get(lens) ?? { checked: 0, withheld: 0 };
     this.checks.set(lens, counts);
@@ -342,6 +412,7 @@ class GroupAssembly implements LightboxClaimAssembler {
       counts.checked += 1;
       const verdict = verify(wire.para, wire.quote);
       if (!verdict.found) {
+        found.push(undefined);
         this.quotesWithheld += 1;
         counts.withheld += 1;
         withheld.push({
@@ -351,18 +422,20 @@ class GroupAssembly implements LightboxClaimAssembler {
         });
         continue;
       }
+      const quote: LightboxVerifiedQuote = {
+        paragraph: verdict.paragraph,
+        text: verdict.text,
+        match: verdict.match,
+        ...('note' in wire ? { note: wire.note } : {})
+      };
+      found.push(quote);
       const key = `${verdict.paragraph}:${verdict.text}`;
       if (seen.has(key)) {
         continue;
       }
       seen.add(key);
-      evidence.push({
-        paragraph: verdict.paragraph,
-        text: verdict.text,
-        match: verdict.match,
-        ...('note' in wire ? { note: wire.note } : {})
-      });
+      evidence.push(quote);
     }
-    return { evidence, withheld };
+    return { evidence, withheld, found };
   }
 }

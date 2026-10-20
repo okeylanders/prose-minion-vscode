@@ -8,7 +8,7 @@
  * carried onto a changed text (`LightboxStaleReadings`) count the same way.
  */
 
-import type { LightboxCountedSupport, LightboxReadingTile, LightboxTensionArcTile } from '@messages';
+import type { LightboxCountedSupport, LightboxReadingTile, LightboxRhythmEndingsTile, LightboxTensionArcTile } from '@messages';
 import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { LIGHTBOX_VOICE_TRAITS } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -52,15 +52,41 @@ export function carryLightboxTension(
   arc: Pick<LightboxTensionArcTile, 'scores' | 'columnKeys'>,
   columnKeys: readonly string[] | undefined
 ): Pick<LightboxTensionArcTile, 'scores' | 'columnKeys'> {
+  const carried = carryLightboxColumnValues(arc.scores, arc.columnKeys, columnKeys);
+  return { scores: carried.values, columnKeys: carried.columnKeys };
+}
+
+/**
+ * How paragraphs end, carried as tension is (Slice 4B): each ending follows
+ * the column whose text it was read on; a changed column has none.
+ */
+export function carryLightboxEndings(
+  tile: Pick<LightboxRhythmEndingsTile, 'endings' | 'columnKeys'>,
+  columnKeys: readonly string[] | undefined
+): Pick<LightboxRhythmEndingsTile, 'endings' | 'columnKeys'> {
+  const carried = carryLightboxColumnValues(tile.endings, tile.columnKeys, columnKeys);
+  return { endings: carried.values, columnKeys: carried.columnKeys };
+}
+
+/**
+ * Values read per ribbon column, moved onto the current columns by each
+ * column's key: a column whose text is new or changed (or whose old values
+ * disagree) gets `null`. Without current keys, the values are unchanged.
+ */
+function carryLightboxColumnValues<T>(
+  values: ReadonlyArray<T | null>,
+  readKeys: readonly string[],
+  columnKeys: readonly string[] | undefined
+): { values: Array<T | null>; columnKeys: string[] } {
   if (!columnKeys) {
-    return { scores: [...arc.scores], columnKeys: [...arc.columnKeys] };
+    return { values: [...values], columnKeys: [...readKeys] };
   }
-  const byKey = new Map<string, number | null>();
-  arc.columnKeys.forEach((key, index) => {
-    const score = arc.scores[index] ?? null;
-    byKey.set(key, byKey.has(key) && byKey.get(key) !== score ? null : score);
+  const byKey = new Map<string, T | null>();
+  readKeys.forEach((key, index) => {
+    const value = values[index] ?? null;
+    byKey.set(key, byKey.has(key) && byKey.get(key) !== value ? null : value);
   });
-  return { scores: columnKeys.map((key) => byKey.get(key) ?? null), columnKeys: [...columnKeys] };
+  return { values: columnKeys.map((key) => byKey.get(key) ?? null), columnKeys: [...columnKeys] };
 }
 
 /**
@@ -133,6 +159,8 @@ export function recountLightboxTile(
     }
     case 'tension-arc':
       return { ...tile, support, ...carryLightboxTension(tile, context.columnKeys) };
+    case 'rhythm-endings':
+      return { ...tile, support, ...carryLightboxEndings(tile, context.columnKeys) };
     case 'headline':
     case 'motif':
     case 'palette-cluster':
@@ -144,6 +172,13 @@ export function recountLightboxTile(
     case 'subtext':
     case 'lineage':
     case 'spark':
+    case 'stock-tiers':
+    case 'signature':
+    case 'familiar-phrase':
+    case 'air-lock':
+    case 'echo':
+    case 'handoff':
+    case 'number-usage':
       return { ...tile, support };
   }
 }

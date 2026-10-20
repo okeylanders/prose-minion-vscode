@@ -54,7 +54,8 @@ const LIGHTBOX_STYLE_IMPORTS = [
   './styles/lightbox/inspector.css',
   './styles/lightbox/readings.css',
   './styles/lightbox/gravity.css',
-  './styles/lightbox/story.css'
+  './styles/lightbox/story.css',
+  './styles/lightbox/craft.css'
 ] as const;
 
 // The Sprint 03 byte-preservation receipt test retired here at the first

@@ -7,11 +7,17 @@
  */
 
 import type {
+  LightboxFamiliarKind,
   LightboxGravityDegree,
+  LightboxHandoffEffect,
   LightboxLensId,
   LightboxLineageSetAside,
   LightboxLineageStanceNote,
-  LightboxReadingGroupId
+  LightboxNumberStatId,
+  LightboxNumberUsage,
+  LightboxParagraphEnding,
+  LightboxReadingGroupId,
+  LightboxStockTier
 } from '@messages';
 
 /** The protocol version every group's JSON carries. */
@@ -56,8 +62,24 @@ export const LIGHTBOX_LENS_KEYS: Readonly<Record<LightboxLensId, string>> = {
   subtext: 'subtext',
   genre: 'genre',
   lineage: 'lineage',
-  spark: 'spark'
+  spark: 'spark',
+  stock: 'stock',
+  rhythm: 'rhythm',
+  numbers: 'numbers'
 };
+
+// ---------------------------------------------------------------------------
+// Group D's closed vocabularies (Slice 4B)
+// ---------------------------------------------------------------------------
+
+/** A tier mix is drawn only when at least this many of its classified beats are found. */
+export const LIGHTBOX_STOCK_MINIMUM_BEATS = 4;
+
+export const LIGHTBOX_STOCK_TIERS: readonly LightboxStockTier[] = ['functional', 'decorated', 'weighted', 'signature'];
+export const LIGHTBOX_FAMILIAR_KINDS: readonly LightboxFamiliarKind[] = ['idiom', 'cliche', 'stock', 'weighted'];
+export const LIGHTBOX_PARAGRAPH_ENDINGS: readonly LightboxParagraphEnding[] = ['lands', 'holds', 'opens'];
+export const LIGHTBOX_HANDOFF_EFFECTS: readonly LightboxHandoffEffect[] = ['continues', 'pause', 'closure', 'loses'];
+export const LIGHTBOX_NUMBER_USAGES: readonly LightboxNumberUsage[] = ['deliberate', 'mixed', 'habit'];
 
 export function lightboxGroupSentinels(group: LightboxReadingGroupId): { start: string; end: string } {
   return { start: `===LIGHTBOX_GROUP_${group}_V1===`, end: `===END_LIGHTBOX_GROUP_${group}_V1===` };
@@ -229,6 +251,81 @@ export interface LightboxDecodedSparkBlock {
   friction: string;
 }
 
+export interface LightboxDecodedBeat extends LightboxWireQuote {
+  tier: LightboxStockTier;
+}
+
+/** A quoted line with a short title and a one-line note: a signature phrase or an air-lock. */
+export interface LightboxDecodedNotedLine {
+  title: string;
+  note: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedFamiliar {
+  /** As it stands in the chapter; the host counts it. */
+  phrase: string;
+  kind: LightboxFamiliarKind;
+  note: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedEcho extends LightboxDecodedNotedLine {
+  /** What the line sounds reminiscent of: the reading's, never checked. */
+  reminiscentOf: string;
+}
+
+export interface LightboxDecodedStockBlock {
+  lens: 'stock';
+  economy: { note: string; beats: LightboxDecodedBeat[] };
+  signature: LightboxDecodedNotedLine[];
+  familiar: LightboxDecodedFamiliar[];
+  airLocks: LightboxDecodedNotedLine[];
+  echoes: LightboxDecodedEcho[];
+  malformed: {
+    beats: LightboxMalformedItem[];
+    signature: LightboxMalformedItem[];
+    familiar: LightboxMalformedItem[];
+    airLocks: LightboxMalformedItem[];
+    echoes: LightboxMalformedItem[];
+  };
+  friction: string;
+}
+
+export interface LightboxDecodedHandoff {
+  from: LightboxWireQuote;
+  to: LightboxWireQuote;
+  carried: string;
+  changes: string;
+  effect: LightboxHandoffEffect;
+}
+
+export interface LightboxDecodedRhythmBlock {
+  lens: 'rhythm';
+  /** Exactly one per ribbon column. */
+  endings: LightboxParagraphEnding[];
+  /** Whether the sentences move toward conclusion: a claim. */
+  movement: string;
+  evidence: LightboxWireQuote[];
+  handoffs: LightboxDecodedHandoff[];
+  malformed: LightboxMalformedItem[];
+  friction: string;
+}
+
+export interface LightboxDecodedNumberReading {
+  stat: LightboxNumberStatId;
+  usage: LightboxNumberUsage;
+  claim: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedNumbersBlock {
+  lens: 'numbers';
+  items: LightboxDecodedNumberReading[];
+  malformed: LightboxMalformedItem[];
+  friction: string;
+}
+
 export type LightboxDecodedBlock =
   | { lens: 'headline'; sentence: string; terms: string[]; evidence: LightboxWireQuote[]; friction: string }
   | { lens: 'motif'; items: LightboxDecodedMotif[]; malformed: LightboxMalformedItem[]; friction: string }
@@ -258,7 +355,10 @@ export type LightboxDecodedBlock =
   | LightboxDecodedPaletteBlock
   | LightboxDecodedLineageBlock
   | LightboxDecodedSubtextBlock
-  | LightboxDecodedSparkBlock;
+  | LightboxDecodedSparkBlock
+  | LightboxDecodedStockBlock
+  | LightboxDecodedRhythmBlock
+  | LightboxDecodedNumbersBlock;
 
 export interface LightboxGroupDecodeContext {
   group: LightboxReadingGroupId;

@@ -54,6 +54,7 @@ import {
 } from '@/application/services/workshop/persistedValidation';
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
+import { decodeNumbersBlock, decodeRhythmBlock, decodeStockBlock } from '@/infrastructure/lightbox/LightboxCraftCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
 /** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
@@ -216,6 +217,12 @@ function decodeBlock(
       return decodeLineageBlock(value, path, friction);
     case 'spark':
       return decodeSparkBlock(value, path, friction);
+    case 'stock':
+      return decodeStockBlock(value, path, friction);
+    case 'rhythm':
+      return decodeRhythmBlock(value, path, friction, context.columnCount);
+    case 'numbers':
+      return decodeNumbersBlock(value, path, friction);
   }
 }
 

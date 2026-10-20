@@ -58,6 +58,8 @@ import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQ
 import { describeLightboxCallFailure, describeLightboxHostFailure } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { readLightboxGroupReply, type LightboxGroupTools } from '@/infrastructure/lightbox/LightboxGroupReply';
 import {
   buildLightboxUserMessage,
@@ -93,8 +95,8 @@ export interface LightboxReadingRunnerOptions {
 
 /** Long enough for a book-sized chapter to be read and answered. */
 const DEFAULT_GROUP_TIMEOUT_MILLISECONDS = 300_000;
-/** Three groups at most, so this runs them all at once. */
-const DEFAULT_GROUP_CONCURRENCY = 3;
+/** One call per reading group at most, so this runs them all at once (four from Slice 4B). */
+const DEFAULT_GROUP_CONCURRENCY = LIGHTBOX_READING_GROUPS.length;
 const PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 const READING_TEMPERATURE = 0.4;
 
@@ -365,7 +367,9 @@ export class LightboxReadingRunner {
         verifier: createLightboxQuoteVerifier(source.material.paragraphs),
         counter: createLightboxTermCounter(source.material.paragraphs),
         // Each ribbon column's text as read, so a stale tension score stays on it (PR #150 F-06).
-        columnKeys: lightboxColumnKeys(source.material.paragraphs, source.material.columns)
+        columnKeys: lightboxColumnKeys(source.material.paragraphs, source.material.columns),
+        // What a numbers reading may name, and how its quotes are checked (Slice 4B).
+        standouts: lightboxStandoutRows(source.material.numbers)
       };
     } catch (error) {
       const failure = describeLightboxHostFailure(error, 'setup');

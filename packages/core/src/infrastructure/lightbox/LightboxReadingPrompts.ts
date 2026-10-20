@@ -8,8 +8,9 @@
  * - **User message:** the chapter first, every paragraph led by its host
  *   marker `⟦¶n⟧`; then the context files, in a labeled section that says
  *   they are never evidence; then the task (the lenses, the frame, the
- *   ribbon columns the tension arc scores, and the counted words the palette
- *   groups). The chapter section is identical
+ *   ribbon columns the tension arc scores and the paragraph endings read,
+ *   the counted words the palette groups, and the measured figures that
+ *   stand out, which the numbers lens reads). The chapter section is identical
  *   for every group of a board, so it is the stable leading content of each
  *   call (open question 1). The system messages differ per group, so a
  *   caching change would also move the lens files behind the chapter.
@@ -19,9 +20,10 @@
  * as a host marker.
  */
 
-import type { LightboxLensId, LightboxReadingGroupId, LightboxRibbonColumn } from '@messages';
+import type { LightboxLensId, LightboxNumberRow, LightboxReadingGroupId, LightboxRibbonColumn } from '@messages';
 import { countWords } from '@/utils/textUtils';
 import { LIGHTBOX_LENS_KEYS, lightboxGroupSentinels } from '@/infrastructure/lightbox/LightboxReadingWire';
+import { lightboxNumberTaskLines } from '@/infrastructure/lightbox/LightboxNumberInstances';
 
 export const LIGHTBOX_PROMPT_FILES = {
   shared: 'lightbox/00-lightbox-shared.md',
@@ -36,13 +38,17 @@ export const LIGHTBOX_PROMPT_FILES = {
     subtext: 'lightbox/22-subtext.md',
     genre: 'lightbox/30-genre.md',
     lineage: 'lightbox/31-lineage.md',
-    spark: 'lightbox/32-spark.md'
+    spark: 'lightbox/32-spark.md',
+    stock: 'lightbox/50-stock-signature.md',
+    rhythm: 'lightbox/51-rhythm-handoffs.md',
+    numbers: 'lightbox/52-numbers.md'
   } satisfies Record<LightboxLensId, string>,
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by the protocol's group ids. */
   examples: {
     A: 'lightbox/40-example-group-a.md',
     B: 'lightbox/41-example-group-b.md',
-    C: 'lightbox/42-example-group-c.md'
+    C: 'lightbox/42-example-group-c.md',
+    D: 'lightbox/43-example-group-d.md'
   } satisfies Record<LightboxReadingGroupId, string>
   /* eslint-enable @typescript-eslint/naming-convention */
 } as const;
@@ -59,7 +65,10 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   subtext: 'subtext',
   genre: 'genre neighborhood',
   lineage: 'lineage',
-  spark: 'spark'
+  spark: 'spark',
+  stock: 'stock and signature',
+  rhythm: 'rhythm and handoffs',
+  numbers: 'the numbers'
 };
 
 /** A context file as the prompt carries it. */
@@ -81,6 +90,8 @@ export interface LightboxReadingMaterial {
    * the counts stay on the board.
    */
   countedWords?: readonly string[];
+  /** The board's measured figures; those that stand out are what the numbers lens reads (Slice 4B). */
+  numbers?: readonly LightboxNumberRow[];
 }
 
 export interface LightboxGroupRequest {
@@ -113,7 +124,7 @@ export function buildLightboxUserMessage(
   if (material.context.length > 0) {
     sections.push(buildLightboxContextSection(material.context));
   }
-  sections.push(buildLightboxTaskSection(request, material.columns, material.countedWords));
+  sections.push(buildLightboxTaskSection(request, material.columns, material.countedWords, material.numbers));
   return { message: sections.join('\n\n'), chapterSection };
 }
 
@@ -146,7 +157,8 @@ export function buildLightboxContextSection(context: readonly LightboxContextMat
 export function buildLightboxTaskSection(
   request: LightboxGroupRequest,
   columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[],
-  countedWords: readonly string[] = []
+  countedWords: readonly string[] = [],
+  numbers: readonly LightboxNumberRow[] = []
 ): string {
   const { start, end } = lightboxGroupSentinels(request.group);
   const keys = request.lenses.map((lens) => `"${LIGHTBOX_LENS_KEYS[lens]}"`).join(', ');
@@ -158,7 +170,10 @@ export function buildLightboxTaskSection(
     `Return one frame between ${start} and ${end}. Its JSON has "version": 1 and exactly these lens keys: ${keys}.`
   ];
   if (request.lenses.includes('tension')) {
-    lines.push(...tensionColumnLines(columns));
+    lines.push(...columnLines('The tension arc scores', columns));
+  }
+  if (request.lenses.includes('rhythm')) {
+    lines.push(...columnLines('The rhythm block gives one ending for each of', columns));
   }
   if (request.lenses.includes('palette') && countedWords.length > 0) {
     lines.push(
@@ -166,16 +181,20 @@ export function buildLightboxTaskSection(
         `build the palette's clusters from them where you can: ${countedWords.map(neutralizeMarkers).join(', ')}.`
     );
   }
+  if (request.lenses.includes('numbers')) {
+    lines.push(...lightboxNumberTaskLines(numbers));
+  }
   return lines.join('\n');
 }
 
-function tensionColumnLines(columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[]): string[] {
+/** The ribbon columns a per-column reading covers (the tension arc, the paragraph endings). */
+function columnLines(lead: string, columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[]): string[] {
   const count = columns.length.toLocaleString('en-US');
   if (columns.every((column) => column.from === column.to)) {
-    return [`The tension arc scores ${count} ribbon columns, one per paragraph: column n is ¶n.`];
+    return [`${lead} ${count} ribbon columns, one per paragraph: column n is ¶n.`];
   }
   return [
-    `The tension arc scores ${count} ribbon columns, each covering a run of paragraphs:`,
+    `${lead} ${count} ribbon columns, each covering a run of paragraphs:`,
     ...columns.map((column, index) => `column ${index + 1}: ¶${column.from}–¶${column.to}`)
   ];
 }
