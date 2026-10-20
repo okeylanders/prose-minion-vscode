@@ -61,6 +61,8 @@ packages/core/src/
 │           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
 │           ├── LightboxHandoffRoute.ts    # Its handoffs to the Workshop (Build as a lens, Bring to Workshop) and the Workshop tray
 │           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files, spark set-aside
+│           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
+│           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -83,7 +85,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -102,12 +104,14 @@ packages/core/src/
             ├── configuration.ts  # Settings, models, tokens
             ├── publishing.ts     # Publishing standards
             ├── accountBalance.ts # OpenRouter account balance
+            ├── configuredResources.ts # The configured-resource catalog shapes the shared project picker browses (Workshop and Lightbox)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
+            ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -173,6 +177,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxSparks.ts       # The spark lane: shown and set aside (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
+│       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
 │           ├── useWorkshopSessions.ts  # Named-session lifecycle
@@ -205,6 +210,27 @@ Patterns and conventions:
   root: at 1240px and below the tab scrolls as one page with the aside under
   the rail, and at 760px everything stacks. See
   [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D1–D2.
+- Shared project picker: "Choose from project" is one component,
+  `components/fulltab/ProjectResourcePickerModal`, with
+  `ProjectResourceAttachFooter` for attach mode. The Workshop's
+  `WorkshopContextSelectorModal` and the Lightbox's `LightboxProjectPicker`
+  are thin wrappers that give it copy, footers and callbacks.
+  - It posts nothing and names no route. Each tab keeps its own routes and
+    names files by catalog key (`ConfiguredResourceRef`, `{ group, path }`),
+    never a path or URI.
+  - Its rules, and the modal chrome's (`WorkshopModalShell`), are the
+    frame's, in `styles/fulltab/modal.css`.
+  - The Workshop's behavior is pinned by `WorkshopContextSelectorParity` and
+    `WorkshopApp.contextSelectorParity`, recorded against the original modal.
+    A change to the shared picker that alters the Workshop fails them; update
+    them only with a deliberate Workshop change.
+  - `boundaries.test.ts` pins its imports.
+  - The Lightbox's routes add two rules the Workshop's do not have (PR #154).
+    Each catalog and search request carries a webview-minted `requestId`
+    the host echoes, and `useLightboxProjectFiles` takes only the answer it
+    still waits for. Catalog rows and context-shelf files carry `fileKey`
+    (`LightboxFileKey`, a session-keyed HMAC of the absolute path), and
+    "attached" compares keys, never display paths.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
   registries; Gesture Playground, Creative Variations, Lexical Gravity, and Show
@@ -291,6 +317,7 @@ useMessageRouter({
 | useAccountBalance | AccountBalanceHandler | OpenRouter account balance |
 | useLightbox | LightboxHandler, LightboxReadingHandler (+ `LightboxService`, `LightboxReadingRunner`) | Lightbox counted board and readings |
 | useLightboxHandoff | LightboxHandoffRoute (in LightboxHandler) | Lightbox handoffs to the Workshop and its tray |
+| useLightboxProjectFiles | LightboxHandler (catalog, search, source) and LightboxReadingHandler (context), through `LightboxProjectFiles` | The Lightbox's project picker |
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 
 **Benefits**:
@@ -1000,8 +1027,14 @@ adding a way to put a source on the Lightbox board:
   newest ticket may adopt a board or publish a refusal.
 - **Before the first await.** Take the ticket when the writer's choice is
   concrete and before anything is awaited, including host work upstream of
-  the handler: Open File in Lightbox takes it before `openTextDocument`, and
-  "Choose file" when the picker returns a file, not when it opens.
+  the handler:
+  - Open File in Lightbox takes it before `openTextDocument`.
+  - The system picker (`LIGHTBOX_PICK_SOURCE_FILE`, the project picker's
+    "Explore project folders…") takes it when the picker returns a file, not
+    when it opens.
+  - Choose from project (`LIGHTBOX_CHOOSE_PROJECT_SOURCE`) takes it when the
+    picked row's message arrives, before the catalog is opened. A payload
+    naming no catalog file takes none.
 - **Host-only tickets.** A host seed passes its ticket as an argument
   (`LightboxPanelProvider.seedSource` → `MessageHandler.seedLightboxSource` →
   `LightboxHandler.seedSource`), never as a message field. The

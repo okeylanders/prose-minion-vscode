@@ -32,11 +32,15 @@ const WORKSHOP_STYLE_IMPORTS = [
 
 /**
  * The shared frame, imported once from the entry point AHEAD of every root, so
- * each tab's own sheets follow it in the cascade. index.css stays last.
+ * each tab's own sheets follow it in the cascade. index.css stays last. The
+ * modal chrome and project picker (modal.css) are the frame's too: the
+ * Workshop and the Lightbox both render them (Lightbox source picker,
+ * 2026-10-20).
  */
 const ENTRY_STYLE_IMPORTS = [
   './styles/fulltab/tokens.css',
   './styles/fulltab/shell.css',
+  './styles/fulltab/modal.css',
   './index.css'
 ] as const;
 
@@ -80,7 +84,7 @@ describe('Workshop stylesheet assembly', () => {
     const source = fs.readFileSync(WEBVIEW_ENTRY, 'utf8');
     expect(cssImports(source)).toEqual([...ENTRY_STYLE_IMPORTS]);
 
-    const lastFrameImport = source.indexOf("import './styles/fulltab/shell.css'");
+    const lastFrameImport = source.indexOf("import './styles/fulltab/modal.css'");
     for (const root of ['./App', './WorkshopApp', './LightboxApp']) {
       const rootImport = source.indexOf(`from '${root}'`);
       expect(rootImport).toBeGreaterThan(lastFrameImport);

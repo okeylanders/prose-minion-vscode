@@ -18,6 +18,7 @@ import { createRoot } from 'react-dom/client';
 // is pinned by workshopStyles.test.ts.
 import './styles/fulltab/tokens.css';
 import './styles/fulltab/shell.css';
+import './styles/fulltab/modal.css';
 import { App } from './App';
 import { WorkshopApp } from './WorkshopApp';
 import { LightboxApp } from './LightboxApp';

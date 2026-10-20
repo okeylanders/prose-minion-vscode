@@ -13,6 +13,7 @@ jest.mock('p-limit', () => ({
 
 import { LightboxReadingHandler } from '@/application/handlers/domain/LightboxReadingHandler';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import { LightboxReadingGroupId, MessageType } from '@/shared/types/messages';
 import {
@@ -33,17 +34,18 @@ async function setup(options: LightboxReadingHostOptions = {}) {
 }
 
 describe('LightboxReadingHandler', () => {
-  it('registers the six reading routes', async () => {
+  it('registers the seven reading routes', async () => {
     const { router } = await setup();
     expect([
       MessageType.LIGHTBOX_SET_LENSES,
       MessageType.LIGHTBOX_RUN,
       MessageType.LIGHTBOX_CANCEL_RUN,
       MessageType.LIGHTBOX_ADD_CONTEXT_FILES,
+      MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT,
       MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE,
       MessageType.LIGHTBOX_SET_SPARK_DISMISSED
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(6);
+    expect(router.handlerCount).toBe(7);
   });
 
   it('answers the lens toggles with the context list and an estimate that leaves off lenses and empty groups out', async () => {
@@ -219,6 +221,7 @@ describe('LightboxReadingHandler', () => {
     const posted: unknown[] = [];
     const bystander = new LightboxReadingHandler(
       quiet.service, quiet.runner, quiet.shelf, {} as TextSourceResolver, { pickFile: jest.fn() },
+      { catalog: quiet.catalog, workspace: { workspaceFolders: () => [] } },
       async (message) => { posted.push(message); }, { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() }
     );
     await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [] });
@@ -233,7 +236,7 @@ describe('LightboxReadingHandler', () => {
     const { route, ofType, shelf, pickFile, setLenses } = await setup();
     await route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
     expect(ofType(MessageType.LIGHTBOX_CONTEXT_FILES).pop()?.payload.files).toEqual([
-      { id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }
+      { id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15, fileKey: lightboxFileKey('/workspace/Notes/cast.md') }
     ]);
     // The webview asks for the estimate when it sees the list change (PR #149 F-03).
     expect(ofType(MessageType.LIGHTBOX_RUN_ESTIMATE)).toEqual([]);

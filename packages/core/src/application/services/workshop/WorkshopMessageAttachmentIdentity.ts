@@ -16,7 +16,7 @@
  * wherever a tile is restaged from its reference.
  */
 
-import type { WorkshopConfiguredResourceRef, WorkshopLightboxTileAttachmentMeta } from '@messages';
+import type { ConfiguredResourceRef, WorkshopLightboxTileAttachmentMeta } from '@messages';
 
 /** The duplicate-guard key's scheme: never a path, never shown. */
 const LIGHTBOX_TILE_SOURCE_SCHEME = 'lightbox-tile:';
@@ -24,7 +24,7 @@ const LIGHTBOX_TILE_SOURCE_SCHEME = 'lightbox-tile:';
 /** What identifies an attachment's source, on a staged input, a pending copy or a sent reference. */
 export interface WorkshopMessageAttachmentSource {
   sourceUri?: string;
-  configuredResource?: WorkshopConfiguredResourceRef;
+  configuredResource?: ConfiguredResourceRef;
   lightboxTile?: Pick<WorkshopLightboxTileAttachmentMeta, 'boardId' | 'tileId'>;
 }
 

@@ -13,6 +13,12 @@
  * the Lightbox, which treats it as the host's confirmation of the model and
  * its prices and asks for a fresh estimate (PR #149 F-03 re-review).
  *
+ * "Choose from project…" and the context list's "Add from project…" open the
+ * shared project picker (2026-10-20) as an overlay inside the frame:
+ * `useLightboxProjectFiles` owns its catalog and routes, and each use's
+ * escape hatch is its own system picker. The picker is on the overlay stack,
+ * so Escape closes it before the pin.
+ *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
  */
@@ -37,9 +43,11 @@ import { LightboxContextList } from '@components/lightbox/LightboxContextList';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
+import { LightboxProjectPicker } from '@components/lightbox/LightboxProjectPicker';
 import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
+import { useLightboxProjectFiles } from '@hooks/domain/useLightboxProjectFiles';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
@@ -61,6 +69,7 @@ export const LightboxApp: React.FC = () => {
   const lightbox = useLightbox({ assistantModel: chrome.modelsSettings.modelSelections.assistant });
   const board = lightbox.board ?? null;
   const handoffs = useLightboxHandoff({ boardId: board?.boardId });
+  const projectFiles = useLightboxProjectFiles();
   const focus = useLightboxFocus({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
@@ -83,10 +92,14 @@ export const LightboxApp: React.FC = () => {
       [MessageType.LIGHTBOX_GROUP_RESULT]: lightbox.handleGroupResult,
       [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles,
       [MessageType.LIGHTBOX_HAND_OFF_RESULT]: handoffs.handleHandOffResult,
-      [MessageType.LIGHTBOX_WORKSHOP_TRAY]: handoffs.handleWorkshopTray
+      [MessageType.LIGHTBOX_WORKSHOP_TRAY]: handoffs.handleWorkshopTray,
+      [MessageType.LIGHTBOX_PROJECT_CATALOG]: projectFiles.handleCatalog,
+      [MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS]: projectFiles.handleSearchResults
     };
   }, [
     chrome,
+    projectFiles.handleCatalog,
+    projectFiles.handleSearchResults,
     lightbox.handleBoard,
     lightbox.handleSourceRefused,
     lightbox.handleRunEstimate,
@@ -157,6 +170,7 @@ export const LightboxApp: React.FC = () => {
   usePersistence({
     ...lightbox.persistedState,
     ...handoffs.persistedState,
+    ...projectFiles.persistedState,
     ...focus.persistedState,
     ...inspector.persistedState,
     ...escape.persistedState,
@@ -177,6 +191,10 @@ export const LightboxApp: React.FC = () => {
     },
     [vscode]
   );
+
+  const { open: openProjectPicker } = projectFiles;
+  const chooseFromProject = React.useCallback(() => openProjectPicker('source'), [openProjectPicker]);
+  const addContextFromProject = React.useCallback(() => openProjectPicker('context'), [openProjectPicker]);
 
   const source = board?.source ?? null;
   const subtitle = source ? (
@@ -217,12 +235,12 @@ export const LightboxApp: React.FC = () => {
             <LightboxSourcePanel
               source={source}
               rereading={lightbox.rereading}
-              onPickFile={lightbox.pickSourceFile}
+              onChooseFromProject={chooseFromProject}
               onRefresh={lightbox.refreshSource}
             />
             <LightboxContextList
               context={lightbox.context}
-              onAdd={lightbox.addContextFile}
+              onAddFromProject={addContextFromProject}
               onRemove={lightbox.removeContextFile}
             />
             <LightboxLensesPanel
@@ -244,7 +262,7 @@ export const LightboxApp: React.FC = () => {
             focus={focus}
             runLine={runLine}
             onFilter={lightbox.setFilter}
-            onPickFile={lightbox.pickSourceFile}
+            onChooseFromProject={chooseFromProject}
             onDismissRefusal={lightbox.dismissRefusal}
             onRun={lightbox.run}
             onStop={lightbox.cancelRun}
@@ -271,6 +289,21 @@ export const LightboxApp: React.FC = () => {
         )
       }}
       onBoundaryError={handleBoundaryError}
-    />
+    >
+      <LightboxProjectPicker
+        picker={projectFiles.openPicker}
+        catalog={projectFiles.catalog}
+        catalogUnreadable={projectFiles.catalogUnreadable}
+        searchResults={projectFiles.searchResults}
+        context={lightbox.context}
+        onSearch={projectFiles.search}
+        onClearSearch={projectFiles.clearSearch}
+        onChooseSource={projectFiles.chooseSource}
+        onExploreSource={lightbox.pickSourceFile}
+        onAddContext={projectFiles.addContext}
+        onExploreContext={lightbox.addContextFile}
+        onClose={projectFiles.close}
+      />
+    </FullTabShell>
   );
 };

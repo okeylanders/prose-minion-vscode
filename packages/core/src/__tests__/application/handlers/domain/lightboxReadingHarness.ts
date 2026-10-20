@@ -8,6 +8,10 @@
  * preparation against a close, a reopen or an input change exactly. No
  * provider is called.
  *
+ * The project picker's catalog is the real WorkshopContextIntakeService over
+ * a stand-in context-path provider (2026-10-20): `addProjectFile` lists a
+ * file and gives the reads its text, so context can be added by catalog key.
+ *
  * Callers mock `p-limit` (ESM) as the other Lightbox tests do.
  */
 
@@ -33,6 +37,9 @@ import {
 } from '@/shared/types/messages';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
+import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
+import type { ContextPathGroup } from '@/shared/types/context';
 
 export const examples = Object.fromEntries(
   (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
@@ -133,12 +140,51 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
       mintToken: () => `run-${++tokens}-token`
     }
   );
-  const shelf = new LightboxContextShelf({ mintId: () => 'ctx-1' });
-  const resolve = jest.fn(async ({ pathText }: { pathText: string }) => ({
-    text: CONTEXT_TEXT,
-    relativePaths: [pathText.replace('/workspace/', '')],
-    displayPath: pathText.replace('/workspace/', '')
-  }));
+  let shelved = 0;
+  const shelf = new LightboxContextShelf({ mintId: () => `ctx-${++shelved}` });
+  // A file's text: a project file's own, or the context note for any other path.
+  const texts = new Map<string, string | Error>();
+  const resolve = jest.fn(async ({ pathText }: { pathText: string }) => {
+    const text = texts.get(pathText) ?? CONTEXT_TEXT;
+    if (text instanceof Error) {
+      throw text;
+    }
+    return { text, relativePaths: [pathText.replace('/workspace/', '')], displayPath: pathText.replace('/workspace/', '') };
+  });
+  const projectFiles: ContextResourceSummary[] = [];
+  const catalog = new WorkshopContextIntakeService(
+    {
+      createProvider: async () => {
+        const listed = [...projectFiles];
+        return {
+          listResources: () => listed,
+          loadResources: async (paths: string[]) => listed
+            .filter((summary) => paths.includes(summary.path))
+            .map((summary) => ({ ...summary, content: String(texts.get(summary.absolutePath) ?? CONTEXT_TEXT) }))
+        };
+      }
+    },
+    createFakeFileSystem(),
+    createFakeWorkspace()
+  );
+  /** List a project file (text, or a read failure); `absolutePath` places it elsewhere. Returns its absolute path. */
+  const addProjectFile = (
+    group: ContextPathGroup,
+    relativePath: string,
+    text: string | Error = CONTEXT_TEXT,
+    absolutePath = `/workspace/${relativePath}`
+  ): string => {
+    texts.set(absolutePath, text);
+    projectFiles.push({
+      group,
+      path: relativePath,
+      label: relativePath,
+      sizeBytes: typeof text === 'string' ? Buffer.byteLength(text) : 1_000,
+      absolutePath,
+      workspaceFolder: 'workspace'
+    });
+    return absolutePath;
+  };
   const pickFile = jest.fn(async () => ({ fsPath: '/workspace/Notes/cast.md', uri: 'file:///workspace/Notes/cast.md' }));
 
   const openTab = (): LightboxReadingTab => {
@@ -150,6 +196,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
       shelf,
       { resolve } as unknown as TextSourceResolver,
       { pickFile },
+      { catalog, workspace: { workspaceFolders: () => [{ path: '/workspace', name: 'workspace' }] } },
       async (message: ExtensionToWebviewMessage) => {
         posted.push(message);
       },
@@ -211,6 +258,9 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
     holdPrompts,
     releasePrompts,
     pickFile,
+    resolve,
+    catalog,
+    addProjectFile,
     board,
     openTab,
     setModel: (next: string) => { model = next; },

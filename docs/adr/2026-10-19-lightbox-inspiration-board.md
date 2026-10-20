@@ -107,6 +107,24 @@ ways in beyond the Command Palette:
   file or re-read (PR #152 F-01). A refusal made without loading takes no
   ticket.
 
+**Choose from project (2026-10-20, the writer's request).** The source
+panel's button, and the board welcome's, is **Choose from project…**. It
+opens the Workshop's "Choose from project" picker, which became a shared
+full-tab component (`components/fulltab/ProjectResourcePickerModal`), in
+single selection:
+- It browses and searches the configured context-path catalog the Workshop's
+  context selector reads, through the Lightbox's own routes (D10).
+- One click boards the file, as "Choose file" did, through the same file
+  source, so Re-read file and the D4 hash check read it like any other.
+- Its "Explore project folders…" is the system picker, the old Choose file.
+- The ticket is taken when the picked row reaches the host, before the
+  catalog is opened.
+- The Context list's **Add from project…** opens the same picker in attach
+  mode (D9), as the Workshop's context panel does.
+
+The Workshop's picker is unchanged: parity witnesses recorded against its
+original modal, and the evidence's before and after shots, match.
+
 The tab does **not** get its own webpack entry. It is a third
 `WebviewSurface`, `'lightbox'`, rendered by a new `LightboxApp` root in the
 existing bundle, per ADR 2026-07-03. The three binary branches on the surface
@@ -340,6 +358,21 @@ chapter: the verifier only searches the chapter's paragraphs, so a quote from
 a context file fails like any other. Context counts toward the D8 fit check
 under the existing `contextFiles` ceiling.
 
+Since 2026-10-20 there are two ways to add context: **Add from project…**
+(the shared picker in attach mode, several files at once) and its "Explore
+project folders…" (the system picker). Both go through
+`LightboxContextIntake` and meet the same rules:
+- a file is not the board's own source;
+- it is readable and not empty;
+- it is not already on the shelf (the same absolute path, whichever way it
+  came);
+- it fits within `PROMPT_BUDGETS.contextFiles.words`, counted after the files
+  added before it.
+
+Every refusal is named in the rail with its reason. An add moves the shelf's
+revision, so a press priced before it is refused and the webview estimates
+again. A test pins that a quote from a file added this way is withheld.
+
 ### D10. Lightbox has its own message domain and host routes
 
 A `LightboxHandler` (`application/handlers/domain/LightboxHandler.ts`) owns
@@ -357,6 +390,39 @@ fit estimates) is built once in `extension.ts` and carried in `CoreServices`.
 Its modules stay under 500 lines each. The webview mirrors the domain with a
 `useLightbox` hook (tripartite interface) and presentation controllers for
 the ribbon focus and the inspector.
+
+**Project files (2026-10-20).** The shared project picker (D1) uses only
+Lightbox routes:
+- `LIGHTBOX_REQUEST_PROJECT_CATALOG` and `LIGHTBOX_SEARCH_PROJECT_CATALOG`
+  (in `LightboxHandler`) answer from the Workshop's configured catalog
+  (`WorkshopContextIntakeService` in `CoreServices`) and its content search
+  (`ConfiguredResourceContentSearch`). They answer with Markdown and
+  plain-text files only; anything else is left out, not shown disabled.
+- `LIGHTBOX_CHOOSE_PROJECT_SOURCE` (in `LightboxHandler`) boards a file.
+- `LIGHTBOX_ADD_PROJECT_CONTEXT` (in `LightboxReadingHandler`) adds context
+  files under the shelf's rules (D9).
+
+The webview names files by catalog key only, `{ group, path }`. The host
+(`LightboxProjectFiles`) finds the key in a fresh catalog and checks that the
+file is text and inside an open workspace folder. Every route is in the
+Lightbox route ledger in `boundaries.test.ts`, and no Lightbox module names a
+`WORKSHOP_*` route.
+
+Two rules came from the PR #154 review:
+- **Answers name their request (F-01).** Each catalog and search request
+  carries a `requestId` the webview mints for that opening and that
+  operation; the host echoes it and ignores a request without one. The
+  webview takes only the answer it is still waiting for. Opening or closing
+  a picker drops every pending answer, and clearing the search drops the
+  pending search, so an answer to a closed opening, an older query or a
+  cleared search never replaces what is on screen.
+- **Identity is the host's (F-02).** Catalog rows and the shelf's files
+  carry `fileKey`, an HMAC of the file's absolute path under a secret drawn
+  once per extension session (`LightboxFileKey`), computed from the same
+  path the shelf dedupes by. The Context picker marks a row attached only
+  when its key is a shelf file's, never by display path, which two workspace
+  folders can share. No absolute path crosses, and choices still name
+  catalog keys only.
 
 ### D11. Handoffs to the Workshop go through the Workshop's own message path
 

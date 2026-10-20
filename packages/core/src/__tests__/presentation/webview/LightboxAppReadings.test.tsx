@@ -230,7 +230,7 @@ describe('LightboxApp readings', () => {
     confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     fromHost(MessageType.LIGHTBOX_CONTEXT_FILES, {
-      files: [{ id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }],
+      files: [{ id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15, fileKey: 'key-cast' }],
       totalWords: 15,
       ceilingWords: 50_000
     });
@@ -239,7 +239,10 @@ describe('LightboxApp readings', () => {
     expect(within(context).getByText(/only the chapter can be quoted/)).not.toBeNull();
     fireEvent.click(within(context).getByRole('button', { name: 'Remove Notes/cast.md' }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, payload: { id: 'ctx-1' } });
-    fireEvent.click(within(context).getByRole('button', { name: 'Add file' }));
+    // "Add from project…" opens the shared picker; its escape hatch is the system picker, as "Add file" was.
+    fireEvent.click(within(context).getByRole('button', { name: 'Add from project…' }));
+    expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG });
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Explore project folders/ }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_ADD_CONTEXT_FILES });
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Genre neighborhood/ }));

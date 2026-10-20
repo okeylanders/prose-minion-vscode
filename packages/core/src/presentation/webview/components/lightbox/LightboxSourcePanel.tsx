@@ -3,8 +3,9 @@
  *
  * Props-only, like the Workshop's ExcerptPanel, but over the Lightbox's own
  * routes: the board's source is not the Workshop's excerpt. It shows what was
- * boarded (path, counts, the opening lines) and offers "Choose file" and,
- * for a file-backed source, "Re-read file".
+ * boarded (path, counts, the opening lines) and offers "Choose from
+ * project…" (the shared project picker, as the Workshop's excerpt has it;
+ * 2026-10-20) and, for a file-backed source, "Re-read file".
  */
 import * as React from 'react';
 import type { LightboxSource } from '@messages';
@@ -14,7 +15,8 @@ import { Icon } from '@components/shared/Icon';
 export interface LightboxSourcePanelProps {
   source: LightboxSource | null;
   rereading: boolean;
-  onPickFile: () => void;
+  /** Opens the project picker. */
+  onChooseFromProject: () => void;
   onRefresh: () => void;
 }
 
@@ -31,7 +33,7 @@ function lineRange(source: LightboxSource): string {
 export const LightboxSourcePanel: React.FC<LightboxSourcePanelProps> = ({
   source,
   rereading,
-  onPickFile,
+  onChooseFromProject,
   onRefresh
 }) => {
   const ceiling = PROMPT_BUDGETS.lightbox.sourceWords.toLocaleString('en-US');
@@ -57,8 +59,8 @@ export const LightboxSourcePanel: React.FC<LightboxSourcePanelProps> = ({
         </>
       ) : (
         <p className="pm-lb-source-empty">
-          No source yet. Choose a file, right-click a chapter and pick <b>Open File in Lightbox</b>, or
-          select a passage and run <b>Open Selection in Lightbox</b>.
+          No source yet. Choose a file from your project, right-click a chapter and pick{' '}
+          <b>Open File in Lightbox</b>, or select a passage and run <b>Open Selection in Lightbox</b>.
         </p>
       )}
       <div className="pm-lb-button-row">
@@ -68,8 +70,8 @@ export const LightboxSourcePanel: React.FC<LightboxSourcePanelProps> = ({
             {rereading ? 'Re-reading…' : 'Re-read file'}
           </button>
         )}
-        <button type="button" className="pm-lb-button is-grow" onClick={onPickFile}>
-          Choose file
+        <button type="button" className="pm-lb-button is-grow" onClick={onChooseFromProject}>
+          Choose from project…
         </button>
       </div>
       <p className="pm-lb-caption">

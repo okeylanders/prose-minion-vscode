@@ -244,7 +244,15 @@ export enum MessageType {
   LIGHTBOX_SET_SPARK_DISMISSED = 'lightbox_set_spark_dismissed',
   // Slice 4: the tiles waiting above the Workshop composer, and the way there
   LIGHTBOX_WORKSHOP_TRAY = 'lightbox_workshop_tray',
-  LIGHTBOX_OPEN_WORKSHOP = 'lightbox_open_workshop'
+  LIGHTBOX_OPEN_WORKSHOP = 'lightbox_open_workshop',
+  // Source picker (2026-10-20): the shared project picker over the configured catalog
+  LIGHTBOX_REQUEST_PROJECT_CATALOG = 'lightbox_request_project_catalog',
+  LIGHTBOX_PROJECT_CATALOG = 'lightbox_project_catalog',
+  LIGHTBOX_SEARCH_PROJECT_CATALOG = 'lightbox_search_project_catalog',
+  LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS = 'lightbox_project_catalog_search_results',
+  LIGHTBOX_CHOOSE_PROJECT_SOURCE = 'lightbox_choose_project_source',
+  // Context from the project picker (2026-10-20); answered by LIGHTBOX_CONTEXT_FILES
+  LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

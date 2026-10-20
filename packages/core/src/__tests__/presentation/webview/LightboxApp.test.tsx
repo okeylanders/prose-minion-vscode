@@ -71,11 +71,12 @@ describe('LightboxApp', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: null, refusal: null });
 
     expect(screen.getByRole('heading', { name: 'Hold a chapter up to the light.' })).not.toBeNull();
-    fireEvent.click(within(screen.getByLabelText('Board')).getByRole('button', { name: 'Choose file' }));
+    fireEvent.click(within(screen.getByLabelText('Board')).getByRole('button', { name: 'Choose from project…' }));
     expect(vscode.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: MessageType.LIGHTBOX_PICK_SOURCE_FILE,
+      type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG,
       source: 'webview.lightbox'
     }));
+    expect(screen.getByRole('dialog', { name: 'Choose from project' })).not.toBeNull();
   });
 
   it('shows the counted board, with readings not yet read and the Read button waiting for its estimate', () => {

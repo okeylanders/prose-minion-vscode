@@ -96,6 +96,8 @@ elsewhere.
 | Low | [The Workshop does not reflow at narrow widths](2026-10-19-workshop-narrow-width-reflow.md) | Identified |
 | Low | [A seed offer the Workshop refuses only times out](2026-10-19-workshop-refused-seed-offer-times-out.md) | Identified |
 | Low | [A carried said line does not follow speech that moved past narration](2026-10-20-lightbox-carried-said-line-moved-speech.md) | Identified |
+| Low | [The shared project picker still leans on Workshop-named seams](2026-10-20-shared-picker-workshop-named-seams.md) (the modal shell's folder, the catalog service's name) | Identified |
+| Low | [The configured catalog lists only one of two same-named files across workspace folders](2026-10-20-context-catalog-cross-root-collapse.md) (older than PR #154; found in its F-02 review) | Identified |
 
 ## Review Guidance
 

@@ -16,11 +16,11 @@ import * as React from 'react';
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import { WorkshopContextSelectorModal } from '@components/workshop/WorkshopContextSelectorModal';
 import {
-  WorkshopContextCatalogEntry,
-  WorkshopContextSearchResultsPayload
+  ConfiguredResourceEntry,
+  ConfiguredResourceSearchResults
 } from '@messages';
 
-const CATALOG: WorkshopContextCatalogEntry[] = [
+const CATALOG: ConfiguredResourceEntry[] = [
   { group: 'characters', path: 'Characters/raven.md', label: 'raven', sizeBytes: 1200 },
   { group: 'characters', path: 'Characters/kayla.md', label: 'kayla', sizeBytes: 900 },
   { group: 'themes', path: 'Themes/echoes.md', label: 'echoes', sizeBytes: 700 }
@@ -105,7 +105,7 @@ describe('WorkshopContextSelectorModal', () => {
   });
 
   it('merges host content matches and narrows with category pills', () => {
-    const searchResults: WorkshopContextSearchResultsPayload = {
+    const searchResults: ConfiguredResourceSearchResults = {
       query: 'raven',
       matches: [{ group: 'themes', path: 'Themes/echoes.md' }],
       bounded: false

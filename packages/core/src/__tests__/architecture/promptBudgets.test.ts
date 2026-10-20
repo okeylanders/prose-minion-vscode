@@ -24,6 +24,8 @@ const NON_PROMPT_LIMITS = new Set([
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
   // So is a Lightbox tile's (Slice 4).
   'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
+  // A Lightbox project picker request's id is a webview-minted correlation id the host echoes (PR #154 F-01).
+  'application/handlers/domain/LightboxProjectFiles.ts:MAX_REQUEST_ID_LENGTH',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',

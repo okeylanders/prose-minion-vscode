@@ -27,9 +27,12 @@ describe('LightboxHandler', () => {
       MessageType.LIGHTBOX_REFRESH_SOURCE,
       MessageType.LIGHTBOX_DISMISS_REFUSAL,
       MessageType.LIGHTBOX_HAND_OFF,
-      MessageType.LIGHTBOX_OPEN_WORKSHOP
+      MessageType.LIGHTBOX_OPEN_WORKSHOP,
+      MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG,
+      MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG,
+      MessageType.LIGHTBOX_CHOOSE_PROJECT_SOURCE
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(7);
+    expect(router.handlerCount).toBe(10);
   });
 
   it('answers a board request with the current board, or null before the first', async () => {

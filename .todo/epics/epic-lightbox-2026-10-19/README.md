@@ -45,6 +45,7 @@ carried into the Workshop.
 | 6 | Model | The **existing assistant model** setting |
 | 7 | Input | **One file or excerpt per board** for now, with a word ceiling (ADR D8) |
 | 8 | Launch entry points (2026-10-20) | **All three**: a Lightbox button beside Workshop in the sidebar, **Open File in Lightbox** in the Explorer and editor context menus, and an editor-title icon, each for **Markdown and plain text** |
+| 9 | Choosing a source and context (2026-10-20) | **The Workshop's "Choose from project" modal**, shared: the source panel opens it to pick one file, and the Context list opens it in attach mode, as the Workshop does |
 
 ## Slices
 
@@ -683,3 +684,95 @@ becomes a file format.
     and [a refused seed offer only times out](../../tech-debt/2026-10-19-workshop-refused-seed-offer-times-out.md)
     (both Low); the [single-quote dialogue](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md)
     item now covers subtext too.
+
+- **2026-10-20. Source and context from the shared project picker.** On
+  `epic/lightbox-source-picker`, from `epic/lightbox` at `59b57b6`. The writer
+  asked: "Can you make the open excerpt trigger the same modal we use in the
+  workshop." The scope later widened to the Context list. See ADR D1, D9 and
+  D10.
+  1. **One picker.** The Workshop's "Choose from project" modal is now
+     `components/fulltab/ProjectResourcePickerModal`, with
+     `ProjectResourceAttachFooter` for attach mode.
+     - `WorkshopContextSelectorModal` wraps it for the attach, excerpt and
+       message modes.
+     - Its catalog contracts are neutral (`messages/configuredResources.ts`),
+       and its rules and the modal chrome's moved to `styles/fulltab/modal.css`.
+     - The content search moved, unchanged, to `ConfiguredResourceContentSearch`.
+     - The Workshop is unchanged: parity witnesses were recorded against the
+       original modal first (57 snapshots of markup, focus, callbacks and
+       posted messages), and the evidence's before and after shots differ by
+       0 pixels.
+  2. **Source.** The source panel's and the welcome's **Choose from project…**
+     open the picker in single selection.
+     - `LIGHTBOX_REQUEST_PROJECT_CATALOG` and `LIGHTBOX_SEARCH_PROJECT_CATALOG`
+       answer from the same catalog and search, Markdown and plain text only.
+       Anything else is left out, not shown disabled.
+     - `LIGHTBOX_CHOOSE_PROJECT_SOURCE` names a catalog key. The host takes the
+       ticket on arrival, before the catalog opens, then resolves the key
+       inside the workspace and boards it as a file source.
+     - "Explore project folders…" is the old system picker.
+     - A file chosen either way is one board: `lightboxSourceKey` compares
+       file URIs by their decoded path.
+  3. **Context.** The Context list's **Add from project…** opens the picker in
+     attach mode, as the Workshop does: the shelf's files show as attached,
+     with the running ~estimate.
+     - `LIGHTBOX_ADD_PROJECT_CONTEXT` goes through `LightboxContextIntake`
+       under the shelf's own rules. A file is refused if it is the board's own
+       source, unreadable, empty, a duplicate by absolute path, or over
+       `PROMPT_BUDGETS.contextFiles.words` counted in order. The rail names
+       every refusal.
+     - An add moves the shelf's revision, so a stale press is refused and the
+       webview re-estimates.
+     - A test pins that a quote from a context file is withheld.
+  4. **Copy.** The empty source card and the welcome name the project route
+     first, then the right-click and selection routes.
+  - **Verification.** Base `59b57b6` → head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 389 suites, 5,516 tests, 2 snapshots | 395 suites, 5,587 tests, 59 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Lint warnings match `59b57b6` per file and per rule.
+    - No live or billable call; the evidence plays the host with a stub model:
+      [`lightbox-source-picker/`](../../../docs/pr-reviews/evidence/lightbox-source-picker/README.md).
+      Its first run found the source panel's two buttons overflowing the
+      rail. `f959b29` wraps them.
+  - **Follow-up:** [the shared picker still leans on Workshop-named seams](../../tech-debt/2026-10-20-shared-picker-workshop-named-seams.md)
+    (Low): the modal shell's folder and the catalog service's name.
+
+- **2026-10-20. Shared project picker: PR #154 review fixes.** Astra's
+  [review](../../../docs/pr-reviews/pr-154-lightbox-shared-project-picker-review.md)
+  of `2cf1f97` requested changes for two Medium findings and one Low note;
+  the author response at its end maps each to commits and tests.
+  1. **F-01, answers correlated.** Catalog and search requests carry a
+     webview-minted `requestId` (per webview, opening and operation) that
+     the host echoes. `useLightboxProjectFiles` takes only the answer still
+     pending; opening, closing and clearing drop pending answers, and a new
+     query takes down the old query's answer and bound note at once.
+  2. **F-02, host file identity.** Catalog rows and shelf files carry
+     `fileKey`, a session-keyed HMAC of the absolute path the shelf dedupes
+     by (`LightboxFileKey`). The Context picker compares keys, so a second
+     workspace folder's same-named file no longer disables the first's row.
+     The resolver's older cross-folder collapse is
+     [recorded](../../tech-debt/2026-10-20-context-catalog-cross-root-collapse.md)
+     (Low).
+  3. **N-01, backdrop evidence.** The harness now takes the Workshop at
+     500 px and records, per shot, that the backdrop is the top element
+     outside the dialog and spans the window: true in all 24 dialog shots.
+  - **Verification.** Reviewed head `2cf1f97` → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 395 suites, 5,587 tests, 59 snapshots | 397 suites, 5,597 tests, 59 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - The ten new tests failed against `2cf1f97`'s sources, each at its
+      behavioral assertion.
+    - The Workshop parity snapshots are unchanged; lint warnings match
+      `59b57b6` per file and per rule.
+    - No live or billable call.

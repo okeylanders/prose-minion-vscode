@@ -10,6 +10,7 @@ import {
 } from '@/infrastructure/lightbox/LightboxReadingState';
 import type { LightboxGroupOutcome } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import { lightboxFileKey } from '@/infrastructure/lightbox/LightboxFileKey';
 import { emptyLightboxReadingGroup, lightboxPlannedCalls } from '@shared/constants/lightbox';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
@@ -110,7 +111,7 @@ describe('LightboxContextShelf', () => {
     const shelf = new LightboxContextShelf({ mintId: () => `c${++id}` });
     expect(shelf.add({ displayPath: 'Notes/cast.md', text: 'Alice is seven.', sourceKey: '/w/cast.md' })).toEqual({
       added: true,
-      file: { id: 'c1', displayPath: 'Notes/cast.md', wordCount: 3 }
+      file: { id: 'c1', displayPath: 'Notes/cast.md', wordCount: 3, fileKey: lightboxFileKey('/w/cast.md') }
     });
     expect(shelf.add({ displayPath: 'Notes/cast.md', text: 'Again.', sourceKey: '/w/cast.md' })).toMatchObject({ added: false });
     expect(shelf.add({ displayPath: 'Notes/empty.md', text: '  ', sourceKey: '/w/empty.md' })).toMatchObject({ added: false });
