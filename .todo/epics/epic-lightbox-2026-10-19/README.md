@@ -45,6 +45,7 @@ carried into the Workshop.
 | 6 | Model | The **existing assistant model** setting |
 | 7 | Input | **One file or excerpt per board** for now, with a word ceiling (ADR D8) |
 | 8 | Launch entry points (2026-10-20) | **All three**: a Lightbox button beside Workshop in the sidebar, **Open File in Lightbox** in the Explorer and editor context menus, and an editor-title icon, each for **Markdown and plain text** |
+| 9 | Choosing a source and context (2026-10-20) | **The Workshop's "Choose from project" modal**, shared: the source panel opens it to pick one file, and the Context list opens it in attach mode, as the Workshop does |
 
 ## Slices
 
@@ -683,3 +684,61 @@ becomes a file format.
     and [a refused seed offer only times out](../../tech-debt/2026-10-19-workshop-refused-seed-offer-times-out.md)
     (both Low); the [single-quote dialogue](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md)
     item now covers subtext too.
+
+- **2026-10-20. Source and context from the shared project picker.** On
+  `epic/lightbox-source-picker`, from `epic/lightbox` at `59b57b6`. The writer
+  asked: "Can you make the open excerpt trigger the same modal we use in the
+  workshop." The scope later widened to the Context list. See ADR D1, D9 and
+  D10.
+  1. **One picker.** The Workshop's "Choose from project" modal is now
+     `components/fulltab/ProjectResourcePickerModal`, with
+     `ProjectResourceAttachFooter` for attach mode.
+     - `WorkshopContextSelectorModal` wraps it for the attach, excerpt and
+       message modes.
+     - Its catalog contracts are neutral (`messages/configuredResources.ts`),
+       and its rules and the modal chrome's moved to `styles/fulltab/modal.css`.
+     - The content search moved, unchanged, to `ConfiguredResourceContentSearch`.
+     - The Workshop is unchanged: parity witnesses were recorded against the
+       original modal first (57 snapshots of markup, focus, callbacks and
+       posted messages), and the evidence's before and after shots differ by
+       0 pixels.
+  2. **Source.** The source panel's and the welcome's **Choose from project…**
+     open the picker in single selection.
+     - `LIGHTBOX_REQUEST_PROJECT_CATALOG` and `LIGHTBOX_SEARCH_PROJECT_CATALOG`
+       answer from the same catalog and search, Markdown and plain text only.
+       Anything else is left out, not shown disabled.
+     - `LIGHTBOX_CHOOSE_PROJECT_SOURCE` names a catalog key. The host takes the
+       ticket on arrival, before the catalog opens, then resolves the key
+       inside the workspace and boards it as a file source.
+     - "Explore project folders…" is the old system picker.
+     - A file chosen either way is one board: `lightboxSourceKey` compares
+       file URIs by their decoded path.
+  3. **Context.** The Context list's **Add from project…** opens the picker in
+     attach mode, as the Workshop does: the shelf's files show as attached,
+     with the running ~estimate.
+     - `LIGHTBOX_ADD_PROJECT_CONTEXT` goes through `LightboxContextIntake`
+       under the shelf's own rules. A file is refused if it is the board's own
+       source, unreadable, empty, a duplicate by absolute path, or over
+       `PROMPT_BUDGETS.contextFiles.words` counted in order. The rail names
+       every refusal.
+     - An add moves the shelf's revision, so a stale press is refused and the
+       webview re-estimates.
+     - A test pins that a quote from a context file is withheld.
+  4. **Copy.** The empty source card and the welcome name the project route
+     first, then the right-click and selection routes.
+  - **Verification.** Base `59b57b6` → head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 389 suites, 5,516 tests, 2 snapshots | 395 suites, 5,587 tests, 59 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Lint warnings match `59b57b6` per file and per rule.
+    - No live or billable call; the evidence plays the host with a stub model:
+      [`lightbox-source-picker/`](../../../docs/pr-reviews/evidence/lightbox-source-picker/README.md).
+      Its first run found the source panel's two buttons overflowing the
+      rail. `f959b29` wraps them.
+  - **Follow-up:** [the shared picker still leans on Workshop-named seams](../../tech-debt/2026-10-20-shared-picker-workshop-named-seams.md)
+    (Low): the modal shell's folder and the catalog service's name.
