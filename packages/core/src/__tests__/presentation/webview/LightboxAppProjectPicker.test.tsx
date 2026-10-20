@@ -47,9 +47,22 @@ const fromHost = (type: MessageType, payload: object) =>
     }));
   });
 
+/** The host's answer to the webview's latest request of `requestType`, echoing that request's id (PR #154 F-01). */
+const answerLatest = (
+  vscode: ReturnType<typeof createMockVSCode>,
+  requestType: MessageType,
+  type: MessageType,
+  payload: object
+) => {
+  const request = vscode.postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === requestType).at(-1);
+  fromHost(type, { ...payload, requestId: request?.payload?.requestId });
+};
+
 describe('LightboxApp Choose from project…', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   const posted = () => vscode.postMessage.mock.calls.map(([message]) => message);
+  const catalogArrives = (payload: object) =>
+    answerLatest(vscode, MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, MessageType.LIGHTBOX_PROJECT_CATALOG, payload);
   const sinceOpen = (from: number) => posted().slice(from).map(({ type, source, payload }) => ({ type, source, payload }));
 
   beforeEach(() => {
@@ -78,13 +91,13 @@ describe('LightboxApp Choose from project…', () => {
     const { from, dialog } = openFromRail();
 
     expect(sinceOpen(from)).toEqual([
-      { type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, source: 'webview.lightbox', payload: {} }
+      { type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, source: 'webview.lightbox', payload: { requestId: expect.any(String) } }
     ]);
     expect(within(dialog()).getByText('Board a source')).not.toBeNull();
     expect(within(dialog()).getByText('Reading your configured resource folders…')).not.toBeNull();
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Close project picker');
 
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
     expect(within(dialog()).getByRole('button', { name: /Chapters & Scenes/ }).textContent).toContain('2 files');
     fireEvent.click(within(dialog()).getByRole('button', { name: /Chapters & Scenes/ }));
     // One pick boards a source: rows are buttons, not checkboxes, and the footer says so.
@@ -95,7 +108,7 @@ describe('LightboxApp Choose from project…', () => {
 
   it('boards a picked row by its catalog key, closes, and returns focus to the button', () => {
     const { button, from, dialog } = openFromRail();
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
 
     fireEvent.click(within(dialog()).getByRole('button', { name: /Chapters & Scenes/ }));
     fireEvent.click(within(dialog()).getByRole('button', { name: /01-down-the-rabbit-hole\.md/ }));
@@ -113,7 +126,7 @@ describe('LightboxApp Choose from project…', () => {
 
   it('searches names here and content at the host, and merges what the host finds', () => {
     const { from, dialog } = openFromRail();
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
 
     fireEvent.change(within(dialog()).getByLabelText('Search configured resources'), { target: { value: 'pool' } });
     act(() => { jest.advanceTimersByTime(500); });
@@ -126,9 +139,9 @@ describe('LightboxApp Choose from project…', () => {
     expect(sinceOpen(from).at(-1)).toEqual({
       type: MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG,
       source: 'webview.lightbox',
-      payload: { query: 'pool' }
+      payload: { requestId: expect.any(String), query: 'pool' }
     });
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS, {
+    answerLatest(vscode, MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS, {
       query: 'pool',
       matches: [{ group: 'characters', path: 'Characters/white-rabbit.md' }],
       bounded: false
@@ -139,14 +152,14 @@ describe('LightboxApp Choose from project…', () => {
 
   it('says when the configured folders could not be read', () => {
     const { dialog } = openFromRail();
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: [], unreadable: true });
+    catalogArrives({ entries: [], unreadable: true });
 
     expect(within(dialog()).getByText('Could not read your configured resource folders. Use Explore below.')).not.toBeNull();
   });
 
   it('sends Explore project folders… to the system picker, and opens from the board\'s welcome too', () => {
     const { from, dialog } = openFromRail({ board: false });
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
 
     fireEvent.click(within(dialog()).getByRole('button', { name: /Explore project folders/ }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -169,7 +182,7 @@ describe('LightboxApp Choose from project…', () => {
     expect(within(inspector).getByRole('heading', { name: 'alice' })).not.toBeNull();
 
     fireEvent.click(within(screen.getByLabelText('Source')).getByRole('button', { name: 'Choose from project…' }));
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
     fireEvent.keyDown(window, { key: 'Escape' });
     await act(async () => { await Promise.resolve(); });
 
@@ -182,7 +195,7 @@ describe('LightboxApp Choose from project…', () => {
 
   it('opens fresh each time: the last catalog is not shown as the current one', () => {
     const { dialog } = openFromRail();
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Close project picker' }));
 
     fireEvent.click(within(screen.getByLabelText('Source')).getByRole('button', { name: 'Choose from project…' }));
@@ -193,6 +206,8 @@ describe('LightboxApp Choose from project…', () => {
 describe('LightboxApp context: Add from project…', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   const posted = () => vscode.postMessage.mock.calls.map(([message]) => message);
+  const catalogArrives = (payload: object) =>
+    answerLatest(vscode, MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, MessageType.LIGHTBOX_PROJECT_CATALOG, payload);
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -216,7 +231,7 @@ describe('LightboxApp context: Add from project…', () => {
     });
     const from = posted().length;
     fireEvent.click(within(screen.getByLabelText('Context')).getByRole('button', { name: 'Add from project…' }));
-    fromHost(MessageType.LIGHTBOX_PROJECT_CATALOG, { entries: CATALOG });
+    catalogArrives({ entries: CATALOG });
     return { from, dialog: () => screen.getByRole('dialog', { name: 'Choose from project' }) };
   }
 

@@ -34,12 +34,14 @@
  * Choose from project (2026-10-20). The source panel opens the shared
  * project picker. `LIGHTBOX_REQUEST_PROJECT_CATALOG` and
  * `LIGHTBOX_SEARCH_PROJECT_CATALOG` answer from the configured catalog,
- * Markdown and plain text only (`LightboxProjectFiles`). A row picked
- * arrives as `LIGHTBOX_CHOOSE_PROJECT_SOURCE` naming its catalog key: the
- * writer's choice is concrete, so the ticket is taken first, before the
- * catalog is opened, and the file is resolved inside the workspace and
- * boarded under it like any picked file. The picker's "Explore project
- * folders…" is `LIGHTBOX_PICK_SOURCE_FILE`.
+ * Markdown and plain text only (`LightboxProjectFiles`), each answer
+ * echoing its request's id so the webview drops the ones it no longer waits
+ * for (PR #154 F-01). A row picked arrives as
+ * `LIGHTBOX_CHOOSE_PROJECT_SOURCE` naming its catalog key: the writer's
+ * choice is concrete, so the ticket is taken first, before the catalog is
+ * opened, and the file is resolved inside the workspace and boarded under it
+ * like any picked file. The picker's "Explore project folders…" is
+ * `LIGHTBOX_PICK_SOURCE_FILE`.
  *
  * Handoffs (Slices 3 and 4, D11). `LIGHTBOX_HAND_OFF` names a borrowed field
  * or a reading tile on the board the webview shows, and `LIGHTBOX_OPEN_WORKSHOP`
@@ -256,26 +258,26 @@ export class LightboxHandler {
     });
   }
 
-  /** The project picker opened: answer with the readable files in the configured catalog. */
-  async handleRequestProjectCatalog(_message: LightboxRequestProjectCatalogMessage): Promise<void> {
+  /** The project picker opened: answer with the readable files in the configured catalog, under the request's id. */
+  async handleRequestProjectCatalog(message: LightboxRequestProjectCatalogMessage): Promise<void> {
     this.subscribe();
-    const payload = await this.projectFiles.catalog();
-    if (this.disposed) {
+    const payload = await this.projectFiles.catalogReply(message.payload);
+    if (!payload || this.disposed) {
       return;
     }
-    const message: LightboxProjectCatalogMessage = {
+    const reply: LightboxProjectCatalogMessage = {
       type: MessageType.LIGHTBOX_PROJECT_CATALOG,
       source: SOURCE,
       payload,
       timestamp: Date.now()
     };
-    void this.postMessage(message);
+    void this.postMessage(reply);
   }
 
-  /** "Names + content": the readable files whose text holds the query. */
+  /** "Names + content": the readable files whose text holds the query, under the request's id. */
   async handleSearchProjectCatalog(message: LightboxSearchProjectCatalogMessage): Promise<void> {
     this.subscribe();
-    const payload = await this.projectFiles.search(message.payload?.query);
+    const payload = await this.projectFiles.searchReply(message.payload);
     if (!payload || this.disposed) {
       return;
     }

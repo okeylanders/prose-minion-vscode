@@ -163,7 +163,12 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
   };
 
   const openPanel = (
-    options: { handOff?: LightboxWorkshopHandoffPort; workshop?: LightboxWorkshopPorts } = {}
+    options: {
+      handOff?: LightboxWorkshopHandoffPort;
+      workshop?: LightboxWorkshopPorts;
+      /** Hears each message as the handler posts it (a webview transport, in a webview test). */
+      onPost?: (message: ExtensionToWebviewMessage) => void;
+    } = {}
   ): LightboxPanel => {
     const posted: ExtensionToWebviewMessage[] = [];
     const log = { appendLine: jest.fn() };
@@ -174,6 +179,7 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
       { catalog, workspace: { workspaceFolders } },
       async (message: ExtensionToWebviewMessage) => {
         posted.push(message);
+        options.onPost?.(message);
       },
       log as never,
       options.handOff,
@@ -207,12 +213,16 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
     relativePath
   });
 
-  /** Hold the next catalog open until the test releases it. */
+  /**
+   * Hold the next catalog open until the test releases it, lists what the
+   * project holds then (or `listing`, a late answer with other files), or
+   * fails it.
+   */
   const holdCatalog = () => {
-    const opened = deferred<void>();
+    const opened = deferred<ContextResourceSummary[] | undefined>();
     openProvider.mockImplementationOnce(async () => {
-      await opened.promise;
-      const listed = [...projectFiles];
+      const listing = await opened.promise;
+      const listed = listing ?? [...projectFiles];
       return {
         listResources: () => listed,
         loadResources: async (paths: string[]) => Promise.all(
@@ -222,7 +232,19 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
         )
       };
     });
-    return { release: () => opened.resolve() };
+    return {
+      release: (listing?: ContextResourceSummary[]) => opened.resolve(listing),
+      fail: (error = new Error('The context paths could not be read')) => opened.reject(error)
+    };
+  };
+  /** What the catalog lists now, to hand a held catalog later as its late answer. */
+  const projectListing = (): ContextResourceSummary[] => projectFiles.map((summary) => ({ ...summary }));
+  /** Take a file out of the project, as a writer deleting or moving it would. */
+  const removeProjectFile = (relativePath: string): void => {
+    const index = projectFiles.findIndex((summary) => summary.path === relativePath);
+    if (index >= 0) {
+      projectFiles.splice(index, 1);
+    }
   };
 
   return {
@@ -239,6 +261,8 @@ export function createLightboxHost(options: { enrich?: jest.Mock } = {}) {
     workspaceFolders,
     addProjectFile,
     holdCatalog,
+    projectListing,
+    removeProjectFile,
     /** Every later catalog open fails, as an unreadable settings folder would. */
     failCatalog: (error = new Error('The context paths could not be read')) => {
       catalogFailure.error = error;

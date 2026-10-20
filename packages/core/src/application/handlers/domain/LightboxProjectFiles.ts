@@ -18,6 +18,10 @@
  *   does not list is refused, and checks the file is text and inside an open
  *   workspace folder (`isPathWithinRoot`) before handing back where to read
  *   it. The reader (TextSourceResolver) checks containment again.
+ * - **Answers name their request.** A catalog or search request carries the
+ *   `requestId` the webview minted for it, and its answer echoes that id
+ *   (PR #154 F-01), so the webview can drop an answer it no longer waits
+ *   for. A request with no id is ignored: nothing could claim its answer.
  *
  * Nothing here posts, takes a source-request ticket or touches the board:
  * the handlers that own those do. Logs name paths and counts, never text.
@@ -35,7 +39,8 @@ import type {
   ConfiguredResourceEntry,
   ConfiguredResourceRef,
   ConfiguredResourceSearchResults,
-  LightboxProjectCatalogPayload
+  LightboxProjectCatalogPayload,
+  LightboxProjectCatalogSearchResultsPayload
 } from '@messages';
 
 /** What the Lightbox reads its project files through, from the composition root. */
@@ -66,6 +71,11 @@ export type LightboxProjectFileResolution =
   | { kind: 'refused'; refusal: LightboxProjectFileRefusal };
 
 const LOG = '[LightboxProjectFiles]';
+/** The longest request id echoed back; the webview's are far shorter. */
+const MAX_REQUEST_ID_LENGTH = 200;
+
+/** The catalog as listed, before it is paired with the request it answers. */
+type LightboxProjectCatalogListing = Omit<LightboxProjectCatalogPayload, 'requestId'>;
 
 /** The catalog key a webview payload names, or undefined when it names none. */
 export function lightboxProjectFileRef(payload: unknown): ConfiguredResourceRef | undefined {
@@ -87,8 +97,21 @@ export class LightboxProjectFiles {
     private readonly outputChannel: LogSink
   ) {}
 
+  /** The answer to a catalog request, under its id; undefined for a request with none. */
+  async catalogReply(request: unknown): Promise<LightboxProjectCatalogPayload | undefined> {
+    const requestId = this.requestIdOf(request, 'catalog');
+    return requestId ? { ...(await this.catalog()), requestId } : undefined;
+  }
+
+  /** The answer to a content search, under its id; undefined for a request with no id or query, or a failure. */
+  async searchReply(request: unknown): Promise<LightboxProjectCatalogSearchResultsPayload | undefined> {
+    const requestId = this.requestIdOf(request, 'search');
+    const results = requestId ? await this.search((request as { query?: unknown }).query) : undefined;
+    return results && requestId ? { ...results, requestId } : undefined;
+  }
+
   /** The readable files, as the picker browses them; empty and `unreadable` when the folders could not be read. */
-  async catalog(): Promise<LightboxProjectCatalogPayload> {
+  private async catalog(): Promise<LightboxProjectCatalogListing> {
     let entries: ConfiguredResourceEntry[];
     let left = 0;
     try {
@@ -107,7 +130,7 @@ export class LightboxProjectFiles {
   }
 
   /** "Names + content": the readable files whose text holds `query`; undefined for an empty query or a failure. */
-  async search(query: unknown): Promise<ConfiguredResourceSearchResults | undefined> {
+  private async search(query: unknown): Promise<ConfiguredResourceSearchResults | undefined> {
     if (typeof query !== 'string' || query.trim().length === 0) {
       return undefined;
     }
@@ -169,6 +192,16 @@ export class LightboxProjectFiles {
         displayPath: summary.path
       }
     };
+  }
+
+  /** The id a request carries for its answer to echo, or undefined (logged) when it carries none. */
+  private requestIdOf(request: unknown, what: 'catalog' | 'search'): string | undefined {
+    const requestId = (request as { requestId?: unknown } | undefined)?.requestId;
+    if (typeof requestId === 'string' && requestId.length > 0 && requestId.length <= MAX_REQUEST_ID_LENGTH) {
+      return requestId;
+    }
+    this.outputChannel.appendLine(`${LOG} Ignored a ${what} request with no request id`);
+    return undefined;
   }
 }
 

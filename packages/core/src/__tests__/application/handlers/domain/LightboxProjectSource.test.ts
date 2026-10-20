@@ -47,10 +47,11 @@ describe('Lightbox Choose from project: the catalog', () => {
     host.addProjectFile('general', 'References/notes.markdown', 'A note.');
     const panel = host.openPanel();
 
-    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG);
+    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'catalog-1' });
 
     const [catalog] = payloadsOf<LightboxProjectCatalogPayload>(panel.posted, MessageType.LIGHTBOX_PROJECT_CATALOG);
     expect(catalog).toEqual({
+      requestId: 'catalog-1',
       entries: [
         expect.objectContaining({ group: 'chapters', path: 'Chapters/01-down-the-rabbit-hole.md', label: '01-down-the-rabbit-hole' }),
         expect.objectContaining({ group: 'characters', path: 'Characters/white-rabbit.txt' }),
@@ -70,9 +71,10 @@ describe('Lightbox Choose from project: the catalog', () => {
     host.failCatalog();
     const panel = host.openPanel();
 
-    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG);
+    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'catalog-1' });
 
-    expect(payloadsOf(panel.posted, MessageType.LIGHTBOX_PROJECT_CATALOG)).toEqual([{ entries: [], unreadable: true }]);
+    expect(payloadsOf(panel.posted, MessageType.LIGHTBOX_PROJECT_CATALOG))
+      .toEqual([{ requestId: 'catalog-1', entries: [], unreadable: true }]);
     expect(panel.logged()).toContain('Could not read the configured resource catalog');
   });
 
@@ -83,11 +85,12 @@ describe('Lightbox Choose from project: the catalog', () => {
     host.addProjectFile('general', 'References/rabbit.png', 'a White Rabbit with pink eyes');
     const panel = host.openPanel();
 
-    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { query: '  White Rabbit ' });
-    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { query: '   ' });
+    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { requestId: 'search-1', query: '  White Rabbit ' });
+    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { requestId: 'search-2', query: '   ' });
 
     expect(payloadsOf<ConfiguredResourceSearchResults>(panel.posted, MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS))
       .toEqual([{
+        requestId: 'search-1',
         query: 'White Rabbit',
         matches: [{ group: 'chapters', path: 'Chapters/01-down-the-rabbit-hole.md' }],
         bounded: false
@@ -100,12 +103,37 @@ describe('Lightbox Choose from project: the catalog', () => {
     const panel = host.openPanel();
     const catalog = host.holdCatalog();
 
-    const request = panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG);
+    const request = panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'catalog-1' });
     panel.dispose();
     catalog.release();
     await request;
 
     expect(panel.posted).toEqual([]);
+  });
+
+  it('answers each request under its own id, as sent, and ignores a request that carries none (PR #154 F-01)', async () => {
+    const host = createLightboxHost();
+    host.addProjectFile('characters', 'Characters/cheshire-cat.md', 'A grin without a cat.');
+    const panel = host.openPanel();
+    const first = host.holdCatalog();
+
+    const older = panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'opening-1:catalog' });
+    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'opening-2:catalog' });
+    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { requestId: 'opening-2:search', query: 'grin' });
+    first.release();
+    await older;
+    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG);
+    await panel.route(MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG, { requestId: 'x'.repeat(201) });
+    await panel.route(MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG, { query: 'grin' });
+
+    // The host answers in the order its reads finish; the ids are what tell the webview which is which.
+    expect(panel.posted.map(({ type, payload }) => [type, (payload as { requestId?: string }).requestId])).toEqual([
+      [MessageType.LIGHTBOX_PROJECT_CATALOG, 'opening-2:catalog'],
+      [MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS, 'opening-2:search'],
+      [MessageType.LIGHTBOX_PROJECT_CATALOG, 'opening-1:catalog']
+    ]);
+    expect(panel.logged()).toContain('[LightboxProjectFiles] Ignored a catalog request with no request id');
+    expect(panel.logged()).toContain('[LightboxProjectFiles] Ignored a search request with no request id');
   });
 });
 

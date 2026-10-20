@@ -10,6 +10,12 @@
  * path or URI the host would trust. The host finds the key in a fresh
  * catalog, checks the file is text and inside an open workspace folder, and
  * reads it from there.
+ *
+ * Every catalog and search request carries a `requestId` the webview mints
+ * for that opening and that operation, and the host echoes it on the answer
+ * (PR #154 F-01). The webview takes an answer only when its id is the one it
+ * is still waiting for, so an answer to a closed opening, an older query or
+ * a cleared search is dropped without touching the one on screen.
  */
 
 import { MessageEnvelope, MessageType } from './base';
@@ -20,12 +26,24 @@ import type {
   ConfiguredResourceSearchResults
 } from './configuredResources';
 
-/** The picker opened: send the project's readable files. Zero payload. */
-export interface LightboxRequestProjectCatalogMessage extends MessageEnvelope<Record<string, never>> {
+/**
+ * Pairs a catalog or search request with its answer (PR #154 F-01). The
+ * webview mints a fresh id per opening and per operation; the host echoes it
+ * unchanged, and ignores a request that carries none.
+ */
+export interface LightboxProjectRequestCorrelation {
+  requestId: string;
+}
+
+/** The picker opened: send the project's readable files. */
+export type LightboxRequestProjectCatalogPayload = LightboxProjectRequestCorrelation;
+
+export interface LightboxRequestProjectCatalogMessage extends MessageEnvelope<LightboxRequestProjectCatalogPayload> {
   type: MessageType.LIGHTBOX_REQUEST_PROJECT_CATALOG;
 }
 
-export interface LightboxProjectCatalogPayload extends ConfiguredResourceCatalogPayload {
+export interface LightboxProjectCatalogPayload
+  extends ConfiguredResourceCatalogPayload, LightboxProjectRequestCorrelation {
   /** The configured folders could not be read; `entries` is empty. */
   unreadable?: boolean;
 }
@@ -35,12 +53,16 @@ export interface LightboxProjectCatalogMessage extends MessageEnvelope<LightboxP
 }
 
 /** "Names + content": search the readable files' text. */
-export interface LightboxSearchProjectCatalogMessage extends MessageEnvelope<ConfiguredResourceSearchPayload> {
+export type LightboxSearchProjectCatalogPayload = ConfiguredResourceSearchPayload & LightboxProjectRequestCorrelation;
+
+export interface LightboxSearchProjectCatalogMessage extends MessageEnvelope<LightboxSearchProjectCatalogPayload> {
   type: MessageType.LIGHTBOX_SEARCH_PROJECT_CATALOG;
 }
 
+export type LightboxProjectCatalogSearchResultsPayload = ConfiguredResourceSearchResults & LightboxProjectRequestCorrelation;
+
 export interface LightboxProjectCatalogSearchResultsMessage
-  extends MessageEnvelope<ConfiguredResourceSearchResults> {
+  extends MessageEnvelope<LightboxProjectCatalogSearchResultsPayload> {
   type: MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS;
 }
 
