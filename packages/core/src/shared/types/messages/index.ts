@@ -114,6 +114,7 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  OpenLightboxMessage,
   OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
   StartupNoticeDataMessage,
@@ -300,6 +301,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | OpenLightboxMessage
   | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
   | RequestDictionaryHistoryMessage

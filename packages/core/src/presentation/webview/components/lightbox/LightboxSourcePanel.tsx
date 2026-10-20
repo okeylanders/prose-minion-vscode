@@ -57,8 +57,8 @@ export const LightboxSourcePanel: React.FC<LightboxSourcePanelProps> = ({
         </>
       ) : (
         <p className="pm-lb-source-empty">
-          No source yet. Choose a file, or select a passage in the editor and run{' '}
-          <b>Open Selection in Lightbox</b>.
+          No source yet. Choose a file, right-click a chapter and pick <b>Open File in Lightbox</b>, or
+          select a passage and run <b>Open Selection in Lightbox</b>.
         </p>
       )}
       <div className="pm-lb-button-row">

@@ -193,7 +193,7 @@ export { StandardsService } from '@services/resources/StandardsService';
 export { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 export { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 export { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
-export { LightboxService } from '@/infrastructure/lightbox/LightboxService';
+export { LightboxService, type LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
 export { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 export { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 export {

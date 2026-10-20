@@ -49,6 +49,7 @@ describe('UIHandler', () => {
         MessageType.OPEN_RESOURCE,
         MessageType.REQUEST_SELECTION,
         MessageType.OPEN_WORKSHOP,
+        MessageType.OPEN_LIGHTBOX,
         MessageType.OPEN_ASSISTANT_SETTINGS,
         MessageType.REQUEST_STARTUP_NOTICE,
         MessageType.DISMISS_STARTUP_NOTICE
@@ -59,9 +60,9 @@ describe('UIHandler', () => {
       });
     });
 
-    it('should register at least 4 routes', () => {
+    it('should register exactly 11 routes', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(10);
+      expect(router.handlerCount).toBe(11);
     });
   });
 
@@ -347,6 +348,56 @@ describe('UIHandler', () => {
           payload: expect.objectContaining({
             source: 'ui.workshop',
             message: 'Workshop is not available from this surface.'
+          })
+        })
+      );
+    });
+  });
+
+  describe('open_lightbox', () => {
+    it('delegates to the injected Lightbox UI action', async () => {
+      const openLightbox = jest.fn();
+      const openWorkshop = jest.fn();
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState(),
+        { openWorkshop, openLightbox }
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_LIGHTBOX,
+        source: 'webview.analysis.tab',
+        payload: {},
+        timestamp: 0,
+      } as any);
+
+      expect(openLightbox).toHaveBeenCalledTimes(1);
+      expect(openWorkshop).not.toHaveBeenCalled();
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('reports a ui.lightbox error when no Lightbox action is available', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_LIGHTBOX,
+        source: 'webview.analysis.tab',
+        payload: {},
+        timestamp: 0,
+      } as any);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MessageType.ERROR,
+          payload: expect.objectContaining({
+            source: 'ui.lightbox',
+            message: 'Lightbox is not available from this surface.'
           })
         })
       );

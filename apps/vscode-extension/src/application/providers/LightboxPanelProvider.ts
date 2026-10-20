@@ -15,15 +15,18 @@
  * Boards, the standing refusal and source-request ownership live in the
  * shared LightboxService inside that bundle, so closing and reopening the
  * panel serves the current outcome again (D12), and a request still pending
- * when the panel closed lands in the new one (PR #148 F-01).
+ * when the panel closed lands in the new one (PR #148 F-01). That includes a
+ * file launch whose document was still loading: closing the tab is not a
+ * source choice, so the launch opens the Lightbox when it loads, unless a
+ * newer source was chosen meanwhile (PR #152 F-01).
  */
 
 import * as vscode from 'vscode';
 // All core symbols via the public barrel (ADR 2026-06-16 monorepo boundary).
 import {
   CoreServices,
-  LightboxSetSourceMessage,
   LightboxSetSourcePayload,
+  LightboxSourceTicket,
   MessageHandler,
   MessageType,
   Platform,
@@ -167,23 +170,32 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
 
   /**
    * Board a selection or a file from outside the webview (the editor
-   * command). Opens or reveals the panel, then routes a synthetic
-   * LIGHTBOX_SET_SOURCE through the panel's OWN MessageHandler, the same
-   * path a webview request takes (the Workshop's `seedExcerpt` pattern). If
-   * the webview is still booting, the outcome posted now may be dropped; its
-   * mount-time LIGHTBOX_REQUEST_BOARD then reads the shared service's current
-   * outcome, which keeps a refusal (over-ceiling, empty, unsaved) until the
-   * writer dismisses it as well as the latest board (PR #148 F-02).
+   * commands), under `ticket`: the source request Open File in Lightbox took
+   * from the shared service when the writer chose the file, before VS Code
+   * loaded it (PR #152 F-01). A selection is chosen now, so by default the
+   * request is taken now. When a newer source was chosen since the ticket
+   * was taken, nothing is opened, revealed or sent, and this returns false.
+   *
+   * Otherwise it opens or reveals the panel and boards through the panel's
+   * OWN MessageHandler, into the same LightboxHandler code a webview's
+   * LIGHTBOX_SET_SOURCE reaches (the Workshop's `seedExcerpt` pattern). The
+   * ticket is passed as an argument, never in a message, so no webview can
+   * name one. If the webview is still booting, the outcome posted now may be
+   * dropped; its mount-time LIGHTBOX_REQUEST_BOARD then reads the shared
+   * service's current outcome, which keeps a refusal (over-ceiling, empty,
+   * unsaved) until the writer dismisses it as well as the latest board (PR
+   * #148 F-02).
    */
-  public seedSource(payload: LightboxSetSourcePayload): void {
+  public seedSource(
+    payload: LightboxSetSourcePayload,
+    ticket: LightboxSourceTicket = this.coreServices.lightboxService.beginSourceRequest()
+  ): boolean {
+    if (!this.coreServices.lightboxService.isCurrentRequest(ticket)) {
+      return false;
+    }
     this.openOrReveal();
-    const message: LightboxSetSourceMessage = {
-      type: MessageType.LIGHTBOX_SET_SOURCE,
-      source: 'webview.lightbox',
-      payload,
-      timestamp: Date.now()
-    };
-    void this.messageHandler?.handleMessage(message);
+    void this.messageHandler?.seedLightboxSource(payload, ticket);
+    return true;
   }
 
   public dispose(): void {

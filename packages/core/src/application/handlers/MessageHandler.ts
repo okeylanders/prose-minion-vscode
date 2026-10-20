@@ -5,6 +5,7 @@
  */
 
 import { LogSink, Platform } from '@/platform';
+import type { LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -23,7 +24,8 @@ import {
   WorkshopSessionStateMessage,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WRITER_PROFILE_SETTING,
-  WORKSHOP_WEB_RESEARCH_SETTING
+  WORKSHOP_WEB_RESEARCH_SETTING,
+  LightboxSetSourcePayload
 } from '@messages';
 import {
   CoreServices,
@@ -417,6 +419,22 @@ export class MessageHandler {
         'Error processing request',
         details
       );
+    }
+  }
+
+  /**
+   * Board a Lightbox source the host already owns (PR #152 F-01): an editor
+   * command that took `ticket` from the shared LightboxService when the
+   * writer chose the source. Host-only, never a route, so no webview message
+   * can name a ticket.
+   */
+  async seedLightboxSource(payload: LightboxSetSourcePayload, ticket: LightboxSourceTicket): Promise<void> {
+    try {
+      await this.lightboxHandler.seedSource(payload, ticket);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] ✗ Error seeding a Lightbox source: ${details}`);
+      this.sendError('unknown', 'Error processing request', details);
     }
   }
 

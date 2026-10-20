@@ -193,8 +193,9 @@ export class LightboxService {
 
   /**
    * Record the writer's newest source request and return its ticket. Call it
-   * when the choice becomes concrete (a request arrives, or the picker returns
-   * a file), before awaiting anything: it supersedes every earlier request.
+   * when the choice becomes concrete (a request arrives, the picker returns a
+   * file, or an editor command has its file, before loading it: PR #152
+   * F-01), before awaiting anything: it supersedes every earlier request.
    */
   beginSourceRequest(): LightboxSourceTicket {
     const ticket: LightboxSourceTicket = { sequence: ++this.ticketCount };

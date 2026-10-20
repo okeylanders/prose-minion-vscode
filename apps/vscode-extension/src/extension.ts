@@ -76,6 +76,7 @@ import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
 import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
+import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
@@ -563,30 +564,51 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
-  // Lightbox seeding: the selection when there is one, otherwise the active
-  // file. seedSource routes LIGHTBOX_SET_SOURCE through the panel's own
-  // MessageHandler, the same path as the webview's own requests.
+  // Lightbox seeding. seedSource boards through the panel's own
+  // MessageHandler, into the same handler code as the webview's own requests.
+  // A whole file (a menu's URI, or the active editor's) goes through
+  // openFileInLightbox, which refuses untitled, non-disk and non-text sources
+  // before anything is sent, and takes the shared service's source request
+  // before VS Code loads the document (PR #152 F-01).
+  const openFileInLightboxHost: OpenFileInLightboxHost<vscode.Uri> = {
+    toUri: (value) => (value instanceof vscode.Uri ? value : undefined),
+    activeDocument: () => vscode.window.activeTextEditor?.document,
+    openTextDocument: (uri) => vscode.workspace.openTextDocument(uri),
+    asRelativePath: (uri) => vscode.workspace.asRelativePath(uri, false),
+    beginSourceRequest: () => lightboxService.beginSourceRequest(),
+    seedSource: (payload, ticket) => lightboxPanelProvider?.seedSource(payload, ticket) ?? false,
+    showWarning: (message) => void vscode.window.showWarningMessage(message),
+    showInformation: (message) => void vscode.window.showInformationMessage(message),
+    log: (line) => outputChannel.appendLine(line)
+  };
+  const handleOpenFileInLightbox = (target?: unknown) => openFileInLightbox(target, openFileInLightboxHost);
+
+  // The selection when there is one; with nothing selected, the active file.
   const handleLightboxSelection = () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showWarningMessage('No active text editor');
       return;
     }
-    const uri = editor.document.uri;
-    const relativePath = vscode.workspace.asRelativePath(uri, false);
     const selection = editor.selection;
     const text = editor.document.getText(selection);
-    const payload: LightboxSetSourcePayload = { sourceUri: uri.toString(), relativePath };
-    if (text) {
-      const lineRange = toInclusiveLineRange({
-        startLine: selection.start.line,
-        endLine: selection.end.line,
-        endCharacter: selection.end.character
-      });
-      payload.text = text;
-      payload.startLine = lineRange.startLine;
-      payload.endLine = lineRange.endLine;
+    if (!text) {
+      void handleOpenFileInLightbox();
+      return;
     }
+    const uri = editor.document.uri;
+    const lineRange = toInclusiveLineRange({
+      startLine: selection.start.line,
+      endLine: selection.end.line,
+      endCharacter: selection.end.character
+    });
+    const payload: LightboxSetSourcePayload = {
+      sourceUri: uri.toString(),
+      relativePath: vscode.workspace.asRelativePath(uri, false),
+      text,
+      startLine: lineRange.startLine,
+      endLine: lineRange.endLine
+    };
     lightboxPanelProvider?.seedSource(payload);
   };
 
@@ -618,7 +640,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('prose-minion.openLightbox', () => {
       lightboxPanelProvider?.openOrReveal();
     }),
-    vscode.commands.registerCommand('prose-minion.lightboxSelection', handleLightboxSelection)
+    vscode.commands.registerCommand('prose-minion.lightboxSelection', handleLightboxSelection),
+    vscode.commands.registerCommand('prose-minion.openFileInLightbox', handleOpenFileInLightbox)
   );
 }
 

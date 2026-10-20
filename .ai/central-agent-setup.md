@@ -989,6 +989,34 @@ sessions:
   and the capability boundary in `boundaries.test.ts`, and stays under 500
   lines. No handler constructs the recall service; one instance owns the cache.
 
+### Lightbox Source Ownership
+
+Follow PR #148 F-01 and PR #152 F-01 (ADR
+[2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D1, D12) when
+adding a way to put a source on the Lightbox board:
+
+- **One owner.** The shared `LightboxService` owns the writer's source intent.
+  Each source request takes a ticket from `beginSourceRequest()`, and only the
+  newest ticket may adopt a board or publish a refusal.
+- **Before the first await.** Take the ticket when the writer's choice is
+  concrete and before anything is awaited, including host work upstream of
+  the handler: Open File in Lightbox takes it before `openTextDocument`, and
+  "Choose file" when the picker returns a file, not when it opens.
+- **Host-only tickets.** A host seed passes its ticket as an argument
+  (`LightboxPanelProvider.seedSource` → `MessageHandler.seedLightboxSource` →
+  `LightboxHandler.seedSource`), never as a message field. The
+  `LIGHTBOX_SET_SOURCE` route always mints its own.
+- **Refusals.** A refusal made without awaiting takes no ticket and changes
+  nothing. One made after the ticket was taken still counts as the newest
+  choice, but sends nothing: the board and standing refusal stay, and the next
+  choice takes a newer ticket.
+- **Overtaken seeds open nothing.** `seedSource` returns false, and reveals no
+  tab, for a ticket a newer choice has overtaken. A current one lands in
+  whichever tab is open, reopening a closed one.
+- **Witnesses.** Order a new entry point against the others with held
+  promises through `lightboxHandlerHarness`, as
+  `openFileInLightboxOwnership.integration.test.ts` does.
+
 ### Operational Tips
 
 **Parallel Subagents**: For independent tasks (e.g., updating multiple components), launch multiple Task tool calls in a single message. 3-5x faster than sequential.

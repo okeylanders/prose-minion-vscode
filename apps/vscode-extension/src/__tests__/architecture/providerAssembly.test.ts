@@ -10,12 +10,25 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
 
 // __dirname = apps/vscode-extension/src/__tests__/architecture -> app src root.
 const APP_SRC_ROOT = path.resolve(__dirname, '..', '..');
 const PROVIDERS_ROOT = path.join(APP_SRC_ROOT, 'application', 'providers');
 const EXTENSION_ENTRY = path.join(APP_SRC_ROOT, 'extension.ts');
 const EXTENSION_MANIFEST = path.resolve(APP_SRC_ROOT, '..', 'package.json');
+
+/** The parts of the extension manifest these witnesses read. */
+interface ExtensionManifest {
+  activationEvents?: string[];
+  contributes: {
+    commands: Array<{ command: string; title: string; icon?: string }>;
+    menus: Record<string, Array<{ command: string; when?: string; group?: string }>>;
+  };
+}
+
+const readManifest = (): ExtensionManifest =>
+  JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as ExtensionManifest;
 
 /**
  * Providers assemble nothing: every service arrives via the CoreServices
@@ -164,11 +177,15 @@ describe('app-shell provider assembly', () => {
     );
   });
 
-  it('seeds Lightbox sources through the panel\'s own handler under the webview lightbox source', () => {
+  it('seeds Lightbox sources through the panel\'s own handler, under the ticket the command took (PR #152 F-01)', () => {
     const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
     const seed = providerSource.slice(providerSource.indexOf('public seedSource('));
-    expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.LIGHTBOX_SET_SOURCE,\s*source: 'webview\.lightbox'/);
-    expect(seed).toMatch(/this\.messageHandler\?\.handleMessage\(message\)/);
+    // An overtaken ticket opens nothing; a current one reveals the tab, then boards under that ticket.
+    expect(seed).toMatch(
+      /if \(!this\.coreServices\.lightboxService\.isCurrentRequest\(ticket\)\) \{\s*return false;\s*\}\s*this\.openOrReveal\(\);\s*void this\.messageHandler\?\.seedLightboxSource\(payload, ticket\);/
+    );
+    // The ticket never travels in a message a webview could also send.
+    expect(seed).not.toMatch(/LIGHTBOX_SET_SOURCE|handleMessage\(/);
     // The Lightbox never reaches into the Workshop's session (D10).
     expect(providerSource).not.toMatch(/WORKSHOP_|workshopSessionService/);
   });
@@ -204,32 +221,105 @@ describe('app-shell provider assembly', () => {
   });
 
   it('declares the Lightbox commands, context menu and activation events', () => {
-    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
-      activationEvents?: string[];
-      contributes: {
-        commands: Array<{ command: string; title: string }>;
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- the manifest's menu id.
-        menus: { 'editor/context': Array<{ command: string; when?: string }> };
-      };
-    };
+    const manifest = readManifest();
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
 
     expect(manifest.activationEvents).toEqual(expect.arrayContaining([
       'onWebviewPanel:prose-minion.lightbox',
       'onCommand:prose-minion.openLightbox',
-      'onCommand:prose-minion.lightboxSelection'
+      'onCommand:prose-minion.lightboxSelection',
+      'onCommand:prose-minion.openFileInLightbox'
     ]));
     expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
       { command: 'prose-minion.openLightbox', title: 'Prose Minion: Open Lightbox' },
-      { command: 'prose-minion.lightboxSelection', title: 'Prose Minion: Open Selection in Lightbox' }
+      { command: 'prose-minion.lightboxSelection', title: 'Prose Minion: Open Selection in Lightbox' },
+      // The icon is what the editor title's navigation group draws: tiles on a board.
+      { command: 'prose-minion.openFileInLightbox', title: 'Prose Minion: Open File in Lightbox', icon: '$(layout)' }
     ]));
     expect(manifest.contributes.menus['editor/context']).toEqual(expect.arrayContaining([
       expect.objectContaining({ command: 'prose-minion.lightboxSelection', when: 'editorHasSelection' })
     ]));
-    for (const command of ['prose-minion.openLightbox', 'prose-minion.lightboxSelection']) {
+    for (const command of ['prose-minion.openLightbox', 'prose-minion.lightboxSelection', 'prose-minion.openFileInLightbox']) {
       expect(extensionSource).toContain(`registerCommand('${command}'`);
     }
     expect(extensionSource).toMatch(/openLightbox: \(\) => lightboxPanelProvider\?\.openOrReveal\(\)/);
+  });
+
+  it('offers Open File in Lightbox on saved Markdown and plain-text files in the Explorer, editor title and editor context menus', () => {
+    const { menus } = readManifest().contributes;
+    const entries = (menu: string, command: string) => (menus[menu] ?? []).filter((entry) => entry.command === command);
+    const OPEN_FILE = 'prose-minion.openFileInLightbox';
+
+    // The Explorer and the editor title name the file's resource; the editor
+    // context menu names the focused editor's language (VS Code when-clause
+    // contexts). Folders, untitled buffers and non-disk views get no entry.
+    expect(entries('explorer/context', OPEN_FILE)).toEqual([{
+      command: OPEN_FILE,
+      group: 'prose-minion@1',
+      when: '!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)'
+    }]);
+    expect(entries('editor/title', OPEN_FILE)).toEqual([{
+      command: OPEN_FILE,
+      group: 'navigation',
+      when: 'resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)'
+    }]);
+    // The Lightbox's slot in the editor menu: the selection entry with a
+    // selection, the file entry without one. They never show together.
+    expect(entries('editor/context', OPEN_FILE)).toEqual([{
+      command: OPEN_FILE,
+      group: 'prose-minion@3',
+      when: '!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)'
+    }]);
+    expect(entries('editor/context', 'prose-minion.lightboxSelection')).toEqual([{
+      command: 'prose-minion.lightboxSelection',
+      group: 'prose-minion@3',
+      when: 'editorHasSelection'
+    }]);
+
+    // The menus offer exactly the languages the command boards.
+    for (const [menu, key] of [['explorer/context', 'resourceLangId'], ['editor/title', 'resourceLangId'], ['editor/context', 'editorLangId']]) {
+      const when = entries(menu, OPEN_FILE)[0].when ?? '';
+      expect(when.match(new RegExp(`${key} == (\\w+)`, 'g'))).toEqual(
+        LIGHTBOX_FILE_LANGUAGE_IDS.map((languageId) => `${key} == ${languageId}`)
+      );
+    }
+
+    // No commandPalette rule: the command works from the palette on the
+    // active editor's file, and the project hides no command there.
+    expect(menus.commandPalette).toBeUndefined();
+  });
+
+  it('routes a whole file, from a menu or from the selection command with nothing selected, through Open File in Lightbox', () => {
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    expect(extensionSource).toMatch(
+      /const handleOpenFileInLightbox = \(target\?: unknown\) => openFileInLightbox\(target, openFileInLightboxHost\);/
+    );
+    // The launch takes the shared service's ticket and hands it to the panel with the payload (PR #152 F-01).
+    expect(extensionSource).toMatch(/beginSourceRequest: \(\) => lightboxService\.beginSourceRequest\(\)/);
+    expect(extensionSource).toMatch(
+      /seedSource: \(payload, ticket\) => lightboxPanelProvider\?\.seedSource\(payload, ticket\) \?\? false/
+    );
+    const selection = extensionSource.slice(
+      extensionSource.indexOf('const handleLightboxSelection = () => {'),
+      extensionSource.indexOf('const handleWordLookupSelection')
+    );
+    expect(selection).toMatch(/if \(!text\) \{\s*void handleOpenFileInLightbox\(\);\s*return;\s*\}/);
+    expect(selection).toMatch(/lightboxPanelProvider\?\.seedSource\(payload\)/);
+    // Both commands reach the board only through the panel's seedSource.
+    expect(extensionSource.match(/lightboxPanelProvider\?\.seedSource\(/g)).toHaveLength(2);
+  });
+
+  it('names only declared commands in its menus, each with an activation event', () => {
+    const manifest = readManifest();
+    const declared = new Set(manifest.contributes.commands.map((entry) => entry.command));
+    const activation = new Set(manifest.activationEvents ?? []);
+    const named = Object.entries(manifest.contributes.menus)
+      .flatMap(([menu, entries]) => entries.map((entry) => ({ menu, command: entry.command })));
+
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter(({ command }) => !declared.has(command))).toEqual([]);
+    expect(named.filter(({ command }) => !activation.has(`onCommand:${command}`))).toEqual([]);
   });
 
   it('quiesces the Workshop handler before the final deactivation flush', () => {
