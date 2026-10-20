@@ -95,6 +95,7 @@ elsewhere.
 | Low | [Dialogue % ignores single-quoted dialogue](2026-10-19-dialogue-single-quote-convention.md) (also withholds Lightbox subtext pairs in single-quoted text) | Identified |
 | Low | [The Workshop does not reflow at narrow widths](2026-10-19-workshop-narrow-width-reflow.md) | Identified |
 | Low | [A seed offer the Workshop refuses only times out](2026-10-19-workshop-refused-seed-offer-times-out.md) | Identified |
+| Low | [A carried said line does not follow speech that moved past narration](2026-10-20-lightbox-carried-said-line-moved-speech.md) | Identified |
 
 ## Review Guidance
 

@@ -11,7 +11,10 @@
  *   quote still in the paragraph it names keeps its place; one whose
  *   paragraph moved follows its words to the nearest paragraph that holds
  *   them (the host moving its own verified span, never a model's claim); a
- *   quote whose words are gone is withheld as no longer in the chapter;
+ *   quote whose words are gone is withheld as no longer in the chapter. A
+ *   pair's said line is found again on its own, in speech where it can be,
+ *   and leads the pair's evidence as a fresh read's does
+ *   (`lightboxSaidLedEvidence`, PR #151 F-07);
  * - recounts every counted term against the current text, so no count on the
  *   board describes a text that is gone, and moves each tension score with
  *   the paragraphs it was read on, leaving changed ones unscored (F-06);
@@ -45,7 +48,12 @@ import { createLightboxQuoteVerifier, type LightboxQuoteVerdict, type LightboxQu
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
-import { createLightboxDialogueIndex, type LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
+import {
+  createLightboxDialogueIndex,
+  lightboxSaidLedEvidence,
+  lightboxSameQuote,
+  type LightboxDialogueIndex
+} from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 
 export interface LightboxCarryContext {
   /** The hash of the text the readings were read against (the replaced board's). */
@@ -167,26 +175,36 @@ function carryTile(
   tools: CarryTools,
   drawnFields: ReadonlyMap<string, readonly string[]>
 ): CarriedTile {
-  const evidence: LightboxVerifiedQuote[] = [];
+  const found: LightboxVerifiedQuote[] = [];
   const lost: LightboxWithheldQuote[] = [];
   const seen = new Set<string>();
+  // A pair's said line leads its evidence; it is checked on its own, below, and leads again (PR #151 F-07).
+  const saidLine = tile.kind === 'subtext' ? tile.said : undefined;
   for (const quote of tile.evidence) {
-    const found = recheckQuote(quote, (paragraph, text) => tools.verifier.verify(paragraph, text));
-    if (!found) {
+    if (saidLine && lightboxSameQuote(quote, saidLine)) {
+      continue;
+    }
+    const again = recheckQuote(quote, (paragraph, text) => tools.verifier.verify(paragraph, text));
+    if (!again) {
       lost.push({ paragraph: quote.paragraph, reason: 'no-longer-in-chapter' });
       continue;
     }
-    const key = `${found.paragraph}:${found.text}`;
+    const key = `${again.paragraph}:${again.text}`;
     if (!seen.has(key)) {
       seen.add(key);
-      evidence.push(found);
+      found.push(again);
     }
   }
-  const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
   // A said line is held to its own rule: found again, in speech where the verifier can (PR #151 F-04), and inside dialogue.
-  const said = tile.kind === 'subtext'
-    ? recheckQuote(tile.said, (paragraph, text) => tools.dialogue.verifySaid(paragraph, text)) ?? null
+  const said = saidLine
+    ? recheckQuote(saidLine, (paragraph, text) => tools.dialogue.verifySaid(paragraph, text)) ?? null
     : undefined;
+  if (saidLine && !said) {
+    lost.unshift({ paragraph: saidLine.paragraph, reason: 'no-longer-in-chapter' });
+  }
+  // The said line it found leads, then the rest once each, exactly as a fresh read builds a pair.
+  const evidence = saidLine ? lightboxSaidLedEvidence(said, found) : found;
+  const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
   const recounted = recountLightboxTile(tile, tools.counter, {
     paragraphCount: tools.context.paragraphs.length,
     averageWordsPerSentence: tools.context.averageWordsPerSentence,

@@ -17,6 +17,12 @@
  * folded, and the first one inside dialogue is the said line. Only when no
  * equivalent span is speech is the plain match kept, for the gate to refuse
  * as narration. The gate's own check asks the verifier the same question.
+ *
+ * **The said line leads (PR #151 F-07).** A pair's evidence is its said line
+ * as found, then every other found quote once (`lightboxSaidLedEvidence`).
+ * Fresh assembly and stale carry both build it here, so a carried pair
+ * cannot lead with the narration's copy of the words its said line found
+ * in speech.
  */
 
 import type { LightboxVerifiedQuote } from '@messages';
@@ -30,6 +36,22 @@ export interface LightboxDialogueIndex {
   verifySaid(paragraph: number, quote: string): LightboxQuoteVerdict;
   /** True when the found quote's text stands inside dialogue in its paragraph, by the verifier's own rules. */
   holds(quote: Pick<LightboxVerifiedQuote, 'paragraph' | 'text'>): boolean;
+}
+
+/** Whether two found quotes are the same span: the same paragraph and the same chapter text. */
+export function lightboxSameQuote(
+  a: Pick<LightboxVerifiedQuote, 'paragraph' | 'text'>,
+  b: Pick<LightboxVerifiedQuote, 'paragraph' | 'text'>
+): boolean {
+  return a.paragraph === b.paragraph && a.text === b.text;
+}
+
+/** A pair's evidence: its said line first when found, then the other found quotes, without the said line again. */
+export function lightboxSaidLedEvidence(
+  said: LightboxVerifiedQuote | null | undefined,
+  evidence: readonly LightboxVerifiedQuote[]
+): LightboxVerifiedQuote[] {
+  return said ? [said, ...evidence.filter((quote) => !lightboxSameQuote(quote, said))] : [...evidence];
 }
 
 /** An index over the verifier's paragraphs; each paragraph's spans are found once, when first asked. */
