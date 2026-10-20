@@ -200,46 +200,8 @@ exports[`Workshop context selector parity (recorded before the shared picker) at
   "calls": [
     [
       "onClose",
-      SyntheticBaseEvent {
-        "_reactName": "onClick",
-        "_targetInst": null,
-        "altKey": false,
-        "bubbles": true,
-        "button": 0,
-        "buttons": 0,
-        "cancelable": true,
-        "clientX": 0,
-        "clientY": 0,
-        "ctrlKey": false,
-        "currentTarget": null,
-        "defaultPrevented": false,
-        "detail": 0,
-        "eventPhase": 3,
-        "getModifierState": [Function],
-        "isDefaultPrevented": [Function],
-        "isPropagationStopped": [Function],
-        "isTrusted": false,
-        "metaKey": false,
-        "movementX": 0,
-        "movementY": 0,
-        "nativeEvent": MouseEvent {
-          "isTrusted": false,
-        },
-        "pageX": undefined,
-        "pageY": undefined,
-        "relatedTarget": null,
-        "screenX": 0,
-        "screenY": 0,
-        "shiftKey": false,
-        "target": <button
-          class="pm-ws-action-btn"
-          type="button"
-        >
-          Cancel
-        </button>,
-        "timeStamp": 1792509704200,
-        "type": "click",
-        "view": null,
+      {
+        "event": "click",
       },
     ],
   ],

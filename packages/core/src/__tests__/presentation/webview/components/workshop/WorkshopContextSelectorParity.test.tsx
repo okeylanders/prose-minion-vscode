@@ -34,11 +34,21 @@ const CATALOG: Entry[] = [
   { group: 'manuscript', path: 'Manuscript/whole-draft.md', label: 'whole draft', sizeBytes: 250_000 }
 ];
 
+/**
+ * A callback argument as the log keeps it. A button wired straight to a
+ * callback (`onClick={onClose}`) passes React's click event; the log keeps
+ * that it was an event and its type, not its timestamp or target.
+ */
+const loggable = (arg: unknown): unknown =>
+  typeof arg === 'object' && arg !== null && 'nativeEvent' in arg
+    ? { event: (arg as unknown as { type: string }).type }
+    : arg;
+
 /** One mounted modal and the log of everything it called. */
 function mount(overrides: Partial<ModalProps> = {}) {
   const calls: Array<[string, ...unknown[]]> = [];
   const record = (name: string) => jest.fn((...args: unknown[]) => {
-    calls.push([name, ...args]);
+    calls.push([name, ...args.map(loggable)]);
   });
   const props: ModalProps = {
     open: true,
