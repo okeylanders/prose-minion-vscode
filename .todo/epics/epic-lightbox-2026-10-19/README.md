@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5, and 4B is implemented and awaiting review
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C is awaiting review (PR #156), and 4D is implemented and awaiting review, stacked on 4C.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -66,7 +66,7 @@ carried into the Workshop.
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Merged (PR #151) |
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
-| 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Planned (after 4C) |
+| 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -901,4 +901,59 @@ land before Slice 5 (decision 14).
 
     - Visual evidence at 1440, 1000 and 500 px from real host output with a
       stub model: [`lightbox-slice-4c-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4c-visual/README.md).
+    - No live or billable call.
+
+- **2026-10-21. Slice 4D (Group F, the Opinion) is implemented** on
+  `epic/lightbox-slice-4d-opinion`, stacked on 4C (`797e166`). A press now
+  reads the chapter groups and then the Opinion: one call over the board's
+  checked digest, never the chapter.
+  - **The Opinion** returns a shared list of observations, each citing
+    board items by host key (tile ids, a tile's quote by number, measured
+    figures). It also returns three views of them, Enthusiastic, Neutral
+    and Blunt, each with a headline, a body and weighted Why points.
+  - **The worked example** (*Alice* ch. I, ¶1–¶8, read with groups A–E's
+    own examples) is the builder's request byte for byte. Its reply is drawn
+    whole through the production codec and gates.
+  - **Host.**
+    - F runs only after the press's chapter groups settle, while the run
+      still owns its board, and a stopped run never starts it.
+    - Its digest is built through the press owner's port by board id. It is
+      bounded in estimated tokens, priced "up to" that bound, and keyed over
+      the board's measurement context and every item's content.
+    - Code checks every citation against the digest. A view that weighs an
+      undrawn observation is withheld whole, and the tile only when no view
+      stands.
+    - The text rules apply to every observation and view: no quotation
+      marks, no writer words, no rewrite or instruction words, no
+      percentages, and no figure the cited items do not show.
+    - The Opinion joins `LightboxTileGates` and the carry, re-gated against
+      the carried board.
+  - **Standing.** It is derived, never stored, by one shared function. The
+    Opinion is stale when anything it cites is gone, not current or changed.
+    An uncited lens read again leaves it current, and a late F lands stale,
+    never current.
+  - **Bring.** The view on show travels by name, ids only, and the host
+    refuses a withheld view or a stale Opinion.
+  - **Webview.** The tile is last and full width, labelled "The one
+    evaluative tile". It has three `aria-pressed` view tabs, Neutral by
+    default, with the choice kept per board in webview state, and its
+    observations light their paragraphs. It shows stale and withheld notes,
+    and its own re-read is priced "up to its digest bound".
+  - **Deviations and limits** are in the slice's
+    [implementation notes](slice-4d-opinion.md#implementation-notes-2026-10-21).
+    Two items went to tech debt: the
+    [citation basis](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)
+    (decide before Slice 5) and the
+    [digest's board-order cut](../../tech-debt/2026-10-21-lightbox-opinion-digest-board-order-cut.md).
+  - **Verification.**
+
+    | Check | `797e166` (4C) | Slice 4D head |
+    |---|---|---|
+    | `npx jest` | 419 suites / 5,802 tests / 59 snapshots | 426 suites / 5,874 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Visual evidence at 1440, 1000 and 500 px from real host output with a
+      stub model: [`lightbox-slice-4d-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4d-visual/README.md).
     - No live or billable call.

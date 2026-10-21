@@ -267,8 +267,8 @@ sink the others:
 | B | characters, voice (2B); subtext (4) |
 | C | genre neighborhood (2B); lineage, Spark (4) |
 | D | Stock & signature, Rhythm & handoffs, What stands out in the numbers (4B, 2026-10-20) |
-| E | Template & freshness, Pressure, Artifacts, Summary & movements (4C, planned) |
-| F | Opinion, run after the other groups of a press settle, on the board's verified digest (4D, planned) |
+| E | Template & freshness, Pressure, Artifacts, Summary & movements (4C, 2026-10-20) |
+| F | Opinion, run after the other groups of a press settle, on the board's verified digest (4D, 2026-10-21) |
 
 A lens the writer turns off is left out of its group's prompt. A group with no
 lenses on is not called.
