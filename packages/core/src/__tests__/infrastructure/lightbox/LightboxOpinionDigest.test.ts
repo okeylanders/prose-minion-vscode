@@ -12,6 +12,7 @@ import type { LightboxBoard, LightboxLensId, LightboxReadingGroup } from '@messa
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { buildLightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
+import { lightboxOpinionItemText } from '@shared/constants/lightboxOpinionItems';
 import type { LightboxFigureCounts, LightboxWriterAverages } from '@/infrastructure/lightbox/LightboxNumbers';
 import { boardWithNumbers, WRITER_AVERAGES } from './lightboxCraftFixtures';
 import {
@@ -183,6 +184,32 @@ describe('the board\'s digest, what group F reads (Slice 4D)', () => {
     // With no reading on the board, it has nothing to weigh.
     expect(digest.readings).toBe(0);
     expect(digest.section).toContain('No current reading is on the board.');
+  });
+
+  it('names no section the chapter\'s front matter would make, nor any of its words (PR #156 F-02, merged into 4D)', async () => {
+    // YAML split by a blank line, then the excerpt: before 4C's fix its closing --- read as a heading, and made two sections.
+    const metadataOnly = buildLightboxOpinionDigest(await boardWithNumbers([
+      '---\ntitle: The Hidden Garden Key',
+      'author: Someone Elsewhere\n---',
+      ...ALICE.slice(1)
+    ]));
+    expect([...metadataOnly.items.keys()].filter((key) => key.startsWith('section:'))).toEqual([]);
+    expect(metadataOnly.section).not.toMatch(/Hidden Garden|Someone Elsewhere|title:|author:/);
+    // With the body's own headings after it, the metadata is the opening, never a section of its own.
+    const fronted = await boardWithNumbers([
+      '---\ntitle: The Hidden Garden Key',
+      'author: Someone Elsewhere\n---',
+      '# The bank', ...ALICE.slice(1, 4),
+      '# The well', ...ALICE.slice(4)
+    ]);
+    const digest = buildLightboxOpinionDigest(fronted);
+    const sections = [...digest.items.values()].filter((item) => item.key.startsWith('section:')).map(lightboxOpinionItemText);
+    expect(sections).toEqual([
+      '[section:1] Measured · Sections: section 1 of 3\n  ¶1–¶2, before the first marker',
+      '[section:2] Measured · Sections: section 2 of 3\n  ¶3–¶6, opened by a heading in ¶3',
+      '[section:3] Measured · Sections: section 3 of 3\n  ¶7–¶11, opened by a heading in ¶7'
+    ]);
+    expect(digest.section).not.toMatch(/Hidden Garden|Someone Elsewhere|title:|author:|The bank|The well/);
   });
 
   it('writes shares per 100 words and the writer\'s average as the other chapters\', never as a percentage or "your"', () => {
