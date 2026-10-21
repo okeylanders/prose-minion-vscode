@@ -149,6 +149,8 @@ export class LightboxPlotAssembly {
         const quote = checked.found[index];
         return quote ? { step: step.step, quote } : undefined;
       }));
+      // A step out of order was found, so checked once already; it is withheld now (PR #156 N-01).
+      assembler.withholdFound('artifacts', arc.withheld.length);
       assembler.claim(
         {
           kind: 'artifact', lens: 'artifacts', title: object.name, claim: lightboxArcLine(arc.kept), quotes: [],
