@@ -1,0 +1,20 @@
+[LightboxHandler] Board built for Drafts/alice-chapter-1-opening.md: 508 words, 8 paragraphs
+[LightboxReadingRunner] Run 5b1e09c4-evidence started: groups A, B, D, E, G, F
+[LightboxReadingRunner] Group A read (headline): 1 tiles, 0 blocks withheld, 0 claims withheld, 2 quotes checked (0 withheld), ignored unrequested motif, tension, gravity, palette
+[LightboxReadingRunner] Group B read (characters, voice): 4 tiles, 0 blocks withheld, 0 claims withheld, 7 quotes checked (0 withheld), ignored unrequested subtext
+[LightboxReadingRunner] Group D read (stock, numbers): 11 tiles, 0 blocks withheld, 0 claims withheld, 28 quotes checked (0 withheld), ignored unrequested rhythm
+[LightboxReadingRunner] Group E read (pressure, artifacts, summary): 12 tiles, 0 blocks withheld, 0 claims withheld, 22 quotes checked (0 withheld), ignored unrequested template
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run 5b1e09c4-evidence group F digest: 45 items, 38 readings, 0 left out, about 4,020 tokens, key eeba7d7c23af
+[LightboxReadingRunner] Group F read (opinion) against a digest of 45 items: 6 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest eeba7d7c23af, the board it read: current
+[LightboxReadingRunner] Run 5b1e09c4-evidence finished: A ok, B ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run 5b1e09c4-evidence finished: 6 groups, 0 tokens
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 1 quotes, 3 points
+[WorkshopLightboxTileHandler] Tile staged above the composer (ta-1, 84 words)
+[LightboxHandler] The Workshop staged a tile: 1 quotes carried, 1 of 1 quotes found again
+[LightboxReadingRunner] Run run-2-evidence started: groups G (re-read steering)
+[LightboxReadingRunner] Group G read (steering): 9 tiles, 0 blocks withheld, 1 claims withheld, 12 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-2-evidence finished: G ok
+[LightboxReadingHandler] Run run-2-evidence finished: 1 groups, 0 tokens
+[LightboxHandler] Board built for Drafts/alice-chapter-1-opening.md: 507 words, 8 paragraphs; the text changed, so its readings came along marked stale
