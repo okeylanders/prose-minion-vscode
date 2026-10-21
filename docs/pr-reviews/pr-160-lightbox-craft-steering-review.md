@@ -261,3 +261,81 @@ own `node_modules`.
 
 - **The sentence-rule fix (PR #161)** is not merged. When it lands in `epic/lightbox`, I'll merge it and regenerate the worked examples and evidence whose sentence figures move.
 - **Writer, native and live-provider acceptance** remain open, as you said.
+
+## Independent correction re-review (2026-10-21)
+
+**Reviewed correction/integration head:** `27b646a65610065fc2723c89de4f40a5a41e81c9`
+**Exact base / verified merge-base:** `1fe931ad5f929586865acab4332ac271d9e2efc3`
+**Fix:** `1def703f76ee6d7e00d64184cbee5c06b9ad96e2` · **integration merge:** `d9db6e5bf96ca73d5a99b4454c37210f576dc7b2`
+**Reviewer:** Astra · **Mode:** correction-focused source review, old/new differential controls, fresh integrated gates, actual-host evidence regeneration and rebuilt production-bundle DOM checks
+
+**Updated code-review disposition: F-01, F-02 and N-01 addressed; no remaining finding in the reviewed correction.** This supersedes the original open dispositions, not the historical evidence. The original report and entire author response above are preserved byte-for-byte. The #158/#159 integration is now actually present and reviewed. **The future combined tree with #161 remains an explicit verification gate**, not inferred clearance from this result. This is not a formal GitHub approval, merge instruction, native/live-provider acceptance or Slice 5 sign-off.
+
+### Resolution ledger
+
+| ID | Independent disposition | Evidence |
+| --- | --- | --- |
+| F-01 | **Addressed** | Token/span lookup no longer restarts a paragraph scan; neighbour sweeps cover the additional filler/adverb path. Old/new measured outputs agree in 984 comparisons, and independent property-read instrumentation confirms bounded growth even after the token-array copy |
+| F-02 | **Addressed** | Exact soft-wrap witness is withheld alone fresh and on carry; Bring rechecks the canonical pair and sends a host reason instead of a clipped rewrite. The full 115-character exact-bounds control remains intact; normalized no-op is withheld |
+| N-01 | **Addressed** | The original intensifier-only fixture now shows scoped numbers wording and the Craft steering pointer, without the contradictory no-standout statement |
+| #158/#159 integration | **Verified at this head** | Actual merge ancestry, conflict-resolution review, inherited fixes preserved, fresh combined gates and #159 navigation/count probes |
+| #161 integration | **Not in this tree; still pending** | The reviewed sentence-rule head `6cbd27b` is not an ancestor. Whichever PR merges second must integrate the other and regenerate/reverify the affected requests/evidence |
+
+### F-01: the work is bounded without changing the measured answer
+
+The correction indexes placed token offsets and searches them rather than using per-instance `findIndex`. Precomputed forward/backward neighbours avoid repeatedly walking a filler/adverb run. Dialogue spans use sorted starts and prefix maximum ends; short sentences are coalesced into run intervals with the same membership semantics. The tagger's forward placement guarantees the ordered, non-overlapping offsets the token lookup relies on. Work now comprises linear preprocessing and logarithmic searches, rather than quadratic rescanning; no count ceiling or sampling shortcut was added.
+
+An independent differential probe compared the original and corrected production measures on **328 fixtures**, including 320 deterministic seeded combinations and eight explicit punctuation/typography/dialogue/markup cases. Each ran with real wink tokens, selectively unplaced tokens, and a throwing tagger: **984 complete measured-output comparisons passed**. This checks counts, constructions, narration/dialogue, weak-verb totals, short runs and paragraph membership, not just a selected headline total.
+
+A separate probe instrumented **token property reads**, so copying the token array could not hide repeated accesses. For 100 versus 1,000 repetitions:
+
+| Shape | Corrected property reads at 100 | Corrected at 1,000 | Original at 100 |
+| --- | ---: | ---: | ---: |
+| `It was cold.` | 3,000 | 30,000 | 80,400 |
+| `very` filler run | 700 | 7,000 | 30,298 |
+| `slowly` adverb run | 1,195 | 11,995 | 30,793 |
+
+Counts agree in the old/new controls. The repository's new large-paragraph, long-neighbour-run and steering-disabled full-board tests also pass in the fresh full suite.
+
+**Timing context before the figures:** these controls run the unchanged corrected TypeScript transpiled to ES2020/CommonJS in **direct Node 24.19.0, outside Jest**, in the cloud review environment. They are single-run observations, **not native VS Code/Chromium latency or a statistical benchmark**. The same 49,998-word single-paragraph fixture now spends **60.5 ms in the steering measure**, excluding **121.6 ms tagging**, retaining all **16,666 instances**. The original direct-Node observation above was 4.846 seconds for that measure. The corrected 1,667-short-paragraph control takes **108.3 ms measurement**, excluding 283.3 ms tagging, with the same count. The independent operation-count/differential tests, rather than a hardware-specific speed ratio, establish the correction. No old 100-second Jest stress run was repeated.
+
+### F-02 and N-01: original witnesses now reject the fault, not the note
+
+The same original 56-character `before`, 56-character `after` and 64-character soft-wrapped chapter span were replayed through production decoding, assembly, carry and transfer. The fresh and carried note retain the why, nudge and correctly checked source quote, but expose an explicit anchored-length reason instead of the example. Passing the originally valid one-line note to Bring against the soft-wrapped source produces **“Example withheld”**, never the prior `…floorboa` truncation. Every transferred point remains within the unchanged 120-character contract. The one-line control still carries the exact complete **115-character** pair.
+
+The original dash-normalized no-change witness is withheld, and the broader ten-case malformed-example matrix still isolates the example rather than destroying a valid note. The existing 87 phrasing checks, detector/count agreement and digest exclusion controls still pass. The truthful new length reason applies only to the canonical expansion; the separately documented short one-word-example limitation is not claimed fixed.
+
+The actual intensifier-only comparison fixture again uses a 400-word synthetic source and a 4,000-word baseline. D correctly returns an empty reading while intensifiers stand out. The rebuilt UI now says none of the figures **this lens reads** stands out and points to Craft steering; the original contradictory global denial is absent.
+
+### Actual integration and remaining merge-order gate
+
+This is a real merge, not a conclusion drawn from files appearing or disappearing at an endpoint. `d9db6e5` has parents `1def703` and `1fe931a`; the exact merge-base with current `epic/lightbox` is `1fe931a`. Ancestors include #158's floor merge `e8389bf`, #159's navigation fix `86d269ad`, passage-scaling fix `31a4550d`, and independent correction report `95c933a`.
+
+The conflict resolutions retain both slices: `findWeakVerbs` remains the flag's shared detector; POS occurrences carry both the token stream's offsets and 4E's lengths; hapax/flag/passages/term refs coexist with steering; the message barrel exports both contracts. The floor manifest/lockfile and CSS guard, corrected passage cutter and pending-request hook are unchanged from `1fe931a`. The fresh combined suite exercises those inherited corrections alongside G; no CSS-floor allowance was added for steering.
+
+Independent #159 controls were replayed against the combined implementation: cached pin return, cached board return, late abandoned response, a new unanswered pin, and unpin/reopen; count/instance agreement across all listed word/POS/phrase/hapax/flag entries on six edge fixtures; malformed requests and source bounds; and actual-host export for rebuilt-bundle interaction checks. These pass without reverting either integration side. G lifecycle, cancellation, disabled-lens, digest and exact-payload estimate controls also pass unchanged.
+
+The live PR now explicitly permits #160 or #161 to merge first, with the second integrating the first and regenerating the sentence-dependent requests/evidence. **#161 is not merged here.** This review clears neither that future combined implementation nor its changed short-run/sentence evidence. Recheck it at the actual integrated SHA; the pending gate is not misrepresented as a new #160 correction defect. Steering-instance sentence wells remain separately disclosed low-priority debt, not silently implemented by this merge.
+
+### Fresh verification and evidence
+
+| Check | Independent result at `27b646a` |
+| --- | --- |
+| Full repository Jest | **451 suites / 6,167 tests / 59 snapshots passed**, 326.458 s |
+| Typecheck | Passed all package stages |
+| Lint | **0 errors / 1,133 warnings**; exact normalized file/rule/severity/message parity with the independent #159 baseline |
+| Production build and `verify:bundle` | Passed; same three known webpack size/performance warnings |
+| External correction/integration probes | **30 tests / nine suites passed**, 10.830 s; includes the 984 differential comparisons above |
+| Host-state regeneration | `chapter.json`, `workshop.json` and `log.txt` **byte-identical** to the revised committed evidence |
+| Rebuilt production DOM | **73 assertions passed**: 36 steering/correction checks plus 37 passage/navigation checks, with actual-host replies and no provider execution/runtime errors |
+| `git diff --check 1fe931a..27b646a` | Passed |
+
+The independently rebuilt production bundle SHA-256 is **`24658aba3f52180b878e3e08bb19cb03bf6ee07e1c432bdb11d4b9c590a71b59`**, exactly matching the revised evidence. Both implementation-head CI events at `27b646a` also succeeded: [push 39654409932](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39654409932) and [pull request 39654420066](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39654420066).
+
+Head gates above are fresh, not reused from the two formerly separate PRs. Baseline lint/gate context from the independent #159 correction run at `2e62aa7` is reused only after verifying no package/app/script/dependency/configuration differences between that implementation and merge base `1fe931a`. Runtime is Node `v24.19.0` / npm `11.9.0`; tests use one worker, a 2 GiB heap and a disk-backed cache. External probes do not inflate the repository suite totals.
+
+Visually inspected four newly supplied images from the merged evidence: **being-verbs 500px, withheld-examples 500px, stale-adverbs 500px and inspector 1000px**. The notes/examples, per-example withholding, stale recount and inspector remain legible in the inspected regions. Author `facts.json` is exactly equal to the original evidence and `errors.txt` is empty; those remain author browser facts, not new reviewer geometry measurements. The newly rebuilt bundle and regenerated host output tie the independent DOM checks to this head. No native VS Code/Chromium 114 run, screen-reader or actual keyboard test, private manuscript, paid/live model call or authenticated writer acceptance is claimed.
+
+### Disposition and next check
+
+The two P2 defects and P3 copy issue are closed for the reviewed correction. No new implementation defect was found in the exercised correction/integration paths. Preserve the pending #161 combined-head regeneration/reverification, the explicit native/live writer checkpoint and the pre-Slice-5 data-basis work. Only this report is updated; the existing report and author response are retained, and no implementation change, formal review/comment, merge or publication action accompanies it. Exact report-head push and PR CI are checked separately after publication.
