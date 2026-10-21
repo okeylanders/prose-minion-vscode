@@ -23,14 +23,17 @@ Fixed before the codec is written, so later boards need no migration:
 
 - **Every tile kind** on the board when this slice starts: the measured
   tiles and every reading kind through Slice 4D (Groups A–F, including the
-  craft, story and Opinion kinds), each with its host-derived fields
+  craft, story and Opinion kinds) and Slice 4F's Craft steering kinds
+  (group G: a figure's reading, and instance notes with their stance,
+  nudge and example, or why the example was withheld), each with its host-derived fields
   (counts, column keys, tiers, the Opinion's citations), its withheld
   claims and blocks, frictions, quote checks and stale marks. The kind
   union is closed, so the codec is exhaustive over it like every other map.
 - **The measured layers**: the paragraph model with each paragraph's
   sentence lengths, the ribbon, the measured set (including the numbers and
-  the writer's average as measured, with its source counts), and the
-  **Sections layer** from Slice 4C.
+  the writer's average as measured, with its source counts), the
+  **Sections layer** from Slice 4C, and Slice 4F's **steering breakdown**
+  (each figure's totals, splits, constructions and short runs).
 - **A list of sources**, not one: `sources: LightboxSource[]` with each
   paragraph addressed by `{ source, index }` (or an equivalent offset table),
   even though every board written by this slice has exactly one source. A

@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C is awaiting review (PR #156), and 4D is implemented and awaiting review, stacked on 4C.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slice 4E (reading aids in the inspector) and Slice 4F (Craft steering, group G) are built in parallel from `20775cf`.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -49,10 +49,16 @@ carried into the Workshop.
 | 10 | Freshness (2026-10-20) | Shown as **a reading with its counted basis**, never a number: a three-step scale, Familiar · Mixed · Fresh, labelled "a reading, not a grade", over a host-counted basis line (Slice 4C) |
 | 11 | Engagement (2026-10-20) | **Kept separate from tension**: a read Low/Medium/High per movement, because pull and tension can disagree (Slice 4C) |
 | 12 | Echoes (2026-10-20) | **"Echoes" replaces provenance**: aphoristic lines that "sound reminiscent of …", always with an accuracy callout (the quote is checked, the resemblance is not), never a percentage (Slice 4B) |
-| 13 | Number standouts (2026-10-20) | A **measured standout plus "how it's used"**: code flags a figure outside its range or far from the writer's own average, a reading says how it works here, and nothing says "fix" or "cut" (Slice 4B) |
+| 13 | Number standouts (2026-10-20) | A **measured standout plus "how it's used"**: code flags a figure outside its range or far from the writer's own average, a reading says how it works here, and nothing says "fix" or "cut" (Slice 4B). *Amended 2026-10-21 (decision 23), for Craft steering's nudges only:* a steering nudge may name a craft move as worth a look. Nothing on the board says fix or cut, nudges included |
 | 14 | Order (2026-10-20) | **The new lenses land before Slice 5** (saved boards), so the saved format holds them |
 | 15 | Opinion views (2026-10-20) | **Neutral is the default view**; **Blunt is diagnosis only**, of the work, never the writer, with no rewrites (Slice 4D) |
 | 16 | Opinion's place (2026-10-20) | The Opinion is an explicit, fenced **exception to "describe, never grade"**, recorded with the freshness label in a dated ADR addendum to D7 |
+| 17–19 | *(left for Slice 4E)* | Slice 4E is planned in parallel and takes the next numbers; renumber at merge if it takes fewer |
+| 20 | Craft steering (2026-10-21) | **A lens of its own, Craft steering, in its own call (group G)**, read beside groups A–E; the Opinion waits for it like the others; it can be turned off. It **owns being verbs, adverbs (-ly) and intensifiers and fillers**: the numbers tile keeps their bars, ranges and standout flags and stops reading them; passive voice stays with the numbers (Slice 4F) |
+| 21 | Steering is measured first (2026-10-21) | Each steering figure is **measured by the host**: its total and rate (the numbers bar's own detector, so they are equal), narration and dialogue, a breakdown by construction, and instances in runs of short sentences. Every list and threshold is named, with its false positives (Slice 4F) |
+| 22 | Steering readings (2026-10-21) | Per figure, **one reading of how it works here and up to four instance notes**. A note is one checked quote holding an instance, a stance (**Earns · Leans · Compensates**), a why, and a nudge only when it leans or compensates (Slice 4F) |
+| 23 | Nudges (2026-10-21) | **A nudge names the craft move, framed as worth a look**: no quotation marks, never cut, delete, remove, fix, wrong, bad, should or must. **The writer chose one illustrative example** ("feel free to give one example so the user understands"): a note that leans or compensates may show at most one, a phrase from its checked quote (checked by code to hold the instance) and a few words showing one way the move could go, labelled "One way it could go", never styled as a quote. This supersedes "never supply the writer's words" for that one example only; real rewriting happens in the Workshop. The **second fenced exception** to "describe, never grade", in a dated ADR addendum to D7; decision 13 amended for steering nudges only (Slice 4F) |
+| 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
 
 ## Slices
 
@@ -67,6 +73,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
+| 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Planned (`epic/lightbox-slice-4f-steering`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -77,7 +84,9 @@ purpose, so the board's shape has been reviewed on real chapters before it
 becomes a file format.
 Slices 4B, 4C and 4D are stacked in that order (4C joins 4B's tier counts
 for the freshness basis; 4D reads every other group's tiles), and all three
-land before Slice 5 (decision 14).
+land before Slice 5 (decision 14). Slice 4F (Craft steering) starts from the
+merged 4D; it reads its own figures, takes three of them from 4B's numbers
+lens, and adds its items to 4D's digest.
 
 ## Verification (every slice)
 
@@ -1024,3 +1033,24 @@ land before Slice 5 (decision 14).
     - **Verification.** 430 suites / 5,916 tests / 59 snapshots; lint
       identical; typecheck and build with `verify:bundle` pass; bundle
       SHA-256 `0f6624f4…`.
+
+- **2026-10-21. Slice 4F (Group G, Craft steering) is planned** on
+  `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`, at
+  the writer's request: "Think steering the craft." See the
+  [slice spec](slice-4f-craft-steering.md).
+  - **The writer's pass that prompted it.** Passive voice stood out and read
+    as deliberate. Being verbs stood out at 1.53× the writer's average, but
+    the reading was withheld: one quote was not in the chapter, two held no
+    instance of the figure. Adverbs and intensifiers were below average, so
+    no reading was asked for.
+  - **Decisions 20–24** (defaults the coordinator chose; the writer can
+    redirect): a lens and call of its own, group G, owning being verbs,
+    adverbs and intensifiers; the host measures each by construction first;
+    one reading and up to four instance notes per figure; nudges that name
+    the craft move, the second fenced exception to "describe, never grade"
+    (ADR D7 addendum, 2026-10-21); the Opinion's digest holds the counts and
+    stances, never a nudge. Decisions 17–19 are left for Slice 4E.
+  - **The writer changed decision 23 the same day:** a nudge may carry one
+    example so the writer sees what the move looks like, anchored to the
+    checked quote and labelled as an illustration. Folded into the plan
+    before it was committed.
