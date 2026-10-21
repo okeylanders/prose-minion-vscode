@@ -114,7 +114,7 @@ describe('group G codec', () => {
     expect(assembled.tiles.map((tile) => [tile.kind, tile.title])).toEqual([['steering-note', 'Adverbs (-ly) · note I']]);
   });
 
-  it('holds each note to its stance: earns names no nudge, leans and compensates name one', () => {
+  it('holds each note to its stance: earns names no nudge, leans and compensates name one in narration', () => {
     const why = 'The speed sits in the adverb beside a plain verb.';
     const notes = [
       note(7, QUOTES.adverbs, 'overuses', why, 'A verb that holds the speed may be worth a look.'),
@@ -122,11 +122,13 @@ describe('group G codec', () => {
       note(7, QUOTES.adverbs, 'leans', why, null),
       { ...note(7, QUOTES.adverbs, 'compensates', why, 'A verb that holds the speed may be worth a look.'), severity: 'high' }
     ];
+    // The codec reads a leaning note with no nudge (the shape for dialogue, epic decision 26); its quote is narration,
+    // so the gate withholds it once the quote is checked, after the notes the codec could not read.
     expect(withheld(body([figure('adverbs', notes)])).filter(([kind]) => kind === 'steering-note')).toEqual([
       ['steering-note', 'Adverbs (-ly) · note I', 'It broke the format: steering.figures[0].notes[0].stance must be earns, leans or compensates'],
       ['steering-note', 'Adverbs (-ly) · note II', 'It earns its place, so it names no nudge, and this one does.'],
-      ['steering-note', 'Adverbs (-ly) · note III', 'It leans or compensates, so it names the craft move worth a look, and this one names none.'],
-      ['steering-note', 'Adverbs (-ly) · note IV', 'It broke the format: steering.figures[0].notes[3] has 1 field the format does not define.']
+      ['steering-note', 'Adverbs (-ly) · note IV', 'It broke the format: steering.figures[0].notes[3] has 1 field the format does not define.'],
+      ['steering-note', 'Adverbs (-ly) · note III', 'It leans or compensates in narration, so it names the craft move worth a look, and this one names none.']
     ]);
   });
 
@@ -317,8 +319,8 @@ describe('every steering quote holds an instance of its figure', () => {
     ['adverbs, mid-word', 'adverbs', 'only tired light', 'nly tired light'],
     ['intensifiers, mid-word', 'intensifiers', 'I am very late', 'very morning'],
     ['being verbs', 'being-verbs', 'The hall was hushed', 'She stopped'],
-    // The writer's withheld being verbs (Slice 4F): a contraction and a linking verb are no instance.
-    ['being verbs, a contraction', 'being-verbs', 'The hall was hushed', 'She’s gone'],
+    // A contraction of be is an instance since the writer's decision (epic decision 26); a linking verb is none.
+    ['being verbs, a contraction', 'being-verbs', 'She’s gone', 'She stopped'],
     ['being verbs, a linking verb', 'being-verbs', 'The hall was hushed', 'the hall seemed empty']
   ])('%s: keeps a quote holding one and withholds one that holds none', (_case, stat, holds, lacks) => {
     const assembled = reading(stat, [holds, lacks]);
@@ -327,7 +329,7 @@ describe('every steering quote holds an instance of its figure', () => {
   });
 
   it('withholds a reading and a note whose quotes hold none, with the host\'s reason', () => {
-    expect(withheld(body([figure('being-verbs', [note(3, 'She’s gone', 'earns', 'The contraction keeps the voice quick.')], 'How it works.',
+    expect(withheld(body([figure('being-verbs', [note(3, 'She stopped', 'earns', 'The short stop keeps the voice quick.')], 'How it works.',
       [{ para: 3, quote: 'the hall seemed empty' }])]), RABBIT)).toEqual([
       ['steering-reading', 'Being verbs', 'No quote it gave was found holding an instance of the figure it reads.'],
       ['steering-note', 'Being verbs · note I', 'No quote it gave was found holding an instance of the figure it reads.']
@@ -380,7 +382,10 @@ describe('group G\'s task', () => {
   it('says what an instance of each figure is, and gives no figure the chapter holds none of, with no count', () => {
     expect(lightboxSteeringTaskLines([row('being-verbs', 17), row('adverbs', 0), row('intensifiers', 11)])).toEqual([
       'Read each of these figures by its id, whatever its rate. A quote counts only when it holds an instance exactly as described:',
-      '- `being-verbs`: an instance is one of these whole words: am, is, are, was, were, be, been, being. A contraction (she\'s, I\'m, they\'re, isn\'t, wasn\'t, ain\'t), a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.',
+      '- `being-verbs`: an instance is one of these whole words: am, is, are, was, were, be, been, being; or one contracted: ' +
+        'I\'m, \'re (you\'re, we\'re, they\'re), \'s read as is (it\'s, she\'s, that\'s, there\'s), isn\'t, aren\'t, wasn\'t, weren\'t, ain\'t. ' +
+        '\'s as a possessive (the Rabbit\'s watch) or as has (he\'s been, she\'s got), let\'s, ain\'t before been or got, \'d, \'ll and \'ve, ' +
+        'a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.',
       '- `adverbs`: the board found no instance in this chapter, so give no figure for it.',
       '- `intensifiers`: an instance is one of these whole words: just, really, very, quite, rather, somewhat, somehow, actually, basically, literally.'
     ]);

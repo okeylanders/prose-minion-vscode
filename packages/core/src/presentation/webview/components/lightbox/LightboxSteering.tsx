@@ -13,7 +13,9 @@
  *   the why, and, only where a note leans or compensates, the nudge under
  *   "Worth a look" with its one example, if any, under "One way it could
  *   go". The example is an illustration, marked so, and never drawn as a
- *   quote. Hovering a note lights its paragraph.
+ *   quote. A note whose instance is in dialogue shows the host's "In
+ *   dialogue" line instead: the character's voice, with no nudge (epic
+ *   decision 26). Hovering a note lights its paragraph.
  * Nothing here says fix or cut; rewriting happens in the Workshop.
  */
 import * as React from 'react';
@@ -26,7 +28,8 @@ import { lightboxSteeringSections, type LightboxSteeringSection } from '@hooks/d
 import {
   LIGHTBOX_STEERING_EXAMPLE_LABEL,
   LIGHTBOX_STEERING_EXAMPLE_NOTE,
-  LIGHTBOX_STEERING_STANCE_LABELS
+  LIGHTBOX_STEERING_STANCE_LABELS,
+  LIGHTBOX_STEERING_VOICE_LABEL
 } from '@shared/constants/lightboxSteering';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxReadingFrame } from '@components/lightbox/LightboxReadingFrame';
@@ -65,6 +68,7 @@ const SteeringNote: React.FC<{ note: LightboxSteeringNoteTile; bind: Bind }> = (
         </span>
       )}
       {note.exampleWithheld && <span className="pm-lb-steer-withheld"><b>Example withheld</b> {note.exampleWithheld}</span>}
+      {note.voice && <span className="pm-lb-steer-voice"><b>{LIGHTBOX_STEERING_VOICE_LABEL}</b> {note.voice}</span>}
     </LightboxItemButton>
   );
 };

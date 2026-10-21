@@ -32,7 +32,8 @@
  *   paragraph ending with its column's text, as tension moves;
  * - carries group G's kinds (Slice 4F, `LightboxCarryQuotes`): a steering
  *   reading's and note's quotes by the figure's own detector on the new
- *   text, and a note's example anchored again in its carried quote;
+ *   text, and a note's example anchored again in its carried quote, with
+ *   its instance placed in dialogue or narration again (epic decision 26);
  * - carries group E's kinds by their own rules (Slice 4C,
  *   `LightboxPlotCarry`): the movements as one set, each starting where its
  *   boundary quote now stands and the set withheld whole when it no longer
@@ -337,7 +338,9 @@ function carryTile(
       ...(craft?.pair ? { pair: craft.pair } : {}),
       ...(tile.kind === 'number-usage' ? { stat: tile.stat } : {}),
       ...(tile.kind === 'familiar-phrase' ? { phraseHeld: lightboxPhraseHeld(tools.verifier, evidence, tile.phrase) } : {}),
-      ...(craft?.thread ? { thread: craft.thread } : {})
+      ...(craft?.thread ? { thread: craft.thread } : {}),
+      // The note as read: a nudge withheld as voice is not there to be named in narration (epic decision 26).
+      ...(tile.kind === 'steering-note' ? { steeringNote: { leans: tile.stance !== 'earns', nudged: tile.nudge !== undefined, voice: craft?.voice } } : {})
     },
     { phase: 'carried', drawnFields, dialogue: tools.dialogue, standouts: tools.standouts }
   );
@@ -360,12 +363,12 @@ function carryTile(
     delete kept.unusedWithheld;
   }
   if (kept.kind === 'steering-note') {
-    // A note's example is re-anchored on carry (Slice 4F): a field it no longer has is dropped, not left undefined.
-    if (kept.example === undefined) {
-      delete kept.example;
-    }
-    if (kept.exampleWithheld === undefined) {
-      delete kept.exampleWithheld;
+    // A note's example is re-anchored, and its voice placed again, on carry (Slice 4F, epic decision 26):
+    // a field it no longer has is dropped, not left undefined.
+    for (const field of ['nudge', 'example', 'exampleWithheld', 'voice'] as const) {
+      if (kept[field] === undefined) {
+        delete kept[field];
+      }
     }
   }
   if (kept.kind === 'subtext' && said) {

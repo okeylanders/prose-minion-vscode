@@ -33,7 +33,7 @@ import { findDialogueSpans } from '@/utils/dialogueSpans';
 import { countWords } from '@/utils/textUtils';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import { STYLE_FLAG_FILLER_WORDS } from '@/tools/measure/styleFlags';
-import { BEING_VERB_FORMS } from '@/tools/measure/beingVerbs';
+import { BEING_VERB_FORMS, BEING_VERB_NEGATED_FORMS } from '@/tools/measure/beingVerbs';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import {
   LIGHTBOX_NUMBER_PATTERNS,
@@ -240,16 +240,19 @@ function instancePhrase(row: LightboxNumberRow): string {
 
 /**
  * What an instance of a word pattern is, said so a reading quotes one
- * (Slice 4F, the being-verbs investigation): the whole words the detector
- * counts, and what it does not count that a reader might take for one.
+ * (Slice 4F, the being-verbs investigation): the words the detector counts,
+ * and what it does not count that a reader might take for one. Being verbs
+ * count their contractions (epic decision 26).
  */
 export function lightboxPatternInstancePhrase(stat: LightboxNumberPatternId): string {
   switch (stat) {
     case 'passive-voice':
       return 'was, were, been or being followed by a word ending in -ed.';
     case 'being-verbs':
-      return `one of these whole words: ${BEING_VERB_FORMS.join(', ')}. A contraction (she's, I'm, they're, isn't, wasn't, ain't), ` +
-        'a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.';
+      return `one of these whole words: ${BEING_VERB_FORMS.join(', ')}; or one contracted: I'm, 're (you're, we're, they're), ` +
+        `'s read as is (it's, she's, that's, there's), ${BEING_VERB_NEGATED_FORMS.join(', ')}. ` +
+        '\'s as a possessive (the Rabbit\'s watch) or as has (he\'s been, she\'s got), let\'s, ain\'t before been or got, ' +
+        '\'d, \'ll and \'ve, a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.';
     case 'adverbs':
       return 'a whole word ending in -ly (the detector counts every one, "only" and "family" too).';
     case 'intensifiers':

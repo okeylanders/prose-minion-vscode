@@ -37,6 +37,12 @@
  *     Style Flags' passive pattern counts it.
  *   - Else `other`: identity, a noun, a place, a pronoun, or a form before
  *     punctuation ("That is what it was.").
+ *   - A contraction (epic decision 26) is its own token once its paragraph
+ *     is tagged with curly apostrophes straightened (`withStraightApostrophes`,
+ *     the same offsets): "it's" is *there or it + be*, "I'm tired" *be +
+ *     adjective*, and a negated form's "n't" is an adverb the rules look
+ *     past ("wasn't cold"). The tagger keeps "you're" as one token, so its
+ *     word before is the one before "you".
  * - Adverbs (-ly), first match wins:
  *   - `dialogue-tag`: the word before or after is one of
  *     `LIGHTBOX_STEERING_TAG_VERBS` ("said softly"). A tag with the speaker
@@ -88,6 +94,7 @@ import { countWords } from '@/utils/textUtils';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import { STYLE_FLAG_FILLER_WORDS, STYLE_FLAG_WEAK_VERBS } from '@/tools/measure/styleFlags';
 import { tagTextTokens, type TaggedToken } from '@/tools/measure/wordFrequency';
+import { withStraightApostrophes } from '@/tools/measure/beingVerbs';
 import {
   LIGHTBOX_NUMBER_PATTERNS,
   emptyLightboxFigureCounts,
@@ -163,7 +170,8 @@ export function measureLightboxSteering(input: LightboxSteeringInput): LightboxS
     let tokens: TokenIndex | undefined;
     if (tagged) {
       try {
-        tokens = indexTokens(tag(paragraph));
+        // Curly apostrophes straightened, as the being-verb detector tags: "I’m" is then "I" and "'m".
+        tokens = indexTokens(tag(withStraightApostrophes(paragraph)));
       } catch {
         tagged = false;
       }

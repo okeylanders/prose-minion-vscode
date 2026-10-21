@@ -1,18 +1,24 @@
 /**
- * The being-verbs investigation (Slice 4F, default i): the writer saw being
- * verb readings withheld for quoting no instance and asked whether the board
- * counts one thing and checks another. It does not. The rate the numbers
- * show, the total craft steering shows and the quote check all run the one
- * detector (`findBeingVerbs`), so a quote is found holding an instance
- * exactly when the board counted one in it. What the readings quoted were
- * contractions and linking verbs, which the detector has never counted; the
- * prompt and task now say so. Each line below is written for this test, and
- * each expected count is literal.
+ * Being verbs: what the board counts is what a quote is checked for. The
+ * rate the numbers show (`countLightboxFigures`), the total craft steering
+ * shows (`measureLightboxSteering`) and the quote check
+ * (`verifyLightboxPatternInstance`) all run the one detector
+ * (`findBeingVerbs`), so a quote is found holding an instance exactly when
+ * the board counted one in it.
+ *
+ * Slice 4F found the writer's withheld readings had quoted contractions,
+ * which the detector then never counted. The writer decided to count them
+ * (epic decision 26): 'm and 're always; 's when the tagger reads a verb and
+ * it is not has; the negated forms, ain't too (except as has not); never
+ * 'd, 'll or 've. Every line below is written for this test unless marked as
+ * Lewis Carroll's (public domain), and each expected count is literal.
  */
 import { countLightboxFigures } from '@/infrastructure/lightbox/LightboxNumbers';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { verifyLightboxPatternInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { measureLightboxSteering } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
+import { findBeingVerbs } from '@/tools/measure/beingVerbs';
+import { boardWithNumbers } from './lightboxCraftFixtures';
 
 const counted = (line: string) => countLightboxFigures(line, [line]).patterns['being-verbs'];
 const steered = (line: string) => measureLightboxSteering({ text: line, paragraphs: [line] }).figures[0].total;
@@ -23,22 +29,91 @@ const checked = (line: string, quote: string) => {
 
 describe('being verbs: what the board counts is what a quote is checked for', () => {
   it.each([
-    // Contractions hold no listed form as a whole word: not counted, so not an instance.
-    ['contractions', 'She’s tired, I’m late, they’re gone, and it ain’t so.', 'She’s tired, I’m late', 0],
-    ['negative contractions', 'It isn’t so, and it wasn’t then.', 'It isn’t so', 0],
-    // Linking verbs other than "be" are not on the list.
-    ['linking verbs', 'She seemed tired and became quiet.', 'She seemed tired', 0],
+    // Counted since epic decision 26: 'm after I, 're, straight or curly.
+    ['I\'m', 'I\'m late, said the clock.', 'I\'m late', ['\'m']],
+    ['I’m, curly', 'I’m late, said the clock.', 'I’m late', ['’m']],
+    ['you’re', 'You’re late again.', 'You’re late', ['’re']],
+    ['we\'re', 'We\'re ready now.', 'We\'re ready', ['\'re']],
+    ['they’re', 'They’re gone already.', 'They’re gone', ['’re']],
+    // 's as is, where the tagger reads a verb.
+    ['it’s', 'It’s far too late.', 'It’s far too late', ['’s']],
+    ['she\'s', 'She\'s tired tonight.', 'She\'s tired', ['\'s']],
+    ['that’s', 'That’s the trouble.', 'That’s the trouble', ['’s']],
+    ['there\'s', 'There\'s a cat outside.', 'There\'s a cat', ['\'s']],
+    // The negated forms: a whole-word pattern never matched these ("was" runs on into "n").
+    ['isn’t', 'It isn’t so, she said.', 'It isn’t so', ['isn’t']],
+    ['aren\'t', 'They aren\'t here yet.', 'They aren\'t here', ['aren\'t']],
+    ['wasn’t', 'It wasn’t then, she said.', 'It wasn’t then', ['wasn’t']],
+    ['weren\'t', 'We weren\'t there at all.', 'We weren\'t there', ['weren\'t']],
+    ['ain’t', 'It ain’t so, said the cook.', 'It ain’t so', ['ain’t']],
+    // The rule's stated limit: "he's gone" may mean has gone, and counts as is.
+    ['he’s gone (the known limit)', 'He’s gone to the garden.', 'He’s gone to the garden', ['’s']],
+    // Controls: none of these is an instance of be.
+    ['a possessive', 'The Rabbit’s watch ticked on.', 'The Rabbit’s watch', []],
+    ['a possessive, straight', 'The Rabbit\'s watch ticked on.', 'The Rabbit\'s watch', []],
+    ['let’s', 'Let’s go home now.', 'Let’s go home', []],
+    ['she’s got (has)', 'She’s got the key.', 'She’s got the key', []],
+    ['he’s gotten (has)', 'He’s gotten quite tall.', 'He’s gotten quite tall', []],
+    ['ain’t got (has not)', 'I ain’t got the key.', 'ain’t got the key', []],
+    ['she’d', 'She’d go if asked.', 'She’d go if asked', []],
+    ['we’ll', 'We’ll see the garden.', 'We’ll see the garden', []],
+    ['they’ve', 'They’ve left the hall.', 'They’ve left the hall', []],
+    ['ma’am', 'Yes, ma’am, quite so.', 'Yes, ma’am, quite so', []],
+    ['a linking verb', 'She seemed tired and became quiet.', 'She seemed tired', []],
     // A form joined to an underscore is no whole word to the detector: a stated false negative.
-    ['underscore emphasis', 'She _was_ there.', 'She _was_ there', 0],
-    // "been" after a contraction is a whole word.
-    ['been after a contraction', 'She’d been there before.', 'She’d been there', 1],
-    ['was being', 'She was being watched.', 'She was being watched', 2],
-    ['asterisk emphasis', 'She *was* there.', 'She *was* there', 1],
+    ['underscore emphasis', 'She _was_ there.', 'She _was_ there', []],
+    // "he's been": the 's is has, and the whole word "been" is the one instance.
+    ['he’s been', 'He’s been here before.', 'He’s been here', ['been']],
+    ['he’s never been', 'He’s never been here.', 'He’s never been here', ['been']],
+    ['been after she’d', 'She’d been there before.', 'She’d been there', ['been']],
+    ['was being', 'She was being watched.', 'She was being watched', ['was', 'being']],
+    ['asterisk emphasis', 'She *was* there.', 'She *was* there', ['was']],
     // A hyphen ends a word, so a compound's "be" counts: a stated false positive.
-    ['a hyphenated compound', 'A would-be hero stood there.', 'A would-be hero', 1]
-  ])('%s: counted and checked alike', (_case, line, quote, expected) => {
-    expect(counted(line)).toBe(expected);
-    expect(steered(line)).toBe(expected);
-    expect(checked(line, quote)).toBe(expected > 0 ? 'found' : 'no-instance');
+    ['a hyphenated compound', 'A would-be hero stood there.', 'A would-be hero', ['be']]
+  ])('%s: counted and checked alike', (_case, line, quote, forms) => {
+    expect(findBeingVerbs(line).map((match) => match.text)).toEqual(forms);
+    expect(counted(line)).toBe(forms.length);
+    expect(steered(line)).toBe(forms.length);
+    expect(checked(line, quote)).toBe(forms.length > 0 ? 'found' : 'no-instance');
+  });
+
+  it('agrees paragraph by paragraph on public-domain dialogue', () => {
+    // Lewis Carroll, "Alice's Adventures in Wonderland" (1865), ch. VII, dialogue set in curly double quotes.
+    const paragraphs = [
+      '“There isn’t any,” said the March Hare.',
+      '“Then it wasn’t very civil of you to offer it,” said Alice angrily.',
+      '“I didn’t know it was YOUR table,” said Alice; “it’s laid for a great many more than three.”',
+      '“Come, we shall have some fun now!” thought Alice. “I’m glad they’ve begun asking riddles.”'
+    ];
+    const text = paragraphs.join('\n\n');
+    expect(paragraphs.map((paragraph) => findBeingVerbs(paragraph).map((match) => match.text))).toEqual([
+      ['isn’t'], ['wasn’t'], ['was', '’s'], ['’m']
+    ]);
+    expect(countLightboxFigures(text, paragraphs).patterns['being-verbs']).toBe(5);
+    const steering = measureLightboxSteering({ text, paragraphs }).figures[0];
+    expect([steering.total, steering.narration, steering.dialogue]).toEqual([5, 0, 5]);
+    const verifier = createLightboxQuoteVerifier(paragraphs);
+    expect([
+      verifyLightboxPatternInstance(verifier, 'being-verbs', 1, 'There isn’t any').found,
+      verifyLightboxPatternInstance(verifier, 'being-verbs', 3, 'it’s laid for a great many').found,
+      verifyLightboxPatternInstance(verifier, 'being-verbs', 4, 'I’m glad they’ve begun').found,
+      verifyLightboxPatternInstance(verifier, 'being-verbs', 4, 'we shall have some fun').found
+    ]).toEqual([true, true, true, false]);
+  });
+
+  it('gives the numbers row and craft steering the same count on a board, contractions among its words', async () => {
+    const paragraphs = [
+      '“There isn’t any,” said the March Hare.',
+      '“Then it wasn’t very civil of you to offer it,” said Alice angrily.',
+      '“I didn’t know it was YOUR table,” said Alice; “it’s laid for a great many more than three.”',
+      '“Come, we shall have some fun now!” thought Alice. “I’m glad they’ve begun asking riddles.”'
+    ];
+    const board = await boardWithNumbers(paragraphs);
+    const row = board.measured.numbers.rows.find((candidate) => candidate.stat === 'being-verbs');
+    const steering = board.measured.steering.figures[0];
+    expect([row?.instances, row?.paragraphs, row?.top]).toEqual([5, [1, 2, 3, 4], [
+      { term: '’m', count: 1 }, { term: '’s', count: 1 }, { term: 'isn’t', count: 1 }
+    ]]);
+    expect([steering.total, steering.rate, steering.paragraphs]).toEqual([row?.instances, row?.value, row?.paragraphs]);
   });
 });

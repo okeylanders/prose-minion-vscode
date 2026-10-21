@@ -60,6 +60,11 @@ describe('narration and dialogue', () => {
     // The dialogue matcher's limit: single-quoted speech reads as narration.
     expect(figureOf(['‘She was here,’ he said.'], 'being-verbs')).toMatchObject({ total: 1, narration: 1, dialogue: 0 });
   });
+
+  it('splits contractions the same way: in dialogue they are counted in dialogue (epic decision 26)', () => {
+    expect(figureOf(['“I’m late, it’s late, and it isn’t fair,” he said. She’s gone, and they’re away.'], 'being-verbs'))
+      .toMatchObject({ total: 5, narration: 2, dialogue: 3 });
+  });
 });
 
 describe('runs of short sentences', () => {
@@ -131,6 +136,18 @@ describe('constructions, with the false positives each rule is stated with', () 
     expect(constructionOf('She was *very* happy.', 'being-verbs')).toEqual(['adjective']);
     // A form joined to an underscore is not an instance at all: the detector does not count it.
     expect(figureOf(['She _was_ happy.'], 'being-verbs').total).toBe(0);
+  });
+
+  it('sorts a contraction by the word it joins and the word after, curly or straight (epic decision 26)', () => {
+    const sorted = (line: string) => [figureOf([line], 'being-verbs').total, ...constructionOf(line, 'being-verbs')];
+    expect(['It’s cold.', 'It\'s cold.', 'There’s a cat.', 'It wasn’t cold.'].map(sorted))
+      .toEqual([[1, 'expletive'], [1, 'expletive'], [1, 'expletive'], [1, 'expletive']]);
+    // The tagger reads "tired" as a participle: the rule's stated false positive, here as with "was tired".
+    expect(['I’m tired.', 'I\'m tired.', 'You’re late.', 'They’re gone.'].map(sorted))
+      .toEqual([[1, 'passive'], [1, 'passive'], [1, 'adjective'], [1, 'passive']]);
+    // A negated form's n't is an adverb the rule looks past.
+    expect(['She isn’t coming.', 'He ain’t here.', 'That’s that.'].map(sorted))
+      .toEqual([[1, 'progressive'], [1, 'other'], [1, 'other']]);
   });
 });
 

@@ -135,7 +135,8 @@
   background: var(--pm-lb-read-soft);
 }
 [data-pm-surface="lightbox"] .pm-lb-steer-nudge,
-[data-pm-surface="lightbox"] .pm-lb-steer-withheld {
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld,
+[data-pm-surface="lightbox"] .pm-lb-steer-voice {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -145,7 +146,8 @@
 }
 [data-pm-surface="lightbox"] .pm-lb-steer-nudge b,
 [data-pm-surface="lightbox"] .pm-lb-steer-example b,
-[data-pm-surface="lightbox"] .pm-lb-steer-withheld b {
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld b,
+[data-pm-surface="lightbox"] .pm-lb-steer-voice b {
   font-family: var(--pm-mono);
   font-size: 9.5px;
   font-weight: 500;
@@ -155,6 +157,8 @@
 }
 [data-pm-surface="lightbox"] .pm-lb-steer-withheld { color: var(--pm-muted); font-size: 11.5px; }
 [data-pm-surface="lightbox"] .pm-lb-steer-withheld b { color: var(--pm-muted); }
+/* Dialogue is voice (epic decision 26): the host's line where a nudge would be, quiet like a withheld part. */
+[data-pm-surface="lightbox"] .pm-lb-steer-voice { color: var(--pm-text-2); font-size: 11.5px; }
 
 /* ---------- The one example: an illustration, never a quote ---------- */
 [data-pm-surface="lightbox"] .pm-lb-steer-example {

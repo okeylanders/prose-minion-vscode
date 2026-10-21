@@ -1071,6 +1071,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxSteeringPhrasing.ts',
   'infrastructure/lightbox/LightboxSteeringTiles.ts',
   'infrastructure/lightbox/LightboxSteeringHandoff.ts',
+  // Dialogue is voice (epic decision 26): where a note's instance stands, and what that withholds.
+  'infrastructure/lightbox/LightboxSteeringVoice.ts',
   'infrastructure/lightbox/LightboxFirstReadingTiles.ts',
   'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',

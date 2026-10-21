@@ -11,8 +11,11 @@
  * - **Notes.** 0–`steeringNotes` per figure, each exactly `{para, quote,
  *   stance, why, nudge, example}`, withheld by its host title when it breaks
  *   a rule: the stance is earns, leans or compensates; the why and the
- *   nudge pass the text rules; a note that earns has `"nudge": null`, and
- *   one that leans or compensates names its nudge.
+ *   nudge pass the text rules; a note that earns has `"nudge": null`. One
+ *   that leans or compensates names its nudge, or `null` for an instance in
+ *   dialogue (epic decision 26): where the instance stands is the chapter's
+ *   question, so a leaning note with no nudge in narration is withheld by
+ *   the gate at assembly (`LightboxSteeringVoice`, `LightboxTileGates`).
  * - **The one example** (epic decision 23, the writer's choice): `null`, or
  *   one `{before, after}`. A fault in it withholds the example alone, with
  *   a host reason, and the note stands: an example on a note that earns;
@@ -60,6 +63,8 @@ export const LIGHTBOX_STEERING_EXAMPLE_REASONS = {
   same: 'Its example shows no change: its second part is its first again.',
   unanchored: 'Its example\'s first part is not a run of whole words of its checked quote holding the instance, so it is not shown.',
   unanchoredCarried: 'Its example\'s first part no longer stands in its checked quote holding the instance, so it is not shown.',
+  /** Dialogue is voice (epic decision 26): fresh and carried alike. */
+  voice: 'Its example\'s first part holds an instance only in dialogue, the character\'s voice, so it is not shown.',
   /** The pair as the chapter has it, once anchored (PR #160 F-02): fresh and carried alike. */
   anchoredLong: `Its example's first part, as the chapter has it, runs past ${B.steeringExampleBeforeWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
   anchoredSame: 'Its example shows no change: as the chapter has it, its first part reads as its second.',
@@ -152,10 +157,8 @@ function decodeNote(item: Record<string, unknown>, path: string, ordinal: number
     if (note.nudge !== null) {
       throw new SteeringNoteRefusal('It earns its place, so it names no nudge, and this one does.');
     }
-  } else {
-    if (note.nudge === null) {
-      throw new SteeringNoteRefusal('It leans or compensates, so it names the craft move worth a look, and this one names none.');
-    }
+  } else if (note.nudge !== null) {
+    // A null nudge is the shape for an instance in dialogue (epic decision 26); in narration the gate withholds it.
     nudge = text(note.nudge, `${path}.nudge`, B.steeringNudgeCharacters);
     const nudgeFault = lightboxSteeringTextFault(nudge, { instruction: true });
     if (nudgeFault) {

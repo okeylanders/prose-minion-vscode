@@ -31,7 +31,7 @@ The request (an excerpt, between the two rules):
 Read group G with these lenses, and only these: craft steering.
 Return one frame between ===LIGHTBOX_GROUP_G_V1=== and ===END_LIGHTBOX_GROUP_G_V1===. Its JSON has "version": 1 and exactly these lens keys: "steering".
 Read each of these figures by its id, whatever its rate. A quote counts only when it holds an instance exactly as described:
-- `being-verbs`: an instance is one of these whole words: am, is, are, was, were, be, been, being. A contraction (she's, I'm, they're, isn't, wasn't, ain't), a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.
+- `being-verbs`: an instance is one of these whole words: am, is, are, was, were, be, been, being; or one contracted: I'm, 're (you're, we're, they're), 's read as is (it's, she's, that's, there's), isn't, aren't, wasn't, weren't, ain't. 's as a possessive (the Rabbit's watch) or as has (he's been, she's got), let's, ain't before been or got, 'd, 'll and 've, a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.
 - `adverbs`: an instance is a whole word ending in -ly (the detector counts every one, "only" and "family" too).
 - `intensifiers`: an instance is one of these whole words: just, really, very, quite, rather, somewhat, somehow, actually, basically, literally.
 

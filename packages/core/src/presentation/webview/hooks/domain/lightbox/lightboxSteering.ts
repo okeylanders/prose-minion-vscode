@@ -33,6 +33,7 @@ import {
   LIGHTBOX_STEERING_STANCE_LABELS,
   LIGHTBOX_STEERING_STANCE_NOTES,
   LIGHTBOX_STEERING_STATS,
+  LIGHTBOX_STEERING_VOICE_LABEL,
   isLightboxSteeringStat,
   lightboxSteeringFigure
 } from '@shared/constants/lightboxSteering';
@@ -178,6 +179,7 @@ export function lightboxSteeringDetails(
       ? [{ label: LIGHTBOX_STEERING_EXAMPLE_LABEL, value: `${tile.example.before} → ${tile.example.after} (${LIGHTBOX_STEERING_EXAMPLE_NOTE})` }]
       : []),
     ...(tile.exampleWithheld ? [{ label: 'Example withheld', value: tile.exampleWithheld }] : []),
+    ...(tile.voice ? [{ label: LIGHTBOX_STEERING_VOICE_LABEL, value: tile.voice }] : []),
     figureRow,
     instances
   ];

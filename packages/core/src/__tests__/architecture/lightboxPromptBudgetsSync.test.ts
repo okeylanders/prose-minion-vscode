@@ -218,6 +218,18 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(LIGHTBOX_NUMBERS_READ_STATS).toEqual(['sentence-length', 'dialogue', 'passive-voice']);
   });
 
+  it('teaches contractions as being verbs and dialogue as voice, as the host holds them (epic decision 26)', () => {
+    const steering = lens('steering');
+    expect(steering).toContain('A being verb is a form of be, whole or contracted: I\'m, you\'re, it\'s (it is), isn\'t, wasn\'t and ain\'t are instances');
+    expect(steering).toContain('The \'s of a possessive (the Rabbit\'s watch) or of has (he\'s been, she\'s got), let\'s, \'d, \'ll and \'ve are not');
+    // The host withholds a nudge or example in dialogue (`LightboxSteeringVoice`), and the codec reads a null nudge there.
+    expect(steering).toContain('**Dialogue is voice.**');
+    expect(steering).toContain('gives `"nudge": null` and `"example": null`: the board shows no nudge or example in dialogue, and withholds any it is given');
+    expect(steering).toContain('For `earns`, and for an instance in dialogue, `"nudge": null`. A note that leans or compensates in narration with no nudge is withheld.');
+    // The steering measure's own dialogue: double quotation marks only.
+    expect(steering).toContain('Dialogue here is words inside double quotation marks (“…” or "…"); the board reads single-quoted speech as narration.');
+  });
+
   it('states the Opinion\'s ceilings and rules (Slice 4D)', () => {
     const opinion = lens('opinion');
     expect(opinion).toContain(`and up to ${B.opinionQuotesPerItem} of its quotes, numbered \`q0\`, \`q1\`, \`q2\``);

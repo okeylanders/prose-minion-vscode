@@ -113,8 +113,10 @@ export interface LightboxSteeringExample {
 
 /**
  * One instance of a figure: its quote (the tile's one evidence quote), the
- * stance, the why (`claim`) and, only when it leans or compensates, a nudge
- * and at most one example.
+ * stance, the why (`claim`) and, only when it leans or compensates in
+ * narration, a nudge and at most one example. In dialogue the figure is the
+ * character's voice: the note may still be drawn, with its stance, but with
+ * the host's `voice` line in place of a nudge.
  */
 export interface LightboxSteeringNoteTile extends LightboxReadingTileBase {
   kind: 'steering-note';
@@ -125,6 +127,13 @@ export interface LightboxSteeringNoteTile extends LightboxReadingTileBase {
   example?: LightboxSteeringExample;
   /** Why the reading's example is not shown, in host words; never with `example`. */
   exampleWithheld?: string;
+  /**
+   * Dialogue is voice (epic decision 26): present when the note leans or
+   * compensates and its instance stands in dialogue, the character's voice.
+   * The host's words saying why the note carries no nudge or example; never
+   * with `nudge`, `example` or `exampleWithheld`.
+   */
+  voice?: string;
   /** The note's place among its figure's notes as read, from 1: its title's number. */
   ordinal: number;
 }
