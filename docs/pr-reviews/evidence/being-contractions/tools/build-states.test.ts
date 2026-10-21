@@ -1,9 +1,11 @@
 /**
  * Builds the states and figures for ../README.md (epic decision 26: being
- * verbs count their contractions; dialogue is voice). Run once at the base
+ * verbs count their contractions; dialogue is voice). Run at the base
  * (LIGHTBOX_EVIDENCE_LABEL=before, on an export of `epic/lightbox` at
- * `1cb417c`: Slice 4F and the sentence rule) and once at this branch's head
- * (LIGHTBOX_EVIDENCE_LABEL=after); it uses only modules both trees have.
+ * `1cb417c`: Slice 4F and the sentence rule), at this branch's first
+ * pushed head (LIGHTBOX_EVIDENCE_LABEL=first, an export of `ab22ebd`,
+ * before the writer's three additions) and at its head
+ * (LIGHTBOX_EVIDENCE_LABEL=after); it uses only modules every tree has.
  *
  * The board is built by the production `LightboxService` (prose stats, word
  * frequency, Style Flags, the numbers and craft steering's measure) against
@@ -33,6 +35,7 @@ import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCo
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import { findBeingVerbs } from '@/tools/measure/beingVerbs';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -50,6 +53,18 @@ const NOW = Date.UTC(2026, 9, 21, 12, 0, 0);
 /** Chapter VII's opening: as Gutenberg sets it (single quotes), and set in curly double quotes. */
 const TEA_PARTY_GUTENBERG = [...TEA_PARTY_PARAGRAPHS];
 const TEA_PARTY = TEA_PARTY_CURLY.split('\n\n');
+
+/**
+ * Lines written for this evidence, with made-up names, holding the writer's
+ * three additions (the next-word rule for 's, has before had, 'tis and
+ * 'twas) beside possessives that stay possessives.
+ */
+const ADDITIONS = [
+  '“Nate’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”',
+  'Ivy’s sister laughed. The Hatter’s watch had stopped, and Nate’s own excuse was thin.',
+  '“’Tis no matter,” said the cook. “’Twas ever so. It’s had its day, that kettle.”',
+  '“I ain’t had a cup,” said Nate, “and the cat’s asleep in the teapot.”'
+];
 
 /** Group G, written for this evidence: one narration note, and three on lines the characters speak. */
 const ANSWER = frame('G', {
@@ -144,7 +159,9 @@ async function figuresOf(name: string, paragraphs: readonly string[]) {
     rate: round(being?.value ?? 0),
     writerRatio: being?.writer?.ratio === undefined ? null : Math.round(being.writer.ratio * 100) / 100,
     standouts: board.measured.numbers.rows.filter((row) => row.standout).map((row) => `${row.stat} ${row.standout?.direction}`),
-    steering: board.measured.steering.figures.map(steeringLine)
+    steering: board.measured.steering.figures.map(steeringLine),
+    // Each form the detector found, paragraph by paragraph, as written.
+    forms: paragraphs.map((paragraph) => findBeingVerbs(paragraph).map((match) => match.text))
   };
 }
 
@@ -157,7 +174,8 @@ it(`builds the ${LABEL} states and figures`, async () => {
     await figuresOf('Alice ch. VII opening, curly (PR #161 fixture)', TEA_PARTY),
     await figuresOf('Alice ch. VII opening, Gutenberg single quotes (PR #161 fixture)', TEA_PARTY_GUTENBERG),
     await figuresOf('Alice ch. I ¶1–¶8 (worked examples D and G)', readWorkedExample('G').paragraphs),
-    await figuresOf('Alice ch. I heading and five paragraphs (lightboxProseFixtures)', [ALICE_HEADING, ...ALICE_PARAGRAPHS])
+    await figuresOf('Alice ch. I heading and five paragraphs (lightboxProseFixtures)', [ALICE_HEADING, ...ALICE_PARAGRAPHS]),
+    await figuresOf('Lines written for the writer\'s three additions (made-up names)', ADDITIONS)
   ];
   fs.writeFileSync(path.join(DIR, `figures-${LABEL}.json`), `${JSON.stringify(figures, null, 2)}\n`);
   const notes = board.readings.flatMap((group) => group.tiles).filter((tile) => tile.kind === 'steering-note');

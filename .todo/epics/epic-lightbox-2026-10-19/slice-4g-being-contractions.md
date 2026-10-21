@@ -31,48 +31,72 @@ written, so a quote holds an instance exactly when it holds that span.
 - the whole words am, is, are, was, were, be, been, being;
 - `'m` after the word I ("I'm"; the span is `'m`);
 - `'re` after any word ("you're", "we're", "they're"; the span is `'re`);
-- `'s` after a word ("it's", "she's", "that's", "there's"; the span is
-  `'s`) only when the word-frequency tagger (wink, `tagTextTokens`) reads it
-  as a verb (`VB*`), not a possessive (`POS`), and it is not *has*: not
-  followed by been, got or gotten, looking past adverbs (`RB*`: not, never,
-  always, just) and emphasis marks;
+- `'s` after a word (the span is `'s`), decided by the word-frequency tagger
+  (wink, `tagTextTokens`), in this order:
+  1. **has first, never counted:** been, got, gotten or **had** comes next,
+     looking past adverbs (`RB*`: not, never, always, just) and emphasis
+     marks ("he's been", "she's got", "it's had");
+  2. **is where the tagger reads a verb** (`VB*`): "it's", "she's",
+     "that's", "there's";
+  3. **the next-word rule, where it reads a possessive** (`POS`; the
+     writer's addition, for names and nouns): *is* before an adjective or a
+     participle the tagger tags `VBN` ("Nate's late", "Ivy's tired",
+     "the door's shut"), an -ing word ("the dog's barking"), an adverb or
+     not ("everyone's here", "Nate's not coming"), a preposition or "to"
+     ("Nate's in the garden", "Nate's to blame"), or a determiner (a, an,
+     the, no; my, our: "Dinah's our cat"). It stays a possessive before a
+     noun or a name ("the Rabbit's watch", "Alice's sister", "the Queen's
+     croquet"), before a pronoun ("how's she?"), before "own" ("Alice's own
+     sister"), before adjectives that a noun follows ("the Rabbit's white
+     gloves", "Nate's tired eyes"), and before anything else (a number, a
+     mark, the end: "That one's Nate's.");
 - the negated forms isn't, aren't, wasn't, weren't and ain't (the span is
   the whole word). **Were they counted before? No.** A whole-word
   `\bwas\b` does not match inside "wasn't" ("was" runs on into "n"), and
   4F's agreement test pinned isn't, wasn't and ain't at 0;
 - **ain't, decided explicitly:** counted as a being verb (am not, is not,
-  are not), except before been, got or gotten, where it means *has not*
-  ("I ain't got none"), by the same rule as `'s`.
+  are not), except before been, got, gotten or had, where it means *has
+  not* ("I ain't got none", "I ain't had a cup"), by the same rule as `'s`;
+- **'tis, 'twas and 'twere** (the writer's addition), one being verb each
+  (*it is*, *it was*, *it were*), with a straight or curly apostrophe, or
+  the ‘ a word processor puts there. The span is the word after the mark
+  ("Tis"). The apostrophe opens the word, so it may follow a space or a
+  quotation mark but not a letter; the word-joining rule never sees "is"
+  inside "'tis", so nothing counts twice; "'twill" and "'tisket" are not
+  forms.
 
 Straight and curly apostrophes are the same. The tagger splits "it's" only
 when the mark is straight, so it reads the text with curly apostrophes
 straightened (`withStraightApostrophes`, the same length, so every offset
 stands); craft steering's constructions tag the same text.
 
-**Never counted:** `'s` as a possessive ("the Rabbit's watch") or as *has*
-("he's been", "she's got", "he's gotten"), "let's" (let us; by rule, not by
-the tagger), `'d`, `'ll` and `'ve`, a linking verb (seem, become), and a
-form joined to an underscore (`_was_`). A word is now letters joined by
-apostrophes, so "am" inside "ma'am" and "being" inside "being's" are not
-forms (the old pattern counted "Ma'am" as "am"); `'m` stands only after I,
-so "ma'm" and "M'm" are not forms.
+**Never counted:** `'s` as a possessive or as *has*, "let's" (let us; by
+rule, not by the tagger), `'d`, `'ll` and `'ve`, a linking verb (seem,
+become), and a form joined to an underscore (`_was_`). A word is letters
+joined by apostrophes, so "am" inside "ma'am" and "being" inside "being's"
+are not forms (the old pattern counted "Ma'am" as "am"); `'m` stands only
+after I, so "ma'm" and "M'm" are not forms.
 
 **Known limits, stated in the module and pinned by tests:**
-- an ambiguous `'s` before a participle counts as *is*: "he's gone" counts,
-  though it may mean *has gone*, and so does "it's had its day" (had is not
-  on the has list);
-- the tagger reads `'s` after a noun as a possessive more often than not,
-  even where it is *is* ("the dog's barking", "everyone's here"), and after
-  how or where; those are not counted;
-- "'tis" and "'twas" are not counted (the apostrophe opens the word);
+- a participle other than been, got, gotten or had reads as *is*: "he's
+  gone" and "Nate's gone" count, though either may mean *has gone*;
+- **an -ing word reads as *is*, the chosen reading of the ambiguity:** "the
+  dog's barking" counts as *the dog is barking*, not *the barking of the
+  dog*, and so "Nate's sewing basket" counts, wrongly;
+- an adverb reads as *is* wherever it stands, so "the Rabbit's very white
+  gloves" counts; a pronoun keeps a possessive, so "how's she?" and
+  "where's he?" are not counted;
+- the next-word rule stands only where the tagger reads a possessive; where
+  it reads a verb it is trusted, so "Nate's every word" counts;
 - when the tagger cannot load, no `'s` is counted, and "ain't" is read as
-  *has not* only when the next word is been, got or gotten. Every reader
-  shares the outcome, so the figures still agree.
+  *has not* only when the next word is been, got, gotten or had. Every
+  reader shares the outcome, so the figures still agree.
 
 **Work.** The tagger runs only on a paragraph holding an `'s` or an ain't
-to decide, once per paragraph; the token lookup and the has check are one
-map and one backward sweep, so a 33,332-word paragraph of contractions is
-decided in one tagging (a test holds it to a coarse bound).
+to decide, once per paragraph; the token lookup, the has check and the
+next-word rule read one map and one backward sweep each, so a 33,332-word
+paragraph of contractions is decided in one tagging (a test holds it to a
+coarse bound).
 
 ## Dialogue is voice (`LightboxSteeringVoice`)
 
@@ -119,7 +143,9 @@ A host rule, not only a prompt instruction:
   `"example": null`; dialogue means double quotation marks. The sync test
   pins those sentences.
 - The being-verbs task line (`lightboxPatternInstancePhrase`) lists the
-  contracted forms and the exclusions.
+  contracted forms and the exclusions. With the writer's three additions,
+  both name the next-word rule ("the Hatter's late, everyone's here"),
+  "it's had" as *has*, and 'tis and 'twas.
 - `52-numbers.md` names being verbs only to say craft steering reads them;
   unchanged. `promptBudgets` is unchanged and its sync tests pass.
 
@@ -136,6 +162,9 @@ A host rule, not only a prompt instruction:
   items included) all match, with no change; F keeps #161's sentence
   figures (15 sentences, 33.9 words per sentence). No response figure
   needed fixing.
+- **With the writer's three additions**, group G's request moved again
+  (the task line) and was regenerated by its builder; every other request,
+  F's digest included, still matches, and no response figure moved.
 
 ## Elsewhere
 
@@ -179,6 +208,26 @@ failing tests in six files, both at Slice 4F's head `27b646a` and at
   `LightboxSteeringVoice.test.ts` (where an instance stands, the host's
   words, the field rule).
 
+**The writer's three additions** fail at the first pushed head `ab22ebd`
+and pass here (12 tests in four files, run against an export of it):
+- `LightboxBeingVerbsAgreement`, with made-up names: Nate’s late,
+  everyone’s here, Ivy's not coming, the Hatter’s in the garden, the dog’s
+  barking (pinned as *is*), ’Tis, 'Twas, ’twere, it’s had and ain’t had (now
+  *has*). New controls that already held there and must keep holding:
+  Alice’s sister, the Queen’s croquet, the Rabbit’s white gloves (adjectives
+  before a noun), Alice’s own.
+- `beingVerbs/index.test.ts`: the next-word rule (is: Nate’s late, not,
+  in, to, Ivy’s tired, very, our, the door’s shut; possessive: the Rabbit’s
+  watch, Alice’s sister, the Queen’s croquet, the Hatter’s tea, Nate’s Ivy,
+  own, white gloves, tired eyes, That one’s Nate’s), its pinned ambiguities
+  (the dog’s barking and Nate’s sewing basket as *is*; how’s she and
+  where’s he as possessives), had, 'tis/'twas/'twere with their spans, and
+  "don'tis", "'tisket", "'twill", "'twasn" as no forms. The file does not
+  compile at `ab22ebd` (it imports `BEING_VERB_ELIDED_FORMS`).
+- `LightboxSteeringReadings` (the task line) and `lightboxPromptBudgetsSync`
+  (the prompt's sentences).
+The controls let’s, he’s been, she’s got and ma’am are unchanged.
+
 **Expectations changed, and why:**
 - `beingVerbs/index.test.ts`: "does not count contractions (the stated
   limit)" is now the opposite, by decision 26.
@@ -194,6 +243,11 @@ failing tests in six files, both at Slice 4F's head `27b646a` and at
     or compensates in narration, so it names the craft move worth a look,
     and this one names none." The codec used to refuse it.
   - The task line pins the new wording.
+- With the writer's three additions:
+  - `beingVerbs/index.test.ts`: the has words are been, got, gotten and
+    had; "It's had its day" moved out of the "he's gone" limit (it is *has*
+    now, 0), replaced there by "Nate’s gone".
+  - The task line and the prompt's sentences pin the new wording.
 
 ## Measured on *Alice*
 
@@ -210,25 +264,37 @@ count on every fixture. Under the old sentence rule (`27b646a`) one new
 instance sat in a run of short sentences (0 → 1); the merged rule, which
 keeps closing marks and joins lower-case speech tags, puts none there.
 
+**The writer's three additions move none of the *Alice* fixtures** (Tea-Party
+in both settings and Chapter I): their forms are identical at `ab22ebd` and
+at the head, and no standout flips. On four lines written for the evidence
+with made-up names (56 words), being verbs go 1 (`1cb417c`) → 3 (`ab22ebd`)
+→ 7 (head): Nate’s late, everyone’s here, the kettle’s boiling, ’Tis, ’Twas
+and the cat’s asleep counted; It’s had and ain’t had now *has*; Ivy’s
+sister, the Hatter’s watch and Nate’s own stay possessives.
+
 ## Verification
 
-| Check | Slice 4F `27b646a` | Before the 161 merge (`24a364f`) | `epic/lightbox` `1cb417c` | This branch, merged |
-|---|---|---|---|---|
-| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 / 6,220 / 59 | 456 / 6,259 / 59 | 458 suites / 6,312 tests / 59 snapshots |
-| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | 0 errors / 1,133 warnings | Identical per file and rule to both bases |
-| `npm run typecheck` | Passes | Passes | Passes | Passes |
-| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes | Passes | Passes (the same 3) |
-| `git diff --check` | | | | Clean against both bases |
+| Check | Slice 4F `27b646a` | Before the 161 merge (`24a364f`) | `epic/lightbox` `1cb417c` | This branch, merged (`ab22ebd`) | With the writer's three additions (`4a3ecf6`) |
+|---|---|---|---|---|---|
+| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 / 6,220 / 59 | 456 / 6,259 / 59 | 458 suites / 6,312 tests / 59 snapshots | 458 suites / 6,329 tests / 59 snapshots |
+| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | 0 errors / 1,133 warnings | Identical per file and rule to both bases | Identical per file and rule to `1cb417c` |
+| `npm run typecheck` | Passes | Passes | Passes | Passes | Passes |
+| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes | Passes | Passes (the same 3) | Passes (the same 3) |
+| `git diff --check` | | | | Clean against both bases | Clean against `1cb417c` |
 
 - Built after `npm ci` into a real `node_modules`. At the merged head
   `webview.js` SHA-256 is
   `20d3aed38676380185d8e6c680c37a75f33e7be6599038838d709bb95a0472aa`
-  and `extension.js` `6b8a10c3…`, each reproduced by a second build. (Before
+  and `extension.js` `6b8a10c3…`, each reproduced by a second build. With
+  the three additions, after a fresh `npm ci`, `webview.js` is the same
+  `20d3aed3…` (the additions are host-side) and `extension.js` is
+  `cc95e6df683f4c218c69e7236a9b9cc0ec016a9fdcc9980ba33967d6be3380ea`. (Before
   the 161 merge: `c25e16f0…`; the epic recorded `cb08d7b9…` at
   `1cb417c`. Webpack's production ids come from file paths, so a build of
   an export elsewhere gives other hashes and is not compared.)
 - The new and changed tests fail at both bases (34 tests in six files) and
-  pass here.
+  pass here; the additions' tests fail at `ab22ebd` (12 tests in four
+  files) and pass here.
 - No live or billable call.
 
 ## Evidence
@@ -243,13 +309,13 @@ inspector, at 1440 and 500 px; `facts.json` and an empty `errors.txt`.
 - **Dialogue is voice for all three figures**, the coordinator's default.
   Narrow it to being verbs only if adverbs and intensifiers in speech should
   still get nudges.
-- **The tagger's `'s`.** After a noun, or after here, how or where, the
-  tagger often reads `'s` as a possessive, so "the dog's barking" and
-  "everyone's here" are not counted. A short word list could add them, at
-  the cost of a rule that is no longer the tagger's.
-- **Has.** Only been, got and gotten make `'s` *has*; "it's had its day"
-  counts as *is*. Add had?
-- **'tis and 'twas** are not counted.
+- **Decided (the writer's three additions):** the next-word rule for `'s`
+  after names and nouns, *has* before had, and 'tis, 'twas and 'twere.
+- **Still ambiguous, by the next-word rule:** an -ing word reads as *is*
+  ("the dog's barking", and wrongly "Nate's sewing basket"); a participle
+  reads as *is* ("Nate's gone"); an adverb reads as *is* even before
+  adjectives and a noun ("the Rabbit's very white gloves"); a pronoun keeps
+  a possessive ("how's she?"). Change any of these readings?
 - **Single-quoted dialogue** (British style, or Gutenberg's) reads as
   narration, so notes there get nudges, and a leaning note with none there
   is withheld.

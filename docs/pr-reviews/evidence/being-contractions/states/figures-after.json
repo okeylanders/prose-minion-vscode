@@ -54,6 +54,68 @@
           "other": 4
         }
       }
+    ],
+    "forms": [
+      [
+        "was",
+        "were",
+        "was",
+        "were",
+        "’s"
+      ],
+      [
+        "was",
+        "were",
+        "’s"
+      ],
+      [],
+      [
+        "was"
+      ],
+      [
+        "isn’t"
+      ],
+      [
+        "wasn’t"
+      ],
+      [
+        "wasn’t",
+        "being"
+      ],
+      [
+        "was",
+        "’s"
+      ],
+      [
+        "been",
+        "was"
+      ],
+      [
+        "’s"
+      ],
+      [
+        "was",
+        "is"
+      ],
+      [
+        "’m"
+      ],
+      [],
+      [],
+      [],
+      [
+        "’s"
+      ],
+      [
+        "is"
+      ],
+      [
+        "is"
+      ],
+      [
+        "be",
+        "is"
+      ]
     ]
   },
   {
@@ -111,6 +173,68 @@
           "other": 4
         }
       }
+    ],
+    "forms": [
+      [
+        "was",
+        "were",
+        "was",
+        "were",
+        "'s"
+      ],
+      [
+        "was",
+        "were",
+        "'s"
+      ],
+      [],
+      [
+        "was"
+      ],
+      [
+        "isn't"
+      ],
+      [
+        "wasn't"
+      ],
+      [
+        "wasn't",
+        "being"
+      ],
+      [
+        "was",
+        "'s"
+      ],
+      [
+        "been",
+        "was"
+      ],
+      [
+        "'s"
+      ],
+      [
+        "was",
+        "is"
+      ],
+      [
+        "'m"
+      ],
+      [],
+      [],
+      [],
+      [
+        "'s"
+      ],
+      [
+        "is"
+      ],
+      [
+        "is"
+      ],
+      [
+        "be",
+        "is"
+      ]
     ]
   },
   {
@@ -168,6 +292,39 @@
           "other": 3
         }
       }
+    ],
+    "forms": [
+      [],
+      [
+        "was",
+        "was",
+        "is"
+      ],
+      [
+        "was",
+        "be"
+      ],
+      [
+        "was",
+        "be",
+        "was"
+      ],
+      [
+        "was"
+      ],
+      [],
+      [
+        "was",
+        "was",
+        "was",
+        "was",
+        "were",
+        "was",
+        "was"
+      ],
+      [
+        "was"
+      ]
     ]
   },
   {
@@ -221,6 +378,95 @@
           "other": 1
         }
       }
+    ],
+    "forms": [
+      [],
+      [
+        "was",
+        "was",
+        "is"
+      ],
+      [
+        "was",
+        "be"
+      ],
+      [
+        "was"
+      ],
+      [],
+      [
+        "was"
+      ]
+    ]
+  },
+  {
+    "name": "Lines written for the writer's three additions (made-up names)",
+    "words": 56,
+    "beingVerbs": 7,
+    "rate": 125,
+    "writerRatio": 5,
+    "standouts": [],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 7,
+        "rate": 125,
+        "narration": 1,
+        "dialogue": 6,
+        "inShortRuns": 2,
+        "constructions": {
+          "adjective": 2,
+          "progressive": 1,
+          "passive": 0,
+          "expletive": 0,
+          "other": 4
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 0,
+        "rate": 0,
+        "narration": 0,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 0,
+          "dialogue-tag": 0,
+          "before-adjective": 0,
+          "before-adverb": 0,
+          "other": 0
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 0,
+        "rate": 0,
+        "narration": 0,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 0,
+          "before-modifier": 0,
+          "other": 0
+        }
+      }
+    ],
+    "forms": [
+      [
+        "’s",
+        "’s",
+        "’s"
+      ],
+      [
+        "was"
+      ],
+      [
+        "Tis",
+        "Twas"
+      ],
+      [
+        "’s"
+      ]
     ]
   }
 ]

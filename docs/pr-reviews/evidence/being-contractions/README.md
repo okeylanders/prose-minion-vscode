@@ -19,7 +19,7 @@ ADR 2026-10-19 D7, third addendum). Two changes, shown on the same board:
 | `lightbox/steering-before-<w>.png`, `steering-after-<w>.png` | Craft steering on that chapter: the whole tile at 1440 px (three figures side by side), being verbs alone at 500 px |
 | `lightbox/inspector-after-<w>.png` | The Hare's note (in dialogue) pinned: the inspector's "In dialogue" line |
 | `states/before.json`, `states/after.json` | The host's `lightbox_board` message for each, as replayed |
-| `states/figures-before.json`, `states/figures-after.json` | The measured figures behind the table below, for four public-domain fixtures |
+| `states/figures-before.json`, `states/figures-first.json`, `states/figures-after.json` | The measured figures behind the tables below, with each form found, paragraph by paragraph: at `1cb417c`, at this branch's first head `ab22ebd` (before the writer's three additions), and at its head |
 | `harness.js` | Renders a built `webview.js` as the Lightbox behind a stubbed VS Code API, replays each state, captures one element once two consecutive frames match, and writes `facts.json` and `errors.txt` |
 | `facts.json` | What each capture's page showed, read from the DOM: the numbers rows, each steering figure's head and notes (stance, quote, why, nudge, example, "In dialogue" line), withheld notes, the inspector |
 | `errors.txt` | Every page error, console error and fault (a note in dialogue showing a nudge or example, the wrong count of notes in dialogue, a missing tile, horizontal overflow); **empty for this run** |
@@ -38,11 +38,13 @@ curly apostrophes (`TEA_PARTY_CURLY`).
 and craft steering's measure) against the test fixture's synthetic writer
 average (`WRITER_AVERAGES`: 25 being verbs per 1,000 words over 20,000
 words), and reads group G with the production codec, quote verifier and
-assembly from one answer written for this evidence. It ran twice, with the
-same answer:
+assembly from one answer written for this evidence. It ran three times,
+with the same answer:
 - **before**, on an export of `epic/lightbox` at `1cb417c` (Slice 4F and
   the sentence rule, the tree this branch merges), with the node modules of
   this worktree;
+- **first**, on an export of this branch's first pushed head `ab22ebd`,
+  for the figures only (the writer's three additions came after it);
 - **after**, at this branch's head.
 
 It imports only modules both trees have. No provider was called, and no
@@ -106,6 +108,32 @@ per 1,000 words.
   real project, their average now counts contractions too, so the ratio
   compares like with like.
 
+## The writer's three additions
+
+Approved after the first push (`ab22ebd`): the next-word rule for `'s`
+after a name or noun, *has* before "had", and 'tis, 'twas and 'twere.
+**None of the four *Alice* fixtures moves** between `ab22ebd` and the head
+(their `forms` are identical): they hold no `'s` the tagger reads as a
+possessive before a word that makes it *is*, no "'s had" and no 'tis.
+The board states and every capture above are byte-identical across the
+additions. The builder also measures four lines written for this
+evidence, with made-up names:
+
+> “Nate’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”
+> Ivy’s sister laughed. The Hatter’s watch had stopped, and Nate’s own excuse was thin.
+> “’Tis no matter,” said the cook. “’Twas ever so. It’s had its day, that kettle.”
+> “I ain’t had a cup,” said Nate, “and the cat’s asleep in the teapot.”
+
+| Tree | Being verbs | Forms found, paragraph by paragraph | Narration · dialogue |
+|---|---|---|---|
+| `1cb417c` | 1 | —; was; —; — | 1 · 0 |
+| `ab22ebd` (first head) | 3 | —; was; ’s (It’s had, read as *is*); ain’t (before had) | 1 · 2 |
+| Head | **7** | ’s ’s ’s (Nate’s late, Everyone’s here, the kettle’s boiling); was; Tis, Twas; ’s (the cat’s asleep) | 1 · 6 |
+
+Ivy’s sister, the Hatter’s watch and Nate’s own stay possessives; "It’s
+had" and "ain’t had" are *has* now. The 56 words are under the
+standout minimum (300), so nothing stands out at any tree.
+
 ## Limitations
 
 - Headless Chromium, not the VS Code webview host; theme variables are
@@ -128,8 +156,9 @@ Then copy `$DIR/visual/*.png` into `lightbox/`, and `facts.json` and
 into `packages/core/src/__tests__/`, run it with
 `LIGHTBOX_EVIDENCE_DIR=$DIR LIGHTBOX_EVIDENCE_LABEL=after npx jest packages/core/src/__tests__/build-states.test.ts`,
 delete the copy, and copy `$DIR/states/after.json` and
-`$DIR/figures-after.json` into `states/`. For `before`, do the same in an
-export of `1cb417c` (`git archive`) with `LIGHTBOX_EVIDENCE_LABEL=before`.
+`$DIR/figures-after.json` into `states/`. For `before` and `first`, do the
+same in an export of `1cb417c` or `ab22ebd` (`git archive`) with
+`LIGHTBOX_EVIDENCE_LABEL=before` or `first`.
 Keep `$DIR` outside the repository. Playwright resolves from the project,
 then `PLAYWRIGHT_MODULE`, then `/opt/node22/lib/node_modules/playwright`;
 Chromium from `CHROMIUM_PATH`, then `/opt/pw-browsers/chromium`.

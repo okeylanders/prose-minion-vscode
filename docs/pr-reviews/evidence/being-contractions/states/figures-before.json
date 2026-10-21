@@ -54,6 +54,54 @@
           "other": 4
         }
       }
+    ],
+    "forms": [
+      [
+        "was",
+        "were",
+        "was",
+        "were"
+      ],
+      [
+        "was",
+        "were"
+      ],
+      [],
+      [
+        "was"
+      ],
+      [],
+      [],
+      [
+        "being"
+      ],
+      [
+        "was"
+      ],
+      [
+        "been",
+        "was"
+      ],
+      [],
+      [
+        "was",
+        "is"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        "is"
+      ],
+      [
+        "is"
+      ],
+      [
+        "be",
+        "is"
+      ]
     ]
   },
   {
@@ -111,6 +159,54 @@
           "other": 4
         }
       }
+    ],
+    "forms": [
+      [
+        "was",
+        "were",
+        "was",
+        "were"
+      ],
+      [
+        "was",
+        "were"
+      ],
+      [],
+      [
+        "was"
+      ],
+      [],
+      [],
+      [
+        "being"
+      ],
+      [
+        "was"
+      ],
+      [
+        "been",
+        "was"
+      ],
+      [],
+      [
+        "was",
+        "is"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        "is"
+      ],
+      [
+        "is"
+      ],
+      [
+        "be",
+        "is"
+      ]
     ]
   },
   {
@@ -168,6 +264,39 @@
           "other": 3
         }
       }
+    ],
+    "forms": [
+      [],
+      [
+        "was",
+        "was",
+        "is"
+      ],
+      [
+        "was",
+        "be"
+      ],
+      [
+        "was",
+        "be",
+        "was"
+      ],
+      [
+        "was"
+      ],
+      [],
+      [
+        "was",
+        "was",
+        "was",
+        "was",
+        "were",
+        "was",
+        "was"
+      ],
+      [
+        "was"
+      ]
     ]
   },
   {
@@ -221,6 +350,86 @@
           "other": 1
         }
       }
+    ],
+    "forms": [
+      [],
+      [
+        "was",
+        "was",
+        "is"
+      ],
+      [
+        "was",
+        "be"
+      ],
+      [
+        "was"
+      ],
+      [],
+      [
+        "was"
+      ]
+    ]
+  },
+  {
+    "name": "Lines written for the writer's three additions (made-up names)",
+    "words": 56,
+    "beingVerbs": 1,
+    "rate": 17.9,
+    "writerRatio": 0.71,
+    "standouts": [],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 1,
+        "rate": 17.9,
+        "narration": 1,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "adjective": 1,
+          "progressive": 0,
+          "passive": 0,
+          "expletive": 0,
+          "other": 0
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 0,
+        "rate": 0,
+        "narration": 0,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 0,
+          "dialogue-tag": 0,
+          "before-adjective": 0,
+          "before-adverb": 0,
+          "other": 0
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 0,
+        "rate": 0,
+        "narration": 0,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 0,
+          "before-modifier": 0,
+          "other": 0
+        }
+      }
+    ],
+    "forms": [
+      [],
+      [
+        "was"
+      ],
+      [],
+      []
     ]
   }
 ]

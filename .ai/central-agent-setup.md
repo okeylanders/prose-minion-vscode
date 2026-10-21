@@ -448,7 +448,7 @@ usePersistence({
    - **Measure Tools**: Statistical analysis tools
      - `passageProseStats`: Word count, sentence analysis, pacing metrics; its vocabulary tokenizer is exported (`proseStatsWords`), so the Lightbox's hapax list is exactly the stats row's count
      - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice, filler and weak-verb detectors are exported, with offsets, so the Lightbox's numbers and its sentence wells count by the same rules
-     - `beingVerbs`: The forms of "be", whole and contracted (the Lightbox's being-verbs figure; epic decision 26): I'm, 're, 's where the word-frequency tagger reads a verb and it is not *has* (been, got, gotten follow), isn't, aren't, wasn't, weren't and ain't; never a possessive 's, let's, 'd, 'll or 've. Every reader (rate, numbers row, writer's average, steering totals, quote check) calls `findBeingVerbs`, so they agree; "he's gone" counts as *is*, the stated limit
+     - `beingVerbs`: The forms of "be", whole and contracted (the Lightbox's being-verbs figure; epic decision 26): I'm, 're, 's where the word-frequency tagger reads a verb, or reads a possessive the next word makes *is* (an adjective, -ing word, adverb, preposition or determiner: "Nate's late"), and it is not *has* (been, got, gotten or had follow), isn't, aren't, wasn't, weren't, ain't, 'tis, 'twas and 'twere; never a possessive 's before a noun, name or pronoun, let's, 'd, 'll or 've. Every reader (rate, numbers row, writer's average, steering totals, quote check) calls `findBeingVerbs`, so they agree; "he's gone" counts as *is*, the stated limit
      - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink (its tagged occurrences carry each token's offset and length), bigrams/trigrams, length histogram, optional lemmas; `tagTextTokens` gives each token's tag and offset (the Lightbox's craft steering sorts instances by construction with it)
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
@@ -811,8 +811,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G (being-verb contractions and dialogue as voice) merged with the sentence rule (PR #161), Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
-- 458 suites / 6,312 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G (being-verb contractions, the next-word rule for 's, and dialogue as voice) merged with the sentence rule (PR #161), Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
+- 458 suites / 6,329 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
