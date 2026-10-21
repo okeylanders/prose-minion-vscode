@@ -20,10 +20,10 @@ which is unchanged.
 
 | Path | Contents |
 |---|---|
-| `lightbox/lightbox-<state>-<width>.png` | The Lightbox at 1440, 1000 and 500 px: nine states |
+| `lightbox/lightbox-<state>-<width>.png` | The Lightbox at 1440, 1000 and 500 px: ten states |
 | `states/chapter.json` | The host's messages and answers. `idle` is Chapter I's board, `changed` its board after an edit, and `book` the whole book's board. `estimates` holds the host's estimate answers, which the harness gives the tab's own estimate requests, echoing each request's id (PR #149 F-03). `passages` holds the host's answers to each passage the states ask for, keyed by board id and item, without the request id the harness echoes. `items` holds what the states pin |
 | `states/log.txt` | Every line the host logged while the states were made |
-| `harness.js` | Renders a built `webview.js` as the Lightbox behind a stubbed VS Code API, replays each state's messages, and acts as the writer would. It answers each passage request from `passages`, takes each screenshot once two consecutive frames match, and writes `facts.json` and `errors.txt` |
+| `harness.js` | Renders a built `webview.js` as the Lightbox behind a stubbed VS Code API, replays each state's messages, and acts as the writer would. It answers each passage request from `passages`, or holds it and answers it late with its own request id, takes each screenshot once two consecutive frames match, and writes `facts.json` and `errors.txt` |
 | `facts.json` | What each state's page showed, read from the DOM by `harness.js`. This covers the inspector, the well, the hapax list, the two word panels' boxes, the style flags, the run line, the passage requests, horizontal overflow, and whether any saved webview state held a well's text |
 | `errors.txt` | Every page error, console error, and failed expectation, one per line. It is empty for this run |
 | `tools/build-passages.test.ts` | How `states/` was made |
@@ -62,6 +62,14 @@ which is unchanged.
     is 495 px. Stacked, at 1000 and 500 px, it keeps its own 174 px.
   - **One word pinned.** "MARMALADE" is pinned, as the text writes it, and
     its one sentence is lit.
+- **`back-late`** (PR #159 F-01). "alice" pinned and answered, then
+  ¶2's address pressed with its answer held, then "← Back to “alice”"
+  pressed, then ¶2's answer released late with its own request id.
+  - The word's sentences stay: "27 instances in 26 sentences", 27 lit.
+  - The tab asked for nothing more: two passage requests, one held and
+    released.
+  - Against the bundle the review read (`8d0545de…`), this state shows
+    "Finding the sentences…" with no well, at every width.
 - **`changed`.** ¶11 pinned, then the chapter edited ("soon began talking
   again" became "soon began counting stars") and re-read, so the tab gets
   a new board. The harness holds the host's answer for the new board.
@@ -123,14 +131,26 @@ No provider was called.
 ## Results
 
 From the committed `facts.json`, rendered from the bundle a clean
-`npm run build` writes at this branch's head (`webview.js` SHA-256
-`8d0545decad8bf1e8dac296798ff57343abbb502b6228b5f1148db4c03262a61`).
+`npm run build` writes at this branch's head, after the PR #159 fixes and
+the merge of PR #158 (`webview.js` SHA-256
+`2f86917e89befed61189d1422fbb71e211c2ea59e28fbd0c9a0e8db06de2ae04`).
 
 **Bundle provenance.** The bundle was built from an empty `dist/`, after
 `npm ci` into the worktree's own `node_modules`. That is a real directory,
 not a symlink: webpack's production module ids come from file paths.
 Building twice gave the same hash. The base, `20775cf`, rebuilt the same
 way, gives `0f6624f4…`, the hash Slice 4D recorded.
+
+**Re-rendered after the review (PR #159).**
+- `states/` was rebuilt with `tools/build-passages.test.ts` at the fixed
+  head. `chapter.json` and `log.txt` came out byte-identical, so the N-01
+  change moved no host answer.
+- The first render's bundle (`8d0545de…`) and this one give the same DOM
+  facts in all 27 earlier captures. Only the count of saved webview
+  states differs, by one.
+- Seventeen of those PNGs are byte-identical. The other ten differ in 8
+  to 34 pixels each, no channel by more than one level: rendering noise,
+  not a change anyone can see.
 
 | State | What the page shows (1440 px; the same at 1000 and 500) |
 |---|---|
@@ -141,10 +161,11 @@ way, gives `0f6624f4…`, the hash Slice 4D recorded.
 | `phrase` | "Sentences · 8 instances in 6 sentences". 8 lit, matching "she had ×8" |
 | `flag` | "Sentences · 119 instances in 48 sentences". 119 lit, matching "Weak Verbs 119". Flags: four buttons, and Repetitive Words a span |
 | `hapax` | Hapax list: 300 of 340 words shown, matching "340 hapax · 15.9%". "Sentences · 1 instance in 1 sentence" for "MARMALADE" |
+| `back-late` | "Sentences · 27 instances in 26 sentences". 26 rows, 27 lit after ¶2's late answer; two requests, one released late |
 | `changed` | The "text changed" note, no well, and the new board's request held |
 | `bounded` | "385 instances in 378 sentences". 50 rows and 51 lit, with 334 past the bound stated |
 
-Across all 27 captures:
+Across all 30 captures:
 - no horizontal overflow;
 - no saved webview state held a well's text: 10 to 16 states saved per
   capture, none with any well's text;
@@ -152,9 +173,14 @@ Across all 27 captures:
 - every recorded answer was found;
 - `errors.txt` is empty.
 
-**The harness fails rather than skips.** Run against the base bundle
-(`0f6624f4…`), it wrote 120 errors and exited 1. Every state reported its
-missing well and hapax list.
+**The harness fails rather than skips.**
+- Run against the base bundle (`0f6624f4…`), it wrote 120 errors and
+  exited 1. Every state reported its missing well and hapax list. That
+  run predates `back-late`.
+- Run against the bundle the review read (`8d0545de…`), it wrote 3
+  errors, one per width, all `back-late`:
+  `no well (expected "Sentences holding “alice”")`. It exited 1. Every
+  other state passed.
 
 ## Rerunning it
 
