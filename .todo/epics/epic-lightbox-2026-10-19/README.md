@@ -53,6 +53,9 @@ carried into the Workshop.
 | 14 | Order (2026-10-20) | **The new lenses land before Slice 5** (saved boards), so the saved format holds them |
 | 15 | Opinion views (2026-10-20) | **Neutral is the default view**; **Blunt is diagnosis only**, of the work, never the writer, with no rewrites (Slice 4D) |
 | 16 | Opinion's place (2026-10-20) | The Opinion is an explicit, fenced **exception to "describe, never grade"**, recorded with the freshness label in a dated ADR addendum to D7 |
+| 17 | Paragraph text (2026-10-21) | **Clicking a paragraph shows its whole text** in the inspector, fetched from the host when pinned and never persisted; reached from a counted item, that item's instances are lit (Slice 4E) |
+| 18 | Sentences for an item (2026-10-21) | **Clicking a word in the word panels lists the sentences it appears in**, in a scrollable well at the bottom of the inspector, each instance found by the rule that made its count (Slice 4E) |
+| 19 | Hapax list (2026-10-21) | **The Top Words panel lists the hapax words** below the cloud, exactly as many as the stats row counts (Slice 4E). Slice 4F (craft steering) takes the decisions after this one |
 
 ## Slices
 
@@ -67,6 +70,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Planned (`epic/lightbox-slice-4e-inspector`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1024,3 +1028,23 @@ land before Slice 5 (decision 14).
     - **Verification.** 430 suites / 5,916 tests / 59 snapshots; lint
       identical; typecheck and build with `verify:bundle` pass; bundle
       SHA-256 `0f6624f4…`.
+
+- **2026-10-21. Slice 4E (reading aids in the inspector) is planned** on
+  `epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`
+  (PR #157 merged). The writer ran a real chapter through the board and
+  asked for three things (decisions 17–19): a pinned paragraph's whole
+  text, the sentences a clicked word stands in, and the hapax list under
+  the cloud. All three are measured by code, with no model call.
+  - **The plan:** [slice-4e-inspector-aids.md](slice-4e-inspector-aids.md).
+    The board holds no paragraph text, so one correlated route pair
+    (`LIGHTBOX_REQUEST_PASSAGE`, `LIGHTBOX_PASSAGE`) fetches it by board id
+    and content hash; nothing of it is persisted. Each well finds instances
+    with the rule that made the figure it shows, so the lit instances equal
+    the displayed count; a test pins that over every listed entry.
+  - **Also:** the inspector's count strings agree in number ("1 word per
+    sentence").
+  - **Base measured** at `20775cf`: 430 suites / 5,916 tests / 59
+    snapshots; lint 0 errors / 1,133 warnings; typecheck and build with
+    `verify:bundle` pass; `webview.js` SHA-256 `0f6624f4…`, as 4D recorded.
+  - Slice 4F (craft steering) is built beside it and takes the decisions
+    after 19.
