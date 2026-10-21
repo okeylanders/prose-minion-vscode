@@ -10,9 +10,11 @@
  * Carroll's "Alice's Adventures in Wonderland" (1865), public domain, in
  * curly double quotes: `TEA_PARTY_CURLY` from the test fixtures.
  *
- * Not part of the test suite. Run it once on each rule:
- * copy it to packages/core/src/__tests__/ and run
- * `SENTENCE_RULE_EVIDENCE_OUT=$DIR/states/<before|after>.json npx jest packages/core/src/__tests__/build-states.test.ts`.
+ * Not part of the test suite. Run it once on each rule, with
+ * `packages/core/src/tools/measure/passageProseStats/index.ts` as the
+ * original rule (`058feb5`), closing marks alone (`fabd95d`), and this
+ * branch's head: copy it to packages/core/src/__tests__/ and run
+ * `SENTENCE_RULE_EVIDENCE_OUT=$DIR/states/<base|closing-marks|speech-tags>.json npx jest packages/core/src/__tests__/build-states.test.ts`.
  * Delete the copy after.
  */
 jest.mock('p-limit', () => ({
@@ -41,15 +43,19 @@ import { MessageType, type ExtensionToWebviewMessage, type LightboxBoard, type L
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
 import { TEA_PARTY_CURLY } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
-const OUT = process.env.SENTENCE_RULE_EVIDENCE_OUT || '/tmp/sentence-rule/states/after.json';
+const OUT = process.env.SENTENCE_RULE_EVIDENCE_OUT || '/tmp/sentence-rule/states/speech-tags.json';
 const EXTENSION_PATH = `${__dirname}/../..`;
 const MODEL = 'provider/reader-model';
 /** Stub pricing for the stub model: $3 and $15 per million tokens. */
 const PRICING = { promptUsdPerToken: 0.000003, completionUsdPerToken: 0.000015 };
 const CHAPTER_PATH = 'Drafts/alice-tea-party.md';
 const NOW = Date.UTC(2026, 9, 21, 18, 0);
-/** The short dialogue paragraph the capture pins: one line of speech in two quotations. */
-const PINNED = 8;
+/**
+ * The paragraph the capture pins: “Not the same thing a bit!” said the
+ * Hatter. “You might … ‘I eat what I see’!” Its speech tag and its closing
+ * marks both move its sentences.
+ */
+const PINNED = 17;
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) {
@@ -67,7 +73,7 @@ const settle = async () => {
   }
 };
 
-it('dumps the Tea-Party board, its estimate and ¶8\'s passage', async () => {
+it('dumps the Tea-Party board, its estimate and ¶17\'s passage', async () => {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const clock = jest.spyOn(Date, 'now').mockReturnValue(NOW);
   const files = new Map<string, string>([[`/workspace/${CHAPTER_PATH}`, TEA_PARTY_CURLY]]);
@@ -143,7 +149,7 @@ it('dumps the Tea-Party board, its estimate and ¶8\'s passage', async () => {
   });
   const reply = last(MessageType.LIGHTBOX_PASSAGE)?.payload as { requestId: string; passage: { kind: string } } | undefined;
   if (!reply || reply.passage.kind === 'refused') {
-    throw new Error('no passage for ¶8');
+    throw new Error('no passage for ¶17');
   }
   const { requestId: _passageRequest, ...passageAnswer } = reply;
 
