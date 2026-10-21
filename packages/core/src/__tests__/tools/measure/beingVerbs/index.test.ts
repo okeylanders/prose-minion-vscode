@@ -7,6 +7,7 @@
  */
 
 import {
+  BEING_VERB_ELIDED_FORMS,
   BEING_VERB_FORMS,
   BEING_VERB_HAS_WORDS,
   BEING_VERB_NEGATED_FORMS,
@@ -53,16 +54,47 @@ describe('findBeingVerbs', () => {
     expect(findBeingVerbs('It’s cold.')).toEqual([{ start: 2, end: 4, text: '’s' }]);
   });
 
-  it('reads \'s before been, got or gotten as has, looking past adverbs and emphasis marks', () => {
-    expect([...BEING_VERB_HAS_WORDS]).toEqual(['been', 'got', 'gotten']);
+  it('reads \'s before been, got, gotten or had as has, looking past adverbs and emphasis marks', () => {
+    expect([...BEING_VERB_HAS_WORDS]).toEqual(['been', 'got', 'gotten', 'had']);
     // Only the whole word "been" counts in these lines.
     expect(forms('He\'s been here. She\'s got it. He’s gotten tired.')).toEqual(['been']);
     expect(forms('He\'s never been there. She\'s always got time. It\'s just gotten worse.')).toEqual(['been']);
     expect(forms('He\'s *been* there.')).toEqual(['been']);
+    // "had" too (the writer's addition): it's had is it has had.
+    expect(forms('It\'s had its day. He’s already had enough. Nate’s had tea.')).toEqual([]);
   });
 
   it('counts the ambiguous "he\'s gone" as is: the rule\'s known limit', () => {
-    expect(forms('He\'s gone. It\'s had its day.')).toEqual(['\'s', '\'s']);
+    expect(forms('He\'s gone. Nate’s gone.')).toEqual(['\'s', '’s']);
+  });
+
+  it('reads \'s after a name or noun by the next word, where the tagger reads a possessive', () => {
+    // Is: before an adjective or a participle, an -ing word, an adverb or not, a preposition or to, a determiner.
+    expect(forms('Nate’s late. Everyone’s here. Nate’s not coming. Nate’s in the garden. Nate’s to blame.'))
+      .toEqual(['’s', '’s', '’s', '’s', '’s']);
+    expect(forms('Ivy’s tired. Ivy’s very late. Dinah’s our cat. The door’s shut.')).toEqual(['’s', '’s', '’s', '’s']);
+    // Stays a possessive: before a noun or name, before own, before adjectives a noun follows, before a pronoun.
+    expect(forms('The Rabbit’s watch. Alice’s sister. The Queen’s croquet. The Hatter’s tea, Nate’s Ivy.')).toEqual([]);
+    expect(forms('Alice’s own sister. The Rabbit’s white gloves. Nate’s tired eyes.')).toEqual([]);
+    expect(forms('That one’s Nate’s.')).toEqual([]);
+  });
+
+  it('pins the next-word rule\'s readings where English is ambiguous', () => {
+    // An -ing word reads as is: "the dog is barking", not "the dog's barking" as a noun.
+    expect(forms('The dog’s barking.')).toEqual(['’s']);
+    expect(forms('Nate’s sewing basket.')).toEqual(['’s']);
+    // A pronoun next keeps a possessive: "how's she?" is not counted.
+    expect(forms('How’s she? Where’s he?')).toEqual([]);
+  });
+
+  it('counts \'tis, \'twas and \'twere as one being verb each, straight or curly, spanning the word after the mark', () => {
+    expect([...BEING_VERB_ELIDED_FORMS]).toEqual(['\'tis', '\'twas', '\'twere']);
+    const text = '’Tis so. \'Twas late. ‘Twere better. Oh, \'tis true, ’twas so.';
+    const found = findBeingVerbs(text);
+    expect(found.map((match) => match.text)).toEqual(['Tis', 'Twas', 'Twere', 'tis', 'twas']);
+    expect(found[0]).toEqual({ start: 1, end: 4, text: 'Tis' });
+    // A mark after a letter, or a longer word, is no elided form; nor does "is" inside "'tis" count again.
+    expect(forms('don\'tis, \'tisket, \'twill, \'twasn')).toEqual([]);
   });
 
   it('counts the negated forms as whole words, ain\'t too, except ain\'t as has not', () => {
@@ -70,6 +102,7 @@ describe('findBeingVerbs', () => {
     expect(forms('It isn\'t so, it wasn’t then, they aren\'t, we weren’t, and it ain\'t so.'))
       .toEqual(['isn\'t', 'wasn’t', 'aren\'t', 'weren’t', 'ain\'t']);
     expect(forms('I ain\'t got none. They ain’t gotten it. I ain\'t never been there.')).toEqual(['been']);
+    expect(forms('I ain’t had none.')).toEqual([]);
   });
 
   it('never counts \'d, \'ll or \'ve', () => {

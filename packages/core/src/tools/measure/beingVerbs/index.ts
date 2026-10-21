@@ -23,14 +23,29 @@
  * - the negated forms `BEING_VERB_NEGATED_FORMS` (isn't, aren't, wasn't,
  *   weren't, ain't; the match is the whole word). A whole-word pattern
  *   never matched them: "was" is followed by "n" in "wasn't";
- * - `'s` after a word ("it's", "she's", "that's", "there's"; the match is
- *   `'s`) only when the word-frequency tool's part-of-speech tagger (wink,
- *   `tagTextTokens`) reads it as a verb (a `VB*` tag), not a possessive
- *   (`POS`), and it is not *has*: not followed by `BEING_VERB_HAS_WORDS`
- *   (been, got, gotten), looking past adverbs (`RB*`: not, never, always)
- *   and emphasis marks. "let's" (let us) never counts.
- * - "ain't" can mean *has not* too, so the same rule holds it: before been,
- *   got or gotten it is not counted ("I ain't got none").
+ * - the elided forms 'tis, 'twas and 'twere (`BEING_VERB_ELIDED_FORMS`; the
+ *   match is the word after its opening apostrophe, "tis"), one being verb
+ *   each. The apostrophe opens the word, so it may stand after a space or a
+ *   quotation mark, and a word processor's ‘ counts as well as ' and ’;
+ * - `'s` after a word (the match is `'s`), decided by the word-frequency
+ *   tool's part-of-speech tagger (wink, `tagTextTokens`), in this order:
+ *   1. *has*, never counted: `BEING_VERB_HAS_WORDS` (been, got, gotten,
+ *      had) comes next, looking past adverbs (`RB*`: not, never, always)
+ *      and emphasis marks ("he's been", "she's got", "it's had");
+ *   2. *is* where the tagger reads `'s` as a verb (`VB*`): "it's", "she's",
+ *      "that's", "there's";
+ *   3. where it reads a possessive (`POS`), the next word decides (the
+ *      next-word rule, for names and nouns: "Nate's late", "everyone's
+ *      here"). *Is* before an adjective or a participle the tagger tags
+ *      `VBN` ("tired", "shut"), an -ing word, an adverb or not, a
+ *      preposition or "to", or a determiner (a, an, the, no; my, our). It
+ *      stays a possessive before a noun, a name or a pronoun ("the Rabbit's
+ *      watch", "Alice's sister", "how's she"), before "own", before
+ *      adjectives that a noun follows ("the Rabbit's white gloves"), and
+ *      before anything else (a number, a mark, the end).
+ *   "let's" (let us) never counts.
+ * - "ain't" can mean *has not* too, so the same has rule holds it: before
+ *   been, got, gotten or had it is not counted ("I ain't got none").
  * Straight and curly apostrophes (' ’) are the same here. The tagger reads
  * the text with curly apostrophes straightened (the same length, so every
  * offset stands): it splits "it’s" only when the mark is straight.
@@ -41,15 +56,19 @@
  * **Limits, stated.** A word list and a tagger, not a parser:
  * - every counted form counts, whatever it does in its sentence (a linking
  *   verb, an auxiliary, a passive), so the figure is a frequency;
- * - `'s` before a participle is read as *is* unless the participle is been,
- *   got or gotten: "he's gone" counts, though it may mean *has gone*, and so
- *   does "it's had its day";
- * - the tagger reads `'s` after a noun as a possessive more often than not,
- *   even where it is *is* ("the dog's barking", "everyone's here"), and
- *   after "how" or "where" ("how's she?"); those are not counted;
- * - "'tis" and "'twas" are not counted (the apostrophe opens the word);
+ * - `'s` before a participle other than been, got, gotten or had reads as
+ *   *is*: "he's gone" and "Nate's gone" count, though either may mean *has
+ *   gone*;
+ * - before an -ing word `'s` reads as *is*: "the dog's barking" counts as
+ *   *the dog is barking*, though it may be *the barking of the dog*, and so
+ *   does "Nate's sewing basket" (a possessive);
+ * - before an adverb it reads as *is*, so "the Rabbit's very white gloves"
+ *   counts; before a pronoun it stays a possessive, so "how's she?" and
+ *   "where's he?" are not counted;
+ * - the next-word rule stands only where the tagger reads a possessive;
+ *   where it reads a verb, it is trusted ("Nate's every word" counts);
  * - when the tagger cannot load, no `'s` is counted, and "ain't" is read as
- *   *has not* only when the next word is been, got or gotten.
+ *   *has not* only when the next word is been, got, gotten or had.
  */
 
 import { tagTextTokens, type TaggedToken } from '@/tools/measure/wordFrequency';
@@ -60,8 +79,11 @@ export const BEING_VERB_FORMS = ['am', 'is', 'are', 'was', 'were', 'be', 'been',
 /** The negated forms counted, as whole words (curly apostrophes too). */
 export const BEING_VERB_NEGATED_FORMS = ['isn\'t', 'aren\'t', 'wasn\'t', 'weren\'t', 'ain\'t'] as const;
 
+/** The elided forms counted, each one being verb ('tis is *it is*). */
+export const BEING_VERB_ELIDED_FORMS = ['\'tis', '\'twas', '\'twere'] as const;
+
 /** After `'s` or "ain't", these make it *has*, so it is not counted. */
-export const BEING_VERB_HAS_WORDS = ['been', 'got', 'gotten'] as const;
+export const BEING_VERB_HAS_WORDS = ['been', 'got', 'gotten', 'had'] as const;
 
 /** One form found: its offsets in the text and the text matched. */
 export interface BeingVerbMatch {
@@ -83,6 +105,8 @@ const CONTRACTION_END = '(?![\\p{L}\'’])';
 
 const WHOLE_FORMS = new RegExp(`${WHOLE_BEFORE}(?:${BEING_VERB_FORMS.join('|')})${WHOLE_AFTER}`, 'giu');
 const NEGATED_FORMS = new RegExp(`${WHOLE_BEFORE}(?:is|are|was|were|ai)n${APOSTROPHE}t${WHOLE_AFTER}`, 'giu');
+/** 'tis, 'twas, 'twere: an opening mark (a word processor may turn it ‘) after no letter; the span starts after it. */
+const ELIDED_FORMS = new RegExp(`(?<!\\p{L})['’‘]t(?:is|was|were)${WHOLE_AFTER}`, 'giu');
 /** A word's start: no letter, and no letter and apostrophe, before it (a quotation mark may open it: 'I'm). */
 const WORD_START = `(?<!\\p{L}|\\p{L}${APOSTROPHE})`;
 /** `'m` after the word I: the I is part of the match here, and dropped from the span below. */
@@ -97,6 +121,11 @@ const ADVERB = /^RB[RS]?$/;
 const VERB = /^VB[DGNPZ]?$/;
 const MARKUP = /^[_*]+$/;
 const HAS_WORDS: ReadonlySet<string> = new Set(BEING_VERB_HAS_WORDS);
+/** After a possessive `'s`, a modifier: an adjective, or a participle the tagger tags `VBN` ("tired"). */
+const MODIFIER = /^(?:JJ[RS]?|VBN)$/;
+/** After a possessive `'s`, these make it *is*: an -ing word, an adverb or not, a preposition or "to", a determiner. */
+const IS_AFTER = /^(?:VBG|RB[RS]?|IN|TO|DT|PRP\$)$/;
+const NOUN = /^NNP?S?$/;
 
 /** Every counted form in `text`, in order, by the word-frequency tool's tagger. */
 export function findBeingVerbs(text: string): BeingVerbMatch[] {
@@ -109,6 +138,10 @@ export function findBeingVerbsWith(text: string, tag: BeingVerbTagger): BeingVer
   const add = (start: number, end: number) => matches.push({ start, end, text: text.slice(start, end) });
   for (const match of text.matchAll(WHOLE_FORMS)) {
     add(match.index ?? 0, (match.index ?? 0) + match[0].length);
+  }
+  for (const match of text.matchAll(ELIDED_FORMS)) {
+    // The span is the word after its opening mark: "tis".
+    add((match.index ?? 0) + 1, (match.index ?? 0) + match[0].length);
   }
   for (const match of text.matchAll(I_AM)) {
     // The span is the `'m`, not the I.
@@ -135,7 +168,8 @@ export function findBeingVerbsWith(text: string, tag: BeingVerbTagger): BeingVer
   for (const at of possible) {
     const token = reader?.at(at);
     // The tagger alone tells *is* from a possessive: with no tagger, or no token of its own, no `'s` is counted.
-    if (token !== undefined && reader && reader.value(token) === '\'s' && VERB.test(reader.pos(token)) && !reader.hasAfter(token)) {
+    if (token !== undefined && reader && reader.value(token) === '\'s' && !reader.hasAfter(token) &&
+      (VERB.test(reader.pos(token)) || reader.isAfterPossessive(token))) {
       add(at, at + 2);
     }
   }
@@ -160,13 +194,13 @@ function taggedOrUndefined(text: string, tag: BeingVerbTagger): TaggedToken[] | 
   }
 }
 
-/** Whether been, got or gotten follows `end` as the next word: the rule without a tagger. */
+/** Whether been, got, gotten or had follows `end` as the next word: the rule without a tagger. */
 function nextWordIsHas(text: string, end: number): boolean {
   const next = /^\s+([\p{L}]+)/u.exec(text.slice(end, end + 32));
   return next !== null && HAS_WORDS.has(next[1].toLowerCase());
 }
 
-/** For "ain't": *has not* when been, got or gotten follows, past adverbs by the tagger's tokens when it placed one here. */
+/** For "ain't": *has not* when been, got, gotten or had follows, past adverbs by the tagger's tokens when it placed one here. */
 function hasFollows(text: string, end: number, reader: TokenReader | undefined, token: number | undefined): boolean {
   return reader && token !== undefined ? reader.hasAfter(token) : nextWordIsHas(text, end);
 }
@@ -176,14 +210,16 @@ interface TokenReader {
   at(offset: number): number | undefined;
   value(index: number): string;
   pos(index: number): string;
-  /** Whether been, got or gotten comes next, past adverbs and emphasis marks. */
+  /** Whether been, got, gotten or had comes next, past adverbs and emphasis marks. */
   hasAfter(index: number): boolean;
+  /** For a `'s` the tagger reads as a possessive: whether the next word makes it *is* (the next-word rule). */
+  isAfterPossessive(index: number): boolean;
 }
 
 /**
  * The tokens, read once: where each placed one starts, and each token's
- * next word past adverbs and markup, from one backward sweep, so a long run
- * of adverbs is walked once, not once per contraction before it.
+ * next word past markup, past adverbs and past modifiers, from one backward
+ * sweep each, so a long run is walked once, not once per contraction.
  */
 function tokenReader(tokens: readonly TaggedToken[]): TokenReader {
   const byStart = new Map<number, number>();
@@ -192,18 +228,39 @@ function tokenReader(tokens: readonly TaggedToken[]): TokenReader {
       byStart.set(token.offset, index);
     }
   });
-  const next = new Int32Array(tokens.length);
-  let nearest = tokens.length;
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    next[index] = nearest;
-    if (!ADVERB.test(tokens[index].pos) && !MARKUP.test(tokens[index].value)) {
-      nearest = index;
+  const markup = tokens.map((token) => MARKUP.test(token.value));
+  // The nearest token after each one that is neither markup nor skipped.
+  const sweep = (skip: (index: number) => boolean): Int32Array => {
+    const next = new Int32Array(tokens.length);
+    let nearest = tokens.length;
+    for (let index = tokens.length - 1; index >= 0; index -= 1) {
+      next[index] = nearest;
+      if (!markup[index] && !skip(index)) {
+        nearest = index;
+      }
     }
-  }
+    return next;
+  };
+  const nextWord = sweep(() => false);
+  const nextPastAdverbs = sweep((index) => ADVERB.test(tokens[index].pos));
+  const nextPastModifiers = sweep((index) => MODIFIER.test(tokens[index].pos));
+  const lower = (index: number) => (tokens[index]?.value ?? '').toLowerCase();
+  const pos = (index: number) => tokens[index]?.pos ?? '';
   return {
     at: (offset) => byStart.get(offset),
     value: (index) => tokens[index].value.toLowerCase(),
     pos: (index) => tokens[index].pos,
-    hasAfter: (index) => HAS_WORDS.has((tokens[next[index]]?.value ?? '').toLowerCase())
+    hasAfter: (index) => HAS_WORDS.has(lower(nextPastAdverbs[index])),
+    isAfterPossessive: (index) => {
+      const next = nextWord[index];
+      if (lower(next) === 'own') {
+        return false;
+      }
+      if (MODIFIER.test(pos(next))) {
+        // "Nate's late." is *is*; "the Rabbit's white gloves" is a possessive.
+        return !NOUN.test(pos(nextPastModifiers[next]));
+      }
+      return IS_AFTER.test(pos(next));
+    }
   };
 }

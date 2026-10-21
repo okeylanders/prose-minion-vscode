@@ -220,8 +220,13 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
 
   it('teaches contractions as being verbs and dialogue as voice, as the host holds them (epic decision 26)', () => {
     const steering = lens('steering');
-    expect(steering).toContain('A being verb is a form of be, whole or contracted: I\'m, you\'re, it\'s (it is), isn\'t, wasn\'t and ain\'t are instances');
-    expect(steering).toContain('The \'s of a possessive (the Rabbit\'s watch) or of has (he\'s been, she\'s got), let\'s, \'d, \'ll and \'ve are not');
+    expect(steering).toContain(
+      'A being verb is a form of be, whole or contracted: I\'m, you\'re, it\'s (it is), the Hatter\'s late (a name or noun with \'s ' +
+        'before an adjective, an -ing word, an adverb, a preposition or a determiner), isn\'t, wasn\'t, ain\'t, \'tis and \'twas are instances'
+    );
+    expect(steering).toContain(
+      'The \'s of a possessive (the Rabbit\'s watch, Alice\'s sister) or of has (he\'s been, she\'s got, it\'s had), let\'s, \'d, \'ll and \'ve are not'
+    );
     // The host withholds a nudge or example in dialogue (`LightboxSteeringVoice`), and the codec reads a null nudge there.
     expect(steering).toContain('**Dialogue is voice.**');
     expect(steering).toContain('gives `"nudge": null` and `"example": null`: the board shows no nudge or example in dialogue, and withholds any it is given');

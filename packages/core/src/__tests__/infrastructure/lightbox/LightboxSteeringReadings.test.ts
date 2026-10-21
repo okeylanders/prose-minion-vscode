@@ -383,9 +383,11 @@ describe('group G\'s task', () => {
     expect(lightboxSteeringTaskLines([row('being-verbs', 17), row('adverbs', 0), row('intensifiers', 11)])).toEqual([
       'Read each of these figures by its id, whatever its rate. A quote counts only when it holds an instance exactly as described:',
       '- `being-verbs`: an instance is one of these whole words: am, is, are, was, were, be, been, being; or one contracted: ' +
-        'I\'m, \'re (you\'re, we\'re, they\'re), \'s read as is (it\'s, she\'s, that\'s, there\'s), isn\'t, aren\'t, wasn\'t, weren\'t, ain\'t. ' +
-        '\'s as a possessive (the Rabbit\'s watch) or as has (he\'s been, she\'s got), let\'s, ain\'t before been or got, \'d, \'ll and \'ve, ' +
-        'a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.',
+        'I\'m, \'re (you\'re, we\'re, they\'re), \'s read as is (it\'s, she\'s, there\'s, and after a name or noun before an adjective, ' +
+        'an -ing word, an adverb, a preposition or a determiner: the Hatter\'s late, everyone\'s here), isn\'t, aren\'t, wasn\'t, weren\'t, ' +
+        'ain\'t, \'tis, \'twas, \'twere. \'s as a possessive (the Rabbit\'s watch, Alice\'s sister) or as has (he\'s been, she\'s got, ' +
+        'it\'s had), let\'s, ain\'t before been, got or had, \'d, \'ll and \'ve, a form joined to an underscore (_was_) and a linking verb ' +
+        '(seem, become, look, feel, appear) are not instances.',
       '- `adverbs`: the board found no instance in this chapter, so give no figure for it.',
       '- `intensifiers`: an instance is one of these whole words: just, really, very, quite, rather, somewhat, somehow, actually, basically, literally.'
     ]);

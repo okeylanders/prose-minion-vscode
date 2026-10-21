@@ -8,10 +8,12 @@
  *
  * Slice 4F found the writer's withheld readings had quoted contractions,
  * which the detector then never counted. The writer decided to count them
- * (epic decision 26): 'm and 're always; 's when the tagger reads a verb and
- * it is not has; the negated forms, ain't too (except as has not); never
- * 'd, 'll or 've. Every line below is written for this test unless marked as
- * Lewis Carroll's (public domain), and each expected count is literal.
+ * (epic decision 26): 'm and 're always; 's when the tagger reads a verb, or
+ * reads a possessive that the next word makes is, and it is not has (been,
+ * got, gotten, had); the negated forms, ain't too (except as has not);
+ * 'tis, 'twas and 'twere; never 'd, 'll or 've. Every line below is written
+ * for this test, with made-up names, unless marked as Lewis Carroll's
+ * (public domain), and each expected count is literal.
  */
 import { countLightboxFigures } from '@/infrastructure/lightbox/LightboxNumbers';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
@@ -48,11 +50,28 @@ describe('being verbs: what the board counts is what a quote is checked for', ()
     ['ain’t', 'It ain’t so, said the cook.', 'It ain’t so', ['ain’t']],
     // The rule's stated limit: "he's gone" may mean has gone, and counts as is.
     ['he’s gone (the known limit)', 'He’s gone to the garden.', 'He’s gone to the garden', ['’s']],
+    // The next-word rule (the writer's addition): after a name or noun the tagger reads as a possessive.
+    ['Nate’s late', 'Nate’s late again, said Ivy.', 'Nate’s late again', ['’s']],
+    ['everyone’s here', 'Everyone’s here at last.', 'Everyone’s here at last', ['’s']],
+    ['Ivy’s not coming', 'Ivy\'s not coming today.', 'Ivy\'s not coming', ['\'s']],
+    ['the Hatter’s in the garden', 'The Hatter’s in the garden.', 'The Hatter’s in the garden', ['’s']],
+    // The ambiguity, pinned: an -ing word reads as is (the dog is barking).
+    ['the dog’s barking (pinned as is)', 'The dog’s barking again.', 'The dog’s barking again', ['’s']],
+    // 'tis, 'twas and 'twere (the writer's addition), one being verb each.
+    ['’tis', '’Tis so, said the cook.', '’Tis so, said the cook', ['Tis']],
+    ['\'twas', '\'Twas late when Ivy came.', '\'Twas late when Ivy came', ['Twas']],
+    ['’twere', 'Better ’twere done quickly.', 'Better ’twere done', ['twere']],
     // Controls: none of these is an instance of be.
     ['a possessive', 'The Rabbit’s watch ticked on.', 'The Rabbit’s watch', []],
     ['a possessive, straight', 'The Rabbit\'s watch ticked on.', 'The Rabbit\'s watch', []],
     ['let’s', 'Let’s go home now.', 'Let’s go home', []],
     ['she’s got (has)', 'She’s got the key.', 'She’s got the key', []],
+    ['it’s had (has, the writer\'s addition)', 'It’s had its day, Ivy said.', 'It’s had its day', []],
+    ['ain’t had (has not)', 'I ain’t had the key.', 'ain’t had the key', []],
+    ['Alice’s sister (a possessive before a noun)', 'Alice’s sister read on.', 'Alice’s sister read on', []],
+    ['the Queen’s croquet (a possessive before a noun)', 'The Queen’s croquet went on.', 'The Queen’s croquet went on', []],
+    ['the Rabbit’s white gloves (adjectives before a noun)', 'The Rabbit’s white gloves fell.', 'The Rabbit’s white gloves fell', []],
+    ['Alice’s own (a possessive before own)', 'Alice’s own sister read on.', 'Alice’s own sister read on', []],
     ['he’s gotten (has)', 'He’s gotten quite tall.', 'He’s gotten quite tall', []],
     ['ain’t got (has not)', 'I ain’t got the key.', 'ain’t got the key', []],
     ['she’d', 'She’d go if asked.', 'She’d go if asked', []],
