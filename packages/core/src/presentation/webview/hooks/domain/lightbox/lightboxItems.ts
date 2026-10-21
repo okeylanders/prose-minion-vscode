@@ -29,7 +29,7 @@ import {
   isLightboxNumberStat,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
-import { findLightboxTile, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
+import { findLightboxTile, lightboxTilesOfKind, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
@@ -242,7 +242,7 @@ function standoutItem(board: LightboxBoard, ref: Extract<LightboxItemRef, { kind
     claim:
       `${formatLightboxFigure(row.value)} ${row.unit}` + (against.length > 0 ? `, against ${against.join(' and ')}` : '') + '. ' +
       (row.standout
-        ? `It stands out ${row.standout.direction}; ${paragraphCountLabel(row.paragraphs.length)} hold ${row.instanceLabel}, lit here.`
+        ? `It stands out ${row.standout.direction}; ${paragraphCountLabel(row.paragraphs.length)} ${row.paragraphs.length === 1 ? 'holds' : 'hold'} ${row.instanceLabel}, lit here.`
         : 'It does not stand out.') +
       ' Counted by code; nothing here is a reading.',
     paragraphs: [...row.paragraphs],
@@ -323,9 +323,9 @@ function sectionsLane(board: LightboxBoard): LightboxResolvedItem {
     claim: `${lightboxSectionsNote(measure)} Detected by code from headings, scene breaks and chapter lines; nothing here is a reading.`,
     paragraphs: measure.sections.flatMap((section) => (section.marker !== undefined ? [section.marker] : [])),
     support: [
-      `${measure.fired.headings.length} headings`,
-      `${measure.fired['scene-breaks'].length} scene breaks`,
-      `${measure.fired['chapter-lines'].length} chapter lines`
+      pluralize(measure.fired.headings.length, 'heading'),
+      pluralize(measure.fired['scene-breaks'].length, 'scene break'),
+      pluralize(measure.fired['chapter-lines'].length, 'chapter line')
     ]
   };
 }
@@ -367,10 +367,10 @@ function pressureItem(board: LightboxBoard): LightboxResolvedItem | undefined {
     register: 'counted-read',
     where: 'Pressure · Lane',
     title: 'Open threads',
-    claim: `${counts.threads} threads · ${counts.resolved} resolved here · ${counts.carriedOut} carried out of the chapter · ` +
+    claim: `${pluralize(counts.threads, 'thread')} · ${counts.resolved} resolved here · ${counts.carriedOut} carried out of the chapter · ` +
       `${counts.dormant} dormant. Counted by code from the threads read; lit where any stands open.`,
     paragraphs: [...open].sort((a, b) => a - b),
-    support: [`${counts.threads} threads`, `${counts.carriedOut} carried out`]
+    support: [pluralize(counts.threads, 'thread'), `${counts.carriedOut} carried out`]
   };
 }
 
@@ -389,7 +389,7 @@ function rhythmLane(board: LightboxBoard): LightboxResolvedItem {
       `Average words per sentence in each paragraph. The text averages ${average}; ` +
       (longRuns.length === 0
         ? `no paragraph runs at ${threshold} or longer.`
-        : `${paragraphCountLabel(longRuns.length)} run at ${threshold} or longer, lit here.`),
+        : `${paragraphCountLabel(longRuns.length)} ${longRuns.length === 1 ? 'runs' : 'run'} at ${threshold} or longer, lit here.`),
     paragraphs: longRuns,
     support: [`avg ${average} words / sentence`, `pacing: ${board.measured.headline.pacing}`]
   };
@@ -410,8 +410,8 @@ function dialogueLane(board: LightboxBoard): LightboxResolvedItem {
     where: 'Measure · Lane',
     title: 'Dialogue share',
     claim:
-      `Share of each paragraph inside double quotation marks. ${withDialogue.length} of ` +
-      `${board.paragraphs.length} paragraphs carry dialogue; ${overall}% overall${range}.`,
+      `Share of each paragraph inside double quotation marks. ${paragraphCountLabel(withDialogue.length)} of ` +
+      `${board.paragraphs.length.toLocaleString('en-US')} ${withDialogue.length === 1 ? 'carries' : 'carry'} dialogue; ${overall}% overall${range}.`,
     paragraphs: withDialogue,
     support: [`${overall}% dialogue`, `${withDialogue.length} ¶ with dialogue`]
   };
@@ -433,8 +433,8 @@ function paragraphsItem(
     where: single ? 'Chapter · Paragraph' : 'Chapter · Paragraphs',
     title: single ? `¶${ref.from}` : `¶${ref.from}–¶${ref.to}`,
     claim:
-      `${totals.words.toLocaleString('en-US')} words in ${totals.sentences} ` +
-      `${totals.sentences === 1 ? 'sentence' : 'sentences'} · ${totals.rhythm} words per sentence · ` +
+      `${pluralize(totals.words, 'word')} in ${pluralize(totals.sentences, 'sentence')} · ` +
+      `${totals.rhythm} ${totals.rhythm === 1 ? 'word' : 'words'} per sentence · ` +
       `${Math.round(totals.dialogueShare * 100)}% dialogue.`,
     paragraphs: span.map((paragraph) => paragraph.index),
     support: [`rhythm ${totals.rhythm}`, `dialogue ${Math.round(totals.dialogueShare * 100)}%`]

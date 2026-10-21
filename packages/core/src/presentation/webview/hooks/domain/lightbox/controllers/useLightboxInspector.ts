@@ -27,7 +27,7 @@ import {
   paragraphCountLabel,
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
-import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxLensIsStale, lightboxWithheldQuoteText, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
 import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
@@ -234,7 +234,7 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
       return [{ label: 'An open door', value: 'A question to think with: an offer, never an instruction' }];
     case 'stock-tiers':
       return [
-        ...lightboxTierShares(tile).map((share) => ({ label: share.label, value: `${share.count} of ${tile.classified} beats`, measured: `${share.percent}%` })),
+        ...lightboxTierShares(tile).map((share) => ({ label: share.label, value: `${share.count} of ${pluralize(tile.classified, 'beat')}`, measured: `${share.percent}%` })),
         { label: 'Counted', value: 'By code, from the beats the reading classified and code found: a share of those beats, not of the chapter' }
       ];
     case 'signature':
