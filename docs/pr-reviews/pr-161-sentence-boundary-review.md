@@ -126,3 +126,148 @@ Both match the author's evidence. The webview is byte-identical to independently
 No blocking defect was found in the reviewed sentence change; retain N-01 as the bounded follow-up above. Do not infer #160 integration acceptance, writer/real-chapter checkpoint acceptance, minimum-host/native/live-provider verification or Slice 5 readiness from these results. Historical evidence from earlier slices remains historical, as the author documents.
 
 This publication changes only this report. No implementation/test/lockfile edit, older-review rewrite, formal GitHub review/comment, merge, deployment, VSIX publication, paid/live call, private-manuscript processing or user-computer operation was performed. Publication and exact report-head CI are tracked separately rather than recursively changing this report.
+
+## Author response (2026-10-21)
+
+**N-01: fixed** in `f0b1967`, with tests that fail on the reviewed head.
+Whether a punctuation-only token is vocabulary at all is the inherited
+contract you named. It is unchanged and now Low tech debt.
+
+PR #160 (Slice 4F) merged first, so this PR carries the integration:
+- `epic/lightbox` at `2f040ab` is merged in at `2c45aa3`;
+- the evidence states were rebuilt on the merged tree at `0e85dce`.
+
+Every figure that moved is listed below, for your re-check of the
+combined tree. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| N-01 | Low / P3 · nonblocking | **Fixed** | An instance no sentence touches gets a row of its own: the stretch of its paragraph between the sentences around it, outer space trimmed, with the instance lit and marked "outside any sentence". The passage counts it as `outside` (and `more.outside` past the row bound), never as a sentence, and never puts it in the nearest one. The phantom-sentence removal stays. `LightboxPassageRow` is a union of a sentence row and an outside row, so a row cannot be both | `LightboxPassagesOutside.test.ts` (7): your three cases through the production board and index, checking lit instance ids and row text; the outside row's ¶ pin; and, on a real index with instances placed by hand, text order between sentences, two instances in one stretch, and the row bound. `lightboxPassages.test.ts`: the header and bound wording. `LightboxPassageWell.test.tsx`: the row rendered, lit, marked and pinned. `LightboxCountAgreement` now also checks outside instances | `f0b1967` |
+| Punctuation-only vocabulary | Inherited · out of scope | **Tracked** | `proseStatsWords` still counts a lone `'` as a word. Whether it should is a vocabulary decision with its own figures to re-pin, so it is [Low tech debt](../../.todo/tech-debt/2026-10-21-prose-stats-punctuation-only-words.md) | — | `f0b1967` |
+| Integration | Merge | **Merged and verified** | `epic/lightbox` at `2f040ab` (PR #160, Slice 4F). Conflicts and moved figures are below | Full gates below | `2c45aa3` |
+
+### How each new test was checked against `6cbd27b`
+
+I put `6cbd27b`'s passage builder, passage types, view model and well
+back in place, with type diagnostics off, since the row type changed. I
+ran the nine new tests there, then restored the fix.
+
+**Failed (8).** The three cases reproduced exactly what you found:
+- **`'Oh dear! '`:** "1 instance in 1 sentence", the row `'Oh dear!`,
+  nothing lit.
+- **`'`, a blank line, `Alice ran.`:** the row was ¶2 `Alice ran.`,
+  nothing lit.
+- **`'` alone:** "1 instance in 1 sentence", and a row with an empty
+  `sentences` list. The index holds no sentence.
+
+The three hand-placed cases, the header wording and the well's render
+failed too.
+
+**Passed (1).** The ¶ pin control passes on both, since the pin was
+never wrong.
+
+With the fix:
+- **Your three cases.** Each case gives one outside row in ¶1, the
+  segment `'` with instance 0 lit. Each counts 1 instance, 0 sentences
+  and 1 outside, which the header reads as "1 instance, outside any
+  sentence". The well's test renders that header and the row "' · outside
+  any sentence".
+- **The text-order case** (`Alice ran. ' . Alice sat.`) gives a sentence
+  row, an outside row (`'` lit, then ` .`) and a sentence row. It counts
+  3 instances in 2 sentences, 1 outside.
+- **Past the row bound**, `more` is
+  `{ rows: 3, sentences: 2, instances: 3, outside: 1 }`.
+
+### The 4F merge: conflicts, and what moved
+
+**Conflicts**, with both sides kept in each:
+- **Group F's worked example.** 4F renumbered the tiles. Its request is
+  the builder's output on the merged code, byte for byte
+  (`LightboxOpinionBundle`). The response keeps 4F's tile ids
+  (`D-10`, `D-11` and so on) and this branch's figures.
+- **The tech-debt index.** 4F's rows are kept, and so is the punctuation
+  row. The closing-quote row stays resolved.
+- **The agents guide's inventory** is the merged count. **The epic
+  README** keeps 4F's entries, then this branch's, then a dated entry
+  for N-01 and the merge.
+
+**Every figure that moved on the combined tree, against `2f040ab`:**
+
+| Where | At `2f040ab` | Combined |
+| --- | --- | --- |
+| Group F worked example, request: headline | 17 sentences · 29.9 words per sentence · pacing Slow (longer sentences) | 15 · 33.9 · Very slow (very long sentences) |
+| Group F worked example, request: `standout:sentence-length` and tile `D-10` | 29.9 words per sentence (×2.09) | 33.9 (×2.37) |
+| Group F worked example, request: voice trait | measured: 29.9 avg | 33.9 avg |
+| Group F worked example, response: O2, Blunt's body, and the note after it | 29.9, "about twice" | 33.9, "more than twice" |
+| `LightboxCraftHandoff.test.ts`: the number reading's Figure point | "Sentence length: 29.9 words per sentence; your average 14.3" | "… 33.9 …", with a comment |
+| `LightboxSteeringMeasure.ts` header | Named a closing mark the rule left alone | Names the merged rule (comment only) |
+
+**Nothing else moved:**
+- **Groups A–E's and G's requests** still equal their builders
+  (`LightboxPromptBundle`), so none was regenerated.
+  - D's request names its threshold, not the figure.
+  - D's response passes its gates unchanged: its sentence-length quotes
+    still sit inside sentences of more than 14 words.
+- **Craft steering's counts are unchanged.**
+  - Every 4F suite passes as written.
+  - The rule can move a short run in general: a closing mark no longer
+    adds a word to the next sentence, and a speech tag lengthens its
+    speech's sentence.
+  - Neither the 4F excerpt nor the Tea-Party has an instance in a run,
+    under any of the three rules.
+
+**4F's committed evidence** is left as recorded at its head. I rebuilt
+it into a scratch folder with its own `tools/build-steering.test.ts`, on
+the merged tree:
+- `workshop.json` is byte-identical.
+- `log.txt` differs only in group F's digest line: about 4,020 → 4,022
+  tokens, and its key.
+- `chapter.json` differs in 130 fields, all sentence figures or group F's.
+  - The headline: 17 → 15 sentences, 29.9 → 33.9, pacing Slow → Very
+    slow, readability 40.2 → 32.3, grade 12 → 13.6.
+  - The longest sentence: 107 → 106.
+  - The ribbon: ¶2 28.5 → 57 and ¶8 8.2 → 12.3.
+  - Group B's "29.9 avg".
+  - Group F's estimate: +3 tokens.
+  - Group F's reading.
+  - The steering measure, notes and examples do not move.
+
+The full list is in the
+[sentence-rule evidence](evidence/sentence-rule/README.md#what-else-moved).
+
+**This branch's evidence** was rebuilt the same way, at `0e85dce`.
+- The three Tea-Party states differ from the earlier build only by 4F's
+  fields: the steering measure, group G's slot, and the estimate. Every
+  sentence figure is unchanged.
+- Re-rendered with the merged `webview.js`, the facts are identical. Two
+  captures came out byte-identical. The third differs in 34 pixels by one
+  level of one channel, so it was kept.
+
+### Verification of the merged head
+
+All gates ran at `2c45aa3`, after `npm ci` into the worktree's own
+`node_modules`. The later commits change only docs and evidence.
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **456 suites / 6,259 tests / 59 snapshots passed**. The reviewed head ran 444 / 6,102 / 59, the N-01 fix 445 / 6,111 / 59, and `2f040ab` brings 4F's 11 suites and 148 tests |
+| Named suites | 4F's (`LightboxSteering*`, `LightboxBeingVerbsAgreement`, `LightboxOpinionDigest`), `LightboxCountAgreement`, the four sentence reader suites, `LightboxPassagesOutside`, `LightboxPromptBundle`, `LightboxOpinionBundle` and `LightboxCraftHandoff`: **19 suites / 310 tests passed** |
+| Lint | **0 errors / 1,133 warnings**, identical per file and rule to the N-01 head; 4F's 21 new files add none |
+| Typecheck | Passed all package stages |
+| Build and `verify:bundle` | Passed; the same three webpack size warnings |
+| `webview.js` SHA-256 | `cb08d7b9cc645e1104cb7d9c9a6f0d3035aaa0c4c7b8d66fbfb4523070dc7482`, reproduced by a second build. The N-01 fix alone was `700b6816…`; 4F adds steering |
+| `extension.js` SHA-256 | `a548648cc4af07ad531a0ce7fd1a1f9ef168adeccbaa0241ec420af73cdee86d`, reproduced. The N-01 fix alone was `70c37eb0…` |
+| `git diff --check` | Clean against `2c45aa3`'s first parent. Against `origin/epic/lightbox`, it flags only this report's header line breaks, which are yours |
+
+No live or billable call was made, and no unpublished manuscript was
+used.
+
+### Not done here
+
+- **4F's evidence** is not re-rendered: earlier slices' evidence stays as
+  recorded. The fields it would move are listed above.
+- **Steering's sentence wells** (4F's debt) are not wired here.
+- **Writer, native and live-provider acceptance** remain open, as you
+  said.
