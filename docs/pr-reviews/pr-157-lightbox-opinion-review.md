@@ -520,3 +520,53 @@ F-04's fix (`9fadf6d`, 4C's plain-grid ribbon with no subgrid) is merged into 4D
   - `errors.txt` is empty;
   - the Opinion's screenshots are unchanged apart from header-strip noise
     at 1440 px.
+
+
+## Final integration re-review (2026-10-21)
+
+**Reviewer:** Astra · **Reviewed head:** `889e69f43607a55b8a421b2a4adef6fe9b59dea7` · **Previous reviewed/report head:** `b02e3e138058d1e280a6b95937095e6a0a5004a0` · **Retargeted base:** `epic/lightbox` at `5f6e8ad108bbf6a472dc19ce52c1ce06209f4f27` (PR #156's merge).
+
+**Code-review disposition: no remaining blocking finding in this reviewed PR #157 integration.** Opinion F-01 and N-01 remain addressed, and the actual merged source now includes the independently cleared #156 F-04 correction. The previously inherited blocker is therefore **addressed in this head**, not merely fixed on another branch. This is a code-review disposition, not a formal GitHub approval, native/writer acceptance or permission to merge.
+
+This appendix preserves all 522 lines present at `889e69f4`, including the author's latest response and the F-04 ledger row it inserted into its earlier response. That author delta added content without deleting earlier review text; it was not a strictly append-only prefix of `b02e3e1`. This reviewer adds only the present appendix.
+
+### Integration and retained fixes
+
+The two ribbon components, two ribbon styles and `webviewCssFloor.test.ts` are **byte-identical** to independently reviewed #156 correction `d98780b`. Labels and tracks are direct children of one plain CSS grid; labels explicitly occupy column 1, tracks column 2, and the separator spans both. Neither the old row wrappers nor the unsupported subgrid declaration remains. The declared VS Code floor is unchanged. See the [final #156 F-04 re-review](https://github.com/okeylanders/prose-minion-vscode/blob/20050f62bccf080b1fe31f69e546ce12409d29d5/docs/pr-reviews/pr-156-lightbox-story-lenses-review.md#independent-f-04-re-review-2026-10-21) for the correction's source/runtime analysis and original failing control.
+
+Only those four production ribbon files changed since `b02e3e1`; 23 relevant Opinion/quote/carry/Bring/handler/prompt files are byte-identical. The selected CSS feature/debt ratchet includes Opinion styles without adding a `KNOWN` allowance. It is not a general CSS compatibility proof: the explicitly recorded pre-existing color-mix and other above-floor styling debt is unchanged, not silently cleared by this review.
+
+The unchanged **86-control** replay keeps the ID-digit, inline-q0, degree-label and quote-class corrections intact, including genuine-number controls, carry and selected-view Bring. Current host fixtures were regenerated, not borrowed from the previous bundle run. The **439 production-bundle DOM assertions** retain the three views, observation focus, withheld/stale behavior and ids-only transfer, and exercise the flat grid's label/track structure and interaction paths. The additional stale-story-label replay uses 4C's actual stale fixture against the rebuilt 4D bundle, rather than assuming that a stale Opinion implies stale story lanes. No new Opinion or ribbon-integration regression was found.
+
+The merged base is verified, not inferred from the retarget label: `d98780b` is the merge-base, and its difference from `5f6e8ad` consists only of the PR #155 and #156 review reports. The author's merge resolves the previous documentation conflicts; GitHub reports the current PR mergeable and its exact implementation-head PR/push CI both passed.
+
+### Independent final-head verification
+
+| Check | Independent result at `889e69f4` |
+| --- | --- |
+| Full Jest | **430 suites / 5,916 tests / 59 snapshots passed**, 179.613 s on the complete isolated retry |
+| Typecheck | All three stages passed |
+| Lint | **0 errors / 1,133 warnings**; exact normalized file/rule/severity/message multiset parity with original `f5e1451`, previous `13be7758` and cleared #156 `d98780b` |
+| Production build / `verify:bundle` | Passed, same three webpack size/performance warnings |
+| Bundle SHA-256 | **`0f6624f4185b4aa7739c9e37b7ccd781d45788a455d9f18a958199abb90bf3f6`**, exactly matching the revised evidence |
+| Opinion gate/carry/Bring replay | **86/86 passed**, four suites, 6.554 s, unchanged probes and fresh fixtures |
+| Lifecycle / digest / phrase-pair / frontmatter integration | **14/14**, **5/5**, **19/19**, **6/6** passed, with unchanged assertions; includes 93 phrase/term-span parity cases |
+| Bundled DOM integration | **439 assertions passed**: 260 original + 85 correction controls + 54 Opinion/plain-grid integration + 40 stale-story-label checks; no non-CSS runtime errors |
+| Diff / scope | `git diff --check` passed; only this review report is edited |
+| Exact implementation-head CI | Both [PR run 39548533144](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39548533144) and [push run 39548527109](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39548527109) completed successfully |
+
+The completed exact-`d98780b` #156 logs were inspected and reused: **421 suites / 5,821 tests / 59 snapshots**, successful typecheck/lint/build, exact bundle `c016b535…`, and the focused floor-correction evidence. That correction was not redundantly re-reviewed wholesale. The #157 head gates, Opinion controls and bundled integration checks above were run independently. External probes do not inflate repository-suite totals.
+
+**Resource retry, disclosed:** the first full run ended with 429 suites passing and one suite whose worker was terminated by SIGKILL; it was not a full pass (5,908 tests completed). Two cold targeted-replay attempts also ended with exit 137 before producing results. These logs are retained. Competing compilation was stopped; an inactive 1.4 GiB RAM-backed cache was moved to disk with all data retained and its original-path symlink preserved. Available RAM rose to about 5.0 GiB before the isolated retry. The entire suite then passed, not merely the interrupted suite; remaining targeted and bundled checks ran sequentially. No implementation or expectation was changed to obtain the full pass. Node 24.19.0 / npm 11.9.0, the 2 GiB heap, one worker, 1,000 MB idle-worker limit and explicit disk-backed cache remain recorded.
+
+### Refreshed evidence and limits
+
+All **12 changed or new 4D images** were inspected as actual pixels: nine new floor-simulation captures and three changed existing captures. The three existing images change only 4, 4 and 19 header pixels; the visible Opinion/ribbon content is unchanged. The other 21 existing PNGs are byte-identical. The new floor captures cover Neutral, observation hover and stale states at 1440, 1000 and 500px. Original narrow-screen/Workshop clipping and off-screen coverage limitations remain.
+
+All 24 shared facts are literally unchanged after removing `ribbonGrid`; the nine new floor facts match their ordinary twins apart from geometry/floor counters. All **30 Lightbox geometry entries** consistently report eight compared column/cell pairs, three movement bands, zero edge discrepancies, two label blocks beside their tracks with full vertical overlap, and no clipped labels. `errors.txt` is empty. The source-identical ported helpers pass **46 independent browser-free checks**, including missing-selector/cell-count rejection and six faults for the old stacked-label geometry.
+
+These checks remain a bounded evidence harness. A missing individual label or one of several bands can escape its checks, and whole-block adjacency does not prove exact per-lane label pairing. Geometry faults are recorded in the error file, not necessarily a nonzero process exit. Unlike 4C's descriptive extractor, 4D has no stale `lanes.labels` selector, so its stated non-geometry fact parity is literal. The 4D stale fixture rereads Stock, leaving story labels current: its floor-stale screenshot is not evidence for wide stale story badges. The cleared #156 visuals and the additional current-bundle stale-label replay address that distinction without claiming new reviewer geometry.
+
+Host-state and digest regeneration remain byte-identical to the committed evidence and earlier independent runs. This confirms replay provenance, not model quality. The floor scenario removes one unsupported feature in a modern browser; zero declarations are now dropped because the product no longer uses subgrid. It is **not** execution on Chromium 102 or native VS Code, nor emulation of all older browser behavior.
+
+No implementation, repository test or lockfile was edited by this review. The approved publication changes only this report; exact report-head push and PR CI are checked separately afterward. No denied browser route or unauthorized computer was retried, and no live/billable provider or private manuscript was used. The author-recorded writer checkpoint and decisions 15/16 remain unauthenticated acceptance claims. Rendered-text basis/versioning and board-order digest limits remain documented debt. **This disposition is not whole-app minimum-runtime certification, writer/native acceptance, Slice 5 readiness, saved-board-format approval, merge permission or deployment authorization.**
