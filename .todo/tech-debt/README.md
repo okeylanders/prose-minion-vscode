@@ -103,7 +103,6 @@ elsewhere.
 | Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; decide before Slice 5 saves boards) | Identified |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
 | Medium | [Webview CSS uses features above the declared Chromium 102 floor](2026-10-21-webview-css-above-chromium-102.md) (found by the PR #156 F-04 guard; `color-mix()` theme tokens) | Identified |
-| Medium | [A closing quotation mark after a sentence's end counts as a sentence](2026-10-21-prose-sentences-closing-quote.md) (Lightbox Slice 4E; `“Oh dear!”` is "2 sentences", and a well's row can begin with "”") | Identified |
 
 ## Review Guidance
 
@@ -115,6 +114,8 @@ elsewhere.
   focused concern and narrow the parent document.
 
 ## Recently resolved
+
+- [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
 
 - [Lightbox readings vanish when the chapter changes](../archive/tech-debt/2026-10-19-lightbox-stale-readings.md): readings carry onto the changed chapter, stale and re-checked (Lightbox Slice 3, 2026-10-19).
 

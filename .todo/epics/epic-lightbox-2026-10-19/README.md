@@ -1075,8 +1075,9 @@ land before Slice 5 (decision 14).
   - **Deviations and limits** are in the slice's
     [implementation notes](slice-4e-inspector-aids.md#implementation-notes-2026-10-21).
     One item went to tech debt: the board's
-    [sentence rule](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
-    gives a closing quotation mark to the next sentence.
+    [sentence rule](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+    gives a closing quotation mark to the next sentence (since resolved:
+    see the next entry).
   - **Verification.**
 
     | Check | `20775cf` (base) | Slice 4E head |
@@ -1090,4 +1091,45 @@ land before Slice 5 (decision 14).
       `node_modules` and reproduced by a second build.
     - Visual evidence at 1440, 1000 and 500 px from real host output:
       [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
+    - No live or billable call.
+
+- **2026-10-21. The sentence rule keeps closing marks,** on
+  `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159) at
+  `058feb5`. It resolves the
+  [sentence-rule debt](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md),
+  recorded in
+  [ADR 2026-10-21](../../../docs/adr/2026-10-21-sentence-closing-marks.md).
+  Slice 4F (craft steering) reads sentence spans and merges this later.
+  - **The rule.** `proseSentenceSpans` keeps the run of `”`, `’`, `"`,
+    `'`, `)` and `]` written directly after a sentence's `.`, `!` or `?`,
+    and a stretch of only space and closing marks is no sentence.
+    - `“Oh dear!”` is 2 words in 1 sentence.
+    - An elision's apostrophe never moves.
+    - `“Wait!” she cried.` is still two sentences: lower-case
+      continuations, abbreviations and ellipses are unchanged.
+  - **Figures move on purpose.** Literal before/after figures on the
+    *Alice* fixtures are in the
+    [evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md),
+    with an inspector capture before and after.
+    - Whole-text counts drop by at most one in ordinary prose: the
+      worked examples go 17 → 16 sentences and 29.9 → 31.8 words per
+      sentence.
+    - Per-paragraph counts drop wherever a paragraph ends with a closing
+      mark: 2,028 → 1,702 over the whole book.
+    - The well headers do not move, and count agreement holds, now also
+      on the dialogue-heavy Tea-Party.
+    - Group F's worked example was regenerated from its builder.
+  - **Verification.**
+
+    | Check | `058feb5` (base) | Head |
+    |---|---|---|
+    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 442 suites / 6,058 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - `webview.js` SHA-256 `8d0545de…` at both, after `npm ci` into a
+      real `node_modules`. The rule runs host-side, so only `extension.js`
+      changes: `b8cb056a…` → `8baf2770…`. The head's two bundles were
+      reproduced by a second build.
     - No live or billable call.

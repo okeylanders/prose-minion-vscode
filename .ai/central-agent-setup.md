@@ -809,8 +809,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4E: reading aids in the inspector):
-- 440 suites / 6,012 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, the sentence rule keeps closing marks, on Lightbox Slice 4E):
+- 442 suites / 6,058 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1153,8 +1153,12 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
   the answer still pending, for the board on screen. A newer board says "the
   text changed" until its answer lands. No passage text enters `setState`.
 - **Sentences are the board's.** Rows use each paragraph's
-  `proseSentenceSpans`. Fix the sentence rule there, not in the well
-  ([tech debt](.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md)).
+  `proseSentenceSpans`. Change the sentence rule there, never in the well.
+  A sentence keeps the closing marks written directly after its end
+  ([ADR 2026-10-21](docs/adr/2026-10-21-sentence-closing-marks.md)). The
+  rule feeds every sentence figure, so a change to it moves measured
+  figures: pin it with literal before/after figures on the *Alice*
+  fixtures, and regenerate any worked example whose request states them.
 
 ### Operational Tips
 
