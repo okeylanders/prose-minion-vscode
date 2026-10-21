@@ -1145,8 +1145,11 @@ land before Slice 5 (decision 14).
     - Closing marks move whole-text counts by at most one in ordinary
       prose, and per-paragraph counts wherever a paragraph ends with a
       closing mark (2,028 → 1,702 over the whole book).
-    - Speech tags move both. The whole book goes 1,628 → 1,389 sentences
-      and 16.2 → 19.0 words per sentence. The Tea-Party goes 13.6 → 16.1.
+    - Speech tags move both. The whole book goes 1,628 → 1,388 sentences
+      and 16.2 → 19.1 words per sentence; the Tea-Party goes 13.6 → 16.1.
+      Its 240 joins were audited, and none is false.
+    - The audit found an interleaved end (`!"?”`, Chapter VIII), now read
+      as one end.
     - Count agreement holds, now also on the dialogue-heavy Tea-Party.
     - Group F's worked example was regenerated from its builder after
       each change.
@@ -1154,7 +1157,7 @@ land before Slice 5 (decision 14).
 
     | Check | `058feb5` (base) | `2e62aa7` (4E with its fixes) | Head |
     |---|---|---|---|
-    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 440 suites / 6,019 tests / 59 snapshots | 444 suites / 6,100 tests / 59 snapshots |
+    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 440 suites / 6,019 tests / 59 snapshots | 444 suites / 6,102 tests / 59 snapshots |
     | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | Identical per file and rule |
     | `npm run typecheck` | Passes | Passes | Passes |
     | `npm run build` (with `verify:bundle`) | Passes | Passes | Passes |
@@ -1162,6 +1165,6 @@ land before Slice 5 (decision 14).
     - Built after `npm ci` into a real `node_modules`. `webview.js`
       SHA-256 is `2f86917e…`, 4E's own after its fixes: the rule runs
       host-side, and the webview only shows what the host measured.
-    - `extension.js` is `efae929f…`. Both bundles were reproduced by a
-      second build.
+    - `extension.js` is `865b2c9f…` (`b8cb056a…` at `058feb5`). Both
+      bundles were reproduced by a second build.
     - No live or billable call.

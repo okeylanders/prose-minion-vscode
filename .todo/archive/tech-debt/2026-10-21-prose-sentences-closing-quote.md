@@ -106,3 +106,11 @@ head `058feb5`. The decision is recorded in
   - The group F worked example's request was regenerated from its builder.
 - **`“Oh dear!”` is one sentence** of 2 words. No sentence begins with the
   closing mark of the one before it, which is checked on every fixture.
+- **Extended the same day with speech tags,** by the coordinator's default
+  (standard punctuation; the writer's chapter is about half dialogue).
+  - A sentence goes on across ender, closing quotation mark, space and a
+    lower-case letter, so `“Wait!” she cried.` is one sentence. A
+    capitalised tag stays its own sentence: that is the known limit.
+  - Interleaved ends such as `!"?”` are one end.
+  - Whole-text figures move this time: the book goes 1,628 → 1,388
+    sentences. The ADR and the evidence give each change's figures apart.

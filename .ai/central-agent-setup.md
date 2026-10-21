@@ -810,7 +810,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-21, the sentence rule's closing marks and speech tags, on Lightbox Slice 4E with its PR #159 fixes and PR #158's VS Code 1.82 floor):
-- 444 suites / 6,100 tests / 59 snapshots
+- 444 suites / 6,102 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1164,7 +1164,8 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
   N-01).
 - **Sentences are the board's.** Rows use each paragraph's
   `proseSentenceSpans`. Change the sentence rule there, never in the well.
-  A sentence keeps the closing marks written directly after its end
+  A sentence keeps the closing marks written directly after its end, and
+  a lower-case speech tag continues its speech's sentence
   ([ADR 2026-10-21](docs/adr/2026-10-21-sentence-closing-marks.md)). The
   rule feeds every sentence figure, so a change to it moves measured
   figures: pin it with literal before/after figures on the *Alice*
