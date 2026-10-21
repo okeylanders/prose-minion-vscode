@@ -216,7 +216,8 @@ interface LightboxReadingGroup {
 `swatch`, `gravity-field`, `gravity-collision`, `gravity-literal` (3);
 `lineage`, `subtext`, `spark` (4); `stock-tiers`, `signature`, `familiar-phrase`,
 `air-lock`, `echo`, `rhythm-endings`, `handoff`, `number-usage` (4B, 2026-10-20);
-the story and Opinion kinds of Slices 4C and 4D as their specs fix them. The
+the story and Opinion kinds of Slices 4C and 4D as their specs fix them;
+`steering-reading` and `steering-note` (4F, 2026-10-21). The
 renderer has one component per kind
 behind an exhaustive map. A kind with no component is a compile error, not a
 runtime guess.
@@ -268,7 +269,8 @@ sink the others:
 | C | genre neighborhood (2B); lineage, Spark (4) |
 | D | Stock & signature, Rhythm & handoffs, What stands out in the numbers (4B, 2026-10-20) |
 | E | Template & freshness, Pressure, Artifacts, Summary & movements (4C, 2026-10-20) |
-| F | Opinion, run after the other groups of a press settle, on the board's verified digest (4D, 2026-10-21) |
+| G | Craft steering: being verbs, adverbs (-ly), intensifiers and fillers, measured by construction and read per instance (4F, 2026-10-21). Read beside A–E; board order is A–E, G, F |
+| F | Opinion, run after the other groups of a press settle (G included), on the board's verified digest (4D, 2026-10-21) |
 
 A lens the writer turns off is left out of its group's prompt. A group with no
 lenses on is not called.
@@ -358,6 +360,46 @@ that come close to grading, and this addendum fences both:
   of" something is shown with an accuracy callout: the quote is checked
   against the chapter, the resemblance is not, and a model's memory of
   sources is often wrong. No percentages; never a finding.
+
+**Second addendum to D7 (2026-10-21): craft steering's nudges, a second
+fenced exception.** The writer asked for analysis of being verbs, adverbs
+and intensifiers that "steers the craft" (epic decisions 20–24, Slice 4F).
+A steering note may say that an instance **leans** on its figure or
+**compensates** for something thin, and may carry a **nudge**. That comes
+close to advice, so it is fenced as the Opinion is:
+
+- **One lens, three figures.** Only Craft steering (group G) may nudge, and
+  only about being verbs, adverbs (-ly) and intensifiers and fillers, which
+  it owns: the numbers lens no longer reads them. Every other lens keeps
+  "describe, never grade" unchanged.
+- **Measured first.** The host counts each figure, by the detector behind
+  the numbers bar, and breaks it down by construction (the word-frequency
+  tool's tagger), narration and dialogue, and runs of short sentences. A
+  reading stands beside those counts and never supplies one.
+- **Anchored to an instance.** A note is one quote the verifier found, and
+  the figure's own detector finds an instance inside it; otherwise it is
+  withheld by its host title. Its stance is a closed vocabulary (Earns ·
+  Leans · Compensates), and a note that earns has no nudge.
+- **A nudge names the craft move, framed as worth a look.** It never says
+  cut, delete, remove, fix, wrong, bad, should or must, holds no quotation
+  marks and no figure, and opens no clause with an instruction: a stated
+  word-list check, not a parse. Decision 13 is amended for steering nudges
+  only; nothing on the board says fix or cut.
+- **One example, by the writer's choice.** The writer asked that a nudge
+  may show "one example so the user understands". This supersedes "never
+  supply the writer's words" for that one illustration and nothing else:
+  - at most one per note that leans or compensates, never on one that earns;
+  - its `before` is a run of whole words of the note's checked quote that
+    holds the instance, checked by code where the quote is checked (fresh,
+    on carry, at Bring); its `after` is a few words, different from the
+    `before`, held to the nudge's word and quotation rules;
+  - it is an illustration, labelled "One way it could go", never drawn or
+    brought as a quote; the verifier never searches it and the Opinion
+    never reads it;
+  - a fault withholds the example alone, with the host's reason.
+  The Workshop is where the real rewriting happens.
+- **Out of the Opinion.** The Opinion's digest holds the measured counts and
+  each note's stance, never a nudge or an example.
 
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 

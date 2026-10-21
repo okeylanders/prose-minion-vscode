@@ -18,6 +18,10 @@
   --pm-lb-measured-hi: var(--pm-accent-hi);
   --pm-lb-measured-soft: var(--pm-accent-soft);
   --pm-lb-measured-line: rgba(224, 103, 58, 0.42);
+  /* Measured shares, darkest last: the tier mix's ramp, named for craft steering's bars (Slice 4F). */
+  --pm-lb-measured-ramp-2: #b8694a;
+  --pm-lb-measured-ramp-3: #7a5a3c;
+  --pm-lb-measured-ramp-4: #4a3a2b;
 
   --pm-lb-read: #9db8f2;
   --pm-lb-read-soft: rgba(157, 184, 242, 0.10);

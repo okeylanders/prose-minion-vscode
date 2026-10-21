@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C is awaiting review (PR #156), and 4D is implemented and awaiting review, stacked on 4C.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slice 4E (reading aids in the inspector) and Slice 4F (Craft steering, group G) were built in parallel from `20775cf`: 4E merged (PR #159), and 4F (PR #160) has its review fixes in and `epic/lightbox` merged in at `1fe931a`; it merges the sentence-rule fix (PR #161) next.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -49,13 +49,19 @@ carried into the Workshop.
 | 10 | Freshness (2026-10-20) | Shown as **a reading with its counted basis**, never a number: a three-step scale, Familiar · Mixed · Fresh, labelled "a reading, not a grade", over a host-counted basis line (Slice 4C) |
 | 11 | Engagement (2026-10-20) | **Kept separate from tension**: a read Low/Medium/High per movement, because pull and tension can disagree (Slice 4C) |
 | 12 | Echoes (2026-10-20) | **"Echoes" replaces provenance**: aphoristic lines that "sound reminiscent of …", always with an accuracy callout (the quote is checked, the resemblance is not), never a percentage (Slice 4B) |
-| 13 | Number standouts (2026-10-20) | A **measured standout plus "how it's used"**: code flags a figure outside its range or far from the writer's own average, a reading says how it works here, and nothing says "fix" or "cut" (Slice 4B) |
+| 13 | Number standouts (2026-10-20) | A **measured standout plus "how it's used"**: code flags a figure outside its range or far from the writer's own average, a reading says how it works here, and nothing says "fix" or "cut" (Slice 4B). *Amended 2026-10-21 (decision 23), for Craft steering's nudges only:* a steering nudge may name a craft move as worth a look. Nothing on the board says fix or cut, nudges included |
 | 14 | Order (2026-10-20) | **The new lenses land before Slice 5** (saved boards), so the saved format holds them |
 | 15 | Opinion views (2026-10-20) | **Neutral is the default view**; **Blunt is diagnosis only**, of the work, never the writer, with no rewrites (Slice 4D) |
 | 16 | Opinion's place (2026-10-20) | The Opinion is an explicit, fenced **exception to "describe, never grade"**, recorded with the freshness label in a dated ADR addendum to D7 |
 | 17 | Paragraph text (2026-10-21) | **Clicking a paragraph shows its whole text** in the inspector, fetched from the host when pinned and never persisted; reached from a counted item, that item's instances are lit (Slice 4E) |
 | 18 | Sentences for an item (2026-10-21) | **Clicking a word in the word panels lists the sentences it appears in**, in a scrollable well at the bottom of the inspector, each instance found by the rule that made its count (Slice 4E) |
 | 19 | Hapax list (2026-10-21) | **The Top Words panel lists the hapax words** below the cloud, exactly as many as the stats row counts (Slice 4E). Slice 4F (craft steering) takes the decisions after this one |
+| 20 | Craft steering (2026-10-21) | **A lens of its own, Craft steering, in its own call (group G)**, read beside groups A–E; the Opinion waits for it like the others; it can be turned off. It **owns being verbs, adverbs (-ly) and intensifiers and fillers**: the numbers tile keeps their bars, ranges and standout flags and stops reading them; passive voice stays with the numbers (Slice 4F) |
+| 21 | Steering is measured first (2026-10-21) | Each steering figure is **measured by the host**: its total and rate (the numbers bar's own detector, so they are equal), narration and dialogue, a breakdown by construction, and instances in runs of short sentences. Every list and threshold is named, with its false positives (Slice 4F) |
+| 22 | Steering readings (2026-10-21) | Per figure, **one reading of how it works here and up to four instance notes**. A note is one checked quote holding an instance, a stance (**Earns · Leans · Compensates**), a why, and a nudge only when it leans or compensates (Slice 4F) |
+| 23 | Nudges (2026-10-21) | **A nudge names the craft move, framed as worth a look**: no quotation marks, never cut, delete, remove, fix, wrong, bad, should or must. **The writer chose one illustrative example** ("feel free to give one example so the user understands"): a note that leans or compensates may show at most one, a phrase from its checked quote (checked by code to hold the instance) and a few words showing one way the move could go, labelled "One way it could go", never styled as a quote. This supersedes "never supply the writer's words" for that one example only; real rewriting happens in the Workshop. The **second fenced exception** to "describe, never grade", in a dated ADR addendum to D7; decision 13 amended for steering nudges only (Slice 4F) |
+| 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
+| 25 | The Opinion's citation basis for saved boards (2026-10-21) | **The writer chose a data basis**: a citation's basis becomes a hash of the cited item's canonical data (its key, kind, quotes with their ¶ addresses, counts and figures), not of the digest's rendered wording, and saved boards carry an explicit basis/format version. **Slice 5 implements it as its first step**, after 4E and 4F merge; until then bases are computed as today ([tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)) |
 
 ## Slices
 
@@ -70,7 +76,8 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented; PR #159 review fixes in, awaiting re-review (`epic/lightbox-slice-4e-inspector`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
+| 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built; PR #160 review fixes in, `epic/lightbox` merged at `1fe931a` (4E and the 1.82 floor); merges again after the sentence-rule fix (PR #161) (`epic/lightbox-slice-4f-steering`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -81,7 +88,9 @@ purpose, so the board's shape has been reviewed on real chapters before it
 becomes a file format.
 Slices 4B, 4C and 4D are stacked in that order (4C joins 4B's tier counts
 for the freshness basis; 4D reads every other group's tiles), and all three
-land before Slice 5 (decision 14).
+land before Slice 5 (decision 14). Slice 4F (Craft steering) starts from the
+merged 4D; it reads its own figures, takes three of them from 4B's numbers
+lens, and adds its items to 4D's digest.
 
 ## Verification (every slice)
 
@@ -1117,6 +1126,81 @@ land before Slice 5 (decision 14).
     - See the review's
       [author response](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md#author-response-2026-10-21).
 
+- **2026-10-21. Slice 4F (Group G, Craft steering) is planned** on
+  `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`, at
+  the writer's request: "Think steering the craft." See the
+  [slice spec](slice-4f-craft-steering.md).
+  - **The writer's pass that prompted it.** Passive voice stood out and read
+    as deliberate. Being verbs stood out at 1.53× the writer's average, but
+    the reading was withheld: one quote was not in the chapter, two held no
+    instance of the figure. Adverbs and intensifiers were below average, so
+    no reading was asked for.
+  - **Decisions 20–24** (defaults the coordinator chose; the writer can
+    redirect): a lens and call of its own, group G, owning being verbs,
+    adverbs and intensifiers; the host measures each by construction first;
+    one reading and up to four instance notes per figure; nudges that name
+    the craft move, the second fenced exception to "describe, never grade"
+    (ADR D7 addendum, 2026-10-21); the Opinion's digest holds the counts and
+    stances, never a nudge. Decisions 17–19 are left for Slice 4E.
+  - **The writer changed decision 23 the same day:** a nudge may carry one
+    example so the writer sees what the move looks like, anchored to the
+    checked quote and labelled as an illustration. Folded into the plan
+    before it was committed.
+  - **Decision 25, recorded here, built in Slice 5:** the writer chose a
+    canonical data basis for the Opinion's citations, with a basis/format
+    version on saved boards. 4F does not change how bases are computed; its
+    digest items keep label, lines, quotes, counts and figures as separate
+    fields, so the data basis can be derived without parsing rendered
+    text.
+
+- **2026-10-21. Slice 4F (Group G, Craft steering) is built** on
+  `epic/lightbox-slice-4f-steering`. See the slice's
+  [implementation notes](slice-4f-craft-steering.md#implementation-notes-2026-10-21).
+  - **What a press does now.** Seven calls at most: groups A–E and G read
+    the chapter together, and the Opinion waits for all of them. Craft
+    steering shows each figure's counts before any press (Alice: 17 being
+    verbs, 7 -ly words, 11 intensifiers, each split by construction), then
+    one reading and its instance notes per figure, every quote holding an
+    instance by the figure's own detector.
+  - **The writer's withheld being verbs were withheld correctly.** The rate
+    and the quote check run one detector and agree line for line;
+    contractions and linking verbs were never counted. The task now says
+    what an instance is.
+  - **Ownership.** The numbers lens reads only sentence length, dialogue and
+    passive voice; its codec and gate refuse the other three, and its tile
+    points to craft steering under their standouts.
+  - **Verification.** 439 suites / 6,047 tests / 59 snapshots (base 430 /
+    5,916 / 59); lint identical per file and rule (0 errors, 1,133
+    warnings); typecheck and build with `verify:bundle` pass; bundle
+    SHA-256 `6c296309…`; visual evidence with no errors.
+  - **Next.** Merge `epic/lightbox` after 4E (PR #159) and the shared
+    sentence-rule fix land, regenerate the worked examples' requests where
+    sentence figures move, re-verify and rerender the evidence.
+
+- **2026-10-21. PR #160 (Slice 4F) review fixes, and `epic/lightbox`
+  merged in.** Astra found two P2 defects and one P3. All three are fixed,
+  each with tests that fail on the reviewed head. See the
+  [review and author response](../../../docs/pr-reviews/pr-160-lightbox-craft-steering-review.md)
+  and the slice's notes.
+  - **F-01.** The steering measure was quadratic on one large paragraph,
+    and it runs with every board. It is now linear in tokens, with
+    binary-search lookups, and the counts are unchanged. A 49,998-word
+    paragraph's board builds in under a second, down from about 80 s
+    under Jest.
+  - **F-02.** An example's first part, as the chapter has it, could pass
+    its bounds, and Bring clipped it. The anchored pair is now held to the
+    contract again, fresh, on carry and at Bring, and nothing is clipped.
+  - **N-01.** The numbers card's empty text names craft steering when only
+    its figures stand out.
+  - **The merge.** `1fe931a` (PR #158's 1.82 floor, PR #159's Slice 4E).
+    Both sides were kept in every conflict.
+  - **Verification.** 451 suites / 6,167 tests / 59 snapshots; lint 0 errors / 1,133 warnings, identical per file and rule; typecheck and build with
+    `verify:bundle` pass; bundle SHA-256 `24658aba…`; evidence
+    re-rendered, with no errors.
+  - **Next.** Merge the sentence-rule fix (PR #161) when it lands, and
+    regenerate the worked examples and evidence whose sentence figures
+    move.
+
 - **2026-10-21. The sentence rule keeps closing marks and joins speech
   tags,** on `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159)
   at `058feb5` and merged with its review fixes at `2e62aa7`. It resolves
@@ -1167,4 +1251,53 @@ land before Slice 5 (decision 14).
       host-side, and the webview only shows what the host measured.
     - `extension.js` is `865b2c9f…` (`b8cb056a…` at `058feb5`). Both
       bundles were reproduced by a second build.
+    - No live or billable call.
+
+- **2026-10-21. PR #161's N-01 fixed, and Slice 4F merged into the
+  sentence rule.** Astra found no blocking defect in PR #161 and one P3,
+  fixed before merge. See the
+  [review and author response](../../../docs/pr-reviews/pr-161-sentence-boundary-review.md).
+  - **N-01.** A counted token can stand in no sentence: a lone `'` is a
+    hapax word, and a stretch of only space and closing marks is no
+    longer a sentence. Its well claimed a sentence it could not light,
+    or lit an unrelated paragraph.
+    - Such an instance now gets a row of its own stretch, lit, marked
+      "outside any sentence".
+    - It is counted apart (`outside`), never as a sentence, and never
+      put in the nearest one.
+    - Whether such a token is vocabulary at all is inherited, and now
+      [Low tech debt](../../tech-debt/2026-10-21-prose-stats-punctuation-only-words.md).
+  - **The merge.** `epic/lightbox` at `2f040ab` (PR #160, Slice 4F,
+    group G). PR #161 merges second, so it carries the integration.
+    - Conflicts were in group F's worked example, the tech-debt index,
+      the agents guide's inventory and this file.
+    - Both sides were kept in each.
+  - **What moved on the combined tree**, against `2f040ab`:
+    - **Group F's worked example.** The request is its builder's byte for
+      byte: 15 sentences, 33.9 words per sentence, pacing Very slow,
+      ×2.37. The response keeps 4F's tile ids and states 33.9; Blunt's
+      "about twice" reads "more than twice".
+    - **`LightboxCraftHandoff.test.ts`.** The number reading's Figure
+      point is "Sentence length: 33.9 words per sentence", not 29.9.
+    - **Nothing else moved.**
+      - Groups A–E's and G's requests still match their builders.
+      - Craft steering's counts are unchanged: 4F's suites pass as
+        written, and the rebuilt evidence's steering measure is identical.
+        The rule can move a short run in general: a closing mark no longer
+        adds a word to the next sentence, and a speech tag lengthens its
+        speech's sentence. The excerpt has no run under either rule.
+      - The measure's header comment now names the merged rule.
+    - **4F's committed evidence is left as recorded at its head.**
+      Rebuilt on the combined tree, its `chapter.json` moves only in the
+      sentence figures, the group F estimate (+3 tokens) and group F's
+      reading. Its `workshop.json` is byte-identical. The fields are
+      listed in the
+      [sentence-rule evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md).
+  - **Verification**, at the merge, after `npm ci`:
+    - 456 suites / 6,259 tests / 59 snapshots;
+    - lint 0 errors / 1,133 warnings, identical per file and rule to the
+      N-01 head;
+    - typecheck and build with `verify:bundle` pass.
+    - `webview.js` SHA-256 is `cb08d7b9…`, and `extension.js` is
+      `a548648c…`. Both were reproduced by a second build.
     - No live or billable call.

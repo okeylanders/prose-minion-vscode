@@ -26,7 +26,7 @@ describe('the host answers estimate requests, and only the newest (PR #149 F-03)
     await tab.setLenses(['genre', 'lineage', 'spark'], 'tab-1');
     const [answer] = tab.ofType(MessageType.LIGHTBOX_RUN_ESTIMATE);
     expect(answer.payload).toMatchObject({ requestId: 'tab-1', estimate: { boardId: host.board.boardId } });
-    expect(answer.payload.estimate?.groups.map((call) => call.group)).toEqual(['A', 'B', 'D', 'E', 'F']);
+    expect(answer.payload.estimate?.groups.map((call) => call.group)).toEqual(['A', 'B', 'D', 'E', 'G', 'F']);
   });
 
   it('drops an answer overtaken by a newer request for the same board while its prompt files loaded', async () => {

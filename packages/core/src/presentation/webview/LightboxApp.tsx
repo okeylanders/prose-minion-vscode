@@ -38,6 +38,7 @@ import './styles/lightbox/story.css';
 import './styles/lightbox/craft.css';
 import './styles/lightbox/plot.css';
 import './styles/lightbox/opinion.css';
+import './styles/lightbox/steering.css';
 import * as React from 'react';
 import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';

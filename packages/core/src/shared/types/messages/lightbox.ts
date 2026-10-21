@@ -18,6 +18,7 @@ import { MessageEnvelope, MessageType } from './base';
 import type { LightboxReadingGroup, LightboxReadingTileKind } from './lightboxReadings';
 import type { LightboxNumbersMeasure, LightboxSentenceSummary } from './lightboxNumbers';
 import type { LightboxSectionsMeasure } from './lightboxSections';
+import type { LightboxSteeringMeasure } from './lightboxSteering';
 
 // ---------------------------------------------------------------------------
 // Tiles and registers
@@ -221,6 +222,8 @@ export interface LightboxMeasuredSet {
   numbers: LightboxNumbersMeasure;
   /** The chapter's headings, scene breaks or chapter lines, detected by code (Slice 4C). */
   sections: LightboxSectionsMeasure;
+  /** Being verbs, adverbs and intensifiers by construction, for craft steering (Slice 4F). */
+  steering: LightboxSteeringMeasure;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +239,7 @@ export interface LightboxBoard {
   paragraphs: LightboxParagraphMetric[];
   ribbon: LightboxRibbonColumn[];
   measured: LightboxMeasuredSet;
-  /** Groups A to F, in that order: A–E read the chapter, F the board (Slice 4D). */
+  /** Groups A–E, G and F, in that order: A–E and G read the chapter, F, last, the board (Slices 4D, 4F). */
   readings: LightboxReadingGroup[];
 }
 

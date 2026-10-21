@@ -120,7 +120,7 @@ describe('group D codec', () => {
   });
 
   describe('a numbers reading', () => {
-    const decodeItem = (claim: string, stat = 'intensifiers') => {
+    const decodeItem = (claim: string, stat = 'passive-voice') => {
       const body = { version: 1, numbers: {
         items: [{ stat, usage: 'mixed', claim, evidence: [{ para: 2, quote: 'get very tired of sitting by her sister' }] }],
         friction: 'Rates over eight paragraphs.'
@@ -151,13 +151,23 @@ describe('group D codec', () => {
       expect(decodeItem('A reading of commas.', 'commas')).toEqual([{ title: 'Reading 1', reason: expect.stringContaining('one of the figures the task lists') }]);
       const body = { version: 1, numbers: {
         items: ['First.', 'Second.'].map((claim) => ({
-          stat: 'intensifiers', usage: 'mixed', claim, evidence: [{ para: 2, quote: 'get very tired of sitting by her sister' }]
+          stat: 'passive-voice', usage: 'mixed', claim, evidence: [{ para: 2, quote: 'get very tired of sitting by her sister' }]
         })),
         friction: 'Rates over eight paragraphs.'
       } };
       expect(malformedOf(read(['numbers'], body).decoded, 'numbers')).toEqual([{
-        title: 'Intensifiers and fillers', reason: 'Another reading in this block already reads that figure.'
+        title: 'Passive voice', reason: 'Another reading in this block already reads that figure.'
       }]);
+    });
+
+    it('never reads a figure craft steering owns (Slice 4F), and still reads its own three', () => {
+      for (const stat of ['being-verbs', 'adverbs', 'intensifiers']) {
+        expect(decodeItem('How the figure works here.', stat))
+          .toEqual([{ title: 'Reading 1', reason: expect.stringContaining('one of the figures the task lists') }]);
+      }
+      for (const stat of ['sentence-length', 'dialogue', 'passive-voice']) {
+        expect(decodeItem('How the figure works here.', stat)).toEqual([]);
+      }
     });
   });
 });
@@ -292,13 +302,12 @@ describe('a numbers reading keeps only quotes holding an instance of its figure'
     withheld: assembled.withheldClaims.map((claim) => claim.reason)
   });
 
+  // The word patterns craft steering owns (being verbs, adverbs, intensifiers) are held to the same filter in
+  // LightboxSteeringReadings.test.ts (Slice 4F); the numbers lens no longer reads them.
   it.each([
-    ['intensifiers', standout('intensifiers', 'above'), 'I am very late', 'said the Rabbit'],
-    // A quote cut mid-word holds no match the figure counted ("nly" of "only", "very" of "every").
-    ['adverbs', standout('adverbs', 'above'), 'only tired light', 'nly tired light'],
-    ['intensifiers, mid-word', standout('intensifiers', 'above'), 'I am very late', 'very morning'],
     ['passive voice', standout('passive-voice', 'above'), 'The hall was hushed', 'She stopped'],
-    ['being verbs', standout('being-verbs', 'above'), 'The hall was hushed', 'She stopped'],
+    // A quote cut mid-word holds no match the figure counted ("as hushed" of "was hushed").
+    ['passive voice, mid-word', standout('passive-voice', 'above'), 'The hall was hushed', 'as hushed'],
     ['long sentences', standout('sentence-length', 'above', 15), 'the long dark passage', 'The hall was hushed'],
     ['short sentences', standout('sentence-length', 'below', 15), 'The hall was hushed', 'the long dark passage'],
     ['more dialogue', standout('dialogue', 'above'), 'I am very late', 'said the Rabbit'],
@@ -311,17 +320,17 @@ describe('a numbers reading keeps only quotes holding an instance of its figure'
   });
 
   it('withholds a reading whose quotes hold no instance, and one of a figure that does not stand out', () => {
-    const intensifiers = standout('intensifiers', 'above');
-    expect(kept(readNumber('intensifiers', [[1, 'said the Rabbit']], [intensifiers])))
+    const passive = standout('passive-voice', 'above');
+    expect(kept(readNumber('passive-voice', [[3, 'She stopped']], [passive])))
       .toEqual({ evidence: [], lost: [], withheld: [LIGHTBOX_GATE_REASONS.numberNoInstance.fresh] });
-    expect(kept(readNumber('adverbs', [[1, 'only tired light']], [intensifiers])))
+    expect(kept(readNumber('dialogue', [[1, 'I am very late']], [passive])))
       .toEqual({ evidence: [], lost: [], withheld: [LIGHTBOX_GATE_REASONS.numberNotStandout.fresh] });
   });
 
   it('titles a reading by the host\'s label for its figure', () => {
-    const assembled = readNumber('intensifiers', [[1, 'I am very late']], [standout('intensifiers', 'above')]);
+    const assembled = readNumber('passive-voice', [[3, 'The hall was hushed']], [standout('passive-voice', 'above')]);
     expect(assembled.tiles.map((tile) => (tile.kind === 'number-usage' ? [tile.title, tile.stat, tile.usage] : [])))
-      .toEqual([['Intensifiers and fillers', 'intensifiers', 'mixed']]);
+      .toEqual([['Passive voice', 'passive-voice', 'mixed']]);
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */

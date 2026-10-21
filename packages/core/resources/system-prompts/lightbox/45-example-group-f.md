@@ -1,6 +1,6 @@
 # Worked example: group F (the Opinion)
 
-This example weighs a board of the opening of Lewis Carroll’s *Alice’s Adventures in Wonderland* (1865, public domain), cut to eight paragraphs and read with eight lenses on. Its readings are the other groups’ worked examples, as the host drew them, and its figures are measured against a writer’s other chapters. It shows the shape of one complete, valid response. It is not your board: weigh the board you are given, and never reuse these observations, keys, quotes or numbers.
+This example weighs a board of the opening of Lewis Carroll’s *Alice’s Adventures in Wonderland* (1865, public domain), cut to eight paragraphs and read with nine lenses on. Its readings are the other groups’ worked examples, as the host drew them, and its figures are measured against a writer’s other chapters. It shows the shape of one complete, valid response. It is not your board: weigh the board you are given, and never reuse these observations, keys, quotes or numbers.
 
 The request (the board’s digest and the task, between the two rules):
 
@@ -27,6 +27,21 @@ The Lightbox board of one chapter (8 paragraphs), as code checked it. Each item 
 [standout:intensifiers] Measured · The numbers: Intensifiers and fillers
   21.7 per 1,000 words; stands out above the other chapters' average of 3 (×7.22)
   11 intensifiers and fillers, in ¶2, ¶3, ¶4, ¶6, ¶7, ¶8
+
+[steering:being-verbs] Measured · Craft steering: Being verbs
+  17 being verbs, 33.5 per 1,000 words: 15 in narration, 2 in dialogue
+  by construction, counted by code: be + adjective 4 · be + -ing 5 · be + past participle 1 · there or it + be 4 · other 3
+  in runs of short sentences: 0
+
+[steering:adverbs] Measured · Craft steering: Adverbs (-ly)
+  7 -ly words, 13.8 per 1,000 words: 7 in narration, 0 in dialogue
+  by construction, counted by code: with a verb 4 (weak verbs 1) · in a dialogue tag 0 · before an adjective 1 · before an adverb 0 · other 2
+  in runs of short sentences: 0
+
+[steering:intensifiers] Measured · Craft steering: Intensifiers and fillers
+  11 intensifiers and fillers, 21.7 per 1,000 words: 11 in narration, 0 in dialogue
+  by construction, counted by code: before a generic word 4 · before an adjective or adverb 4 · other 3
+  in runs of short sentences: 0
 
 ## Readings
 
@@ -116,16 +131,7 @@ The Lightbox board of one chapter (8 paragraphs), as code checked it. Each item 
   sounds reminiscent of: a proverb’s “what is the use of” turn (unchecked: a model's memory, never a finding)
   q0 ¶2: “what is the use of a book”
 
-[lbt-5b1e09c4-D-10] The numbers · How it is used: Intensifiers and fillers
-  claim: The intensifiers belong to Alice’s idle mind and the narrator’s teasing echo of it: she is very tired, the well very deep, and the capitals in ¶4 mock how calmly she takes the Rabbit.
-  Reads as deliberate
-  21.7 per 1,000 words; stands out above the other chapters' average of 3 (×7.22)
-  11 intensifiers and fillers, in ¶2, ¶3, ¶4, ¶6, ¶7, ¶8
-  q0 ¶2: “get very tired of sitting by her sister”
-  q1 ¶4: “There was nothing so VERY remarkable in that”
-  q2 ¶7: “or she fell very slowly”
-
-[lbt-5b1e09c4-D-11] The numbers · How it is used: Sentence length
+[lbt-5b1e09c4-D-10] The numbers · How it is used: Sentence length
   claim: The long sentences are the fall’s own: ¶7 lets one sentence wander the shelves as slowly as she drops past them, and ¶4 runs on until the Rabbit is gone.
   Reads as deliberate
   33.9 words per sentence; stands out above the other chapters' average of 14.3 (×2.37)
@@ -133,7 +139,7 @@ The Lightbox board of one chapter (8 paragraphs), as code checked it. Each item 
   q0 ¶7: “for she had plenty of time as she went down to look about her”
   q1 ¶4: “it flashed across her mind that she had never before seen a rabbit”
 
-[lbt-5b1e09c4-D-12] The numbers · How it is used: Dialogue
+[lbt-5b1e09c4-D-11] The numbers · How it is used: Dialogue
   claim: Speech comes in short bursts inside long narration: the Rabbit speaks in exclamations and Alice mostly thinks aloud, so the telling holds the floor through the fall.
   Reads as mixed
   12.2 per 100 words; stands out below the other chapters' average of 30 (×0.41)
@@ -214,6 +220,65 @@ The Lightbox board of one chapter (8 paragraphs), as code checked it. Each item 
   movement III: ¶6–¶8
   q0 ¶6: “The rabbit-hole went straight on like a tunnel for some way”
 
+[lbt-5b1e09c4-G-1] Craft steering · How it works here: Being verbs
+  claim: Being verbs carry Alice’s states and the narrator’s set-ups: she is tired, considering, coming to; the well is deep and dark. The progressives keep her mind moving while she sits, and the jar’s label and emptiness arrive as states, not acts.
+  17 being verbs, 33.5 per 1,000 words: 15 in narration, 2 in dialogue
+  by construction, counted by code: be + adjective 4 · be + -ing 5 · be + past participle 1 · there or it + be 4 · other 3
+  in runs of short sentences: 0
+  q0 ¶2: “Alice was beginning to get very tired”
+  q1 ¶7: “Either the well was very deep”
+
+[lbt-5b1e09c4-G-2] Craft steering · Instance note: Being verbs · note I
+  claim: The progressive keeps her idle thinking going while nothing happens, which is the scene’s whole point.
+  stance: Earns · figure: Being verbs
+  q0 ¶3: “So she was considering in her own mind”
+
+[lbt-5b1e09c4-G-3] Craft steering · Instance note: Being verbs · note II
+  claim: A state stands where the fall could act: the darkness is reported rather than met.
+  stance: Leans · figure: Being verbs
+  q0 ¶7: “it was too dark to see anything”
+
+[lbt-5b1e09c4-G-4] Craft steering · How it works here: Adverbs (-ly)
+  claim: The -ly words gather at the fall and just before it: suddenly twice in one breath, slowly set against deep. They carry speed and manner where the verbs are plain, and the narrator’s likely is a dry hedge on Alice’s boast.
+  7 -ly words, 13.8 per 1,000 words: 7 in narration, 0 in dialogue
+  by construction, counted by code: with a verb 4 (weak verbs 1) · in a dialogue tag 0 · before an adjective 1 · before an adverb 0 · other 2
+  in runs of short sentences: 0
+  q0 ¶6: “dipped suddenly down, so suddenly that”
+  q1 ¶7: “or she fell very slowly”
+
+[lbt-5b1e09c4-G-5] Craft steering · Instance note: Adverbs (-ly) · note I
+  claim: The speed sits in the adverb, and the verb beside it is plain.
+  stance: Leans · figure: Adverbs (-ly)
+  q0 ¶6: “and then dipped suddenly down”
+
+[lbt-5b1e09c4-G-6] Craft steering · Instance note: Adverbs (-ly) · note II
+  claim: Slowly answers deep in the either-or: the adverb is the joke’s hinge, and the sentence turns on it.
+  stance: Earns · figure: Adverbs (-ly)
+  q0 ¶7: “or she fell very slowly”
+
+[lbt-5b1e09c4-G-7] Craft steering · How it works here: Intensifiers and fillers
+  claim: Very does most of the swelling here: very tired, very sleepy, a very deep well. In the capitals of ¶4 it becomes the narrator’s mockery; elsewhere it lifts plain words that carry the afternoon’s drowsiness.
+  11 intensifiers and fillers, 21.7 per 1,000 words: 11 in narration, 0 in dialogue
+  by construction, counted by code: before a generic word 4 · before an adjective or adverb 4 · other 3
+  in runs of short sentences: 0
+  q0 ¶4: “There was nothing so VERY remarkable in that”
+  q1 ¶3: “made her feel very sleepy and stupid”
+
+[lbt-5b1e09c4-G-8] Craft steering · Instance note: Intensifiers and fillers · note I
+  claim: The capitals mock how calmly she takes a talking rabbit: the intensifier is the joke.
+  stance: Earns · figure: Intensifiers and fillers
+  q0 ¶4: “There was nothing so VERY remarkable in that”
+
+[lbt-5b1e09c4-G-9] Craft steering · Instance note: Intensifiers and fillers · note II
+  claim: Very lifts a plain size word at the moment the fall begins.
+  stance: Compensates · figure: Intensifiers and fillers
+  q0 ¶6: “falling down a very deep well”
+
+[lbt-5b1e09c4-G-10] Craft steering · Instance note: Intensifiers and fillers · note III
+  claim: Very tired names her boredom where the peeping at the book already shows it.
+  stance: Leans · figure: Intensifiers and fillers
+  q0 ¶2: “get very tired of sitting by her sister”
+
 # Task
 
 Read group F, the Opinion, and only that: weigh the board above.
@@ -225,7 +290,7 @@ Cite board items only by the keys in square brackets above, and a tile's quote o
 One complete, valid response:
 
 ===LIGHTBOX_GROUP_F_V1===
-{"version":1,"opinion":{"observations":[{"id":"O1","text":"Half of the beats the reading classified are the chapter's own, and they gather in Alice's talk to herself and the narrator's asides.","cites":[{"tile":"lbt-5b1e09c4-D-1"},{"tile":"lbt-5b1e09c4-D-3","quote":0}]},{"id":"O2","text":"The sentences run at 33.9 words against an average of 14.3 in the other chapters, and the reading finds them the fall's own.","cites":[{"measured":"standout:sentence-length"},{"tile":"lbt-5b1e09c4-D-11","quote":0}]},{"id":"O3","text":"Three threads stay open when the chapter ends, and the question of getting out has gone untouched since ¶5.","cites":[{"tile":"lbt-5b1e09c4-E-1"},{"tile":"lbt-5b1e09c4-E-2"},{"tile":"lbt-5b1e09c4-E-3"}]},{"id":"O4","text":"Objects do the plotting: the watch turns notice into pursuit, and the jar is taken down, found empty and put away within ¶7.","cites":[{"tile":"lbt-5b1e09c4-E-6"},{"tile":"lbt-5b1e09c4-E-8","quote":1}]},{"id":"O5","text":"Speech is scarce, 12.2 per 100 words against 30 in the other chapters, so the narration holds the floor.","cites":[{"measured":"standout:dialogue"},{"tile":"lbt-5b1e09c4-D-12"}]},{"id":"O6","text":"The turn from idling to pursuit is carried by a familiar phrase, the one stock phrase the reading marks as carrying weight.","cites":[{"tile":"lbt-5b1e09c4-D-5","quote":0},{"tile":"lbt-5b1e09c4-E-11"}]}],"views":{"enthusiastic":{"headline":"A voice that sounds like no other turns a fall into a browse, and two objects quietly plot the way down.","body":"Half of what the reading classified is the chapter's own: Alice's talk to herself and the narrator's asides. The long sentences let the fall take its time, the watch and the jar carry the plot, and three open threads carry the reader past the last paragraph.","why":[{"weight":"strength","text":"The signature beats gather where Alice talks to herself.","observations":["O1"]},{"weight":"strength","text":"The long sentences slow the fall to a browse.","observations":["O2"]},{"weight":"strength","text":"Objects plot the way down, and open threads pull the reader on.","observations":["O4","O3"]}]},"neutral":{"headline":"A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.","body":"Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.","why":[{"weight":"strength","text":"Voice and objects do the plotting.","observations":["O1","O4"]},{"weight":"even","text":"The long sentences fit the fall and slow the chase.","observations":["O2","O5"]},{"weight":"concern","text":"The turn into pursuit rests on a stock phrase.","observations":["O6"]}]},"blunt":{"headline":"The pace pays for the voice: long sentences and little speech slow the chase.","body":"Sentences run at 33.9 words, more than twice the average of the other chapters, and speech sits at 12.2 per 100 words. In the fall that is the point; in the chase it costs momentum. The moment Alice starts to run is told in a stock phrase, and one thread is planted and never touched again.","why":[{"weight":"concern","text":"Long sentences and scarce speech slow the chase.","observations":["O2","O5"]},{"weight":"concern","text":"The turn into pursuit is told in a stock phrase.","observations":["O6"]},{"weight":"even","text":"One thread is planted and never touched again.","observations":["O3"]}]}},"friction":"The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."}}
+{"version":1,"opinion":{"observations":[{"id":"O1","text":"Half of the beats the reading classified are the chapter's own, and they gather in Alice's talk to herself and the narrator's asides.","cites":[{"tile":"lbt-5b1e09c4-D-1"},{"tile":"lbt-5b1e09c4-D-3","quote":0}]},{"id":"O2","text":"The sentences run at 33.9 words against an average of 14.3 in the other chapters, and the reading finds them the fall's own.","cites":[{"measured":"standout:sentence-length"},{"tile":"lbt-5b1e09c4-D-10","quote":0}]},{"id":"O3","text":"Three threads stay open when the chapter ends, and the question of getting out has gone untouched since ¶5.","cites":[{"tile":"lbt-5b1e09c4-E-1"},{"tile":"lbt-5b1e09c4-E-2"},{"tile":"lbt-5b1e09c4-E-3"}]},{"id":"O4","text":"Objects do the plotting: the watch turns notice into pursuit, and the jar is taken down, found empty and put away within ¶7.","cites":[{"tile":"lbt-5b1e09c4-E-6"},{"tile":"lbt-5b1e09c4-E-8","quote":1}]},{"id":"O5","text":"Speech is scarce, 12.2 per 100 words against 30 in the other chapters, so the narration holds the floor.","cites":[{"measured":"standout:dialogue"},{"tile":"lbt-5b1e09c4-D-11"}]},{"id":"O6","text":"The turn from idling to pursuit is carried by a familiar phrase, the one stock phrase the reading marks as carrying weight.","cites":[{"tile":"lbt-5b1e09c4-D-5","quote":0},{"tile":"lbt-5b1e09c4-E-11"}]}],"views":{"enthusiastic":{"headline":"A voice that sounds like no other turns a fall into a browse, and two objects quietly plot the way down.","body":"Half of what the reading classified is the chapter's own: Alice's talk to herself and the narrator's asides. The long sentences let the fall take its time, the watch and the jar carry the plot, and three open threads carry the reader past the last paragraph.","why":[{"weight":"strength","text":"The signature beats gather where Alice talks to herself.","observations":["O1"]},{"weight":"strength","text":"The long sentences slow the fall to a browse.","observations":["O2"]},{"weight":"strength","text":"Objects plot the way down, and open threads pull the reader on.","observations":["O4","O3"]}]},"neutral":{"headline":"A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.","body":"Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.","why":[{"weight":"strength","text":"Voice and objects do the plotting.","observations":["O1","O4"]},{"weight":"even","text":"The long sentences fit the fall and slow the chase.","observations":["O2","O5"]},{"weight":"concern","text":"The turn into pursuit rests on a stock phrase.","observations":["O6"]}]},"blunt":{"headline":"The pace pays for the voice: long sentences and little speech slow the chase.","body":"Sentences run at 33.9 words, more than twice the average of the other chapters, and speech sits at 12.2 per 100 words. In the fall that is the point; in the chase it costs momentum. The moment Alice starts to run is told in a stock phrase, and one thread is planted and never touched again.","why":[{"weight":"concern","text":"Long sentences and scarce speech slow the chase.","observations":["O2","O5"]},{"weight":"concern","text":"The turn into pursuit is told in a stock phrase.","observations":["O6"]},{"weight":"even","text":"One thread is planted and never touched again.","observations":["O3"]}]}},"friction":"The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."}}
 ===END_LIGHTBOX_GROUP_F_V1===
 
 Every observation cites items by the keys the digest shows, and a quote only by the number the digest gave it. Each states only figures its cited items show (33.9 and 14.3 are on the sentence-length figure; ¶5 is where the dormant thread was planted), and none quotes the chapter: the quotes it cites are shown under it. The three views weigh the same six observations: Enthusiastic leans on what works, Neutral weighs each, and Blunt names what costs, without a rewrite and without a word about the writer. Each Why point cites the observations it weighs.

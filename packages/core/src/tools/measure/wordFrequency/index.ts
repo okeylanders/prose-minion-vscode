@@ -87,6 +87,43 @@ const PART_OF_SPEECH_TAGS: ReadonlyArray<[PartOfSpeechList, ReadonlySet<string>]
 /** How many words each part-of-speech list reports. */
 const PART_OF_SPEECH_LIST_SIZE = 25;
 
+/** One token as the tagger tagged it: its text, its Penn tag, and where it is. */
+export interface TaggedToken {
+  /** The token as it stands in the text tagged (empty when the tagger gave none). */
+  value: string;
+  /** The tagger's normalized form of it. */
+  normal: string;
+  /** The Penn Treebank tag (`NN`, `VBD`, `JJ`, …, or punctuation). */
+  pos: string;
+  /** UTF-16 offset of `value` in the text tagged; `undefined` if it could not be found there. */
+  offset: number | undefined;
+}
+
+/**
+ * Tag `text` with the offline wink-pos-tagger and return every token, in
+ * text order, with where it is. Each token is a verbatim, in-order slice of
+ * the text, so it is found by scanning forward. Throws when the tagger
+ * cannot load. `tagPartsOfSpeech` reads this stream, and so does the
+ * Lightbox's craft steering (Slice 4F), which needs every token's tag, not
+ * only the counted ones.
+ */
+export function tagTextTokens(text: string): TaggedToken[] {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const winkPosTagger = require('wink-pos-tagger');
+  const tagged: Array<{ value?: string; normal?: string; pos: string }> = winkPosTagger().tagSentence(text);
+  const tokens: TaggedToken[] = [];
+  let cursor = 0;
+  for (const token of tagged) {
+    const value = token.value ?? '';
+    const found = value.length > 0 ? text.indexOf(value, cursor) : -1;
+    if (found >= 0) {
+      cursor = found + value.length;
+    }
+    tokens.push({ value, normal: token.normal ?? '', pos: token.pos, offset: found >= 0 ? found : undefined });
+  }
+  return tokens;
+}
+
 /**
  * Tag `text` (lowercase it first, as `analyze` does) with the offline
  * wink-pos-tagger and return every word counted toward a part-of-speech list,
@@ -95,21 +132,12 @@ const PART_OF_SPEECH_LIST_SIZE = 25;
  * the counts came from. Throws when the tagger cannot load.
  */
 export function tagPartsOfSpeech(text: string): PartOfSpeechOccurrence[] {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const winkPosTagger = require('wink-pos-tagger');
-  const tagged: Array<{ value?: string; normal?: string; pos: string }> = winkPosTagger().tagSentence(text);
   const occurrences: PartOfSpeechOccurrence[] = [];
-  let cursor = 0;
-  for (const token of tagged) {
-    const value = token.value ?? '';
-    const found = value.length > 0 ? text.indexOf(value, cursor) : -1;
-    if (found >= 0) {
-      cursor = found + value.length;
-    }
-    const word = (token.value || token.normal || '').toLowerCase().replace(/[^a-z']/g, '');
+  for (const token of tagTextTokens(text)) {
+    const word = (token.value || token.normal).toLowerCase().replace(/[^a-z']/g, '');
     const list = PART_OF_SPEECH_TAGS.find(([, tags]) => tags.has(token.pos))?.[0];
     if (word && list) {
-      occurrences.push({ word, list, offset: found >= 0 ? found : undefined, length: value.length });
+      occurrences.push({ word, list, offset: token.offset, length: token.value.length });
     }
   }
   return occurrences;

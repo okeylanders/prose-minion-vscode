@@ -17,6 +17,10 @@
  *     that holds its first sentence's words;
  *   - a tier mix's beats are found again one by one, each keeping its tier,
  *     and the tiers are counted again from the beats that stand.
+ * - **Group G's kinds** (Slice 4F, craft steering): a figure's reading and
+ *   a note keep only quotes the figure's own detector finds an instance in
+ *   on the changed text; a note's example is anchored again in its carried
+ *   quote, and withheld alone when it no longer stands there.
  */
 
 import type {
@@ -27,8 +31,13 @@ import type {
 } from '@messages';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { findLightboxSentencePair, type LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
-import { verifyLightboxInstance, type LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import {
+  verifyLightboxInstance,
+  verifyLightboxPatternInstance,
+  type LightboxStandoutRows
+} from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { lightboxFoundBeats, lightboxTierCounts } from '@/infrastructure/lightbox/LightboxCraftTiles';
+import { lightboxSteeringExampleFields } from '@/infrastructure/lightbox/LightboxSteeringTiles';
 
 export type LightboxRecheck =
   | { quote: LightboxVerifiedQuote }
@@ -63,7 +72,7 @@ export interface LightboxCarriedCraft {
   pair?: LightboxSentencePair | 'gone' | 'not-adjacent';
 }
 
-/** Carry a numbers reading, a handoff or a tier mix by its own rules; undefined for any other kind. */
+/** Carry a numbers reading, a handoff, a tier mix or a steering tile by its own rules; undefined for any other kind. */
 export function carryLightboxCraftEvidence(
   tile: LightboxReadingTile,
   verifier: LightboxQuoteVerifier,
@@ -79,6 +88,17 @@ export function carryLightboxCraftEvidence(
     }
     case 'handoff':
       return carryHandoff(tile.from, tile.to, verifier);
+    case 'steering-reading':
+    case 'steering-note': {
+      const stat = tile.stat;
+      const carried = recheckAll(tile.evidence, (paragraph, text) => verifyLightboxPatternInstance(verifier, stat, paragraph, text));
+      if (tile.kind === 'steering-reading') {
+        return { ...carried, patch: {} };
+      }
+      // The example's anchor is the note's own quote, where it now stands; an example withheld stays withheld.
+      const fields = lightboxSteeringExampleFields(verifier, stat, carried.evidence[0], tile.example, tile.exampleWithheld, 'carried');
+      return { ...carried, patch: { example: fields.example, exampleWithheld: fields.exampleWithheld } as Partial<LightboxReadingTile> };
+    }
     case 'stock-tiers': {
       const rechecked = tile.beats.map((beat) => ({ tier: beat.tier, result: recheckLightboxQuote(beat.quote, (p, t) => verifier.verify(p, t)) }));
       const beats = lightboxFoundBeats(rechecked.map(({ tier, result }) => ({ tier, quote: 'quote' in result ? result.quote : undefined })));

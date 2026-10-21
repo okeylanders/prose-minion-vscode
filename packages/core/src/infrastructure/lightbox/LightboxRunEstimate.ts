@@ -143,7 +143,9 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   artifacts: 1_300,
   summary: 900,
   // Slice 4D: a guess from the group F worked example's length, labelled so, until Slice 6 measures it.
-  opinion: 1_400
+  opinion: 1_400,
+  // Slice 4F: a guess from the group G worked example's length, labelled so, until Slice 6 measures it.
+  steering: 1_600
 };
 
 /** Each tension score and its comma. */

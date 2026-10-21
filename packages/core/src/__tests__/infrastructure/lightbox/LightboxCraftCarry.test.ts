@@ -206,16 +206,16 @@ describe('a carried numbers reading is held to the figures the new board measure
   it('keeps each reading while its figure stands out and its quotes hold an instance', async () => {
     const edited = ALICE.map((text, index) => (index === 0 ? `${text} Again.` : text));
     const { group } = await carriedD(ALICE, edited, ['numbers'], numbersBody());
-    expect(readings(group)).toEqual({ drawn: ['intensifiers', 'sentence-length', 'dialogue'], withheld: [] });
+    expect(readings(group)).toEqual({ drawn: ['sentence-length', 'dialogue'], withheld: [] });
   });
 
   it('withholds a reading whose figure no longer stands out once the text changes', async () => {
-    // Every intensifier and filler gone: the figure no longer stands out.
-    const plain = ALICE.map((text) => text.replace(/\b(?:just|really|very|quite|rather|somewhat|somehow|actually|basically|literally)\s+/gi, ''));
-    const { changed, group } = await carriedD(ALICE, plain, ['numbers'], numbersBody());
-    expect(changed.measured.numbers.rows.find((row) => row.stat === 'intensifiers')?.standout).toBeUndefined();
-    expect(readings(group).drawn).toEqual(['sentence-length', 'dialogue']);
-    expect(readings(group).withheld).toEqual([['Intensifiers and fillers', LIGHTBOX_GATE_REASONS.numberNotStandout.carried]]);
+    // ¶5 and ¶6 become speech: dialogue is no longer far below the writer's average.
+    const spoken = ALICE.map((text, index) => (index === 4 || index === 5 ? `“${text}”` : text));
+    const { changed, group } = await carriedD(ALICE, spoken, ['numbers'], numbersBody());
+    expect(changed.measured.numbers.rows.find((row) => row.stat === 'dialogue')?.standout).toBeUndefined();
+    expect(readings(group).drawn).toEqual(['sentence-length']);
+    expect(readings(group).withheld).toEqual([['Dialogue', LIGHTBOX_GATE_REASONS.numberNotStandout.carried]]);
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */

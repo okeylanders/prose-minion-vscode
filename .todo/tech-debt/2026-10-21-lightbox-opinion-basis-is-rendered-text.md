@@ -1,7 +1,7 @@
 # The Opinion's Citation Basis Hashes the Digest's Wording
 
 **Date Identified**: 2026-10-21 (Lightbox Slice 4D)
-**Status**: Identified
+**Status**: Decided (2026-10-21, epic decision 25): a canonical data basis with an explicit basis/format version on saved boards; scheduled as Slice 5's first step, after Slices 4E and 4F merge
 **Priority**: Medium (decide before Slice 5 saves boards)
 **Estimated Effort**: Small to medium (hash item data, or version the basis)
 

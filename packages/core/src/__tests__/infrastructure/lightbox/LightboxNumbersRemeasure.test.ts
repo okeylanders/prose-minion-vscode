@@ -114,10 +114,10 @@ describe('number usages on a board measured again from the same text (PR #155 F-
     const { before, after, groupOf } = await remeasure((measurement) => { measurement.writer = ABSENT; });
     expect(after.boardId).toBe(before.boardId);
     expect(after.measured.numbers.rows.filter((row) => row.standout)).toEqual([]);
-    expect(usages(groupOf(before, 'D'))).toEqual(['intensifiers', 'sentence-length', 'dialogue']);
+    // Intensifiers stand out too, but craft steering reads them (Slice 4F): the numbers lens read only these two.
+    expect(usages(groupOf(before, 'D'))).toEqual(['sentence-length', 'dialogue']);
     expect(usages(groupOf(after, 'D'))).toEqual([]);
     expect(withheldUsages(groupOf(after, 'D'))).toEqual([
-      ['Intensifiers and fillers', LIGHTBOX_GATE_REASONS.numberNotStandout.carried],
       ['Sentence length', LIGHTBOX_GATE_REASONS.numberNotStandout.carried],
       ['Dialogue', LIGHTBOX_GATE_REASONS.numberNotStandout.carried]
     ]);
@@ -136,7 +136,7 @@ describe('number usages on a board measured again from the same text (PR #155 F-
     const reference = (board: LightboxBoard) => board.measured.numbers.rows.find((row) => row.stat === 'sentence-length')?.standout;
     expect(reference(before)).toMatchObject({ direction: 'above', reference: 14 });
     expect(reference(after)).toMatchObject({ direction: 'above', reference: 12 });
-    expect(usages(groupOf(after, 'D'))).toEqual(['intensifiers', 'dialogue']);
+    expect(usages(groupOf(after, 'D'))).toEqual(['dialogue']);
     expect(withheldUsages(groupOf(after, 'D'))).toEqual([['Sentence length', LIGHTBOX_GATE_REASONS.numberRemeasured]]);
   });
 
@@ -144,7 +144,7 @@ describe('number usages on a board measured again from the same text (PR #155 F-
     // The writer's other chapters now hold hardly any dialogue: this chapter's share stands out above it, not below.
     const { after, groupOf } = await remeasure((measurement) => { measurement.writer = writerWith({ dialogueWords: 600 }); });
     expect(after.measured.numbers.rows.find((row) => row.stat === 'dialogue')?.standout).toMatchObject({ direction: 'above' });
-    expect(usages(groupOf(after, 'D'))).toEqual(['intensifiers', 'sentence-length']);
+    expect(usages(groupOf(after, 'D'))).toEqual(['sentence-length']);
     expect(withheldUsages(groupOf(after, 'D'))).toEqual([['Dialogue', LIGHTBOX_GATE_REASONS.numberRemeasured]]);
   });
 
@@ -160,7 +160,7 @@ describe('number usages on a board measured again from the same text (PR #155 F-
     expect(after.measured.numbers.rows.filter((row) => row.standout).map((row) => [row.stat, row.standout?.against])).toEqual([
       ['sentence-length', ['standards', 'writer']], ['dialogue', ['standards', 'writer']], ['intensifiers', ['writer']]
     ]);
-    expect(usages(groupOf(after, 'D'))).toEqual(['intensifiers']);
+    expect(usages(groupOf(after, 'D'))).toEqual([]);
     expect(withheldUsages(groupOf(after, 'D'))).toEqual([
       ['Sentence length', LIGHTBOX_GATE_REASONS.numberRemeasured],
       ['Dialogue', LIGHTBOX_GATE_REASONS.numberRemeasured]

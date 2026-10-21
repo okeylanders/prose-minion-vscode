@@ -12,7 +12,7 @@
  *   palette's words are in the text, a said line is dialogue, a spark is
  *   counted, a handoff's sentences are adjacent, a numbers reading's quotes
  *   hold an instance, a thread's quotes stand in order, an object is
- *   counted) run through `LightboxTileGates`, the same rules stale carry
+ *   counted, a steering note's quote holds an instance) run through `LightboxTileGates`, the same rules stale carry
  *   applies (PR #150 F-05), and group E's movements are held as a set
  *   (`LightboxPlotTiles`);
  * - terms the reading names are counted by the host (the counter), and a
@@ -43,6 +43,7 @@ import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '
 import { assembleNumbersBlock, assembleRhythmBlock, assembleStockBlock } from '@/infrastructure/lightbox/LightboxCraftTiles';
 import { LightboxPlotAssembly } from '@/infrastructure/lightbox/LightboxPlotTiles';
 import { assembleFirstReadingBlock } from '@/infrastructure/lightbox/LightboxFirstReadingTiles';
+import { assembleSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringTiles';
 import type { LightboxThreadCandidate } from '@/infrastructure/lightbox/LightboxPlotGates';
 import { findLightboxSentencePair, type LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
 import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
@@ -80,7 +81,8 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   pressure: 'pressure-thread',
   artifacts: 'artifact',
   summary: 'synopsis',
-  opinion: 'opinion'
+  opinion: 'opinion',
+  steering: 'steering-reading'
 };
 
 export interface LightboxTileAssemblyContext {
@@ -283,6 +285,9 @@ class GroupAssembly implements LightboxClaimAssembler {
         return;
       case 'summary':
         this.plot.summary(block);
+        return;
+      case 'steering':
+        assembleSteeringBlock(block, this);
         return;
       case 'opinion':
         // The Opinion is assembled from the board's digest (`LightboxOpinionReply`), never from the chapter.

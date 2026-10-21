@@ -20,6 +20,13 @@ import {
   LIGHTBOX_OPINION_OBSERVATION_ID
 } from '@/infrastructure/lightbox/LightboxOpinionWire';
 import { LIGHTBOX_OPINION_REWRITE_WORDS, LIGHTBOX_OPINION_WRITER_WORDS } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
+import { LIGHTBOX_STEERING_FORBIDDEN_WORDS } from '@/infrastructure/lightbox/LightboxSteeringPhrasing';
+import { LIGHTBOX_STEERING_STANCES } from '@/infrastructure/lightbox/LightboxSteeringWire';
+import {
+  LIGHTBOX_NUMBERS_READ_STATS,
+  LIGHTBOX_STEERING_EXAMPLE_LABEL,
+  LIGHTBOX_STEERING_STATS
+} from '@shared/constants/lightboxSteering';
 import { readLightboxPrompt } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 
 const B = PROMPT_BUDGETS.lightbox;
@@ -181,6 +188,34 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(summary).toContain(`\`title\`: at most ${B.labelCharacters} characters`);
     expect(summary).toContain(`\`gist\`: one line of at most ${B.noteCharacters} characters`);
     expect(summary).toContain('If any of that fails, every movement is withheld');
+  });
+
+  it('states craft steering\'s ceilings and rules, and the numbers lens leaves its figures alone (Slice 4F)', () => {
+    const steering = lens('steering');
+    expect(steering).toContain(`\`figures\`: 0–${LIGHTBOX_STEERING_STATS.length}, at most one per figure`);
+    for (const stat of LIGHTBOX_STEERING_STATS) {
+      expect(steering).toContain(`(\`${stat}\`)`);
+    }
+    expect(steering).toContain(`\`claim\`: at most ${B.claimCharacters} characters`);
+    expect(steering).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes for the claim`);
+    expect(steering).toContain(`\`notes\`: 0–${B.steeringNotes} instance notes per figure`);
+    expect(steering).toContain(`\`why\`: one line of at most ${B.steeringWhyCharacters} characters`);
+    expect(steering).toContain(`\`nudge\`: for \`leans\` and \`compensates\`, at most ${B.steeringNudgeCharacters} characters`);
+    expect(steering).toContain(
+      `at most ${B.steeringExampleBeforeWords} words and ${B.steeringExampleCharacters} characters; \`after\` is one way the move could go, ` +
+        `at most ${B.steeringExampleAfterWords} words and ${B.steeringExampleCharacters} characters`
+    );
+    expect(steering).toContain(`the board labels it "${LIGHTBOX_STEERING_EXAMPLE_LABEL}"`);
+    expect(steering).toContain('`stance`: exactly one of `earns`');
+    for (const stance of LIGHTBOX_STEERING_STANCES) {
+      expect(steering).toContain(`\`${stance}\` (`);
+    }
+    // Every word the codec withholds is one the prompt names, in the codec's order.
+    expect(steering).toContain(`Words this lens never uses, in any field: ${LIGHTBOX_STEERING_FORBIDDEN_WORDS.join(', ')}.`);
+    expect(shared).toContain('`B`, `C`, `D`, `E` or `G`');
+    // The numbers lens reads only the figures craft steering leaves it.
+    expect(lens('numbers')).toContain('Being verbs, adverbs and intensifiers are read by craft steering, never here');
+    expect(LIGHTBOX_NUMBERS_READ_STATS).toEqual(['sentence-length', 'dialogue', 'passive-voice']);
   });
 
   it('states the Opinion\'s ceilings and rules (Slice 4D)', () => {

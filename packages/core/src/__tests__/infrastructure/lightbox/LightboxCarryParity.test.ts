@@ -196,14 +196,17 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
     // (Slice 4), which `unquoted` and `edited` exercise; D's tier mix,
     // handoffs and numbers readings (Slice 4B) lose beats, sentences and
     // measured instances under the same edits.
-    it('carry and a fresh reading agree for groups A to E, including partial evidence survival', () => {
+    // Slice 4F: group G's notes lose their quotes under `edited` (¶6's "dipped suddenly down", ¶7's "too dark").
+    const steeringBody = (): Body => framedJson(readWorkedExample('G').response) as Body;
+    it('carry and a fresh reading agree for groups A to E and G, including partial evidence survival', () => {
       expect(readWorkedExample('D').paragraphs).toEqual(paragraphs);
       const groups = [
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
         ['C', sparkBody],
         ['D', craftBody],
-        ['E', storyBody]
+        ['E', storyBody],
+        ['G', steeringBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -309,7 +312,9 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         {
           evidence: tile.evidence.map(({ paragraph, text, match }) => ({ paragraph, text, match })),
           ...(tile.kind === 'subtext' ? { said: tile.said } : {}),
-          ...(tile.kind === 'gravity-collision' ? { witness: tile.witness } : {})
+          ...(tile.kind === 'gravity-collision' ? { witness: tile.witness } : {}),
+          // Slice 4F: a note's example is anchored again where its quote now stands, as a fresh read anchors it.
+          ...(tile.kind === 'steering-note' ? { example: tile.example, exampleWithheld: tile.exampleWithheld } : {})
         }
       ]));
       const groups = [
@@ -317,7 +322,8 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
         ['C', sparkBody],
         ['D', craftBody],
-        ['E', storyBody]
+        ['E', storyBody],
+        ['G', steeringBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -348,7 +354,7 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
 
     it('covers every reading kind, and the partial survivals hold or withhold as they should', async () => {
       const lenses = readWorkedExample('A').lenses;
-      const drawnKinds = new Set<string>((['A', 'B', 'C', 'D', 'E'] as const).flatMap((group) => {
+      const drawnKinds = new Set<string>((['A', 'B', 'C', 'D', 'E', 'G'] as const).flatMap((group) => {
         const body = group === 'A' ? collisionBody() : framedJson(readWorkedExample(group).response) as Body;
         return readOn(group, readWorkedExample(group).lenses, paragraphs, body).tiles.map((tile) => tile.kind);
       }));
@@ -362,8 +368,8 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       expect([...drawnKinds].sort()).toEqual([
         'air-lock', 'artifact', 'character', 'echo', 'familiar-phrase', 'genre-neighbor', 'gravity-collision', 'gravity-field',
         'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'movement', 'number-usage', 'opinion', 'palette-cluster',
-        'pressure-thread', 'reader-promise', 'rhythm-endings', 'signature', 'spark', 'stock-tiers', 'subtext', 'swatch',
-        'synopsis', 'template', 'template-beat', 'tension-arc', 'voice'
+        'pressure-thread', 'reader-promise', 'rhythm-endings', 'signature', 'spark', 'steering-note', 'steering-reading',
+        'stock-tiers', 'subtext', 'swatch', 'synopsis', 'template', 'template-beat', 'tension-arc', 'voice'
       ]);
       const once = parity('A', lenses, collisionBody(), paragraphs, edited).carried;
       expect(outcome(once).drawn).toEqual(expect.arrayContaining([
@@ -397,6 +403,19 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       const length = craft.tiles.find((tile) => tile.kind === 'number-usage' && tile.stat === 'sentence-length');
       expect(length?.evidence.map((quote) => quote.paragraph)).toEqual([7]);
       expect(length?.withheldQuotes).toEqual([{ paragraph: 4, reason: 'no-longer-in-chapter' }]);
+
+      // Slice 4F: a steering note whose quote is gone is withheld by its host title; one that stands keeps its
+      // example, anchored again in its carried quote; a reading keeps the quote that still holds an instance.
+      const steering = parity('G', ['steering'], steeringBody(), paragraphs, edited).carried;
+      expect(steering.withheldClaims.map((claim) => [claim.title, claim.reason])).toEqual([
+        ['Being verbs · note II', LIGHTBOX_GATE_REASONS.steeringNoInstance.carried],
+        ['Adverbs (-ly) · note I', LIGHTBOX_GATE_REASONS.steeringNoInstance.carried]
+      ]);
+      const adverbs = steering.tiles.find((tile) => tile.kind === 'steering-reading' && tile.stat === 'adverbs');
+      expect(adverbs?.evidence.map((quote) => quote.text)).toEqual(['or she fell very slowly']);
+      expect(adverbs?.withheldQuotes).toEqual([{ paragraph: 6, reason: 'no-longer-in-chapter' }]);
+      const deep = steering.tiles.find((tile) => tile.kind === 'steering-note' && tile.title === 'Intensifiers and fillers · note II');
+      expect(deep?.kind === 'steering-note' && deep.example).toEqual({ before: 'a very deep well', after: 'a bottomless well' });
     });
   });
 });

@@ -87,7 +87,7 @@ describe('a press with the story lenses on (Slice 4C)', () => {
       .toEqual(movements.map((movement) => movement.id));
     // The Sections lane is measured from the board, never read.
     expect(host.service.currentBoard()?.measured.sections.signal).toBe('none');
-    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 6 });
+    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 7 });
   });
 
   it('re-reads the template with the summary in one call, replacing both and keeping pressure and artifacts', async () => {

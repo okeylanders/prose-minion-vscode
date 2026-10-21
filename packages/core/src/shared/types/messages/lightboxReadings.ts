@@ -41,6 +41,7 @@ import type {
   LightboxTemplateTile
 } from './lightboxPlotTiles';
 import type { LightboxOpinionTile } from './lightboxOpinion';
+import type { LightboxSteeringNoteTile, LightboxSteeringReadingTile } from './lightboxSteering';
 import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
@@ -54,11 +55,11 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * Groups A–E read the chapter; group F (Slice 4D) reads the board: the
- * Opinion runs after the other groups of a press settle, on the board's
- * verified digest, never on the chapter.
+ * Groups A–E and G (Slice 4F, craft steering) read the chapter; group F
+ * (Slice 4D) reads the board: the Opinion runs after the other groups of a
+ * press settle, on the board's verified digest, never on the chapter.
  */
-export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
 
 /**
  * The lenses, each in one reading group: Slice 2B's six, Slice 3's lexical
@@ -66,7 +67,8 @@ export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
  * lineage and Spark in group C, Slice 4B's craft lenses in group D
  * (stock and signature, rhythm and handoffs, the numbers), and Slice 4C's
  * story lenses in group E (template and freshness, pressure, artifacts,
- * summary and movements), and Slice 4D's Opinion, alone in group F. A lens
+ * summary and movements), Slice 4D's Opinion, alone in group F, and Slice
+ * 4F's craft steering, alone in group G. A lens
  * the writer turns off is left out of its group's prompt, and a group with
  * no lens on is not called.
  */
@@ -89,7 +91,8 @@ export type LightboxLensId =
   | 'pressure'
   | 'artifacts'
   | 'summary'
-  | 'opinion';
+  | 'opinion'
+  | 'steering';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -122,6 +125,8 @@ export interface LightboxVerifiedQuote {
  *   that counted it.
  * - `out-of-order`: found, but an object's arc step that stands before the
  *   step it follows (Slice 4C), so the arc would no longer run in order.
+ *   (A craft steering quote that holds no instance of its figure is
+ *   `no-instance` too, Slice 4F.)
  */
 export type LightboxQuoteFailure =
   | 'undeclared-paragraph'
@@ -167,6 +172,8 @@ export interface LightboxCountedSupport {
  * a spark (`lightboxStoryTiles.ts`). Slice 4B: the craft kinds
  * (`lightboxCraftTiles.ts`). Slice 4C: the story kinds (`lightboxPlotTiles.ts`).
  * Slice 4D: the Opinion (`lightboxOpinion.ts`), the one evaluative tile.
+ * Slice 4F: a steering figure's reading and its instance notes
+ * (`lightboxSteering.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
@@ -198,7 +205,9 @@ export type LightboxReadingTileKind =
   | 'artifact'
   | 'synopsis'
   | 'movement'
-  | 'opinion';
+  | 'opinion'
+  | 'steering-reading'
+  | 'steering-note';
 
 export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
@@ -307,7 +316,9 @@ export type LightboxReadingTile =
   | LightboxArtifactTile
   | LightboxSynopsisTile
   | LightboxMovementTile
-  | LightboxOpinionTile;
+  | LightboxOpinionTile
+  | LightboxSteeringReadingTile
+  | LightboxSteeringNoteTile;
 
 /** A lens block that failed validation, withheld by kind with its reason (D7). */
 export interface LightboxWithheldBlock {

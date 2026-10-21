@@ -100,8 +100,13 @@ elsewhere.
 | Low | [The configured catalog lists only one of two same-named files across workspace folders](2026-10-20-context-catalog-cross-root-collapse.md) (older than PR #154; found in its F-02 review) | Identified |
 | Low | [A maximal group D response can exceed the per-group response cap](2026-10-20-lightbox-group-d-response-ceiling.md) (Lightbox Slice 4B) | Identified |
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
-| Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; decide before Slice 5 saves boards) | Identified |
+| Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; the writer chose a data basis, epic decision 25) | Decided (Slice 5's first step) |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
+| Low | [The word-pattern figures miss a form wrapped in underscore emphasis](2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Lightbox Slice 4F; `_was_` counts nowhere, consistently) | Identified |
+| Low | [Craft steering's construction breakdown is a next-word heuristic](2026-10-21-lightbox-steering-construction-heuristics.md) (Lightbox Slice 4F) | Identified |
+| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; split before Slice 5 adds to them) | Identified |
+| Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
+| Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
 | Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
 
 ## Review Guidance

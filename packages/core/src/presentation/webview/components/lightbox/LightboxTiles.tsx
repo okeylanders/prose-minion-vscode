@@ -14,7 +14,9 @@
  * tiles join the grid (Slice 4C): summary and movements full width with its
  * movements inside it, template and freshness with its beats, pressure and
  * artifacts. The Opinion (Slice 4D), the one evaluative tile, is drawn last
- * on the board, full width, after the Spark lane.
+ * on the board, full width, after the Spark lane. Craft steering (Slice 4F)
+ * sits right after the numbers, full width, its notes inside each figure's
+ * section.
  */
 import * as React from 'react';
 import type {
@@ -55,6 +57,7 @@ import { LightboxTemplate, LightboxTemplateBeats } from '@components/lightbox/Li
 import { LightboxPressure } from '@components/lightbox/LightboxPressure';
 import { LightboxArtifacts } from '@components/lightbox/LightboxArtifacts';
 import { LightboxOpinion, type LightboxOpinionActions } from '@components/lightbox/LightboxOpinion';
+import { LightboxSteering, LightboxSteeringNotes } from '@components/lightbox/LightboxSteering';
 
 /** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring; the Opinion's views (Slice 4D). */
 export interface LightboxTileActions {
@@ -113,7 +116,9 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   'template-beat': LightboxTemplateBeats,
   'pressure-thread': LightboxPressure,
   artifact: LightboxArtifacts,
-  opinion: LightboxOpinion
+  opinion: LightboxOpinion,
+  'steering-reading': LightboxSteering,
+  'steering-note': LightboxSteeringNotes
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -144,7 +149,7 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
   underRibbon: 'tension-arc',
   grid: [
     'motif', 'gravity-field', 'palette-cluster', 'character', 'lineage', 'genre-neighbor', 'voice', 'subtext',
-    'stock-tiers', 'rhythm-endings', 'number-usage',
+    'stock-tiers', 'rhythm-endings', 'number-usage', 'steering-reading',
     'synopsis', 'template', 'pressure-thread', 'artifact'
   ],
   lane: 'spark',
@@ -161,7 +166,8 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
     echo: 'stock-tiers',
     handoff: 'rhythm-endings',
     movement: 'synopsis',
-    'template-beat': 'template'
+    'template-beat': 'template',
+    'steering-note': 'steering-reading'
   }
   /* eslint-enable @typescript-eslint/naming-convention */
 };

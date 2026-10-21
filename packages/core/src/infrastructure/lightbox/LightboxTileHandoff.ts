@@ -29,6 +29,10 @@
  *   anchors or not at all: a thread with its plant and its resolution, a
  *   synopsis with two quotes, a movement with its boundary; the freshness
  *   reading with its label, and its basis only when both halves are current;
+ * - craft steering (Slice 4F, `LightboxSteeringHandoff`) travels with
+ *   quotes its figure's detector still finds an instance in, and a note with
+ *   its stance, nudge and its one example, labelled as one, only while the
+ *   example still stands in the note's quote;
  * - the Opinion (Slice 4D, `LightboxOpinionHandoff`) travels as the one
  *   view the writer names, only while it stands on the board as it is: its
  *   headline, body and Why points, and the quotes its observations cite,
@@ -73,6 +77,7 @@ import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/l
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxPlotAnchorRefusal, lightboxPlotPoints, lightboxPlotTravelOrder } from '@/infrastructure/lightbox/LightboxPlotHandoff';
 import { prepareLightboxOpinionHandoff } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
+import { lightboxSteeringPoints, lightboxSteeringQuoteAgain } from '@/infrastructure/lightbox/LightboxSteeringHandoff';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
 
@@ -93,6 +98,7 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   handoffIncomplete: 'Its two sentences, as the chapter has them, cannot both travel to the Workshop, so the handoff was not brought. Nothing was cut.',
   notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
   phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
+  steeringNoInstance: 'None of its quotes still holds an instance of the figure it reads, as the chapter has it, so it was not brought.',
   fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
 } as const;
 
@@ -154,7 +160,11 @@ export function prepareLightboxTileHandoff(
   }
   const quotes: WorkshopLightboxTileQuote[] = said ? [{ ...said, said: true }] : [];
   for (const quote of travelOrder(tile)) {
-    const found = standout ? foundWithInstance(verifier, standout, quote) : foundAgain(verifier, quote);
+    // A steering quote travels only while its figure's detector still finds an instance in it (Slice 4F).
+    const steering = lightboxSteeringQuoteAgain(tile, verifier, quote);
+    const found = standout
+      ? foundWithInstance(verifier, standout, quote)
+      : steering !== undefined ? steering ?? undefined : foundAgain(verifier, quote);
     if (found && !quotes.some((kept) => kept.paragraph === found.paragraph && kept.text === found.text)) {
       quotes.push(found);
     }
@@ -171,7 +181,9 @@ export function prepareLightboxTileHandoff(
     return refuse(anchors);
   }
   if (bounded.length === 0) {
-    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
+    return refuse(tile.kind === 'steering-reading' || tile.kind === 'steering-note'
+      ? LIGHTBOX_TILE_HANDOFF_REFUSALS.steeringNoInstance
+      : LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
   }
   // The witness rule the gate holds a familiar phrase to: a quote holding a whole occurrence (PR #155 F-03).
   if (tile.kind === 'familiar-phrase' && !lightboxPhraseHeld(verifier, bounded, tile.phrase)) {
@@ -179,7 +191,7 @@ export function prepareLightboxTileHandoff(
   }
   return {
     ok: true,
-    handoff: { kind: 'tile', tile: tileOf(request, tile, bounded, board) },
+    handoff: { kind: 'tile', tile: tileOf(request, tile, bounded, board, verifier) },
     quotesChecked: tile.evidence.length,
     quotesFound
   };
@@ -224,7 +236,7 @@ function handoffOf(
   }
   return {
     ok: true,
-    handoff: { kind: 'tile', tile: tileOf(request, tile, pair, board) },
+    handoff: { kind: 'tile', tile: tileOf(request, tile, pair, board, verifier) },
     quotesChecked: 2,
     quotesFound: 2
   };
@@ -253,7 +265,8 @@ function tileOf(
   request: LightboxTileHandOffRequest,
   tile: LightboxReadingTile,
   quotes: WorkshopLightboxTileQuote[],
-  board: LightboxBoard
+  board: LightboxBoard,
+  verifier: LightboxQuoteVerifier
 ): WorkshopLightboxTile {
   return {
     origin: 'lightbox',
@@ -263,14 +276,19 @@ function tileOf(
     lensLabel: lightboxLensLabel(tile.lens).slice(0, LIMITS.labelCharacters),
     title: tile.title.slice(0, LIMITS.titleCharacters).trim(),
     claim: tile.claim.slice(0, LIMITS.claimCharacters).trim(),
-    points: pointsOf(tile, board),
+    points: pointsOf(tile, board, verifier, quotes),
     quotes,
     sourceLabel: board.source.displayPath.slice(0, LIMITS.sourceLabelCharacters)
   };
 }
 
 /** What a claim says in its own right: a story's stances, who says a line, or a craft tile's own counts and fields. */
-function pointsOf(tile: LightboxReadingTile, board: LightboxBoard): WorkshopLightboxTilePoint[] {
+function pointsOf(
+  tile: LightboxReadingTile,
+  board: LightboxBoard,
+  verifier: LightboxQuoteVerifier,
+  quotes: readonly WorkshopLightboxTileQuote[]
+): WorkshopLightboxTilePoint[] {
   const point = (label: string, text: string): WorkshopLightboxTilePoint => ({
     label: label.slice(0, LIMITS.pointLabelCharacters),
     text: text.slice(0, LIMITS.pointCharacters).trim()
@@ -319,6 +337,6 @@ function pointsOf(tile: LightboxReadingTile, board: LightboxBoard): WorkshopLigh
       return [point('Figure', figure), point('Reads as', LIGHTBOX_NUMBER_USAGE_LABELS[tile.usage].replace(/^Reads as /, ''))];
     }
     default:
-      return lightboxPlotPoints(tile, board, point) ?? [];
+      return lightboxPlotPoints(tile, board, point) ?? lightboxSteeringPoints(tile, board, verifier, quotes, point) ?? [];
   }
 }
