@@ -67,6 +67,22 @@ export function proseSentenceSpans(text: string): Array<{ start: number; end: nu
   return spans;
 }
 
+/**
+ * The words the tool's vocabulary figures count (unique words, hapax,
+ * lexical density, type-token ratio): whitespace-separated, lower-cased,
+ * each kept to its letters a–z and apostrophes, with nothing trimmed, so a
+ * hyphenated word is one word and "rabbit-hole" counts as "rabbithole".
+ * Exported so the Lightbox's hapax list (Slice 4E) counts exactly what the
+ * stats row's "hapax" counts.
+ */
+export function proseStatsWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-z']/g, ''))
+    .filter(Boolean);
+}
+
 export class PassageProseStats {
   analyze(input: ProseStatsInput): ProseStatsOutput {
     const text = input.text.trim();
@@ -141,11 +157,7 @@ export class PassageProseStats {
   }
 
   private tokenizeWords(text: string): string[] {
-    return text
-      .toLowerCase()
-      .split(/\s+/)
-      .map(w => w.replace(/[^a-z']/g, ''))
-      .filter(Boolean);
+    return proseStatsWords(text);
   }
 
   private countUniqueWords(text: string): number {

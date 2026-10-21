@@ -53,6 +53,7 @@ import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 import { LightboxHandler } from './domain/LightboxHandler';
 import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
+import { LightboxPassageHandler } from './domain/LightboxPassageHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -84,6 +85,7 @@ export class MessageHandler {
   private readonly workshopHandler: WorkshopRoomHandler;
   private readonly lightboxHandler: LightboxHandler;
   private readonly lightboxReadingHandler: LightboxReadingHandler;
+  private readonly lightboxPassageHandler: LightboxPassageHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -370,6 +372,8 @@ export class MessageHandler {
       this.postMessage.bind(this),
       outputChannel
     );
+    // The inspector's passages (Slice 4E): the text a pinned paragraph or counted item stands in, by board id.
+    this.lightboxPassageHandler = new LightboxPassageHandler(lightboxService, this.postMessage.bind(this), outputChannel);
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -402,6 +406,7 @@ export class MessageHandler {
     this.workshopHandler.registerRoutes(this.router);
     this.lightboxHandler.registerRoutes(this.router);
     this.lightboxReadingHandler.registerRoutes(this.router);
+    this.lightboxPassageHandler.registerRoutes(this.router);
     this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
       this.resultCache.error = undefined;
     });

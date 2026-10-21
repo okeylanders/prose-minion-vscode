@@ -3,7 +3,7 @@
  * Tests prose statistics calculations
  */
 
-import { PassageProseStats } from '@/tools/measure/passageProseStats/index';
+import { PassageProseStats, proseStatsWords } from '@/tools/measure/passageProseStats/index';
 
 /** 22 words, 13 of them inside curly-quoted dialogue. */
 const CURLY_SCENE = [
@@ -396,5 +396,27 @@ describe('PassageProseStats - Business Logic', () => {
       expect(result.dialoguePercentage).toBe(Math.round(result.dialoguePercentage * 10) / 10);
       expect(result.lexicalDensity).toBe(Math.round(result.lexicalDensity * 10) / 10);
     });
+  });
+});
+
+describe('proseStatsWords, the words the vocabulary figures count (Slice 4E)', () => {
+  it('splits on whitespace only, keeps letters and apostrophes, and trims nothing', () => {
+    expect(proseStatsWords('The rabbit-hole went—down. ’Twas "Alice\'s"  x2 \'tis \' 42')).toEqual([
+      'the', 'rabbithole', 'wentdown', 'twas', 'alice\'s', 'x', '\'tis', '\''
+    ]);
+  });
+
+  it('is what hapax and unique words are counted over', () => {
+    const text = 'Down, down, down. Would the fall NEVER come to an end? Never—never.';
+    const words = proseStatsWords(text);
+    const counts = new Map<string, number>();
+    for (const word of words) {
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+    const result = new PassageProseStats().analyze({ text });
+    // down ×3, never ×1 and nevernever ×1 (the dash joins), and seven others once.
+    expect(result.hapaxCount).toBe(9);
+    expect([...counts.values()].filter((count) => count === 1)).toHaveLength(9);
+    expect(result.uniqueWordCount).toBe(counts.size);
   });
 });

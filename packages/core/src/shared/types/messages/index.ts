@@ -45,6 +45,7 @@ export * from './lightboxNumbers';
 export * from './lightboxPlotTiles';
 export * from './lightboxSections';
 export * from './lightboxOpinion';
+export * from './lightboxPassages';
 
 // Union types for message routing
 import {
@@ -282,6 +283,7 @@ import {
   LightboxRequestProjectCatalogMessage,
   LightboxSearchProjectCatalogMessage
 } from './lightboxProjectFiles';
+import { LightboxPassageMessage, LightboxRequestPassageMessage } from './lightboxPassages';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -412,7 +414,8 @@ export type WebviewToExtensionMessage =
   | LightboxRequestProjectCatalogMessage
   | LightboxSearchProjectCatalogMessage
   | LightboxChooseProjectSourceMessage
-  | LightboxAddProjectContextMessage;
+  | LightboxAddProjectContextMessage
+  | LightboxRequestPassageMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -484,4 +487,5 @@ export type ExtensionToWebviewMessage =
   | LightboxHandOffResultMessage
   | LightboxWorkshopTrayMessage
   | LightboxProjectCatalogMessage
-  | LightboxProjectCatalogSearchResultsMessage;
+  | LightboxProjectCatalogSearchResultsMessage
+  | LightboxPassageMessage;

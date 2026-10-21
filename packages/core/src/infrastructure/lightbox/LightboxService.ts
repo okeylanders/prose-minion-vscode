@@ -51,8 +51,10 @@
  *   left out), so the board's numbers are fixed with the board.
  *
  * The source text never leaves this service except as the board's short
- * preview; the host-private re-read path and each retained board's
- * paragraph texts (what a reading run reads) are never posted.
+ * preview and, from Slice 4E, the passages the inspector asks for by board
+ * id (`passageSource`, cut by `LightboxPassageHandler`); the host-private
+ * re-read path and each retained board's paragraph texts (what a reading run
+ * reads) are never posted.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -86,6 +88,7 @@ import {
 } from '@/infrastructure/lightbox/LightboxMeasures';
 import { checkLightboxSource, lightboxSourcePreview } from '@/infrastructure/lightbox/LightboxSourceChecks';
 import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
+import { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -162,6 +165,8 @@ interface BoardEntry {
   rereadPath?: string;
   /** Host-private: the paragraph texts the board was measured from (index 0 is ¶1). */
   paragraphTexts: string[];
+  /** Host-private: the text it was measured from, for the inspector's passages (Slice 4E). */
+  passages: LightboxPassageIndex;
 }
 
 /** A retained board with the text a reading run reads. Host-private. */
@@ -241,7 +246,8 @@ export class LightboxService {
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
     const paragraphTexts = splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text);
 
-    let board = await this.assemble(input, contentHash, unchanged);
+    const assembled = await this.assemble(input, contentHash, unchanged);
+    let board = assembled.board;
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
@@ -269,7 +275,7 @@ export class LightboxService {
       };
       carried = true;
     }
-    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath, paragraphTexts });
+    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath, paragraphTexts, passages: assembled.passages });
     // The newest request produced a board, so no refusal stands beside it.
     this.standingRefusal = null;
     this.outcomeListeners.emit({ kind: 'board', board, refusal: this.standingRefusal });
@@ -327,6 +333,12 @@ export class LightboxService {
   readingSource(boardId: string): LightboxReadingSourceText | undefined {
     const entry = this.entryOf(boardId);
     return entry ? { board: entry.board, paragraphTexts: entry.paragraphTexts } : undefined;
+  }
+
+  /** A retained board and the text it was measured from, by board id (Slice 4E passages). */
+  passageSource(boardId: string): { board: LightboxBoard; passages: LightboxPassageIndex } | undefined {
+    const entry = this.entryOf(boardId);
+    return entry ? { board: entry.board, passages: entry.passages } : undefined;
   }
 
   /**
@@ -387,7 +399,7 @@ export class LightboxService {
     input: LightboxSourceInput,
     contentHash: string,
     predecessor: LightboxBoard | undefined
-  ): Promise<LightboxBoard> {
+  ): Promise<{ board: LightboxBoard; passages: LightboxPassageIndex }> {
     const paragraphs = splitLightboxParagraphs(input.text);
     const metrics = paragraphs.map(measureLightboxParagraph);
     const stats = this.proseStatsService.analyze({ text: input.text });
@@ -409,7 +421,7 @@ export class LightboxService {
       preview: lightboxSourcePreview(input.text)
     };
 
-    return {
+    const board: LightboxBoard = {
       boardVersion: 0,
       boardId: predecessor?.boardId ?? this.mintBoardId(),
       source,
@@ -420,6 +432,7 @@ export class LightboxService {
       }),
       readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
     };
+    return { board, passages: LightboxPassageIndex.build({ text: input.text, paragraphs, frequency }) };
   }
 
   private adopt(key: string, entry: BoardEntry): void {
