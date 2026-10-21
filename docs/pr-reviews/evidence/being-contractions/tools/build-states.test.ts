@@ -60,10 +60,10 @@ const TEA_PARTY = TEA_PARTY_CURLY.split('\n\n');
  * 'twas) beside possessives that stay possessives.
  */
 const ADDITIONS = [
-  '“Nate’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”',
-  'Ivy’s sister laughed. The Hatter’s watch had stopped, and Nate’s own excuse was thin.',
+  '“Tobin’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”',
+  'Ivy’s sister laughed. The Hatter’s watch had stopped, and Tobin’s own excuse was thin.',
   '“’Tis no matter,” said the cook. “’Twas ever so. It’s had its day, that kettle.”',
-  '“I ain’t had a cup,” said Nate, “and the cat’s asleep in the teapot.”'
+  '“I ain’t had a cup,” said Tobin, “and the cat’s asleep in the teapot.”'
 ];
 
 /** Group G, written for this evidence: one narration note, and three on lines the characters speak. */

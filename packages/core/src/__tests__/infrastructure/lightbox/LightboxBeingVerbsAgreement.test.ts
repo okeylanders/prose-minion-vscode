@@ -51,7 +51,7 @@ describe('being verbs: what the board counts is what a quote is checked for', ()
     // The rule's stated limit: "he's gone" may mean has gone, and counts as is.
     ['he’s gone (the known limit)', 'He’s gone to the garden.', 'He’s gone to the garden', ['’s']],
     // The next-word rule (the writer's addition): after a name or noun the tagger reads as a possessive.
-    ['Nate’s late', 'Nate’s late again, said Ivy.', 'Nate’s late again', ['’s']],
+    ['Tobin’s late', 'Tobin’s late again, said Ivy.', 'Tobin’s late again', ['’s']],
     ['everyone’s here', 'Everyone’s here at last.', 'Everyone’s here at last', ['’s']],
     ['Ivy’s not coming', 'Ivy\'s not coming today.', 'Ivy\'s not coming', ['\'s']],
     ['the Hatter’s in the garden', 'The Hatter’s in the garden.', 'The Hatter’s in the garden', ['’s']],

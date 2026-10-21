@@ -40,16 +40,16 @@ written, so a quote holds an instance exactly when it holds that span.
      "that's", "there's";
   3. **the next-word rule, where it reads a possessive** (`POS`; the
      writer's addition, for names and nouns): *is* before an adjective or a
-     participle the tagger tags `VBN` ("Nate's late", "Ivy's tired",
+     participle the tagger tags `VBN` ("Tobin's late", "Ivy's tired",
      "the door's shut"), an -ing word ("the dog's barking"), an adverb or
-     not ("everyone's here", "Nate's not coming"), a preposition or "to"
-     ("Nate's in the garden", "Nate's to blame"), or a determiner (a, an,
+     not ("everyone's here", "Tobin's not coming"), a preposition or "to"
+     ("Tobin's in the garden", "Tobin's to blame"), or a determiner (a, an,
      the, no; my, our: "Dinah's our cat"). It stays a possessive before a
      noun or a name ("the Rabbit's watch", "Alice's sister", "the Queen's
      croquet"), before a pronoun ("how's she?"), before "own" ("Alice's own
      sister"), before adjectives that a noun follows ("the Rabbit's white
-     gloves", "Nate's tired eyes"), and before anything else (a number, a
-     mark, the end: "That one's Nate's.");
+     gloves", "Tobin's tired eyes"), and before anything else (a number, a
+     mark, the end: "That one's Tobin's.");
 - the negated forms isn't, aren't, wasn't, weren't and ain't (the span is
   the whole word). **Were they counted before? No.** A whole-word
   `\bwas\b` does not match inside "wasn't" ("was" runs on into "n"), and
@@ -79,15 +79,15 @@ after I, so "ma'm" and "M'm" are not forms.
 
 **Known limits, stated in the module and pinned by tests:**
 - a participle other than been, got, gotten or had reads as *is*: "he's
-  gone" and "Nate's gone" count, though either may mean *has gone*;
+  gone" and "Tobin's gone" count, though either may mean *has gone*;
 - **an -ing word reads as *is*, the chosen reading of the ambiguity:** "the
   dog's barking" counts as *the dog is barking*, not *the barking of the
-  dog*, and so "Nate's sewing basket" counts, wrongly;
+  dog*, and so "Tobin's sewing basket" counts, wrongly;
 - an adverb reads as *is* wherever it stands, so "the Rabbit's very white
   gloves" counts; a pronoun keeps a possessive, so "how's she?" and
   "where's he?" are not counted;
 - the next-word rule stands only where the tagger reads a possessive; where
-  it reads a verb it is trusted, so "Nate's every word" counts;
+  it reads a verb it is trusted, so "Tobin's every word" counts;
 - when the tagger cannot load, no `'s` is counted, and "ain't" is read as
   *has not* only when the next word is been, got, gotten or had. Every
   reader shares the outcome, so the figures still agree.
@@ -210,17 +210,17 @@ failing tests in six files, both at Slice 4F's head `27b646a` and at
 
 **The writer's three additions** fail at the first pushed head `ab22ebd`
 and pass here (12 tests in four files, run against an export of it):
-- `LightboxBeingVerbsAgreement`, with made-up names: Nate’s late,
+- `LightboxBeingVerbsAgreement`, with made-up names: Tobin’s late,
   everyone’s here, Ivy's not coming, the Hatter’s in the garden, the dog’s
   barking (pinned as *is*), ’Tis, 'Twas, ’twere, it’s had and ain’t had (now
   *has*). New controls that already held there and must keep holding:
   Alice’s sister, the Queen’s croquet, the Rabbit’s white gloves (adjectives
   before a noun), Alice’s own.
-- `beingVerbs/index.test.ts`: the next-word rule (is: Nate’s late, not,
+- `beingVerbs/index.test.ts`: the next-word rule (is: Tobin’s late, not,
   in, to, Ivy’s tired, very, our, the door’s shut; possessive: the Rabbit’s
-  watch, Alice’s sister, the Queen’s croquet, the Hatter’s tea, Nate’s Ivy,
-  own, white gloves, tired eyes, That one’s Nate’s), its pinned ambiguities
-  (the dog’s barking and Nate’s sewing basket as *is*; how’s she and
+  watch, Alice’s sister, the Queen’s croquet, the Hatter’s tea, Tobin’s Ivy,
+  own, white gloves, tired eyes, That one’s Tobin’s), its pinned ambiguities
+  (the dog’s barking and Tobin’s sewing basket as *is*; how’s she and
   where’s he as possessives), had, 'tis/'twas/'twere with their spans, and
   "don'tis", "'tisket", "'twill", "'twasn" as no forms. The file does not
   compile at `ab22ebd` (it imports `BEING_VERB_ELIDED_FORMS`).
@@ -246,7 +246,7 @@ The controls let’s, he’s been, she’s got and ma’am are unchanged.
 - With the writer's three additions:
   - `beingVerbs/index.test.ts`: the has words are been, got, gotten and
     had; "It's had its day" moved out of the "he's gone" limit (it is *has*
-    now, 0), replaced there by "Nate’s gone".
+    now, 0), replaced there by "Tobin’s gone".
   - The task line and the prompt's sentences pin the new wording.
 
 ## Measured on *Alice*
@@ -268,9 +268,9 @@ keeps closing marks and joins lower-case speech tags, puts none there.
 in both settings and Chapter I): their forms are identical at `ab22ebd` and
 at the head, and no standout flips. On four lines written for the evidence
 with made-up names (56 words), being verbs go 1 (`1cb417c`) → 3 (`ab22ebd`)
-→ 7 (head): Nate’s late, everyone’s here, the kettle’s boiling, ’Tis, ’Twas
+→ 7 (head): Tobin’s late, everyone’s here, the kettle’s boiling, ’Tis, ’Twas
 and the cat’s asleep counted; It’s had and ain’t had now *has*; Ivy’s
-sister, the Hatter’s watch and Nate’s own stay possessives.
+sister, the Hatter’s watch and Tobin’s own stay possessives.
 
 ## Verification
 
@@ -312,8 +312,8 @@ inspector, at 1440 and 500 px; `facts.json` and an empty `errors.txt`.
 - **Decided (the writer's three additions):** the next-word rule for `'s`
   after names and nouns, *has* before had, and 'tis, 'twas and 'twere.
 - **Still ambiguous, by the next-word rule:** an -ing word reads as *is*
-  ("the dog's barking", and wrongly "Nate's sewing basket"); a participle
-  reads as *is* ("Nate's gone"); an adverb reads as *is* even before
+  ("the dog's barking", and wrongly "Tobin's sewing basket"); a participle
+  reads as *is* ("Tobin's gone"); an adverb reads as *is* even before
   adjectives and a noun ("the Rabbit's very white gloves"); a pronoun keeps
   a possessive ("how's she?"). Change any of these readings?
 - **Single-quoted dialogue** (British style, or Gutenberg's) reads as

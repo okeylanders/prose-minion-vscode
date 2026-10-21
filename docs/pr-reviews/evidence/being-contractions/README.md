@@ -119,18 +119,18 @@ The board states and every capture above are byte-identical across the
 additions. The builder also measures four lines written for this
 evidence, with made-up names:
 
-> “Nate’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”
-> Ivy’s sister laughed. The Hatter’s watch had stopped, and Nate’s own excuse was thin.
+> “Tobin’s late again,” said Ivy. “Everyone’s here but him, and the kettle’s boiling.”
+> Ivy’s sister laughed. The Hatter’s watch had stopped, and Tobin’s own excuse was thin.
 > “’Tis no matter,” said the cook. “’Twas ever so. It’s had its day, that kettle.”
-> “I ain’t had a cup,” said Nate, “and the cat’s asleep in the teapot.”
+> “I ain’t had a cup,” said Tobin, “and the cat’s asleep in the teapot.”
 
 | Tree | Being verbs | Forms found, paragraph by paragraph | Narration · dialogue |
 |---|---|---|---|
 | `1cb417c` | 1 | —; was; —; — | 1 · 0 |
 | `ab22ebd` (first head) | 3 | —; was; ’s (It’s had, read as *is*); ain’t (before had) | 1 · 2 |
-| Head | **7** | ’s ’s ’s (Nate’s late, Everyone’s here, the kettle’s boiling); was; Tis, Twas; ’s (the cat’s asleep) | 1 · 6 |
+| Head | **7** | ’s ’s ’s (Tobin’s late, Everyone’s here, the kettle’s boiling); was; Tis, Twas; ’s (the cat’s asleep) | 1 · 6 |
 
-Ivy’s sister, the Hatter’s watch and Nate’s own stay possessives; "It’s
+Ivy’s sister, the Hatter’s watch and Tobin’s own stay possessives; "It’s
 had" and "ain’t had" are *has* now. The 56 words are under the
 standout minimum (300), so nothing stands out at any tree.
 

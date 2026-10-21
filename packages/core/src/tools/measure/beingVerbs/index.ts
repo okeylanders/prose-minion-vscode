@@ -35,7 +35,7 @@
  *   2. *is* where the tagger reads `'s` as a verb (`VB*`): "it's", "she's",
  *      "that's", "there's";
  *   3. where it reads a possessive (`POS`), the next word decides (the
- *      next-word rule, for names and nouns: "Nate's late", "everyone's
+ *      next-word rule, for names and nouns: "Tobin's late", "everyone's
  *      here"). *Is* before an adjective or a participle the tagger tags
  *      `VBN` ("tired", "shut"), an -ing word, an adverb or not, a
  *      preposition or "to", or a determiner (a, an, the, no; my, our). It
@@ -57,16 +57,16 @@
  * - every counted form counts, whatever it does in its sentence (a linking
  *   verb, an auxiliary, a passive), so the figure is a frequency;
  * - `'s` before a participle other than been, got, gotten or had reads as
- *   *is*: "he's gone" and "Nate's gone" count, though either may mean *has
+ *   *is*: "he's gone" and "Tobin's gone" count, though either may mean *has
  *   gone*;
  * - before an -ing word `'s` reads as *is*: "the dog's barking" counts as
  *   *the dog is barking*, though it may be *the barking of the dog*, and so
- *   does "Nate's sewing basket" (a possessive);
+ *   does "Tobin's sewing basket" (a possessive);
  * - before an adverb it reads as *is*, so "the Rabbit's very white gloves"
  *   counts; before a pronoun it stays a possessive, so "how's she?" and
  *   "where's he?" are not counted;
  * - the next-word rule stands only where the tagger reads a possessive;
- *   where it reads a verb, it is trusted ("Nate's every word" counts);
+ *   where it reads a verb, it is trusted ("Tobin's every word" counts);
  * - when the tagger cannot load, no `'s` is counted, and "ain't" is read as
  *   *has not* only when the next word is been, got, gotten or had.
  */
@@ -257,7 +257,7 @@ function tokenReader(tokens: readonly TaggedToken[]): TokenReader {
         return false;
       }
       if (MODIFIER.test(pos(next))) {
-        // "Nate's late." is *is*; "the Rabbit's white gloves" is a possessive.
+        // "Tobin's late." is *is*; "the Rabbit's white gloves" is a possessive.
         return !NOUN.test(pos(nextPastModifiers[next]));
       }
       return IS_AFTER.test(pos(next));

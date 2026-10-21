@@ -61,28 +61,28 @@ describe('findBeingVerbs', () => {
     expect(forms('He\'s never been there. She\'s always got time. It\'s just gotten worse.')).toEqual(['been']);
     expect(forms('He\'s *been* there.')).toEqual(['been']);
     // "had" too (the writer's addition): it's had is it has had.
-    expect(forms('It\'s had its day. He’s already had enough. Nate’s had tea.')).toEqual([]);
+    expect(forms('It\'s had its day. He’s already had enough. Tobin’s had tea.')).toEqual([]);
   });
 
   it('counts the ambiguous "he\'s gone" as is: the rule\'s known limit', () => {
-    expect(forms('He\'s gone. Nate’s gone.')).toEqual(['\'s', '’s']);
+    expect(forms('He\'s gone. Tobin’s gone.')).toEqual(['\'s', '’s']);
   });
 
   it('reads \'s after a name or noun by the next word, where the tagger reads a possessive', () => {
     // Is: before an adjective or a participle, an -ing word, an adverb or not, a preposition or to, a determiner.
-    expect(forms('Nate’s late. Everyone’s here. Nate’s not coming. Nate’s in the garden. Nate’s to blame.'))
+    expect(forms('Tobin’s late. Everyone’s here. Tobin’s not coming. Tobin’s in the garden. Tobin’s to blame.'))
       .toEqual(['’s', '’s', '’s', '’s', '’s']);
     expect(forms('Ivy’s tired. Ivy’s very late. Dinah’s our cat. The door’s shut.')).toEqual(['’s', '’s', '’s', '’s']);
     // Stays a possessive: before a noun or name, before own, before adjectives a noun follows, before a pronoun.
-    expect(forms('The Rabbit’s watch. Alice’s sister. The Queen’s croquet. The Hatter’s tea, Nate’s Ivy.')).toEqual([]);
-    expect(forms('Alice’s own sister. The Rabbit’s white gloves. Nate’s tired eyes.')).toEqual([]);
-    expect(forms('That one’s Nate’s.')).toEqual([]);
+    expect(forms('The Rabbit’s watch. Alice’s sister. The Queen’s croquet. The Hatter’s tea, Tobin’s Ivy.')).toEqual([]);
+    expect(forms('Alice’s own sister. The Rabbit’s white gloves. Tobin’s tired eyes.')).toEqual([]);
+    expect(forms('That one’s Tobin’s.')).toEqual([]);
   });
 
   it('pins the next-word rule\'s readings where English is ambiguous', () => {
     // An -ing word reads as is: "the dog is barking", not "the dog's barking" as a noun.
     expect(forms('The dog’s barking.')).toEqual(['’s']);
-    expect(forms('Nate’s sewing basket.')).toEqual(['’s']);
+    expect(forms('Tobin’s sewing basket.')).toEqual(['’s']);
     // A pronoun next keeps a possessive: "how's she?" is not counted.
     expect(forms('How’s she? Where’s he?')).toEqual([]);
   });
