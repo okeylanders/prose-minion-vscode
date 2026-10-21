@@ -279,3 +279,82 @@ No live or billable provider call; no writer's text.
   predate this PR and are not on the steering path, so they are left as
   they are and tracked as
   [tech debt](../../.todo/tech-debt/2026-10-21-lightbox-numbers-filters-per-span.md).
+
+## Independent correction review (2026-10-21)
+
+**Reviewer:** Astra
+
+**Reviewed correction head:** `00a156a8d407aa7d91a98c9744b5a02322a07a97`
+
+**Delta:** `350a6eb` → `00a156a` (implementation `2a1ac93`, then the author response/docs); 24 files, +1,158 / −154. The original review and author response above are preserved unchanged.
+
+### Current disposition
+
+**F-01, F-02 and N-01 are independently resolved. No remaining blocking finding was identified in this correction delta.** This supersedes the original review's open findings for the head named here; it is not a formal GitHub approval, merge instruction, native/writer acceptance or Slice 5 decision.
+
+| ID | Independent disposition | Evidence |
+| --- | --- | --- |
+| F-01 · P2 | **Resolved** | Shared per-text/source indexes remove repeated detection and the nested dialogue scan. Counted fresh/carry/Bring controls, direct-Node before/after measurements and scan-equivalence checks pass. |
+| F-02 · P2 | **Resolved** | Crossing examples are withheld alone; the mixed note/nudge survives. Original historical witness, reverse direction, normalization, relocation, all three figures and Bring pass. |
+| N-01 · P3 | **Resolved** | Earns gets the neutral dialogue line, shown in the digest, rebuilt board/inspector and transfer; carry into narration removes it. |
+
+### F-01: bounded work and preserved answers
+
+Reviewed the new [`LightboxSpanIndex`](https://github.com/okeylanders/prose-minion-vscode/blob/00a156a8d407aa7d91a98c9744b5a02322a07a97/packages/core/src/infrastructure/lightbox/LightboxSpanIndex.ts) and every changed caller. A WeakMap ties the indexes to the actual paragraphs array; each entry also checks its source string. Detection is lazy per paragraph/figure, dialogue is shared, and membership uses sorted starts with suffix minimum ends or prefix maximum ends. This is bounded indexed work, not a claim that sorting/tagging or every possible verifier operation is constant-time. The example's repeated quote-occurrence containment scan is indexed too. The measurement helper moved without changing its interval semantics.
+
+The independent harness ran against an isolated source export of `2295f9d` and the actual `00a156a` tree, using the same dependencies and assertions. Four valid leaning notes with narration-only examples remain byte-equivalent in their paragraph/nudge/example/withheld fields. The operation-count process is separate from the timing processes.
+
+| Work for four notes on one paragraph | Before | Corrected |
+| --- | ---: | ---: |
+| Fresh detector / dialogue-matcher calls | 13 / 8 | 1 / 1 |
+| Dialogue-span start reads, 250 spans | 376,500 | 748 |
+| Same, 500 spans | 1,503,000 | 1,498 |
+| Same, 1,000 spans | 6,006,000 | 2,998 |
+| Carry to a new paragraph: detector / matcher | 18 / 8 | 1 / 1 |
+| Bring on a fresh array of the same text | 3 / 2 | 1 / 1 |
+| Bring on the array already indexed by assembly | 3 / 2 | 0 / 0 |
+
+A 1,000-paragraph control with notes on ¶1/¶250/¶500/¶1000 indexes only those four paragraphs. **21,820 independent checks (including per-span vector comparisons)** match literal scans for every nonempty UTF-16 span of five synthetic paragraphs, across all **four** word-pattern detectors (including passive voice, whose numbers filter also changed). Controls include astral/curly typography, contractions/possessives, stray and unclosed marks, the disclosed single-quote behavior, nested/unsorted intervals, and rebuilding the index after an array element's source string changes. This last check concerns index invalidation, not a promise that mutating an existing quote verifier's input is a supported workflow.
+
+**Timing context first:** sequential, uninstrumented Node 24.19.0 on this Linux cloud workspace, not Jest and not measured VS Code latency. Each cell is the median of three timed assemblies after a warm-up, with fresh arrays/verifiers and no previously warmed paragraph index. Module loading, decoding and quote-verifier construction are outside the timed section. Sources are bounded synthetic repeated lines, not real chapters.
+
+| Synthetic source / four notes | `2295f9d` | `00a156a` |
+| --- | ---: | ---: |
+| 12,000 words · whole forms · 1 paragraph | 58.1 ms | 4.5 ms |
+| 25,000 words · whole forms · 1 paragraph | 205.1 ms | 6.2 ms |
+| 50,000 words · whole forms · 1 paragraph | 828.7 ms | 10.9 ms |
+| 12,000 words · contractions · 1 paragraph | 485.6 ms | 36.2 ms |
+| 25,000 words · contractions · 1 paragraph | 1,300.5 ms | 84.9 ms |
+| 50,000 words · contractions · 1 paragraph | 3,022.5 ms | 166.9 ms |
+| 50,000 words · contractions · 1,000 paragraphs | 2.9 ms | 1.6 ms |
+
+The 50,000-word fixtures are at the source ceiling. Timings corroborate the deterministic work reduction; they do not establish a native interaction budget or remove the residual cost of POS tagging. The author's old-tree Jest timings were not substituted for these direct-runtime controls.
+
+### F-02 and N-01: original witnesses through current production paths
+
+- Replayed the exact original `“I’m cold,” she was crying.` reading and the **saved pre-fix board**. Fresh assembly withholds the example with the new speech-overlap reason while retaining the note and nudge. Carry moves the old note to ¶2 and removes its formerly accepted example. Bring of that old accepted tile likewise sends the note/nudge and an accurate `Example withheld` point, never the rewrite.
+- The reverse crossing, straight model quotes against curly source, and an astral-prefix/nonbreaking-space case behave the same. Separate adverb and intensifier examples also cannot cross speech. Narration-only examples remain, spoken-only examples keep the voice reason, and valid mixed notes remain narration notes. Existing narration-null-nudge and hostile-phrasing fences still pass.
+- All three stances across all three figures carry the appropriate dialogue attribution. Earns uses neutral rather than withholding language; its Opinion item and Bring include the voice marker. For every figure, carrying Earns out of dialogue removes the marker and carrying it back restores it without introducing a nudge/example.
+- The **exact rebuilt production webview** consumes newly generated host boards: the crossing example and replacement are absent, its reason and valid nudge remain visible, and Earns displays its neutral voice line on both the tile and inspector. Existing IDs-only Bring/no-provider/no-source-persistence checks remain intact.
+
+### Fresh verification and retained limits
+
+| Check on `00a156a` | Result |
+| --- | --- |
+| Full Jest | **461 suites / 6,354 tests / 59 snapshots passed**, 239.068 s |
+| Independent functional controls | **427 assertions passed**, including detector/count/quote agreement and the correction witnesses |
+| Independent index/work/runtime controls | Scan equivalence and both-tree outcome assertions passed; counted/timed in separate processes |
+| Exact rebuilt-bundle DOM | **32 assertions passed** |
+| Typecheck | All three projects passed |
+| Lint | **0 errors / 1,133 warnings**, identical by relative file, rule and severity to the independently checked baseline |
+| Production build | Passed, including `verify:bundle`; the same three webpack size warnings |
+| Regenerated host evidence | External builder test passed; after-state and all five figure records byte-identical to committed evidence |
+| Correction delta / report diff checks | Clean |
+| Implementation-head CI | [PR event](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39678990202) and [push event](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39678983911) successful |
+
+Rebuilt `webview.js`: `20d3aed38676380185d8e6c680c37a75f33e7be6599038838d709bb95a0472aa`.
+Rebuilt `extension.js`: `6fffedac89ad2e544aca8695353567e0461e6d7cb366bcd04c7ea8a6bd4f069d`.
+
+The detector, dependencies, quote-normalization implementation and real-route source-ownership checks are unchanged by this correction. The retained #159–#161 boundaries are not reopened; the full current suite and the repeated canonical-example-bound control protect the relevant regressions. The numbers lens's older sentence/dialogue per-candidate work is accurately tracked as separate low-priority debt, not hidden by the steering fix or newly called a blocker here.
+
+No fresh native/browser geometry or live-provider judgment is claimed. The previous PNG inspection remains author-pixel evidence; this correction's UI verification is independent JSDOM/transport execution. Writer acceptance, the author-reported decision history, linguistic limitations and wider Slice 5 gates remain as scoped above. No implementation edits, formal review/comment, merge, deployment, paid/live call or private manuscript were used. Only this existing report receives the correction addendum; its exact publication commit's PR and push CI are tracked separately.
