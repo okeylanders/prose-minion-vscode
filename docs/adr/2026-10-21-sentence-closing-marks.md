@@ -59,10 +59,10 @@ dialogue read "2 sentences", and a sentences-well row began with "”".
    - `goin’ home` and `doin’!` keep theirs inside the word;
    - `’Twas`, after a space, opens the next sentence as before.
 
-   The brief allowed `.’` and `!’`, an apostrophe directly after the ender.
-   This takes the same reasoning one step further, to `”’` after `!`, the
-   British nesting. There the apostrophe follows a closing mark, which no
-   elision does.
+   The narrowest safe rule would keep only `.’` and `!’`, an apostrophe
+   directly after the ender. This one takes the same reasoning one step
+   further, to `”’` after `!`, the British nesting. There the apostrophe
+   follows a closing mark, which no elision does.
 4. **A stretch of nothing but space and closing marks is no sentence.**
    `“Oh dear! ”`, with a space before the `”`, is one sentence, not two.
 5. **A closing mark after a space is not taken.** `“Oh dear! ” she said.` is
@@ -80,12 +80,15 @@ dialogue read "2 sentences", and a sentences-well row began with "”".
      a lower-case speech tag to its speech is a different rule. It would
      change many more figures, and it is not decided here.
    - **No repair of a missing space.** In `late.’Twas`, the apostrophe
-     stays with `late.`. In `stopped."Wait,"`, the `"` stays with
-     `stopped.`. Word counts are unaffected either way.
+     now stays with `late.`. In `stopped."Wait,"`, the `"` stays with
+     `stopped.`. Each text still counts the same sentences and words as
+     under the former rule; only the mark's side of the cut moved.
 
 The rule is pinned in `sentenceClosingMarks.test.ts`, and each reader is
-pinned in `LightboxSentenceClosingMarks.test.ts`. Every case states what
-the former rule gave, and fails on it.
+pinned in `LightboxSentenceClosingMarks.test.ts`. Each case the rule moves
+states what the former rule gave, and fails on it. The cases it leaves
+alone (`…`, `Mr.`, a mark after a space, an elision with no ender beside
+it) pass on both rules.
 
 ## Consequences
 
@@ -145,9 +148,14 @@ straddle the two rules, so they need no label for them.
 **What this does not fix.** The writer's real chapter, about 48% dialogue,
 showed 6.1 words per sentence against a 12–16 standard. That is a
 whole-text figure, so this change moves it by at most one sentence.
-- **The remaining effect is the lower-case-continuation rule (7), left
-  unchanged.** On the Tea-Party excerpt, 5 of 32 sentences are speech tags
-  split off at `!”` or `?”`: "said the Hatter.", "thought Alice.". Joining
-  them would read 16.1 words per sentence instead of 13.6.
-- That is the next rule to decide, if the writer wants it. It changes the
-  same figures again, and it needs its own before/after pass.
+- **One known contributor remains: lower-case continuation (7), left
+  unchanged.** On the Tea-Party excerpt, 5 of its 32 sentences begin in
+  lower case after `!”` or `?”`, such as "said the Hatter." and "thought
+  Alice.". Joining each to the speech before it would read 16.1 words per
+  sentence instead of 13.6.
+- Genuinely short lines of speech, `...` and abbreviations such as `Mr.`
+  lower the figure too. How much each contributes on the writer's chapter
+  is not measured here.
+- Lower-case continuation is the next rule to decide, if the writer wants
+  it. It changes the same figures again, and it needs its own before/after
+  pass.
