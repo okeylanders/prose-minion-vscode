@@ -75,7 +75,7 @@ describe('bringing craft steering to the Workshop', () => {
     expect(item.claim).toBe('A state stands where the fall could act: the darkness is reported rather than met.');
     expect(item.points).toEqual([
       { label: 'Stance', text: 'Leans · Being verbs' },
-      { label: 'Nudge', text: 'Worth a look: an action that lets the dark do something, so the state becomes an event.' },
+      { label: 'Nudge', text: 'An action that lets the dark do something may be worth a look, so the state becomes an event.' },
       { label: 'One way it could go', text: 'it was too dark → the dark swallowed everything' }
     ]);
     expect(item.quotes).toEqual([{ paragraph: 7, text: 'it was too dark to see anything' }]);

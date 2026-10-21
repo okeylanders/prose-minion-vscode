@@ -14,10 +14,12 @@
  * - **runs of short sentences**: an instance inside a run of at least
  *   `LIGHTBOX_STEERING_SHORT_RUN` consecutive sentences of at most
  *   `LIGHTBOX_STEERING_SHORT_SENTENCE_WORDS` words, within one paragraph
- *   (`proseSentenceSpans`, the prose-stats word rule). A span with no letter
- *   (a closing quotation mark left after an end mark) is no sentence: it
- *   neither extends nor breaks a run. A run never crosses a paragraph break,
- *   so a stretch of one-line paragraphs is not a run;
+ *   (`proseSentenceSpans`, the prose-stats word rule). The sentences are the
+ *   shared rule's, whatever it decides about a closing quotation mark: this
+ *   module never splits text itself. A span with no letter (a closing mark
+ *   that rule leaves alone at a paragraph's end) is no sentence: it neither
+ *   extends nor breaks a run. A run never crosses a paragraph break, so a
+ *   stretch of one-line paragraphs is not a run;
  * - **constructions**, a partition of the instances, from the tokens around
  *   each one as the word-frequency tool's tagger (wink, `tagTextTokens`)
  *   tags its paragraph. Markup tokens (`_`, `*`) are skipped.

@@ -106,7 +106,7 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     const leans = noteWith('A state stands where the fall could act: the darkness is reported rather than met.');
     expect(within(leans).getByText('Leans')).not.toBeNull();
     expect(leans.textContent).toContain('Worth a look');
-    expect(leans.textContent).toContain('an action that lets the dark do something, so the state becomes an event.');
+    expect(leans.textContent).toContain('An action that lets the dark do something may be worth a look, so the state becomes an event.');
     const compensates = noteWith('Very lifts a plain size word at the moment the fall begins.');
     expect(within(compensates).getByText('Compensates')).not.toBeNull();
     fireEvent.mouseEnter(leans);

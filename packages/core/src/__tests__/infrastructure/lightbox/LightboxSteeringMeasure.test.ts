@@ -73,8 +73,9 @@ describe('runs of short sentences', () => {
     expect(figureOf(['He sat. It was cold. The door was shut against the cold night wind.'], 'being-verbs').inShortRuns).toBe(0);
     // A run never crosses a paragraph break.
     expect(figureOf(['He sat.', 'It was cold.', 'The door was shut.'], 'being-verbs').inShortRuns).toBe(0);
-    // A closing quotation mark left after an end mark is no sentence: it neither extends nor breaks a run.
-    expect(shortRunSpans('“He sat.” It was cold. The door was shut.')).toHaveLength(3);
+    // A closing quotation mark at a paragraph's end is no sentence of its own: it neither extends nor breaks a run.
+    // Three spans whether the shared sentence rule leaves the mark alone or keeps it with its sentence.
+    expect(shortRunSpans('He sat. It was cold. “The door was shut.”')).toHaveLength(3);
   });
 });
 
