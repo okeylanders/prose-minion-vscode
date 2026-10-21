@@ -285,3 +285,79 @@ On `797e166` the first assertion fails with 0 withheld. It also fails with only 
 | `vscode` imports in `packages/core/src` | None; changed modules stay under 500 lines (`LightboxReadingHandler` unchanged at 497) |
 
 No live or billable call was made. The fixtures are public-domain text and lines written for the tests.
+
+## Independent re-review (2026-10-21)
+
+**Reviewer:** Astra · **Correction head:** `e7e1536ee935df5fa54f0df3c8d2f8230cc4e5c1` · **Target:** `epic/lightbox` at `d6069e821eb1bcb8ca151768aa2c0808d701eb1c`.
+
+**Verdict: Request changes, for one newly introduced compatibility defect (F-04).** The original F-01, F-02, F-03 and N-01 witnesses are addressed. The shared grid corrects the supplied modern-Chromium layout, but its unconditional `subgrid` dependency breaks the repository's expressly supported VS Code 1.75 / Chromium 102 runtime. This is not a reopening of the old horizontal-offset witness under another name: the original offset is fixed; the replacement introduces a different failure on a declared-supported host.
+
+The original review and complete author response above are preserved verbatim. This re-review checks the five correction commits after report-only `e8d0c6d`, reuses the original adversarial probes with corrected expectations, and independently challenges the replacements. It does not repeat or silently supersede the original review's acceptance limits.
+
+### Updated disposition
+
+| ID | Independent disposition at `e7e1536` |
+| --- | --- |
+| F-01 · P2 | **Addressed.** A same-paragraph resolved thread contributes zero in compressed columns, fresh and carried; genuine nonempty/open intervals still count. |
+| F-02 · P2 | **Addressed within the stated line-shape/paragraph-model contract.** Blank-line front matter and a closing delimiter followed directly by prose no longer become measured structure. Genuine body markers remain. |
+| F-03 · P2 | **Addressed for the original modern-browser misalignment.** Shared tracks and supplied fresh/stale pixels agree at all three widths. The separate compatibility regression is F-04 below. |
+| N-01 · P3 | **Addressed.** Found-but-out-of-order arc steps increment fresh lens and aggregate withholding once, without adding another check or double-counting missing quotes. |
+| F-04 · P2 · new | **Open.** Unguarded CSS subgrid breaks the ribbon on the documented minimum VS Code runtime. |
+
+### F-04 — Keep the shared ribbon grid compatible with the declared host floor
+
+**Primary location:** [`ribbon.css:65–68`](https://github.com/okeylanders/prose-minion-vscode/blob/e7e1536ee935df5fa54f0df3c8d2f8230cc4e5c1/packages/core/src/presentation/webview/styles/lightbox/ribbon.css#L65-L68), introduced by `3caadaa`.
+
+The replacement removes the flex-row rule and unconditionally gives each `.pm-lb-ribbon-wrap` `display: grid; grid-template-columns: subgrid`. Its two children are the complete label block and the plotted-column track. Neither child is explicitly placed into a second column. No alternate wrapper rule, `@supports` fallback or subgrid polyfill exists in the production styles/build. The emitted production bundle retains the subgrid declaration; an independent PostCSS/Autoprefixer transformation targeting Chrome 102 also leaves it unchanged.
+
+This is outside the supported runtime, not merely a preference for an older browser:
+
+- [`apps/vscode-extension/package.json:20–22`](https://github.com/okeylanders/prose-minion-vscode/blob/e7e1536ee935df5fa54f0df3c8d2f8230cc4e5c1/apps/vscode-extension/package.json#L20-L22) declares `engines.vscode: ^1.75.0`; the [README:318–321](https://github.com/okeylanders/prose-minion-vscode/blob/e7e1536ee935df5fa54f0df3c8d2f8230cc4e5c1/apps/vscode-extension/README.md#L318-L321) expressly supports 1.75.0 and higher.
+- The same epic's [Slice 2A notes:234–238](https://github.com/okeylanders/prose-minion-vscode/blob/e7e1536ee935df5fa54f0df3c8d2f8230cc4e5c1/.todo/epics/epic-lightbox-2026-10-19/slice-2a-tab-and-counted-board.md#L234-L238) already identify Chromium 102 as the floor and explain avoiding `:has()` because of it. No newer minimum-runtime decision was found.
+- Microsoft's [VS Code 1.75.0 `.yarnrc`](https://github.com/microsoft/vscode/blob/1.75.0/.yarnrc) targets Electron 19.1.9. The [official Electron 19.1.9 release](https://releases.electronjs.org/release/v19.1.9) uses Chromium 102. [Chrome's official 117 release notes](https://developer.chrome.com/blog/new-in-chrome-117) introduce CSS subgrid.
+
+**Result, inferred from these verified versions and the CSS rules:** on Chromium 102 the unsupported `subgrid` value is discarded, but `display: grid` remains. Without an accepted column template, the wrapper has no explicit columns; default row auto-placement puts the label block and the plotted track in successive rows of an implicit single-column grid. Labels therefore sit above their charts instead of beside their matching lanes. Both the measured paragraph ribbon and the story ribbon are affected, including the pre-read board. The parent grid does not automatically share its columns through an ordinary nested grid. These consequences follow from [invalid declaration handling](https://www.w3.org/TR/css-syntax-3/#style-rules), [the initial `none` track template](https://www.w3.org/TR/css-grid-1/#track-sizing), and [row auto-placement](https://www.w3.org/TR/css-grid-1/#grid-auto-flow-property).
+
+This is a **source/runtime-compatibility finding, not a fresh Chromium 102 or native VS Code reproduction**. No previously denied browser route was retried. The supplied modern-Chromium screenshots cannot establish compatibility with the advertised floor. Moreover, the new evidence harness checks horizontal edges, not whether each label block is beside its track; equal-width stacked tracks could satisfy its horizontal comparisons.
+
+**Requested correction:** retain shared, readable tracks using a floor-compatible layout or a tested compatible fallback. Alternatively, explicitly decide, document and validate a higher supported engine floor rather than raising it implicitly through CSS. Cover the unsupported-subgrid/minimum-runtime path, asserting label/track vertical adjacency as well as fresh/stale horizontal column and band alignment. This report does not authorize changing the minimum runtime.
+
+### Fix witnesses and contrasting controls
+
+**F-01.** The original production 192-paragraph jar witness now renders **“¶1–¶2 · 0 open threads, counted by code”**, and remains zero on carry. Five additional production-board cases cover 192, 288 and 289 paragraphs, start/end/interior/late bucket positions and insertion before the quoted paragraph; fresh and carried presentation lanes agree. An independent exhaustive comparison of `lightboxThreadOpenAcross` with the literal “open in at least one paragraph” predicate passes **7,020 interval/column combinations**. The original `797e166` implementation fails 286 of those cases. Genuine intervals and unresolved threads are retained, not indiscriminately zeroed.
+
+**F-02.** The original minimal YAML witness now returns `signal: none`, empty sections and no fired markers on a real service board with every reading group still `not-run`. Expanded cases cover both closing delimiters, LF/CRLF, blank paragraphs, comments/lists, prose and ATX/setext headings immediately after the closing line, subsequent body headings and actual scene breaks. Three contrasting ordinary-prose/unclosed-block controls pass on both old and corrected implementations. Spaced `# #` / `# # #` and tab-spaced marks are now scene breaks; actual ATX headings retain their precedence. This is a verified intentional behavior change, not merely corrected documentation. The documented indentation-loss and YAML-shaped-prose ambiguities remain limits of the paragraph/line-shape detector, not a claim of full YAML parsing.
+
+**N-01.** The original reversed rabbit-hole arc yields **29 checked / 1 withheld** at group/run level and **9 checked / 1 withheld** for Artifacts. The inspector still explains the actual withheld step. Adding a missing arc quote yields **10 artifact checks / 2 withheld**, with one order rejection and one verification failure, not a duplicate count. Carry retains the same two withheld reasons. The original implementation fails the corrected fresh-tally expectations.
+
+Across these expanded independent probes, **19 cases pass at the corrected head**; **16 corrective witnesses fail on `797e166` and all three negative controls pass**. The original broad story-gate controls also pass again: moved/deleted/reordered movement boundaries, whole-set engagement refusal, missing/duplicate/unknown engagement references, longest-term counting, unused-flag restoration, nonmutation and preserved Bring anchors. No implementation file was temporarily replaced to obtain these results.
+
+### Independent verification
+
+| Check | Result at `e7e1536` |
+| --- | --- |
+| Clean dependency installation | `npm ci --ignore-scripts`, isolated disk-backed checkout/cache; lockfile unchanged |
+| Full Jest | **420 suites / 5,815 tests / 59 snapshots passed**, 251.318 s |
+| Typecheck | Passed: core, webview and extension |
+| Lint | **0 errors / 1,133 warnings**; exact file/rule/severity/message-multiset parity with the preserved original-head lint output |
+| Production build and `verify:bundle` | Passed; three existing webpack size warnings |
+| Bundle SHA-256 | **`9493dfce5941aeccbbab03366f2905e6b0a91c24803176141098df849442415b`**, exactly matching the revised evidence |
+| Independent service/handler ownership controls | **10/10 passed**, including the two corrected Sections expectations, coupled malformed/unrequested replacement, cancellation/failure/late completion, repeated presses and close/reopen |
+| Host evidence regeneration | Builder passed; `chapter.json`, `workshop.json` and `log.txt` byte-identical to committed states |
+| Production-bundle DOM | **325 general + 8 targeted assertions passed**: all 18 story tiles / 6 kinds, focus/pin/Escape, lenses/filters, stale Bring, ids-only transfer/tray, Workshop pill, coupled reread, and corrected F-01/F-02/N-01 displays |
+| Diff / boundaries | `git diff --check` clean; no added core `vscode` import; all changed production modules below 500 lines |
+| Exact correction-head GitHub CI | Both [pull-request CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39543729462) and [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39543724661) completed successfully |
+
+Full tests used `NODE_OPTIONS=--max-old-space-size=2048 npm test -- --maxWorkers=1 --workerIdleMemoryLimit=1000MB` with a disk-backed Jest cache. Runtime remains Node 24.19.0 / npm 11.9.0; GitHub CI separately uses Node 18. External probe files do not join or inflate the full repository-suite totals. Their relocated-test module-resolution setup and obsolete original bug-expectations were corrected before the final probe pass; these were harness/expectation issues, not hidden repository test failures. Tracked implementation, tests and lockfiles remained unchanged.
+
+The effective implementation base remains `16e85b11908978a18c48aed6bd6aa462ecff9b17`; `16e85b1..d6069e8` still changes only the prior PR #155 review report. No new base implementation is inferred from the retarget. The report-only publication gets its own subsequent exact-head push/PR CI check; the successful implementation-head runs above are not substituted for that check.
+
+### Visual provenance and remaining acceptance limits
+
+All **33 changed Lightbox PNGs** were inspected as actual pixels at 1440, 1000 and 500px. The original fresh/stale horizontal displacement is removed and the labels, including stale badges, remain readable. The three unchanged Workshop screenshots were not claimed as new captures. The existing narrow inspector screenshot still shows only its upper content, not off-screen lower controls.
+
+The newly committed `facts.json` is internally consistent: **33 matching main/story track comparisons**, plus **249 compared paragraph/pressure-cell pairs and 198 section/movement/engagement bands** across 30 populated states, with recorded maximum edge deltas of zero and no clipped labels. The three pre-read `sections-measured` captures compare tracks only, with zero cells/bands; the author's “every state” cell/band wording is too broad. `errors.txt` is actually empty, and the 93 old-error lines match the harness's 33 track, 30 cell and 30 band comparisons. Those are independently audited **supplied measurements**, not newly measured reviewer geometry. The harness can skip absent tracks or mismatched cell counts and does not test vertical adjacency, so process success alone is not sufficient layout acceptance.
+
+The current rebuilt bundle now matches the author-recorded screenshot-bundle hash exactly, closing the previous mismatch for the revised evidence. The earlier clean `797e166` hash `65228e9a…` remains preserved reviewer evidence. The claimed historical symlinked-install cause is consistent with path-derived webpack module ids, but that exact historical installation was not reconstructed; no stronger claim about its provenance is made.
+
+No fresh browser/native VS Code run, live/billable model call or private manuscript input was used. DOM probes establish bundled semantics and controlled protocol, not browser hit-testing, CSS geometry or native IPC. The author's real-chapter acceptance and product decisions 10–16 remain attributed, unauthenticated acceptance claims. **This report is not Slice 5 readiness, saved-board-schema approval, merge permission or deployment authorization.** Next step: correct F-04, verify the declared minimum runtime alongside modern layouts, then re-review that delta.
