@@ -27,13 +27,17 @@
  *   F-03), so a quote cut inside a longer word holds nothing; a tier mix stands on at least
  *   `LIGHTBOX_STOCK_MINIMUM_BEATS` found beats; a handoff's two sentences
  *   are adjacent in one paragraph (`LightboxSentencePairs`); a numbers
- *   reading reads a figure that stands out on the board it is drawn on, and
- *   keeps only quotes holding an instance of it (`LightboxNumberInstances`).
+ *   reading reads a figure that stands out on the board it is drawn on, is
+ *   not one of craft steering's (Slice 4F), and keeps only quotes holding an
+ *   instance of it (`LightboxNumberInstances`).
  * - group E (Slice 4C, `LightboxPlotGates`): a synopsis stands on two found
  *   quotes; a pressure thread on its found plant, a found resolution when it
  *   gives one, and its quotes in paragraph order; an artifact on a counted
  *   term. The movements are held as a set (`lightboxMovementSetGate`, also
  *   applied by both phases), and engagement follows them.
+ * - group G (Slice 4F, craft steering): a figure's reading and each
+ *   instance note keep only quotes holding an instance of their figure, by
+ *   its own detector, and stand on at least one.
  * - group F (Slice 4D, `LightboxOpinionGates`): the Opinion stands while
  *   one of its views does. Its observations and views are gated first, by
  *   their own rules (cited items on the board, quotes the tiles hold, the
@@ -56,6 +60,7 @@ import { lightboxTextHoldsTerm } from '@/infrastructure/lightbox/LightboxTermCou
 import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS, LIGHTBOX_STOCK_MINIMUM_BEATS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import type { LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
 import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import type { LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 import {
@@ -121,6 +126,12 @@ export const LIGHTBOX_GATE_REASONS = {
     fresh: 'None of its quotes was found holding an instance of the figure it reads.',
     carried: 'None of its quotes still holds an instance of the figure it reads.'
   },
+  /** Slice 4F: being verbs, adverbs and intensifiers are read by craft steering, not the numbers lens. */
+  numberSteered: 'Craft steering reads this figure, so the numbers lens does not.',
+  steeringNoInstance: {
+    fresh: 'No quote it gave was found holding an instance of the figure it reads.',
+    carried: 'No quote of it still holds an instance of the figure it reads.'
+  },
   /** The text is the same, but the figure was measured again and stands out differently (PR #155 F-01). */
   numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.',
   opinionNoView: {
@@ -176,10 +187,16 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
     return (candidate.opinionViews ?? 0) > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.opinionNoView[context.phase]);
   }
   if (candidate.kind === 'number-usage') {
+    if (candidate.stat && !LIGHTBOX_NUMBERS_READ_STATS.includes(candidate.stat)) {
+      return refuse(LIGHTBOX_GATE_REASONS.numberSteered);
+    }
     if (!candidate.stat || !context.standouts.has(candidate.stat)) {
       return refuse(LIGHTBOX_GATE_REASONS.numberNotStandout[context.phase]);
     }
     return candidate.evidence.length > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.numberNoInstance[context.phase]);
+  }
+  if (candidate.kind === 'steering-reading' || candidate.kind === 'steering-note') {
+    return candidate.evidence.length > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.steeringNoInstance[context.phase]);
   }
   if (candidate.kind === 'stock-tiers' && candidate.evidence.length < LIGHTBOX_STOCK_MINIMUM_BEATS) {
     return refuse(LIGHTBOX_GATE_REASONS.tiersTooFew[context.phase]);

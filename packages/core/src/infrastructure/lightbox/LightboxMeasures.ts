@@ -26,6 +26,8 @@
  *   (`LightboxNumbers`), each counted by its one detector.
  * - **Sections** (Slice 4C): the chapter's headings, scene breaks or chapter
  *   lines, detected from the paragraph model (`LightboxSections`).
+ * - **Craft steering** (Slice 4F): being verbs, adverbs and intensifiers by
+ *   construction, by the numbers' own detectors (`LightboxSteeringMeasure`).
  * - **Hapax and style flags** (Slice 4E): the words used once, by the
  *   prose-stats tokenizer the headline's hapax count is counted with, so the
  *   list is exactly that long; and each style flag that counts instances is
@@ -63,6 +65,7 @@ import {
   type LightboxWriterAverages
 } from '@/infrastructure/lightbox/LightboxNumbers';
 import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
+import { measureLightboxSteering } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
 import {
   LIGHTBOX_STYLE_FLAG_IDS,
   lightboxHapaxWords,
@@ -287,7 +290,8 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       averageWordsPerSentence: inputs.stats.averageWordsPerSentence,
       writer: inputs.writer ?? { summary: { kind: 'absent', note: LIGHTBOX_BASELINE_NOTES.notMeasured } }
     }),
-    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text))
+    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text)),
+    steering: measureLightboxSteering({ text: inputs.text, paragraphs: inputs.paragraphs.map((paragraph) => paragraph.text) })
   };
 }
 

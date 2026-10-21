@@ -9,7 +9,9 @@
  * - **Read:** under each figure that stands out, how it is used here
  *   ("reads as deliberate", "mixed", "habit"), each quote holding an
  *   instance of the figure, checked by the detector that counted it. Nothing
- *   here says fix or cut; the call is the writer's.
+ *   here says fix or cut; the call is the writer's. Being verbs, adverbs and
+ *   intensifiers are read by craft steering (Slice 4F): their bars stay
+ *   here, and a standout among them points there.
  */
 import * as React from 'react';
 import type { LightboxNumberRow, LightboxNumberUsageTile } from '@messages';
@@ -23,7 +25,8 @@ import {
   lightboxNumberValue,
   lightboxStandoutLabel
 } from '@hooks/domain/lightbox/lightboxCraft';
-import { LIGHTBOX_NUMBER_USAGE_LABELS } from '@shared/constants/lightbox';
+import { LIGHTBOX_NUMBER_STAT_LABELS, LIGHTBOX_NUMBER_USAGE_LABELS } from '@shared/constants/lightbox';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxReadingFrame } from '@components/lightbox/LightboxReadingFrame';
 import { LightboxRegisterChip } from '@components/lightbox/LightboxReadingParts';
@@ -47,6 +50,9 @@ const NumberRow: React.FC<{
         </span>
         <span className="pm-lb-number-value">{lightboxNumberValue(row)}</span>
         {standout && <span className="pm-lb-number-standout">{standout}</span>}
+        {row.standout && !LIGHTBOX_NUMBERS_READ_STATS.includes(row.stat) && (
+          <span className="pm-lb-number-steered">Read under Craft steering, below</span>
+        )}
       </LightboxItemButton>
       {usage && (
         <LightboxItemButton binding={bind({ kind: 'reading', tileId: usage.id })} className="pm-lb-number-read">
@@ -69,10 +75,17 @@ export const LightboxNumbers: React.FC<LightboxTileProps> = ({ board, bind }) =>
   const usages = view.phase === 'ok' ? lightboxTilesOfKind(board, 'number-usage') : [];
   const { numbers } = board.measured;
   const presetRanges = numbers.rows.some((row) => row.range !== undefined);
-  // An empty reading is honest either way, but it means something different when figures stood out.
-  const empty = numbers.rows.some((row) => row.standout)
+  // An empty reading is honest either way, but it means something different when figures it reads stood out,
+  // and only figures craft steering reads may stand out (PR #160 N-01).
+  const readStandout = numbers.rows.some((row) => row.standout && LIGHTBOX_NUMBERS_READ_STATS.includes(row.stat));
+  const steered = numbers.rows.filter((row) => row.standout && !LIGHTBOX_NUMBERS_READ_STATS.includes(row.stat)).length;
+  const readHere = LIGHTBOX_NUMBERS_READ_STATS.map((stat) => LIGHTBOX_NUMBER_STAT_LABELS[stat].toLowerCase()).join(', ');
+  const empty = readStandout
     ? 'The reading said nothing about how these figures are used.'
-    : 'Nothing in the numbers stands out, so there was nothing to read.';
+    : steered > 0
+      ? `None of the figures this lens reads (${readHere}) stands out, so it had nothing to read. ` +
+        `Craft steering reads the ${steered === 1 ? 'figure that does' : 'figures that do'}, below.`
+      : 'Nothing in the numbers stands out, so there was nothing to read.';
   return (
     <LightboxReadingFrame
       kind="number-usage"

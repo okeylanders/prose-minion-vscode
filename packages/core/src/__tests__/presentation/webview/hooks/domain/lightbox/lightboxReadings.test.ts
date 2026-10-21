@@ -64,8 +64,8 @@ describe('tallies and wording', () => {
     const tally = lightboxQuoteTally(makeReadBoard({ paraphraseOne: true }));
     expect(tally.withheld).toBe(1);
     expect(tally.checked).toBeGreaterThan(20);
-    // Groups A–E and the Opinion (Slice 4D).
-    expect(tally.calls).toBe(6);
+    // Groups A–E, craft steering (Slice 4F) and the Opinion (Slice 4D).
+    expect(tally.calls).toBe(7);
   });
 
   it('says why a quote was withheld, never with the quote itself', () => {

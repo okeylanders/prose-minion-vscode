@@ -64,10 +64,10 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
     expect(estimate?.fit).toBe('fits');
     // The worked examples' quotes are not in this text, so no reading stands and the Opinion has nothing to weigh:
     // it is not sent (Slice 4D).
-    expect(host.runInitial).toHaveBeenCalledTimes(5);
+    expect(host.runInitial).toHaveBeenCalledTimes(6);
     expect(phases[0]).toBe('started');
     expect(phases.at(-1)).toBe('finished');
-    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok', 'failed']);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok', 'ok', 'failed']);
     expect(host.service.currentBoard()?.readings.at(-1)?.error).toBe(LIGHTBOX_OPINION_NOTHING_TO_WEIGH);
     expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
     expect(tab.logged()).toMatch(/Group A read \(.+\): \d+ tiles, .* \d+ quotes checked/);
@@ -87,9 +87,10 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
 
     expect(host.runInitial).not.toHaveBeenCalled();
     const progress = tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
-    expect(progress.map((payload) => payload.phase)).toEqual(['started', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'finished']);
-    expect(progress.at(-1)).toMatchObject({ token: 'run-1-token', groupsBack: 6 });
+    expect(progress.map((payload) => payload.phase)).toEqual(['started', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'finished']);
+    expect(progress.at(-1)).toMatchObject({ token: 'run-1-token', groupsBack: 7 });
     expect(host.service.currentBoard()?.readings.map((group) => [group.status, group.error])).toEqual([
+      ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED],
@@ -106,7 +107,7 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
     // Released: the next press reads the board.
     await tab.run();
     await settle();
-    expect(host.runInitial).toHaveBeenCalledTimes(6);
-    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok', 'ok']);
+    expect(host.runInitial).toHaveBeenCalledTimes(7);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok', 'ok', 'ok']);
   });
 });

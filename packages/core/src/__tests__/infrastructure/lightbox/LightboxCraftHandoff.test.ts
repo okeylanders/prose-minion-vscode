@@ -101,10 +101,9 @@ describe('bringing a group D reading to the Workshop', () => {
       { label: 'Changes', text: 'The fret becomes a deadline.' },
       { label: 'Effect', text: 'Continues' }
     ]);
-    const intensifiers = board.measured.numbers.rows.find((row) => row.stat === 'intensifiers');
     expect(pointsOf('number-usage')).toEqual([
       // Rounded only as shown (PR #155 F-04).
-      { label: 'Figure', text: 'Intensifiers and fillers: 21.7 per 1,000 words; your average 3' },
+      { label: 'Figure', text: 'Sentence length: 29.9 words per sentence; your average 14.3' },
       { label: 'Reads as', text: 'deliberate' }
     ]);
   });
@@ -161,12 +160,12 @@ describe('bringing a group D reading to the Workshop', () => {
   });
 
   it('sends only the numbers reading\'s quotes that still hold an instance of its figure', () => {
-    const reading = tilesOf(board).find((tile) => tile.kind === 'number-usage' && tile.stat === 'intensifiers') as LightboxReadingTile;
-    // ¶7's "very" goes; its words otherwise stand.
-    const changed = ALICE.map((text, index) => (index === 6 ? text.replace('or she fell very slowly', 'or she fell so slowly') : text));
+    const reading = tilesOf(board).find((tile) => tile.kind === 'number-usage' && tile.stat === 'dialogue') as LightboxReadingTile;
+    // ¶3 gains a line of speech: its quoted narration stands word for word, but its paragraph is no longer narration only.
+    const changed = ALICE.map((text, index) => (index === 2 ? `${text} “Oh,” she said.` : text));
     const before = bring(board, reading);
     const after = bring(board, reading, changed);
-    expect(before.ok && before.handoff.tile.quotes.map((quote) => quote.paragraph)).toEqual([2, 4, 7]);
-    expect(after.ok && after.handoff.tile.quotes.map((quote) => quote.paragraph)).toEqual([2, 4]);
+    expect(before.ok && before.handoff.tile.quotes.map((quote) => quote.paragraph)).toEqual([6, 3]);
+    expect(after.ok && after.handoff.tile.quotes.map((quote) => quote.paragraph)).toEqual([6]);
   });
 });

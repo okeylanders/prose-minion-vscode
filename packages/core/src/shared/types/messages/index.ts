@@ -45,6 +45,7 @@ export * from './lightboxNumbers';
 export * from './lightboxPlotTiles';
 export * from './lightboxSections';
 export * from './lightboxOpinion';
+export * from './lightboxSteering';
 export * from './lightboxPassages';
 
 // Union types for message routing

@@ -5,8 +5,9 @@
  * The adverb, passive-voice and filler detectors are exported (Lightbox
  * Slice 4B), so the Lightbox's measured standouts count, place and check a
  * quote with the very rules the tool counts by; the weak-verb detector too
- * (Slice 4E), for the inspector's sentence well. The tool counts through
- * them; its output is unchanged (pinned by its tests).
+ * (Slice 4E), for the inspector's sentence well, and its list (Slice 4F),
+ * so craft steering names the same verbs. The tool counts through them;
+ * its output is unchanged (pinned by its tests).
  */
 
 /** One match of a detector: its offsets in the text and the text matched. */

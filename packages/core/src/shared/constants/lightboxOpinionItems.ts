@@ -13,8 +13,12 @@
  *   own tile is never an item, and neither is a spark: a spark is an offer
  *   the writer may set aside, not a reading of what the chapter does;
  * - **a measured figure**, by a stable ref: the headline stats
- *   (`headline`), a figure that stands out (`standout:<stat>`), a section of
- *   the Sections lane (`section:<n>`, from 1).
+ *   (`headline`), a figure that stands out (`standout:<stat>`), a craft
+ *   steering figure's counts (`steering:<stat>`, Slice 4F, always), a
+ *   section of the Sections lane (`section:<n>`, from 1).
+ * Craft steering's notes show their stance, figure and why; never their
+ * nudge or example, which are offers to the writer, not readings of the
+ * chapter (epic decision 24).
  * Each item's lines are host words around the board's own values. No
  * paragraph text enters them except a tile's found quotes and its counted
  * terms: a section is named by its range and marker, never by its heading's
@@ -50,6 +54,7 @@ import {
   LIGHTBOX_FAMILIAR_KIND_LABELS,
   LIGHTBOX_HANDOFF_EFFECT_LABELS,
   LIGHTBOX_LINEAGE_STANCE_LABELS,
+  LIGHTBOX_NUMBER_STAT_LABELS,
   LIGHTBOX_NUMBER_USAGE_LABELS,
   LIGHTBOX_STOCK_TIER_LABELS,
   LIGHTBOX_TILE_KIND_LABELS,
@@ -65,6 +70,11 @@ import {
   LIGHTBOX_TEMPLATE_STANCE_LABELS,
   lightboxMovementNumeral
 } from '@shared/constants/lightboxPlot';
+import {
+  LIGHTBOX_STEERING_STANCE_LABELS,
+  lightboxSteeringCountLines,
+  lightboxSteeringFigure
+} from '@shared/constants/lightboxSteering';
 
 const B = PROMPT_BUDGETS.lightbox;
 
@@ -79,7 +89,7 @@ export interface LightboxOpinionBoard {
 }
 
 export interface LightboxOpinionItem {
-  /** A tile id, or a measured ref (`headline`, `standout:<stat>`, `section:<n>`). */
+  /** A tile id, or a measured ref (`headline`, `standout:<stat>`, `steering:<stat>`, `section:<n>`). */
   key: string;
   kind: 'tile' | 'measured';
   /** Host words naming it: its lens and kind, and its title. */
@@ -166,6 +176,11 @@ function measuredItems(board: LightboxOpinionBoard): LightboxOpinionItem[] {
     if (row.standout) {
       items.push(item(`standout:${row.stat}`, 'measured', `Measured · The numbers: ${row.label}`, standoutLines(row), [], [...row.paragraphs], true));
     }
+  }
+  // Craft steering's counts, every figure, written as evidence on purpose: what they show becomes citable (Slice 4F).
+  for (const figure of measured.steering.figures) {
+    items.push(item(`steering:${figure.stat}`, 'measured', `Measured · Craft steering: ${LIGHTBOX_NUMBER_STAT_LABELS[figure.stat]}`,
+      lightboxSteeringCountLines(figure), [], [...figure.paragraphs], true));
   }
   const sections = measured.sections;
   sections.sections.forEach((section, index) => {
@@ -321,6 +336,13 @@ function kindLines(tile: LightboxReadingTile, board: LightboxOpinionBoard): Item
       ];
     case 'movement':
       return [`movement ${lightboxMovementNumeral(tile.ordinal)}: ¶${tile.from}–¶${tile.to}`];
+    case 'steering-reading': {
+      const figure = lightboxSteeringFigure(board.measured?.steering.figures, tile.stat);
+      return figure ? lightboxSteeringCountLines(figure) : [];
+    }
+    case 'steering-note':
+      // The why is the claim; the nudge and the example never enter the digest (epic decision 24).
+      return [`stance: ${LIGHTBOX_STEERING_STANCE_LABELS[tile.stance]} · figure: ${LIGHTBOX_NUMBER_STAT_LABELS[tile.stat]}`];
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':

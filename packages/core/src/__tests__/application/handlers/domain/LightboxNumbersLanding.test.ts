@@ -55,13 +55,13 @@ describe('a numbers reading that lands after the board was measured again (PR #1
     // Control: measured the same way again, the usages land as read.
     const unchanged = await landAfter(() => undefined);
     expect(unchanged.status).toBe('ok');
-    expect(usages(unchanged)).toEqual(['intensifiers', 'sentence-length', 'dialogue']);
+    expect(usages(unchanged)).toEqual(['sentence-length', 'dialogue']);
 
     const group = await landAfter((writer) => { writer.current = ABSENT; });
     expect(group.status).toBe('ok');
     expect(usages(group)).toEqual([]);
     expect(group.withheldClaims.filter((claim) => claim.kind === 'number-usage').map((claim) => claim.reason))
-      .toEqual(Array(3).fill(LIGHTBOX_GATE_REASONS.numberNotStandout.carried));
+      .toEqual(Array(2).fill(LIGHTBOX_GATE_REASONS.numberNotStandout.carried));
     expect(group.tiles.filter((tile) => tile.kind === 'stock-tiers' || tile.kind === 'handoff')).toHaveLength(4);
   });
 });

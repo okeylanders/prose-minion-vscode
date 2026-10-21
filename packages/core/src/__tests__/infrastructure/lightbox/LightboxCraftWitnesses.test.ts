@@ -198,7 +198,7 @@ describe('Bring and a numbers reading (PR #155 F-01)', () => {
     const example = readWorkedExample('D');
     const group = readOn(alice, example.lenses, JSON.parse(example.response.split('\n').slice(1, -1).join('\n')) as Body, measured);
     const board = boardOf(group, alice.length, measured);
-    const usage = ofKind(group, 'number-usage').find((tile) => tile.kind === 'number-usage' && tile.stat === 'intensifiers') as LightboxReadingTile;
+    const usage = ofKind(group, 'number-usage').find((tile) => tile.kind === 'number-usage' && tile.stat === 'sentence-length') as LightboxReadingTile;
     expect(bring(board, usage, alice).ok).toBe(true);
     const unmeasured: LightboxBoard = {
       ...board,

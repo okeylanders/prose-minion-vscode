@@ -17,7 +17,9 @@
  *   vocabulary, or the block is withheld (the tension arc's rule). A
  *   handoff names two quotes and an effect in its vocabulary; whether its
  *   sentences are adjacent is the chapter's question, checked afterwards.
- * - **Numbers.** A reading names one of the host's figures by id, at most
+ * - **Numbers.** A reading names one of the host's figures the numbers
+ *   lens reads by id (`LIGHTBOX_NUMBERS_READ_STATS`: being verbs, adverbs
+ *   and intensifiers are craft steering's since Slice 4F), at most
  *   once, with a usage in its vocabulary, and its claim never directs: a
  *   claim holding a word of `LIGHTBOX_NUMBERS_DIRECTIVE_WORDS` is withheld.
  *   Nor does it state a figure: a claim with a digit outside a ¶ address, a
@@ -59,6 +61,7 @@ import {
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxNumberLabel } from '@/infrastructure/lightbox/LightboxNumbers';
 import { isLightboxNumberStat } from '@shared/constants/lightbox';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 
 const B = PROMPT_BUDGETS.lightbox;
 
@@ -189,7 +192,7 @@ function decodeHandoff(item: Record<string, unknown>, path: string): LightboxDec
 
 function decodeNumberReading(item: Record<string, unknown>, path: string): LightboxDecodedNumberReading {
   const reading = strictObject(item, path, ['stat', 'usage', 'claim', 'evidence']);
-  if (!isLightboxNumberStat(reading.stat)) {
+  if (!isLightboxNumberStat(reading.stat) || !LIGHTBOX_NUMBERS_READ_STATS.includes(reading.stat)) {
     shapeError(`${path}.stat`, 'one of the figures the task lists');
   }
   const claim = text(reading.claim, `${path}.claim`, B.claimCharacters);

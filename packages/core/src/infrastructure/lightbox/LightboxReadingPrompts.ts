@@ -10,7 +10,8 @@
  *   they are never evidence; then the task (the lenses, the frame, the
  *   ribbon columns the tension arc scores and the paragraph endings read,
  *   the counted words the palette groups, the measured figures that
- *   stand out, which the numbers lens reads, and group E's paragraph span
+ *   stand out, which the numbers lens reads, what an instance of each of
+ *   craft steering's figures is (Slice 4F), and group E's paragraph span
  *   for the movements and whether engagement is asked). The chapter section is identical
  *   for every group of a board, so it is the stable leading content of each
  *   call (open question 1). The system messages differ per group, so a
@@ -32,6 +33,7 @@ import type { LightboxLensId, LightboxNumberRow, LightboxReadingGroupId, Lightbo
 import { countWords } from '@/utils/textUtils';
 import { LIGHTBOX_LENS_KEYS, lightboxGroupSentinels } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxNumberTaskLines } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { lightboxSteeringTaskLines } from '@/infrastructure/lightbox/LightboxSteeringTiles';
 import { lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 
 export const LIGHTBOX_PROMPT_FILES = {
@@ -55,7 +57,8 @@ export const LIGHTBOX_PROMPT_FILES = {
     pressure: 'lightbox/54-pressure.md',
     artifacts: 'lightbox/55-artifacts.md',
     summary: 'lightbox/56-summary-movements.md',
-    opinion: 'lightbox/57-opinion.md'
+    opinion: 'lightbox/57-opinion.md',
+    steering: 'lightbox/58-steering.md'
   } satisfies Record<LightboxLensId, string>,
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by the protocol's group ids. */
   examples: {
@@ -64,7 +67,8 @@ export const LIGHTBOX_PROMPT_FILES = {
     C: 'lightbox/42-example-group-c.md',
     D: 'lightbox/43-example-group-d.md',
     E: 'lightbox/44-example-group-e.md',
-    F: 'lightbox/45-example-group-f.md'
+    F: 'lightbox/45-example-group-f.md',
+    G: 'lightbox/46-example-group-g.md'
   } satisfies Record<LightboxReadingGroupId, string>
   /* eslint-enable @typescript-eslint/naming-convention */
 } as const;
@@ -89,7 +93,8 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   pressure: 'pressure',
   artifacts: 'artifacts',
   summary: 'summary and movements',
-  opinion: 'the Opinion'
+  opinion: 'the Opinion',
+  steering: 'craft steering'
 };
 
 /** A context file as the prompt carries it. */
@@ -111,7 +116,11 @@ export interface LightboxReadingMaterial {
    * the counts stay on the board.
    */
   countedWords?: readonly string[];
-  /** The board's measured figures; those that stand out are what the numbers lens reads (Slice 4B). */
+  /**
+   * The board's measured figures; those that stand out are what the numbers
+   * lens reads (Slice 4B), and their instance counts say which figures craft
+   * steering has nothing to read in (Slice 4F).
+   */
   numbers?: readonly LightboxNumberRow[];
 }
 
@@ -207,6 +216,9 @@ export function buildLightboxTaskSection(
   }
   if (request.lenses.includes('numbers')) {
     lines.push(...lightboxNumberTaskLines(numbers));
+  }
+  if (request.lenses.includes('steering')) {
+    lines.push(...lightboxSteeringTaskLines(numbers));
   }
   lines.push(...lightboxPlotTaskLines(request.lenses, columns));
   return lines.join('\n');
