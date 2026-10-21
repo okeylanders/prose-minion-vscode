@@ -118,3 +118,33 @@ The review text above is unchanged. This section records how its findings were h
 | Scrollbar wording | **Corrected.** "Default scrollbars" is wrong: the Lexical Gravity sheet's own `::-webkit-scrollbar` rules still style both regions on Chromium 114 to 120. The guard's `GRACEFUL` entry, the ADR's table and the archived debt note now say so. | This commit | Wording only. |
 
 The ADR's Decision section now limits the allowed `text-wrap` to one 114 keyword. The guard test (7 tests) passes, typecheck passes, lint stays at 0 errors / 1,133 warnings, and `git diff --check` is clean.
+
+## Independent N-01 re-review (2026-10-21)
+
+**Reviewed correction:** `c869ff66a6a2bccc52b6cd1b47098be68b179fca`, directly after report-only `47f6c194f3bb628874528e7a0894fa1c7c1a8964`. **Exact base:** still `20775cf969f273bde2dc15cb5426b48516113eb3`. **Reviewer:** Astra.
+
+**Code-review disposition: N-01 addressed; no remaining finding in the reviewed #158 correction.** The original review and complete author response above are preserved verbatim. This is a focused re-review, not a replacement full review or a formal GitHub approval.
+
+The four-file correction changes only the floor-test implementation/controls, the ADR, the archived debt explanation and the appended author response. There is no production source, stylesheet, manifest, dependency, lockfile or workflow delta.
+
+### Resolution and independent controls
+
+- **N-01:** the detector now checks the complete normalized `text-wrap` value against the three Chromium 114 keywords and five CSS-wide keywords. All three original witnesses (`wrap balance`, `nowrap balance`, `auto`) are caught; executing the previous `81abdf5` detector still reproduces its three empty inventories. `pretty` remains separately counted, including mixed case and `!important`, so the fix does not launder a newer shorthand into the existing graceful allowance.
+- **Fail-closed policy:** multi-keyword values, `stable` and unresolved `var()` values are counted outside the allowance. Rejecting a `var()` here is a deliberate conservative guard policy, not a claim that custom properties themselves require Chrome 130. The catch-all category is not a universal browser-version classifier.
+- **Allowed controls:** each of the eight allowed keywords passes in ordinary syntax, uppercase/important syntax and comment-separated syntax. Comment-only examples and prefixed/custom property names do not add uses. Existing lower-floor CSS remains allowed; retained subgrid/nesting and longhand controls still count.
+- **Ratchet:** all 26 real stylesheets still produce exactly the two original `KNOWN` entries: four scrollbar declarations and four `pretty` declarations. In-memory additions of shorthand, `auto`, `pretty` or subgrid to the ribbon fail equality; adding a fifth `pretty` in the already allowed context sheet also fails. Adding supported `balance` does not. No stylesheet was edited for these probes.
+- **Scrollbar wording:** the guard, ADR and archived debt now correctly describe the existing WebKit fallback rules. This is a documentation correction, not new rendering evidence.
+
+### Re-review verification
+
+| Check | Independent result at `c869ff6` |
+| --- | --- |
+| Targeted repository Jest | **1 suite / 7 tests passed**, 3.419 s; same single-worker/resource limits as the original review |
+| External regression/ratchet controls | **57 assertions passed**, including the old-head negative controls and unchanged live inventory |
+| Changed-file ESLint | **0 errors / 0 warnings** |
+| Diff / report preservation | `git diff --check` passed; original report bytes are an unchanged prefix of the author's update |
+| Exact correction-head CI | Both completed successfully: [PR run 39643811010](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39643811010), [push run 39643805210](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39643805210) |
+
+The original full-suite, ordinary typecheck, production build and VSIX evidence remains attributed to `81abdf5`; those local gates were **not rerun** for this test/documentation-only correction. The focused checks above are not relabelled as a new full-suite pass. Publication adds only this report's re-review section, preserving the author response.
+
+All original acceptance boundaries remain: no native Chromium 114/VS Code 1.82 run, authenticated writer acceptance, real-chapter checkpoint, live-provider quality assessment, Slice 5 clearance, merge or deployment is established by this correction.
