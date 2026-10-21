@@ -56,18 +56,16 @@
 /* One grid for every lane, the paragraph lanes and the story lanes alike
    (PR #156 F-03): one label track, as wide as the widest label with its stale
    badge, and one track of paragraph columns, so a column index is the same
-   horizontal place in both parts. Each part is a subgrid row of it. */
+   horizontal place in both parts. Every label block and every track is a
+   direct child, placed by column; no subgrid, which Chromium 102 (VS Code
+   1.75, the declared floor) does not have (F-04). */
 [data-pm-surface="lightbox"] .pm-lb-ribbon-grid {
   display: grid;
   grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);
   column-gap: 10px;
 }
-[data-pm-surface="lightbox"] .pm-lb-ribbon-wrap {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: subgrid;
-}
 [data-pm-surface="lightbox"] .pm-lb-ribbon-labels {
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -116,6 +114,7 @@
 [data-pm-surface="lightbox"] .pm-lb-h12 { height: 12px; }
 [data-pm-surface="lightbox"] .pm-lb-h10 { height: 10px; }
 [data-pm-surface="lightbox"] .pm-lb-ribbon-cols {
+  grid-column: 2;
   min-width: 0;
   display: grid;
   gap: 2px;

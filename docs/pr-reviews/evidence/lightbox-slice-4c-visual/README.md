@@ -19,9 +19,11 @@ which is unchanged.
 | `states/workshop.json` | `composer`: the Workshop session state after the movement was staged, as its real session snapshots it; `handoff`: everything the Workshop's tile handler and the seed delivery posted to the Workshop webview |
 | `states/log.txt` | Every line the host logged while the states were made |
 | `harness.js` | Renders a built `webview.js` as the Lightbox and the Workshop surfaces behind a stubbed VS Code API, replays each state's messages, screenshots it once two consecutive frames match, measures the ribbon's grid, and writes `facts.json` and `errors.txt` |
-| `facts.json` | What each state's page shows, from the final run, with `ribbonGrid`: the ribbon's measured column, track and band edges and clipped labels (PR #156 F-03) |
-| `errors.txt` | Page errors and ribbon misalignments from the final run: empty |
-| `errors-797e166.txt` | The same harness against the bundle built from `797e166`, before the F-03 fix: the misalignments it measured |
+| `facts.json` | What each state's page shows, from the final run, with `ribbonGrid`: the ribbon's measured column, track and band edges, each label block's place beside its track, and clipped labels (PR #156 F-03, F-04); floor states add `subgridDeclarationsDropped` |
+| `errors.txt` | Page errors and ribbon faults from the final run: empty |
+| `errors-797e166.txt` | The harness as it stood for F-03 (edges only), against the bundle built from `797e166`, before the F-03 fix: the misalignments it measured |
+| `errors-e7e1536.txt` | This harness against the bundle built from `e7e1536`, before the F-04 fix: the floor states' labels stacked above their tracks |
+| `before/lightbox-floor-stale-ribbon-1000-e7e1536.png` | That `e7e1536` bundle in the `floor-stale-ribbon` state at 1000 px: the labels above the charts |
 | `tools/build-story.test.ts` | How `states/` was made |
 
 **States:**
@@ -65,6 +67,14 @@ which is unchanged.
   the Pressure lane counts where the other threads now stand; the jar's
   arc keeps its two steps still in the chapter; the basis line names both
   stale halves instead of counting.
+- `floor-sections-measured`, `floor-ribbon`, `floor-stale-ribbon`: the
+  `sections-measured`, `ribbon` and `stale-ribbon` states with the declared
+  floor simulated for one feature (PR #156 F-04). VS Code 1.75 runs
+  Chromium 102, which has no CSS subgrid and drops a `subgrid` declaration.
+  These states drop every such declaration from the page's stylesheets
+  before measuring. The fix has none to drop; the same states on the
+  `e7e1536` bundle drop one and stack every label above its chart. This is
+  a simulation of that feature in Chromium 141, not a Chromium 102 run.
 - `workshop-composer`: the Workshop with the movement waiting above the
   composer: "Lightbox Movement: The chase · from the Lightbox · 1 quote",
   removable, "rides the next message only". Nothing was sent.
@@ -112,9 +122,9 @@ Middle Grade publishing-standards preset.
 ## Results
 
 From the committed `facts.json` and `errors.txt` of the final run, after
-the PR #156 review fixes, against a bundle from a clean `npm ci` and
-`npm run build` (`webview.js` SHA-256
-`9493dfce5941aeccbbab03366f2905e6b0a91c24803176141098df849442415b`). Every
+the PR #156 review fixes including F-04, against a bundle from a clean
+`npm ci` and `npm run build` (`webview.js` SHA-256
+`c016b535a53b38451e4676b494fe8a5477ce8dfbc1d27de67746ff8f14bb34c2`). Every
 fact below is unchanged from the first run; only `ribbonGrid` is new:
 
 | State | What the page shows (1440, 1000 and 500 alike) |
@@ -130,7 +140,7 @@ fact below is unchanged from the first run; only `ribbonGrid` is new:
 | `stale`, `stale-pressure`, `stale-ribbon` | Run line "68 quotes checked · 2 withheld · 2 calls · 7 lenses stale"; seven "Stale" notes; Sections "Section 1: Scene 1, ¶1–¶5", "Section 2: Scene 2, ¶6–¶9"; movements ¶1–¶3, ¶4–¶6, ¶7–¶9, engagement following them; Pressure 0, 0, 0, 1, 2, 2, 3, 3, 3; "What is in the jar she takes down?" withheld: "Its resolution is no longer in the chapter, so the board cannot show it resolved."; jar arc "taken down → put away"; basis "Stock & signature and Template & freshness were read against an earlier version of this chapter, so the basis is not counted. Re-read them to count it." |
 | `workshop-composer` | One pill, "Lightbox Movement: The chase", "from the Lightbox · 1 quote", tooltip "Movement from the Lightbox's reading of Drafts/alice-chapter-1-opening.md: the claim and the quotes found in the chapter", "Remove … from this message", hint "rides the next message only" |
 | Horizontal overflow (document) | none, in any state or width |
-| Ribbon grid (`ribbonGrid`) | In every Lightbox state at every width: the paragraph lanes' and story lanes' column tracks share both edges (0 px apart); each of the 8 (fresh) or 9 (stale) paragraph columns has the same left and right edge as the story lanes' column of that index, 0 px apart; every section, movement and engagement band starts and ends on the edges of the paragraph columns it spans, 0 px apart; both parts' label blocks are one width, 78.8 px fresh and 121.8 px with the stale badges; no lane label is clipped |
+| Ribbon grid (`ribbonGrid`) | 42 Lightbox measurements (14 states at 3 widths). **In all 42:** the paragraph lanes' and story lanes' column tracks share both edges (0 px apart); each part's label block sits left of its track and overlaps it over its whole height (overlap 1.0 of the shorter), with every lane label's centre inside its track; both label blocks are one width, 78.8 px fresh and 121.8 px with the stale badges; no lane label is clipped. **In the 36 with readings:** each of the 8 (fresh) or 9 (stale) paragraph columns has the same left and right edge as the Pressure cell of that index, 0 px apart (300 pairs); every section, movement and engagement band starts and ends on the edges of the paragraph columns it spans, 0 px apart (240 bands). The 6 pre-read measurements (`sections-measured` and `floor-sections-measured`) have no cells or bands, so they compare tracks and adjacency only; the harness checks that they draw none rather than skipping. The floor states drop 0 `subgrid` declarations |
 
 - No page errors in any state or width, and no misalignment: `errors.txt`
   is empty.
@@ -141,7 +151,18 @@ fact below is unchanged from the first run; only `ribbonGrid` is new:
 (`errors-797e166.txt`): the story lanes' columns sat 4.8 px right of the
 paragraph columns in every fresh state and 19.44 px right in every stale
 state, at 1440, 1000 and 500 px alike, as the review measured from the
-screenshots.
+screenshots. That run predates the adjacency check and the floor states.
+
+**Before the F-04 fix.** The F-03 fix put each ribbon part on a `subgrid`
+row, and VS Code 1.75's Chromium 102 has no subgrid. This harness, run
+against the bundle built from `e7e1536` on the same clean install (its hash
+is the recorded `9493dfce…`), passes every ordinary state. In each floor
+state at each width it records six faults (54 in all, `errors-e7e1536.txt`):
+both label blocks end at their track's right edge, above it, with no
+vertical overlap, and every lane label lies outside its track.
+`before/lightbox-floor-stale-ribbon-1000-e7e1536.png` shows it. Its column
+tracks, cells and bands still coincide at 0 px, so an edge check alone
+passes that broken layout; the adjacency check is what catches it.
 
 **The bundle hash.** The first run's recorded hash (`97658a69…`) came from a
 build whose `node_modules` was a symlink to another checkout's install:
