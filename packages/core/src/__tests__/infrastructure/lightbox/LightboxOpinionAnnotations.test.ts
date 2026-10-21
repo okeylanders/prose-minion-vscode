@@ -80,8 +80,9 @@ describe('host words inside a digest line are not evidence (PR #157 F-01 residua
     expect(sorted(items.get(itemKey(board, 'Lexical gravity · Borrowed field: Ledger'))?.figures)).toEqual(['0', '0.24', '1', '2', '3']);
     // An ordinary reading: counted terms ×4, ×3, ×1 in ¶1, ¶3, ¶4, ¶6, ¶8, and quotes in ¶4 and ¶6.
     expect(sorted(items.get(itemKey(board, 'Headline · Headline:'))?.figures)).toEqual(['1', '3', '4', '6', '8']);
-    // Measured: 508 words, 17 sentences, 8 paragraphs, 29.9 a sentence, dialogue 12.2 per 100 words.
-    expect(sorted(items.get('headline')?.figures)).toEqual(['100', '12.2', '17', '29.9', '508', '8']);
+    // Measured: 508 words, 16 sentences, 8 paragraphs, 31.8 a sentence, dialogue 12.2 per 100 words.
+    // (17 and 29.9 before ADR 2026-10-21: the `)` that ends ¶8 counted as a sentence of its own.)
+    expect(sorted(items.get('headline')?.figures)).toEqual(['100', '12.2', '16', '31.8', '508', '8']);
   });
 
   it('keeps the digest\'s wording, so no digest, key or basis moves', () => {

@@ -88,7 +88,7 @@ describe('a tile id is identity, never evidence (PR #157 F-01)', () => {
   });
 
   it.each(PREFIXES)('keeps displayed counts, measured figures and paragraph numbers allowed (ids %s)', (prefix) => {
-    // The worked example states 29.9, 14.3, 12.2, 30, ¶5 and ¶7, each shown by what it cites.
+    // The worked example states 31.8, 14.3, 12.2, 30, ¶5 and ¶7, each shown by what it cites.
     const example = read(prefix, exampleOn(prefix));
     expect([example.tile?.observations.length, example.tile?.views.length]).toEqual([6, 3]);
     // The watch's host counts: mentioned twice, first in ¶4.

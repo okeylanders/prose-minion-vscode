@@ -47,21 +47,46 @@ export function countProseSentences(text: string): number {
 }
 
 /**
- * The same sentences as spans of `text`, each running to the end of its
- * closing punctuation; a run with no text in it is no sentence. The
- * Lightbox checks that two borrowed fields share one of these (PR #150 F-04).
+ * Whether a stretch of text holds anything but space and the marks that
+ * close a quotation or a bracket. One that does not is no sentence.
+ */
+function holdsSentence(stretch: string): boolean {
+  return /[^\s”’"')\]]/.test(stretch);
+}
+
+/**
+ * The same sentences as spans of `text`. The Lightbox checks that two
+ * borrowed fields share one of these (PR #150 F-04).
+ *
+ * The rule (ADR 2026-10-21, sentence closing marks):
+ * - A sentence ends at a run of `.`, `!` or `?` (an ellipsis written `...`
+ *   is such a run; `…` is not, and does not end one).
+ * - It keeps the closing marks written directly after that run, with no
+ *   space between: `”`, `’`, `"`, `'`, `)` and `]`, in any order, so
+ *   `“Oh dear!”`, `‘Stop.’`, `(See below.)` and `“He said ‘No!’”` each end
+ *   with their marks.
+ * - An apostrophe is kept only inside that unbroken run, where it follows
+ *   the ender or another closing mark. An elision's apostrophe follows a
+ *   letter (`goin’`) or opens a word after a space (`’Twas`), so it never
+ *   moves.
+ * - A stretch with nothing in it but space and closing marks is no
+ *   sentence. A closing mark after a space (`Oh! ” she said`) is not kept,
+ *   and opens the next sentence as it always did.
+ * - Nothing else is decided here: `Mr.` ends a sentence, and so does `!`
+ *   before a lower-case speech tag, so `“Wait!” she cried.` is two
+ *   sentences, `“Wait!”` and `she cried.`
  */
 export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
   const spans: Array<{ start: number; end: number }> = [];
-  const enders = /[.!?]+/g;
+  const enders = /[.!?]+[”’"')\]]*/g;
   let start = 0;
   for (let match = enders.exec(text); match; match = enders.exec(text)) {
-    if (text.slice(start, match.index).trim().length > 0) {
+    if (holdsSentence(text.slice(start, match.index))) {
       spans.push({ start, end: match.index + match[0].length });
     }
     start = match.index + match[0].length;
   }
-  if (text.slice(start).trim().length > 0) {
+  if (holdsSentence(text.slice(start))) {
     spans.push({ start, end: text.length });
   }
   return spans;

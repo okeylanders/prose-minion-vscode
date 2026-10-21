@@ -10,8 +10,10 @@
  * measurement services, from public-domain text: Chapter I of Lewis
  * Carroll's "Alice's Adventures in Wonderland" (1865), ¶1–¶8 as the worked
  * examples hold them, and the opening in curly, straight, mixed and wrapped
- * quotes. A few counts are literal, checked by hand and with grep against
- * the text, not taken from the code under test.
+ * quotes; and Chapter VII's dialogue-heavy Tea-Party opening, as Gutenberg
+ * sets it and in curly double quotes, where nearly every sentence ends with a
+ * closing mark (ADR 2026-10-21). A few counts are literal, checked by hand
+ * and with grep against the text, not taken from the code under test.
  */
 
 import type { LightboxBoard, LightboxInstancesPassage, LightboxPassageRow, LightboxPassageTerm } from '@messages';
@@ -28,6 +30,7 @@ import {
   ALICE_OPENING_WRAPPED,
   aliceWords
 } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
+import { TEA_PARTY_CURLY, TEA_PARTY_SINGLE } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
 const EXAMPLE = readWorkedExample('A').paragraphs.join('\n\n');
 
@@ -37,6 +40,8 @@ const FIXTURES: ReadonlyArray<[string, string]> = [
   ['the opening, straight quotes', ALICE_OPENING_STRAIGHT],
   ['the opening, mixed quotes', ALICE_OPENING_MIXED],
   ['the opening, wrapped lines', ALICE_OPENING_WRAPPED],
+  ['the Tea-Party, single quotes', TEA_PARTY_SINGLE],
+  ['the Tea-Party, curly double quotes', TEA_PARTY_CURLY],
   // Long enough that the most frequent words pass the row bound.
   ['6,000 words of the opening\'s vocabulary', aliceWords(6000)]
 ];

@@ -143,7 +143,7 @@ describe('the Opinion carried onto changed text (Slice 4D)', () => {
   it('withholds a figure the rebuilt board no longer shows, as a fresh reply would, and with no view left the tile', async () => {
     const fresh = withOpinion(board, readOpinion(board));
     expect(opinionOf(fresh).views).toHaveLength(3);
-    // A new paragraph moves the sentence and dialogue figures the example states (29.9; 12.2) and the ¶7 it names.
+    // A new paragraph moves the sentence and dialogue figures the example states (31.8; 12.2) and the ¶7 it names.
     const carried = await carryOnto(fresh, INSERTED);
     const f = groupF(carried);
     expect(lightboxOpinionTile(carried)).toBeUndefined();
