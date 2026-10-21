@@ -108,6 +108,69 @@ describe('useLightboxPassages', () => {
     expect(result.current.well?.passage).toEqual(TEXT('The new text.'));
   });
 
+  describe('going back to a pin whose answer it holds (PR #159 F-01)', () => {
+    const OTHER: LightboxItemRef = { kind: 'paragraphs', from: 3, to: 3 };
+    const answerOf = (board: LightboxBoard, index: number, text: string) => {
+      const { requestId } = requests()[index].payload;
+      return reply({ requestId, boardId: board.boardId, contentHash: board.source.contentHash, passage: TEXT(text) });
+    };
+
+    it('shows the held answer, asks nothing, and never takes the other pin\'s late answer', () => {
+      const board = makeBoard(6);
+      const { result, rerender } = mount(board, PARAGRAPH);
+      act(() => result.current.handlePassage(answerOf(board, 0, 'Alice was beginning to get very tired.')));
+
+      rerender({ board, selected: OTHER });
+      expect(requests()).toHaveLength(2);
+      rerender({ board, selected: PARAGRAPH });
+      expect(requests()).toHaveLength(2);
+      expect(result.current.well?.passage).toEqual(TEXT('Alice was beginning to get very tired.'));
+
+      // ¶3's answer, late: ¶2 is still shown, and nothing waits.
+      act(() => result.current.handlePassage(answerOf(board, 1, 'So she was considering in her own mind.')));
+      expect(result.current.well?.status).toBe('ready');
+      expect(result.current.well?.passage).toEqual(TEXT('Alice was beginning to get very tired.'));
+      // Nor does a board message that changes only the readings ask again.
+      rerender({ board: { ...board, readings: [...board.readings] }, selected: PARAGRAPH });
+      expect(requests()).toHaveLength(2);
+    });
+
+    it('does the same for a board it holds the answer for, after a newer board asked', () => {
+      const older = makeBoard(6);
+      const newer: LightboxBoard = { ...older, boardId: 'board-6b', source: { ...older.source, contentHash: 'b'.repeat(64) } };
+      const { result, rerender } = mount(older, PARAGRAPH);
+      act(() => result.current.handlePassage(answerOf(older, 0, 'The old text.')));
+
+      rerender({ board: newer, selected: PARAGRAPH });
+      expect(requests()).toHaveLength(2);
+      rerender({ board: older, selected: PARAGRAPH });
+      expect(requests()).toHaveLength(2);
+      expect(result.current.well?.passage).toEqual(TEXT('The old text.'));
+
+      act(() => result.current.handlePassage(answerOf(newer, 1, 'The new text.')));
+      expect(result.current.well?.status).toBe('ready');
+      expect(result.current.well?.passage).toEqual(TEXT('The old text.'));
+    });
+
+    it('asks again, under a new id, for the pin it dropped, and takes only that answer', () => {
+      const board = makeBoard(6);
+      const { result, rerender } = mount(board, PARAGRAPH);
+      act(() => result.current.handlePassage(answerOf(board, 0, 'Alice was beginning to get very tired.')));
+      rerender({ board, selected: OTHER });
+      rerender({ board, selected: PARAGRAPH });
+
+      rerender({ board, selected: OTHER });
+      expect(requests()).toHaveLength(3);
+      expect(requests()[2].payload).toEqual(expect.objectContaining({ item: { kind: 'paragraphs', from: 3, to: 3 } }));
+      expect(requests()[2].payload.requestId).not.toBe(requests()[1].payload.requestId);
+      // The dropped request's answer is not this one's.
+      act(() => result.current.handlePassage(answerOf(board, 1, 'The dropped answer.')));
+      expect(result.current.well?.status).toBe('loading');
+      act(() => result.current.handlePassage(answerOf(board, 2, 'So she was considering in her own mind.')));
+      expect(result.current.well?.passage).toEqual(TEXT('So she was considering in her own mind.'));
+    });
+  });
+
   it('drops what it waited for when the pin goes, and asks again for a new pin', () => {
     const board = makeBoard(6);
     const { result, rerender } = mount(board, PARAGRAPH);

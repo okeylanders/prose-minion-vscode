@@ -127,6 +127,33 @@ describe('the inspector\'s reading aids (Slice 4E)', () => {
     expect(within(inspector()).getByRole('heading').textContent).toBe('alice');
   });
 
+  it('keeps the word\'s sentences when the writer goes back before the paragraph answers, and its answer comes late (PR #159 F-01)', async () => {
+    const { answer, requests } = await setup();
+    fireEvent.click(screen.getByTitle('alice ×7'));
+    await answer();
+    fireEvent.click(within(region('Sentences holding “alice”')).getAllByRole('button', { name: '¶2' })[0]);
+    expect(within(inspector()).getByText('Reading ¶2 from the text the board counted…')).not.toBeNull();
+    expect(requests()).toHaveLength(2);
+
+    // Back while ¶2 is still being read: the word's sentences, held, show at once.
+    fireEvent.click(within(inspector()).getByRole('button', { name: '← Back to “alice”' }));
+    expect(litIds(region('Sentences holding “alice”')).size).toBe(7);
+    expect(requests()).toHaveLength(2);
+
+    // ¶2's answer, late, is not the word's: the well stays, and nothing waits.
+    await answer();
+    expect(within(inspector()).getByRole('heading').textContent).toBe('alice');
+    expect(within(inspector()).queryByText('Finding the sentences…')).toBeNull();
+    expect(litIds(region('Sentences holding “alice”')).size).toBe(7);
+    expect(requests()).toHaveLength(2);
+
+    // ¶2, pinned again, asks again.
+    fireEvent.click(within(region('Sentences holding “alice”')).getAllByRole('button', { name: '¶2' })[0]);
+    expect(requests()).toHaveLength(3);
+    await answer();
+    expect(litIds(region('Text of ¶2'))).toEqual(new Set(['0', '1']));
+  });
+
   it('shows a paragraph pinned on the ribbon whole, with nothing lit', async () => {
     const { answer } = await setup();
     fireEvent.click(screen.getByRole('button', { name: 'Paragraph 3' }));
