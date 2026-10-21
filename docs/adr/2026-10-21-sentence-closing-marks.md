@@ -1,4 +1,4 @@
-# ADR 2026-10-21: Sentence Closing Marks
+# ADR 2026-10-21: Sentence Closing Marks and Speech Tags
 
 **Status:** Proposed (2026-10-21); implemented on `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159)
 **Date:** 2026-10-21
@@ -28,20 +28,27 @@ that counts sentences reads it:
 - the collision witness for borrowed fields, and the synopsis's
   four-sentence bound.
 
-The rule ended a sentence at its run of `.`, `!` or `?`. A closing
-quotation mark or bracket written after that ender then began the next
-sentence:
-- `“Oh dear!”` alone was "2 words in 2 sentences · 1 word per sentence", the
-  `”` a sentence of its own;
-- `“Oh dear!” she said.` was `“Oh dear!` and `” she said.`, and the `”`
-  counted as a word of the second.
+The rule ended a sentence at its run of `.`, `!` or `?`. It had two
+problems with dialogue.
 
-The writer saw this on a real chapter in Slice 4E. A two-word paragraph of
-dialogue read "2 sentences", and a sentences-well row began with "”".
+- **A closing mark after the ender began the next sentence.**
+  - `“Oh dear!”` alone was "2 words in 2 sentences · 1 word per
+    sentence": the `”` was a sentence of its own.
+  - `“Oh dear!” she said.` was `“Oh dear!` and `” she said.`, and the
+    `”` counted as a word of the second.
+  - The writer saw this on a real chapter in Slice 4E: a two-word
+    paragraph of dialogue read "2 sentences", and a sentences-well row
+    began with "”".
+- **A speech tag was a sentence of its own.** `“Wait!” she cried.` was two
+  sentences, the second "she cried.". Standard punctuation (Chicago) reads
+  speech and its lower-case tag as one sentence.
+  - The writer's chapter is about half dialogue. It read 6.1 words per
+    sentence against a 12–16 standard.
 
 ## Decision
 
-**A sentence keeps the closing marks written directly after its ender.**
+**1. A sentence keeps the closing marks written directly after its
+ender.**
 
 1. **Enders are unchanged.** A sentence ends at a run of `.`, `!` or `?`.
    An ellipsis written `...` is such a run. `…` (U+2026) is not, and never
@@ -72,61 +79,108 @@ dialogue read "2 sentences", and a sentences-well row began with "”".
    marks, and the dialogue matcher deliberately ignores guillemets
    (`dialogueSpans.ts`). Taking `»` alone would treat one convention unlike
    the rest of the tool.
-7. **Nothing else changes.**
-   - **No abbreviations.** `Mr.` still ends a sentence.
-   - **No lower-case continuation.** `“Wait!” she cried.` is still two
-     sentences, `“Wait!”` and `she cried.`. Only the `”` moved: it
-     belonged to the second sentence and now belongs to the first. Joining
-     a lower-case speech tag to its speech is a different rule. It would
-     change many more figures, and it is not decided here.
-   - **No repair of a missing space.** In `late.’Twas`, the apostrophe
-     now stays with `late.`. In `stopped."Wait,"`, the `"` stays with
-     `stopped.`. Each text still counts the same sentences and words as
-     under the former rule; only the mark's side of the cut moved.
 
-The rule is pinned in `sentenceClosingMarks.test.ts`, and each reader is
-pinned in `LightboxSentenceClosingMarks.test.ts`. Each case the rule moves
-states what the former rule gave, and fails on it. The cases it leaves
-alone (`…`, `Mr.`, a mark after a space, an elision with no ender beside
-it) pass on both rules.
+**2. A lower-case speech tag continues the sentence of its speech.**
+
+This is the coordinator's default, made because it matches standard
+punctuation and the writer's chapter is about half dialogue.
+
+7. **The join.** A sentence goes on across ender, closing quotation mark,
+   space and a lower-case letter. Each of these is one sentence:
+   - `“Wait!” she cried.`;
+   - `“Who are you?” said the Caterpillar.`;
+   - `“I was thinking...” she trailed off.`;
+   - `“I’m going.” she said, and went.`, a lower-case tag after `.”`.
+
+   `“Wait.” She turned.` stays two.
+8. **Only a quotation mark carries it.** The first mark of the run joined
+   in rule 2 must be a quotation mark: `”`, `’`, `"` or `'`, directly
+   after the ender.
+   - A bare `!` or `?` before lower-case text ends a sentence (`Wait! she
+     cried.`).
+   - So does a bracket (`(See below.) then …`).
+   - So does a quotation mark after a space (`Oh! ” she said`).
+9. **Elisions never trigger it.**
+   - An apostrophe before the ender (`goin’! he said`) is not after it.
+   - In `‘Nothin’ doin’!’ ’twas all`, the space is followed by an
+     apostrophe, not a lower-case letter.
+10. **A line break joins; a paragraph break does not.** A hard-wrapped
+    line is still the same sentence. A blank line ends it, so the
+    whole-text count and the per-paragraph counts agree.
+11. **The known limit: a capitalised tag is a sentence of its own.**
+    `“Wait!” Alice said.` is two sentences. Telling it from `“Wait!” Alice
+    turned.` needs a parser, and this rule is punctuation only.
+
+**3. Nothing else changes.**
+- **No abbreviations.** `Mr.` still ends a sentence.
+- **No repair of a missing space.** In `late.’Twas`, the apostrophe now
+  stays with `late.`. In `stopped."Wait,"`, the `"` stays with
+  `stopped.`. Each text still counts the same sentences and words; only
+  the mark's side of the cut moved.
+- **A lower-case word after a closing quote always joins**, tag or not.
+  Across the whole of *Alice*, every such join continues its sentence:
+  `“Do bats eat cats?” for, you see,`, `“Hjckrrh!” from the Gryphon`.
+  The text punctuates these as one sentence, and so does the rule. A
+  writer who starts a new sentence in lower case after a quotation would
+  see it joined.
+
+**Where it is pinned.**
+- `sentenceClosingMarks.test.ts` pins rules 1–6, and
+  `sentenceSpeechTags.test.ts` rules 7–11.
+- `LightboxSentenceClosingMarks.test.ts` and
+  `LightboxSentenceSpeechTags.test.ts` pin every reader.
+- Each case a rule moves states what the earlier rule gave, and fails on
+  it. The cases it leaves alone pass on both:
+  - for closing marks: `…`, `Mr.`, a mark after a space, an elision with
+    no ender;
+  - for speech tags: a capitalised tag, a bare ender, a bracket, an
+    elision, a paragraph break.
 
 ## Consequences
 
 **Measured figures change.** This is a change to the measurements, and it
-is meant to be:
+is meant to be. The [evidence](../pr-reviews/evidence/sentence-rule/README.md)
+tabulates each fixture at three points: the original rule, closing marks
+alone, and both.
 
+**What closing marks moved:**
 - **Whole-text figures barely move.** These are Metrics, the headline, the
   standards comparison and the writer's average.
-  - A closing mark that began a sentence also began that sentence's words.
-    So it counted alone only after the last sentence of a text.
-  - In ordinary prose the count drops by at most one, so words per
-    sentence rises slightly.
-  - On the worked examples' ¶1–¶8, which end on "true.)", it went 17 → 16
-    sentences and 29.9 → 31.8 words per sentence, and pacing became "Very
-    slow". On the whole book it went 1,629 → 1,628, with words per sentence
-    unchanged at 16.2.
-- **Per-paragraph figures move a lot in dialogue.** These are the rhythm
-  lane, the inspector's paragraph line, the sentence lengths, and the
-  sentence summary.
+  - A closing mark that began a sentence also began that sentence's words,
+    so it counted alone only after the last sentence of a text.
+  - On the worked examples' ¶1–¶8 (ending "true.)") the count went 17 →
+    16. On the whole book, 1,629 → 1,628.
+- **Per-paragraph figures move a lot in dialogue.**
   - Every paragraph that ended with a closing mark counted one sentence
-    too many, and the speech tag after a `”` counted the `”` as a word.
-  - On the whole book, the paragraph sentences summed 2,028 → 1,702, with
-    326 of 815 paragraphs moved. On the Tea-Party, they went 40 → 32.
-- **Standouts and handoffs may change.**
-  - A sentence-length standout's reference and instances can move.
-  - A handoff quote that includes its closing mark is now found exactly
-    in one sentence. Before, it was found only unwrapped from its marks.
-- **The sentences well's rows no longer begin with "”".**
-  - Its header counts sentences that hold an instance. A closing-only
-    stretch held none, so the header did not move on any fixture.
-  - Count agreement still holds on every listed entry, now checked on
-    dialogue-heavy text too.
-- **The worked example for group F was regenerated.** Its request states
-  the board's sentence figures, and its response cites 31.8 where it cited
-  29.9. Groups A–E did not move.
+    too many.
+  - On the whole book, the paragraph sentences summed 2,028 → 1,702.
+- **Rows and quotes.**
+  - A sentences-well row no longer begins with "”".
+  - A handoff quote that includes its closing mark is found exactly in one
+    sentence.
 
-The full before/after table is in the
-[evidence](../pr-reviews/evidence/sentence-rule/README.md).
+**What speech tags moved:**
+- **Whole-text figures move.**
+  - The book goes 1,628 → 1,389 sentences, and 16.2 → 19.0 words per
+    sentence.
+  - The Tea-Party (Chapter VII, about half dialogue) goes 32 → 27
+    sentences, and 13.6 → 16.1.
+  - The worked examples go 16 → 15 sentences, and 31.8 → 33.9.
+- **Per-paragraph figures move again,** and the very short sentences fall
+  most: on the book, 428 → 193.
+- **Wells, standouts and handoffs.**
+  - A well's "M sentences" can fall where an item stood in both speech
+    and tag: the book's "alice" 378 → 377; Chapter I's Weak Verbs 48 → 47.
+  - A sentence-length standout measures the whole sentence, speech and
+    tag together.
+  - A handoff between speech and its own tag is no longer a handoff
+    between sentences.
+- **Count agreement** still holds on every listed entry, including the
+  dialogue-heavy Tea-Party in both quotation settings.
+- **The group F worked example** was regenerated from its builder after
+  each change: 17 → 16 → 15 sentences, and 29.9 → 31.8 → 33.9 words per
+  sentence. Its response cites the board's figure. Groups A–E did not
+  move.
 
 **Nothing persisted needs migrating.**
 - **Boards are not saved yet.** Slice 5 (saved boards) has not landed, and
@@ -143,19 +197,10 @@ The full before/after table is in the
   nothing re-measures it.
 
 Slice 5's saved-board format starts after this change. Its boards never
-straddle the two rules, so they need no label for them.
+straddle the rules, so they need no label for them.
 
-**What this does not fix.** The writer's real chapter, about 48% dialogue,
-showed 6.1 words per sentence against a 12–16 standard. That is a
-whole-text figure, so this change moves it by at most one sentence.
-- **One known contributor remains: lower-case continuation (7), left
-  unchanged.** On the Tea-Party excerpt, 5 of its 32 sentences begin in
-  lower case after `!”` or `?”`, such as "said the Hatter." and "thought
-  Alice.". Joining each to the speech before it would read 16.1 words per
-  sentence instead of 13.6.
-- Genuinely short lines of speech, `...` and abbreviations such as `Mr.`
-  lower the figure too. How much each contributes on the writer's chapter
-  is not measured here.
-- Lower-case continuation is the next rule to decide, if the writer wants
-  it. It changes the same figures again, and it needs its own before/after
-  pass.
+**What remains for the writer's 6.1.**
+- Genuinely short lines of speech, `...`, `Mr.` and capitalised tags
+  still lower the figure.
+- How much each contributes on her chapter is not measured here. Her
+  chapter will read the new rule the next time it is boarded.

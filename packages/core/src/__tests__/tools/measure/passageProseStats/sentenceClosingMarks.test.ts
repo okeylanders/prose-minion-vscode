@@ -6,9 +6,12 @@
  *
  * Every expectation is literal. The comment beside each says what the
  * former rule (a sentence ends at its `.`, `!` or `?` run, and nothing
- * after it) gave, so each case shows what moved. Fixture prose is public
- * domain (Lewis Carroll, "Alice's Adventures in Wonderland", 1865) or
- * written for these tests.
+ * after it) gave, so each case shows what moved. A sentence that goes on
+ * after its marks starts with a capital here, so these cases hold the
+ * closing marks alone; a lower-case speech tag joins its speech
+ * (`sentenceSpeechTags.test.ts`). Fixture prose is public domain (Lewis
+ * Carroll, "Alice's Adventures in Wonderland", 1865) or written for these
+ * tests.
  */
 
 import { PassageProseStats, proseSentenceSpans } from '@/tools/measure/passageProseStats';
@@ -39,9 +42,9 @@ describe('a closing mark directly after the ender stays with its sentence', () =
     expect(stats('“Oh dear!”')).toEqual({ wordCount: 2, sentenceCount: 1, averageWordsPerSentence: 2, readabilityScore: 96 });
   });
 
-  it('ends “Oh dear!” at its mark, so the speech tag starts with a word', () => {
-    const text = '“Oh dear!” she said.';
-    expect(sentencesOf(text)).toEqual(['“Oh dear!”', ' she said.']); // was ['“Oh dear!', '” she said.']
+  it('ends “Oh dear!” at its mark, so the next sentence starts with a word', () => {
+    const text = '“Oh dear!” She ran.';
+    expect(sentencesOf(text)).toEqual(['“Oh dear!”', ' She ran.']); // was ['“Oh dear!', '” She ran.']
     expect(wordsPerSentence(text)).toEqual([2, 2]); // was [2, 3]: the lone ” counted as a word
   });
 
@@ -49,15 +52,9 @@ describe('a closing mark directly after the ender stays with its sentence', () =
     expect(sentencesOf('“Wait.” She turned.')).toEqual(['“Wait.”', ' She turned.']); // was ['“Wait.', '” She turned.']
   });
 
-  it('leaves a lower-case continuation as its own sentence, as the rule always has: only the mark moves', () => {
-    // The splitter does not join `!` + lower-case tag; that is unchanged.
-    expect(sentencesOf('“Wait!” she cried.')).toEqual(['“Wait!”', ' she cried.']); // was ['“Wait!', '” she cried.']
-    expect(stats('“Wait!” she cried.').sentenceCount).toBe(2);
-  });
-
   it('keeps straight double quotes as it keeps curly ones', () => {
-    expect(sentencesOf('"Oh dear!" she said. "Wait."')).toEqual(['"Oh dear!"', ' she said.', ' "Wait."']);
-    // was ['"Oh dear!', '" she said.', ' "Wait.', '"']
+    expect(sentencesOf('"Oh dear!" She ran. "Wait."')).toEqual(['"Oh dear!"', ' She ran.', ' "Wait."']);
+    // was ['"Oh dear!', '" She ran.', ' "Wait.', '"']
   });
 });
 
@@ -130,7 +127,7 @@ describe('closing marks after a space', () => {
 
 describe('what the rule leaves alone', () => {
   it('ends a sentence at an ellipsis of full stops, now with its closing mark', () => {
-    expect(sentencesOf('“Well...” she said.')).toEqual(['“Well...”', ' she said.']); // was ['“Well...', '” she said.']
+    expect(sentencesOf('“Well...” She sighed.')).toEqual(['“Well...”', ' She sighed.']); // was ['“Well...', '” She sighed.']
   });
 
   it('does not end a sentence at …', () => {

@@ -156,6 +156,14 @@ describe('group E, read fresh (Slice 4C)', () => {
       const { assembled } = readStory(body);
       expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([]);
     });
+
+    it('counts a speech and its lower-case tag as one sentence: four sentences stand (ADR 2026-10-21)', () => {
+      const body = storyBody();
+      // The closing-marks rule alone read "cries a rabbit." as a fifth sentence and withheld this.
+      body.summary.synopsis.text = 'She is bored. “Oh dear!” cries a rabbit. She follows it. She falls.';
+      const { assembled } = readStory(body);
+      expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([]);
+    });
   });
 
   describe('the movements, as a set', () => {

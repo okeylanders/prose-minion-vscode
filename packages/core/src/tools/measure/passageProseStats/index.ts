@@ -55,6 +55,16 @@ function holdsSentence(stretch: string): boolean {
 }
 
 /**
+ * Whether `text` goes on at `at` with space, then a lower-case letter, and no
+ * paragraph break (the blank-line rule) in the space: a speech tag.
+ */
+function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean {
+  speechTag.lastIndex = at;
+  const space = speechTag.exec(text);
+  return space !== null && !/\n\s*\n/.test(space[0]);
+}
+
+/**
  * The same sentences as spans of `text`. The Lightbox checks that two
  * borrowed fields share one of these (PR #150 F-04).
  *
@@ -72,19 +82,35 @@ function holdsSentence(stretch: string): boolean {
  * - A stretch with nothing in it but space and closing marks is no
  *   sentence. A closing mark after a space (`Oh! ” she said`) is not kept,
  *   and opens the next sentence as it always did.
- * - Nothing else is decided here: `Mr.` ends a sentence, and so does `!`
- *   before a lower-case speech tag, so `“Wait!” she cried.` is two
- *   sentences, `“Wait!”` and `she cried.`
+ * - **Speech tags.** A sentence continues across ender, closing quotation
+ *   mark, space and a lower-case letter, as standard punctuation reads it:
+ *   `“Wait!” she cried.`, `“Who are you?” said the Caterpillar.` and
+ *   `“I was thinking...” she trailed off.` are each one sentence.
+ *   - The quotation mark (`”`, `’`, `"` or `'`) must come directly after
+ *     the ender. A bare `!` or `?` before lower-case text (`Wait! she
+ *     cried`) ends a sentence, and so does a bracket (`(See below.) then`).
+ *   - The space may break a line but not a paragraph: a blank line ends
+ *     the sentence.
+ *   - A capitalised tag cannot be told from a new sentence without a
+ *     parser, so `“Wait!” Alice said.` is two sentences, as
+ *     `“Wait.” She turned.` is.
+ * - Nothing else is decided here: `Mr.` ends a sentence.
  */
 export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
   const spans: Array<{ start: number; end: number }> = [];
-  const enders = /[.!?]+[”’"')\]]*/g;
+  // Fresh literals per call, so no global or sticky regex's lastIndex is shared.
+  const enders = /[.!?]+([”’"')\]]*)/g;
+  const speechTag = /\s+(?=\p{Ll})/uy;
   let start = 0;
   for (let match = enders.exec(text); match; match = enders.exec(text)) {
-    if (holdsSentence(text.slice(start, match.index))) {
-      spans.push({ start, end: match.index + match[0].length });
+    const end = match.index + match[0].length;
+    if (/^[”’"']/.test(match[1]) && continuesIntoTag(text, end, speechTag)) {
+      continue;
     }
-    start = match.index + match[0].length;
+    if (holdsSentence(text.slice(start, match.index))) {
+      spans.push({ start, end });
+    }
+    start = end;
   }
   if (holdsSentence(text.slice(start))) {
     spans.push({ start, end: text.length });
