@@ -918,6 +918,19 @@ land before Slice 5 (decision 14).
     bundle hash is recorded with the reason the first one differed. See the
     review's
     [author response](../../../docs/pr-reviews/pr-156-lightbox-story-lenses-review.md#author-response-2026-10-21).
+  - **PR #156 re-review (2026-10-21).** F-01 to F-03 and N-01 were
+    confirmed. F-04 is new: the F-03 grid used `subgrid`, which VS Code
+    1.75's Chromium 102 does not have, so labels would stack above their
+    charts there.
+    - Fixed in `9fadf6d`: the ribbon is one plain grid.
+    - A new floor guard keeps webview CSS within Chromium 102.
+    - The harness checks that each label is beside its track, including in
+      states that simulate the floor.
+    - Older above-floor CSS, mainly `color-mix()` in the theme tokens, went
+      to
+      [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+
+    After F-04: 421 suites / 5,821 tests / 59 snapshots; lint identical.
 
 - **2026-10-21. Slice 4D (Group F, the Opinion) is implemented** on
   `epic/lightbox-slice-4d-opinion`, stacked on 4C (`797e166`). A press now

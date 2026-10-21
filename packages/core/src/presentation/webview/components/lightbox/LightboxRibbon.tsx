@@ -114,94 +114,93 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           {focusLine(focusedItem)}
         </span>
       </div>
-      {/* One grid for both parts: a shared label track and column track (PR #156 F-03). */}
+      {/* One plain CSS grid, for Chromium 102 (VS Code 1.75): every label block and track is a direct
+          child, sharing one label track and one column track (PR #156 F-03, F-04). */}
       <div className="pm-lb-ribbon-grid">
-        <div className="pm-lb-ribbon-wrap">
-          <div className="pm-lb-ribbon-labels">
-            <LightboxItemButton binding={bind({ kind: 'lane', lane: 'rhythm' })} className="pm-lb-lane-label pm-lb-h34">
-              <i className="pm-lb-lane-key is-measured" />Rhythm
+        <div className="pm-lb-ribbon-labels">
+          <LightboxItemButton binding={bind({ kind: 'lane', lane: 'rhythm' })} className="pm-lb-lane-label pm-lb-h34">
+            <i className="pm-lb-lane-key is-measured" />Rhythm
+          </LightboxItemButton>
+          <LightboxItemButton binding={bind({ kind: 'lane', lane: 'dialogue' })} className="pm-lb-lane-label pm-lb-h12">
+            <i className="pm-lb-lane-key is-measured" />Dialogue
+          </LightboxItemButton>
+          {scores && tensionTileId ? (
+            <LightboxItemButton
+              binding={bind({ kind: 'reading', tileId: tensionTileId })}
+              className="pm-lb-lane-label pm-lb-h34"
+              title={tension.note}
+            >
+              <i className="pm-lb-lane-key is-read" />Tension{staleKey}
             </LightboxItemButton>
-            <LightboxItemButton binding={bind({ kind: 'lane', lane: 'dialogue' })} className="pm-lb-lane-label pm-lb-h12">
-              <i className="pm-lb-lane-key is-measured" />Dialogue
+          ) : (
+            <span className="pm-lb-lane-label pm-lb-h34 is-static" title={tension.note}>
+              <i className="pm-lb-lane-key is-read" />Tension{staleKey}
+            </span>
+          )}
+          {endings && (endingMarks && endings.tileId ? (
+            <LightboxItemButton
+              binding={bind({ kind: 'reading', tileId: endings.tileId })}
+              className="pm-lb-lane-label pm-lb-h12"
+              title={endings.note}
+            >
+              {endingsLabel}
             </LightboxItemButton>
-            {scores && tensionTileId ? (
+          ) : (
+            <span className="pm-lb-lane-label pm-lb-h12 is-static" title={endings.note}>{endingsLabel}</span>
+          ))}
+          <span className="pm-lb-lane-label pm-lb-h10 is-static">Focus</span>
+          <span className="pm-lb-lane-label pm-lb-h12 is-static">¶</span>
+        </div>
+        <div
+          className="pm-lb-ribbon-cols"
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, ribbon.length)}, minmax(0, 1fr))` }}
+        >
+          {ribbon.map((column, columnIndex) => {
+            const lit = litColumns[columnIndex] === true;
+            const rhythm = column.avgWordsPerSentence > 0
+              ? Math.max(2, Math.round((column.avgWordsPerSentence / scale) * RHYTHM_LANE_HEIGHT))
+              : 0;
+            const dialogue = column.dialogueShare > 0 ? 0.3 + column.dialogueShare * 0.7 : 0;
+            const binding = bind({ kind: 'paragraphs', from: column.from, to: column.to });
+            const score = scores?.[columnIndex] ?? null;
+            const height = score !== null
+              ? Math.max(2, Math.round((score / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
+              : 0;
+            const ending = endingMarks?.[columnIndex] ?? null;
+            const endingTitle = !endingMarks
+              ? ''
+              : ending === null
+                ? ' · ending not read: this paragraph changed since the reading'
+                : ` · ends, as read: ${LIGHTBOX_ENDING_LABELS[ending].toLowerCase()}`;
+            const tensionTitle = !scores
+              ? ''
+              : score === null
+                ? ' · tension not scored: this paragraph changed since the reading'
+                : ` · tension, as read${tension.stale ? ' on an earlier version' : ''}: ${score} of ${TENSION_TOP_SCORE}`;
+            return (
               <LightboxItemButton
-                binding={bind({ kind: 'reading', tileId: tensionTileId })}
-                className="pm-lb-lane-label pm-lb-h34"
-                title={tension.note}
+                key={`${column.from}-${column.to}`}
+                binding={binding}
+                className={`pm-lb-col${hasFocus && !lit ? ' is-dim' : ''}`}
+                label={columnLabel(column)}
+                title={`${columnLabel(column)} · ${column.avgWordsPerSentence} words per sentence · ` +
+                  `${Math.round(column.dialogueShare * 100)}% dialogue${tensionTitle}${endingTitle}`}
               >
-                <i className="pm-lb-lane-key is-read" />Tension{staleKey}
+                <span className="pm-lb-col-rhythm"><i style={{ height: `${rhythm}px` }} /></span>
+                <span className="pm-lb-col-dialogue"><i style={{ opacity: dialogue }} /></span>
+                <span className={`pm-lb-col-tension${score !== null ? ' is-read' : scores ? ' is-unscored' : ''}`}>
+                  {score !== null && <i style={{ height: `${height}px` }} />}
+                </span>
+                {endings && (
+                  <span className="pm-lb-col-ending">{ending !== null && <i className={`is-${ending}`} />}</span>
+                )}
+                <span className={`pm-lb-col-focus${lit ? ` is-lit ${focusTone}` : ''}`} />
+                <span className="pm-lb-col-index">
+                  {columnIndex === 0 || (columnIndex + 1) % step === 0 ? column.from : ''}
+                </span>
               </LightboxItemButton>
-            ) : (
-              <span className="pm-lb-lane-label pm-lb-h34 is-static" title={tension.note}>
-                <i className="pm-lb-lane-key is-read" />Tension{staleKey}
-              </span>
-            )}
-            {endings && (endingMarks && endings.tileId ? (
-              <LightboxItemButton
-                binding={bind({ kind: 'reading', tileId: endings.tileId })}
-                className="pm-lb-lane-label pm-lb-h12"
-                title={endings.note}
-              >
-                {endingsLabel}
-              </LightboxItemButton>
-            ) : (
-              <span className="pm-lb-lane-label pm-lb-h12 is-static" title={endings.note}>{endingsLabel}</span>
-            ))}
-            <span className="pm-lb-lane-label pm-lb-h10 is-static">Focus</span>
-            <span className="pm-lb-lane-label pm-lb-h12 is-static">¶</span>
-          </div>
-          <div
-            className="pm-lb-ribbon-cols"
-            style={{ gridTemplateColumns: `repeat(${Math.max(1, ribbon.length)}, minmax(0, 1fr))` }}
-          >
-            {ribbon.map((column, columnIndex) => {
-              const lit = litColumns[columnIndex] === true;
-              const rhythm = column.avgWordsPerSentence > 0
-                ? Math.max(2, Math.round((column.avgWordsPerSentence / scale) * RHYTHM_LANE_HEIGHT))
-                : 0;
-              const dialogue = column.dialogueShare > 0 ? 0.3 + column.dialogueShare * 0.7 : 0;
-              const binding = bind({ kind: 'paragraphs', from: column.from, to: column.to });
-              const score = scores?.[columnIndex] ?? null;
-              const height = score !== null
-                ? Math.max(2, Math.round((score / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
-                : 0;
-              const ending = endingMarks?.[columnIndex] ?? null;
-              const endingTitle = !endingMarks
-                ? ''
-                : ending === null
-                  ? ' · ending not read: this paragraph changed since the reading'
-                  : ` · ends, as read: ${LIGHTBOX_ENDING_LABELS[ending].toLowerCase()}`;
-              const tensionTitle = !scores
-                ? ''
-                : score === null
-                  ? ' · tension not scored: this paragraph changed since the reading'
-                  : ` · tension, as read${tension.stale ? ' on an earlier version' : ''}: ${score} of ${TENSION_TOP_SCORE}`;
-              return (
-                <LightboxItemButton
-                  key={`${column.from}-${column.to}`}
-                  binding={binding}
-                  className={`pm-lb-col${hasFocus && !lit ? ' is-dim' : ''}`}
-                  label={columnLabel(column)}
-                  title={`${columnLabel(column)} · ${column.avgWordsPerSentence} words per sentence · ` +
-                    `${Math.round(column.dialogueShare * 100)}% dialogue${tensionTitle}${endingTitle}`}
-                >
-                  <span className="pm-lb-col-rhythm"><i style={{ height: `${rhythm}px` }} /></span>
-                  <span className="pm-lb-col-dialogue"><i style={{ opacity: dialogue }} /></span>
-                  <span className={`pm-lb-col-tension${score !== null ? ' is-read' : scores ? ' is-unscored' : ''}`}>
-                    {score !== null && <i style={{ height: `${height}px` }} />}
-                  </span>
-                  {endings && (
-                    <span className="pm-lb-col-ending">{ending !== null && <i className={`is-${ending}`} />}</span>
-                  )}
-                  <span className={`pm-lb-col-focus${lit ? ` is-lit ${focusTone}` : ''}`} />
-                  <span className="pm-lb-col-index">
-                    {columnIndex === 0 || (columnIndex + 1) % step === 0 ? column.from : ''}
-                  </span>
-                </LightboxItemButton>
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
         {plot && <LightboxRibbonPlot board={board} lanes={plot} bind={bind} />}
       </div>

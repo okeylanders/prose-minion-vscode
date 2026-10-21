@@ -300,9 +300,11 @@ such point is marked *(brief)*.
 
 - The Sections note sits beside Summary & movements and in the ribbon's
   Sections lane; the lane keeps it when the lens is off.
-- The ribbon's paragraph lanes and story lanes are rows of one grid, with
+- The ribbon's paragraph lanes and story lanes share one plain CSS grid,
   one label track and one column track, so a column index is one place in
-  both (PR #156 F-03).
+  both (PR #156 F-03). Every label block and track is a direct child,
+  placed by column, with no `subgrid`, so it holds on Chromium 102, the
+  floor VS Code 1.75 sets (F-04).
 - The two-level ribbon above 96 paragraphs stays out of scope (feature
   note above).
 
@@ -342,9 +344,22 @@ gives root cause, fix and tests for each.
     checkout, which changes webpack's path-derived module ids.
 - **N-01, the fresh tally (`3f9126c`).** An arc step withheld for its order
   now counts as withheld, once.
+- **F-04, found in the re-review: the F-03 grid needed subgrid
+  (`9fadf6d`).** Subgrid is Chrome 117; VS Code 1.75 runs Chromium 102,
+  which stacks each label block above its chart.
+  - The ribbon is now one plain grid with no row wrappers.
+  - A new guard, `webviewCssFloor.test.ts`, keeps webview CSS within
+    Chromium 102. It inventories older uses outside this PR, mainly
+    `color-mix()` in the theme tokens, as
+    [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+  - The harness now checks that each label is beside its track, and
+    simulates the floor by dropping subgrid. `e7e1536` fails those floor
+    states (54 faults) and the fix passes.
 
 Verification after the fixes:
-- Full `npx jest`: 420 suites / 5,815 tests / 59 snapshots.
+- Full `npx jest`: 420 suites / 5,815 tests / 59 snapshots; after F-04,
+  421 / 5,821 / 59. The F-04 evidence bundle is `webview.js` SHA-256
+  `c016b535…`, from a clean install.
 - `npm run lint`: identical per file and rule (0 errors / 1,133 warnings).
 - `npm run typecheck`, `npm run build` with `verify:bundle`, and
   `git diff --check` pass.

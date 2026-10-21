@@ -232,9 +232,11 @@
 }
 
 /* ---------- The ribbon's story lanes ---------- */
-[data-pm-surface="lightbox"] .pm-lb-ribbon-plot {
-  margin-top: 8px;
-  padding-top: 8px;
+/* A row of the ribbon's one grid (ribbon.css): the rule spans both tracks,
+   the labels take the label track, the lanes the column track. */
+[data-pm-surface="lightbox"] .pm-lb-ribbon-rule {
+  grid-column: 1 / -1;
+  margin: 8px 0;
   border-top: 1px dashed var(--pm-border);
 }
 [data-pm-surface="lightbox"] .pm-lb-h14 { height: 14px; }
@@ -242,6 +244,7 @@
 [data-pm-surface="lightbox"] .pm-lb-h20 { height: 20px; }
 [data-pm-surface="lightbox"] .pm-lb-lane-key.is-counted-read { border: 1px solid var(--pm-border-2); background: var(--pm-surface-2); }
 [data-pm-surface="lightbox"] .pm-lb-plot-lanes {
+  grid-column: 2;
   min-width: 0;
   display: grid;
   grid-template-rows: 14px 14px 20px 16px;

@@ -11,7 +11,14 @@
  * - **Engagement** (read, hatched): each movement's level, kept apart from
  *   the tension lane above.
  * A band lights its section's or movement's paragraphs on hover and pins it
- * on click; the Sections and Pressure labels pin their lanes. Every
+ * on click; the Sections and Pressure labels pin their lanes.
+ *
+ * It renders as three direct children of the ribbon's one grid (a rule
+ * across both tracks, its label block, its lane track), never a row of its
+ * own: the label block takes the grid's shared label track and the lanes its
+ * column track, so a column index is one place in every lane. Plain CSS
+ * grid, no subgrid, so it holds on Chromium 102 (VS Code 1.75; PR #156
+ * F-03, F-04). Every
  * position comes from the host's ranges and quotes on the current text,
  * never an old column (PR #150 F-06). The two-level ribbon above 96
  * paragraphs is out of scope here (feature note).
@@ -64,8 +71,9 @@ export const LightboxRibbonPlot: React.FC<LightboxRibbonPlotProps> = ({ board, l
   const all = { gridColumn: `1 / ${Math.max(1, ribbon.length) + 1}` };
   const top = Math.max(1, ...(lanes.pressure.counts ?? [0]));
   return (
-    <div className="pm-lb-ribbon-wrap pm-lb-ribbon-plot" role="group" aria-label="Sections, movements, pressure and engagement">
-      <div className="pm-lb-ribbon-labels">
+    <>
+      <div className="pm-lb-ribbon-rule" aria-hidden="true" />
+      <div className="pm-lb-ribbon-labels pm-lb-ribbon-plot-labels">
         <LightboxItemButton binding={bind({ kind: 'lane', lane: 'sections' })} className="pm-lb-lane-label pm-lb-h14" title={sectionsNote}>
           <i className="pm-lb-lane-key is-measured" />Sections
         </LightboxItemButton>
@@ -85,7 +93,12 @@ export const LightboxRibbonPlot: React.FC<LightboxRibbonPlotProps> = ({ board, l
           <i className="pm-lb-lane-key is-read" />Engagement<StaleKey stale={lanes.engagement.stale} />
         </span>
       </div>
-      <div className="pm-lb-plot-lanes" style={{ gridTemplateColumns: `repeat(${Math.max(1, ribbon.length)}, minmax(0, 1fr))` }}>
+      <div
+        className="pm-lb-plot-lanes"
+        role="group"
+        aria-label="Sections, movements, pressure and engagement"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, ribbon.length)}, minmax(0, 1fr))` }}
+      >
         {sectionBands.length === 0 ? (
           <span className="pm-lb-plot-empty" style={{ ...all, gridRow: 1 }}>{sectionsNote}</span>
         ) : sectionBands.map((band) => {
@@ -146,6 +159,6 @@ export const LightboxRibbonPlot: React.FC<LightboxRibbonPlotProps> = ({ board, l
           </LightboxItemButton>
         ))}
       </div>
-    </div>
+    </>
   );
 };
