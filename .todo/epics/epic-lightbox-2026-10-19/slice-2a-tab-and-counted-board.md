@@ -237,6 +237,10 @@ the build differs from the plan above, or the plan left a choice open:
   below the tab scrolls as one page with the inspector under the rail (it
   sticks); at 760px everything stacks, with the inspector below the board.
   The Workshop has no aside, so its DOM and layout are unchanged.
+  - **2026-10-21:** the writer raised the floor to VS Code 1.82 (Chromium
+    114), which has `:has()`
+    ([ADR 2026-10-21](../../../docs/adr/2026-10-21-vscode-engine-floor.md)).
+    The `.pm-ws-with-aside` class still works and was left as it is.
 
 **Verification**
 

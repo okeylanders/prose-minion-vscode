@@ -63,8 +63,8 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
         pacing: 'Fast (short sentences)',
         readingTimeMinutes: 1.2,
         uniqueWordCount: 140,
-        hapaxCount: 90,
-        hapaxPercent: 40.1,
+        hapaxCount: 4,
+        hapaxPercent: 1.9,
         vocabularyDiversity: 58
       },
       standards: {
@@ -88,7 +88,18 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
         bigrams: [term('thought alice', [2, 6], 2)],
         trigrams: []
       },
-      styleFlags: [{ type: 'Adverbs (-ly words)', count: 4, examples: ['suddenly'] }],
+      styleFlags: [
+        { type: 'Adverbs (-ly words)', count: 4, examples: ['suddenly'], id: 'adverbs', paragraphs: [3, 5].filter((index) => index <= paragraphCount) },
+        // Counts words that repeat, not instances: no id, no places (Slice 4E).
+        { type: 'Repetitive Words', count: 1, examples: ['suddenly (3x)'], paragraphs: [] }
+      ],
+      // Slice 4E: the words used once, in order of first appearance, each in its one paragraph.
+      hapax: [
+        { term: 'rabbithole', written: 'Rabbit-Hole', paragraph: 1 },
+        { term: 'peeped', written: 'peeped', paragraph: Math.min(2, paragraphCount) },
+        { term: 'daisychain', written: 'daisy-chain', paragraph: Math.min(3, paragraphCount) },
+        { term: 'tunnel', written: 'tunnel', paragraph: Math.min(4, paragraphCount) }
+      ],
       sentences: { longest: { words: 40, paragraph: 3 }, veryShort: 0, underWords: 6 },
       numbers: {
         rows: [

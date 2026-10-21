@@ -4,9 +4,10 @@
  *
  * The adverb, passive-voice and filler detectors are exported (Lightbox
  * Slice 4B), so the Lightbox's measured standouts count, place and check a
- * quote with the very rules the tool counts by. The tool counts through
- * them; its output is unchanged (pinned by its tests). The weak-verbs list
- * is exported too (Slice 4F), so craft steering names the same verbs.
+ * quote with the very rules the tool counts by; the weak-verb detector too
+ * (Slice 4E), for the inspector's sentence well, and its list (Slice 4F),
+ * so craft steering names the same verbs. The tool counts through them;
+ * its output is unchanged (pinned by its tests).
  */
 
 /** One match of a detector: its offsets in the text and the text matched. */
@@ -16,7 +17,7 @@ export interface StyleFlagMatch {
   text: string;
 }
 
-/** Weak verbs the tool flags, as whole words, any case. */
+/** The weak verbs the tool flags, as whole words, any case. */
 export const STYLE_FLAG_WEAK_VERBS = [
   'is', 'are', 'was', 'were', 'has', 'have', 'had', 'do', 'does', 'did', 'make', 'makes', 'made', 'get', 'gets', 'got'
 ] as const;
@@ -42,6 +43,11 @@ export function findAdverbs(text: string): StyleFlagMatch[] {
 /** was/were/been/being followed by a word ending in -ed (a heuristic: irregular participles are missed). */
 export function findPassiveVoice(text: string): StyleFlagMatch[] {
   return matchesOf(text, /\b(was|were|been|being)\s+\w+ed\b/gi);
+}
+
+/** Each of `STYLE_FLAG_WEAK_VERBS`, as a whole word (exported for the Lightbox's sentence well, Slice 4E). */
+export function findWeakVerbs(text: string): StyleFlagMatch[] {
+  return matchesOf(text, new RegExp(`\\b(${STYLE_FLAG_WEAK_VERBS.join('|')})\\b`, 'gi'));
 }
 
 /** Each of `STYLE_FLAG_FILLER_WORDS`, as a whole word. */
@@ -114,8 +120,7 @@ export class StyleFlags {
 
   private checkWeakVerbs(text: string): StyleFlag {
     // Common weak verbs
-    const pattern = new RegExp(`\\b(${STYLE_FLAG_WEAK_VERBS.join('|')})\\b`, 'gi');
-    const matches = text.match(pattern) || [];
+    const matches = findWeakVerbs(text).map((match) => match.text);
     const examples = this.getUniqueExamples(matches, 5);
 
     return {

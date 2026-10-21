@@ -252,7 +252,10 @@ export enum MessageType {
   LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS = 'lightbox_project_catalog_search_results',
   LIGHTBOX_CHOOSE_PROJECT_SOURCE = 'lightbox_choose_project_source',
   // Context from the project picker (2026-10-20); answered by LIGHTBOX_CONTEXT_FILES
-  LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context'
+  LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context',
+  // Slice 4E: the text a pinned paragraph or counted item stands in, by request id
+  LIGHTBOX_REQUEST_PASSAGE = 'lightbox_request_passage',
+  LIGHTBOX_PASSAGE = 'lightbox_passage'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

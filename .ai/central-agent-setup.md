@@ -64,6 +64,7 @@ packages/core/src/
 │           ├── LightboxPressRun.ts        # A press's run listener and landing, and group F's digest port by board id (Slice 4D)
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
+│           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -86,7 +87,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -121,6 +122,7 @@ packages/core/src/
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
+            ├── lightboxPassages.ts # The inspector's passages (Slice 4E): a paragraph's text or a term's sentences, by request id, board id and hash; refusals
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -176,7 +178,9 @@ packages/core/src/presentation/webview/
 │       ├── useWordSearchSettings.ts    # Word search tool settings
 │       ├── useLightbox.ts              # Lightbox board, refusal, estimate, run and context; persists UI prefs only (filter, pin, lenses)
 │       ├── lightbox/
-│       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
+│       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure); a paragraph may carry the term it was reached from (`via`)
+│       │   ├── lightboxTerms.ts        # Counted terms as items: top word, part of speech, phrase, hapax word, style flag (pure; Slice 4E)
+│       │   ├── lightboxPassages.ts     # The inspector's wells as drawn: what a pin asks for, waiting, changed text, bounds, refusals (pure; Slice 4E)
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
@@ -191,6 +195,7 @@ packages/core/src/presentation/webview/
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
+│       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
 │           ├── useWorkshopSessions.ts  # Named-session lifecycle
@@ -331,6 +336,7 @@ useMessageRouter({
 | useLightbox | LightboxHandler, LightboxReadingHandler (+ `LightboxService`, `LightboxReadingRunner`) | Lightbox counted board and readings |
 | useLightboxHandoff | LightboxHandoffRoute (in LightboxHandler) | Lightbox handoffs to the Workshop and its tray |
 | useLightboxProjectFiles | LightboxHandler (catalog, search, source) and LightboxReadingHandler (context), through `LightboxProjectFiles` | The Lightbox's project picker |
+| useLightboxPassages | LightboxPassageHandler (+ `LightboxService.passageSource`) | The inspector's passages: a paragraph's text, a counted item's sentences |
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 
 **Benefits**:
@@ -440,10 +446,10 @@ usePersistence({
      - `dialogueMicrobeatAssistant`: Analyzes dialogue and suggests tags/action beats
      - `proseAssistant`: General prose analysis and improvement suggestions
    - **Measure Tools**: Statistical analysis tools
-     - `passageProseStats`: Word count, sentence analysis, pacing metrics
-     - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice and filler detectors are exported, with offsets, so the Lightbox's numbers count and check quotes by the same rules
+     - `passageProseStats`: Word count, sentence analysis, pacing metrics; its vocabulary tokenizer is exported (`proseStatsWords`), so the Lightbox's hapax list is exactly the stats row's count
+     - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice, filler and weak-verb detectors are exported, with offsets, so the Lightbox's numbers and its sentence wells count by the same rules
      - `beingVerbs`: The forms of "be" as whole words (the Lightbox's being-verbs figure; contractions not counted)
-     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas; `tagTextTokens` gives each token's tag and offset (the Lightbox's craft steering sorts instances by construction with it)
+     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink (its tagged occurrences carry each token's offset and length), bigrams/trigrams, length histogram, optional lemmas; `tagTextTokens` gives each token's tag and offset (the Lightbox's craft steering sorts instances by construction with it)
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
@@ -805,8 +811,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4F on Slice 4D with its PR #157 fixes, merged with Slice 4C's PR #156 fixes and its F-04 fix):
-- 439 suites / 6,047 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4F with its PR #160 fixes, merged with Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
+- MERGED_COUNT_LINE
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1127,29 +1133,73 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
     constructions come from the word-frequency tagger. Every quote is
     checked with `lightboxPatternInstanceFilter`, the same detector, fresh,
     on carry and at Bring.
+  - **Measured in work that grows with the text (PR #160 F-01).** The
+    measure runs with every board, lens on or off, so no step rescans a
+    paragraph per instance: tokens are indexed once, neighbours come from
+    one sweep per rule, and span membership is a binary search. A test
+    counts the tagger's token reads, and one holds a 49,998-word paragraph
+    to a coarse bound.
   - **The fence.** `LightboxSteeringPhrasing` holds every claim, why, nudge
     and example: no listed word (cut, delete, remove, fix, wrong, bad,
     should, must), no quotation mark, no figure, and no clause opened with
     an order in a why or nudge. A nudge exists only for a note that leans
     or compensates.
   - **The one example is never a quote.** Its `before` is anchored by code
-    inside the note's checked quote, holding the instance, and is checked
-    again on carry and at Bring; it is never evidence, never searched by
-    the verifier, never in the Opinion's digest, and drawn and brought
-    under "One way it could go". A fault withholds the example alone.
+    inside the note's checked quote, holding the instance, and the pair as
+    the chapter has it is held to the example's bounds again (PR #160
+    F-02), fresh, on carry and at Bring; it is never evidence, never
+    searched by the verifier, never in the Opinion's digest, and drawn and
+    brought under "One way it could go", whole or not at all. A fault
+    withholds the example alone, with the host's reason.
   - **Host titles carry no digit** ("Being verbs · note II"), so nothing the
     Opinion is shown offers a figure it might state.
   - **Sentences are the shared rule's.** The short-run signal reads
     `proseSentenceSpans` and never splits text itself.
-- **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
+- **One ribbon grid, on the Chromium 114 floor.** Every ribbon label block
   and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
   one column track), never a row with its own label width, so a column
   index is one horizontal place in every lane (PR #156 F-03). The grid must
-  hold on Chromium 102, the floor VS Code 1.75 sets (`engines.vscode:
-  ^1.75.0`): plain CSS grid, no `subgrid` or row wrappers (F-04).
-  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor.
-  The visual evidence harness measures the column edges and each label
-  block beside its track, including in states that simulate the floor.
+  hold on Chromium 114, the floor VS Code 1.82 sets (`engines.vscode:
+  ^1.82.0`; [ADR 2026-10-21](docs/adr/2026-10-21-vscode-engine-floor.md)):
+  plain CSS grid, no `subgrid` (Chrome 117) or row wrappers (F-04).
+  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor;
+  the only uses it allows are features Chromium 114 drops gracefully
+  (its `GRACEFUL` list). The visual evidence harness measures the column
+  edges and each label block beside its track, including in states that
+  simulate the floor.
+
+### Lightbox Passages
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D10 (Passages, Slice 4E) when changing what the inspector's wells show:
+
+- **One rule per figure.** A well finds instances with the rule that made
+  the figure it shows (`LightboxInstances`):
+  - the word-frequency tokenizer for top words and phrases (phrases across
+    paragraph breaks included);
+  - the tagger's placed occurrences for parts of speech;
+  - `proseStatsWords` for hapax;
+  - Style Flags' detectors for the flags that count instances.
+
+  A figure counted another way gets no well. Repetitive Words and Clichés
+  count words, not instances.
+- **A new figure that opens a well** joins `LightboxPassageTerm`,
+  `lightboxBoardCountOf`, `LightboxPassageIndex.instancesOf` and the
+  every-entry test in `LightboxCountAgreement.test.ts`.
+- **Correlated, never persisted.** Each request names its board by id and
+  content hash, under a webview-minted id. `useLightboxPassages` takes only
+  the answer still pending, for the board on screen. A newer board says "the
+  text changed" until its answer lands. No passage text enters `setState`.
+- **Pending is only the pin on screen's.** Going back to a pin or board
+  whose answer is held asks nothing and drops any other request, so a late
+  answer can never replace what is shown (PR #159 F-01).
+- **Cut in linear time.** The row bound limits rows, not what one row
+  holds. Match ranges to instances in one walk and cut segments in one
+  open/close sweep, never by scanning every instance per segment (PR #159
+  N-01).
+- **Sentences are the board's.** Rows use each paragraph's
+  `proseSentenceSpans`. Fix the sentence rule there, not in the well
+  ([tech debt](.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md)).
 
 ### Operational Tips
 

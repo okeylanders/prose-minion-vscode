@@ -28,6 +28,10 @@
  *   lines, detected from the paragraph model (`LightboxSections`).
  * - **Craft steering** (Slice 4F): being verbs, adverbs and intensifiers by
  *   construction, by the numbers' own detectors (`LightboxSteeringMeasure`).
+ * - **Hapax and style flags** (Slice 4E): the words used once, by the
+ *   prose-stats tokenizer the headline's hapax count is counted with, so the
+ *   list is exactly that long; and each style flag that counts instances is
+ *   named and placed by its own detector (`LightboxInstances`).
  */
 
 import type {
@@ -62,6 +66,13 @@ import {
 } from '@/infrastructure/lightbox/LightboxNumbers';
 import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
 import { measureLightboxSteering } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
+import {
+  LIGHTBOX_STYLE_FLAG_IDS,
+  lightboxHapaxWords,
+  lightboxParagraphAt,
+  lightboxParagraphsOfSpans,
+  lightboxStyleFlagInstances
+} from '@/infrastructure/lightbox/LightboxInstances';
 
 /** How many of each list the board keeps. Presentation sizes, not prompt budgets. */
 export const LIGHTBOX_MEASURED_SIZES = {
@@ -155,27 +166,45 @@ function addParagraph(map: Map<string, number[]>, key: string, index: number): v
   }
 }
 
+/** A tagged word the board counted, with its paragraph. Its offset is into the lowercased text. */
+export type LightboxPlacedPosOccurrence = PartOfSpeechOccurrence & { offset: number; paragraph: number };
+
 /**
- * The parts-of-speech lists, counted and placed from the tagger's occurrences
- * (see the module comment). Each occurrence's offset is into the lowercased
- * text the tool tagged; lowercasing never adds or removes whitespace, so that
- * text splits into the same paragraphs, numbered alike.
+ * The tagger's occurrences the board counts: each one located in the text
+ * and placed in a paragraph (see the module comment), in text order, or
+ * undefined when the tagger did not load. Each offset is into the lowercased
+ * text the tool tagged; lowercasing never adds or removes whitespace, so
+ * that text splits into the same paragraphs, numbered alike. The
+ * part-of-speech lists and their instances in the inspector (Slice 4E) are
+ * both taken from exactly this list.
  */
+export function placeLightboxPosOccurrences(
+  frequency: Pick<WordFrequencyOutput, 'pos'>,
+  text: string
+): LightboxPlacedPosOccurrence[] | undefined {
+  const occurrences = frequency.pos?.mode === 'tagger' ? frequency.pos.occurrences : undefined;
+  if (!occurrences) {
+    return undefined;
+  }
+  const paragraphs = splitLightboxParagraphs(text.toLowerCase());
+  const placed: LightboxPlacedPosOccurrence[] = [];
+  for (const occurrence of occurrences) {
+    const paragraph = occurrence.offset === undefined ? undefined : lightboxParagraphAt(paragraphs, occurrence.offset)?.index;
+    if (occurrence.offset !== undefined && paragraph !== undefined) {
+      placed.push({ ...occurrence, offset: occurrence.offset, paragraph });
+    }
+  }
+  return placed;
+}
+
+/** The parts-of-speech lists, counted and placed from the tagger's occurrences (see the module comment). */
 export function placeLightboxPartsOfSpeech(
   frequency: Pick<WordFrequencyOutput, 'pos' | 'totalWords'>,
   text: string
 ): LightboxPartsOfSpeech {
-  const occurrences = frequency.pos?.mode === 'tagger' ? frequency.pos.occurrences : undefined;
-  if (!occurrences) {
+  const placed = placeLightboxPosOccurrences(frequency, text);
+  if (!placed) {
     return { available: false, nouns: [], verbs: [], adjectives: [], adverbs: [] };
-  }
-  const paragraphAt = paragraphLocator(splitLightboxParagraphs(text.toLowerCase()));
-  const placed: Array<PartOfSpeechOccurrence & { paragraph: number }> = [];
-  for (const occurrence of occurrences) {
-    const paragraph = occurrence.offset === undefined ? undefined : paragraphAt(occurrence.offset);
-    if (paragraph !== undefined) {
-      placed.push({ ...occurrence, paragraph });
-    }
   }
 
   const where = new Map<string, number[]>();
@@ -196,26 +225,6 @@ export function placeLightboxPartsOfSpeech(
     verbs: terms('verbs'),
     adjectives: terms('adjectives'),
     adverbs: terms('adverbs')
-  };
-}
-
-/** The paragraph whose trimmed span holds `offset`, by binary search. */
-function paragraphLocator(paragraphs: readonly LightboxParagraph[]): (offset: number) => number | undefined {
-  return (offset) => {
-    let low = 0;
-    let high = paragraphs.length - 1;
-    while (low <= high) {
-      const middle = (low + high) >> 1;
-      const paragraph = paragraphs[middle];
-      if (offset < paragraph.start) {
-        high = middle - 1;
-      } else if (offset >= paragraph.end) {
-        low = middle + 1;
-      } else {
-        return paragraph.index;
-      }
-    }
-    return undefined;
   };
 }
 
@@ -262,11 +271,17 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       bigrams: phrases(inputs.frequency.bigrams, LIGHTBOX_MEASURED_SIZES.bigrams),
       trigrams: phrases(inputs.frequency.trigrams, LIGHTBOX_MEASURED_SIZES.trigrams)
     },
-    styleFlags: inputs.flags.flags.map((flag): LightboxStyleFlag => ({
-      type: flag.type,
-      count: flag.count,
-      examples: [...flag.examples]
-    })),
+    styleFlags: inputs.flags.flags.map((flag): LightboxStyleFlag => {
+      const id = LIGHTBOX_STYLE_FLAG_IDS[flag.type];
+      return {
+        type: flag.type,
+        count: flag.count,
+        examples: [...flag.examples],
+        ...(id ? { id } : {}),
+        paragraphs: id ? lightboxParagraphsOfSpans(inputs.paragraphs, lightboxStyleFlagInstances(inputs.text, id)) : []
+      };
+    }),
+    hapax: lightboxHapaxWords(inputs.text, inputs.paragraphs),
     sentences: lightboxSentenceSummary(inputs.paragraphs.map((paragraph) => paragraph.text)),
     numbers: measureLightboxNumbers({
       text: inputs.text,

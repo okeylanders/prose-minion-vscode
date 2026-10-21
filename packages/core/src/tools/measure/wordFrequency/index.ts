@@ -69,6 +69,12 @@ export interface PartOfSpeechOccurrence {
    * could not be found there.
    */
   offset: number | undefined;
+  /**
+   * The token's length in UTF-16 units, so `[offset, offset + length)` is
+   * the tagger's token itself, which can be part of a word ("n't" of
+   * "don't"). The Lightbox lights it (Slice 4E).
+   */
+  length: number;
 }
 
 const PART_OF_SPEECH_TAGS: ReadonlyArray<[PartOfSpeechList, ReadonlySet<string>]> = [
@@ -131,7 +137,7 @@ export function tagPartsOfSpeech(text: string): PartOfSpeechOccurrence[] {
     const word = (token.value || token.normal).toLowerCase().replace(/[^a-z']/g, '');
     const list = PART_OF_SPEECH_TAGS.find(([, tags]) => tags.has(token.pos))?.[0];
     if (word && list) {
-      occurrences.push({ word, list, offset: token.offset });
+      occurrences.push({ word, list, offset: token.offset, length: token.value.length });
     }
   }
   return occurrences;

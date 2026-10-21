@@ -53,7 +53,9 @@ carried into the Workshop.
 | 14 | Order (2026-10-20) | **The new lenses land before Slice 5** (saved boards), so the saved format holds them |
 | 15 | Opinion views (2026-10-20) | **Neutral is the default view**; **Blunt is diagnosis only**, of the work, never the writer, with no rewrites (Slice 4D) |
 | 16 | Opinion's place (2026-10-20) | The Opinion is an explicit, fenced **exception to "describe, never grade"**, recorded with the freshness label in a dated ADR addendum to D7 |
-| 17–19 | *(left for Slice 4E)* | Slice 4E is planned in parallel and takes the next numbers; renumber at merge if it takes fewer |
+| 17 | Paragraph text (2026-10-21) | **Clicking a paragraph shows its whole text** in the inspector, fetched from the host when pinned and never persisted; reached from a counted item, that item's instances are lit (Slice 4E) |
+| 18 | Sentences for an item (2026-10-21) | **Clicking a word in the word panels lists the sentences it appears in**, in a scrollable well at the bottom of the inspector, each instance found by the rule that made its count (Slice 4E) |
+| 19 | Hapax list (2026-10-21) | **The Top Words panel lists the hapax words** below the cloud, exactly as many as the stats row counts (Slice 4E). Slice 4F (craft steering) takes the decisions after this one |
 | 20 | Craft steering (2026-10-21) | **A lens of its own, Craft steering, in its own call (group G)**, read beside groups A–E; the Opinion waits for it like the others; it can be turned off. It **owns being verbs, adverbs (-ly) and intensifiers and fillers**: the numbers tile keeps their bars, ranges and standout flags and stops reading them; passive voice stays with the numbers (Slice 4F) |
 | 21 | Steering is measured first (2026-10-21) | Each steering figure is **measured by the host**: its total and rate (the numbers bar's own detector, so they are equal), narration and dialogue, a breakdown by construction, and instances in runs of short sentences. Every list and threshold is named, with its false positives (Slice 4F) |
 | 22 | Steering readings (2026-10-21) | Per figure, **one reading of how it works here and up to four instance notes**. A note is one checked quote holding an instance, a stance (**Earns · Leans · Compensates**), a why, and a nudge only when it leans or compensates (Slice 4F) |
@@ -74,7 +76,8 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built (`epic/lightbox-slice-4f-steering`; merges `epic/lightbox` after 4E and the sentence-rule fix) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented; PR #159 review fixes in, awaiting re-review (`epic/lightbox-slice-4e-inspector`) |
+| 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built; PR #160 review fixes in, `epic/lightbox` merged at `1fe931a` (4E and the 1.82 floor); merges again after the sentence-rule fix (PR #161) (`epic/lightbox-slice-4f-steering`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -938,7 +941,8 @@ lens, and adds its items to 4D's digest.
       states that simulate the floor.
     - Older above-floor CSS, mainly `color-mix()` in the theme tokens, went
       to
-      [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+      [tech debt](../../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md)
+      (resolved 2026-10-21 by raising the floor to VS Code 1.82).
 
     After F-04: 421 suites / 5,821 tests / 59 snapshots; lint identical.
 
@@ -1035,6 +1039,91 @@ lens, and adds its items to 4D's digest.
       identical; typecheck and build with `verify:bundle` pass; bundle
       SHA-256 `0f6624f4…`.
 
+- **2026-10-21. Slice 4E (reading aids in the inspector) is planned** on
+  `epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`
+  (PR #157 merged). The writer ran a real chapter through the board and
+  asked for three things (decisions 17–19): a pinned paragraph's whole
+  text, the sentences a clicked word stands in, and the hapax list under
+  the cloud. All three are measured by code, with no model call.
+  - **The plan:** [slice-4e-inspector-aids.md](slice-4e-inspector-aids.md).
+    The board holds no paragraph text, so one correlated route pair
+    (`LIGHTBOX_REQUEST_PASSAGE`, `LIGHTBOX_PASSAGE`) fetches it by board id
+    and content hash; nothing of it is persisted. Each well finds instances
+    with the rule that made the figure it shows, so the lit instances equal
+    the displayed count; a test pins that over every listed entry.
+  - **Also:** the inspector's count strings agree in number ("1 word per
+    sentence").
+  - **Base measured** at `20775cf`: 430 suites / 5,916 tests / 59
+    snapshots; lint 0 errors / 1,133 warnings; typecheck and build with
+    `verify:bundle` pass; `webview.js` SHA-256 `0f6624f4…`, as 4D recorded.
+  - Slice 4F (craft steering) is built beside it and takes the decisions
+    after 19.
+
+- **2026-10-21. Slice 4E (reading aids in the inspector) is implemented,
+  awaiting review,** on `epic/lightbox-slice-4e-inspector`.
+  - **Paragraph text.** Pinning a paragraph shows its whole text in a
+    scrollable, labelled, focusable well. Reached from a ¶ address in a
+    sentences well, the term's instances there are lit, with a way back.
+  - **Sentences for an item.** Pinning a top word, a part-of-speech entry,
+    a repeated phrase, a hapax word, or one of four style flags (Weak
+    Verbs, Filler Words, Adverbs, Passive Voice) lists its sentences at the
+    bottom of the inspector: "27 instances in 26 sentences", each row with
+    its ¶ address, every instance lit. Up to 50 rows, with a note counting
+    the rest.
+  - **The hapax list.** Under the cloud, in order of first appearance,
+    exactly as many words as the stats row's hapax count, paged at 300.
+  - **Plurals.** Eight count strings in the inspector and word panels now
+    agree with their numbers.
+  - **Contracts.** One correlated route pair, `LIGHTBOX_REQUEST_PASSAGE`
+    (owned by the new `LightboxPassageHandler`) and `LIGHTBOX_PASSAGE`,
+    by board id and content hash. The host refuses a changed board or an
+    item not on it. Nothing of a passage is persisted.
+  - **Counts agree.** Each well finds instances with the rule that made the
+    figure it shows. A test checks every listed entry on six public-domain
+    fixtures, with literal counts checked by grep; mutating either
+    tokenizer fails it.
+  - **Deviations and limits** are in the slice's
+    [implementation notes](slice-4e-inspector-aids.md#implementation-notes-2026-10-21).
+    One item went to tech debt: the board's
+    [sentence rule](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+    gives a closing quotation mark to the next sentence.
+  - **Verification.**
+
+    | Check | `20775cf` (base) | Slice 4E head |
+    |---|---|---|
+    | `npx jest` | 430 suites / 5,916 tests / 59 snapshots | 440 suites / 6,012 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Bundle SHA-256 `8d0545de…`, built after `npm ci` into a real
+      `node_modules` and reproduced by a second build.
+    - Visual evidence at 1440, 1000 and 500 px from real host output:
+      [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
+    - No live or billable call.
+  - **PR #159 review fixes (2026-10-21).** Astra requested changes for one
+    finding (F-01) and noted one nonblocking optimization (N-01). Both are
+    fixed.
+    - **F-01** (`86d269a`). Going back to a held passage no longer leaves
+      another pin's request pending. Before, its late answer replaced the
+      held one and stranded the well at "Finding the sentences…".
+      - Four regressions fail on `058feb5`: the held ¶2 → Back sequence
+        through `LightboxApp`, and three hook cases.
+      - A tenth evidence state, `back-late`, shows the fix in Chromium.
+    - **N-01** (`31a4550`). A passage is cut in time linear in what it
+      sends, by one walk and one open/close sweep, with nothing dropped.
+      - Before the change was kept, it matched `058feb5`'s cutting on
+        7,077 passages.
+      - The new long-row tests take about a tenth of their 1 s ceiling.
+        On `058feb5` they take 2 to 4 s.
+    - **Merged with PR #158** (`6d63a6e`): the Chromium 114 floor. The 4E
+      stylesheets pass its guard as they are.
+    - **Verification.** 440 suites / 6,019 tests / 59 snapshots; lint
+      identical per file and rule (0 errors / 1,133 warnings); typecheck
+      and build with `verify:bundle` pass; bundle SHA-256 `2f86917e…`,
+      reproduced.
+    - See the review's
+      [author response](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md#author-response-2026-10-21).
 - **2026-10-21. Slice 4F (Group G, Craft steering) is planned** on
   `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`, at
   the writer's request: "Think steering the craft." See the

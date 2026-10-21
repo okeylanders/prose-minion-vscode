@@ -20,6 +20,10 @@
  * Paging is not announced chip by chip: the range label is the change the
  * live inspector reads out. A reading's evidence is its own list, apart from
  * the paged addresses.
+ *
+ * Slice 4E: a pinned paragraph shows its whole text under the claim, and a
+ * pinned counted term lists the sentences it stands in at the bottom, both
+ * in `LightboxPassageWell`, from the host's passage.
  */
 import * as React from 'react';
 import type { LightboxGravityFieldTile, LightboxLensId, LightboxReadingTile } from '@messages';
@@ -33,6 +37,8 @@ import type { LightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { Icon } from '@components/shared/Icon';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
+import { LightboxPassageWell } from '@components/lightbox/LightboxPassageWell';
+import type { LightboxPassageWellView } from '@hooks/domain/lightbox/lightboxPassages';
 
 /** What "Re-read this tile" says and does. */
 export interface LightboxRereadControl {
@@ -71,6 +77,8 @@ export interface LightboxInspectorProps {
   reread: LightboxRereadControl;
   buildLens?: LightboxBuildLensControl;
   bring?: LightboxBringControl;
+  /** The pin's passage well (Slice 4E): a paragraph's text, or a counted term's sentences. */
+  passage?: LightboxPassageWellView | null;
 }
 
 /** "¶765–¶812 (337–347 of 347)": the addresses on show, then where they sit in the list. */
@@ -184,7 +192,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   bind,
   reread,
   buildLens,
-  bring
+  bring,
+  passage
 }) => {
   if (!view) {
     return (
@@ -242,6 +251,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
             'against this one; a quote whose words are gone is withheld.'}
         </p>
       )}
+
+      {passage?.kind === 'paragraphs' && <LightboxPassageWell view={passage} bind={bind} />}
 
       <div>
         <p className="pm-lb-label">Where it lives · {view.paragraphLabel}</p>
@@ -398,6 +409,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
           <span className="pm-lb-run-note">{rereadReason ?? rereadNote ?? '1 call'}</span>
         </div>
       )}
+
+      {passage?.kind === 'instances' && <LightboxPassageWell view={passage} bind={bind} />}
     </div>
   );
 };

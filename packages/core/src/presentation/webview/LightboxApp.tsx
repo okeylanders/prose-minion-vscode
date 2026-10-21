@@ -19,6 +19,10 @@
  * escape hatch is its own system picker. The picker is on the overlay stack,
  * so Escape closes it before the pin.
  *
+ * The inspector's passages (Slice 4E) are `useLightboxPassages`'s: a pinned
+ * paragraph's text and a pinned counted term's sentences, asked of the host
+ * by board id and hash, and never persisted.
+ *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
  */
@@ -53,6 +57,7 @@ import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFu
 import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
 import { useLightboxProjectFiles } from '@hooks/domain/useLightboxProjectFiles';
+import { useLightboxPassages } from '@hooks/domain/useLightboxPassages';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
@@ -78,6 +83,8 @@ export const LightboxApp: React.FC = () => {
   const projectFiles = useLightboxProjectFiles();
   const focus = useLightboxFocus({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
+  // The pin's text: a paragraph whole, or a counted term's sentences, from the host (Slice 4E).
+  const passages = useLightboxPassages({ board, selected: lightbox.selected });
   // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
   const escape = useLightboxEscape({ pinned: lightbox.selected !== null, onClear: inspector.clear });
   // The Opinion's view the writer chose on this board: a webview preference only (Slice 4D).
@@ -102,10 +109,12 @@ export const LightboxApp: React.FC = () => {
       [MessageType.LIGHTBOX_HAND_OFF_RESULT]: handoffs.handleHandOffResult,
       [MessageType.LIGHTBOX_WORKSHOP_TRAY]: handoffs.handleWorkshopTray,
       [MessageType.LIGHTBOX_PROJECT_CATALOG]: projectFiles.handleCatalog,
-      [MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS]: projectFiles.handleSearchResults
+      [MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS]: projectFiles.handleSearchResults,
+      [MessageType.LIGHTBOX_PASSAGE]: passages.handlePassage
     };
   }, [
     chrome,
+    passages.handlePassage,
     projectFiles.handleCatalog,
     projectFiles.handleSearchResults,
     lightbox.handleBoard,
@@ -196,6 +205,7 @@ export const LightboxApp: React.FC = () => {
     ...projectFiles.persistedState,
     ...focus.persistedState,
     ...inspector.persistedState,
+    ...passages.persistedState,
     ...escape.persistedState,
     ...opinionView.persistedState,
     ...chrome.persistedState
@@ -309,6 +319,7 @@ export const LightboxApp: React.FC = () => {
             reread={reread}
             buildLens={buildLens}
             bring={bring}
+            passage={passages.well}
           />
         )
       }}

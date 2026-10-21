@@ -1,7 +1,8 @@
 /**
  * LightboxTopWords — the content words the text uses most, sized by count
- * (ADR 2026-10-19 D5). Counts and places come from the host; hovering a word
- * lights its paragraphs, clicking pins it.
+ * (ADR 2026-10-19 D5), and under them the words it uses once (Slice 4E,
+ * `LightboxHapaxList`). Counts and places come from the host; hovering a
+ * word lights its paragraphs, clicking pins it.
  */
 import * as React from 'react';
 import type { LightboxBoard } from '@messages';
@@ -9,6 +10,7 @@ import type { LightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxTileFrame } from '@components/lightbox/LightboxTileFrame';
+import { LightboxHapaxList } from '@components/lightbox/LightboxHapaxList';
 
 export interface LightboxTopWordsProps {
   board: LightboxBoard;
@@ -34,6 +36,7 @@ export const LightboxTopWords: React.FC<LightboxTopWordsProps> = ({ board, bind 
       kind="top-words"
       span={3}
       title="Top words · sized by count"
+      className="pm-lb-top-words"
       footnote="Hover a word to light its paragraphs. Click to pin it."
     >
       {words.length === 0 ? (
@@ -54,6 +57,8 @@ export const LightboxTopWords: React.FC<LightboxTopWordsProps> = ({ board, bind 
           ))}
         </div>
       )}
+      {/* A new board starts the list at its first page. */}
+      <LightboxHapaxList key={board.boardId} board={board} bind={bind} />
     </LightboxTileFrame>
   );
 };
