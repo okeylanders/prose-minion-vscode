@@ -16,6 +16,12 @@
  * the number of distinct instances lit is the number found, and the number
  * found is the board's count: every term is checked to be on the board, and
  * found by the rule that counted it (`LightboxPassageIndex.instancesOf`).
+ *
+ * The row bound limits rows, not what one row holds: a sentence can hold
+ * thousands of instances, and an instance run can join thousands of
+ * sentences. So the cutting is linear in what is sent (PR #159 N-01): one
+ * walk matches sentences or paragraphs to the instances that touch them, and
+ * one sweep over where instances open and close cuts each into segments.
  */
 
 import type {
@@ -26,6 +32,7 @@ import type {
   LightboxPassageItem,
   LightboxPassageRow,
   LightboxPassageSegment,
+  LightboxPassageSentence,
   LightboxPassageTerm
 } from '@messages';
 import { LIGHTBOX_PASSAGE_BOUNDS } from '@shared/constants/lightboxPassages';
@@ -93,13 +100,13 @@ function paragraphsPassage(
   const sent = index.paragraphs.filter((paragraph) => paragraph.index >= item.from && paragraph.index <= last);
   // A term that is no longer on the board lights nothing; the paragraph is still the paragraph.
   const via = item.via && lightboxBoardCountOf(board, item.via) !== undefined ? numbered(index.instancesOf(item.via)) : undefined;
+  const touching = instancesTouching(sent, via ?? []);
   const lit = new Set<number>();
   const passage: LightboxParagraphsPassage = {
     kind: 'paragraphs',
-    paragraphs: sent.map((paragraph) => {
-      const touching = (via ?? []).filter((span) => span.start < paragraph.end && span.end > paragraph.start);
-      touching.forEach((span) => lit.add(span.id));
-      return { index: paragraph.index, segments: segmentsOf(index.text, paragraph.start, paragraph.end, touching) };
+    paragraphs: sent.map((paragraph, position) => {
+      touching[position].forEach((span) => lit.add(span.id));
+      return { index: paragraph.index, segments: segmentsOf(index.text, paragraph.start, paragraph.end, touching[position]) };
     }),
     moreParagraphs: item.to - last
   };
@@ -132,7 +139,7 @@ function instancesPassage(index: LightboxPassageIndex, spans: readonly NumberedS
     instances: spans.length,
     sentences: groups.reduce((sum, group) => sum + sentencesIn(group), 0),
     rows: shown.map((group): LightboxPassageRow => ({
-      sentences: sentences.slice(group.first, group.last + 1).map((sentence) => sentenceOf(index.text, sentence, group.spans))
+      sentences: rowSentences(index.text, sentences.slice(group.first, group.last + 1), group.spans)
     })),
     more: {
       rows: hidden.length,
@@ -157,38 +164,86 @@ function firstSentenceEndingAfter(sentences: readonly LightboxSentenceSpan[], of
   return low;
 }
 
-/** One sentence as shown: its leading space trimmed, its instances lit. */
-function sentenceOf(text: string, sentence: LightboxSentenceSpan, spans: readonly NumberedSpan[]) {
-  let start = sentence.start;
-  while (start < sentence.end && /\s/.test(text[start])) {
-    start += 1;
-  }
-  const touching = spans.filter((span) => span.start < sentence.end && span.end > start);
-  return { paragraph: sentence.paragraph, sentence: sentence.sentence, segments: segmentsOf(text, start, sentence.end, touching) };
+/** A row's sentences as shown: each with its leading space trimmed and its instances lit. */
+function rowSentences(
+  text: string,
+  sentences: readonly LightboxSentenceSpan[],
+  spans: readonly NumberedSpan[]
+): LightboxPassageSentence[] {
+  const shown = sentences.map((sentence) => {
+    let start = sentence.start;
+    while (start < sentence.end && /\s/.test(text[start])) {
+      start += 1;
+    }
+    return { sentence, start, end: sentence.end };
+  });
+  const touching = instancesTouching(shown, spans);
+  return shown.map(({ sentence, start, end }, position) => ({
+    paragraph: sentence.paragraph,
+    sentence: sentence.sentence,
+    segments: segmentsOf(text, start, end, touching[position])
+  }));
 }
 
 /**
- * `text` from `from` to `to`, cut where an instance starts or ends. Each
- * stretch an instance covers names it; stretches no instance covers are
- * joined.
+ * For each of `ranges` (in text order, not overlapping), the instances that
+ * touch it, in number order, in one walk. `spans` are in number order, which
+ * is text order by start. An instance joins the open list when a range ends
+ * after its start, and leaves it once a range starts at or after its end,
+ * since no later range can touch it then.
+ */
+function instancesTouching(ranges: readonly LightboxSpan[], spans: readonly NumberedSpan[]): NumberedSpan[][] {
+  let next = 0;
+  let open: NumberedSpan[] = [];
+  return ranges.map((range) => {
+    // A new list each time: the one returned for the range before is left as it was.
+    open = open.filter((span) => span.end > range.start);
+    for (; next < spans.length && spans[next].start < range.end; next++) {
+      if (spans[next].end > range.start) {
+        open.push(spans[next]);
+      }
+    }
+    return open;
+  });
+}
+
+/**
+ * `text` from `from` to `to`, cut where an instance opens or closes. Each
+ * stretch names the instances that cover it; stretches no instance covers
+ * are joined. One sweep over the openings and closings, in text order, with
+ * the instances open at each point: overlapping instances (a phrase that
+ * shares words with the next) keep their own numbers.
  */
 function segmentsOf(text: string, from: number, to: number, spans: readonly NumberedSpan[]): LightboxPassageSegment[] {
-  const cuts = new Set<number>([from, to]);
+  const clamp = (offset: number) => Math.min(to, Math.max(from, offset));
+  const events: Array<{ at: number; id: number; opens: boolean }> = [];
   for (const span of spans) {
-    cuts.add(Math.min(to, Math.max(from, span.start)));
-    cuts.add(Math.min(to, Math.max(from, span.end)));
+    const [start, end] = [clamp(span.start), clamp(span.end)];
+    if (start < end) {
+      events.push({ at: start, id: span.id, opens: true }, { at: end, id: span.id, opens: false });
+    }
   }
-  const points = [...cuts].sort((a, b) => a - b);
+  events.sort((a, b) => a.at - b.at);
+  const covering = new Set<number>();
   const segments: LightboxPassageSegment[] = [];
-  for (let index = 0; index + 1 < points.length; index++) {
-    const [start, end] = [points[index], points[index + 1]];
-    const instances = spans.filter((span) => span.start < end && span.end > start).map((span) => span.id);
+  let event = 0;
+  for (let start = from; start < to;) {
+    for (; event < events.length && events[event].at === start; event++) {
+      if (events[event].opens) {
+        covering.add(events[event].id);
+      } else {
+        covering.delete(events[event].id);
+      }
+    }
+    const end = event < events.length ? events[event].at : to;
     const previous = segments[segments.length - 1];
-    if (instances.length === 0 && previous && !previous.instances) {
+    if (covering.size === 0 && previous && !previous.instances) {
       previous.text += text.slice(start, end);
     } else {
+      const instances = [...covering].sort((a, b) => a - b);
       segments.push({ text: text.slice(start, end), ...(instances.length > 0 ? { instances } : {}) });
     }
+    start = end;
   }
   return segments;
 }
