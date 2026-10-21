@@ -237,13 +237,44 @@ describe('Lightbox prompt bundle', () => {
     const handoffs = assembled.tiles.filter((tile) => tile.kind === 'handoff');
     expect(handoffs.map((tile) => (tile.kind === 'handoff' ? [tile.from.paragraph, tile.to.paragraph, tile.effect] : [])))
       .toEqual([[4, 4, 'continues'], [7, 7, 'continues'], [8, 8, 'closure']]);
-    // The board measured sentence length, dialogue and intensifiers as standing out; each reading names one.
+    // The board measured sentence length, dialogue and intensifiers as standing out. Intensifiers are craft
+    // steering's (Slice 4F): the task never lists them, so the numbers lens reads only the other two.
     const standouts = (MEASURED.get('D') ?? []).filter((row) => row.standout).map((row) => row.stat);
     expect(standouts).toEqual(['sentence-length', 'dialogue', 'intensifiers']);
+    expect(readWorkedExample('D').request).not.toContain('`intensifiers`');
     const readings = assembled.tiles.filter((tile) => tile.kind === 'number-usage');
     expect(readings.map((tile) => (tile.kind === 'number-usage' ? [tile.stat, tile.usage] : []))).toEqual([
-      ['intensifiers', 'deliberate'], ['sentence-length', 'deliberate'], ['dialogue', 'mixed']
+      ['sentence-length', 'deliberate'], ['dialogue', 'mixed']
     ]);
+  });
+
+  it('reads group G into a reading per figure and notes whose quotes hold an instance, nudging only where a note leans or compensates (Slice 4F)', () => {
+    const { assembled } = decodeExample('G');
+    const readings = assembled.tiles.filter((tile) => tile.kind === 'steering-reading');
+    expect(readings.map((tile) => (tile.kind === 'steering-reading' ? tile.stat : ''))).toEqual(['being-verbs', 'adverbs', 'intensifiers']);
+    const notes = assembled.tiles.filter((tile): tile is Extract<typeof tile, { kind: 'steering-note' }> => tile.kind === 'steering-note');
+    expect(notes.map((note) => [note.title, note.stance, note.evidence[0].paragraph])).toEqual([
+      ['Being verbs · note I', 'earns', 3],
+      ['Being verbs · note II', 'leans', 7],
+      ['Adverbs (-ly) · note I', 'leans', 6],
+      ['Adverbs (-ly) · note II', 'earns', 7],
+      ['Intensifiers and fillers · note I', 'earns', 4],
+      ['Intensifiers and fillers · note II', 'compensates', 6],
+      ['Intensifiers and fillers · note III', 'leans', 2]
+    ]);
+    for (const note of notes) {
+      expect(note.nudge !== undefined).toBe(note.stance !== 'earns');
+      expect(note.exampleWithheld).toBeUndefined();
+    }
+    // Each example's first part is the chapter's own words, inside the note's checked quote, holding the instance.
+    expect(notes.flatMap((note) => (note.example ? [[note.example.before, note.example.after]] : []))).toEqual([
+      ['it was too dark', 'the dark swallowed everything'],
+      ['dipped suddenly down', 'plunged'],
+      ['a very deep well', 'a bottomless well']
+    ]);
+    for (const note of notes.filter((candidate) => candidate.example)) {
+      expect(note.evidence[0].text).toContain(note.example?.before);
+    }
   });
 
   it('asks the craft lenses for host-checked quotes and readings that never direct the writer (Slice 4B)', () => {

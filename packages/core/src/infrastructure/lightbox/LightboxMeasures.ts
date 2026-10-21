@@ -26,6 +26,8 @@
  *   (`LightboxNumbers`), each counted by its one detector.
  * - **Sections** (Slice 4C): the chapter's headings, scene breaks or chapter
  *   lines, detected from the paragraph model (`LightboxSections`).
+ * - **Craft steering** (Slice 4F): being verbs, adverbs and intensifiers by
+ *   construction, by the numbers' own detectors (`LightboxSteeringMeasure`).
  */
 
 import type {
@@ -59,6 +61,7 @@ import {
   type LightboxWriterAverages
 } from '@/infrastructure/lightbox/LightboxNumbers';
 import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
+import { measureLightboxSteering } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
 
 /** How many of each list the board keeps. Presentation sizes, not prompt budgets. */
 export const LIGHTBOX_MEASURED_SIZES = {
@@ -272,7 +275,8 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       averageWordsPerSentence: inputs.stats.averageWordsPerSentence,
       writer: inputs.writer ?? { summary: { kind: 'absent', note: LIGHTBOX_BASELINE_NOTES.notMeasured } }
     }),
-    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text))
+    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text)),
+    steering: measureLightboxSteering({ text: inputs.text, paragraphs: inputs.paragraphs.map((paragraph) => paragraph.text) })
   };
 }
 

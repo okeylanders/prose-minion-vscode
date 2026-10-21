@@ -30,6 +30,9 @@
  *   board's measured figure, a handoff as a pair of adjacent sentences, a
  *   tier mix beat by beat with its tiers counted again; and moves each
  *   paragraph ending with its column's text, as tension moves;
+ * - carries group G's kinds (Slice 4F, `LightboxCarryQuotes`): a steering
+ *   reading's and note's quotes by the figure's own detector on the new
+ *   text, and a note's example anchored again in its carried quote;
  * - carries group E's kinds by their own rules (Slice 4C,
  *   `LightboxPlotCarry`): the movements as one set, each starting where its
  *   boundary quote now stands and the set withheld whole when it no longer
@@ -355,6 +358,15 @@ function carryTile(
   if (kept.kind === 'artifact' && kept.unusedWithheld === undefined) {
     // An object's flag withheld before is cleared when the new counts bear it out.
     delete kept.unusedWithheld;
+  }
+  if (kept.kind === 'steering-note') {
+    // A note's example is re-anchored on carry (Slice 4F): a field it no longer has is dropped, not left undefined.
+    if (kept.example === undefined) {
+      delete kept.example;
+    }
+    if (kept.exampleWithheld === undefined) {
+      delete kept.exampleWithheld;
+    }
   }
   if (kept.kind === 'subtext' && said) {
     return { tile: { ...kept, said }, lost: lost.length };

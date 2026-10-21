@@ -1,0 +1,83 @@
+/**
+ * What craft steering's readings carry to the Workshop (ADR 2026-10-19 D11,
+ * D7 second addendum; Slice 4F). Pure: no host, no I/O. Used by
+ * `LightboxTileHandoff`, which resolves the tile by id on the host's current
+ * board, refuses a stale or re-reading one, checks every quote again and
+ * bounds the item; this module says how a steering quote is checked again
+ * and what the item's points are.
+ *
+ * - **Quotes** travel only while the figure's own detector still finds an
+ *   instance in them (`verifyLightboxPatternInstance`), as they were kept.
+ *   A note with its one quote gone is refused.
+ * - **A figure's reading** carries the host's counts as points: the total
+ *   and rate with narration and dialogue, the constructions, and the
+ *   instances in runs of short sentences, with the run's stated threshold.
+ * - **A note** carries its stance (with its figure), its nudge, and its one
+ *   example labelled "One way it could go", as `before → after`. The example
+ *   travels only while its `before` still lies in the note's re-checked
+ *   quote holding the instance (`anchorLightboxSteeringExample`). It is a
+ *   point, never a quote: the Workshop never sees it as the chapter's text.
+ * The why is the item's claim. Nothing else of the board travels.
+ */
+
+import type { LightboxBoard, LightboxReadingTile, WorkshopLightboxTilePoint } from '@messages';
+import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
+import {
+  LIGHTBOX_STEERING_EXAMPLE_LABEL,
+  LIGHTBOX_STEERING_STANCE_LABELS,
+  lightboxSteeringConstructionLine,
+  lightboxSteeringCountLines,
+  lightboxSteeringFigure
+} from '@shared/constants/lightboxSteering';
+import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { verifyLightboxPatternInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { anchorLightboxSteeringExample } from '@/infrastructure/lightbox/LightboxSteeringTiles';
+
+type Quote = { paragraph: number; text: string };
+type Point = (label: string, text: string) => WorkshopLightboxTilePoint;
+
+/** A steering tile's quote as it stands now, holding an instance of its figure; undefined when it does not, or for another kind. */
+export function lightboxSteeringQuoteAgain(
+  tile: LightboxReadingTile,
+  verifier: LightboxQuoteVerifier,
+  quote: Quote
+): Quote | null | undefined {
+  if (tile.kind !== 'steering-reading' && tile.kind !== 'steering-note') {
+    return undefined;
+  }
+  const verdict = verifyLightboxPatternInstance(verifier, tile.stat, quote.paragraph, quote.text);
+  return verdict.found ? { paragraph: verdict.paragraph, text: verdict.text } : null;
+}
+
+/** A steering tile's points on `board`, with its example anchored in `quotes` (as they travel); undefined for another kind. */
+export function lightboxSteeringPoints(
+  tile: LightboxReadingTile,
+  board: LightboxBoard,
+  verifier: LightboxQuoteVerifier,
+  quotes: readonly Quote[],
+  point: Point
+): WorkshopLightboxTilePoint[] | undefined {
+  if (tile.kind === 'steering-reading') {
+    const figure = lightboxSteeringFigure(board.measured.steering.figures, tile.stat);
+    if (!figure) {
+      return [];
+    }
+    const [counts] = lightboxSteeringCountLines(figure);
+    const constructions = lightboxSteeringConstructionLine(figure);
+    const runs = board.measured.steering.shortRun;
+    return [
+      point('Figure', counts),
+      ...(constructions ? [point('By construction', constructions)] : []),
+      point('Short runs', `${figure.inShortRuns.toLocaleString('en-US')} in runs of ${runs.sentences} or more sentences of ${runs.maxWords} words or fewer`)
+    ];
+  }
+  if (tile.kind !== 'steering-note') {
+    return undefined;
+  }
+  const anchored = tile.example && quotes[0] ? anchorLightboxSteeringExample(verifier, tile.stat, quotes[0], tile.example) : undefined;
+  return [
+    point('Stance', `${LIGHTBOX_STEERING_STANCE_LABELS[tile.stance]} · ${LIGHTBOX_NUMBER_STAT_LABELS[tile.stat]}`),
+    ...(tile.nudge ? [point('Nudge', tile.nudge)] : []),
+    ...(anchored ? [point(LIGHTBOX_STEERING_EXAMPLE_LABEL, `${anchored.before} → ${anchored.after}`)] : [])
+  ];
+}

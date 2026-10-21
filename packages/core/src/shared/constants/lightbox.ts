@@ -83,7 +83,10 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   synopsis: 'read',
   movement: 'read',
   // Slice 4D: the one evaluative tile is read, and drawn with its own chip ("The one evaluative tile").
-  opinion: 'read'
+  opinion: 'read',
+  // Slice 4F: a figure code measured, read for how it works; and one instance, read.
+  'steering-reading': 'counted-read',
+  'steering-note': 'read'
 };
 
 /** The lens each reading kind belongs to. */
@@ -117,7 +120,9 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   artifact: 'artifacts',
   synopsis: 'summary',
   movement: 'summary',
-  opinion: 'opinion'
+  opinion: 'opinion',
+  'steering-reading': 'steering',
+  'steering-note': 'steering'
 };
 
 /** What one reading of each kind is called, e.g. in the inspector's "Theme & motif · Motif". */
@@ -151,7 +156,9 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   artifact: 'Object',
   synopsis: 'Synopsis',
   movement: 'Movement',
-  opinion: 'Opinion'
+  opinion: 'Opinion',
+  'steering-reading': 'How it works here',
+  'steering-note': 'Instance note'
 };
 
 /**
@@ -257,8 +264,11 @@ export const LIGHTBOX_NUMBER_USAGE_LABELS: Readonly<Record<LightboxNumberUsage, 
   habit: 'Reads as habit'
 };
 
-/** The reading groups, in board order (D6): A–E read the chapter, and F, last, reads the board (Slice 4D). */
-export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D', 'E', 'F'];
+/**
+ * The reading groups, in board order (D6): A–E and G (Slice 4F, craft
+ * steering) read the chapter, and F, last, reads the board (Slice 4D).
+ */
+export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D', 'E', 'G', 'F'];
 
 /**
  * The group that reads the board, not the chapter (Slice 4D): the Opinion.
@@ -298,6 +308,7 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   pressure: { label: 'Pressure', group: 'E' },
   artifacts: { label: 'Artifacts', group: 'E' },
   summary: { label: 'Summary & movements', group: 'E' },
+  steering: { label: 'Craft steering', group: 'G' },
   opinion: { label: 'Opinion', group: 'F' }
 };
 

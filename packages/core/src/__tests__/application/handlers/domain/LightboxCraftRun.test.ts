@@ -14,6 +14,7 @@ jest.mock('p-limit', () => ({
 }));
 
 import type { InitialRunRequest } from '@orchestration/AgentRunContracts';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 import { MessageType } from '@/shared/types/messages';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
 import { CHAPTER, createLightboxReadingHost, examples, groupOf, settle } from './lightboxReadingHarness';
@@ -55,7 +56,7 @@ describe('a press with the craft lenses on (Slice 4B)', () => {
 
   it('reads every group, group D with its own prompt files and a task naming only what stands out', async () => {
     const { host, tab } = await pressAll();
-    expect(host.runInitial.mock.calls.map(([request]) => groupOf(request)).sort()).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+    expect(host.runInitial.mock.calls.map(([request]) => groupOf(request)).sort()).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
     const groupD = requestFor(host.runInitial.mock.calls, 'D');
     expect(groupD.systemMessage).toBe(
       'SYSTEM lightbox/00-lightbox-shared.md + lightbox/50-stock-signature.md + lightbox/51-rhythm-handoffs.md + ' +
@@ -64,13 +65,19 @@ describe('a press with the craft lenses on (Slice 4B)', () => {
     const standouts = host.board.measured.numbers.rows.filter((row) => row.standout).map((row) => row.stat);
     expect(standouts.length).toBeGreaterThan(0);
     const named = [...groupD.userMessage.matchAll(/^- `([a-z-]+)`:/gm)].map((match) => match[1]);
-    expect(named).toEqual(standouts);
+    // Craft steering's figures stand out here too, and are never named to the numbers lens (Slice 4F).
+    expect(standouts).toEqual(expect.arrayContaining(['adverbs', 'intensifiers']));
+    expect(named).toEqual(standouts.filter((stat) => LIGHTBOX_NUMBERS_READ_STATS.includes(stat)));
+    // Group G's task names all three, whatever their rates, and nothing of the numbers.
+    const groupG = requestFor(host.runInitial.mock.calls, 'G');
+    expect([...groupG.userMessage.matchAll(/^- `([a-z-]+)`:/gm)].map((match) => match[1])).toEqual(['being-verbs', 'adverbs', 'intensifiers']);
+    expect(groupG.systemMessage).toBe('SYSTEM lightbox/00-lightbox-shared.md + lightbox/58-steering.md + lightbox/46-example-group-g.md');
     expect(groupD.userMessage).toContain(`The rhythm block gives one ending for each of ${host.board.ribbon.length} ribbon columns`);
     // Only group D's task names the figures.
     for (const group of ['A', 'B', 'C']) {
       expect(requestFor(host.runInitial.mock.calls, group).userMessage).not.toContain('stand out');
     }
-    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 6 });
+    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 7 });
   });
 
   it('lands group D on the board: its tiles drawn, and a numbers reading only of a figure that stands out', async () => {

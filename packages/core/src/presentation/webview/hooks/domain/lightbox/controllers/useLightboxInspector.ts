@@ -32,6 +32,7 @@ import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
 import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
 import { lightboxOpinionDetails } from '@hooks/domain/lightbox/lightboxOpinion';
+import { lightboxSteeringDetails } from '@hooks/domain/lightbox/lightboxSteering';
 import { lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
 import {
   LIGHTBOX_ECHO_ACCURACY,
@@ -285,6 +286,10 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
     // Slice 4D: the one evaluative tile, what stood and what it read.
     case 'opinion':
       return lightboxOpinionDetails(tile);
+    // Slice 4F: a figure's reading, or a note's stance, nudge and its one example, labelled as one.
+    case 'steering-reading':
+    case 'steering-note':
+      return lightboxSteeringDetails(tile, board) ?? [];
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':

@@ -186,6 +186,9 @@ export function recountLightboxTile(
     case 'artifact':
     case 'synopsis':
     case 'movement':
+    // Group G (Slice 4F): its figures' counts are measured with the board, never on a tile.
+    case 'steering-reading':
+    case 'steering-note':
       return { ...tile, support };
     // Slice 4D: the Opinion counts nothing; it is carried by its own rules (`LightboxOpinionGates`).
     case 'opinion':

@@ -1,5 +1,5 @@
 /**
- * Fixtures for the Lightbox's group F (Slice 4D): a board whose groups A–E
+ * Fixtures for the Lightbox's group F (Slice 4D): a board whose groups A–E and G
  * are the prompt bundle's worked examples, read as the runner reads them,
  * on their own excerpt of Lewis Carroll's "Alice's Adventures in
  * Wonderland" (1865, public domain), measured by the production service
@@ -41,7 +41,7 @@ export const OPINION_EXAMPLE_LENSES_OFF: LightboxLensId[] = [
 /** The run token prefix of the worked example's ids. */
 export const OPINION_EXAMPLE_PREFIX = '5b1e09c4';
 
-/** `board` with groups A–E read from their worked examples, as a run would read them with `lensesOff`. */
+/** `board` with groups A–E and G read from their worked examples, as a run would read them with `lensesOff`. */
 export function readChapterGroups(
   board: LightboxBoard,
   paragraphs: readonly string[] = ALICE,

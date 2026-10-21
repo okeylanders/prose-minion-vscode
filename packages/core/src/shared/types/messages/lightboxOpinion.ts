@@ -25,6 +25,7 @@
  */
 
 import type { LightboxNumberStatId } from './lightboxNumbers';
+import type { LightboxSteeringStatId } from './lightboxSteering';
 import type { LightboxReadingTileBase, LightboxVerifiedQuote } from './lightboxReadings';
 
 /** The three temperaments, in tab order. Neutral is the default view. */
@@ -35,11 +36,17 @@ export type LightboxOpinionWeight = 'strength' | 'even' | 'concern';
 
 /**
  * A measured figure the Opinion may cite, by a ref that names it on any
- * board: the headline stats, a figure that stands out (by its stat id), or
- * a section of the Sections lane (by its place, from 1). A section's place
+ * board: the headline stats, a figure that stands out (by its stat id), a
+ * section of the Sections lane (by its place, from 1), or a craft steering
+ * figure's counts (by its stat id). A section's place
  * is positional, so its citation's `basis` holds the section's own range.
  */
-export type LightboxOpinionMeasuredRef = 'headline' | `standout:${LightboxNumberStatId}` | `section:${number}`;
+export type LightboxOpinionMeasuredRef =
+  | 'headline'
+  | `standout:${LightboxNumberStatId}`
+  | `section:${number}`
+  /** A craft steering figure's measured counts (Slice 4F). */
+  | `steering:${LightboxSteeringStatId}`;
 
 /** One board item an observation cites. */
 export interface LightboxOpinionCite {

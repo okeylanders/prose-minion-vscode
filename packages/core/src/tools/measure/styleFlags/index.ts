@@ -5,7 +5,8 @@
  * The adverb, passive-voice and filler detectors are exported (Lightbox
  * Slice 4B), so the Lightbox's measured standouts count, place and check a
  * quote with the very rules the tool counts by. The tool counts through
- * them; its output is unchanged (pinned by its tests).
+ * them; its output is unchanged (pinned by its tests). The weak-verbs list
+ * is exported too (Slice 4F), so craft steering names the same verbs.
  */
 
 /** One match of a detector: its offsets in the text and the text matched. */
@@ -14,6 +15,11 @@ export interface StyleFlagMatch {
   end: number;
   text: string;
 }
+
+/** Weak verbs the tool flags, as whole words, any case. */
+export const STYLE_FLAG_WEAK_VERBS = [
+  'is', 'are', 'was', 'were', 'has', 'have', 'had', 'do', 'does', 'did', 'make', 'makes', 'made', 'get', 'gets', 'got'
+] as const;
 
 /** Fillers and intensifiers the tool flags, as whole words, any case. */
 export const STYLE_FLAG_FILLER_WORDS = [
@@ -108,8 +114,7 @@ export class StyleFlags {
 
   private checkWeakVerbs(text: string): StyleFlag {
     // Common weak verbs
-    const weakVerbs = ['is', 'are', 'was', 'were', 'has', 'have', 'had', 'do', 'does', 'did', 'make', 'makes', 'made', 'get', 'gets', 'got'];
-    const pattern = new RegExp(`\\b(${weakVerbs.join('|')})\\b`, 'gi');
+    const pattern = new RegExp(`\\b(${STYLE_FLAG_WEAK_VERBS.join('|')})\\b`, 'gi');
     const matches = text.match(pattern) || [];
     const examples = this.getUniqueExamples(matches, 5);
 

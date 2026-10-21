@@ -1,6 +1,8 @@
 /** Guard the prompt-budget table against new module-local limit constants. */
 
 import * as fs from 'fs';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
+import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -111,7 +113,7 @@ describe('prompt budgets', () => {
       airLocks: 3,
       echoes: 3,
       handoffs: 3,
-      numberReadings: 6,
+      numberReadings: 3,
       templateBeats: 6,
       pressureThreads: 6,
       threadEscalations: 3,
@@ -131,10 +133,19 @@ describe('prompt budgets', () => {
       opinionHeadlineCharacters: 120,
       opinionBodyCharacters: 320,
       opinionWhyPoints: 4,
-      opinionWhyCharacters: 120
+      opinionWhyCharacters: 120,
+      steeringNotes: 4,
+      steeringWhyCharacters: 160,
+      steeringNudgeCharacters: 120,
+      steeringExampleBeforeWords: 8,
+      steeringExampleAfterWords: 6,
+      steeringExampleCharacters: 56
     });
-    // One usage reading per measured figure at most (Slice 4B: six figures).
-    expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(6);
+    // One usage reading per figure the numbers lens reads at most (Slice 4B; three since Slice 4F gave craft steering the others).
+    expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(LIGHTBOX_NUMBERS_READ_STATS.length);
+    // A brought steering note travels whole: its nudge and its example (both sides and the arrow) each fit one Workshop point (Slice 4F).
+    expect(PROMPT_BUDGETS.lightbox.steeringNudgeCharacters).toBeLessThanOrEqual(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    expect(2 * PROMPT_BUDGETS.lightbox.steeringExampleCharacters + ' → '.length).toBeLessThanOrEqual(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
     // A synopsis's quotes stay within a claim's quotes, and engagement gives one entry per movement (Slice 4C).
     expect(PROMPT_BUDGETS.lightbox.synopsisQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
     // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.

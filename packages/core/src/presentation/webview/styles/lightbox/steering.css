@@ -1,0 +1,188 @@
+/* ============================================================
+   Prose Minion — the Lightbox's craft steering (Slice 4F; ADR 2026-10-19
+   D7 second addendum): being verbs, adverbs and intensifiers, one section
+   each. Measured parts are solid with the coral accent; readings and
+   notes are dashed periwinkle. A nudge's one example is an illustration,
+   so it is drawn in a dotted box of its own, never as a quote.
+   Plain CSS on the Chromium 102 floor (webviewCssFloor.test.ts).
+   ============================================================ */
+
+[data-pm-surface="lightbox"] .pm-lb-steer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---------- Buttons: every row and note is hoverable and pinnable ---------- */
+[data-pm-surface="lightbox"] .pm-lb-steer-head,
+[data-pm-surface="lightbox"] .pm-lb-steer-row,
+[data-pm-surface="lightbox"] .pm-lb-steer-reading,
+[data-pm-surface="lightbox"] .pm-lb-steer-note {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ---------- Measured: solid ---------- */
+[data-pm-surface="lightbox"] .pm-lb-steer-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-name { font-family: var(--pm-lb-display); font-size: 14px; font-weight: 600; color: var(--pm-text); }
+[data-pm-surface="lightbox"] .pm-lb-steer-total { font-family: var(--pm-mono); font-size: 11.5px; color: var(--pm-lb-measured-hi); }
+[data-pm-surface="lightbox"] .pm-lb-steer-meta { margin: 0; font-family: var(--pm-mono); font-size: 10.5px; line-height: 1.5; color: var(--pm-muted); }
+[data-pm-surface="lightbox"] .pm-lb-steer-measured {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--pm-lb-measured-line);
+  border-radius: 9px;
+  background: var(--pm-lb-measured-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i { display: block; height: 100%; }
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i.is-seg1,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i.is-seg1 { background: var(--pm-lb-measured); }
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i.is-seg2,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i.is-seg2 { background: var(--pm-lb-measured-ramp-2); }
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i.is-seg3,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i.is-seg3 { background: var(--pm-lb-measured-ramp-3); }
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i.is-seg4,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i.is-seg4 { background: var(--pm-lb-measured-ramp-4); }
+[data-pm-surface="lightbox"] .pm-lb-steer-bar i.is-other,
+[data-pm-surface="lightbox"] .pm-lb-steer-row i.is-other { background: var(--pm-surface-2); }
+[data-pm-surface="lightbox"] .pm-lb-steer-key {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 6px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-row i { width: 10px; height: 10px; border-radius: 2px; }
+[data-pm-surface="lightbox"] .pm-lb-steer-count { color: var(--pm-lb-measured-hi); }
+[data-pm-surface="lightbox"] .pm-lb-steer-head:hover,
+[data-pm-surface="lightbox"] .pm-lb-steer-head.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-steer-row:hover,
+[data-pm-surface="lightbox"] .pm-lb-steer-row.is-hot { border-color: var(--pm-lb-measured-line); }
+[data-pm-surface="lightbox"] .pm-lb-steer-head.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-steer-row.is-sel {
+  border-color: var(--pm-lb-measured);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-measured);
+}
+
+/* ---------- Read: dashed ---------- */
+[data-pm-surface="lightbox"] .pm-lb-steer-notes { display: flex; flex-direction: column; gap: 8px; }
+[data-pm-surface="lightbox"] .pm-lb-steer-reading,
+[data-pm-surface="lightbox"] .pm-lb-steer-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px dashed var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-reading .pm-lb-craft-chip { align-self: flex-start; }
+[data-pm-surface="lightbox"] .pm-lb-steer-reading:hover,
+[data-pm-surface="lightbox"] .pm-lb-steer-reading.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-steer-note:hover,
+[data-pm-surface="lightbox"] .pm-lb-steer-note.is-hot { border-color: var(--pm-lb-read); }
+[data-pm-surface="lightbox"] .pm-lb-steer-reading.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-steer-note.is-sel {
+  border-color: var(--pm-lb-read);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-note-top { display: flex; align-items: center; gap: 8px; }
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-earns { color: var(--pm-lb-read); border: 1px dashed var(--pm-lb-read-line); }
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-leans { color: var(--pm-text-2); border: 1px solid var(--pm-border-2); }
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-compensates {
+  color: var(--pm-text);
+  border: 1px solid var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-nudge,
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-nudge b,
+[data-pm-surface="lightbox"] .pm-lb-steer-example b,
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld b {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld { color: var(--pm-muted); font-size: 11.5px; }
+[data-pm-surface="lightbox"] .pm-lb-steer-withheld b { color: var(--pm-muted); }
+
+/* ---------- The one example: an illustration, never a quote ---------- */
+[data-pm-surface="lightbox"] .pm-lb-steer-example {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px dotted var(--pm-border-2);
+  border-radius: 7px;
+  background: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-steer-example-pair { font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+[data-pm-surface="lightbox"] .pm-lb-steer-before { color: var(--pm-muted); }
+[data-pm-surface="lightbox"] .pm-lb-steer-arrow { color: var(--pm-lb-read); }
+[data-pm-surface="lightbox"] .pm-lb-steer-after { color: var(--pm-text); font-weight: 600; }
+[data-pm-surface="lightbox"] .pm-lb-steer-example i { font-style: normal; font-size: 10.5px; color: var(--pm-muted); }
+
+/* ---------- The numbers tile's pointer for a figure craft steering reads ---------- */
+[data-pm-surface="lightbox"] .pm-lb-number-steered {
+  grid-column: 2 / -1;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-lb-read);
+}
+
+@media (max-width: 1100px) {
+  [data-pm-surface="lightbox"] .pm-lb-steer-grid { grid-template-columns: minmax(0, 1fr); }
+  [data-pm-surface="lightbox"] .pm-lb-number-steered { grid-column: 1 / -1; }
+}

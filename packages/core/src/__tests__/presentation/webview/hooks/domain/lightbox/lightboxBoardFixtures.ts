@@ -118,7 +118,42 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
       },
       // Slice 4C: the ¶1 heading fires, but one heading divides nothing.
       // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the signals' kebab-case protocol ids.
-      sections: { signal: 'none', sections: [], fired: { headings: [1], 'scene-breaks': [], 'chapter-lines': [] } }
+      sections: { signal: 'none', sections: [], fired: { headings: [1], 'scene-breaks': [], 'chapter-lines': [] } },
+      // Slice 4F: craft steering's counts, synthetic; the adverbs agree with the numbers row above.
+      steering: {
+        figures: [
+          {
+            stat: 'being-verbs', total: 3, rate: 25, narration: 2, dialogue: 1, inShortRuns: 1, paragraphs: [2, 4],
+            constructions: [
+              { construction: 'adjective', count: 1, paragraphs: [2] },
+              { construction: 'progressive', count: 1, paragraphs: [4] },
+              { construction: 'passive', count: 0, paragraphs: [] },
+              { construction: 'expletive', count: 1, paragraphs: [4] },
+              { construction: 'other', count: 0, paragraphs: [] }
+            ]
+          },
+          {
+            stat: 'adverbs', total: 4, rate: 20, narration: 4, dialogue: 0, inShortRuns: 0, paragraphs: [3, 5], weakVerbs: 1,
+            constructions: [
+              { construction: 'with-verb', count: 3, paragraphs: [3, 5] },
+              { construction: 'dialogue-tag', count: 0, paragraphs: [] },
+              { construction: 'before-adjective', count: 1, paragraphs: [5] },
+              { construction: 'before-adverb', count: 0, paragraphs: [] },
+              { construction: 'other', count: 0, paragraphs: [] }
+            ]
+          },
+          {
+            stat: 'intensifiers', total: 0, rate: 0, narration: 0, dialogue: 0, inShortRuns: 0, paragraphs: [],
+            constructions: [
+              { construction: 'generic', count: 0, paragraphs: [] },
+              { construction: 'before-modifier', count: 0, paragraphs: [] },
+              { construction: 'other', count: 0, paragraphs: [] }
+            ]
+          }
+        ],
+        shortRun: { sentences: 3, maxWords: 8 },
+        tagged: true
+      }
     },
     readings: LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
   };

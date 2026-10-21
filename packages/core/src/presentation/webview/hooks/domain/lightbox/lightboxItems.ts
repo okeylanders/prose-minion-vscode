@@ -34,6 +34,12 @@ import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
 import { lightboxObservationItem } from '@hooks/domain/lightbox/lightboxOpinion';
+import {
+  lightboxSteeringItem,
+  lightboxSteeringRefKey,
+  parseLightboxSteeringRef,
+  type LightboxSteeringRef
+} from '@hooks/domain/lightbox/lightboxSteering';
 
 export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
 
@@ -54,7 +60,9 @@ export type LightboxItemRef =
   /** The Pressure lane (Slice 4C): where the threads read stand open, counted by code. */
   | { kind: 'pressure' }
   /** One of the Opinion's observations (Slice 4D), by the tile's host id and the observation's id: it lights what it cites. */
-  | { kind: 'observation'; tileId: string; observation: string };
+  | { kind: 'observation'; tileId: string; observation: string }
+  /** A craft steering figure's measured counts, or one construction of them (Slice 4F): it lights the paragraphs holding them. */
+  | LightboxSteeringRef;
 
 export interface LightboxResolvedItem {
   ref: LightboxItemRef;
@@ -109,6 +117,8 @@ export function lightboxItemKey(ref: LightboxItemRef): string {
       return 'pressure';
     case 'observation':
       return `observation:${ref.tileId}:${ref.observation}`;
+    case 'steering':
+      return lightboxSteeringRefKey(ref);
   }
 }
 
@@ -167,6 +177,8 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
       const observation = text('observation');
       return tileId && observation && /^O[1-6]$/.test(observation) ? { kind: 'observation', tileId, observation } : null;
     }
+    case 'steering':
+      return parseLightboxSteeringRef(record);
     default:
       return null;
   }
@@ -205,6 +217,8 @@ export function resolveLightboxItem(
     }
     case 'standout':
       return standoutItem(board, ref);
+    case 'steering':
+      return lightboxSteeringItem(board, ref);
     case 'observation': {
       const observation = lightboxObservationItem(board, ref.tileId, ref.observation);
       return observation

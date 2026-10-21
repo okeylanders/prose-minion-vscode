@@ -22,6 +22,10 @@
  *
  * The task lines tell the model, by id, which figures stand out and what an
  * instance looks like; they name no count the model could repeat as its own.
+ * Since Slice 4F they list only the figures the numbers lens still reads
+ * (`LIGHTBOX_NUMBERS_READ_STATS`): being verbs, adverbs and intensifiers are
+ * craft steering's, whose quotes are held to the same word-pattern filter
+ * (`lightboxPatternInstanceFilter`, `verifyLightboxPatternInstance`).
  */
 
 import type { LightboxNumberRow, LightboxNumberStatId, LightboxReadingTile, LightboxWithheldClaim } from '@messages';
@@ -31,8 +35,13 @@ import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import { STYLE_FLAG_FILLER_WORDS } from '@/tools/measure/styleFlags';
 import { BEING_VERB_FORMS } from '@/tools/measure/beingVerbs';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import { LIGHTBOX_NUMBER_PATTERNS, LIGHTBOX_NUMBER_STATS } from '@/infrastructure/lightbox/LightboxNumbers';
+import {
+  LIGHTBOX_NUMBER_PATTERNS,
+  LIGHTBOX_NUMBER_STATS,
+  type LightboxNumberPatternId
+} from '@/infrastructure/lightbox/LightboxNumbers';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 
 /** The standouts on a board, by figure: what a numbers reading may name, and how its quotes are checked. */
 export type LightboxStandoutRows = ReadonlyMap<LightboxNumberStatId, LightboxNumberRow>;
@@ -122,24 +131,50 @@ export function lightboxInstanceFilter(row: LightboxNumberRow, paragraphs: reado
     case 'passive-voice':
     case 'being-verbs':
     case 'adverbs':
-    case 'intensifiers': {
-      // Matched over the whole paragraph, as the figure was counted, so a
-      // span cut mid-word ("ly tired" of "only tired") holds no match it
-      // would not have counted.
-      const detect = LIGHTBOX_NUMBER_PATTERNS[row.stat];
-      const matches = new Map<number, Array<{ start: number; end: number }>>();
-      return (paragraph, start, end) => {
-        const source = text(paragraph);
-        if (source === undefined) {
-          return false;
-        }
-        if (!matches.has(paragraph)) {
-          matches.set(paragraph, detect(source));
-        }
-        return (matches.get(paragraph) ?? []).some((match) => start <= match.start && match.end <= end);
-      };
-    }
+    case 'intensifiers':
+      return lightboxPatternInstanceFilter(row.stat, paragraphs);
   }
+}
+
+/**
+ * Whether a found span holds a match of a word pattern's detector, matched
+ * over the whole paragraph as the figure was counted, so a span cut mid-word
+ * ("ly tired" of "only tired") holds no match it would not have counted.
+ * Shared by the numbers lens and craft steering (Slice 4F), which hold a
+ * quote to the figure's own detector whether or not it stands out.
+ */
+export function lightboxPatternInstanceFilter(stat: LightboxNumberPatternId, paragraphs: readonly string[]): LightboxSpanFilter {
+  const detect = LIGHTBOX_NUMBER_PATTERNS[stat];
+  const matches = new Map<number, Array<{ start: number; end: number }>>();
+  return (paragraph, start, end) => {
+    const source = paragraphs[paragraph - 1];
+    if (source === undefined) {
+      return false;
+    }
+    if (!matches.has(paragraph)) {
+      matches.set(paragraph, detect(source));
+    }
+    return (matches.get(paragraph) ?? []).some((match) => start <= match.start && match.end <= end);
+  };
+}
+
+/** A word pattern's quote, by its detector: the first accepted span holding an instance, else `no-instance` or the verifier's failure. */
+export function verifyLightboxPatternInstance(
+  verifier: LightboxQuoteVerifier,
+  stat: LightboxNumberPatternId,
+  paragraph: number,
+  quote: string
+): LightboxQuoteVerdict {
+  return verifyWith(verifier, lightboxPatternInstanceFilter(stat, verifier.paragraphs), paragraph, quote);
+}
+
+function verifyWith(verifier: LightboxQuoteVerifier, filter: LightboxSpanFilter, paragraph: number, quote: string): LightboxQuoteVerdict {
+  const held = verifier.verify(paragraph, quote, filter);
+  if (held.found) {
+    return held;
+  }
+  const plain = verifier.verify(paragraph, quote);
+  return plain.found ? { found: false, paragraph: plain.paragraph, reason: 'no-instance' } : held;
 }
 
 /**
@@ -153,19 +188,18 @@ export function verifyLightboxInstance(
   paragraph: number,
   quote: string
 ): LightboxQuoteVerdict {
-  const held = verifier.verify(paragraph, quote, lightboxInstanceFilter(row, verifier.paragraphs));
-  if (held.found) {
-    return held;
-  }
-  const plain = verifier.verify(paragraph, quote);
-  return plain.found ? { found: false, paragraph: plain.paragraph, reason: 'no-instance' } : held;
+  return verifyWith(verifier, lightboxInstanceFilter(row, verifier.paragraphs), paragraph, quote);
 }
 
-/** The task's lines for the numbers lens: each standout by id, with what an instance looks like. */
+/**
+ * The task's lines for the numbers lens: each standout it reads by id, with
+ * what an instance looks like. Craft steering's figures are never listed
+ * (Slice 4F): they are read there, standing out or not.
+ */
 export function lightboxNumberTaskLines(rows: readonly LightboxNumberRow[] | undefined): string[] {
-  const standouts = (rows ?? []).filter((row) => row.standout);
+  const standouts = (rows ?? []).filter((row) => row.standout && LIGHTBOX_NUMBERS_READ_STATS.includes(row.stat));
   if (standouts.length === 0) {
-    return ['The board measured no figure as standing out in this chapter: return the numbers block with no items, and say so in its friction.'];
+    return ['None of the figures this lens reads (sentence length, dialogue, passive voice) stands out in this chapter: return the numbers block with no items, and say so in its friction.'];
   }
   return [
     'The board measured these figures as standing out in this chapter. Read how each is used, by its id, and only these:',
@@ -197,12 +231,28 @@ function instancePhrase(row: LightboxNumberRow): string {
         ? 'Quote words from inside quotation marks.'
         : 'Quote narration from a paragraph with no dialogue in it.';
     case 'passive-voice':
-      return 'Each quote must contain was, were, been or being followed by a word ending in -ed.';
     case 'being-verbs':
-      return `Each quote must contain one of: ${BEING_VERB_FORMS.join(', ')}.`;
     case 'adverbs':
-      return 'Each quote must contain a word ending in -ly.';
     case 'intensifiers':
-      return `Each quote must contain one of: ${STYLE_FLAG_FILLER_WORDS.join(', ')}.`;
+      return `Each quote must contain ${lightboxPatternInstancePhrase(row.stat)}`;
+  }
+}
+
+/**
+ * What an instance of a word pattern is, said so a reading quotes one
+ * (Slice 4F, the being-verbs investigation): the whole words the detector
+ * counts, and what it does not count that a reader might take for one.
+ */
+export function lightboxPatternInstancePhrase(stat: LightboxNumberPatternId): string {
+  switch (stat) {
+    case 'passive-voice':
+      return 'was, were, been or being followed by a word ending in -ed.';
+    case 'being-verbs':
+      return `one of these whole words: ${BEING_VERB_FORMS.join(', ')}. A contraction (she's, I'm, they're, isn't, wasn't, ain't), ` +
+        'a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.';
+    case 'adverbs':
+      return 'a whole word ending in -ly (the detector counts every one, "only" and "family" too).';
+    case 'intensifiers':
+      return `one of these whole words: ${STYLE_FLAG_FILLER_WORDS.join(', ')}.`;
   }
 }

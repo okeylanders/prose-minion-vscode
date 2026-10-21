@@ -204,6 +204,18 @@ export interface PromptBudgets {
     /** Why points one view may give (at least one), each citing at most `opinionCitesPerObservation` observations. */
     opinionWhyPoints: number;
     opinionWhyCharacters: number;
+    /** Instance notes craft steering may give for one figure (Slice 4F). */
+    steeringNotes: number;
+    /** A note's why: one line on how the instance works where it stands. */
+    steeringWhyCharacters: number;
+    /** A note's nudge: the craft move, named, worth a look. Within a Workshop tile's point, so a brought note travels whole. */
+    steeringNudgeCharacters: number;
+    /** A note's one example (epic decision 23): its `before`, a run of the checked quote, in words. */
+    steeringExampleBeforeWords: number;
+    /** Its `after`, one way the move could go, in words: phrase-level, never a passage. */
+    steeringExampleAfterWords: number;
+    /** Either side of the example, in characters: both, with the arrow between, fit one Workshop tile point. */
+    steeringExampleCharacters: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -467,7 +479,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     airLocks: 3,
     echoes: 3,
     handoffs: 3,
-    numberReadings: 6,
+    numberReadings: 3,
     templateBeats: 6,
     pressureThreads: 6,
     threadEscalations: 3,
@@ -486,7 +498,13 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     opinionHeadlineCharacters: 120,
     opinionBodyCharacters: 320,
     opinionWhyPoints: 4,
-    opinionWhyCharacters: 120
+    opinionWhyCharacters: 120,
+    steeringNotes: 4,
+    steeringWhyCharacters: 160,
+    steeringNudgeCharacters: 120,
+    steeringExampleBeforeWords: 8,
+    steeringExampleAfterWords: 6,
+    steeringExampleCharacters: 56
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

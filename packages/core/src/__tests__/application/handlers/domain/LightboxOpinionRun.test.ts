@@ -51,8 +51,8 @@ import {
   type LightboxReadingHostOptions
 } from './lightboxReadingHarness';
 
-/** The groups the example's lenses read: C has every lens off. */
-const CHAPTER_GROUPS: LightboxReadingGroupId[] = ['A', 'B', 'D', 'E'];
+/** The groups the example's lenses read: C has every lens off; G is craft steering (Slice 4F). */
+const CHAPTER_GROUPS: LightboxReadingGroupId[] = ['A', 'B', 'D', 'E', 'G'];
 const SOURCE = { kind: 'file', text: CHAPTER, displayPath: 'Drafts/alice-1.md', rereadPath: '/workspace/Drafts/alice-1.md' } as const;
 
 const answer = (request: InitialRunRequest): ExecutionResult =>
@@ -124,10 +124,10 @@ describe('a press reads the Opinion last, on the board its other groups left (Sl
       await press.release(group);
       expect(press.asked()).not.toContain('F');
     }
-    await press.release('E');
+    await press.release('G');
     expect(press.asked().at(-1)).toBe('F');
     const request = press.host.runInitial.mock.calls.at(-1)?.[0];
-    // The board's digest as A–E left it: the worked example's request, byte for byte.
+    // The board's digest as A–E and G left it: the worked example's request, byte for byte.
     expect(request?.userMessage).toBe(examples.F.request);
     expect(request?.systemMessage).toBe('SYSTEM lightbox/57-opinion.md + lightbox/45-example-group-f.md');
 
@@ -137,7 +137,7 @@ describe('a press reads the Opinion last, on the board its other groups left (Sl
     expect(tile.digest.key).toBe(buildLightboxOpinionDigest(press.board()).key);
     expect(lightboxOpinionStanding(tile, press.board())).toMatchObject({ stale: false, changed: [] });
     expect(press.tab.logged()).toContain(`Group F landed on digest ${tile.digest.key.slice(0, 12)}, the board it read: current`);
-    expect(press.tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 5 });
+    expect(press.tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 6 });
   });
 
   it('never starts F once the press is stopped', async () => {
@@ -188,7 +188,7 @@ describe('a press reads the Opinion last, on the board its other groups left (Sl
     const press = await exampleHost();
     const estimate = press.tab.ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).at(-1)?.payload.estimate;
     const f = estimate?.groups.find((call) => call.group === 'F');
-    expect(estimate?.groups.map((call) => call.group)).toEqual(['A', 'B', 'D', 'E', 'F']);
+    expect(estimate?.groups.map((call) => call.group)).toEqual(['A', 'B', 'D', 'E', 'G', 'F']);
     expect(f).toMatchObject({ lenses: ['opinion'], inputBound: 'digest' });
     expect(f?.inputTokens).toBeGreaterThan(PROMPT_BUDGETS.lightbox.opinionDigestTokens);
     const reread = estimate?.rereads.find((call) => call.lenses.includes('opinion'));
