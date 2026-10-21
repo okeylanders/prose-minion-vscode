@@ -164,16 +164,36 @@ All three captures:
     to `fabd95d`'s, and to the head's.
   - So the three states differ only in what the rule measures. The
     head's state, rebuilt after the last rule change, is byte-identical.
-- **Bundle.** All three were rendered with this branch's `webview.js`,
-  SHA-256
-  `2f86917e89befed61189d1422fbb71e211c2ea59e28fbd0c9a0e8db06de2ae04`.
-  - That is Slice 4E's own bundle after its PR #159 fixes. The webview
-    holds no sentence rule; it shows what the host measured.
-  - It was built by `npm run build` (with `verify:bundle`) after `npm ci`
-    into the worktree's own `node_modules`, and reproduced by a second
-    build.
-  - `extension.js`, where the rule runs, is `865b2c9f…` at the head,
-    reproduced; it was `b8cb056a…` at `058feb5`.
+  - **Rebuilt after merging Slice 4F** (`epic/lightbox` at `2f040ab`),
+    the same way, on the merged tree. They differ from the earlier build
+    only by 4F's fields, and every sentence figure is unchanged:
+    - the board's craft steering measure. Under all three rules it is the
+      same: being verbs 17, adverbs 5, intensifiers 8, none in a run of
+      short sentences;
+    - group G's reading slot;
+    - the estimate. It now has group G. Groups A–C and E cost a token or
+      two more, from 4F's shared prompt, and group D 73 fewer
+      (7,181 → 7,108), since its numbers lens now reads three figures.
+- **Bundle.** First rendered with `webview.js`
+  `2f86917e89befed61189d1422fbb71e211c2ea59e28fbd0c9a0e8db06de2ae04`,
+  Slice 4E's own bundle after its PR #159 fixes. The webview holds no
+  sentence rule; it shows what the host measured.
+  - **Re-rendered** from the rebuilt states with the merged head's
+    `webview.js`,
+    `cb08d7b9cc645e1104cb7d9c9a6f0d3035aaa0c4c7b8d66fbfb4523070dc7482`.
+    It holds PR #161 N-01's outside row and Slice 4F's steering.
+  - The re-render's three `facts-*.json` are identical and its
+    `errors-*.txt` empty.
+  - `inspector-base.png` and `inspector-speech-tags.png` came out
+    byte-identical.
+  - `inspector-closing-marks.png` differs in 34 pixels by one level of
+    one channel (rasterising, not content), so the committed image stays.
+  - Each bundle was built by `npm run build` (with `verify:bundle`) after
+    `npm ci` into the worktree's own `node_modules`, and reproduced by a
+    second build.
+  - `extension.js`, where the rule runs, is `a548648c…` at the merged
+    head. It was `865b2c9f…` before 4F and N-01, and `b8cb056a…` at
+    `058feb5`.
 - **Browser.** Headless Chromium from `/opt/pw-browsers`, at 1440 × 1600.
   Theme variables are stubbed and fonts come from the system, as in the 4E
   evidence.
@@ -213,7 +233,13 @@ which is public domain.
   became 31.8 and then 33.9. The Blunt view's "about twice the average"
   now reads "more than twice", since the ratio is 2.37.
 - Groups A–E's requests carry no sentence figure that moved, and still
-  match their builders byte for byte.
+  match their builders byte for byte. So does group G's, after Slice 4F
+  was merged.
+- **With Slice 4F merged**, group F's response took 4F's tile ids
+  (`D-10`, `D-11` and so on) and kept 33.9 and "more than twice". 4F's
+  `LightboxCraftHandoff.test.ts` pinned its number reading's Figure point
+  at 29.9; it now reads "Sentence length: 33.9 words per sentence; your
+  average 14.3".
 
 **Committed evidence states that would change if rebuilt.** None was
 rebuilt, and no old slice's evidence was rewritten.
@@ -233,6 +259,30 @@ rebuilt, and no old slice's evidence was rewritten.
   - The `word` state's third row would begin "(when she thought".
   - The `flag` state's header would read "119 instances in 47 sentences",
     and `bounded`'s "385 instances in 377 sentences".
+- `lightbox-slice-4f-visual/states/` (Slice 4F, merged here) was rebuilt
+  into a scratch folder by its own `tools/build-steering.test.ts` on the
+  merged tree, and compared.
+  - `workshop.json` is byte-identical.
+  - `log.txt` differs only in group F's digest line: about 4,020 → 4,022
+    tokens, and its key.
+  - `chapter.json` differs in 130 fields, all of them sentence figures or
+    group F's. Every board in it (`idle`, `done`, `withheld`, `stale`)
+    moves the same way:
+    - the headline: 17 → 15 sentences, 29.9 → 33.9 words per sentence,
+      2.1 → 1.9 sentences per paragraph, readability 40.2 → 32.3 and
+      grade 12 → 13.6, pacing Slow → Very slow. The stale re-read's
+      changed chapter goes 29.8 → 33.8, readability 40.4 → 32.4 and grade
+      12 → 13.5;
+    - the numbers' sentence-length row: 29.9 → 33.9, ×2.09 → ×2.37 (29.8
+      → 33.8 when stale);
+    - the longest sentence: 107 → 106 words (¶4);
+    - ¶2: 2 → 1 sentences, 28.5 → 57 words per sentence on the ribbon;
+    - ¶8: 6 → 4 sentences, 8.2 → 12.3 words per sentence on the ribbon;
+    - group B's voice trait: "29.9 avg" → "33.9 avg";
+    - group F's estimate: 15,931 → 15,934 input tokens;
+    - group F's reading: the worked example's 33.9 and "more than
+      twice", with new citation bases and digest key.
+  - Craft steering's measure, notes and examples do not move.
 
 ## Rerunning it
 
