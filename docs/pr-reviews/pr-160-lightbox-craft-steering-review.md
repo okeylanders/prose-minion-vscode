@@ -44,15 +44,17 @@ const tokens = tagTextTokens(source);
 measureLightboxSteering({ text: source, paragraphs: [source], tag: () => tokens });
 ```
 
-| Words | Actual tagger | New measure with precomputed tags |
-| ---: | ---: | ---: |
-| 999 | 21.6 ms | 36.1 ms |
-| 4,998 | 7.3 ms | 894.3 ms |
-| 9,999 | 14.4 ms | 3,820.9 ms |
-| 24,999 | 35.6 ms | 22,864.6 ms |
-| 49,998 | 82.6 ms | 100,060.2 ms |
+| Words | Jest: actual tagger | Jest: measure with precomputed tags | Direct Node: measure with precomputed tags |
+| ---: | ---: | ---: | ---: |
+| 999 | 21.6 ms | 36.1 ms | 7.4 ms |
+| 4,998 | 7.3 ms | 894.3 ms | 62.5 ms |
+| 9,999 | 14.4 ms | 3,820.9 ms | 250.9 ms |
+| 24,999 | 35.6 ms | 22,864.6 ms | 1,182.3 ms |
+| 49,998 | 82.6 ms | 100,060.2 ms | 4,845.5 ms |
 
-Every result retained the expected number of being verbs. These are measurements in the review's Node/Jest environment, not native VS Code latency measurements or universal hardware predictions. The separately measured tagger and isolated new function establish that the new scanning work itself accounts for the delay. The roughly quadratic growth and synchronous host call are the correctness concern; ordinary short paragraphs need not exhibit the maximum delay.
+**Timing qualification, independently extended at 18:02 UTC:** the 100-second figure is the Jest/VM stress-harness time, **not native VS Code latency**. A second control transpiled the unchanged production TypeScript to ES2020/CommonJS and ran it directly in Node, outside Jest. Its largest measurement was **4.846 seconds**, excluding **107.8 ms** for actual tagging. The same 49,998 words arranged in **1,667 paragraphs of up to 30 words** took **37.1 ms** for measurement, excluding **221.6 ms** tagging. Both shapes retained exactly **16,666 being-verb instances**. This isolates paragraph-sensitive scanning rather than general input size or tagging alone. These are single-run environment-specific timings, not a calibrated benchmark or native VS Code measurement.
+
+Every scaling result retained the expected count. The direct-Node control corroborates the quadratic growth without Jest's substantial overhead: the new synchronous measure alone can block for several seconds on a valid large paragraph, while ordinary short paragraphs avoid that case. Disabling G does not bypass it: the service unconditionally builds this measured set and the measurement accepts no lens-enable option. The independent disabled-G handler/digest probe separately confirms measured steering evidence remains present while no G provider call is sent.
 
 **Requested correction:** locate token offsets once, or use an ordered cursor/index rather than a fresh `findIndex` for each match. Join sorted instances to dialogue/run intervals without restarting every scan; coalesce contiguous short-run sentences where appropriate. Add deterministic count-equivalence and growth/work-bound regressions for large single paragraphs as well as normal paragraph shapes, including disabled steering. Preserve the current detector semantics rather than dropping instances to obtain a faster result.
 
@@ -121,6 +123,7 @@ All probes used synthetic/public-domain fixtures and stub providers. A passing d
 | Head production build and `verify:bundle` | Passed; same three known webpack size/performance warnings |
 | Production bundle SHA-256 | **`6c2963092fae2bf4c6565a2ade0aa01eb08a934a3acde099ab85979642f73468`**, exactly matching supplied evidence |
 | Independent core, lifecycle, performance and host-state regeneration probes | **17 tests / four suites passed**, 136.717 s; includes the isolated five-size performance witness |
+| Direct-Node performance/shape controls | Unchanged production TypeScript, no Jest: 49,998-word single paragraph **4.846 s** vs **37.1 ms** in 1,667 short paragraphs; same 16,666 instances, tagging excluded |
 | Independent exact-payload estimate/disabled-price control | **1/1 passed**, 4.359 s |
 | Canonical example and D/G empty-state probes | **2/2 passed**, 4.156 s |
 | Supplied host-state regeneration | `chapter.json`, `workshop.json` and `log.txt` **byte-identical** to committed evidence |
