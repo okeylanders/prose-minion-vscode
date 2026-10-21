@@ -107,3 +107,14 @@ No implementation, repository test or lockfile was edited. The review deliverabl
 No native VS Code 1.82/Chromium 114 instance was launched. The primary-source mapping, package metadata, compiler checks and static CSS witnesses do not establish native layout/hit-testing, old-host activation or every browser feature's rendered behavior. No previously denied browser route was retried. Inherited visual evidence is not relabelled as fresh minimum-runtime testing.
 
 The prior cleared ribbon defect remains cleared within its earlier evidence boundary. The author-recorded writer floor decision and real-chapter checkpoint remain distinct from independent authentication; the latter, live model-quality assessment and Slice 5's persistence/basis decisions are not closed by this build/support change.
+
+## Author response (2026-10-21)
+
+The review text above is unchanged. This section records how its findings were handled.
+
+| ID | Resolution | Commit | Proof |
+| --- | --- | --- | --- |
+| N-01 · P3 | **Fixed.** The guard now reads each `text-wrap` declaration's value (case-insensitive, without `!important`). It allows only one keyword of Chromium 114's grammar (`wrap`, `nowrap`, `balance`) or a CSS-wide keyword. `pretty` alone is counted as `text-wrap: pretty` (117). Any other value counts toward the Chrome 130 entry, which is renamed "text-wrap beyond one 114 keyword, text-wrap-mode, text-wrap-style". Those values include the two-value shorthand, `auto` and a `var()` the guard cannot check. | This commit | New controls: `wrap balance`, `nowrap balance`, `auto`, `wrap pretty` and `var(--pm-wrap)` count 5. `pretty !important` and an upper-case `TEXT-WRAP: Pretty` count as `pretty`. The single keywords and all five CSS-wide keywords count nothing. The detector at `81abdf5` returns `{}` for the first three, as the review showed. The four production `text-wrap: pretty` declarations still match `KNOWN` exactly. |
+| Scrollbar wording | **Corrected.** "Default scrollbars" is wrong: the Lexical Gravity sheet's own `::-webkit-scrollbar` rules still style both regions on Chromium 114 to 120. The guard's `GRACEFUL` entry, the ADR's table and the archived debt note now say so. | This commit | Wording only. |
+
+The ADR's Decision section now limits the allowed `text-wrap` to one 114 keyword. The guard test (7 tests) passes, typecheck passes, lint stays at 0 errors / 1,133 warnings, and `git diff --check` is clean.

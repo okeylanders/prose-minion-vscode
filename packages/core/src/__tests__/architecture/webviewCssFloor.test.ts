@@ -14,7 +14,9 @@
  * it). Comments are stripped before scanning. Features at or below the floor
  * are allowed and not listed, among them `@layer` (99), `:has()`,
  * `@container` and its units (105), `color-mix()` (111), and the `text-wrap`
- * property with `wrap`, `nowrap` and `balance` (114).
+ * property with one of `wrap`, `nowrap` and `balance` (114). Chromium 114
+ * parses `text-wrap` as that single keyword only; the two-value shorthand
+ * and `auto` are Chrome 130's grammar (PR #158 N-01).
  *
  * `KNOWN` counts the uses above the floor that remain, per file. The guard is
  * a ratchet: a new use anywhere fails, and so does a removed one until
@@ -39,6 +41,18 @@ interface Feature {
 }
 
 const matches = (pattern: RegExp) => (css: string) => css.match(pattern)?.length ?? 0;
+
+/**
+ * The values a `text-wrap` declaration may take on Chromium 114: one keyword of its single-keyword
+ * grammar (https://github.com/chromium/chromium/blob/114.0.5735.289/third_party/blink/renderer/core/css/css_properties.json5),
+ * or a CSS-wide keyword. Anything else, a `var()` included, is not known to hold on the floor.
+ */
+const TEXT_WRAP_AT_FLOOR = new Set(['wrap', 'nowrap', 'balance', 'inherit', 'initial', 'unset', 'revert', 'revert-layer']);
+
+/** Each `text-wrap` declaration's value, lower-cased, without `!important`. */
+const textWrapValues = (css: string): string[] =>
+  [...css.matchAll(/(?<![-\w])text-wrap\s*:\s*([^;}]*)/gi)].map((match) =>
+    match[1].replace(/!\s*important/i, '').trim().toLowerCase());
 
 /** Style rules nested inside style rules (CSS nesting: `&` or a bare nested selector). */
 function nestedRules(css: string): number {
@@ -76,10 +90,17 @@ const FEATURES: Feature[] = [
   { name: '@scope', chrome: 118, count: matches(/@scope\b/g) },
   // css.at-rules.starting-style
   { name: '@starting-style', chrome: 117, count: matches(/@starting-style\b/g) },
-  // css.properties.text-wrap.pretty (the property and its wrap, nowrap and balance values are 114)
-  { name: 'text-wrap: pretty', chrome: 117, count: matches(/(?<![-\w])text-wrap\s*:[^;}]*\bpretty\b/g) },
-  // css.properties.text-wrap.stable, css.properties.text-wrap-mode, css.properties.text-wrap-style
-  { name: 'text-wrap: stable, text-wrap-mode, text-wrap-style', chrome: 130, count: matches(/(?<![-\w])text-wrap\s*:[^;}]*\bstable\b|(?<![-\w])text-wrap-(?:mode|style)\s*:/g) },
+  // css.properties.text-wrap.pretty: the single keyword `pretty` (the property and its wrap, nowrap and balance values are 114)
+  { name: 'text-wrap: pretty', chrome: 117, count: (css) => textWrapValues(css).filter((value) => value === 'pretty').length },
+  // css.properties.text-wrap.stable, css.properties.text-wrap-mode, css.properties.text-wrap-style; the two-value
+  // shorthand and `auto` ship with them (https://groups.google.com/a/chromium.org/g/blink-dev/c/x4x_38sJhbk)
+  {
+    name: 'text-wrap beyond one 114 keyword, text-wrap-mode, text-wrap-style',
+    chrome: 130,
+    count: (css) =>
+      textWrapValues(css).filter((value) => value !== 'pretty' && !TEXT_WRAP_AT_FLOOR.has(value)).length +
+      matches(/(?<![-\w])text-wrap-(?:mode|style)\s*:/g)(css)
+  },
   // css.properties.scrollbar-width, css.properties.scrollbar-color
   { name: 'scrollbar-width/scrollbar-color', chrome: 121, count: matches(/(?<![-\w])scrollbar-(?:width|color)\s*:/g) },
   // css.properties.anchor-name, css.properties.position-anchor, css.types.anchor
@@ -99,7 +120,7 @@ const FEATURES: Feature[] = [
  * page still works (ADR 2026-10-21). They were not worth a higher floor.
  */
 const GRACEFUL: Record<string, string> = {
-  'scrollbar-width/scrollbar-color': 'Chromium 114 to 120 ignore both properties and draw default scrollbars.',
+  'scrollbar-width/scrollbar-color': 'Chromium 114 to 120 ignore both properties; the sheet\'s own ::-webkit-scrollbar rules still style the scrollbars.',
   'text-wrap: pretty': 'Chromium 114 to 116 ignore the value and wrap lines as usual.'
 };
 
@@ -177,7 +198,18 @@ describe('webview CSS against the Chromium 114 floor (VS Code 1.82; ADR 2026-10-
     expect(usesAboveFloor('.a { text-wrap: pretty; scrollbar-width: thin; scrollbar-color: red transparent; }'))
       .toEqual({ 'text-wrap: pretty': 1, 'scrollbar-width/scrollbar-color': 2 });
     expect(usesAboveFloor('.a { text-wrap: wrap stable; } .b { text-wrap-style: balance; }'))
-      .toEqual({ 'text-wrap: stable, text-wrap-mode, text-wrap-style': 2 });
+      .toEqual({ 'text-wrap beyond one 114 keyword, text-wrap-mode, text-wrap-style': 2 });
+    // Chrome 130's grammar, which Chromium 114 drops (PR #158 N-01), and a value the guard cannot check.
+    expect(usesAboveFloor(
+      '.a { text-wrap: wrap balance; } .b { text-wrap: nowrap balance; } .c { text-wrap: auto; }\n' +
+      '.d { text-wrap: wrap pretty; } .e { text-wrap: var(--pm-wrap); }'
+    )).toEqual({ 'text-wrap beyond one 114 keyword, text-wrap-mode, text-wrap-style': 5 });
+    expect(usesAboveFloor('.a { text-wrap: pretty !important; } .b { TEXT-WRAP: Pretty; }')).toEqual({ 'text-wrap: pretty': 2 });
+    // One keyword of the 114 grammar, or a CSS-wide keyword, holds on the floor.
+    expect(usesAboveFloor(
+      '.a { text-wrap: wrap; } .b { text-wrap: nowrap !important; } .c { text-wrap: balance; }\n' +
+      '.d { text-wrap: inherit; } .e { text-wrap: initial; } .f { text-wrap: unset; } .g { text-wrap: revert; } .h { text-wrap: revert-layer; }'
+    )).toEqual({});
     // At the floor: plain grid, @layer, :has(), @container and its units, media range syntax, color-mix(),
     // text-wrap: balance, the translate/scale/rotate properties, transform functions, nesting inside at-rules only.
     expect(usesAboveFloor(

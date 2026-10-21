@@ -65,7 +65,9 @@ fallbacks.
 
 - `engines.vscode` is `^1.82.0`, the first stable VS Code whose Electron
   ships Chromium 114 or later. That covers `color-mix()`, `@container`, the
-  `translate` property and the `text-wrap` property.
+  `translate` property and the `text-wrap` property with one of `wrap`,
+  `nowrap` and `balance`. Its two-value shorthand and `auto` are Chrome
+  130's grammar, and the guard counts them (PR #158 N-01).
 - The guard pins `^1.82.0` and sets `FLOOR_CHROME = 114`. Its feature list
   keeps only features above 114.
 - Its `KNOWN` ratchet may hold only features in its `GRACEFUL` list, ones
@@ -93,7 +95,7 @@ fallbacks.
 
 | Feature (first Chrome) | Uses | On Chromium 114 |
 |---|---|---|
-| `scrollbar-width` / `scrollbar-color` (121) | 4, the Lexical Gravity widget sheet | Ignored; Chromium 114 to 120 draw default scrollbars |
+| `scrollbar-width` / `scrollbar-color` (121) | 4, the Lexical Gravity widget sheet | Ignored; Chromium 114 to 120 style the scrollbars by the sheet's own `::-webkit-scrollbar` rules |
 | `text-wrap: pretty` (117) | 4, `styles/workshop/context.css` | Ignored; Chromium 114 to 116 wrap lines as usual |
 
 Neither is worth a higher floor. The guard still counts them per file, so

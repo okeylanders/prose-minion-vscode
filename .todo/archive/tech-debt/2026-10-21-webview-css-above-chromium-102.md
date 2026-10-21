@@ -97,7 +97,8 @@ the decision and its sources.
 - **What is left.** `KNOWN` holds two entries, each explained by the guard's
   `GRACEFUL` list and a test that allows nothing else there:
   - `scrollbar-width` / `scrollbar-color` (121), 4 uses in the Lexical
-    Gravity widget sheet. Chromium 114 to 120 draw default scrollbars.
+    Gravity widget sheet. Chromium 114 to 120 ignore them and style the
+    scrollbars by the sheet's own `::-webkit-scrollbar` rules.
   - `text-wrap: pretty` (117), 4 uses in `styles/workshop/context.css`.
     Chromium 114 to 116 wrap lines as usual.
 
