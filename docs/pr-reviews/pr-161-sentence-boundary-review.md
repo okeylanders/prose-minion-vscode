@@ -271,3 +271,80 @@ used.
 - **Steering's sentence wells** (4F's debt) are not wired here.
 - **Writer, native and live-provider acceptance** remain open, as you
   said.
+
+## Independent integrated-head re-review (Astra, 2026-10-21)
+
+**Reviewed head:** `c9c9e3a1db0df12ba4d7b01a229c076e59dfc0d8`
+**Integrated base:** `2f040ab1c9e07ac0d8e5aa3c0abdb542b790a999` (PR #160)
+**Relevant changes:** N-01 correction `f0b1967c4`; base integration `2c45aa322`; rebuilt evidence `0e85dce08`; author response `c9c9e3a1d`.
+
+### Disposition
+
+**N-01 is addressed. No remaining blocking or nonblocking code-review finding was found on this combined tree.** This addendum clears the previously pending #160/sentence-rule integration review for this exact head, not just the sentence branch in isolation. It supersedes the earlier open N-01 disposition and earlier exclusion of #160 integration; the initial report and the complete author response above are preserved unchanged.
+
+The punctuation-only vocabulary decision remains the separately documented Low tech debt, not an unresolved witness bug. This is still not a formal GitHub approval, merge instruction, writer/real-chapter acceptance, native/minimum-host verification, live-provider acceptance or Slice 5 readiness decision.
+
+### N-01: independent before/after and reader evidence
+
+- Replayed all three original witnesses through the production board, passage index and builder: trailing `'` after a space, `'` alone in ¶1 before `Alice ran.` in ¶2, and a source containing only `'`. Each now reports **1 instance, 0 sentences, 1 outside**, returns the exact `'` lit as instance 0 in its own ¶1, and preserves the correct paragraph text and highlight when pinned through `via`.
+- Loaded the actual `6cbd27b` passage builder separately as a runtime negative control, with the current sentence rule and index. All three still reproduce their former unlit/empty-witness behavior; the correction is not a changed fixture or a restored phantom sentence. Its historical type references were excluded from typechecking because that old return shape predates the new discriminated row union; its executable body was not changed.
+- Checked **34 listed hapax entries over ten further punctuation/Unicode/line-wrap fixtures**, including apostrophe runs, closing brackets, CRLF, soft wraps, nonbreaking/em spaces, astral neighbors and separate punctuation-only paragraphs. Every displayed segment reconstructs a literal source slice within its own paragraph; lit IDs match independently computed overlap with actual found offsets. Outside-instance and omitted-instance accounting agree, and an outside instance intersects no sentence.
+- Replayed the prior **165-entry, ten-fixture** ordinary-reader checks unchanged: exact source slices, overlapping and cross-paragraph phrases, UTF-16 offsets, lit IDs, row bounds and omission accounting remain correct. The repository's mixed sentence/outside, shared outside-stretch and 50-row-bound tests also pass in the full run.
+- The fresh production webview, driven by the real passage handler rather than handwritten replies, displays all three original cases with one literal marked quote, the truthful outside-sentence count/label, no borrowed `Alice ran.` sentence, and a working own-paragraph pin retaining the lit token.
+
+The union is handled by host construction, presentation counts, row text, paragraph pins and omission copy. No nearest-sentence fallback remains for the no-intersection case.
+
+### Shared sentences in craft steering and Opinion
+
+The splitter itself is byte-identical to the initially reviewed `6cbd27b` implementation. Relative to the cleared #160 base, `LightboxSteeringMeasure.ts` changes only its explanatory comment; it continues to consume the shared splitter. This is not grounds to assume its derived short-run counts are unchanged.
+
+Independent historical-rule controls load the actual original (`058feb5`), closing-only (`fabd95d`) and current splitter implementations into the same steering measure:
+
+- `“It was very cold!” she said softly. “It was quite dark!” she said quietly.` has four short sentences under the first two rules and two under the current rule. Being-verb/adverb/filler instances inside a qualifying three-sentence run change from **[2, 2, 2] to [0, 0, 0]**.
+- A three-speech control still qualifies; a blank-line-separated control never qualifies. LF soft wraps join like spaces; capital-name tags retain the documented separate-sentence behavior.
+- In all five controls, **every other measured field is deeply equal**, including total/rate, dialogue/narration, construction partitions, paragraph attribution and weak-verb counts. The additional `really` in the three-speech control is correctly both a filler and an `-ly` occurrence, not a sentence-rule discrepancy.
+- Substituting only the old versus new measured short-run figures on the same board changes the actual F digest item's evidence basis, digest key and built request. F therefore does not silently reuse the prior identity when this shared measurement changes.
+
+**Actual builders and host execution:** rebuilt every A–G request, including F's real digest, and compared each complete string to its committed worked example. All are byte-identical. F contains **15 sentences**, **33.9 words per sentence** and **×2.37**, and its actual response passes the codec/gates with six observations, three views and nothing withheld. The production-host evidence generator also checks G's full request and the F request dispatched after G settles against their worked examples, byte for byte.
+
+The retained lifecycle probes verify three-call admission, G before F, no F after cancellation on G landing, stopped/late G rejection, retained-board identity, changed-source carry/reanchoring and Opinion standing through pending/cancelled/completed G rereads. The actual dispatched F request equals the digest of the settled originating board. These are no-provider tests, not live model results.
+
+### Previously corrected regressions remain corrected
+
+- **#160 F-01, measurement scaling:** replayed all **984 complete old/new output comparisons** over 328 fixed/generated fixtures and three tagger modes. Both detector implementations deliberately use the current shared splitter in this differential, isolating the optimization; the historical sentence comparison is separate above. Token-property work remains linear: 100→1,000 repeated `It was cold.` units take **3,000→30,000** reads, `very` **700→7,000**, and `slowly` **1,195→11,995**.
+- **Performance context:** direct **Node 24.19.0 / Linux x64**, outside Jest's VM, using the actual transpiled source. A sequential 49,998-word single-paragraph control measures **53.4 ms** for steering after **100.3 ms** of tagging and retains all 16,666 being-verb instances. The earlier independently cleared direct-Node control was 60.5 ms plus 121.6 ms tagging. These single observations are consistent with the retained bounded-work implementation, not a claimed speedup or native VS Code latency benchmark.
+- **#160 F-02, post-anchor example bounds:** the original soft-wrapped canonical-before witness still withholds only the oversized example on fresh assembly, changed-text carry and Bring. Its nudge and source quote survive; the exact-bound, one-line control travels whole without slicing. The normalized-dash no-op and ten malformed-example checks also pass.
+- **#160 scoped numbers copy:** the steering-only standout fixture renders the scoped empty-number-lens explanation, not the old contradictory “nothing in the numbers” claim.
+- **#159 late-response correction:** the hook source is byte-identical to the cleared integrated base. Both hook and exact-bundle replay retain cached A when B arrives late, including a return to the earlier board, and preserve pending/unpin/fresh-request controls.
+
+### Regenerated host evidence and exact bundle linkage
+
+Regenerated the current supplied evidence tools outside the checkout, changing only resource/output paths and selecting historical sentence modules through the test resolver. No implementation, repository test or historical evidence file was rewritten.
+
+- All **three Tea-Party states are byte-identical** to this PR's rebuilt committed states. The exact new bundle still displays ¶17 as **4→3→2 sentences**, **7.8→10.3→15.5 words per sentence**, matching rhythm and complete unchanged paragraph text.
+- Rebuilt the actual Slice 4F host path against this combined tree and compared it with the independently regenerated #160 baseline, rather than treating historical 4F captures as current. `workshop.json` is byte-identical. `chapter.json` has exactly **130 changed leaf fields**, confined to sentence-derived measurements/ribbon, Group B's measured average, F's estimate/reading/citation bases/digest key and corresponding replay states. Steering measurements, notes and examples are unchanged on this particular excerpt.
+- The 4F log changes only F's digest size (**4,020→4,022 estimated tokens**) and the digest key in its construction/landing messages. F's request estimate moves by three tokens; that is a different quantity from the two-token digest change.
+- **145 independent DOM assertions** execute the exact rebuilt production webview: 72 sentence/outside-row assertions, 36 steering assertions and 37 inherited passage/late-response assertions. Regenerated host states drive the steering reads, withholding, own-quote navigation, Bring IDs/acknowledgement and stale state. No model-run message is emitted.
+
+This is production-bundle/DOM/transport/accessibility-attribute evidence in JSDOM, not new browser screenshots, pixel-layout testing, actual keyboard/screen-reader testing or native VS Code activation. The earlier supplied PNG inspection remains historical; no blocked browser route was retried.
+
+### Fresh combined-head gates
+
+| Check | Independent result at `c9c9e3a` |
+| --- | --- |
+| Full Jest | **456 suites / 6,259 tests / 59 snapshots passed**, 321.655 s |
+| Typecheck | All package stages passed |
+| Lint | **0 errors / 1,133 warnings**, exact normalized relative-file/rule/severity/message parity with the cleared #160 baseline |
+| Production build and bundle verification | Passed; existing webpack size warnings only |
+| Independent targeted probes | **33 tests across 10 external suites passed**: inherited correction/lifecycle/reader/builder/pricing checks plus four new integration checks |
+| Host regeneration | Four successful runs: three sentence-rule variants and the combined 4F host path |
+| Exact production-bundle DOM | **145 assertions passed** |
+
+Reproduced both author-reported production hashes:
+
+- `webview.js`: `cb08d7b9cc645e1104cb7d9c9a6f0d3035aaa0c4c7b8d66fbfb4523070dc7482`
+- `extension.js`: `a548648cc4af07ad531a0ce7fd1a1f9ef168adeccbaa0241ec420af73cdee86d`
+
+Dependency reuse was limited to the same verified package-lock bytes, copied into this isolated worktree's own directory. All combined gates above ran afresh, sequentially, with the bounded worker/heap configuration. No prior full-suite result was substituted for this integrated pass.
+
+**Publication boundary:** append only this re-review to the existing #161 report, preserving both its original review and the complete author response. No implementation edit, older-report rewrite, formal review/comment, merge, deployment, paid/live call, private manuscript or user-computer operation. Publication verification and both exact report-head CI events are tracked separately without a recursive CI-only report commit.
