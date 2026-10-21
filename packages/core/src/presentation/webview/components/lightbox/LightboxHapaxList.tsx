@@ -36,7 +36,7 @@ export const LightboxHapaxList: React.FC<LightboxHapaxListProps> = ({ board, bin
   return (
     <div className="pm-lb-hapax">
       <p className="pm-lb-hapax-head">
-        <span className="pm-lb-phrases-label">Used once</span>
+        <span className="pm-lb-phrases-label">Used once</span>{' '}
         {words.length === 0 ? 'No word is used only once.' : `${pluralize(words.length, 'word')}, in order of appearance`}
       </p>
       {words.length > 0 && (

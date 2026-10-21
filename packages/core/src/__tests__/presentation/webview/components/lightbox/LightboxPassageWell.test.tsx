@@ -109,6 +109,8 @@ describe('the hapax list', () => {
     expect(LIGHTBOX_HAPAX_PAGE).toBe(300);
     const well = screen.getByRole('region', { name: 'Words used once: 350' });
     expect(screen.getByText('350 words, in order of appearance')).not.toBeNull();
+    // Read as one line, its label apart from its count.
+    expect(document.querySelector('.pm-lb-hapax-head')?.textContent).toBe('Used once 350 words, in order of appearance');
     expect(well.querySelectorAll('.pm-lb-hapax-word')).toHaveLength(300);
     fireEvent.click(within(well).getByRole('button', { name: 'Show 50 more · 50 not shown yet' }));
     expect(well.querySelectorAll('.pm-lb-hapax-word')).toHaveLength(350);
