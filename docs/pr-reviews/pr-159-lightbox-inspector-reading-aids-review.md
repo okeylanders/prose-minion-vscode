@@ -233,3 +233,66 @@ DOM facts as before.
 in headless Chromium. It is not native VS Code, a screen reader, or the
 writer's checkpoint. Slice 5's format and readiness stay open. No live or
 billable call was made.
+
+## Independent correction re-review (2026-10-21)
+
+**Reviewed integrated head:** `2e62aa766226f11a47630248b8f2ce7b4fee1dbb`
+**Exact current base / merge-base:** `e8389bf32574ef5888bd1ad3c1d0a96fc8b807bb`
+**Delta from the first report:** `0b1c8ea6395dc537bb2c63693d86a02ceb6d582e` → `2e62aa7`, 38 files, +1,217 / −137, including the separately reviewed #158 floor integration
+**Reviewer:** Astra · **Mode:** independent correction review, old-head negative controls, actual-host export, exact rebuilt production-bundle DOM execution and fresh full integrated gates
+
+**Updated code-review disposition: F-01 and N-01 addressed; no remaining finding in the reviewed correction.** This section supersedes the original open dispositions, not the historical evidence. The original review and the entire author response above are preserved byte-for-byte. This is not a formal GitHub approval, merge instruction or broader epic acceptance.
+
+| ID | Independent disposition | Evidence |
+| --- | --- | --- |
+| F-01 · P2 | **Addressed** | Cached-pin and cached-board returns retire the other pending request. Independent hook and production-bundle interrupted-navigation regressions pass; original hook/bundle fail the intended checks |
+| N-01 · P3 | **Addressed** | Ordered range matching and a sorted-event segment sweep remove the repeated all-instance scans. Independent old/new output parity and adversarial scaling checks pass without dropping instances |
+
+### F-01: late replies no longer destroy the cached well
+
+The production change separates the pending-key and answered-key cases. A cache hit now clears `pending.current` before returning; the existing request ID / board ID / content-hash checks still gate reply acceptance. No protocol, source ownership, persistence or paid execution path is changed.
+
+Independent hook probes cover **five sequences**: cached pin return, cached board return, selecting a new unanswered C, unpin/reopen, and reopening the abandoned B under a fresh request ID. All pass on the correction. Running the same assertions with the original `058feb5` hook fails **exactly the three correction regressions**; the C and unpin controls pass. The original source was loaded from an external evidence copy, not substituted into the implementation worktree.
+
+The exact newly built production `webview.js` also passes the actual UI sequence with independently generated production-host replies: Alice's seven instances → ¶2 request held → Back → ¶2 reply released. The title, ready state and seven lit instances remain, with only two requests. Opening ¶2 again makes a third request with a new ID; replaying the old ¶2 answer cannot settle it, and its own answer correctly lights two instances. Ordinary settled paragraph/back navigation still works. Running the corrected DOM assertion against the preserved original production bundle fails specifically with **`loading` instead of `ready`**, demonstrating that this check detects the original defect.
+
+The full bundle probe passes **37 assertions**, retaining the earlier literal term/POS/phrase/flag/hapax counts, changed-board hiding and replacement, **300 → 600 → 601** hapax paging and reset, labelled/focusable well semantics, and absence of passage-text persistence, model-run messages or non-CSS runtime errors.
+
+### N-01: output parity and bounded-work improvement
+
+Inspected the complete `LightboxPassages` delta, including the additional sentence-chain case. The range walk retains instances touching more than one sentence/paragraph. The event sweep clamps spans to each displayed range, applies coincident boundaries before the next segment, and sorts active IDs so overlapping phrase identities remain stable. This removes the identified quadratic scans; it is a **sorted-event sweep**, not a claim that every operation is strictly linear for arbitrary inputs or that a single row has a new hard size bound.
+
+A separate differential probe compares the original and corrected functions against the **same real production board/index**, not reimplemented expected segmentation. **7,218 passages across 22 fixtures / 674 listed entries are deeply equal**, including each term's instance passage, paragraph ranges with `via`, absent-term controls, six independent edge fixtures and sixteen deterministic seeded combinations. Coverage includes overlapping phrases, cross-paragraph matches, sentence boundaries, whitespace/CRLF, contractions, Unicode case expansion, accents, punctuation and row/paragraph bounds. Ten additional long-shape comparisons are also deeply equal. The regenerated independent actual-host state export is **byte-identical** to the original review's export.
+
+**Timing context before the figures:** these are illustrative same-process measurements in the independent **Linux x64 cloud workspace, Node 24.19.0, Jest/ts-jest-transformed TypeScript**, with synthetic test text, one Jest worker and sequential jobs. They are **not native VS Code, Chromium or extension-host latency measurements**, and they are not a statistical benchmark.
+
+| Synthetic shape / requested passage | Original cutting | Corrected cutting |
+| --- | ---: | ---: |
+| 5,000 tokens, one sentence / word | 126 ms | 10 ms |
+| 10,000 tokens, one sentence / word | 340 ms | 15 ms |
+| 25,000 tokens, one sentence / word | 2,055 ms | 42 ms |
+| 25,000 tokens, one sentence / overlapping phrase | 2,038 ms | 50 ms |
+| 25,000 tokens, one paragraph / `via` word | 2,062 ms | 29 ms |
+| 25,000 `Alice.` sentences / connecting phrase | 2,649 ms | 124 ms |
+
+The single-sentence word retains 25,000 instances and 50,000 segments; the overlapping phrase retains 24,999 instances and its original IDs/segments. The connecting-phrase case retains one row containing 25,000 sentences and 24,999 instances. No performance assertion here is made true by truncating the source or omitting an instance. The repository's two new adversarial count/ceiling tests pass in the fresh full run.
+
+### Integrated floor and fresh verification
+
+PR #158 is now actually integrated. The extension manifest, complete lockfile, extension README, corrected CSS guard, both ribbon components, ribbon stylesheet, floor ADR and complete #158 report are **byte-identical to independently cleared `7d84ef8`**. Its source-based floor conclusions and corrected guard evidence are reused with verified equivalence, not re-labelled as a fresh native runtime test. The full integrated suite exercises that guard together with Slice 4E; no new allowance is added for these wells. The merge preserves the separate closing-quote debt entry. That splitter's inherited limitation remains unresolved and is not a new correction defect.
+
+| Check | Fresh independent result at `2e62aa7` |
+| --- | --- |
+| Full repository Jest | **440 suites / 6,019 tests / 59 snapshots passed**, 319.756 s |
+| Lint | **0 errors / 1,133 warnings**; exact normalized file/rule/severity/message parity with the original independent `058feb5` run |
+| Typecheck | All three stages passed |
+| Production build / `verify:bundle` | Passed from cleaned `dist`; same three webpack size/performance warnings |
+| External independent probes | **5 suites / 11 tests passed**; original-hook control deliberately fails 3 and passes 2 |
+| Exact production-bundle DOM | **37 assertions passed**; original-bundle late-reply negative control fails as intended |
+| Diff / preservation | `git diff --check 0b1c8ea..HEAD` passed; original review and full author-response prefix preserved |
+
+The rebuilt production bundle SHA-256 is **`2f86917e89befed61189d1422fbb71e211c2ea59e28fbd0c9a0e8db06de2ae04`**, matching the author's revised evidence. The complete suite/typecheck/lint/build results above are fresh on the integrated correction, not a reuse of either original PR's gates. External probes do not inflate repository test totals.
+
+Visually inspected the three new supplied **back-late** PNGs at **500, 1000 and 1440 px**: each retains the Alice sentence well and legible instance highlights after the held reply. The 27 earlier recorded DOM states remain equal apart from state-save counts and added transport bookkeeping; the supplied host-state files are unchanged. These are author-supplied screenshots, not independently captured geometry. Our exact-bundle execution is JSDOM/transport/accessibility-attribute evidence, not native rendering, actual keyboard scrolling, screen-reader testing or execution at the minimum Chromium 114/VS Code 1.82 runtime.
+
+**Acceptance boundary:** the code-review blocker and nonblocking performance note are cleared within this evidence scope. Writer decisions and the reported real-chapter run remain author-authored claims, not authenticated checkpoint acceptance. Native/minimum-host and live-provider verification, Slice 5 readiness and saved-board-format decisions remain separate. No implementation/test/lockfile edit, formal review/comment, merge, deployment, VSIX publication, paid/live model call, private manuscript processing or user-computer operation was performed. This publication changes only this report; its resulting CI is tracked separately rather than recursively appended to the report.
