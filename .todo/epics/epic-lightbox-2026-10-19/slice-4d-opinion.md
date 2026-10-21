@@ -277,7 +277,10 @@ observation and every view, not only Blunt (a deviation, stricter):
   What an item "shows" is its evidence: its label, its lines, and its
   quotes with their paragraph addresses. Its key and its quotes' q-numbers
   are identity and addresses, never figures, since a host id carries the
-  run token's digits (PR #157 F-01).
+  run token's digits (PR #157 F-01). So are the host's routing notes and
+  labels inside a line: Subtext's "the said line is q0" and a gravity
+  field's degree labels "1°, 2°, 3°". Such a line is shown in the digest as
+  written but lends only its evidence part (PR #157 F-01 residual).
 
 **Stated limits** (also in the module):
 - the checks are English word lists, not a parse;
@@ -387,6 +390,20 @@ both fixed. Her report, with the author response and resolution ledger, is
 - **N-01: one double-quote set.** The phrasing check now uses the quote
   verifier's set, exported as `LIGHTBOX_DOUBLE_QUOTATION_MARKS`, so ＂ and
   〝〞 are withheld as straight and curly quotes always were.
+- **F-01 residual (the re-review of `40a9317`): routing inside a line.**
+  Subtext's line "the said line is q0" still lent the White Rabbit's tile a
+  0, so "The passage contains 0 spoken lines." was drawn and brought.
+  - **The audit** of every `kindLines` branch found one more: a gravity
+    field's degree labels lent 1, 2 and 3 to every field.
+  - **Fix (`57ebfd7`).** Both lines are now annotated: shown as before, so
+    no digest, key or basis moves, but only their evidence part feeds the
+    figures.
+  - **Tests** use literal expected figures: fresh, carry, Bring, the real
+    handler, and the annotation-free and displayed-zero controls.
+- **Merged with Slice 4C's PR #156 fixes** (`9585609`). The digest's
+  sections follow 4C's front-matter fix: metadata split by a blank line no
+  longer makes a section, and a new digest case pins it. The 4D evidence
+  harness measures 4C's one ribbon grid.
 
 ### Verification
 

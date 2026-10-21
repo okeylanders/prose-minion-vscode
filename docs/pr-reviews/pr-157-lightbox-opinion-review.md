@@ -360,3 +360,76 @@ The newly committed `facts.json` contains 24 state/width entries, all reporting 
 The PR body and README now explicitly say `bound` means Bound for Workshop and no screenshot shows a saturated digest. The new saturated-digest test is a bound control, not an old-head failing fix witness, as the author response now acknowledges. The original independent default-bound/257-transition probes still pass unchanged. No live/provider-quality, private-manuscript, authenticated writer-decision or Slice 5 saved-format acceptance is inferred.
 
 **Next step:** finish F-01's quote-address exclusion for Subtext, then re-review that targeted change. N-01 needs no further correction. Report-only publication preserves the original review and author response; it does not authorize implementation changes, comments/formal review, merge or deployment. Exact post-publication CI is checked separately.
+
+
+### Author response to the re-review (2026-10-21)
+
+The F-01 residual is fixed in `57ebfd7`. Slice 4C's PR #156 fixes are
+merged in, and everything was verified again. Nothing above this section was
+edited.
+
+| Item | Disposition | Commit | Proof |
+| --- | --- | --- | --- |
+| F-01 residual · P2 (Subtext's inline `q0`) | **Fixed** | `57ebfd7` | Run against `40a9317`'s `lightboxOpinionItems.ts`, the 6 new witnesses failed and the controls passed; with the fix, all pass. Details below |
+| Slice 4C merge (PR #156 fixes, `e7e1536`) | **Merged and verified again** | `9585609` (merge), `3a2e507` (Opinion re-check) | No conflicts in code. The digest's sections now follow 4C's front-matter fix, with a new case that fails before the merge. The 4D harness measures 4C's ribbon grid: 0 px apart in every state and width |
+
+**What was wrong.** Your finding is correct. `kindLines` writes
+host-authored routing inside a line, and `evidenceText` read whole lines.
+- I audited every branch and found one more of the same kind: a gravity
+  field's degree labels "1°, 2°, 3°". They lent 1, 2 and 3 to every field.
+  On the every-lens board, the Fire field allowed 3 with only 2 hits.
+- Every other number a line writes is the reading's or the board's own
+  value: a count, a share, a claimed pull or affinity, a ¶ address, a
+  measured figure, a section's number and how many there are, or a unit.
+  Movement numbers are Roman numerals.
+
+**Fix.**
+- **Annotated lines.** A line with routing or labels in it is now
+  `annotated(shown, evidence)`. `shown` is rendered exactly as before, so
+  no digest, key or basis moves. Only `evidence`, the line without the
+  routing or labels, feeds the item's figures. Subtext's evidence is its
+  speaker; a gravity field's is its hits by degree, without the labels.
+- **No global stripping.** Nothing strips q-like text from real content: a
+  title or quote that shows a 0 still allows it.
+
+**Tests.** Expected figures are literal values read off the board's data.
+- **Literal figures** (`LightboxOpinionAnnotations.test.ts`): the White
+  Rabbit's said/meant tile allows {4}, and Fire allows
+  {0, 0.18, 1, 2, 4}. Ledger, the headline tile and the measured headline
+  are unchanged.
+- **The digest's wording**, pinned line for line: the `q0` note still reads
+  as before.
+- **Your witness**, "The passage contains 0 spoken lines.", is withheld in
+  three places:
+  - fresh: Neutral and Enthusiastic go with it, and Blunt stands;
+  - on carry: the said line carries under its id, and O1 is withheld for
+    its figure;
+  - through fresh selected-view Bring: Neutral is refused, and Blunt
+    travels without it.
+- **The degree witness.** "borrowed 3 times" is withheld, and the field's
+  own "2 times" stands.
+- **Controls.** The same tile as an ordinary kind withholds the zero too. A
+  displayed zero in the title stands, on either kind.
+- **Through the real handler and runner** (`LightboxOpinionRun.test.ts`):
+  every lens on, a press whose F cites the said line. The zero is withheld
+  and Bring of Neutral is refused. The control, "The Rabbit speaks once, in
+  ¶4.", is drawn and brought.
+- **My earlier item-level test** now asserts literal figures, as you
+  noted, instead of deriving them from the lines under test.
+- **Against `40a9317`.** The witnesses failed at their behavioral
+  assertions: an extra `0` in the figures; O1 drawn, fresh and carried;
+  Neutral brought with the zero claim; the real-handler O1 drawn. Restored,
+  all pass.
+
+**Verification at this head.**
+- Checks: full `npx jest` passes, with 429 suites / 5,910 tests / 59
+  snapshots; lint is 0 errors / 1,133 warnings, identical per file and
+  rule to `797e166`; `npm run typecheck` passes; `npm run build` with
+  `verify:bundle` passes; `git diff --check` passes.
+- The bundle was built after `npm ci` into the worktree's own (non-symlinked)
+  `node_modules`, from an empty `dist/`. `webview.js` SHA-256:
+  `55276cadc0548dbb8af861bf14614b2bdb6d9976c4bee21692b36154ba3276fd`.
+- The evidence was rerendered from that bundle. `states/` was
+  byte-identical, and `facts.json` is identical apart from the new
+  `ribbonGrid` entries. `errors.txt` is empty.
+- No live or billable call was made.

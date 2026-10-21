@@ -990,3 +990,17 @@ land before Slice 5 (decision 14).
       with `verify:bundle` pass.
     - See the review's
       [author response](../../../docs/pr-reviews/pr-157-lightbox-opinion-review.md#author-response-2026-10-21).
+  - **PR #157 re-review and the 4C merge (2026-10-21).**
+    - **Slice 4C's PR #156 fixes** (`e7e1536`) are merged in (`9585609`).
+      The digest's sections follow 4C's front-matter fix, and the 4D
+      evidence measures 4C's ribbon grid.
+    - **F-01 residual.** Astra's re-review found host routing inside a
+      line still lending figures: Subtext's "the said line is q0" lent a
+      0. The audit added a gravity field's degree labels. `57ebfd7` keeps
+      such lines as shown, so the digest does not move, and feeds only
+      their evidence part to an item's figures. Witnesses and controls run
+      fresh, carried, through Bring and through the real handler.
+    - **Verification.** 429 suites / 5,910 tests / 59 snapshots; lint
+      identical per file and rule; typecheck and build with
+      `verify:bundle` pass. The bundle was built after `npm ci` into a
+      real `node_modules`, SHA-256 `55276cad…`.

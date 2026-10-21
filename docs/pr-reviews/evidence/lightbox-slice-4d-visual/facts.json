@@ -82,7 +82,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-enthusiastic@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -167,7 +188,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-blunt@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -252,7 +294,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-observation-hover@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -345,7 +408,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-bound@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -432,7 +516,28 @@
     "horizontalOverflow": false,
     "posted": [
       "lightbox_hand_off {\"kind\":\"tile\",\"boardId\":\"board-alice-1\",\"tileId\":\"lbt-5b1e09c4-F-1\",\"view\":\"blunt\"}"
-    ]
+    ],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-withheld@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -513,7 +618,28 @@
     "staleNotes": 0,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-stale@1440": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -598,7 +724,28 @@
     "staleNotes": 1,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "workshop-composer@1440": {
     "pills": [
@@ -705,7 +852,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-enthusiastic@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -790,7 +958,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-blunt@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -875,7 +1064,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-observation-hover@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -968,7 +1178,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-bound@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1055,7 +1286,28 @@
     "horizontalOverflow": false,
     "posted": [
       "lightbox_hand_off {\"kind\":\"tile\",\"boardId\":\"board-alice-1\",\"tileId\":\"lbt-5b1e09c4-F-1\",\"view\":\"blunt\"}"
-    ]
+    ],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-withheld@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1136,7 +1388,28 @@
     "staleNotes": 0,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-stale@1000": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1221,7 +1494,28 @@
     "staleNotes": 1,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "workshop-composer@1000": {
     "pills": [
@@ -1328,7 +1622,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-enthusiastic@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1413,7 +1728,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-blunt@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1498,7 +1834,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-observation-hover@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1591,7 +1948,28 @@
     "staleNotes": 0,
     "tray": null,
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-bound@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1678,7 +2056,28 @@
     "horizontalOverflow": false,
     "posted": [
       "lightbox_hand_off {\"kind\":\"tile\",\"boardId\":\"board-alice-1\",\"tileId\":\"lbt-5b1e09c4-F-1\",\"view\":\"blunt\"}"
-    ]
+    ],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-withheld@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1759,7 +2158,28 @@
     "staleNotes": 0,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "lightbox-stale@500": {
     "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
@@ -1844,7 +2264,28 @@
     "staleNotes": 1,
     "tray": "1 tile bound for Workshop·Open Workshop →",
     "horizontalOverflow": false,
-    "posted": []
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "maxBandEdgeDelta": 0,
+      "bandsCompared": 3,
+      "clippedLabels": []
+    }
   },
   "workshop-composer@500": {
     "pills": [

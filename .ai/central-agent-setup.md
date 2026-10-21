@@ -803,8 +803,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes, merged with Slice 4C's PR #156 fixes):
-- 428 suites / 5,900 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes and re-review fix, merged with Slice 4C's PR #156 fixes):
+- 429 suites / 5,910 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
