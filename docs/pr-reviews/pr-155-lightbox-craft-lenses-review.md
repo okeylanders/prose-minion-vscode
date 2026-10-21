@@ -1,5 +1,7 @@
 # PR Review — Lightbox Craft Lenses (Slice 4B)
 
+**Current disposition (2026-10-21): all four P2 findings resolved; no blocking correction-delta regression found.** See the [independent re-review](#independent-re-review-2026-10-21) below. The original review and author response are preserved as the historical record.
+
 **Author:** okeylanders · **PR:** [#155](https://github.com/okeylanders/prose-minion-vscode/pull/155) (open, unmerged at review)
 **Branches:** `epic/lightbox-slice-4b-craft` → `epic/lightbox`
 **Reviewed implementation head:** `8b930fbdaef04a03e5ca68537f6ce0b4a95765d2`
@@ -296,3 +298,68 @@ These are kept small for the branch built on this one.
 | Visual evidence | Rerun from that bundle. `states/chapter.json` was rebuilt; `workshop.json` and `log.txt` are byte-identical. 15 of 30 screenshots changed: ratios shown from unrounded figures, and the numbers tile's stale note before its first figure. No page errors, no horizontal overflow |
 
 No live or billable call was made.
+
+## Independent re-review (2026-10-21)
+
+**Reviewer:** Astra · **Reviewed correction head:** `16e85b11908978a18c48aed6bd6aa462ecff9b17` · **Unchanged base:** `eca952a59552b13fc62d46b22a2188ea3a15cf49`
+
+This is a correction-delta review, not a replacement for the original review. The original findings and the author's response above are retained. The three commits after report `4b3686f` are implementation fix `fc4c564`, refreshed evidence/notes `2ef5d74`, and author response `16e85b1` (52 changed files, including 15 replaced PNGs). No implementation was edited by this re-review.
+
+**Current verdict: the four P2 findings are resolved. No blocking regression found in the correction delta.** N-01's intact-pair relocation is also resolved. One residual P3 lost-quote diagnostic is recorded below; it does not reopen the intact-pair-loss defect. This is code-review clearance only, not a formal GitHub approval, permission to merge, authenticated writer acceptance, native/live acceptance, or a Slice 5 checkpoint.
+
+### Current disposition
+
+| ID | Independent disposition at `16e85b1` |
+| --- | --- |
+| F-01 | **Resolved.** Completed usages and delayed results are held to the current standout signature. Same-text loss/change of the basis withholds affected usages; other readings remain reusable. Missing standouts fail closed at Bring. |
+| F-02 | **Resolved.** Pair-specific Bring retains both ordered roles even when the displayed paragraph/text are identical, rechecks adjacency, and applies bounds to both. |
+| F-03 | **Resolved.** Familiar evidence must contain a whole source-token occurrence. Clipped inside-word witnesses fail fresh, carry and Bring; valid normalized/repeated candidates remain accepted. |
+| F-04 | **Resolved.** Writer-threshold eligibility uses unrounded count fractions; ratios remain unrounded until presentation. A small nonzero baseline is no longer called “none.” |
+| N-01 | **Resolved for intact-pair relocation.** Carry searches other candidate paragraphs even if the first sentence survives at the old position; separated sentences are distinguished from a missing sentence. Residual missing-role tally below is nonblocking. |
+
+### Independent correction witnesses and controls
+
+- **Numbers lifecycle:** reran the original production service/handler/runner witnesses with corrected-behavior assertions, not just the author's new tests. Baseline disappearance now removes all three old usages, preserves Groups A–C and non-number craft tiles, and records host-owned withheld reasons. A retained old tile projected onto a no-standout board is refused by the host's explicit guard. The unchanged-basis, changed-text carry, fresh-read rejection, stale-estimate and prompt-preparation controls still pass. Added delayed-result controls for unchanged measurement, changed sentence reference, changed dialogue direction and absent baseline; each retains only the eligible usages. Also held baseline measurement open while a D result landed: the subsequent board adoption withheld the obsolete usages, and a repeated rebuild did not duplicate the withheld notices. Preset-only changes are covered by the independently executed repository regression.
+- **Repeated sentence pair:** production codec → assembly → carry → Bring preserves `She waited. She waited.` as two ordered positions. Distinct pairs, normalized source text, repeated later candidates and moved pairs pass; a single occurrence, reversed/nonadjacent pairs, a pair exceeding the 240-character actual-source bound, and stale/running Bring are refused as required.
+- **Familiar phrase:** the original `very bright window` clipped from `every` is withheld fresh and after carry, and Bring refuses it, despite a valid `very` elsewhere. Genuine occurrences, repeated candidates, normalized whitespace/typography and mixed exact-invalid/normalized-valid candidates pass. Prefix, hyphen and apostrophe boundaries are checked. Source spans agree with the counter across 93 tokenization/normalization cases.
+- **Rounding:** the original 3/4,000 versus 27/50,000 passive-voice reproduction now yields exact rates 0.75 and 0.54, ratio 1.388888…, and no standout. The 3/50,000 versus 14/300,000 intensifier reproduction also has no standout and displays `0.1 per 1,000 words · 1.29× your average of <0.1`. True-zero and 20/30-instance controls remain correct. A separate 119-case boundary grid uses an exact BigInt oracle, including minimum-instance and immediately-above/below-threshold cases; all pass. Four formatting controls also pass.
+- **Nonblocking consistency changes:** mixed-paragraph narration is now rejected as a below-dialogue witness while pure-narration evidence remains counted and accepted. The 360,000-word three-file baseline reports its actual total and `capped: true`; whole-file sampling remains deliberately soft, not a new hard 300,000-word promise. Numbers' stale warning precedes its figures in the changed screenshots and rebuilt production DOM.
+- **Shared regression controls:** reran the 11 baseline/detector checks, including source exclusion, metadata cache invalidation, 40-file cap, oversize/symlink leaves, unreadable/catalog behavior, the real catalog's symlink-ancestor refusal, and complete Style Flags output equality with the original base over 300 synthetic mixtures. No new detector or permission-boundary regression was found.
+
+The phrase/pair harness passes 19/19 groups on the corrected head; against the previous report checkout it fails 12 of 18 behavioral groups while six controls pass (the new-helper parity group is unavailable there). Thus these witnesses discriminate the fixes from the old implementation rather than merely restating a desired result. All prose was synthetic or the shipped public-domain Alice excerpt; providers and filesystem ports were controlled. No live/billable model call was made.
+
+### Residual P3: a partly vanished pair can overcount lost quotes
+
+**Location:** [`LightboxCarryQuotes.ts:149–152`](https://github.com/okeylanders/prose-minion-vscode/blob/16e85b11908978a18c48aed6bd6aa462ecff9b17/packages/core/src/infrastructure/lightbox/LightboxCarryQuotes.ts#L149-L152).
+
+Start with ¶1 `She waited. Nobody came.` and ¶2 `A bell rang.`. Edit to ¶1 `A bell rang.` and ¶2 `She waited.`. Withholding the pair is correct because its second sentence is gone, but both locally missing roles are mapped to `no-longer-in-chapter`. The first sentence is independently found in ¶2. The pair contributes two lost quotes to the rhythm tally rather than one (the separate ending evidence relocates successfully). Determine missing-role diagnostics per quote across the chapter instead of mapping every local miss from `named.withheld` to global absence.
+
+This is a **nonblocking diagnostic accuracy issue**, not false evidence acceptance, loss of an intact paid reading, or a reason to reopen F-02/F-03/N-01's core corrections. The safe whole-pair refusal remains intact.
+
+### Fresh gates and evidence
+
+| Check | New result at `16e85b1` |
+| --- | --- |
+| Full Jest | **411 suites / 5,712 tests / 59 snapshots passed**, 241.179 s |
+| Typecheck | All three stages passed |
+| Lint | **0 errors / 1,133 warnings**; normalized file/rule/severity/message multiset identical to the prior reviewed head |
+| Production build, including `verify:bundle` | Passed; same three webpack size/performance warnings |
+| Exact production `webview.js` SHA-256 | `0ea742557a244fd503a184f13ecb8c6d662b3a7728b7d6f052b631735170c9ae`, matching the refreshed supplied evidence |
+| Original and extended numbers lifecycle probes | **15/15 tests passed**, including completed/in-flight removal, reference/direction changes, adoption ordering, defensive Bring and negative controls |
+| Host evidence regeneration | **1/1 test passed**; `chapter.json`, `workshop.json` and `log.txt` byte-identical to the current committed evidence; combined with the lifecycle tests: 2 suites / 16 tests / 3.929 s |
+| Independent phrase/pair probes | **19/19 groups passed**, including the 93 tokenizer parity cases and source-bound/guard checks |
+| Independent numeric and baseline probes | Original rounding reproductions and true-zero controls corrected; **119 threshold cases + 4 format controls**, soft-cap witness and **11 baseline/detector checks** passed |
+| Exact rebuilt-production-bundle DOM | **293 assertions passed** across the craft/Workshop sweep and stale-warning order; **7 targeted lifecycle assertions passed**, including removal of the formerly pinned usage's Bring control after remeasurement |
+| Changed visual evidence | All **15 changed PNGs** inspected; unchanged images retain the original review's inspection |
+| Whitespace and worktree checks | `git diff --check` passes for correction and whole PR deltas; only this report changes, all temporary tests removed |
+| Exact implementation-head CI | Both [push run 39515293177](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39515293177) and [PR run 39515298761](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39515298761) succeeded; PR job verified through install, typecheck, tests, lint and build |
+
+The prior base (`eca952a`) results above remain the original independent baseline; this re-review does not mislabel them as newly executed. All current-head results in this section are newly executed against `16e85b1`.
+
+Runtime remained Node `v24.19.0` / npm `11.9.0`; CI uses Node 18. The first fresh full run ended with 409 passing suites, 5,650 passing tests and all 59 snapshots, but two workers were SIGKILLed before their suites completed; it was **not** counted as a full pass. The first build was also killed (exit 137). The environment's `/tmp` tmpfs was then observed at 99% capacity with substantial RAM tied up in retained dependency copies. Redundant copies were safely deduplicated/relocated without changing dependency bytes, and the Jest cache was moved to disk. An intermediate 700 MB recycling retry was stopped because it repeatedly recompiled workers, not because of an assertion failure. The final complete run used `NODE_OPTIONS=--max-old-space-size=2048 npm test -- --maxWorkers=1 --workerIdleMemoryLimit=1000MB` with the disk-backed cache; the ordinary production build was rerun successfully afterward. Only completed successful runs appear as passes above. No tracked test, implementation or lockfile was edited.
+
+All 15 changed PNGs were inspected as actual pixels at their supplied widths: the displayed ratios and earlier stale warning agree with the correction. The 15 unchanged images retain the original review's coverage. No new obvious visual regression was identified in the supplied captures; the earlier narrow-ribbon/inspector coverage distinctions and Workshop reflow debt remain. The regenerated host state files and the rebuilt-bundle DOM checks are controlled-transport evidence, not fresh browser layout or native VS Code IPC/focus acceptance. No retry of the previously denied file-browser or sandboxed Chromium routes was attempted; no user computer was used.
+
+The author's real-chapter and writer-decision claims remain attributed author evidence, not authenticated user acceptance. The earlier sentence-splitting, cache, manuscript-fallback, heuristic wording and Group D response-ceiling limits remain unchanged. Nothing in this re-review freezes saved-board format or authorizes Slice 5.
+
+The final pre-publication remote check confirmed the reviewed head and base unchanged. The subsequent report-only commit is separate from the implementation head above; its push and PR workflows are tracked after publication rather than claimed in advance.
