@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slice 4E (reading aids in the inspector) and Slice 4F (Craft steering, group G) are built in parallel from `20775cf`; 4F is built and awaits the merge of 4E and the sentence-rule fix.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slice 4E (reading aids in the inspector) and Slice 4F (Craft steering, group G) were built in parallel from `20775cf`: 4E merged (PR #159), and 4F (PR #160) has its review fixes in and `epic/lightbox` merged in at `1fe931a`; it merges the sentence-rule fix (PR #161) next.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -76,7 +76,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented; PR #159 review fixes in, awaiting re-review (`epic/lightbox-slice-4e-inspector`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built; PR #160 review fixes in, `epic/lightbox` merged at `1fe931a` (4E and the 1.82 floor); merges again after the sentence-rule fix (PR #161) (`epic/lightbox-slice-4f-steering`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
@@ -1174,3 +1174,27 @@ lens, and adds its items to 4D's digest.
   - **Next.** Merge `epic/lightbox` after 4E (PR #159) and the shared
     sentence-rule fix land, regenerate the worked examples' requests where
     sentence figures move, re-verify and rerender the evidence.
+
+- **2026-10-21. PR #160 (Slice 4F) review fixes, and `epic/lightbox`
+  merged in.** Astra found two P2 defects and one P3. All three are fixed,
+  each with tests that fail on the reviewed head. See the
+  [review and author response](../../../docs/pr-reviews/pr-160-lightbox-craft-steering-review.md)
+  and the slice's notes.
+  - **F-01.** The steering measure was quadratic on one large paragraph,
+    and it runs with every board. It is now linear in tokens, with
+    binary-search lookups, and the counts are unchanged. A 49,998-word
+    paragraph's board builds in under a second, down from about 80 s
+    under Jest.
+  - **F-02.** An example's first part, as the chapter has it, could pass
+    its bounds, and Bring clipped it. The anchored pair is now held to the
+    contract again, fresh, on carry and at Bring, and nothing is clipped.
+  - **N-01.** The numbers card's empty text names craft steering when only
+    its figures stand out.
+  - **The merge.** `1fe931a` (PR #158's 1.82 floor, PR #159's Slice 4E).
+    Both sides were kept in every conflict.
+  - **Verification.** 451 suites / 6,167 tests / 59 snapshots; lint 0 errors / 1,133 warnings, identical per file and rule; typecheck and build with
+    `verify:bundle` pass; bundle SHA-256 `24658aba…`; evidence
+    re-rendered, with no errors.
+  - **Next.** Merge the sentence-rule fix (PR #161) when it lands, and
+    regenerate the worked examples and evidence whose sentence figures
+    move.

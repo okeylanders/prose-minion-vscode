@@ -812,7 +812,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-21, Lightbox Slice 4F with its PR #160 fixes, merged with Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
-- MERGED_COUNT_LINE
+- 451 suites / 6,167 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

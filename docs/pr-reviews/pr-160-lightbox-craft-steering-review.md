@@ -149,3 +149,115 @@ The documented construction heuristics, underscore-emphasis detector exclusion, 
 Correct F-01 and F-02 with regression controls; fix N-01's scoped wording when convenient. Then integrate the intended #158/#159/sentence-rule changes, preserving any unresolved #159 inspector-navigation finding until its actual correction is reviewed. Regenerate the examples/evidence and rerun the combined gates on the **actual integrated head**, including short-run sentence boundaries, inspector navigation, G→F ordering/digest authority and carried/Bring examples. A clean result on this pre-integration tree does not clear conflicts or later code.
 
 Publication is limited to **this report only**. No implementation edit, GitHub comment/formal review, merge, deployment or extension publication accompanies it. Post-publication CI is checked against the exact report commit separately; the successful implementation-head runs above are not substituted for it.
+
+## Author response (2026-10-21)
+
+**F-01: fixed. F-02: fixed. N-01: fixed.** The three fixes share one
+commit, each with its own failing-before tests. `epic/lightbox` at
+`1fe931a` is merged in: PR #158's VS Code 1.82 floor and PR #159's Slice
+4E. The evidence was re-rendered from the merged head's bundle. The docs
+commit on top records this response, the slice notes, the epic progress,
+the agents guide and the tech-debt index. Nothing above this section was
+edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | The measure reads the tagger's tokens once and finds each instance's token by binary search. Each token's neighbour past markup, adverbs or fillers comes from one sweep per rule. Short runs are one interval per run (`shortRunIntervals`), and dialogue and run membership is a binary search over starts, with the furthest end reached so far. Every answer is the one the scan gave, and no instance is dropped | `LightboxSteeringMeasureScale.test.ts` (6): token reads bounded and linear, long filler and adverb runs, 49,998 words in one paragraph under a coarse 3 s bound, and counts equal across paragraph shapes with literal values. `LightboxSteeringRun.test.ts`: a 49,998-word board built with steering off, under a coarse 15 s bound, with no G call. `LightboxSteeringMeasure.test.ts`: run intervals with literal offsets | `1def703` |
+| F-02 | Medium / P2 | **Fixed** | The pair as the chapter has it is held to the example's contract again: both parts within their words and characters, a change between them, and the whole pair within one Workshop point. This holds fresh, on carry and at Bring. "No change" uses the quote verifier's own fold, so `was-quiet` against `was—quiet` is caught at decoding and again after anchoring. A failing pair withholds only the example, with a host reason; the note and nudge stand. Bring never clips: it carries the pair whole, or an "Example withheld" point that says why | `LightboxSteeringExampleAnchor.test.ts` (8): soft wrap, a doubled space one character over, a spaced dash over the word bound, the dash no-op at decoding and at the anchor, carried, and Bring's exact 115-character pair and its withheld point. `LightboxSteeringHandoff.test.ts`: the unanchored case now names its reason | `1def703` |
+| N-01 | Low / P3 · nonblocking | **Fixed** | When only a figure craft steering reads stands out, the card says "None of the figures this lens reads (sentence length, dialogue, passive voice) stands out, so it had nothing to read. Craft steering reads the figure that does, below." The other two messages are unchanged | `LightboxAppSteering.test.tsx`: your intensifier-only case, as an adverb-only board with an empty numbers reading | `1def703` |
+| Integration | Merge | **Merged and verified** | `epic/lightbox` at `1fe931a` (PRs #158, #159). Conflicts are listed below; both sides were kept in each | Full gates below | `d9db6e5` |
+| Short example forms | Low · disclosed | **Tracked** | You noted that a `before` of `was`, `are`, `am` or `be` alone is withheld by the verifier's four-letter minimum, and the reason says it is not a whole-word span. This is now tech debt; the verifier is unchanged | — | docs |
+
+### How each new test was checked against `7bd016f`
+
+The implementation at `2f3327a` is byte-identical to `7bd016f`. Every new
+test ran there first.
+- **F-01, `LightboxSteeringMeasureScale` (6 tests).**
+  - **Failed (4):**
+    - 1,000 sentences: 2,006,000 token reads against a bound of 64,000.
+    - Growth: 8,012,000 reads for ten times the paragraph, against a bound of 974,400.
+    - 1,500 fillers: 3,387,747 reads against 24,032.
+    - The 49,998-word paragraph: 81,576 ms against 3,000 ms.
+  - **Passed (2):** the count-equivalence tests, with the same literal counts before and after.
+  - **The steering-off board test** failed at 86,301 ms against 15,000 ms. I ran it with `7bd016f`'s measure put back in place, then restored the fix.
+- **F-02, `LightboxSteeringExampleAnchor` (8 tests).**
+  - **Failed (6):** the soft wrap, the doubled space, the spaced dash, the dash no-op, the carried case, and Bring. Bring returned your witness: "… beside floorboa".
+  - **Passed (2):** the exact-bounds controls, fresh and at Bring.
+- **N-01.** The new test failed with both messages on the card, as you found.
+
+With the fixes, all pass:
+- The 1,000-sentence paragraph reads 4,000 token slots, one per token.
+- The 49,998-word paragraph's measure takes about 0.2 s under Jest.
+- Its whole board builds in under a second (0.7 s, against about 80 s before).
+
+### F-01: what was quadratic, and what is now
+
+There were three per-instance scans from the paragraph's start, plus one
+more found while fixing them:
+- `tokens.findIndex` for the instance's token;
+- `dialogue.some` and `runs.some` over every span;
+- `step()` walking past fillers or adverbs to the next head. A run of
+  fillers ("very very … big") or of adverbs made every instance walk the
+  rest of the run. Your report didn't name this one; the filler and adverb
+  tests pin it.
+
+The fix:
+- **Token lookup.** The tagger's placed tokens are in-order, non-overlapping slices (`tagTextTokens` scans forward). So the token holding an offset is the last placed token starting at or before it, if it reaches the offset. A binary search finds it.
+- **Neighbours.** Each neighbour rule (next, previous, next past adverbs, previous past adverbs, next past fillers) is one backward or forward sweep, done once per paragraph.
+- **Dialogue and runs.** "Some interval holds the instance" is "the furthest end among intervals starting at or before it reaches it". That is exact even for overlapping intervals.
+
+A run is coalesced to one interval. Between two sentences of a run lies
+only what the sentence rule set aside (spaces, end marks, a span with no
+letter), where no instance starts, so the counts do not move.
+
+The measure still runs with every board, lens on or off. The digest and
+the tile both show its counts when G is off, and it is now cheap.
+
+### F-02: the anchored pair keeps the contract
+
+`anchorLightboxSteeringExample` now returns either the anchored example
+or the fault (`unanchored`, `long`, `same`, `fit`). It applies
+`lightboxSteeringExamplePairFault`, the codec's own contract, to the
+chapter's pair.
+- **The fit check** asks that `lightboxSteeringExampleText(pair)` fits one Workshop point. Today the two 56-character bounds already imply it (115 ≤ 120). It is checked anyway, so a budget change can never bring clipping back.
+- **Fresh and carried tiles** take the host reason for the fault.
+- **Bring** carries either the whole pair, or `Example withheld` with a short reason under 120 characters.
+
+The Workshop point contract is unchanged.
+
+### Integration: conflicts and how each was kept
+
+- **`styleFlags`.** Both slices exported `STYLE_FLAG_WEAK_VERBS`, with the same list. I kept 4E's `findWeakVerbs` for the tool's flag, and the header names both uses.
+- **`wordFrequency`.** 4F's `tagTextTokens` stream now feeds `tagPartsOfSpeech`, which carries 4E's token `length`.
+- **`LightboxMeasures`, the messages barrel, `lightboxItems`.** 4E's hapax, style-flag instances, passages and term refs sit beside 4F's steering measure, contracts and item ref. `lightboxItems.ts` is 436 lines after 4E's term module.
+- **Agents guide, epic README.**
+  - 4E's tree entry, decisions 17–19, slice row and progress notes sit beside 4F's.
+  - The Chromium 114 ribbon rule follows the craft-steering rules.
+  - The test inventory is the merged count.
+- **`LightboxAppPassages` (4E)** now mocks the steering stylesheet, as every other Lightbox root test does.
+
+`steering.css` and the measured-ramp tokens pass the Chromium 114 guard,
+with nothing added to `KNOWN`. I did not wire 4E's sentence well to
+steering's instances. That is recorded as a follow-up.
+
+### Verification of the merged head
+
+All gates ran at the merge `d9db6e5`, after `npm ci` into the worktree's
+own `node_modules`.
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **451 suites / 6,167 tests / 59 snapshots passed**: `epic/lightbox` at `1fe931a` records 440 / 6,019 / 59, your review head ran 439 / 6,047 / 59 against a shared base of 430 / 5,916 / 59, and this response adds 2 suites and 17 tests. 4E's `LightboxCountAgreement` and passage suites pass |
+| Lint | **0 errors / 1,133 warnings**, identical per file and rule to `20775cf` |
+| Typecheck | Passed all package stages |
+| Build and `verify:bundle` | Passed; the same three webpack size warnings |
+| Production bundle SHA-256 | `24658aba3f52180b878e3e08bb19cb03bf6ee07e1c432bdb11d4b9c590a71b59` |
+| `git diff --check origin/epic/lightbox HEAD` | Clean (the incoming PR #159 report's Markdown line breaks are its own) |
+| Evidence | Re-rendered from that bundle. `facts.json` is identical entry for entry, and `errors.txt` is empty. `states/chapter.json` changed only by 4E's board fields (the hapax list, style-flag ids and paragraphs) |
+
+### Not done here
+
+- **The sentence-rule fix (PR #161)** is not merged. When it lands in `epic/lightbox`, I'll merge it and regenerate the worked examples and evidence whose sentence figures move.
+- **Writer, native and live-provider acceptance** remain open, as you said.

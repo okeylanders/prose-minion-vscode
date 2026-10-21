@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3, D4, D6, D7 and its **second addendum (2026-10-21)**, D11
 **Writer decisions:** 13 (amended), 20–24 (and 25, recorded for Slice 5) in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Implemented on `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf` (see [Implementation notes](#implementation-notes-2026-10-21)). Slice 4E (reading aids in the inspector) is built in parallel on `epic/lightbox-slice-4e-inspector`; it will probably merge first, and this slice merges it in afterwards, with the shared sentence-rule fix (`epic/lightbox-sentence-rule`).
+**Status:** Implemented on `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf` (see [Implementation notes](#implementation-notes-2026-10-21)). PR #160's review fixes are in, and `epic/lightbox` is merged in at `1fe931a` (PR #158's VS Code 1.82 floor and PR #159's Slice 4E). The shared sentence-rule fix (PR #161) merges in next.
 **Before:** Slice 5. The saved-board format must hold these kinds and the measured breakdown.
 
 ## Why
@@ -515,6 +515,8 @@ from a clean build after `npm ci`.
 - [Steering's construction breakdown is a heuristic](../../tech-debt/2026-10-21-lightbox-steering-construction-heuristics.md) (Low)
 - [Lightbox modules near the size limit](../../tech-debt/2026-10-21-lightbox-modules-near-size-limit.md) (Medium)
 - Group G's output guess, in [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md) (Medium)
+- [A steering example of one short form cannot anchor](../../tech-debt/2026-10-21-lightbox-steering-short-example-forms.md) (Low; PR #160 review)
+- [Steering's counts do not open 4E's sentence well](../../tech-debt/2026-10-21-lightbox-steering-sentence-well.md) (Low; a follow-up from the 4E merge)
 
 ### For the writer
 
@@ -523,3 +525,51 @@ from a clean build after `npm ci`.
   heuristics note).
 - Whether a note should also be able to say a figure is the voice's own by
   design, beyond Earns (today that goes in the why or the friction).
+
+### PR #160 review fixes and the 4E merge (2026-10-21)
+
+Astra's review ([PR #160](../../../docs/pr-reviews/pr-160-lightbox-craft-steering-review.md))
+found two P2 defects and one P3; each has a failing-before test on
+`7bd016f`, and the author response there has the ledger.
+
+- **F-01, a quadratic measure.** On one large paragraph, the measure
+  rescanned per instance: tokens, dialogue spans, short-run sentences, and
+  runs of fillers or adverbs. It runs with every board, lens on or off, so
+  a valid 49,998-word paragraph blocked the board for about 5 s in Node
+  and 80 to 100 s under Jest.
+  - **Fix.** Tokens are read once and found by binary search. Each
+    neighbour rule is one sweep. Short runs are one interval per run
+    (`shortRunIntervals`, replacing `shortRunSpans`). Span membership is a
+    binary search with the furthest end reached so far.
+  - **Result.** The counts are unchanged, with literal values, across
+    paragraph shapes. Work is counted through the tagger seam: 1,000
+    sentences read 4,000 token slots, not about 2,000,000. That paragraph's
+    board now builds in under a second.
+- **F-02, an anchored example past its bounds.** Anchoring shows the
+  chapter's text for the example's first part. A soft line break, a
+  doubled space or a spaced dash made that longer than the reading's, or
+  the same as its second part, and Bring then clipped the pair.
+  - **Fix.** The pair as the chapter has it is held to the example's
+    contract again, fresh, on carry and at Bring: each part's bounds, a
+    change under the quote verifier's own fold, and one Workshop point.
+  - **Result.** A pair that fails withholds the example alone, with a host
+    reason. Bring carries the pair whole, or an "Example withheld" point.
+- **N-01.** The numbers card no longer says nothing stands out when only a
+  figure craft steering reads does.
+- **The merge.** `epic/lightbox` at `1fe931a`: PR #158's Chromium 114
+  floor, and PR #159's Slice 4E.
+  - **Conflicts.** `styleFlags` (both exported the weak verbs),
+    `wordFrequency` (4F's token stream now carries 4E's token length), the
+    measured set, the messages barrel, `lightboxItems` and the shared docs.
+    Each kept both sides.
+  - **4E's passages test** now mocks `steering.css`.
+  - **The CSS guard.** `steering.css` passes the new floor with nothing
+    added to `KNOWN`.
+  - **Not wired.** 4E's sentence well does not open steering's instances
+    yet; that is recorded as tech debt.
+- **Verification on the merged head:** 451 suites / 6,167 tests / 59 snapshots; lint 0 errors / 1,133 warnings, identical per file and rule; typecheck clean;
+  `npm run build` with `verify:bundle` OK (3 size warnings, as before);
+  `git diff --check` clean against `epic/lightbox`.
+- **Evidence** was re-rendered from the merged bundle (`webview.js`
+  SHA-256 `24658aba3f52180b878e3e08bb19cb03bf6ee07e1c432bdb11d4b9c590a71b59`).
+  `facts.json` is identical; only 4E's board fields changed in the states.

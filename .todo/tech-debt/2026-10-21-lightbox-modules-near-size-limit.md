@@ -8,21 +8,23 @@
 ## Problem
 
 Each new tile kind joins every union, map, gate, carry, inspector and Bring
-path, and the modules that route by kind keep growing. After Slice 4F:
+path, and the modules that route by kind keep growing. After Slice 4F, with
+Slice 4E merged in (2026-10-21):
 
 | Module | Lines |
 |---|---|
 | `packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts` | 498 |
-| `packages/core/src/shared/types/messages/index.ts` | 488 |
-| `packages/core/src/presentation/webview/hooks/domain/lightbox/lightboxItems.ts` | 481 |
+| `packages/core/src/shared/types/messages/index.ts` | 492 |
+| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 486 |
 | `packages/core/src/infrastructure/lightbox/LightboxReadingTiles.ts` | 467 |
 | `packages/core/src/infrastructure/lightbox/LightboxReadingCodec.ts` | 460 |
-| `packages/core/src/presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts` | 442 |
+| `packages/core/src/presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts` | 444 |
+| `packages/core/src/presentation/webview/hooks/domain/lightbox/lightboxItems.ts` | 437 (481 before 4E moved its term refs out) |
 
 `packages/core/src/shared/constants/promptBudgets.ts` is a data table that
 was already over 500 lines (607) before the slice; it is 625 now.
 
-Slice 5 (saved boards) will add to at least `lightboxItems.ts` and
+Slice 5 (saved boards) will add to at least `LightboxService.ts` and
 `LightboxReadingTiles.ts`, and will cross the limit.
 
 ## Recommendation
@@ -36,6 +38,8 @@ Before Slice 5 adds to them:
 - `useLightboxInspector.ts`: move the per-kind details into the families'
   pure modules, as `lightboxSteeringDetails` does.
 - `LightboxReadingRunner.ts`: move the group F scheduling out.
+- `LightboxService.ts`: move the board's rebuild and carry step out, so
+  saving and loading boards has room.
 Split `promptBudgets.ts` by surface (Workshop, Lightbox) if the boundary
 test allows it.
 
