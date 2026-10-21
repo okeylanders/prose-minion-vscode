@@ -1,0 +1,27 @@
+{
+  "board": {
+    "paragraph": {
+      "index": 8,
+      "start": 1011,
+      "end": 1103,
+      "words": 18,
+      "sentences": 2,
+      "avgWordsPerSentence": 9,
+      "dialogueWords": 16,
+      "dialogueShare": 0.889,
+      "sentenceWords": [
+        18,
+        1
+      ]
+    }
+  },
+  "page": {
+    "title": "¶8",
+    "where": "Chapter · Paragraph",
+    "claim": "18 words in 2 sentences · 9 words per sentence · 89% dialogue.",
+    "region": "Text of ¶8",
+    "text": "“I didn’t know it was YOUR table,” said Alice; “it’s laid for a great many more than three.”",
+    "horizontalOverflow": false,
+    "missing": []
+  }
+}
