@@ -242,7 +242,6 @@
 [data-pm-surface="lightbox"] .pm-lb-h20 { height: 20px; }
 [data-pm-surface="lightbox"] .pm-lb-lane-key.is-counted-read { border: 1px solid var(--pm-border-2); background: var(--pm-surface-2); }
 [data-pm-surface="lightbox"] .pm-lb-plot-lanes {
-  flex: 1;
   min-width: 0;
   display: grid;
   grid-template-rows: 14px 14px 20px 16px;

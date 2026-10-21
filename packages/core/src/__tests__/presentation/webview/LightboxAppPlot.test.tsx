@@ -13,6 +13,8 @@
  * (1865, public domain).
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as React from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { LightboxBoard, LightboxReadingGroup, LightboxSectionsMeasure } from '@messages';
@@ -201,6 +203,36 @@ describe('LightboxApp: the story lenses (Slice 4C)', () => {
     expect(litParagraphs()).toEqual([4, 5]);
     fireEvent.click(within(lanes).getByRole('button', { name: /^Pressure/ }));
     expect(within(screen.getByLabelText('Inspector')).getByText('Open threads')).not.toBeNull();
+  });
+
+  it('draws the paragraph lanes and the story lanes on one grid, with one label track (PR #156 F-03)', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(staleAll(readGroup('E'))), refusal: null });
+    const grid = document.querySelector('.pm-lb-ribbon .pm-lb-ribbon-grid') as HTMLElement;
+    expect(grid).not.toBeNull();
+    // The two parts are the grid's own rows: labels in its first track, paragraph columns in its second.
+    const rows = Array.from(grid.children) as HTMLElement[];
+    expect(rows.map((row) => row.className)).toEqual(['pm-lb-ribbon-wrap', 'pm-lb-ribbon-wrap pm-lb-ribbon-plot']);
+    expect(rows.map((row) => Array.from(row.children).map((child) => child.classList[0])))
+      .toEqual([['pm-lb-ribbon-labels', 'pm-lb-ribbon-cols'], ['pm-lb-ribbon-labels', 'pm-lb-plot-lanes']]);
+    // The stale badges sit inside the shared label track.
+    expect(within(rows[1].firstElementChild as HTMLElement).getAllByText('stale')).toHaveLength(3);
+    const [cols, lanes] = rows.map((row) => row.lastElementChild as HTMLElement);
+    expect(lanes.style.gridTemplateColumns).toBe(cols.style.gridTemplateColumns);
+
+    // The stylesheet makes that one grid: a shared label track sized to the widest label, and subgrid rows.
+    const css = (name: string) => fs.readFileSync(path.resolve(__dirname, `../../../presentation/webview/styles/lightbox/${name}`), 'utf8');
+    const rule = (sheet: string, selector: string) => {
+      const start = sheet.indexOf(`${selector} {`);
+      return start < 0 ? '' : sheet.slice(start, sheet.indexOf('}', start));
+    };
+    const ribbon = css('ribbon.css');
+    expect(rule(ribbon, '[data-pm-surface="lightbox"] .pm-lb-ribbon-grid')).toMatch(/display: grid;[\s\S]*grid-template-columns: minmax\(74px, max-content\) minmax\(0, 1fr\);/);
+    expect(rule(ribbon, '[data-pm-surface="lightbox"] .pm-lb-ribbon-wrap')).toMatch(/grid-column: 1 \/ -1;[\s\S]*display: grid;[\s\S]*grid-template-columns: subgrid;/);
+    expect(rule(ribbon, '[data-pm-surface="lightbox"] .pm-lb-ribbon-labels')).not.toMatch(/flex: 0 0/);
+    // Both column tracks share one gap, so equal indices mean equal edges.
+    expect(rule(ribbon, '[data-pm-surface="lightbox"] .pm-lb-ribbon-cols')).toMatch(/gap: 2px;/);
+    expect(rule(css('plot.css'), '[data-pm-surface="lightbox"] .pm-lb-plot-lanes')).toMatch(/column-gap: 2px;/);
   });
 
   it('says why engagement is absent when the movements are off, on the tile and the lane', () => {
