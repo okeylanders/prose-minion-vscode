@@ -205,16 +205,19 @@ export function lightboxPressureCounts(threads: readonly LightboxPressureThreadT
 }
 
 /**
- * Whether a thread is open across a run of paragraphs: planted at or before
- * its last, and not yet resolved by its first (a thread closes in the
- * paragraph that resolves it).
+ * Whether a thread is open across a run of paragraphs: open in at least one
+ * of them. A thread is open in a paragraph from its plant up to, not
+ * including, the paragraph that resolves it, so a thread planted and
+ * resolved in one paragraph is open in none, and adds nothing to any column
+ * however many paragraphs a column holds (PR #156 F-01).
  */
 export function lightboxThreadOpenAcross(
   thread: Pick<LightboxPressureThreadTile, 'planted' | 'resolution'>,
   column: Pick<LightboxRibbonColumn, 'from' | 'to'>
 ): boolean {
-  return thread.planted.paragraph <= column.to &&
-    (thread.resolution === null || thread.resolution.paragraph > column.from);
+  // The first paragraph of the column the thread could be open in.
+  const first = Math.max(thread.planted.paragraph, column.from);
+  return first <= column.to && (thread.resolution === null || first < thread.resolution.paragraph);
 }
 
 /** How many drawn threads are open across each ribbon column. */

@@ -93,6 +93,56 @@ describe('the Sections detector (Slice 4C)', () => {
     expect(ranges(text)).toEqual([[1, 2, 'Scene 1'], [3, 4, 'Scene 2']]);
   });
 
+  describe('leading front matter across paragraphs (PR #156 F-02)', () => {
+    const NONE = { headings: [], 'scene-breaks': [], 'chapter-lines': [] };
+    const OPEN = '---\ntitle: Chapter One';
+
+    it('reads YAML with a blank line in it as metadata, never as a heading or a break, keeping every paragraph address', () => {
+      const text = [OPEN, 'author: Alice\n---', 'The chapter begins.'].join('\n\n');
+      expect(splitLightboxParagraphs(text).map((paragraph) => paragraph.text)).toEqual([OPEN, 'author: Alice\n---', 'The chapter begins.']);
+      expect(sections(text)).toEqual({ signal: 'none', sections: [], fired: NONE });
+      // The same block closed by `...`, and with a comment and a list inside.
+      expect(sections([OPEN, '# a comment\ntags:\n  - fall\n  - rabbit', 'author: Alice\n...', PROSE].join('\n\n')).fired).toEqual(NONE);
+    });
+
+    it('reads prose directly after the closing delimiter as the chapter, not as a break', () => {
+      expect(sections(['---\ntitle: Chapter One\n---\nThe chapter begins.', PROSE].join('\n\n')).fired).toEqual(NONE);
+      expect(sections([OPEN, 'author: Alice\n---\nThe chapter begins.', PROSE].join('\n\n')).fired).toEqual(NONE);
+    });
+
+    it('finds the body\'s own headings after the metadata, in their own paragraphs or right after the delimiter', () => {
+      const own = [OPEN, 'author: Alice\n---', '# The bank', PROSE, '# The well', PROSE].join('\n\n');
+      expect(sections(own).fired.headings).toEqual([3, 5]);
+      expect(ranges(own)).toEqual([[1, 2, 'Opening'], [3, 4, 'The bank'], [5, 6, 'The well']]);
+      const after = [OPEN, 'author: Alice\n---\n# The bank', PROSE, '# The well', PROSE].join('\n\n');
+      expect(ranges(after)).toEqual([[1, 1, 'Opening'], [2, 3, 'The bank'], [4, 5, 'The well']]);
+    });
+
+    it('keeps the body\'s scene breaks', () => {
+      const text = [OPEN, 'author: Alice\n---', PROSE, '***', PROSE].join('\n\n');
+      expect(sections(text).fired['scene-breaks']).toEqual([4]);
+      expect(ranges(text)).toEqual([[1, 3, 'Scene 1'], [4, 5, 'Scene 2']]);
+    });
+
+    it('takes a chapter that opens with a break, or a block never closed, for prose and breaks as before (controls)', () => {
+      expect(sections(['---', PROSE, '---', PROSE].join('\n\n')).fired['scene-breaks']).toEqual([1, 3]);
+      expect(sections(['---\nShe ran down the lane.', PROSE, '---', PROSE].join('\n\n')).fired['scene-breaks']).toEqual([1, 3]);
+      expect(sections([OPEN, PROSE, '***', PROSE].join('\n\n')).fired['scene-breaks']).toEqual([1, 3]);
+    });
+
+    it('measures no sections on a board whose chapter opens with such metadata', async () => {
+      const board = await boardWithNumbers([OPEN, 'author: Alice\n---', ...ALICE.slice(1)]);
+      expect(board.measured.sections).toEqual({ signal: 'none', sections: [], fired: NONE });
+    });
+  });
+
+  it('takes `# # #` for a scene break, as manuscripts use it, never a heading of "#"', () => {
+    const text = [PROSE, '# # #', PROSE, '# # #', PROSE].join('\n\n');
+    expect(sections(text)).toMatchObject({ signal: 'scene-breaks', fired: { headings: [], 'scene-breaks': [2, 4] } });
+    expect(sections(['# The bank', PROSE, '# # #', PROSE, '# The well', PROSE].join('\n\n')))
+      .toMatchObject({ signal: 'headings', fired: { headings: [1, 5], 'scene-breaks': [3] } });
+  });
+
   it('finds nothing in plain prose, and says so', () => {
     const found = sections([PROSE, PROSE, PROSE].join('\n\n'));
     expect(found).toEqual({ signal: 'none', sections: [], fired: { headings: [], 'scene-breaks': [], 'chapter-lines': [] } });

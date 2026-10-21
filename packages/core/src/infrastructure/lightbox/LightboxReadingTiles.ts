@@ -205,6 +205,11 @@ export interface LightboxClaimAssembler {
     lens: LightboxLensId,
     quotes: readonly LightboxWireQuote[]
   ): { found: Array<LightboxVerifiedQuote | undefined>; withheld: LightboxWithheldQuote[] };
+  /**
+   * Count `count` quotes `verifyQuotes` found but the block withheld by its own rule (an arc step out of
+   * order) in the lens's tally: already checked, now withheld (PR #156 N-01).
+   */
+  withholdFound(lens: LightboxLensId, count: number): void;
   /** Keep a tile whose rules its block applied as a set (a movement of a set that tiles the chapter). */
   keep(tile: LightboxReadingTile): void;
   /** Swap a kept tile for its completed self (a template with its engagement), in place. */
@@ -292,6 +297,13 @@ class GroupAssembly implements LightboxClaimAssembler {
   ): { found: Array<LightboxVerifiedQuote | undefined>; withheld: LightboxWithheldQuote[] } {
     const checked = this.check(lens, quotes);
     return { found: checked.found, withheld: checked.withheld };
+  }
+
+  withholdFound(lens: LightboxLensId, count: number): void {
+    const counts = this.checks.get(lens) ?? { checked: 0, withheld: 0 };
+    this.checks.set(lens, counts);
+    this.quotesWithheld += count;
+    counts.withheld += count;
   }
 
   keep(tile: LightboxReadingTile): void {

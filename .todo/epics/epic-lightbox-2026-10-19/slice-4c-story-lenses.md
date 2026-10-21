@@ -224,10 +224,11 @@ such point is marked *(brief)*.
   resolution), so an inconsistent thread is withheld as malformed under its
   question. "No quote after the plant" is exactly that check.
 - **Span** is planted ¶ to resolution ¶, or to the last paragraph while
-  open. A thread is open across a column when planted at or before its last
-  paragraph and not resolved by its first: it closes in the paragraph that
-  resolves it, so a thread planted and resolved in one paragraph adds
-  nothing to the lane.
+  open. A thread is open in a paragraph from its plant up to, not
+  including, the paragraph that resolves it, and open across a column when
+  it is open in some paragraph of the column. A thread planted and resolved
+  in one paragraph is open in none, so it adds nothing to any column,
+  however many paragraphs the column holds (PR #156 F-01).
 
 **Artifacts**
 
@@ -264,14 +265,23 @@ such point is marked *(brief)*.
 
 **Sections (measured)**
 
-- Read per paragraph of the board's model (blank-line split), front matter
-  skipped. ATX headings take up to three leading spaces, one to six `#` and
-  a space, closing hashes dropped; setext needs an underline of three or
-  more `=` or `-` under text in the same paragraph.
-- Scene breaks: three or more `*`, `-` or `_` (spaces allowed), or a lone
-  `#` or `§`, as a paragraph's first line. `---` after a blank line is a
-  break; under text in the same paragraph it is a setext underline. A break
-  that ends the chapter or follows another opens nothing.
+- Read per paragraph of the board's model (blank-line split). ATX headings
+  take up to three leading spaces, one to six `#` and a space, closing
+  hashes dropped; setext needs an underline of three or more `=` or `-`
+  under text in the same paragraph.
+- **Front matter** is metadata, never structure, even when blank lines
+  split it across paragraphs (PR #156 F-02): `---` as the chapter's first
+  line, then YAML-shaped lines (a `key:` with no space in the key, a list
+  item, a comment, an indented continuation), up to `---` or `...` alone on
+  a line. Lines after the closing delimiter in its paragraph are read as
+  that paragraph's start. Paragraph addresses do not change. A block never
+  closed, or with a line that isn't YAML-shaped, is not front matter.
+- Scene breaks: three or more `*`, `-` or `_` (spaces allowed), a lone `§`,
+  or `#` alone or repeated with spaces (`# # #`, the manuscript break,
+  taken before the ATX rule), as a paragraph's first line. `---` after a
+  blank line is a break; under text in the same paragraph it is a setext
+  underline. A break that ends the chapter or follows another opens
+  nothing.
 - Chapter lines: "Chapter" (any case) and a number in digits, roman numerals
   or words up to ninety-nine, alone or with a title after `.`, `:` or a
   spaced dash, at most 80 characters. "Chapter 12 was where…" is prose.
@@ -279,14 +289,20 @@ such point is marked *(brief)*.
   then scene breaks, then chapter lines; text before the first marker is an
   "Opening" section. What fired is reported for every signal, used or not.
 - **Not detected**, as the module states: a break or heading that is not a
-  paragraph's first line, `# # #`, `⁂`, ornaments, blank-line runs,
-  "Part"/"Book"/"Prologue"/"Epilogue" lines, numbers alone, setext
-  underlines shorter than three.
+  paragraph's first line (except right after front matter's closing line),
+  `⁂`, ornaments, blank-line runs, "Part"/"Book"/"Prologue"/"Epilogue"
+  lines, numbers alone, setext underlines shorter than three. Front matter
+  is recognised by line shape, not parsed: a continuation that opens a
+  paragraph loses its indentation, and `---` followed only by `Word:` lines
+  up to a later `---` is taken for front matter.
 
 **Webview**
 
 - The Sections note sits beside Summary & movements and in the ribbon's
   Sections lane; the lane keeps it when the lens is off.
+- The ribbon's paragraph lanes and story lanes are rows of one grid, with
+  one label track and one column track, so a column index is one place in
+  both (PR #156 F-03).
 - The two-level ribbon above 96 paragraphs stays out of scope (feature
   note above).
 
@@ -301,6 +317,39 @@ the full jest suite; lint identical per file and rule to `8b930fb` (0 errors
 whitespace check. Visual evidence:
 [`lightbox-slice-4c-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4c-visual/README.md).
 No live or billable call.
+
+**After the PR #156 review (2026-10-21).** Astra found three defects and a
+nonblocking tally gap. Each is fixed in its own commit. The
+[review's author response](../../../docs/pr-reviews/pr-156-lightbox-story-lenses-review.md#author-response-2026-10-21)
+gives root cause, fix and tests for each.
+
+- **F-01, a same-paragraph thread on a bucketed ribbon (`30047f0`).** The
+  lane's predicate assumed a nonempty plant-to-resolution interval, so a
+  thread planted and resolved in one paragraph counted as open in a
+  multi-paragraph column. The thread now counts only when it is open in
+  some paragraph of the column, fresh, carried and in the webview's lane.
+- **F-02, front matter split by a blank line (`1a82d29`).** Metadata
+  became a measured section. The detector now finds the leading block
+  across paragraphs and skips it, and the body's own markers stand. `# # #`
+  is now a scene break (the review's note).
+- **F-03, one ribbon grid (`3caadaa`).** The story lanes drew their
+  columns on a separate flex row, 4.8px off fresh and 19.44px off stale.
+  Both parts now share one CSS grid's label and column tracks.
+  - The visual harness measures the edges and commits them (`facts.json`,
+    `errors.txt`): 0px at every width, fresh and stale.
+  - The evidence was rebuilt from a clean install. The first run's bundle
+    hash differed because its `node_modules` was linked from another
+    checkout, which changes webpack's path-derived module ids.
+- **N-01, the fresh tally (`3f9126c`).** An arc step withheld for its order
+  now counts as withheld, once.
+
+Verification after the fixes:
+- Full `npx jest`: 420 suites / 5,815 tests / 59 snapshots.
+- `npm run lint`: identical per file and rule (0 errors / 1,133 warnings).
+- `npm run typecheck`, `npm run build` with `verify:bundle`, and
+  `git diff --check` pass.
+- Each of the 11 new witnesses fails at its assertion on `797e166`'s
+  sources. The new controls pass there.
 
 ## Done when
 

@@ -1,0 +1,93 @@
+sections-measured@1440: column tracks differ by 4.8px
+template@1440: column tracks differ by 4.8px
+template@1440: a column's edges differ by 4.8px
+template@1440: a band's edges differ by 4.8px
+pressure@1440: column tracks differ by 4.8px
+pressure@1440: a column's edges differ by 4.8px
+pressure@1440: a band's edges differ by 4.8px
+artifacts@1440: column tracks differ by 4.8px
+artifacts@1440: a column's edges differ by 4.8px
+artifacts@1440: a band's edges differ by 4.8px
+summary@1440: column tracks differ by 4.8px
+summary@1440: a column's edges differ by 4.8px
+summary@1440: a band's edges differ by 4.8px
+ribbon@1440: column tracks differ by 4.8px
+ribbon@1440: a column's edges differ by 4.8px
+ribbon@1440: a band's edges differ by 4.8px
+inspector@1440: column tracks differ by 4.8px
+inspector@1440: a column's edges differ by 4.8px
+inspector@1440: a band's edges differ by 4.8px
+bound@1440: column tracks differ by 4.8px
+bound@1440: a column's edges differ by 4.8px
+bound@1440: a band's edges differ by 4.8px
+stale@1440: column tracks differ by 19.44px
+stale@1440: a column's edges differ by 19.44px
+stale@1440: a band's edges differ by 19.44px
+stale-pressure@1440: column tracks differ by 19.44px
+stale-pressure@1440: a column's edges differ by 19.44px
+stale-pressure@1440: a band's edges differ by 19.44px
+stale-ribbon@1440: column tracks differ by 19.44px
+stale-ribbon@1440: a column's edges differ by 19.44px
+stale-ribbon@1440: a band's edges differ by 19.44px
+sections-measured@1000: column tracks differ by 4.8px
+template@1000: column tracks differ by 4.8px
+template@1000: a column's edges differ by 4.8px
+template@1000: a band's edges differ by 4.8px
+pressure@1000: column tracks differ by 4.8px
+pressure@1000: a column's edges differ by 4.8px
+pressure@1000: a band's edges differ by 4.8px
+artifacts@1000: column tracks differ by 4.8px
+artifacts@1000: a column's edges differ by 4.8px
+artifacts@1000: a band's edges differ by 4.8px
+summary@1000: column tracks differ by 4.8px
+summary@1000: a column's edges differ by 4.8px
+summary@1000: a band's edges differ by 4.8px
+ribbon@1000: column tracks differ by 4.8px
+ribbon@1000: a column's edges differ by 4.8px
+ribbon@1000: a band's edges differ by 4.8px
+inspector@1000: column tracks differ by 4.8px
+inspector@1000: a column's edges differ by 4.8px
+inspector@1000: a band's edges differ by 4.8px
+bound@1000: column tracks differ by 4.8px
+bound@1000: a column's edges differ by 4.8px
+bound@1000: a band's edges differ by 4.8px
+stale@1000: column tracks differ by 19.44px
+stale@1000: a column's edges differ by 19.44px
+stale@1000: a band's edges differ by 19.44px
+stale-pressure@1000: column tracks differ by 19.44px
+stale-pressure@1000: a column's edges differ by 19.44px
+stale-pressure@1000: a band's edges differ by 19.44px
+stale-ribbon@1000: column tracks differ by 19.44px
+stale-ribbon@1000: a column's edges differ by 19.44px
+stale-ribbon@1000: a band's edges differ by 19.44px
+sections-measured@500: column tracks differ by 4.8px
+template@500: column tracks differ by 4.8px
+template@500: a column's edges differ by 4.8px
+template@500: a band's edges differ by 4.8px
+pressure@500: column tracks differ by 4.8px
+pressure@500: a column's edges differ by 4.8px
+pressure@500: a band's edges differ by 4.8px
+artifacts@500: column tracks differ by 4.8px
+artifacts@500: a column's edges differ by 4.8px
+artifacts@500: a band's edges differ by 4.8px
+summary@500: column tracks differ by 4.8px
+summary@500: a column's edges differ by 4.8px
+summary@500: a band's edges differ by 4.8px
+ribbon@500: column tracks differ by 4.8px
+ribbon@500: a column's edges differ by 4.8px
+ribbon@500: a band's edges differ by 4.8px
+inspector@500: column tracks differ by 4.8px
+inspector@500: a column's edges differ by 4.8px
+inspector@500: a band's edges differ by 4.8px
+bound@500: column tracks differ by 4.8px
+bound@500: a column's edges differ by 4.8px
+bound@500: a band's edges differ by 4.8px
+stale@500: column tracks differ by 19.44px
+stale@500: a column's edges differ by 19.44px
+stale@500: a band's edges differ by 19.44px
+stale-pressure@500: column tracks differ by 19.44px
+stale-pressure@500: a column's edges differ by 19.44px
+stale-pressure@500: a band's edges differ by 19.44px
+stale-ribbon@500: column tracks differ by 19.44px
+stale-ribbon@500: a column's edges differ by 19.44px
+stale-ribbon@500: a band's edges differ by 19.44px

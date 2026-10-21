@@ -292,6 +292,24 @@ describe('group E, read fresh (Slice 4C)', () => {
       expect(object?.claim).toBe('becomes a well');
     });
 
+    it('counts a step withheld for its order in the tallies, once: it was checked and found, then withheld (PR #156 N-01)', () => {
+      const fresh = readStory().assembled;
+      const reversed = withObject(2, (object) => { object.arc.reverse(); });
+      const artifacts = (assembled: typeof fresh) => assembled.quoteChecks.find((checks) => checks.lens === 'artifacts');
+      // Every quote is still checked once; the order rejection adds one withheld, no check.
+      expect(artifacts(reversed)).toEqual({ ...artifacts(fresh), withheld: 1 });
+      expect([reversed.quotesChecked, reversed.quotesWithheld]).toEqual([fresh.quotesChecked, 1]);
+      // A step not found as well as one out of order: each withheld once, never twice.
+      const both = withObject(2, (object) => {
+        object.arc = [object.arc[1], object.arc[0], { step: 'gone', para: 6, quote: 'the hole was never there' }];
+      });
+      expect(tilesOf(both, 'artifact').find((tile) => tile.title === 'The rabbit-hole')?.withheldQuotes).toEqual([
+        { paragraph: 6, reason: 'not-in-chapter' },
+        { paragraph: 4, reason: 'out-of-order' }
+      ]);
+      expect(artifacts(both)).toEqual({ ...artifacts(fresh), checked: (artifacts(fresh)?.checked ?? 0) + 1, withheld: 2 });
+    });
+
     it('withholds a step whose quote is not found, and the object with no step left', () => {
       const one = withObject(0, (object) => { object.arc[1].quote = 'it had nothing in it at all'; });
       expect(tilesOf(one, 'artifact')[0].arc.map((step) => step.step)).toEqual(['peeped into']);

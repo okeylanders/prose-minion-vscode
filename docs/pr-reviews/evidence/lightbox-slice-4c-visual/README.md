@@ -18,7 +18,10 @@ which is unchanged.
 | `states/chapter.json` | The host's Lightbox messages: `idle` (the board, measured, before any reading), `done` (groups D and E read), `bound` (the tray, then the answer, for the movement brought), `stale` (the board rebuilt after the chapter changed on disk). `lensesOff` holds groups A–C's lenses, off for this evidence; `estimates` and `estimatesStale` are the host's estimate answers before and after the change, which the harness answers the tab's own estimate requests with, echoing each request's id (PR #149 F-03) |
 | `states/workshop.json` | `composer`: the Workshop session state after the movement was staged, as its real session snapshots it; `handoff`: everything the Workshop's tile handler and the seed delivery posted to the Workshop webview |
 | `states/log.txt` | Every line the host logged while the states were made |
-| `harness.js` | Renders a built `webview.js` as the Lightbox and the Workshop surfaces behind a stubbed VS Code API, replays each state's messages, screenshots it once two consecutive frames match, and writes `facts.json` |
+| `harness.js` | Renders a built `webview.js` as the Lightbox and the Workshop surfaces behind a stubbed VS Code API, replays each state's messages, screenshots it once two consecutive frames match, measures the ribbon's grid, and writes `facts.json` and `errors.txt` |
+| `facts.json` | What each state's page shows, from the final run, with `ribbonGrid`: the ribbon's measured column, track and band edges and clipped labels (PR #156 F-03) |
+| `errors.txt` | Page errors and ribbon misalignments from the final run: empty |
+| `errors-797e166.txt` | The same harness against the bundle built from `797e166`, before the F-03 fix: the misalignments it measured |
 | `tools/build-story.test.ts` | How `states/` was made |
 
 **States:**
@@ -108,9 +111,11 @@ Middle Grade publishing-standards preset.
 
 ## Results
 
-From `facts.json` of the final run, against the bundle built at this
-slice's head (`webview.js` SHA-256
-`97658a69eba4a22bf26a4674bf2b3b18c68c65ea9ebca01d2cdca8ddffaf64bf`):
+From the committed `facts.json` and `errors.txt` of the final run, after
+the PR #156 review fixes, against a bundle from a clean `npm ci` and
+`npm run build` (`webview.js` SHA-256
+`9493dfce5941aeccbbab03366f2905e6b0a91c24803176141098df849442415b`). Every
+fact below is unchanged from the first run; only `ribbonGrid` is new:
 
 | State | What the page shows (1440, 1000 and 500 alike) |
 |---|---|
@@ -125,9 +130,27 @@ slice's head (`webview.js` SHA-256
 | `stale`, `stale-pressure`, `stale-ribbon` | Run line "68 quotes checked · 2 withheld · 2 calls · 7 lenses stale"; seven "Stale" notes; Sections "Section 1: Scene 1, ¶1–¶5", "Section 2: Scene 2, ¶6–¶9"; movements ¶1–¶3, ¶4–¶6, ¶7–¶9, engagement following them; Pressure 0, 0, 0, 1, 2, 2, 3, 3, 3; "What is in the jar she takes down?" withheld: "Its resolution is no longer in the chapter, so the board cannot show it resolved."; jar arc "taken down → put away"; basis "Stock & signature and Template & freshness were read against an earlier version of this chapter, so the basis is not counted. Re-read them to count it." |
 | `workshop-composer` | One pill, "Lightbox Movement: The chase", "from the Lightbox · 1 quote", tooltip "Movement from the Lightbox's reading of Drafts/alice-chapter-1-opening.md: the claim and the quotes found in the chapter", "Remove … from this message", hint "rides the next message only" |
 | Horizontal overflow (document) | none, in any state or width |
+| Ribbon grid (`ribbonGrid`) | In every Lightbox state at every width: the paragraph lanes' and story lanes' column tracks share both edges (0 px apart); each of the 8 (fresh) or 9 (stale) paragraph columns has the same left and right edge as the story lanes' column of that index, 0 px apart; every section, movement and engagement band starts and ends on the edges of the paragraph columns it spans, 0 px apart; both parts' label blocks are one width, 78.8 px fresh and 121.8 px with the stale badges; no lane label is clipped |
 
-- No page errors in any state or width.
+- No page errors in any state or width, and no misalignment: `errors.txt`
+  is empty.
 - `states/log.txt` names paths, counts, attachment ids and outcomes only.
+
+**Before the F-03 fix.** The same harness against the bundle built from
+`797e166` (on the same clean install) recorded 93 misalignments
+(`errors-797e166.txt`): the story lanes' columns sat 4.8 px right of the
+paragraph columns in every fresh state and 19.44 px right in every stale
+state, at 1440, 1000 and 500 px alike, as the review measured from the
+screenshots.
+
+**The bundle hash.** The first run's recorded hash (`97658a69…`) came from a
+build whose `node_modules` was a symlink to another checkout's install:
+webpack resolved those modules to paths outside this checkout, and
+production module ids are hashed from paths, so the bundle differed from a
+clean checkout's in its module ids only. The installed versions matched the
+lockfile. On a clean `npm ci` here, `797e166` builds to `65228e9a…`, the
+hash the review rebuilt, and this run's bundle comes from the same clean
+install.
 
 **Fixed while making it.** The first run showed two things worth changing:
 with both halves stale, the basis line named only Stock & signature (it now
@@ -137,9 +160,11 @@ harness now scrolls the ribbon into view there.
 
 ## Rerunning it
 
-Build the bundle and copy it out:
+Build the bundle from a clean install (a `node_modules` linked from another
+checkout changes the bundle's module ids, so its hash) and copy it out:
 
 ```sh
+npm ci
 npm run build                                   # writes apps/vscode-extension/dist/webview.js
 cp apps/vscode-extension/dist/webview.js /tmp/lightbox-4c/webview.js
 ```

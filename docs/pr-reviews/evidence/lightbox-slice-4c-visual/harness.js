@@ -14,6 +14,12 @@
  * delivery, built them, with only the provider played (see README.md and
  * tools/build-story.test.ts).
  *
+ * After the PR #156 review (F-03) it also measures the ribbon's grid in each
+ * Lightbox state: the paragraph lanes' and story lanes' column edges, track
+ * edges and band edges, and clipped lane labels (`ribbonGrid` in
+ * facts.json). Any edge more than half a pixel out of line, or a clipped
+ * label, is written to errors.txt.
+ *
  * The estimate is only ever an answer to the tab's own request (PR #149
  * F-03), so it is not replayed: the stubbed API answers each
  * `lightbox_set_lenses` the tab posts with the host's recorded answer for
@@ -215,6 +221,62 @@ const viewports = [
   { tag: '500', width: 500, height: 1800 }
 ];
 
+/*
+ * Where the ribbon's two parts draw their paragraph columns (PR #156 F-03),
+ * measured in the page: each main column's edges against the story lanes'
+ * column of the same index (the Pressure lane draws one cell per column),
+ * the two column tracks' edges, every band's edges against the main
+ * columns it spans, and any lane label its track clips. Rounded to 0.01 px.
+ */
+const ribbonGeometry = () => {
+  const round = (value) => Math.round(value * 100) / 100;
+  const box = (element) => {
+    const rect = element.getBoundingClientRect();
+    return { left: round(rect.left), right: round(rect.right) };
+  };
+  const delta = (a, b) => round(Math.max(Math.abs(a.left - b.left), Math.abs(a.right - b.right)));
+  const mainTrack = document.querySelector('.pm-lb-ribbon-cols');
+  const storyTrack = document.querySelector('.pm-lb-plot-lanes');
+  if (!mainTrack || !storyTrack) {
+    return null;
+  }
+  const columns = [...mainTrack.querySelectorAll(':scope > .pm-lb-col')].map(box);
+  const cells = [...storyTrack.querySelectorAll(':scope > .pm-lb-plot-pressure')].map(box);
+  const columnDeltas = cells.length === columns.length ? columns.map((column, index) => delta(column, cells[index])) : [];
+  const bandDeltas = [...storyTrack.querySelectorAll(':scope > .pm-lb-band')].map((band) => {
+    const [start, end] = band.style.gridColumn.split('/').map((part) => Number.parseInt(part.trim(), 10));
+    return { band: band.getAttribute('aria-label'), delta: delta(box(band), { left: columns[start - 1].left, right: columns[end - 2].right }) };
+  });
+  const clipped = [...document.querySelectorAll('.pm-lb-ribbon-grid .pm-lb-lane-label')]
+    .filter((label) => label.scrollWidth > label.clientWidth + 0.5)
+    .map((label) => label.textContent.trim());
+  return {
+    columns: columns.length,
+    labelTrack: [...document.querySelectorAll('.pm-lb-ribbon-grid .pm-lb-ribbon-labels')].map((labels) => round(labels.getBoundingClientRect().width)),
+    mainTrack: box(mainTrack),
+    storyTrack: box(storyTrack),
+    trackEdgeDelta: delta(box(mainTrack), box(storyTrack)),
+    columnsCompared: columnDeltas.length,
+    maxColumnEdgeDelta: columnDeltas.length > 0 ? Math.max(...columnDeltas) : null,
+    maxBandEdgeDelta: bandDeltas.length > 0 ? Math.max(...bandDeltas.map((entry) => entry.delta)) : null,
+    bandsCompared: bandDeltas.length,
+    clippedLabels: clipped
+  };
+};
+
+/** The ribbon's alignment, as a list of what is out of line; empty when every edge coincides within half a pixel. */
+const misaligned = (grid) => {
+  if (!grid) {
+    return [];
+  }
+  const out = [];
+  if (grid.trackEdgeDelta > 0.5) { out.push(`column tracks differ by ${grid.trackEdgeDelta}px`); }
+  if (grid.maxColumnEdgeDelta !== null && grid.maxColumnEdgeDelta > 0.5) { out.push(`a column's edges differ by ${grid.maxColumnEdgeDelta}px`); }
+  if (grid.maxBandEdgeDelta !== null && grid.maxBandEdgeDelta > 0.5) { out.push(`a band's edges differ by ${grid.maxBandEdgeDelta}px`); }
+  if (grid.clippedLabels.length > 0) { out.push(`clipped labels: ${grid.clippedLabels.join(', ')}`); }
+  return out;
+};
+
 const lightboxFacts = () => {
   const clean = (value) => value?.trim().replace(/\s+/g, ' ') ?? null;
   const text = (selector, root = document) => clean(root.querySelector(selector)?.textContent);
@@ -333,12 +395,20 @@ const workshopFacts = () => ({
       }
       if (!stable) { errors.push(`${scenario.name}@${viewport.tag}: never settled`); }
       fs.writeFileSync(path.join(outDir, `${scenario.surface}-${scenario.name}-${viewport.tag}.png`), previous);
-      facts[`${scenario.surface}-${scenario.name}@${viewport.tag}`] = await tab.evaluate(scenario.surface === 'lightbox' ? lightboxFacts : workshopFacts);
+      const pageFacts = await tab.evaluate(scenario.surface === 'lightbox' ? lightboxFacts : workshopFacts);
+      if (scenario.surface === 'lightbox') {
+        // Measured on its own: evaluate sends one function's source to the page.
+        pageFacts.ribbonGrid = await tab.evaluate(ribbonGeometry);
+        for (const problem of misaligned(pageFacts.ribbonGrid)) {
+          errors.push(`${scenario.name}@${viewport.tag}: ${problem}`);
+        }
+      }
+      facts[`${scenario.surface}-${scenario.name}@${viewport.tag}`] = pageFacts;
       await tab.close();
     }
   }
   await browser.close();
   fs.writeFileSync(path.join(outDir, 'facts.json'), JSON.stringify(facts, null, 2));
   fs.writeFileSync(path.join(outDir, 'errors.txt'), errors.join('\n'));
-  console.log(`done; ${errors.length} page errors`);
+  console.log(`done; ${errors.length} errors (page errors and ribbon misalignments; see errors.txt)`);
 })().catch((e) => { console.error(e); process.exit(1); });

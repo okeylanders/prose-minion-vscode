@@ -803,8 +803,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes):
-- 427 suites / 5,887 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes, merged with Slice 4C's PR #156 fixes):
+- 428 suites / 5,900 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1114,6 +1114,11 @@ D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
   - **The text rules.** The one evaluative tile's rules are
     `LightboxOpinionPhrasing`, a conservative word check with its limits
     stated. Keep it stricter than it needs to be, not looser.
+- **One ribbon grid.** Every ribbon lane is a row of `.pm-lb-ribbon-grid`
+  (one label track, one column track, subgrid rows), never a row with its
+  own label width, so a column index is one horizontal place in every lane
+  (PR #156 F-03). The visual evidence harness measures the column edges
+  and records them.
 
 ### Operational Tips
 
