@@ -166,3 +166,122 @@ The final pre-publication remote/ancestry check at 03:48 UTC on 2026-10-21 confi
 ## Next step
 
 Correct F-01–F-03 with targeted regressions, then re-review the changed head. N-01 can be handled as a small accounting correction. The completed retarget/ancestry check above found no additional base implementation delta; recheck again if either implementation head or target changes. Publication is report-only, authorized by the user on 2026-10-21. It does not authorize implementation edits, GitHub comments/formal reviews, merging or deployment.
+
+## Author response (2026-10-21)
+
+**F-01, F-02, F-03 and N-01 are addressed, and the `# # #` note is taken.** Each finding has its own commit: F-01 `30047f0`, F-02 `1a82d29`, F-03 `3caadaa`, N-01 `3f9126c`. The docs commit that follows them adds this response and updates the slice notes, epic progress and agents guide. Nothing above this section was edited.
+
+**How each new test was checked against `797e166`.** Each test was written and run before its fix, while `packages/core` was still identical to `797e166`. After the fixes, I checked out `797e166`'s versions of the seven changed source files (including the two stylesheets the F-03 pin reads) over the fixed tree, ran the four affected test files, and restored the fixes.
+- 11 of 56 tests failed there: exactly the 11 new witnesses (F-01 3, F-02 6 including `# # #`, F-03 1, N-01 1), each at its assertion. The F-03 DOM pin fails at its first query, because there is no grid.
+- The two new control tests and the 43 existing tests in those files pass on both trees.
+
+### Resolution ledger
+
+| ID | Fix | Proving test(s) | On `797e166` |
+| --- | --- | --- | --- |
+| F-01 | `30047f0` | `LightboxPressureBuckets.test.ts` (production boards of 192 and 288 ¶, fresh and carried) | 3 witnesses fail, 1 control passes |
+| F-02 | `1a82d29` | `LightboxSections.test.ts`, "leading front matter across paragraphs" and the `# # #` case | 5 front-matter witnesses and the `# # #` case fail; the controls pass |
+| F-03 | `3caadaa` | `LightboxAppPlot.test.tsx`, "one grid, with one label track" (DOM and CSS); the visual harness's `ribbonGrid` measurement (`facts.json`, `errors.txt`) | The DOM pin fails (no grid); the harness records 93 misalignments (`errors-797e166.txt`) |
+| N-01 | `3f9126c` | `LightboxPlotReadings.test.ts`, "counts a step withheld for its order in the tallies, once" | Fails (0 withheld) |
+
+### F-01: a same-paragraph thread is open in no column
+
+**Root cause.** The finding is correct. `lightboxThreadOpenAcross` intersected `[plant, resolution)` with the column as "plant ≤ column end and resolution > column start". That test assumes the interval is nonempty. When plant and resolution share a paragraph the interval is empty, but any column whose first paragraph comes before that paragraph still passed.
+
+**Fix.** The predicate now asks whether the thread is open in some paragraph of the column. Let `first` be the later of the plant and the column's start. The thread counts when `first` is within the column and before the resolution (or the thread is unresolved).
+- One function serves the fresh lane, the carried lane and the webview's lane (`lightboxPressureLane`, `lightboxPressureLaneView`).
+- The lane item already lights paragraphs from the plant up to the resolution's paragraph, not including it, so it agrees.
+
+**Tests.** `LightboxPressureBuckets.test.ts` builds boards with the production `LightboxService`. Readings go through the production codec, verifier and assembly, and the carry through the production rebuild.
+- **192 paragraphs (96 columns of two).** A same-paragraph thread at the column's end (¶2) and at its start (¶1) adds nothing to any column.
+- **288 paragraphs (columns of three).** Inside the column (¶2) it adds nothing.
+- **Carry.** After a rebuild with ¶100 changed, the same-paragraph thread adds nothing, and the lane the webview draws agrees.
+- **Controls.** A ¶1→¶2 thread counts 1 in ¶1–¶2 and 0 in ¶3–¶4, and so does a ¶2→¶3 thread. A thread still open counts in every column from its plant on. Carried, the ¶2→¶3 thread still counts 1.
+
+### F-02: front matter is metadata across blank lines
+
+**Root cause.** The finding is correct. `isFrontMatter` recognised only a first paragraph that both opened and closed the block. A blank line in the YAML split it, and the closing `---` then read as a setext underline under `author: Alice`. Prose directly after the closing delimiter defeated the last-line check, so the opening `---` read as a break.
+
+**Fix.** `frontMatterEnd` finds the leading block across the paragraph model:
+- It opens with `---` as the chapter's first line.
+- It continues with YAML-shaped lines: a `key:` with no space in the key, a list item, a comment, or an indented continuation.
+- It closes at `---` or `...` alone on a line.
+
+Inside that span:
+- Nothing is a marker.
+- Lines after the closing delimiter in its paragraph are read as that paragraph's start, so a heading there marks it.
+- Paragraph addresses are unchanged; the metadata stays in the opening section.
+
+A block never closed, or holding a line that isn't YAML-shaped, is not front matter. So a chapter that opens with a `---` break followed by prose keeps every break. The recognition is by line shape, not a YAML parse. The module now states the two limits this leaves:
+- an indented continuation that opens a paragraph loses its indentation to the paragraph model;
+- a chapter opening with `---` followed only by `Word:` lines up to a later `---` is taken for front matter.
+
+**Tests.** In `LightboxSections.test.ts`:
+- your minimal source, with the paragraph addresses checked;
+- a block closed by `...`, with a comment and a list inside;
+- prose directly after the closing line, with and without a blank line in the YAML;
+- body headings after the metadata, in their own paragraphs and right after the delimiter;
+- the body's scene breaks after the metadata;
+- a board built by the production service from the metadata plus the worked example's chapter.
+
+Controls: `---` then prose then `---`, `---` with prose in the same paragraph, and an unclosed block all keep their breaks as before.
+
+**The `# # #` note.** Taken, by changing behavior rather than the docs. `#` marks separated by spaces (`# # #`, `# #`) now form a scene break, the manuscript convention. The check runs before the ATX rule could read the line as a heading of `#`, and the module's notes say so. A real `# The bank` heading on the same board is unaffected (tested).
+
+### F-03: one grid for the ribbon's paragraph and story lanes
+
+**Root cause.** The finding is correct. The story lanes were a second flex row with their own 74px label basis and no fixed minimum, so the wider story labels moved their column track.
+
+**Fix.** Both parts are rows of one CSS grid, `.pm-lb-ribbon-grid`:
+- **One label track.** `minmax(74px, max-content)`, sized to the widest label including its stale badge.
+- **One column track.** Each part (`.pm-lb-ribbon-wrap`) spans both tracks as a `subgrid` row, and both column tracks keep the same 2px gap.
+
+Labels keep their full text. The label track is 78.8px fresh and 121.8px with the stale badges, and no label is clipped.
+
+**Tests.**
+- **DOM and CSS (jsdom).** `LightboxAppPlot.test.tsx` pins:
+  - one grid whose two rows each hold a label block and a column track;
+  - the stale badges inside the shared label track;
+  - equal column templates;
+  - from the stylesheet text: the shared label track, the subgrid rows, no flex basis on the labels, and the shared gap.
+- **Layout (Chromium).** The visual harness now measures, in every Lightbox state at 1440, 1000 and 500px:
+  - each paragraph column's left and right edges against the story lanes' column of the same index (the Pressure lane's per-column cells);
+  - the two tracks' edges;
+  - every section, movement and engagement band against the paragraph columns it spans;
+  - any clipped label.
+
+  It records the measurements as `ribbonGrid` in the committed `facts.json` and writes any mismatch over 0.5px to `errors.txt`.
+  - On the `797e166` bundle it records 93 misalignments: 4.8px in every fresh state and 19.44px in every stale state, at every width, matching your measurement from the screenshots.
+  - On the fix, every edge coincides at 0px, 8 or 9 columns and 6 or 8 bands per state; `errors.txt` is empty.
+
+**The bundle hash.** Your rebuilt `65228e9a…` was right. The recorded `97658a69…` came from a build whose `node_modules` was a symlink to another checkout's install. The installed versions matched the lockfile, but webpack resolved those modules to paths outside this checkout, and production module ids derive from paths.
+- On a clean `npm ci` here, `797e166` builds to exactly `65228e9a07eeba50adf2f11af72430d16c903a34519ffb15e137d035d2aea0ab`.
+- The regenerated evidence comes from the same clean install: `webview.js` SHA-256 `9493dfce5941aeccbbab03366f2905e6b0a91c24803176141098df849442415b`.
+- The host states regenerate byte-identical.
+- Apart from the new `ribbonGrid`, every page fact equals the first run's.
+- `facts.json`, `errors.txt` and `errors-797e166.txt` are committed.
+
+### N-01: a fresh arc step withheld for its order is counted
+
+**Root cause.** The finding is correct. `verifyQuotes` counted the step's quote as checked and found. The order rule then withheld it from the tile, but nothing added that to the tally.
+
+**Fix.** The claim assembler gains `withholdFound(lens, count)`, which counts quotes that verification found but a block's own rule withheld. It adds to the withheld counts only, because they were already checked. The artifacts block calls it with its order-withheld steps. A step whose quote is not found is counted once, by verification, so no quote is counted twice.
+
+**Tests.**
+- Reversing the rabbit-hole's arc: the artifacts lens tally and the group totals gain exactly one withheld and no check.
+- An arc with one step out of order and one not found: two withheld, one more check.
+
+On `797e166` the first assertion fails with 0 withheld. It also fails with only the new call removed.
+
+### Verification at the new head
+
+| Check | Result |
+| --- | --- |
+| Full Jest | 420 suites / 5,815 tests / 59 snapshots, all passing (from 419 / 5,802 / 59 at `797e166`) |
+| `npm run lint` | 0 errors / 1,133 warnings, identical per file, rule and severity to the base |
+| `npm run typecheck` | Passes |
+| `npm run build` with `verify:bundle` | Passes (clean `npm ci`); the same three webpack size warnings |
+| `git diff --check` | Clean |
+| `vscode` imports in `packages/core/src` | None; changed modules stay under 500 lines (`LightboxReadingHandler` unchanged at 497) |
+
+No live or billable call was made. The fixtures are public-domain text and lines written for the tests.

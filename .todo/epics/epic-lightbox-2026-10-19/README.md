@@ -902,3 +902,19 @@ land before Slice 5 (decision 14).
     - Visual evidence at 1440, 1000 and 500 px from real host output with a
       stub model: [`lightbox-slice-4c-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4c-visual/README.md).
     - No live or billable call.
+  - **PR #156 review (2026-10-21).** Astra requested changes (F-01 to F-03,
+    N-01). Each is fixed in its own commit:
+    - F-01 `30047f0`: a thread planted and resolved in one paragraph no
+      longer counts as open in a bucketed ribbon column.
+    - F-02 `1a82d29`: front matter split by a blank line is no longer
+      measured as a section. `# # #` is now a scene break.
+    - F-03 `3caadaa`: the ribbon's paragraph and story lanes share one
+      grid. The harness now measures and commits their edges: 0 px apart
+      at every width, fresh and stale.
+    - N-01 `3f9126c`: a fresh arc step withheld for its order is counted.
+
+    After the fixes: 420 suites / 5,815 tests / 59 snapshots; lint
+    identical. The evidence was rebuilt from a clean install, and its
+    bundle hash is recorded with the reason the first one differed. See the
+    review's
+    [author response](../../../docs/pr-reviews/pr-156-lightbox-story-lenses-review.md#author-response-2026-10-21).
