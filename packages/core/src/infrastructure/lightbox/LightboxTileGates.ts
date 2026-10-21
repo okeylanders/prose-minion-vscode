@@ -37,7 +37,9 @@
  *   applied by both phases), and engagement follows them.
  * - group G (Slice 4F, craft steering): a figure's reading and each
  *   instance note keep only quotes holding an instance of their figure, by
- *   its own detector, and stand on at least one.
+ *   its own detector, and stand on at least one. A note that leans or
+ *   compensates with no nudge stands only while its instance is in
+ *   dialogue, the character's voice (epic decision 26, `LightboxSteeringVoice`).
  * - group F (Slice 4D, `LightboxOpinionGates`): the Opinion stands while
  *   one of its views does. Its observations and views are gated first, by
  *   their own rules (cited items on the board, quotes the tiles hold, the
@@ -63,6 +65,7 @@ import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNum
 import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import type { LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
+import type { LightboxSteeringVoice } from '@/infrastructure/lightbox/LightboxSteeringVoice';
 import {
   LIGHTBOX_PLOT_GATE_REASONS,
   lightboxSynopsisGate,
@@ -132,6 +135,11 @@ export const LIGHTBOX_GATE_REASONS = {
     fresh: 'No quote it gave was found holding an instance of the figure it reads.',
     carried: 'No quote of it still holds an instance of the figure it reads.'
   },
+  /** Dialogue is voice (epic decision 26): only a note in dialogue leans or compensates with no nudge. */
+  steeringNoNudge: {
+    fresh: 'It leans or compensates in narration, so it names the craft move worth a look, and this one names none.',
+    carried: 'Its instance no longer stands in dialogue, and in narration a note that leans or compensates names a nudge; this one has none.'
+  },
   /** The text is the same, but the figure was measured again and stands out differently (PR #155 F-01). */
   numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.',
   opinionNoView: {
@@ -159,6 +167,8 @@ export interface LightboxGateCandidate {
   thread?: LightboxThreadCandidate;
   /** The Opinion's views that stood their own gates (Slice 4D, `LightboxOpinionGates`). */
   opinionViews?: number;
+  /** A steering note: whether it leans or compensates, whether it names a nudge, and where its instance stands (epic decision 26). */
+  steeringNote?: { leans: boolean; nudged: boolean; voice: LightboxSteeringVoice | undefined };
 }
 
 export interface LightboxGateContext {
@@ -196,7 +206,14 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
     return candidate.evidence.length > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.numberNoInstance[context.phase]);
   }
   if (candidate.kind === 'steering-reading' || candidate.kind === 'steering-note') {
-    return candidate.evidence.length > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.steeringNoInstance[context.phase]);
+    if (candidate.evidence.length === 0) {
+      return refuse(LIGHTBOX_GATE_REASONS.steeringNoInstance[context.phase]);
+    }
+    const note = candidate.steeringNote;
+    // Dialogue is voice: a note leaning with no nudge stands only while its instance is in dialogue.
+    return note && note.leans && !note.nudged && note.voice !== 'dialogue'
+      ? refuse(LIGHTBOX_GATE_REASONS.steeringNoNudge[context.phase])
+      : { ok: true };
   }
   if (candidate.kind === 'stock-tiers' && candidate.evidence.length < LIGHTBOX_STOCK_MINIMUM_BEATS) {
     return refuse(LIGHTBOX_GATE_REASONS.tiersTooFew[context.phase]);

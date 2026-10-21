@@ -20,7 +20,9 @@
  * - **Group G's kinds** (Slice 4F, craft steering): a figure's reading and
  *   a note keep only quotes the figure's own detector finds an instance in
  *   on the changed text; a note's example is anchored again in its carried
- *   quote, and withheld alone when it no longer stands there.
+ *   quote, and withheld alone when it no longer stands there. Where the
+ *   note's instance stands is decided again (epic decision 26): in
+ *   dialogue its nudge and example are withheld, and its gate hears where.
  */
 
 import type {
@@ -38,6 +40,11 @@ import {
 } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { lightboxFoundBeats, lightboxTierCounts } from '@/infrastructure/lightbox/LightboxCraftTiles';
 import { lightboxSteeringExampleFields } from '@/infrastructure/lightbox/LightboxSteeringTiles';
+import {
+  holdLightboxSteeringVoice,
+  lightboxSteeringInstanceVoice,
+  type LightboxSteeringVoice
+} from '@/infrastructure/lightbox/LightboxSteeringVoice';
 
 export type LightboxRecheck =
   | { quote: LightboxVerifiedQuote }
@@ -70,6 +77,8 @@ export interface LightboxCarriedCraft {
   patch: Partial<LightboxReadingTile>;
   /** For a handoff's gate. */
   pair?: LightboxSentencePair | 'gone' | 'not-adjacent';
+  /** For a steering note's gate: where its carried instance stands (epic decision 26). */
+  voice?: LightboxSteeringVoice;
 }
 
 /** Carry a numbers reading, a handoff, a tier mix or a steering tile by its own rules; undefined for any other kind. */
@@ -97,7 +106,14 @@ export function carryLightboxCraftEvidence(
       }
       // The example's anchor is the note's own quote, where it now stands; an example withheld stays withheld.
       const fields = lightboxSteeringExampleFields(verifier, stat, carried.evidence[0], tile.example, tile.exampleWithheld, 'carried');
-      return { ...carried, patch: { example: fields.example, exampleWithheld: fields.exampleWithheld } as Partial<LightboxReadingTile> };
+      // Dialogue is voice (epic decision 26): placed again on the carried quote; the gate reads `voice` too.
+      const voice = lightboxSteeringInstanceVoice(verifier, stat, carried.evidence[0]);
+      const held = holdLightboxSteeringVoice({ stance: tile.stance, nudge: tile.nudge, voice: tile.voice, ...fields }, voice, 'carried');
+      return {
+        ...carried,
+        voice,
+        patch: { nudge: held.nudge, example: held.example, exampleWithheld: held.exampleWithheld, voice: held.voice } as Partial<LightboxReadingTile>
+      };
     }
     case 'stock-tiers': {
       const rechecked = tile.beats.map((beat) => ({ tier: beat.tier, result: recheckLightboxQuote(beat.quote, (p, t) => verifier.verify(p, t)) }));

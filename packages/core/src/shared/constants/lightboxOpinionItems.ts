@@ -72,6 +72,7 @@ import {
 } from '@shared/constants/lightboxPlot';
 import {
   LIGHTBOX_STEERING_STANCE_LABELS,
+  LIGHTBOX_STEERING_VOICE_DIGEST,
   lightboxSteeringCountLines,
   lightboxSteeringFigure
 } from '@shared/constants/lightboxSteering';
@@ -341,8 +342,10 @@ function kindLines(tile: LightboxReadingTile, board: LightboxOpinionBoard): Item
       return figure ? lightboxSteeringCountLines(figure) : [];
     }
     case 'steering-note':
-      // The why is the claim; the nudge and the example never enter the digest (epic decision 24).
-      return [`stance: ${LIGHTBOX_STEERING_STANCE_LABELS[tile.stance]} · figure: ${LIGHTBOX_NUMBER_STAT_LABELS[tile.stat]}`];
+      // The why is the claim; the nudge and the example never enter the digest (epic decision 24). A note in
+      // dialogue says so, so a stance on a character's voice is not read as the narration's craft (decision 26).
+      return [`stance: ${LIGHTBOX_STEERING_STANCE_LABELS[tile.stance]} · figure: ${LIGHTBOX_NUMBER_STAT_LABELS[tile.stat]}` +
+        (tile.voice !== undefined ? ` · ${LIGHTBOX_STEERING_VOICE_DIGEST}` : '')];
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':

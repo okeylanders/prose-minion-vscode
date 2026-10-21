@@ -33,13 +33,10 @@ import { findDialogueSpans } from '@/utils/dialogueSpans';
 import { countWords } from '@/utils/textUtils';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import { STYLE_FLAG_FILLER_WORDS } from '@/tools/measure/styleFlags';
-import { BEING_VERB_FORMS } from '@/tools/measure/beingVerbs';
+import { BEING_VERB_ELIDED_FORMS, BEING_VERB_FORMS, BEING_VERB_NEGATED_FORMS } from '@/tools/measure/beingVerbs';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import {
-  LIGHTBOX_NUMBER_PATTERNS,
-  LIGHTBOX_NUMBER_STATS,
-  type LightboxNumberPatternId
-} from '@/infrastructure/lightbox/LightboxNumbers';
+import { LIGHTBOX_NUMBER_STATS, type LightboxNumberPatternId } from '@/infrastructure/lightbox/LightboxNumbers';
+import { lightboxParagraphPattern } from '@/infrastructure/lightbox/LightboxSpanIndex';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
 import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 
@@ -141,21 +138,12 @@ export function lightboxInstanceFilter(row: LightboxNumberRow, paragraphs: reado
  * over the whole paragraph as the figure was counted, so a span cut mid-word
  * ("ly tired" of "only tired") holds no match it would not have counted.
  * Shared by the numbers lens and craft steering (Slice 4F), which hold a
- * quote to the figure's own detector whether or not it stands out.
+ * quote to the figure's own detector whether or not it stands out. Each
+ * paragraph is detected once per text and each span answered by binary
+ * search (`LightboxSpanIndex`, PR #162 F-01).
  */
 export function lightboxPatternInstanceFilter(stat: LightboxNumberPatternId, paragraphs: readonly string[]): LightboxSpanFilter {
-  const detect = LIGHTBOX_NUMBER_PATTERNS[stat];
-  const matches = new Map<number, Array<{ start: number; end: number }>>();
-  return (paragraph, start, end) => {
-    const source = paragraphs[paragraph - 1];
-    if (source === undefined) {
-      return false;
-    }
-    if (!matches.has(paragraph)) {
-      matches.set(paragraph, detect(source));
-    }
-    return (matches.get(paragraph) ?? []).some((match) => start <= match.start && match.end <= end);
-  };
+  return (paragraph, start, end) => lightboxParagraphPattern(paragraphs, stat, paragraph)?.holds(start, end) ?? false;
 }
 
 /** A word pattern's quote, by its detector: the first accepted span holding an instance, else `no-instance` or the verifier's failure. */
@@ -240,16 +228,21 @@ function instancePhrase(row: LightboxNumberRow): string {
 
 /**
  * What an instance of a word pattern is, said so a reading quotes one
- * (Slice 4F, the being-verbs investigation): the whole words the detector
- * counts, and what it does not count that a reader might take for one.
+ * (Slice 4F, the being-verbs investigation): the words the detector counts,
+ * and what it does not count that a reader might take for one. Being verbs
+ * count their contractions (epic decision 26).
  */
 export function lightboxPatternInstancePhrase(stat: LightboxNumberPatternId): string {
   switch (stat) {
     case 'passive-voice':
       return 'was, were, been or being followed by a word ending in -ed.';
     case 'being-verbs':
-      return `one of these whole words: ${BEING_VERB_FORMS.join(', ')}. A contraction (she's, I'm, they're, isn't, wasn't, ain't), ` +
-        'a form joined to an underscore (_was_) and a linking verb (seem, become, look, feel, appear) are not instances.';
+      return `one of these whole words: ${BEING_VERB_FORMS.join(', ')}; or one contracted: I'm, 're (you're, we're, they're), ` +
+        `'s read as is (it's, she's, there's, and after a name or noun before an adjective, an -ing word, an adverb, a preposition ` +
+        `or a determiner: the Hatter's late, everyone's here), ${BEING_VERB_NEGATED_FORMS.join(', ')}, ${BEING_VERB_ELIDED_FORMS.join(', ')}. ` +
+        '\'s as a possessive (the Rabbit\'s watch, Alice\'s sister) or as has (he\'s been, she\'s got, it\'s had), let\'s, ' +
+        'ain\'t before been, got or had, \'d, \'ll and \'ve, a form joined to an underscore (_was_) and a linking verb ' +
+        '(seem, become, look, feel, appear) are not instances.';
     case 'adverbs':
       return 'a whole word ending in -ly (the detector counts every one, "only" and "family" too).';
     case 'intensifiers':

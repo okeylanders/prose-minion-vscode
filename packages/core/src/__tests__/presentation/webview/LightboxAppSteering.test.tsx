@@ -147,6 +147,60 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     expect(earns.querySelector('.pm-lb-steer-example')).toBeNull();
   });
 
+  it('draws a note in dialogue with its stance and the host\'s line where a nudge would be, beside a narration note with one (epic decision 26)', () => {
+    const reason = 'Its instance is in dialogue, the character\'s voice, so no nudge or example the reading gave is shown.';
+    const spoken = readGroup('G', {
+      mutate: (body) => {
+        // ¶4's "I shall be late" is the Rabbit's line, inside double quotation marks.
+        body.steering.figures[0].notes.push({
+          para: 4, quote: 'I shall be late', stance: 'leans', why: 'The Rabbit’s fret sits in a plain future state.',
+          nudge: 'A verb for his hurry may be worth a look.', example: { before: 'I shall be late', after: 'I run late' }
+        });
+      }
+    });
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(spoken), refusal: null });
+    const voice = noteWith('The Rabbit’s fret sits in a plain future state.');
+    expect(within(voice).getByText('Leans')).not.toBeNull();
+    expect(voice.textContent).not.toContain('Worth a look');
+    expect(voice.textContent).not.toContain('A verb for his hurry');
+    expect(voice.querySelector('.pm-lb-steer-example')).toBeNull();
+    expect(voice.querySelector('.pm-lb-steer-voice')?.textContent).toBe(`In dialogue ${reason}`);
+    const narration = noteWith('A state stands where the fall could act: the darkness is reported rather than met.');
+    expect(narration.textContent).toContain('Worth a look');
+    expect(narration.querySelector('.pm-lb-steer-example')).not.toBeNull();
+    expect(narration.querySelector('.pm-lb-steer-voice')).toBeNull();
+    fireEvent.click(voice);
+    const inspector = screen.getByLabelText('Inspector');
+    expect(within(inspector).getByText('In dialogue')).not.toBeNull();
+    expect(within(inspector).getByText(reason)).not.toBeNull();
+    expect(within(inspector).queryByText('Worth a look')).toBeNull();
+  });
+
+  it('marks a note that earns in dialogue with the host\'s line too, on the tile and in the inspector (PR #162 N-01)', () => {
+    const line = 'Its instance is in dialogue, the character\'s voice.';
+    const spoken = readGroup('G', {
+      mutate: (body) => {
+        body.steering.figures[0].notes.push({
+          para: 4, quote: 'I shall be late', stance: 'earns', why: 'The Rabbit’s fret is his own, in his own plain words.',
+          nudge: null, example: null
+        });
+      }
+    });
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(spoken), refusal: null });
+    const voice = noteWith('The Rabbit’s fret is his own, in his own plain words.');
+    expect(within(voice).getByText('Earns')).not.toBeNull();
+    expect(voice.querySelector('.pm-lb-steer-voice')?.textContent).toBe(`In dialogue ${line}`);
+    // A note that earns in narration has no line.
+    const narration = noteWith('The progressive keeps her idle thinking going while nothing happens, which is the scene’s whole point.');
+    expect(narration.querySelector('.pm-lb-steer-voice')).toBeNull();
+    fireEvent.click(voice);
+    const inspector = screen.getByLabelText('Inspector');
+    expect(within(inspector).getByText('In dialogue')).not.toBeNull();
+    expect(within(inspector).getByText(line)).not.toBeNull();
+  });
+
   it('says on the tile when its readings were read against an earlier version of the chapter', () => {
     const read = readGroup('G');
     render(<LightboxApp />);

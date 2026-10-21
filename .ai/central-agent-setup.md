@@ -87,7 +87,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -448,7 +448,7 @@ usePersistence({
    - **Measure Tools**: Statistical analysis tools
      - `passageProseStats`: Word count, sentence analysis, pacing metrics; its vocabulary tokenizer is exported (`proseStatsWords`), so the Lightbox's hapax list is exactly the stats row's count
      - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice, filler and weak-verb detectors are exported, with offsets, so the Lightbox's numbers and its sentence wells count by the same rules
-     - `beingVerbs`: The forms of "be" as whole words (the Lightbox's being-verbs figure; contractions not counted)
+     - `beingVerbs`: The forms of "be", whole and contracted (the Lightbox's being-verbs figure; epic decision 26): I'm, 're, 's where the word-frequency tagger reads a verb, or reads a possessive the next word makes *is* (an adjective, -ing word, adverb, preposition or determiner: "Tobin's late"), and it is not *has* (been, got, gotten or had follow), isn't, aren't, wasn't, weren't, ain't, 'tis, 'twas and 'twere; never a possessive 's before a noun, name or pronoun, let's, 'd, 'll or 've. Every reader (rate, numbers row, writer's average, steering totals, quote check) calls `findBeingVerbs`, so they agree; "he's gone" counts as *is*, the stated limit
      - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink (its tagged occurrences carry each token's offset and length), bigrams/trigrams, length histogram, optional lemmas; `tagTextTokens` gives each token's tag and offset (the Lightbox's craft steering sorts instances by construction with it)
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
@@ -811,8 +811,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, the sentence rule (closing marks, speech tags, and instances outside every sentence) merged with Lightbox Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
-- 456 suites / 6,259 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G (being-verb contractions, the next-word rule for 's, and dialogue as voice, with the PR #162 review fixes) merged with the sentence rule (PR #161), Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
+- 461 suites / 6,354 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1138,7 +1138,14 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
     paragraph per instance: tokens are indexed once, neighbours come from
     one sweep per rule, and span membership is a binary search. A test
     counts the tagger's token reads, and one holds a 49,998-word paragraph
-    to a coarse bound.
+    to a coarse bound. A reading's quote check, a note's voice and its
+    example's anchor share one index (`LightboxSpanIndex`, PR #162 F-01):
+    each paragraph is run through each figure's detector and the dialogue
+    matcher once per text (keyed by the verifier's paragraphs array and
+    each paragraph's string), and every check is a binary search. A new
+    check of a steering quote asks that index, never the detector or
+    `findDialogueSpans` per note; a test counts both through fresh
+    assembly, carry and Bring.
   - **The fence.** `LightboxSteeringPhrasing` holds every claim, why, nudge
     and example: no listed word (cut, delete, remove, fix, wrong, bad,
     should, must), no quotation mark, no figure, and no clause opened with
@@ -1151,6 +1158,19 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
     searched by the verifier, never in the Opinion's digest, and drawn and
     brought under "One way it could go", whole or not at all. A fault
     withholds the example alone, with the host's reason.
+  - **Dialogue is voice (epic decision 26, Slice 4G; ADR D7 third
+    addendum).** A note whose instance stands in dialogue keeps its stance
+    but carries no nudge or example, for all three figures: a host rule in
+    `LightboxSteeringVoice`, applied fresh, on carry and at Bring. The codec
+    reads a leaning note with a null nudge, and the gate withholds one in
+    narration. Dialogue is the steering measure's split (`findDialogueSpans`,
+    double quotation marks only). An example anchors only on an instance in
+    narration, on a span that takes in no speech at all: a mixed note keeps
+    its nudge, but an example crossing into a character's words is
+    withheld alone (PR #162 F-02). Every note in dialogue, Earns included,
+    carries the host's voice line, which the digest, the board, the
+    inspector and Bring read as the mark of the character's voice (PR #162
+    N-01).
   - **Host titles carry no digit** ("Being verbs · note II"), so nothing the
     Opinion is shown offers a figure it might state.
   - **Sentences are the shared rule's.** The short-run signal reads

@@ -79,6 +79,15 @@ export const LIGHTBOX_STEERING_CONSTRUCTION_LABELS: Readonly<Record<LightboxStee
 export const LIGHTBOX_STEERING_EXAMPLE_LABEL = 'One way it could go';
 export const LIGHTBOX_STEERING_EXAMPLE_NOTE = 'an illustration, not your text';
 
+/**
+ * Dialogue is voice (epic decision 26): the label over a note's host line
+ * when its instance stands in dialogue and it carries no nudge, on the
+ * board, in the inspector and as Bring's point.
+ */
+export const LIGHTBOX_STEERING_VOICE_LABEL = 'In dialogue';
+/** The same, as the Opinion's digest says it on a note's stance line: no nudge or example ever enters the digest. */
+export const LIGHTBOX_STEERING_VOICE_DIGEST = 'in dialogue: the character\'s voice, read but not steered';
+
 /** A note's example as Bring carries it, one Workshop point: "before → after". The anchor holds it to that point's length. */
 export function lightboxSteeringExampleText(example: { before: string; after: string }): string {
   return `${example.before} → ${example.after}`;

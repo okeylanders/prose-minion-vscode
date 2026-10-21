@@ -15,9 +15,18 @@
  * - **Host titles.** A reading is titled by its figure's label, a note by
  *   that label and its place ("Adverbs (-ly) · note II"), so no unchecked
  *   words are shown as a title.
+ * - **Dialogue is voice** (epic decision 26, `LightboxSteeringVoice`): a
+ *   note whose instance stands in dialogue keeps its stance, but any nudge
+ *   or example the reading gave is withheld, with the host's reason; a note
+ *   that leans or compensates with no nudge in narration is withheld by the
+ *   gate.
  * - **The one example is anchored** (`anchorLightboxSteeringExample`): its
  *   `before` must be a run of whole words of the note's checked quote, as
- *   the chapter has it, that holds an instance of the figure. Found by the
+ *   the chapter has it, that holds an instance of the figure in narration
+ *   and takes in no speech (one that stands only on dialogue is withheld as
+ *   voice; one that holds narration but crosses into a character's words,
+ *   either way, is withheld as speech, while its note and nudge stand: PR
+ *   #162 F-02). Found by the
  *   verifier's own rules (exact, then folded), through a span filter, so
  *   what the board shows as `before` is the chapter's own text. That text
  *   can be longer than the reading's (a soft line break and its indent, a
@@ -40,7 +49,8 @@ import type {
 } from '@messages';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
 import { LIGHTBOX_STEERING_STATS, lightboxSteeringExampleText } from '@shared/constants/lightboxSteering';
-import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import type { LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { lightboxIntervalReach } from '@/infrastructure/lightbox/LightboxSpanIndex';
 import type { LightboxClaimAssembler } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import {
   lightboxPatternInstanceFilter,
@@ -49,6 +59,11 @@ import {
 } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_STEERING_EXAMPLE_REASONS, lightboxSteeringExamplePairFault } from '@/infrastructure/lightbox/LightboxSteeringCodec';
 import { lightboxSteeringNoteTitle, type LightboxDecodedSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringWire';
+import {
+  holdLightboxSteeringVoice,
+  lightboxSteeringNarrationFilter,
+  lightboxSteeringSpeechFilter
+} from '@/infrastructure/lightbox/LightboxSteeringVoice';
 
 /** Letters, digits, apostrophes and hyphens join a word: a run of whole words starts and ends beside none of them. */
 const WORD_CHARACTER = /[\p{L}\p{N}'’_-]/u;
@@ -74,15 +89,19 @@ export function assembleSteeringBlock(block: LightboxDecodedSteeringBlock, assem
     for (const note of figure.notes) {
       assembler.claim(
         { kind: 'steering-note', lens: 'steering', title: lightboxSteeringNoteTitle(label, note.ordinal), claim: note.why,
-          quotes: [{ para: note.para, quote: note.quote }], terms: [], support: [], friction, verifyQuote },
-        (base) => ({
+          quotes: [{ para: note.para, quote: note.quote }], terms: [], support: [], friction, verifyQuote,
+          steeringNote: { stat, leans: note.stance !== 'earns', nudged: note.nudge !== undefined } },
+        (base, accepted) => ({
           ...base,
           kind: 'steering-note',
           stat,
-          stance: note.stance,
           ordinal: note.ordinal,
-          ...(note.nudge !== undefined ? { nudge: note.nudge } : {}),
-          ...lightboxSteeringExampleFields(verifier, stat, base.evidence[0], note.example, note.exampleWithheld, 'fresh')
+          // Dialogue is voice (epic decision 26): there the note keeps its stance, and no nudge or example.
+          ...holdLightboxSteeringVoice({
+            stance: note.stance,
+            ...(note.nudge !== undefined ? { nudge: note.nudge } : {}),
+            ...lightboxSteeringExampleFields(verifier, stat, base.evidence[0], note.example, note.exampleWithheld, 'fresh')
+          }, accepted.voice, 'fresh')
         })
       );
     }
@@ -108,8 +127,12 @@ export function lightboxSteeringExampleFields(
   return { example: anchored.example, ...(withheld ? { exampleWithheld: withheld } : {}) };
 }
 
-/** Why an example does not stand in its note's quote as the chapter has it. */
-export type LightboxSteeringAnchorFault = 'unanchored' | 'long' | 'same' | 'fit';
+/**
+ * Why an example does not stand in its note's quote as the chapter has it:
+ * `voice` when it stands only on an instance in dialogue, `speech` when it
+ * holds one in narration but also takes in words a character speaks.
+ */
+export type LightboxSteeringAnchorFault = 'unanchored' | 'voice' | 'speech' | 'long' | 'same' | 'fit';
 
 /** The example as the chapter has it, or why it cannot be shown. */
 export type LightboxSteeringAnchor = { example: LightboxSteeringExample } | { fault: LightboxSteeringAnchorFault };
@@ -117,6 +140,8 @@ export type LightboxSteeringAnchor = { example: LightboxSteeringExample } | { fa
 /** The host's reason for each fault, fresh and carried. */
 const LIGHTBOX_STEERING_ANCHOR_REASONS: Readonly<Record<LightboxSteeringAnchorFault, { fresh: string; carried: string }>> = {
   unanchored: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchored, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchoredCarried },
+  voice: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.voice, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.voice },
+  speech: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.speech, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.speech },
   long: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredLong, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredLong },
   same: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredSame, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredSame },
   fit: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredFit, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredFit }
@@ -125,7 +150,9 @@ const LIGHTBOX_STEERING_ANCHOR_REASONS: Readonly<Record<LightboxSteeringAnchorFa
 /**
  * The example with its `before` as the chapter has it, when `before` is a
  * run of whole words inside the checked quote's span that holds an instance
- * of the figure, and the pair as the chapter has it still keeps the
+ * of the figure in narration and shares no character with a dialogue span
+ * (the steering measure's own, quotation marks included), and the pair as
+ * the chapter has it still keeps the
  * example's contract: each part within its bounds, a change between them,
  * and the whole within one Workshop point. The quote is the note's own, as
  * verified, so the example can never anchor anywhere else in the chapter.
@@ -144,17 +171,28 @@ export function anchorLightboxSteeringExample(
   for (let at = source.indexOf(quote.text); at >= 0; at = source.indexOf(quote.text, at + 1)) {
     spans.push({ start: at, end: at + quote.text.length });
   }
-  const holds = lightboxPatternInstanceFilter(stat, verifier.paragraphs);
+  // One search per candidate span, never a scan of every place the quote stands (PR #162 F-01).
+  const quoteReach = lightboxIntervalReach(spans);
   const whole = (start: number, end: number) =>
     !WORD_CHARACTER.test(source[start - 1] ?? '') && !WORD_CHARACTER.test(source[end] ?? '') &&
     WORD_CHARACTER.test(source[start] ?? '') && WORD_CHARACTER.test(source[end - 1] ?? '');
-  const verdict = verifier.verify(quote.paragraph, example.before, (paragraph, start, end) =>
-    paragraph === quote.paragraph &&
-    spans.some((span) => span.start <= start && end <= span.end) &&
-    whole(start, end) &&
-    holds(paragraph, start, end));
-  if (!verdict.found || verdict.paragraph !== quote.paragraph) {
-    return { fault: 'unanchored' };
+  const inQuote = (paragraph: number, start: number, end: number) =>
+    paragraph === quote.paragraph && quoteReach(start) >= end && whole(start, end);
+  const find = (accept: LightboxSpanFilter) => {
+    const found = verifier.verify(quote.paragraph, example.before, (paragraph, start, end) =>
+      inQuote(paragraph, start, end) && accept(paragraph, start, end));
+    return found.found && found.paragraph === quote.paragraph ? found : undefined;
+  };
+  // Dialogue is voice (epic decision 26): the example stands on an instance in narration, and takes in no word a
+  // character speaks, even beside that narration (PR #162 F-02).
+  const narration = lightboxSteeringNarrationFilter(verifier, stat);
+  const speech = lightboxSteeringSpeechFilter(verifier);
+  const verdict = find((paragraph, start, end) => narration(paragraph, start, end) && !speech(paragraph, start, end));
+  if (!verdict) {
+    if (find(narration)) {
+      return { fault: 'speech' };
+    }
+    return { fault: find(lightboxPatternInstanceFilter(stat, verifier.paragraphs)) ? 'voice' : 'unanchored' };
   }
   const anchored = { before: verdict.text, after: example.after };
   const fault = lightboxSteeringExamplePairFault(anchored);

@@ -12,7 +12,8 @@
  *   palette's words are in the text, a said line is dialogue, a spark is
  *   counted, a handoff's sentences are adjacent, a numbers reading's quotes
  *   hold an instance, a thread's quotes stand in order, an object is
- *   counted, a steering note's quote holds an instance) run through `LightboxTileGates`, the same rules stale carry
+ *   counted, a steering note's quote holds an instance, and one that leans
+ *   with no nudge stands in dialogue) run through `LightboxTileGates`, the same rules stale carry
  *   applies (PR #150 F-05), and group E's movements are held as a set
  *   (`LightboxPlotTiles`);
  * - terms the reading names are counted by the host (the counter), and a
@@ -30,6 +31,7 @@ import type {
   LightboxLensQuoteChecks,
   LightboxReadingTile,
   LightboxReadingTileKind,
+  LightboxSteeringStatId,
   LightboxVerifiedQuote,
   LightboxWithheldBlock,
   LightboxWithheldClaim,
@@ -53,6 +55,7 @@ import {
   type LightboxDialogueIndex
 } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
+import { lightboxSteeringInstanceVoice, type LightboxSteeringVoice } from '@/infrastructure/lightbox/LightboxSteeringVoice';
 import type {
   LightboxDecodedBlock,
   LightboxDecodedGroup,
@@ -179,6 +182,8 @@ export interface LightboxClaimDraft {
   prechecked?: { evidence: LightboxVerifiedQuote[]; withheld: LightboxWithheldQuote[] };
   /** A pressure thread's quotes as found, for its gate (Slice 4C). */
   thread?: LightboxThreadCandidate;
+  /** A steering note's figure, stance and nudge; where its instance stands is found from its checked quote (epic decision 26). */
+  steeringNote?: { stat: LightboxSteeringStatId; leans: boolean; nudged: boolean };
 }
 
 export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
@@ -190,6 +195,8 @@ export interface LightboxAcceptedClaim {
   pair?: LightboxSentencePair;
   /** Each of the draft's `quotes` as found, in order (undefined where it was not). */
   found: Array<LightboxVerifiedQuote | undefined>;
+  /** A steering note's instance: in dialogue or in narration. */
+  voice?: LightboxSteeringVoice;
 }
 
 /** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
@@ -353,6 +360,8 @@ class GroupAssembly implements LightboxClaimAssembler {
       found: rest.found
     };
     const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
+    const note = draft.steeringNote;
+    const voice = note ? lightboxSteeringInstanceVoice(this.context.verifier, note.stat, checked.evidence[0]) : undefined;
     const verdict = lightboxTileGate(
       {
         kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields,
@@ -361,7 +370,8 @@ class GroupAssembly implements LightboxClaimAssembler {
         ...(draft.stat ? { stat: draft.stat } : {}),
         // A familiar phrase is held to a whole occurrence inside a found quote's span (PR #155 F-03).
         ...(draft.phrase !== undefined ? { phraseHeld: lightboxPhraseHeld(this.context.verifier, checked.evidence, draft.phrase) } : {}),
-        ...(draft.thread ? { thread: draft.thread } : {})
+        ...(draft.thread ? { thread: draft.thread } : {}),
+        ...(note ? { steeringNote: { leans: note.leans, nudged: note.nudged, voice } } : {})
       },
       { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue, standouts: this.context.standouts ?? new Map() }
     );
@@ -386,6 +396,7 @@ class GroupAssembly implements LightboxClaimAssembler {
     }, {
       witness: verdict.witness,
       found: checked.found,
+      ...(voice ? { voice } : {}),
       ...(said ? { said } : {}),
       ...(pairCheck && typeof pairCheck.pair === 'object' ? { pair: pairCheck.pair } : {})
     });

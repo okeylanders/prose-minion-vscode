@@ -18,7 +18,7 @@ export interface LightboxDecodedSteeringNote extends LightboxWireQuote {
   ordinal: number;
   stance: LightboxSteeringStance;
   why: string;
-  /** Leans or compensates only. */
+  /** Leans or compensates only; absent there when the reading gave none, the shape for dialogue (epic decision 26). */
   nudge?: string;
   /** The one example as the reading gave it: `before` is still to be found in the checked quote. */
   example?: LightboxSteeringExample;
