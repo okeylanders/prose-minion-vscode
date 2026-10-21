@@ -64,6 +64,7 @@ packages/core/src/
 │           ├── LightboxPressRun.ts        # A press's run listener and landing, and group F's digest port by board id (Slice 4D)
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
+│           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -86,7 +87,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -120,6 +121,7 @@ packages/core/src/
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
+            ├── lightboxPassages.ts # The inspector's passages (Slice 4E): a paragraph's text or a term's sentences, by request id, board id and hash; refusals
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -175,7 +177,9 @@ packages/core/src/presentation/webview/
 │       ├── useWordSearchSettings.ts    # Word search tool settings
 │       ├── useLightbox.ts              # Lightbox board, refusal, estimate, run and context; persists UI prefs only (filter, pin, lenses)
 │       ├── lightbox/
-│       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
+│       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure); a paragraph may carry the term it was reached from (`via`)
+│       │   ├── lightboxTerms.ts        # Counted terms as items: top word, part of speech, phrase, hapax word, style flag (pure; Slice 4E)
+│       │   ├── lightboxPassages.ts     # The inspector's wells as drawn: what a pin asks for, waiting, changed text, bounds, refusals (pure; Slice 4E)
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
@@ -189,6 +193,7 @@ packages/core/src/presentation/webview/
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
+│       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
 │           ├── useWorkshopSessions.ts  # Named-session lifecycle
@@ -329,6 +334,7 @@ useMessageRouter({
 | useLightbox | LightboxHandler, LightboxReadingHandler (+ `LightboxService`, `LightboxReadingRunner`) | Lightbox counted board and readings |
 | useLightboxHandoff | LightboxHandoffRoute (in LightboxHandler) | Lightbox handoffs to the Workshop and its tray |
 | useLightboxProjectFiles | LightboxHandler (catalog, search, source) and LightboxReadingHandler (context), through `LightboxProjectFiles` | The Lightbox's project picker |
+| useLightboxPassages | LightboxPassageHandler (+ `LightboxService.passageSource`) | The inspector's passages: a paragraph's text, a counted item's sentences |
 | useWorkshopLightboxTiles | WorkshopLightboxTileHandler | A Lightbox tile staged in the Workshop |
 
 **Benefits**:
@@ -438,10 +444,10 @@ usePersistence({
      - `dialogueMicrobeatAssistant`: Analyzes dialogue and suggests tags/action beats
      - `proseAssistant`: General prose analysis and improvement suggestions
    - **Measure Tools**: Statistical analysis tools
-     - `passageProseStats`: Word count, sentence analysis, pacing metrics
-     - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice and filler detectors are exported, with offsets, so the Lightbox's numbers count and check quotes by the same rules
+     - `passageProseStats`: Word count, sentence analysis, pacing metrics; its vocabulary tokenizer is exported (`proseStatsWords`), so the Lightbox's hapax list is exactly the stats row's count
+     - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice, filler and weak-verb detectors are exported, with offsets, so the Lightbox's numbers and its sentence wells count by the same rules
      - `beingVerbs`: The forms of "be" as whole words (the Lightbox's being-verbs figure; contractions not counted)
-     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
+     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink (its tagged occurrences carry each token's offset and length), bigrams/trigrams, length histogram, optional lemmas
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
@@ -803,8 +809,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes and re-review fix, merged with Slice 4C's PR #156 fixes and its F-04 fix):
-- 430 suites / 5,916 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4E: reading aids in the inspector):
+- 440 suites / 6,012 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1123,6 +1129,32 @@ D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
   `webviewCssFloor.test.ts` fails on any new CSS feature above that floor.
   The visual evidence harness measures the column edges and each label
   block beside its track, including in states that simulate the floor.
+
+### Lightbox Passages
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D10 (Passages, Slice 4E) when changing what the inspector's wells show:
+
+- **One rule per figure.** A well finds instances with the rule that made
+  the figure it shows (`LightboxInstances`):
+  - the word-frequency tokenizer for top words and phrases (phrases across
+    paragraph breaks included);
+  - the tagger's placed occurrences for parts of speech;
+  - `proseStatsWords` for hapax;
+  - Style Flags' detectors for the flags that count instances.
+
+  A figure counted another way gets no well. Repetitive Words and Clichés
+  count words, not instances.
+- **A new figure that opens a well** joins `LightboxPassageTerm`,
+  `lightboxBoardCountOf`, `LightboxPassageIndex.instancesOf` and the
+  every-entry test in `LightboxCountAgreement.test.ts`.
+- **Correlated, never persisted.** Each request names its board by id and
+  content hash, under a webview-minted id. `useLightboxPassages` takes only
+  the answer still pending, for the board on screen. A newer board says "the
+  text changed" until its answer lands. No passage text enters `setState`.
+- **Sentences are the board's.** Rows use each paragraph's
+  `proseSentenceSpans`. Fix the sentence rule there, not in the well
+  ([tech debt](.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md)).
 
 ### Operational Tips
 

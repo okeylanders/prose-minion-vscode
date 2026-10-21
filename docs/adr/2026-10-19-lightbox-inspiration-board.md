@@ -465,6 +465,23 @@ Two rules came from the PR #154 review:
   folders can share. No absolute path crosses, and choices still name
   catalog keys only.
 
+**Passages (2026-10-21, Slice 4E).** The board still carries no paragraph
+text, only its source's preview. The inspector asks for the text a pinned
+paragraph or counted item stands in:
+- `LIGHTBOX_REQUEST_PASSAGE`, in `LightboxPassageHandler`, the third
+  Lightbox handler. It names the board by id and content hash, under a
+  webview-minted request id.
+- The host answers `LIGHTBOX_PASSAGE` from the text that board was measured
+  from, kept beside it in `LightboxService`. It never reads the file as it
+  is now.
+- It refuses a board no longer held, or held over other text, as `changed`.
+  It refuses an item the board does not list as `not-on-board`.
+- Each instance is found by the rule that made the figure it shows
+  (`LightboxInstances`). So the instances lit equal the board's count.
+- The webview takes only the answer it still waits for, about the board on
+  screen. It keeps that answer in memory while it is pinned and persists
+  none of it (D12).
+
 ### D11. Handoffs to the Workshop go through the Workshop's own message path
 
 **Bring to Workshop** (Slice 4) and **Build as a lens** (Slice 3) cross tabs.

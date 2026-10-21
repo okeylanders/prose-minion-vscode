@@ -70,7 +70,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Planned (`epic/lightbox-slice-4e-inspector`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented, awaiting review (`epic/lightbox-slice-4e-inspector`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1048,3 +1048,46 @@ land before Slice 5 (decision 14).
     `verify:bundle` pass; `webview.js` SHA-256 `0f6624f4…`, as 4D recorded.
   - Slice 4F (craft steering) is built beside it and takes the decisions
     after 19.
+
+- **2026-10-21. Slice 4E (reading aids in the inspector) is implemented,
+  awaiting review,** on `epic/lightbox-slice-4e-inspector`.
+  - **Paragraph text.** Pinning a paragraph shows its whole text in a
+    scrollable, labelled, focusable well. Reached from a ¶ address in a
+    sentences well, the term's instances there are lit, with a way back.
+  - **Sentences for an item.** Pinning a top word, a part-of-speech entry,
+    a repeated phrase, a hapax word, or one of four style flags (Weak
+    Verbs, Filler Words, Adverbs, Passive Voice) lists its sentences at the
+    bottom of the inspector: "27 instances in 26 sentences", each row with
+    its ¶ address, every instance lit. Up to 50 rows, with a note counting
+    the rest.
+  - **The hapax list.** Under the cloud, in order of first appearance,
+    exactly as many words as the stats row's hapax count, paged at 300.
+  - **Plurals.** Eight count strings in the inspector and word panels now
+    agree with their numbers.
+  - **Contracts.** One correlated route pair, `LIGHTBOX_REQUEST_PASSAGE`
+    (owned by the new `LightboxPassageHandler`) and `LIGHTBOX_PASSAGE`,
+    by board id and content hash. The host refuses a changed board or an
+    item not on it. Nothing of a passage is persisted.
+  - **Counts agree.** Each well finds instances with the rule that made the
+    figure it shows. A test checks every listed entry on six public-domain
+    fixtures, with literal counts checked by grep; mutating either
+    tokenizer fails it.
+  - **Deviations and limits** are in the slice's
+    [implementation notes](slice-4e-inspector-aids.md#implementation-notes-2026-10-21).
+    One item went to tech debt: the board's
+    [sentence rule](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+    gives a closing quotation mark to the next sentence.
+  - **Verification.**
+
+    | Check | `20775cf` (base) | Slice 4E head |
+    |---|---|---|
+    | `npx jest` | 430 suites / 5,916 tests / 59 snapshots | 440 suites / 6,012 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+
+    - Bundle SHA-256 `8d0545de…`, built after `npm ci` into a real
+      `node_modules` and reproduced by a second build.
+    - Visual evidence at 1440, 1000 and 500 px from real host output:
+      [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
+    - No live or billable call.

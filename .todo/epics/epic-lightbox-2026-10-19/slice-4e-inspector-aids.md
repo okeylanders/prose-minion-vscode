@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D4, D5, D10, D12
 **Writer decisions:** 17, 18 and 19 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Planned (`epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`). Built beside Slice 4F (craft steering), which takes the decisions after 19.
+**Status:** Implemented, awaiting review (`epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`). Built beside Slice 4F (craft steering), which takes the decisions after 19.
 **Before:** Slice 5.
 
 ## Outcome
@@ -149,6 +149,211 @@ Each well finds instances with the rule that made the figure it shows:
   paragraph with the way back.
 - Every new module joins `LIGHTBOX_MODULES`, the transport-free list where
   it is pure, and the route ledger.
+
+## Implementation notes (2026-10-21)
+
+This section records what landed and where it differs from the plan above.
+
+### Contracts and files
+
+- **The route pair is as planned.**
+  - `LIGHTBOX_REQUEST_PASSAGE` is owned by the new
+    `LightboxPassageHandler` (182 lines). `MessageHandler` constructs it
+    with the one `LightboxService` and registers its route.
+  - `LIGHTBOX_PASSAGE` answers it.
+  - `item` is `{ kind: 'paragraphs', from, to, via? }` or
+    `{ kind: 'instances', term }`. A term is a `word`, a `pos` (part of
+    speech and word), a `phrase`, a `hapax` word or a `flag` (one of four
+    ids).
+  - `passage` is one of:
+    - `paragraphs`: each paragraph's text in segments, how many more
+      paragraphs the range holds, and, with `via`, what is lit;
+    - `instances`: the instance and sentence totals, the rows, and
+      `more: { rows, sentences, instances }` past the bound;
+    - a refusal, `changed` or `not-on-board`.
+  - A segment is `{ text, instances? }`. Each instance has one id across
+    the passage, so an instance split by a sentence or paragraph break
+    lights as one.
+  - **Bounds** (`LIGHTBOX_PASSAGE_BOUNDS`): 50 rows, 10 paragraphs, and 200
+    characters for any name in a request.
+- **The host.**
+  - It checks each request's shape. It answers from the text it measured
+    for that board id and hash.
+  - It refuses with `changed` when it holds no such board, or holds the id
+    with another hash.
+  - It ignores a request with no request id, board id or hash.
+  - It logs kinds and counts, never a term or text. If the instances it
+    finds ever differ from the board's count, it logs "✗ a top word: N
+    instances found, but the board counts M."
+- **Host modules**, all in `LIGHTBOX_MODULES` and the boundary lists:
+  - `LightboxInstances`: each figure's token spans and instance finders,
+    the hapax words, and the paragraph lookups.
+  - `LightboxPassageIndex`: built with each board. It holds the text,
+    paragraph spans and the placed part-of-speech occurrences. Sentences
+    and token streams are built on the first request that needs them.
+  - `LightboxPassages`: a passage from a board and its index, and a term's
+    count on the board.
+  - `LightboxService` keeps the index beside each board it holds and
+    exposes `passageSource(boardId)`. It is at 486 lines.
+  - `LightboxMeasures` exports its part-of-speech placement
+    (`placeLightboxPosOccurrences`). The board and the well place the
+    tagger's tokens with that one function.
+- **Tools.** Three small exports, with no change to what the tools count:
+  - `proseStatsWords`, the prose-stats tokenizer, which the tool now calls;
+  - `findWeakVerbs` and `STYLE_FLAG_WEAK_VERBS`, which `checkWeakVerbs` now
+    calls. A test pins it to the old implementation's results;
+  - `length` beside each part-of-speech occurrence's offset, so the
+    tagger's `n't` lights three characters, not the whole word.
+- **Shared.**
+  - `shared/types/messages/lightboxPassages.ts` and
+    `shared/constants/lightboxPassages.ts` (bounds, flag ids and rules).
+  - `lightbox.ts` gains `measured.hapax` (`{ term, written, paragraph }`),
+    and each style flag gains `paragraphs` and, for four flags, `id`.
+- **Webview.**
+  - `lightboxTerms.ts`: term refs, keys, labels and their inspector items,
+    moved out of `lightboxItems.ts`, which is now 423 lines.
+  - `lightboxPassages.ts` (pure): a pin's passage item, the request key,
+    and the well's view and notes.
+  - `useLightboxPassages.ts`: the transport hook, with request ids, the
+    pending and answered requests, and `requestPassageForPin`.
+  - `LightboxPassageWell.tsx` and `LightboxHapaxList.tsx`.
+  - Updated: `LightboxInspector`, `LightboxTopWords`,
+    `LightboxPartsOfSpeech`, `LightboxApp`, `inspector.css` and
+    `tiles.css`.
+
+### What the webview holds
+
+- **Only the answer for the pin on screen, in memory.**
+  `useLightboxPassages` persists `{}`. The pin stays ids: a paragraph
+  pin's `via` is a term (a word), never text. A test reads every
+  `setState` after a passage lands and finds none of its text.
+- **Request ids** are `lbx-psg-<random>-<n>`. A reloaded webview never
+  takes an answer meant for the one before it.
+- **A new board** (a new id or hash) under the same pin asks again. Until
+  the answer lands, the well says "The text changed since this was shown.
+  Reading it again from the board as it stands…" and shows none of the
+  old text.
+
+### Counts agree
+
+- **Every listed entry, on six public-domain fixtures.**
+  - The fixtures: the worked examples' ¶1–¶8; the opening with curly,
+    straight and mixed quotes, and with wrapped lines; and 6,000 words of
+    the opening's vocabulary, long enough to pass the row bound.
+  - The entries: every top word, every entry of the four part-of-speech
+    lists, every bigram and trigram, every hapax word and every clickable
+    flag.
+  - For each, the instances found equal the board's count. So do the
+    distinct instances lit in the rows plus those past the bound.
+- **Literal counts** on ¶1–¶8, checked with grep:
+  - alice 7; the verb "was" 13; the adverb "very" 8; "she had" 3;
+  - Weak Verbs 28; Filler Words 11; Adverbs (-ly words) 7;
+  - hapax 139, the stats row's count.
+  - Both of ¶2's "sister"s are in its first sentence.
+  - The list opens Chapter, beginning, tired, sitting, bank.
+- **Mutations fail it.** Finding top words with the prose-stats tokenizer,
+  or part-of-speech words with the word tokenizer, fails the agreement
+  test.
+- **In Chapter I** (the [evidence](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md)):
+  - alice 27 in 26 sentences; was 53 in 32; she had 8 in 6; Weak Verbs
+    119 in 48;
+  - hapax 340, as the stats row says;
+  - in the whole book, alice 385 in 378 sentences: 50 rows with 51 lit,
+    and 334 past the bound.
+
+### The hapax list
+
+- **What it counts.** The words the stats row's "N hapax" counts: the
+  prose-stats tokenizer (split at whitespace, lower-cased, letters and
+  apostrophes kept, nothing trimmed), each used once.
+  - So "daisy-chain" counts as "daisychain".
+  - The list shows each word as the text writes it. Its tooltip gives the
+    counted form when that differs: "Used once, in ¶3; counted as
+    “daisychain”".
+- **In order of first appearance.** The board is laid out along the
+  chapter, so the list reads with the chapter and walks the ribbon left
+  to right. The Metrics tab already lists hapax alphabetically. If the
+  writer prefers another order, only the list's sort changes, not its
+  count.
+- **Paged at 300 words**, then "Show N more · N not shown yet". The whole
+  book has 1,284. The plan did not mention paging.
+- **Its height.** At the wide layout it fills the panel's spare height
+  beside Parts of speech, out of flow, so the row does not grow. Stacked,
+  it keeps a minimum height (174 px for the well in the evidence).
+- Pinning a word lists its one sentence.
+
+### Plurals
+
+- **Eight strings.** Each is pinned literally by
+  `lightboxCountWords.test.tsx`, with a plural control. All eight cases
+  failed before the fix.
+  - a paragraph's claim: "1 word in 1 sentence · 1 word per sentence";
+  - a standout: "1 paragraph holds";
+  - Sections: "1 heading", "1 scene break", "1 chapter line";
+  - Pressure: "1 thread";
+  - Rhythm: "1 paragraph runs at";
+  - Dialogue: "1 paragraph of 2 carries dialogue";
+  - the stock tier mix: "0 of 1 beat";
+  - the stats row: "1 word", "1 paragraph", "1 sentence".
+- **Dialogue copy changed.** "1 of 2 paragraphs carry dialogue" became "1
+  paragraph of 2 carries dialogue".
+- **Left alone:** the numbers row's instance labels ("being verbs") are
+  host nouns with no singular form. They belong to the numbers lens
+  (Slice 4F).
+
+### Decisions and deviations
+
+- **Style flags.** Weak Verbs, Filler Words, Adverbs (-ly words) and
+  Passive Voice are items. Repetitive Words and Clichés stay plain counts,
+  as planned.
+- **A paragraph pin keeps its term.** Pinning a ¶ address from a well
+  keeps the term as `via`, and the paragraph opens lit. Pinning from the
+  ribbon drops it. One `useLightboxInspector` test changed on purpose,
+  with a control beside it.
+- **A range pin** (a bucketed ribbon column) shows up to 10 paragraphs,
+  with a note past that.
+- **The sentences are the board's.** The well's header and rows follow
+  the board's sentence rule, including its closing-quote quirk (see
+  Limits).
+- **The hapax list pages**, as above.
+
+### Limits and follow-ups
+
+- **The board's sentence rule.** A closing quotation mark after a
+  sentence's end starts the next sentence, so `“Oh dear!”` is "2 words in
+  2 sentences" and a row can begin with "”". This is the writer's two-word
+  case. It is recorded as
+  [tech debt](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+  (Medium), not patched in the well, so the well and the board count the
+  same sentences.
+- **Past 50 rows** the well counts what is not listed, but cannot page to
+  it.
+- **Phrases across a paragraph break.** The tool counts them, so the well
+  lists them. Hover still lights only the paragraphs that hold a whole
+  occurrence.
+- **Tagger fragments** such as `ll` and `s` light where the tagger split
+  them
+  ([tech debt](../../tech-debt/2026-10-19-pos-tagger-token-fragments.md)).
+- **Readings.** A paragraph reached from a reading's quote does not light
+  the quote.
+- **Standout figures and the numbers row** do not open a well. That is
+  the numbers lens's ground (Slice 4F).
+
+### Verification
+
+| Check | `20775cf` (base) | Slice 4E head |
+|---|---|---|
+| `npx jest` | 430 suites / 5,916 tests / 59 snapshots | 440 suites / 6,012 tests / 59 snapshots |
+| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
+| `npm run typecheck` | Passes | Passes |
+| `npm run build` (with `verify:bundle`) | Passes; `webview.js` `0f6624f4…` | Passes; `webview.js` `8d0545de…` |
+| `git diff --check` | | Clean |
+
+- Both bundles were built from an empty `dist/` after `npm ci` into a real
+  `node_modules`. The head bundle built twice gave the same hash.
+- Visual evidence:
+  [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
+- No live or billable call.
 
 ## Done when
 
