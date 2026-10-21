@@ -79,7 +79,7 @@ carried into the Workshop.
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
 | 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built; PR #160 review fixes in, `epic/lightbox` merged at `1fe931a` (4E and the 1.82 floor); merges again after the sentence-rule fix (PR #161) (`epic/lightbox-slice-4f-steering`) |
-| 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Implemented, awaiting review (`epic/lightbox-being-contractions`, stacked on 4F, `epic/lightbox` merged at `1cb417c`: PR #160 and the sentence rule, PR #161) |
+| 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | PR #162 (`epic/lightbox-being-contractions`, stacked on 4F, `epic/lightbox` merged at `1cb417c`: PR #160 and the sentence rule, PR #161); review fixes F-01, F-02 and N-01 in, awaiting re-review |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1351,3 +1351,21 @@ lens, and adds its items to 4D's digest.
       lint identical per file and rule; typecheck and build with
       `verify:bundle` pass; `webview.js` unchanged at `20d3aed3…`; the
       evidence re-renders byte for byte. No live or billable call.
+  - **Review fixes** ([PR #162 review](../../../docs/pr-reviews/pr-162-lightbox-being-contractions-review.md),
+    Astra at `2295f9d`: request changes), in `2a1ac93`:
+    - **F-01.** `LightboxSpanIndex` finds each paragraph's instances and
+      dialogue spans once per text and answers by binary search; the quote
+      check, voice and example anchor share it. Four notes on one
+      paragraph: 13 detections → 1; dialogue-span reads at 250 spans
+      376,500 → 748, growing linearly.
+    - **F-02.** An example takes in no speech: one crossing into a
+      character's words, either way, is withheld alone with a host reason,
+      fresh, on carry and at Bring; a mixed note keeps its nudge.
+    - **N-01.** Every note in dialogue, Earns included, carries a voice
+      line, so the digest, board, inspector and Bring mark it.
+    - **Verification**, after `npm ci`: 461 suites / 6,354 tests / 59
+      snapshots; 19 tests in five files fail at `2295f9d` (two more files
+      do not compile there); lint identical per file and rule; typecheck
+      and build with `verify:bundle` pass; `webview.js` unchanged at
+      `20d3aed3…`, `extension.js` `6fffedac…`; evidence unchanged. No live
+      or billable call.

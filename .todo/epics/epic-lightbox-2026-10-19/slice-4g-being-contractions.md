@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md) D7 and its **third addendum (2026-10-21)**
 **Writer decisions:** 26 (with 13, 20–24) in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Implemented on `epic/lightbox-being-contractions`, stacked on Slice 4F at `27b646a`, and merged with `epic/lightbox` twice: at `2f040ab` (PR #160) and at `1cb417c` (PR #161, the sentence rule). Awaiting review.
+**Status:** PR #162 on `epic/lightbox-being-contractions`, stacked on Slice 4F at `27b646a`, and merged with `epic/lightbox` twice: at `2f040ab` (PR #160) and at `1cb417c` (PR #161, the sentence rule). Reviewed at `2295f9d` (request changes: F-01, F-02, N-01); all three fixed, awaiting re-review.
 **Follows:** [Slice 4F](slice-4f-craft-steering.md), whose being-verbs investigation this revisits.
 
 ## Why
@@ -113,7 +113,11 @@ A host rule, not only a prompt instruction:
   may name a pattern, but any nudge or example the reading gave is withheld,
   with the host's reason in `voice` ("In dialogue"). A note that gave none,
   as the prompt asks, shows the board's own line. A note that earns has
-  nothing to withhold.
+  nothing to withhold, but carries a line all the same ("Its instance is in
+  dialogue, the character's voice."), so the digest, the board, the
+  inspector and Bring mark it as the character's voice for every stance
+  (PR #162 N-01). In narration no line stands; one drawn before is dropped
+  on carry.
 - **Fresh** at assembly (`LightboxSteeringTiles`, through the claim
   assembler), **on carry** (`LightboxCarryQuotes`, `LightboxStaleReadings`:
   an instance moved into dialogue loses its nudge; one moved out of
@@ -125,9 +129,24 @@ A host rule, not only a prompt instruction:
   (the shape for dialogue). Where the instance stands is the chapter's
   question, so **the gate** withholds such a note in narration, fresh and
   carried (`LightboxTileGates`, `steeringNoNudge`).
-- **The example** anchors only on an instance in narration: on a narration
-  note whose quote also holds speech, an example whose first part holds
-  only the spoken instance is withheld alone, with its own reason.
+- **The example** anchors only on an instance in narration, on a span that
+  takes in no speech at all (no character of a `findDialogueSpans` span,
+  its quotation marks included). On a narration note whose quote also
+  holds speech, the note keeps its nudge, and an example whose first part
+  holds only the spoken instance is withheld alone as voice; one that holds
+  narration but crosses into a character's words, either way ("I’m cold,”
+  she was crying", "She was shaking, “I’m so cold"), is withheld alone as
+  speech: "Its example's first part takes in words a character speaks, the
+  character's voice, so it is not shown." (PR #162 F-02). Fresh, on carry
+  and at Bring.
+- **Work grows with the text** (PR #162 F-01, `LightboxSpanIndex`). The
+  quote check, the voice and the example's anchor ask one paragraph the
+  same questions, so each paragraph is run through each figure's detector
+  (tagging included) and the dialogue matcher once per text, keyed by the
+  paragraphs array a verifier checks against and by each paragraph's
+  string; each question is a binary search (instances sorted with the least
+  end from each on; dialogue spans with the furthest end so far, the
+  steering measure's own index, now shared).
 - **The Opinion's digest** marks a note in dialogue ("in dialogue: the
   character's voice, read but not steered") beside its stance; it still
   never holds a nudge or an example.
@@ -140,8 +159,10 @@ A host rule, not only a prompt instruction:
 - `58-steering.md` teaches what a being-verb instance is, contractions
   included, and that dialogue is voice: a note on an instance in dialogue
   may read the pattern, with any stance, but gives `"nudge": null` and
-  `"example": null`; dialogue means double quotation marks. The sync test
-  pins those sentences.
+  `"example": null`; dialogue means double quotation marks. Since the
+  review (PR #162 F-02) its example line also says `before` holds "none of
+  a character's spoken words (an example that takes in speech is
+  withheld)". The sync test pins those sentences.
 - The being-verbs task line (`lightboxPatternInstancePhrase`) lists the
   contracted forms and the exclusions. With the writer's three additions,
   both name the next-word rule ("the Hatter's late, everyone's here"),
@@ -249,6 +270,38 @@ The controls let’s, he’s been, she’s got and ma’am are unchanged.
     now, 0), replaced there by "Tobin’s gone".
   - The task line and the prompt's sentences pin the new wording.
 
+**The review fixes** ([PR #162 review](../../../docs/pr-reviews/pr-162-lightbox-being-contractions-review.md),
+Astra at `2295f9d`: F-01, F-02, N-01) fail on an export of `2295f9d` and
+pass here: 19 tests in five files, and two files that do not compile there.
+- `LightboxSteeringNoteScale` (new, F-01, 7, all failing there): detector
+  and dialogue-matcher calls and dialogue-span `start` reads counted
+  through fresh assembly, carry and Bring. Four notes on one paragraph:
+  13 detections and 8 matches there, 1 and 1 here; reads at 250 / 500 /
+  1,000 spans 376,500 / 1,503,000 / 6,006,000 there, 748 / 1,498 / 2,998
+  here; a 100-paragraph control (4 and 4 here); 50,000 words under a
+  coarse 2 s bound (16 s there, about 0.5 s here, under Jest).
+- `LightboxSpanIndex` (new, F-01, 6; does not compile there): every answer
+  equals the plain scan for every span of three mixed paragraphs, all
+  three figures; once per text; a paragraph changed in place is indexed
+  afresh.
+- `LightboxSteeringSpokenExamples` (new, F-02, 7; 5 failing there, 2
+  controls passing): the review's witness and its mirror, in straight
+  typography against curly, fresh; carried when a stray closing mark
+  becomes a pair, and with relocation for a crossing example held before
+  the fix, both ways; Bring for both.
+- `LightboxSteeringVoiceRule` (N-01, 4 new and 1 changed, all failing
+  there): an Earns note in dialogue for all three figures, fresh, on carry
+  (in and out), in the digest and at Bring.
+- `LightboxAppSteering` (N-01, 1 new): the tile and the inspector.
+- `lightboxPromptBudgetsSync`: the prompt's new example clause.
+- `LightboxSteeringVoice` (does not compile there): the `earns` line and
+  the field rule.
+
+Changed by the review fixes: the fresh `LightboxSteeringVoiceRule` test's
+Earns note in dialogue now shows "Its instance is in dialogue, the
+character's voice." (N-01), and `holdLightboxSteeringVoice` returns an Earns
+note in dialogue with that line rather than the same object.
+
 ## Measured on *Alice*
 
 Full table in the
@@ -274,13 +327,13 @@ sister, the Hatter’s watch and Tobin’s own stay possessives.
 
 ## Verification
 
-| Check | Slice 4F `27b646a` | Before the 161 merge (`24a364f`) | `epic/lightbox` `1cb417c` | This branch, merged (`ab22ebd`) | With the writer's three additions (`4a3ecf6`) |
-|---|---|---|---|---|---|
-| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 / 6,220 / 59 | 456 / 6,259 / 59 | 458 suites / 6,312 tests / 59 snapshots | 458 suites / 6,329 tests / 59 snapshots |
-| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | 0 errors / 1,133 warnings | Identical per file and rule to both bases | Identical per file and rule to `1cb417c` |
-| `npm run typecheck` | Passes | Passes | Passes | Passes | Passes |
-| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes | Passes | Passes (the same 3) | Passes (the same 3) |
-| `git diff --check` | | | | Clean against both bases | Clean against `1cb417c` |
+| Check | Slice 4F `27b646a` | Before the 161 merge (`24a364f`) | `epic/lightbox` `1cb417c` | This branch, merged (`ab22ebd`) | With the writer's three additions (`4a3ecf6`) | Review fixes (`2a1ac93`) |
+|---|---|---|---|---|---|---|
+| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 / 6,220 / 59 | 456 / 6,259 / 59 | 458 suites / 6,312 tests / 59 snapshots | 458 suites / 6,329 tests / 59 snapshots | 461 suites / 6,354 tests / 59 snapshots |
+| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | 0 errors / 1,133 warnings | Identical per file and rule to both bases | Identical per file and rule to `1cb417c` | Identical per file and rule to `1cb417c` |
+| `npm run typecheck` | Passes | Passes | Passes | Passes | Passes | Passes |
+| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes | Passes | Passes (the same 3) | Passes (the same 3) | Passes (the same 3) |
+| `git diff --check` | | | | Clean against both bases | Clean against `1cb417c` | Clean against `1cb417c` |
 
 - Built after `npm ci` into a real `node_modules`. At the merged head
   `webview.js` SHA-256 is
@@ -288,13 +341,20 @@ sister, the Hatter’s watch and Tobin’s own stay possessives.
   and `extension.js` `6b8a10c3…`, each reproduced by a second build. With
   the three additions, after a fresh `npm ci`, `webview.js` is the same
   `20d3aed3…` (the additions are host-side) and `extension.js` is
-  `cc95e6df683f4c218c69e7236a9b9cc0ec016a9fdcc9980ba33967d6be3380ea`. (Before
+  `cc95e6df683f4c218c69e7236a9b9cc0ec016a9fdcc9980ba33967d6be3380ea`. With
+  the review fixes, after a fresh `npm ci`, `webview.js` is still
+  `20d3aed3…` and `extension.js` is
+  `6fffedac89ad2e544aca8695353567e0461e6d7cb366bcd04c7ea8a6bd4f069d`. (Before
   the 161 merge: `c25e16f0…`; the epic recorded `cb08d7b9…` at
   `1cb417c`. Webpack's production ids come from file paths, so a build of
   an export elsewhere gives other hashes and is not compared.)
 - The new and changed tests fail at both bases (34 tests in six files) and
   pass here; the additions' tests fail at `ab22ebd` (12 tests in four
-  files) and pass here.
+  files) and pass here; the review fixes' tests fail at `2295f9d` (19 tests
+  in five files, two more files not compiling) and pass here.
+- The evidence does not move with the review fixes: the builder writes
+  `states/after.json` and `figures-after.json` byte-identical, and
+  `webview.js` is unchanged, so the PNGs stand.
 - No live or billable call.
 
 ## Evidence

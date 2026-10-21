@@ -78,6 +78,13 @@ host measures and holds.
 Every state reads the same at 1440 and 500 px. No document overflows
 horizontally, and `errors.txt` is empty.
 
+**The PR #162 review fixes** (`2a1ac93`: the shared span index, examples
+kept off spoken words, a voice line on every note in dialogue) leave this
+evidence as it is. Its answer holds no Earns note and no example crossing
+into speech; the builder at the fix writes `states/after.json` and
+`figures-after.json` byte-identical, and `webview.js` is still
+`20d3aed3…`, so every capture stands.
+
 ## Before and after on the *Alice* fixtures
 
 From `states/figures-*.json`, against the same synthetic writer average.

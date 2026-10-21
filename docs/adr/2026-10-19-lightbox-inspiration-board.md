@@ -415,10 +415,16 @@ nudge or example the reading gives there is withheld with the host's
 reason, fresh, on carry when the text moves an instance into or out of
 dialogue, and at Bring; a note that leans or compensates with no nudge
 stands only in dialogue; an example anchors only on an instance in
-narration; and the Opinion's digest marks the note as the character's
-voice. The same decision counts contractions of be as being verbs, through
-the one shared detector, so the rate, the quote check and the steering
-totals still agree.
+narration, on a span that takes in no speech at all, so a mixed note keeps
+its nudge but never an example crossing into a character's words (PR #162
+F-02); and every note in dialogue, whatever its stance, carries the host's
+voice line, which the Opinion's digest, the board, the inspector and Bring
+read as the mark of the character's voice (PR #162 N-01). Each paragraph's
+instances and dialogue spans are found once per text and answered by
+binary search (`LightboxSpanIndex`, PR #162 F-01), so these checks grow
+with the text. The same decision counts contractions of be as being verbs,
+through the one shared detector, so the rate, the quote check and the
+steering totals still agree.
 
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 

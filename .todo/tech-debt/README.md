@@ -108,6 +108,7 @@ elsewhere.
 | Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
 | Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
 | Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
+| Low | [The numbers lens's sentence and dialogue filters recompute per candidate span](2026-10-21-lightbox-numbers-filters-per-span.md) (found fixing PR #162 F-01; older than it; not on craft steering's path) | Identified |
 
 ## Review Guidance
 

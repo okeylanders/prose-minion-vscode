@@ -138,3 +138,144 @@ The worktree's dependency tree was copied from the independently tested #161 wor
 Review follows the proposed all-three-figure scope and the disclosed POS/linguistic limits; it does not silently choose the writer's answers to the PR's open questions. The final head deliberately changes the earlier noun/name `'s`, *it's had* and archaic-form decisions; those are reviewed as new behavior, not left listed as old limitations. The declared residual ambiguities (including possessive -ing/adverb phrases, a participle read as *is*, pronoun-followed `'s` and British single-quoted speech) are not promoted into defects merely because a different heuristic is possible. Context-sensitive tagger results are not universal grammatical judgments.
 
 The author-authored decision-26 quotation and real-chapter story are design context, not independently verified writer acceptance. Wider writer checkpoints, native/real-chapter testing and Slice 5's canonical citation-basis/format work remain separate. No private manuscript, paid/live provider call, user computer, formal review/comment, merge, deployment or extension publication was used.
+
+## Author response (2026-10-21)
+
+**F-01: fixed. F-02: fixed. N-01: fixed.** The three fixes are one commit,
+`2a1ac93`, on top of your report's commit `350a6eb`; each has its own
+tests, and every new behavioural test failed first on an export of your
+reviewed head `2295f9d`. The docs commit on top records this response,
+the Slice 4G notes, decision 26's ADR addendum, the epic's progress and the
+agents guide. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | A new pure module, `LightboxSpanIndex`, finds each paragraph's instances of a figure (its own detector, tagging included) and its dialogue spans (`findDialogueSpans`) once per text. The index is keyed by the paragraphs array a verifier checks against, and by each paragraph's string, so a changed paragraph is indexed afresh. Every question is a binary search: "some instance inside [a, b]" over instances sorted by start with the least end from each on, and "a dialogue span holds / overlaps [a, b]" over spans with the furthest end so far (the steering measure's own `intervalReach`, moved here and shared). The quote check (`lightboxPatternInstanceFilter`), the voice (`lightboxSteeringInstanceVoice`), the example's narration filter and the anchor's quote-span test all ask it. Offsets and voice semantics are unchanged: a unit test compares every answer with the plain scan for every span of mixed paragraphs | `LightboxSteeringNoteScale.test.ts` (7): detector and matcher calls, and dialogue-span `start` reads, counted through fresh assembly, carry and Bring; linear growth from 250 to 1,000 spans; a 100-paragraph control; a 50,000-word paragraph under a coarse 2 s bound. `LightboxSpanIndex.test.ts` (6): scan equivalence for all three figures, once per text, re-indexing a changed paragraph | `2a1ac93` |
+| F-02 | Medium / P2 | **Fixed** | An example's `before` must hold an instance in narration **and** share no character with a dialogue span, quotation marks included (`lightboxSteeringSpeechFilter`, the shared spans). A mixed note keeps its nudge. An example that holds narration but crosses into speech, either way, is withheld alone with a new host reason: "Its example's first part takes in words a character speaks, the character's voice, so it is not shown." At Bring: "Not brought: its first part takes in words a character speaks, the character's voice." An example confined to speech keeps the existing `voice` reason; one confined to narration stands. The prompt's example line now says the same, and the sync test pins it. Figure scope and the mixed-note rule are unchanged | `LightboxSteeringSpokenExamples.test.ts` (7): your witness and its mirror (narration into speech), with straight typography against the chapter's curly, fresh; carried when a stray closing mark becomes a pair, and carried with relocation of a crossing example held before the fix, both ways; Bring for both; controls for an example confined to narration, one confined to speech, and the same words unspoken | `2a1ac93` |
+| N-01 | Low / P3 · nonblocking | **Fixed** | `holdLightboxSteeringVoice` keeps the classification apart from the withholding copy. Every note in dialogue now carries a voice line: Earns gets a neutral one, "Its instance is in dialogue, the character's voice.", and keeps its fields. In narration, no line stands, and one drawn before is dropped on carry. The digest, board, inspector and Bring already read `voice`, so all four mark an Earns note in dialogue with no code of their own changing | `LightboxSteeringVoiceRule.test.ts`: an Earns note in dialogue for all three figures, fresh; carry in and out; the digest and Bring for all three. `LightboxAppSteering.test.tsx`: the tile and the inspector. `LightboxSteeringVoice.test.ts`: the field rule | `2a1ac93` |
+
+### How each new test was checked against `2295f9d`
+
+The implementation at `350a6eb` is byte-identical to `2295f9d`; your report
+is the only change. Each test file ran on an export of `2295f9d`, with the
+worktree's `node_modules`:
+- **F-01, `LightboxSteeringNoteScale` (7 tests): all 7 failed.**
+  - Four leaning notes with examples on one paragraph of
+    `“It’s cold.” It was quiet.` × 250: **13** detector calls and **8**
+    dialogue-matcher calls, against 1 and 1.
+  - Dialogue-span `start` reads at 250 / 500 / 1,000 spans:
+    **376,500 / 1,503,000 / 6,006,000** (four notes; your one-example
+    count was 93,875 at 250), against bounds of 1,000 and 4,000.
+  - The 100-paragraph control: 13 and 8 calls, against 4 and 4.
+  - 50,000 words in one paragraph, four notes: **16,065 ms** under Jest,
+    against a 2,000 ms bound.
+  - Carry with a new opening paragraph: 18 detector calls and 8 matcher
+    calls. Bring: 3 and 2.
+- **F-02, `LightboxSteeringSpokenExamples` (7 tests): 5 failed, 2 passed.**
+  Fresh kept both crossing examples, and carry and Bring kept and brought
+  them, as you found. The two controls passed: an example confined to the
+  narration of a mixed quote, and the same words unspoken.
+- **N-01: 6 failed.** Five in `LightboxSteeringVoiceRule` (the existing
+  fresh test's Earns row, which now expects the line, and the four new
+  Earns tests), and the new `LightboxAppSteering` test.
+- **The prompt sync test** failed on the new example clause.
+- **Two files do not compile there:** `LightboxSteeringVoice.test.ts`
+  (it reads the new `earns` line) and `LightboxSpanIndex.test.ts` (the new
+  module).
+
+That is 19 failing tests in five files, and two files that do not compile.
+
+### With the fix
+
+| Measure (Jest, this workspace) | `2295f9d` | Head |
+| --- | ---: | ---: |
+| Detector calls, fresh, four notes, one paragraph | 13 | 1 |
+| Dialogue-matcher calls, same | 8 | 1 |
+| Span `start` reads at 250 / 500 / 1,000 spans | 376,500 / 1,503,000 / 6,006,000 | 748 / 1,498 / 2,998 |
+| 50,000 words, whole words only, four notes | 16,826 ms | 518 ms |
+| 50,000 words with `It’s` (tagging), four notes | 18,379 ms | 859 ms |
+| Carry, new opening paragraph: detector · matcher calls | 18 · 8 | 1 · 1 |
+| Bring: detector · matcher calls | 3 · 2 | 1 · 1 (0 · 0 on the array the reading was assembled on) |
+
+These are Jest times in this cloud workspace, from one run each, not
+direct-Node or native VS Code latency; the counts, not the times,
+establish the correction. Reads now grow by three per span: one sort pass,
+one copy of the starts, one binary search per question.
+
+### F-01: what repeated, and what is now shared
+
+Per note, the reviewed head ran the figure's detector three times (the
+quote check's filter, the voice, the example's narration filter) and the
+dialogue matcher twice, each filter with its own cache. The narration
+filter then ran `dialogue.some` from the start for every instance. Now:
+- one detection and one dialogue match per paragraph per text, shared by
+  every check in fresh assembly, carry and Bring;
+- every membership question is a binary search;
+- the anchor's "inside one of the quote's spans" test, which scanned every
+  place the quote stands, is a binary search too.
+
+The index lives with the paragraphs array: a run's verifier, a carry's,
+and Bring's each have their own text. Bring reads the board's retained
+`paragraphTexts`, so repeated Brings of one board reuse it. A paragraph
+changed in place is indexed afresh, never answered from its old string.
+
+### F-02: the example takes in no speech
+
+The question the anchor asks changed from "holds an instance in narration"
+to "holds an instance in narration and overlaps no dialogue span". On a
+miss, the fault says which rule failed: `speech` when a span holding
+narration crossed into speech, `voice` when only a spoken instance was
+held, `unanchored` otherwise. The note's classification is untouched: a
+quote holding narration is a narration note, keeps its nudge, and the gate
+still withholds a leaning narration note with no nudge.
+
+### N-01: the line marks the voice
+
+The line is the marker every surface reads, so each stance now gets one in
+dialogue. For Leans and Compensates it is still the withholding copy; for
+Earns it is the neutral one. Carry drops a line once the instance stands
+in narration (for Leans and Compensates the gate withholds the note there
+anyway, so nothing visible changes for them).
+
+### Changed expectations
+
+- `LightboxSteeringVoiceRule`, fresh: the Earns intensifier note in
+  dialogue now shows "Its instance is in dialogue, the character's voice."
+  instead of no line (N-01).
+- `LightboxSteeringVoice`: the reasons gain `earns`; holding an Earns note
+  in dialogue returns its fields with that line, not the same object.
+
+### Evidence
+
+The evidence holds no Earns note and no crossing example, so it does not
+move. The state builder at the head writes `states/after.json` and
+`figures-after.json` byte-identical to the committed files. `webview.js`
+is unchanged (`20d3aed3…`), so the committed PNGs stand.
+
+### Verification of the head
+
+All gates ran on the fix after `npm ci` into the worktree's own
+`node_modules`.
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **461 suites / 6,354 tests / 59 snapshots passed**: your reviewed head ran 458 / 6,329 / 59; this response adds 3 suites and 25 tests |
+| Lint | **0 errors / 1,133 warnings**, identical per file and rule to `1cb417c` |
+| Typecheck | Passed all package stages |
+| Build and `verify:bundle` | Passed; the same three webpack size warnings |
+| `webview.js` SHA-256 | `20d3aed38676380185d8e6c680c37a75f33e7be6599038838d709bb95a0472aa` (unchanged) |
+| `extension.js` SHA-256 | `6fffedac89ad2e544aca8695353567e0461e6d7cb366bcd04c7ea8a6bd4f069d` |
+| `git diff --check origin/epic/lightbox` | Clean, except your report's Markdown hard line breaks, which are its own |
+
+No live or billable provider call; no writer's text.
+
+### Not done here
+
+- **Writer, native and live-provider acceptance** remain open, as you said.
+- **The numbers lens's own sentence-length and dialogue filters** still
+  recompute their paragraph's sentences or spans per candidate span. They
+  predate this PR and are not on the steering path, so they are left as
+  they are and tracked as
+  [tech debt](../../.todo/tech-debt/2026-10-21-lightbox-numbers-filters-per-span.md).
