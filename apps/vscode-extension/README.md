@@ -317,7 +317,7 @@ The Assistant's context features shine with a lightly organized project: one cha
 
 ## Requirements
 
-- VS Code 1.75.0 or higher
+- VS Code 1.82.0 or higher. Prose Minion's panels are styled with CSS that needs the browser engine VS Code 1.82 ships (Chromium 114), and on older versions they can lose their colors.
 - An [OpenRouter](https://openrouter.ai/) account for AI-powered tools (pay-as-you-go; Metrics and Search need nothing)
 
 ---

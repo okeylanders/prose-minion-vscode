@@ -351,7 +351,8 @@ gives root cause, fix and tests for each.
   - A new guard, `webviewCssFloor.test.ts`, keeps webview CSS within
     Chromium 102. It inventories older uses outside this PR, mainly
     `color-mix()` in the theme tokens, as
-    [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+    [tech debt](../../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md)
+    (resolved 2026-10-21 by raising the floor to VS Code 1.82).
   - The harness now checks that each label is beside its track, and
     simulates the floor by dropping subgrid. `e7e1536` fails those floor
     states (54 faults) and the fix passes.

@@ -932,7 +932,8 @@ land before Slice 5 (decision 14).
       states that simulate the floor.
     - Older above-floor CSS, mainly `color-mix()` in the theme tokens, went
       to
-      [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+      [tech debt](../../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md)
+      (resolved 2026-10-21 by raising the floor to VS Code 1.82).
 
     After F-04: 421 suites / 5,821 tests / 59 snapshots; lint identical.
 

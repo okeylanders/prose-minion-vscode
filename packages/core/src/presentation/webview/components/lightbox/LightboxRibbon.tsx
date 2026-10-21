@@ -114,7 +114,7 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           {focusLine(focusedItem)}
         </span>
       </div>
-      {/* One plain CSS grid, for Chromium 102 (VS Code 1.75): every label block and track is a direct
+      {/* One plain CSS grid, for Chromium 114 (VS Code 1.82): every label block and track is a direct
           child, sharing one label track and one column track (PR #156 F-03, F-04). */}
       <div className="pm-lb-ribbon-grid">
         <div className="pm-lb-ribbon-labels">

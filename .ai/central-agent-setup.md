@@ -1120,15 +1120,18 @@ D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
   - **The text rules.** The one evaluative tile's rules are
     `LightboxOpinionPhrasing`, a conservative word check with its limits
     stated. Keep it stricter than it needs to be, not looser.
-- **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
+- **One ribbon grid, on the Chromium 114 floor.** Every ribbon label block
   and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
   one column track), never a row with its own label width, so a column
   index is one horizontal place in every lane (PR #156 F-03). The grid must
-  hold on Chromium 102, the floor VS Code 1.75 sets (`engines.vscode:
-  ^1.75.0`): plain CSS grid, no `subgrid` or row wrappers (F-04).
-  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor.
-  The visual evidence harness measures the column edges and each label
-  block beside its track, including in states that simulate the floor.
+  hold on Chromium 114, the floor VS Code 1.82 sets (`engines.vscode:
+  ^1.82.0`; [ADR 2026-10-21](docs/adr/2026-10-21-vscode-engine-floor.md)):
+  plain CSS grid, no `subgrid` (Chrome 117) or row wrappers (F-04).
+  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor;
+  the only uses it allows are features Chromium 114 drops gracefully
+  (its `GRACEFUL` list). The visual evidence harness measures the column
+  edges and each label block beside its track, including in states that
+  simulate the floor.
 
 ### Lightbox Passages
 
