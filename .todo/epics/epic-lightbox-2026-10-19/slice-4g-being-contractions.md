@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md) D7 and its **third addendum (2026-10-21)**
 **Writer decisions:** 26 (with 13, 20–24) in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Implemented on `epic/lightbox-being-contractions`, stacked on Slice 4F at `27b646a` and merged with `epic/lightbox` at `2f040ab` (PR #160 merged). The sentence-rule fix (PR #161) is not merged here.
+**Status:** Implemented on `epic/lightbox-being-contractions`, stacked on Slice 4F at `27b646a`, and merged with `epic/lightbox` twice: at `2f040ab` (PR #160) and at `1cb417c` (PR #161, the sentence rule). Awaiting review.
 **Follows:** [Slice 4F](slice-4f-craft-steering.md), whose being-verbs investigation this revisits.
 
 ## Why
@@ -131,6 +131,11 @@ A host rule, not only a prompt instruction:
   withheld: its notes are all in narration.
 - **Groups A–E** and **F**: unchanged. Chapter I's opening holds no
   contraction of be, so no count, standout or digest line moves.
+- **After merging PR #161** (`1cb417c`), regenerated from the builders
+  again: group D's request, group G's and group F's digest (its steering
+  items included) all match, with no change; F keeps #161's sentence
+  figures (15 sentences, 33.9 words per sentence). No response figure
+  needed fixing.
 
 ## Elsewhere
 
@@ -147,8 +152,9 @@ A host rule, not only a prompt instruction:
 
 ## Tests
 
-Each fails at the base `27b646a` and passes here, with literal values (34
-failing tests in six files at the base, run against an export of it):
+Each fails before the change and passes here, with literal values: 34
+failing tests in six files, both at Slice 4F's head `27b646a` and at
+`epic/lightbox` `1cb417c`, run against an export of each:
 - `LightboxBeingVerbsAgreement` (rate, steering total and quote check agree
   line for line): I'm, I’m, you’re, we're, they’re, it’s, she's, that’s,
   there's, isn’t, aren't, wasn’t, weren't, ain’t, he’s gone; controls the
@@ -197,23 +203,32 @@ Full table in the
 | Fixture | Being verbs | Rate per 1,000 | Narration · dialogue | Short runs | Standout |
 |---|---|---|---|---|---|
 | Ch. I ¶1–¶8 (worked examples) | 17 → 17 | 33.5 → 33.5 | 15 · 2 → 15 · 2 | 0 → 0 | none (1.34×) |
-| Ch. VII opening, curly (PR #161's fixture) | 17 → 26 | 39.1 → 59.8 | 11 · 6 → 11 · 15 | 0 → 1 | above your average, 1.56× → 2.39×, no flip |
+| Ch. VII opening, curly (PR #161's `TEA_PARTY_CURLY`) | 17 → 26 | 39.1 → 59.8 | 11 · 6 → 11 · 15 | 0 → 0 | above your average, 1.56× → 2.39×, no flip |
 
-Adverbs and intensifiers keep every count on every fixture.
+Before is `epic/lightbox` at `1cb417c`. Adverbs and intensifiers keep every
+count on every fixture. Under the old sentence rule (`27b646a`) one new
+instance sat in a run of short sentences (0 → 1); the merged rule, which
+keeps closing marks and joins lower-case speech tags, puts none there.
 
 ## Verification
 
-| Check | Base `27b646a` | This branch |
-|---|---|---|
-| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 suites / 6,220 tests / 59 snapshots |
-| `npm run lint` | 0 errors / 1,133 warnings | 0 errors / 1,133 warnings, identical per file and rule |
-| `npm run typecheck` | Passes | Passes |
-| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes (the same 3) |
-| `git diff --check` | | Clean |
+| Check | Slice 4F `27b646a` | Before the 161 merge (`24a364f`) | `epic/lightbox` `1cb417c` | This branch, merged |
+|---|---|---|---|---|
+| `npx jest` | 451 suites / 6,167 tests / 59 snapshots | 453 / 6,220 / 59 | 456 / 6,259 / 59 | 458 suites / 6,312 tests / 59 snapshots |
+| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | 0 errors / 1,133 warnings | Identical per file and rule to both bases |
+| `npm run typecheck` | Passes | Passes | Passes | Passes |
+| `npm run build` (with `verify:bundle`) | Passes (3 size warnings) | Passes | Passes | Passes (the same 3) |
+| `git diff --check` | | | | Clean against both bases |
 
-- Built after `npm ci` into a real `node_modules`. `webview.js` SHA-256
-  `c25e16f03da07d6a7be91ed443cd57ad234a9197723d9b62df91d7758663d4fe`
-  (`24658aba…` at the base), reproduced by a second build.
+- Built after `npm ci` into a real `node_modules`. At the merged head
+  `webview.js` SHA-256 is
+  `20d3aed38676380185d8e6c680c37a75f33e7be6599038838d709bb95a0472aa`
+  and `extension.js` `6b8a10c3…`, each reproduced by a second build. (Before
+  the 161 merge: `c25e16f0…`; the epic recorded `cb08d7b9…` at
+  `1cb417c`. Webpack's production ids come from file paths, so a build of
+  an export elsewhere gives other hashes and is not compared.)
+- The new and changed tests fail at both bases (34 tests in six files) and
+  pass here.
 - No live or billable call.
 
 ## Evidence

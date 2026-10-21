@@ -1,9 +1,9 @@
 /**
  * Builds the states and figures for ../README.md (epic decision 26: being
  * verbs count their contractions; dialogue is voice). Run once at the base
- * (LIGHTBOX_EVIDENCE_LABEL=before, on an export of `27b646a`) and once at
- * this branch's head (LIGHTBOX_EVIDENCE_LABEL=after); it uses only modules
- * both trees have.
+ * (LIGHTBOX_EVIDENCE_LABEL=before, on an export of `epic/lightbox` at
+ * `1cb417c`: Slice 4F and the sentence rule) and once at this branch's head
+ * (LIGHTBOX_EVIDENCE_LABEL=after); it uses only modules both trees have.
  *
  * The board is built by the production `LightboxService` (prose stats, word
  * frequency, Style Flags, the numbers and craft steering's measure) against
@@ -12,9 +12,9 @@
  * answer written for this evidence. No provider is called.
  *
  * Source text: the opening of Chapter VII, "A Mad Tea-Party", of Lewis
- * Carroll's "Alice's Adventures in Wonderland" (1865, public domain), as PR
- * #161's fixture holds it (`teaPartyFixtures.ts`, Project Gutenberg EBook
- * #11), set in curly double quotes with curly apostrophes. The figures also
+ * Carroll's "Alice's Adventures in Wonderland" (1865, public domain), PR
+ * #161's fixture (`teaPartyFixtures.ts`, Project Gutenberg EBook #11), in
+ * curly double quotes with curly apostrophes (`TEA_PARTY_CURLY`). The figures also
  * read the Alice fixtures this branch holds: the worked examples' opening
  * (¶1–¶8 of Chapter I) and `lightboxProseFixtures.ts`.
  *
@@ -41,60 +41,15 @@ import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/pla
 import { WRITER_AVERAGES } from '@/__tests__/infrastructure/lightbox/lightboxCraftFixtures';
 import { frame, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { ALICE_HEADING, ALICE_PARAGRAPHS } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
+import { TEA_PARTY_CURLY, TEA_PARTY_PARAGRAPHS } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
 const DIR = process.env.LIGHTBOX_EVIDENCE_DIR ?? '/tmp/being-contractions';
 const LABEL = process.env.LIGHTBOX_EVIDENCE_LABEL ?? 'after';
 const NOW = Date.UTC(2026, 9, 21, 12, 0, 0);
 
-/** Chapter VII's opening, as Gutenberg sets it (PR #161's `TEA_PARTY_PARAGRAPHS`). */
-const TEA_PARTY_GUTENBERG = [
-  'There was a table set out under a tree in front of the house, and the March Hare and the Hatter were ' +
-    'having tea at it: a Dormouse was sitting between them, fast asleep, and the other two were using it as ' +
-    'a cushion, resting their elbows on it, and talking over its head. \'Very uncomfortable for the ' +
-    'Dormouse,\' thought Alice; \'only, as it\'s asleep, I suppose it doesn\'t mind.\'',
-  'The table was a large one, but the three were all crowded together at one corner of it: \'No room! No ' +
-    'room!\' they cried out when they saw Alice coming. \'There\'s PLENTY of room!\' said Alice indignantly, ' +
-    'and she sat down in a large arm-chair at one end of the table.',
-  '\'Have some wine,\' the March Hare said in an encouraging tone.',
-  'Alice looked all round the table, but there was nothing on it but tea. \'I don\'t see any wine,\' she remarked.',
-  '\'There isn\'t any,\' said the March Hare.',
-  '\'Then it wasn\'t very civil of you to offer it,\' said Alice angrily.',
-  '\'It wasn\'t very civil of you to sit down without being invited,\' said the March Hare.',
-  '\'I didn\'t know it was YOUR table,\' said Alice; \'it\'s laid for a great many more than three.\'',
-  '\'Your hair wants cutting,\' said the Hatter. He had been looking at Alice for some time with great ' +
-    'curiosity, and this was his first speech.',
-  '\'You should learn not to make personal remarks,\' Alice said with some severity; \'it\'s very rude.\'',
-  'The Hatter opened his eyes very wide on hearing this; but all he SAID was, \'Why is a raven like a writing-desk?\'',
-  '\'Come, we shall have some fun now!\' thought Alice. \'I\'m glad they\'ve begun asking riddles.--I believe ' +
-    'I can guess that,\' she added aloud.',
-  '\'Do you mean that you think you can find out the answer to it?\' said the March Hare.',
-  '\'Exactly so,\' said Alice.',
-  '\'Then you should say what you mean,\' the March Hare went on.',
-  '\'I do,\' Alice hastily replied; \'at least--at least I mean what I say--that\'s the same thing, you know.\'',
-  '\'Not the same thing a bit!\' said the Hatter. \'You might just as well say that "I see what I eat" is ' +
-    'the same thing as "I eat what I see"!\'',
-  '\'You might just as well say,\' added the March Hare, \'that "I like what I get" is the same thing as ' +
-    '"I get what I like"!\'',
-  '\'You might just as well say,\' added the Dormouse, who seemed to be talking in his sleep, \'that "I ' +
-    'breathe when I sleep" is the same thing as "I sleep when I breathe"!\''
-];
-
-/** PR #161's `setInCurlyDoubleQuotes`: apostrophes between letters as ’, dialogue in “…”, nested quotations in ‘…’. */
-function curly(paragraph: string): string {
-  let single = 0;
-  let double = 0;
-  return paragraph.replace(/['"]/g, (mark, offset: number) => {
-    if (mark === '\'' && /\p{L}/u.test(paragraph[offset - 1] ?? '') && /\p{L}/u.test(paragraph[offset + 1] ?? '')) {
-      return '’';
-    }
-    if (mark === '\'') {
-      return single++ % 2 === 0 ? '“' : '”';
-    }
-    return double++ % 2 === 0 ? '‘' : '’';
-  });
-}
-
-const TEA_PARTY = TEA_PARTY_GUTENBERG.map(curly);
+/** Chapter VII's opening: as Gutenberg sets it (single quotes), and set in curly double quotes. */
+const TEA_PARTY_GUTENBERG = [...TEA_PARTY_PARAGRAPHS];
+const TEA_PARTY = TEA_PARTY_CURLY.split('\n\n');
 
 /** Group G, written for this evidence: one narration note, and three on lines the characters speak. */
 const ANSWER = frame('G', {

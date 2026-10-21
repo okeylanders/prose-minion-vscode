@@ -17,7 +17,7 @@
         "rate": 59.8,
         "narration": 11,
         "dialogue": 15,
-        "inShortRuns": 1,
+        "inShortRuns": 0,
         "constructions": {
           "adjective": 1,
           "progressive": 5,
@@ -74,7 +74,7 @@
         "rate": 59.8,
         "narration": 26,
         "dialogue": 0,
-        "inShortRuns": 1,
+        "inShortRuns": 0,
         "constructions": {
           "adjective": 1,
           "progressive": 5,

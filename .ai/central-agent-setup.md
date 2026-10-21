@@ -811,8 +811,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G: being-verb contractions and dialogue as voice, on Slice 4F with PR #160 merged):
-- 453 suites / 6,220 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G (being-verb contractions and dialogue as voice) merged with the sentence rule (PR #161), Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
+- 458 suites / 6,312 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
