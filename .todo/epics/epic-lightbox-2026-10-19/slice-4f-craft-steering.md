@@ -455,6 +455,12 @@ line now says what an instance is, figure by figure, and names those
 exclusions; `58-steering.md` says the same. The underscore case is tech
 debt ([2026-10-21-lightbox-word-patterns-miss-underscore-emphasis](../../tech-debt/2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md)).
 
+**Follow-up: contractions (2026-10-21).** The writer then decided to count
+them (epic decision 26): I'm, 're, 's read as *is*, isn't, aren't, wasn't,
+weren't and ain't are being verbs now, through the same one detector, and
+craft steering's notes on dialogue carry no nudge or example. See
+[Slice 4G](slice-4g-being-contractions.md).
+
 ### Measured on the Alice opening (¶1–¶8, 508 words)
 
 | Figure | Total · rate | Narration · dialogue | Constructions | Short runs |

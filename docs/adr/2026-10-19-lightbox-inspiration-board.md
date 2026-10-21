@@ -401,6 +401,25 @@ close to advice, so it is fenced as the Opinion is:
 - **Out of the Opinion.** The Opinion's digest holds the measured counts and
   each note's stance, never a nudge or an example.
 
+**Third addendum to D7 (2026-10-21): dialogue is voice** (epic decision 26,
+Slice 4G). Being verbs, adverbs and intensifiers are a craft signal in
+narration; inside dialogue they are the character's voice, so the fence
+around nudges closes there for all three figures. A steering note whose
+instance stands in dialogue (every instance its checked quote holds lies
+inside a double-quoted span of `findDialogueSpans`, the split the steering
+measure counts; single-quoted speech reads as narration) may still be
+drawn, keep its stance and name a pattern ("every answer a character gives
+is *I'm* and an adjective"), but it carries no nudge and no example. This is
+a host rule, not only a prompt instruction (`LightboxSteeringVoice`): a
+nudge or example the reading gives there is withheld with the host's
+reason, fresh, on carry when the text moves an instance into or out of
+dialogue, and at Bring; a note that leans or compensates with no nudge
+stands only in dialogue; an example anchors only on an instance in
+narration; and the Opinion's digest marks the note as the character's
+voice. The same decision counts contractions of be as being verbs, through
+the one shared detector, so the rate, the quote check and the steering
+totals still agree.
+
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 
 New `PROMPT_BUDGETS.lightbox` constants, pinned by the prompt-budget tests:

@@ -62,6 +62,7 @@ carried into the Workshop.
 | 23 | Nudges (2026-10-21) | **A nudge names the craft move, framed as worth a look**: no quotation marks, never cut, delete, remove, fix, wrong, bad, should or must. **The writer chose one illustrative example** ("feel free to give one example so the user understands"): a note that leans or compensates may show at most one, a phrase from its checked quote (checked by code to hold the instance) and a few words showing one way the move could go, labelled "One way it could go", never styled as a quote. This supersedes "never supply the writer's words" for that one example only; real rewriting happens in the Workshop. The **second fenced exception** to "describe, never grade", in a dated ADR addendum to D7; decision 13 amended for steering nudges only (Slice 4F) |
 | 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
 | 25 | The Opinion's citation basis for saved boards (2026-10-21) | **The writer chose a data basis**: a citation's basis becomes a hash of the cited item's canonical data (its key, kind, quotes with their ¶ addresses, counts and figures), not of the digest's rendered wording, and saved boards carry an explicit basis/format version. **Slice 5 implements it as its first step**, after 4E and 4F merge; until then bases are computed as today ([tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)) |
+| 26 | Being-verb contractions, and dialogue as voice (2026-10-21) | **"Yes, count them."** A contraction of be is a being verb: I'm, 're (you're, we're, they're), 's read as *is* (the tagger reads a verb, and it is not *has* before been, got or gotten), isn't, aren't, wasn't, weren't and ain't (not before been, got or gotten). Never 's as a possessive or *has*, let's, 'd, 'll or 've. One shared detector (`findBeingVerbs`) feeds the rate, the numbers row, standouts, the writer's average, steering totals and the quote check, so they agree. "He's gone" counts as *is*: the stated limit. **Dialogue is voice, for all three steering figures** (the coordinator's default; the writer may narrow it to being verbs only): a note whose instance stands in dialogue may be drawn, with its stance, and may name a pattern, but carries no nudge and no example, by a host rule applied fresh, on carry and at Bring. Dialogue is steering's own split, double quotation marks only (Slice 4G) |
 
 ## Slices
 
@@ -78,6 +79,7 @@ carried into the Workshop.
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
 | 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Built; PR #160 review fixes in, `epic/lightbox` merged at `1fe931a` (4E and the 1.82 floor); merges again after the sentence-rule fix (PR #161) (`epic/lightbox-slice-4f-steering`) |
+| 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Implemented, awaiting review (`epic/lightbox-being-contractions`, stacked on 4F, `epic/lightbox` merged at `2f040ab`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1198,3 +1200,28 @@ lens, and adds its items to 4D's digest.
   - **Next.** Merge the sentence-rule fix (PR #161) when it lands, and
     regenerate the worked examples and evidence whose sentence figures
     move.
+
+- **2026-10-21. Being-verb contractions and dialogue as voice (Slice 4G,
+  decision 26)**, on `epic/lightbox-being-contractions`, stacked on Slice
+  4F at `27b646a` and merged with `epic/lightbox` at `2f040ab`. See
+  [the slice](slice-4g-being-contractions.md) and its
+  [evidence](../../../docs/pr-reviews/evidence/being-contractions/README.md).
+  - **Counted.** I'm, 're, 's read as *is* (by the tagger, not before
+    been, got or gotten), isn't, aren't, wasn't, weren't and ain't, through
+    `findBeingVerbs`, so the numbers, the writer's average, steering and the
+    quote check agree. The negated forms were never counted before.
+  - **Dialogue is voice**, for all three steering figures: a note in
+    dialogue keeps its stance, with no nudge or example, by a host rule
+    fresh, on carry and at Bring.
+  - **Figures.** Chapter I's opening is unchanged (17 being verbs). The
+    dialogue-heavy Chapter VII opening (PR #161's fixture) goes 17 → 26
+    being verbs, 39.1 → 59.8 per 1,000 words, dialogue 6 → 15; no standout
+    flips.
+  - **Worked examples.** Group G's request was regenerated by its builder;
+    every other example is unchanged.
+  - **Verification.** 453 suites / 6,220 tests / 59 snapshots (base 451 /
+    6,167 / 59); lint 0 errors / 1,133 warnings, identical per file and
+    rule; typecheck and build with `verify:bundle` pass; `webview.js`
+    SHA-256 `c25e16f0…`; evidence with no errors.
+  - **Next.** Merge PR #161's sentence rule when it lands, and regenerate
+    what moves.
