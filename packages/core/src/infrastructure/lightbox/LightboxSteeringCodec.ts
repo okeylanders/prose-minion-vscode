@@ -18,9 +18,11 @@
  *   a host reason, and the note stands: an example on a note that earns;
  *   more than one (a list: the first is read and the rest withheld); a
  *   `before` over its word bound; an `after` empty, over its bounds, the
- *   same as the `before`, or breaking a text rule. Whether the `before`
- *   stands in the checked quote and holds the instance is the chapter's
- *   question, answered at assembly (`LightboxSteeringTiles`).
+ *   same as the `before` (by the quote verifier's fold), or breaking a text
+ *   rule. Whether the `before` stands in the checked quote and holds the
+ *   instance is the chapter's question, answered at assembly
+ *   (`LightboxSteeringTiles`), which holds the pair as the chapter has it to
+ *   the same bounds again (PR #160 F-02).
  * Every object decodes with `strictObject`: a field the format does not
  * define is counted, never named, and every reason is host-owned.
  */
@@ -30,6 +32,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
 import { LIGHTBOX_STEERING_STATS, isLightboxSteeringStat } from '@shared/constants/lightboxSteering';
 import { countWords } from '@/utils/textUtils';
+import { foldWithMap } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { boundedArrayAt, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
 import { evidence, paragraphNumber, strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
 import type { LightboxMalformedItem } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -56,8 +59,26 @@ export const LIGHTBOX_STEERING_EXAMPLE_REASONS = {
   afterLong: `Its example's second part runs past ${B.steeringExampleAfterWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
   same: 'Its example shows no change: its second part is its first again.',
   unanchored: 'Its example\'s first part is not a run of whole words of its checked quote holding the instance, so it is not shown.',
-  unanchoredCarried: 'Its example\'s first part no longer stands in its checked quote holding the instance, so it is not shown.'
+  unanchoredCarried: 'Its example\'s first part no longer stands in its checked quote holding the instance, so it is not shown.',
+  /** The pair as the chapter has it, once anchored (PR #160 F-02): fresh and carried alike. */
+  anchoredLong: `Its example's first part, as the chapter has it, runs past ${B.steeringExampleBeforeWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
+  anchoredSame: 'Its example shows no change: as the chapter has it, its first part reads as its second.',
+  anchoredFit: 'Its example, as the chapter has it, does not fit one Workshop point, so it is not shown.'
 } as const;
+
+/** Which bound a pair breaks, or whether it shows no change; undefined when it keeps them. The text rules are the second part's alone. */
+export type LightboxSteeringExamplePairFault = 'beforeLong' | 'afterLong' | 'same';
+
+/** The pair's own contract: each part within its words and characters, and a change between them. */
+export function lightboxSteeringExamplePairFault(example: LightboxSteeringExample): LightboxSteeringExamplePairFault | undefined {
+  if (countWords(example.before) > B.steeringExampleBeforeWords || example.before.length > B.steeringExampleCharacters) {
+    return 'beforeLong';
+  }
+  if (countWords(example.after) > B.steeringExampleAfterWords || example.after.length > B.steeringExampleCharacters) {
+    return 'afterLong';
+  }
+  return sameWords(example.before, example.after) ? 'same' : undefined;
+}
 
 export function decodeSteeringBlock(value: unknown, path: string, friction: string): LightboxDecodedSteeringBlock {
   const block = strictObject(value, path, ['figures', 'friction']);
@@ -187,21 +208,21 @@ function exampleOf(value: unknown, path: string): { example: LightboxSteeringExa
   }
   const before = pair.before.trim();
   const after = pair.after.trim();
-  if (countWords(before) > B.steeringExampleBeforeWords || before.length > B.steeringExampleCharacters) {
-    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.beforeLong };
-  }
-  if (countWords(after) > B.steeringExampleAfterWords || after.length > B.steeringExampleCharacters) {
-    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.afterLong };
-  }
-  if (sameWords(before, after)) {
-    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.same };
+  const pairFault = lightboxSteeringExamplePairFault({ before, after });
+  if (pairFault) {
+    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS[pairFault] };
   }
   const fault = lightboxSteeringTextFault(after, { instruction: false });
   return fault ? { fault: `Its example was withheld. ${fault}` } : { example: { before, after } };
 }
 
-/** The same words, case, spacing and apostrophes folded. */
+/**
+ * The same words: equal under the quote verifier's own fold (compatibility
+ * forms, quotation marks and apostrophes, dashes, spacing), case folded too,
+ * so a pair the verifier would read as one text is no change (PR #160 F-02:
+ * "was-quiet" against "was—quiet").
+ */
 function sameWords(a: string, b: string): boolean {
-  const fold = (value: string) => value.toLocaleLowerCase('en-US').replace(/[’‘]/gu, "'").replace(/\s+/g, ' ').trim();
+  const fold = (value: string) => foldWithMap(value.trim()).folded.toLocaleLowerCase('en-US');
   return fold(a) === fold(b);
 }

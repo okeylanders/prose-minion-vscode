@@ -79,6 +79,11 @@ export const LIGHTBOX_STEERING_CONSTRUCTION_LABELS: Readonly<Record<LightboxStee
 export const LIGHTBOX_STEERING_EXAMPLE_LABEL = 'One way it could go';
 export const LIGHTBOX_STEERING_EXAMPLE_NOTE = 'an illustration, not your text';
 
+/** A note's example as Bring carries it, one Workshop point: "before → after". The anchor holds it to that point's length. */
+export function lightboxSteeringExampleText(example: { before: string; after: string }): string {
+  return `${example.before} → ${example.after}`;
+}
+
 /** "34 being verbs" */
 function instances(figure: Pick<LightboxSteeringFigure, 'stat' | 'total'>): string {
   return `${figure.total.toLocaleString('en-US')} ${LIGHTBOX_STEERING_NOUNS[figure.stat]}`;

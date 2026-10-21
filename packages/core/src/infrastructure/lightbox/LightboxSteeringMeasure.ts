@@ -63,6 +63,16 @@
  * instance whose token the tagger did not place counts as `other`. When the
  * tagger cannot load, totals, splits and runs stand, and the constructions
  * are not measured (`tagged: false`).
+ *
+ * **Work grows with the text (PR #160 F-01).** The measure runs with every
+ * board, before any press and whether or not the lens is on, so no step
+ * rescans a paragraph per instance. The tagger's tokens (in-order,
+ * non-overlapping slices, as `tagTextTokens` makes them) are read once and
+ * found by binary search; each token's neighbour past markup, adverbs or
+ * fillers comes from one sweep per rule; the dialogue spans and the short
+ * runs (coalesced, one interval per run) are answered by binary search over
+ * their starts with the furthest end reached so far. Each answer is the one
+ * the plain scan gave.
  */
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the figures' kebab-case protocol ids. */
@@ -148,12 +158,12 @@ export function measureLightboxSteering(input: LightboxSteeringInput): LightboxS
     if (found.every(({ matches }) => matches.length === 0)) {
       return;
     }
-    const dialogue = findDialogueSpans(paragraph);
-    const runs = shortRunSpans(paragraph);
-    let tokens: TaggedToken[] | undefined;
+    const dialogue = intervalReach(findDialogueSpans(paragraph));
+    const runs = intervalReach(shortRunIntervals(paragraph));
+    let tokens: TokenIndex | undefined;
     if (tagged) {
       try {
-        tokens = tag(paragraph);
+        tokens = indexTokens(tag(paragraph));
       } catch {
         tagged = false;
       }
@@ -163,9 +173,10 @@ export function measureLightboxSteering(input: LightboxSteeringInput): LightboxS
       for (const match of matches) {
         tally.total += 1;
         tally.paragraphs.add(index + 1);
-        const inDialogue = dialogue.some((span) => span.start <= match.start && match.end <= span.end);
-        tally[inDialogue ? 'dialogue' : 'narration'] += 1;
-        tally.inShortRuns += runs.some((run) => run.start <= match.start && match.start < run.end) ? 1 : 0;
+        // Inside a dialogue span: one starting at or before the instance ends at or after the instance's end.
+        tally[dialogue(match.start) >= match.end ? 'dialogue' : 'narration'] += 1;
+        // In a run: one starting at or before the instance's start ends after it.
+        tally.inShortRuns += runs(match.start) > match.start ? 1 : 0;
         const classified = tokens ? classify(stat, tokens, match.start) : { construction: 'other' as const };
         const row = tally.constructions.get(classified.construction);
         if (row) {
@@ -219,52 +230,152 @@ function figureOf(stat: LightboxSteeringStatId, tally: FigureTally, words: numbe
   };
 }
 
-/** The spans of the paragraph's sentences that stand in a run of short ones. */
-export function shortRunSpans(paragraph: string): Array<{ start: number; end: number }> {
+/**
+ * The paragraph's runs of short sentences, one interval per run, from its
+ * first sentence's start to its last one's end. Between two sentences of a
+ * run lies only what the sentence rule set aside (spaces, end marks, a span
+ * with no letter), where no instance of a figure starts.
+ */
+export function shortRunIntervals(paragraph: string): Array<{ start: number; end: number }> {
   const sentences = proseSentenceSpans(paragraph).filter(({ start, end }) => LETTER.test(paragraph.slice(start, end)));
-  const inRuns: Array<{ start: number; end: number }> = [];
-  let run: Array<{ start: number; end: number }> = [];
+  const runs: Array<{ start: number; end: number }> = [];
+  let first = 0;
+  let last = 0;
+  let count = 0;
   const close = () => {
-    if (run.length >= LIGHTBOX_STEERING_SHORT_RUN) {
-      inRuns.push(...run);
+    if (count >= LIGHTBOX_STEERING_SHORT_RUN) {
+      runs.push({ start: first, end: last });
     }
-    run = [];
+    count = 0;
   };
   for (const span of sentences) {
     if (countWords(paragraph.slice(span.start, span.end)) <= LIGHTBOX_STEERING_SHORT_SENTENCE_WORDS) {
-      run.push(span);
+      first = count === 0 ? span.start : first;
+      last = span.end;
+      count += 1;
     } else {
       close();
     }
   }
   close();
-  return inRuns;
+  return runs;
+}
+
+/**
+ * For intervals in any order: at a position, the furthest end of any
+ * interval starting at or before it (-Infinity when none does), by binary
+ * search over the sorted starts and a running maximum of the ends. "Some
+ * interval holds [a, b]" is `reach(a) >= b`, exactly what a scan finds.
+ */
+function intervalReach(intervals: ReadonlyArray<{ start: number; end: number }>): (at: number) => number {
+  const sorted = [...intervals].sort((a, b) => a.start - b.start);
+  const starts = sorted.map((interval) => interval.start);
+  const reach: number[] = [];
+  sorted.forEach((interval, index) => {
+    reach.push(Math.max(index > 0 ? reach[index - 1] : -Infinity, interval.end));
+  });
+  return (at) => {
+    const index = lastAtOrBefore(starts, at);
+    return index < 0 ? -Infinity : reach[index];
+  };
+}
+
+/** The last index whose value is at most `at`, in ascending `values`; -1 when there is none. */
+function lastAtOrBefore(values: readonly number[], at: number): number {
+  let low = 0;
+  let high = values.length - 1;
+  let found = -1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    if (values[middle] <= at) {
+      found = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return found;
+}
+
+/** A paragraph's tokens, read once: where each placed one stands, and each token's neighbour by each rule. */
+interface TokenIndex {
+  tokens: readonly TaggedToken[];
+  /** The tokens the tagger placed in the text, by index, in text order, with where each starts and ends. */
+  placed: number[];
+  starts: number[];
+  ends: number[];
+  /** Per token, its neighbour's index past markup (and adverbs or fillers); out of range when there is none. */
+  next: Int32Array;
+  previous: Int32Array;
+  nextPastAdverbs: Int32Array;
+  previousPastAdverbs: Int32Array;
+  nextPastFillers: Int32Array;
+}
+
+function indexTokens(source: readonly TaggedToken[]): TokenIndex {
+  // One read of each token; every later look is at this copy.
+  const tokens = Array.from({ length: source.length }, (_, index) => source[index]);
+  const placed: number[] = [];
+  const starts: number[] = [];
+  const ends: number[] = [];
+  tokens.forEach((token, index) => {
+    if (token.offset !== undefined) {
+      placed.push(index);
+      starts.push(token.offset);
+      ends.push(token.offset + Math.max(1, token.value.length));
+    }
+  });
+  const markup = tokens.map((token) => MARKUP.test(token.value));
+  const adverb = tokens.map((token) => ADVERB.test(token.pos));
+  const filler = tokens.map((token) => FILLERS.has(token.value.toLowerCase()));
+  // The nearest token in direction `by` that is neither markup nor skipped, for every token, in one pass.
+  const sweep = (by: 1 | -1, skip: (index: number) => boolean): Int32Array => {
+    const out = new Int32Array(tokens.length);
+    let nearest = by === 1 ? tokens.length : -1;
+    for (let index = by === 1 ? tokens.length - 1 : 0; index >= 0 && index < tokens.length; index -= by) {
+      out[index] = nearest;
+      if (!markup[index] && !skip(index)) {
+        nearest = index;
+      }
+    }
+    return out;
+  };
+  return {
+    tokens,
+    placed,
+    starts,
+    ends,
+    next: sweep(1, () => false),
+    previous: sweep(-1, () => false),
+    nextPastAdverbs: sweep(1, (index) => adverb[index]),
+    previousPastAdverbs: sweep(-1, (index) => adverb[index]),
+    nextPastFillers: sweep(1, (index) => filler[index])
+  };
+}
+
+/** The token whose span holds `offset`, or -1. Placed tokens do not overlap, so at most one does. */
+function tokenAt(index: TokenIndex, offset: number): number {
+  const at = lastAtOrBefore(index.starts, offset);
+  return at >= 0 && offset < index.ends[at] ? index.placed[at] : -1;
 }
 
 /** The construction of the instance starting at `offset`, by the tokens around it. */
-function classify(stat: LightboxSteeringStatId, tokens: readonly TaggedToken[], offset: number): Classified {
-  const at = tokens.findIndex((token) =>
-    token.offset !== undefined && token.offset <= offset && offset < token.offset + Math.max(1, token.value.length));
+function classify(stat: LightboxSteeringStatId, index: TokenIndex, offset: number): Classified {
+  const at = tokenAt(index, offset);
   if (at < 0) {
     return { construction: 'other' };
   }
+  const { tokens } = index;
   const lower = (token: TaggedToken | undefined) => (token?.value ?? '').toLowerCase();
-  const step = (from: number, by: 1 | -1, skip: (token: TaggedToken) => boolean = () => false): TaggedToken | undefined => {
-    let index = from + by;
-    while (index >= 0 && index < tokens.length && (MARKUP.test(tokens[index].value) || skip(tokens[index]))) {
-      index += by;
-    }
-    return tokens[index];
-  };
   const isAdverb = (token: TaggedToken) => ADVERB.test(token.pos);
-  const before = step(at, -1);
-  const after = step(at, 1);
+  const before = tokens[index.previous[at]];
+  const after = tokens[index.next[at]];
   switch (stat) {
     case 'being-verbs': {
       if (before && (before.pos === 'EX' || lower(before) === 'it')) {
         return { construction: 'expletive' };
       }
-      const head = step(at, 1, isAdverb);
+      const head = tokens[index.nextPastAdverbs[at]];
       const pos = head?.pos ?? '';
       return { construction: pos === 'VBG' ? 'progressive' : pos === 'VBN' ? 'passive' : ADJECTIVE.test(pos) ? 'adjective' : 'other' };
     }
@@ -275,14 +386,14 @@ function classify(stat: LightboxSteeringStatId, tokens: readonly TaggedToken[], 
       if (after && ADJECTIVE.test(after.pos)) {
         return { construction: 'before-adjective' };
       }
-      const verb = after && VERB.test(after.pos) ? after : step(at, -1, isAdverb);
+      const verb = after && VERB.test(after.pos) ? after : tokens[index.previousPastAdverbs[at]];
       if (verb && VERB.test(verb.pos)) {
         return { construction: 'with-verb', weakVerb: WEAK_VERBS.has(lower(verb)) };
       }
       return { construction: after && isAdverb(after) ? 'before-adverb' : 'other' };
     }
     case 'intensifiers': {
-      const head = step(at, 1, (token) => FILLERS.has(lower(token)));
+      const head = tokens[index.nextPastFillers[at]];
       if (head && GENERIC.has(lower(head))) {
         return { construction: 'generic' };
       }

@@ -94,6 +94,22 @@ describe('a press with craft steering on (Slice 4F)', () => {
     expect(groupIn(host, 'G')).toMatchObject({ tiles: [] });
   });
 
+  it('measures a 49,998-word paragraph with the board even with steering off, inside a coarse bound, and sends no G (PR #160 F-01)', async () => {
+    // One valid paragraph under the 50,000-word cap. Before the fix, its steering measure alone took about 80 s here.
+    const text = Array.from({ length: 16_666 }, () => 'It was cold.').join(' ');
+    const started = Date.now();
+    const host = await createLightboxReadingHost({ text });
+    expect(Date.now() - started).toBeLessThan(15_000);
+    expect(host.board.measured.steering.figures.map((figure) => [figure.stat, figure.total, figure.inShortRuns])).toEqual([
+      ['being-verbs', 16_666, 16_666], ['adverbs', 0, 0], ['intensifiers', 0, 0]
+    ]);
+    const tab = host.openTab();
+    await tab.setLenses(['steering']);
+    const estimate = tab.ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).at(-1)?.payload.estimate;
+    expect(estimate?.groups.map((call) => call.group)).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+    expect(host.runInitial).not.toHaveBeenCalled();
+  }, 120_000);
+
   it('lands G on the board: every reading and note minted on the host, each quote holding an instance', async () => {
     const host = await createLightboxReadingHost();
     const tab = host.openTab();

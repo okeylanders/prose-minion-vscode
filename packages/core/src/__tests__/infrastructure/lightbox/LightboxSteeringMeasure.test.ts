@@ -8,7 +8,7 @@
  * domain); the short lines are synthetic sentences written for these tests.
  */
 import type { LightboxSteeringFigure, LightboxSteeringStatId } from '@messages';
-import { measureLightboxSteering, shortRunSpans } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
+import { measureLightboxSteering, shortRunIntervals } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
 import { readWorkedExample } from './lightboxReadingFixtures';
 import { boardWithNumbers } from './lightboxCraftFixtures';
 
@@ -73,9 +73,14 @@ describe('runs of short sentences', () => {
     expect(figureOf(['He sat. It was cold. The door was shut against the cold night wind.'], 'being-verbs').inShortRuns).toBe(0);
     // A run never crosses a paragraph break.
     expect(figureOf(['He sat.', 'It was cold.', 'The door was shut.'], 'being-verbs').inShortRuns).toBe(0);
-    // A closing quotation mark at a paragraph's end is no sentence of its own: it neither extends nor breaks a run.
-    // Three spans whether the shared sentence rule leaves the mark alone or keeps it with its sentence.
-    expect(shortRunSpans('He sat. It was cold. “The door was shut.”')).toHaveLength(3);
+    // A closing quotation mark at a paragraph's end is no sentence of its own: it does not make two short
+    // sentences a run of three, whether the shared sentence rule leaves the mark alone or keeps it with its sentence.
+    expect(shortRunIntervals('The long dark passage wound on and on beneath the hedge. He sat. “It was cold.”')).toEqual([]);
+  });
+
+  it('gives each run as one interval, from its first sentence to its last (PR #160 F-01)', () => {
+    expect(shortRunIntervals('He sat. It was cold. She left. The long dark passage wound on and on beneath the hedge. He sat. It was cold. She left.'))
+      .toEqual([{ start: 0, end: 30 }, { start: 87, end: 118 }]);
   });
 });
 

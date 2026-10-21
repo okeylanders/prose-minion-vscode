@@ -183,6 +183,32 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     }));
   });
 
+  it('says the numbers lens had nothing to read when only a figure craft steering reads stands out (PR #160 N-01)', () => {
+    const board = boardWith(readGroup('G'));
+    const emptyNumbers = readGroup('D', { mutate: (body) => { body.numbers.items = []; } });
+    const onlySteered: LightboxBoard = {
+      ...board,
+      readings: board.readings.map((group) => (group.group === 'D' ? emptyNumbers : group)),
+      measured: {
+        ...board.measured,
+        numbers: {
+          ...board.measured.numbers,
+          rows: board.measured.numbers.rows.map(({ standout: _standout, ...row }) =>
+            (row.stat === 'adverbs' ? { ...row, standout: { direction: 'above' as const, against: ['writer' as const] } } : row))
+        }
+      }
+    };
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: onlySteered, refusal: null });
+    const numbers = screen.getByLabelText('What stands out in the numbers');
+    expect(within(numbers).getByText('Read under Craft steering, below')).not.toBeNull();
+    expect(numbers.textContent).toContain(
+      'None of the figures this lens reads (sentence length, dialogue, passive voice) stands out, so it had nothing to read. ' +
+      'Craft steering reads the figure that does, below.'
+    );
+    expect(numbers.textContent).not.toContain('Nothing in the numbers stands out');
+  });
+
   it('points a standout steering figure in the numbers tile to craft steering, where it is read', () => {
     const board = boardWith();
     const standing: LightboxBoard = {

@@ -15,8 +15,12 @@
  * - **A note** carries its stance (with its figure), its nudge, and its one
  *   example labelled "One way it could go", as `before → after`. The example
  *   travels only while its `before` still lies in the note's re-checked
- *   quote holding the instance (`anchorLightboxSteeringExample`). It is a
- *   point, never a quote: the Workshop never sees it as the chapter's text.
+ *   quote holding the instance, and the pair as the chapter has it keeps the
+ *   example's bounds (`anchorLightboxSteeringExample`), so it always fits
+ *   its point whole: nothing is ever clipped (PR #160 F-02). When it does
+ *   not, the item says the example was withheld and why, in host words. It
+ *   is a point, never a quote: the Workshop never sees it as the chapter's
+ *   text.
  * The why is the item's claim. Nothing else of the board travels.
  */
 
@@ -27,13 +31,24 @@ import {
   LIGHTBOX_STEERING_STANCE_LABELS,
   lightboxSteeringConstructionLine,
   lightboxSteeringCountLines,
+  lightboxSteeringExampleText,
   lightboxSteeringFigure
 } from '@shared/constants/lightboxSteering';
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { verifyLightboxPatternInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
-import { anchorLightboxSteeringExample } from '@/infrastructure/lightbox/LightboxSteeringTiles';
+import { anchorLightboxSteeringExample, type LightboxSteeringAnchorFault } from '@/infrastructure/lightbox/LightboxSteeringTiles';
 
 type Quote = { paragraph: number; text: string };
+
+/** Why a note's example did not travel, in one Workshop point (at most 120 characters each). */
+export const LIGHTBOX_STEERING_EXAMPLE_BRING_REASONS: Readonly<Record<LightboxSteeringAnchorFault, string>> = {
+  unanchored: 'Not brought: its first part no longer stands whole in the note\'s quote, holding the instance.',
+  long: 'Not brought: its first part, as the chapter has it, runs past the words or characters an example may have.',
+  same: 'Not brought: as the chapter has it, its first part reads as its second.',
+  fit: 'Not brought: as the chapter has it, the pair does not fit one Workshop point.'
+};
+/** The point's label when a note's example did not travel. */
+export const LIGHTBOX_STEERING_EXAMPLE_WITHHELD_LABEL = 'Example withheld';
 type Point = (label: string, text: string) => WorkshopLightboxTilePoint;
 
 /** A steering tile's quote as it stands now, holding an instance of its figure; undefined when it does not, or for another kind. */
@@ -78,6 +93,8 @@ export function lightboxSteeringPoints(
   return [
     point('Stance', `${LIGHTBOX_STEERING_STANCE_LABELS[tile.stance]} · ${LIGHTBOX_NUMBER_STAT_LABELS[tile.stat]}`),
     ...(tile.nudge ? [point('Nudge', tile.nudge)] : []),
-    ...(anchored ? [point(LIGHTBOX_STEERING_EXAMPLE_LABEL, `${anchored.before} → ${anchored.after}`)] : [])
+    ...(anchored === undefined ? [] : 'example' in anchored
+      ? [point(LIGHTBOX_STEERING_EXAMPLE_LABEL, lightboxSteeringExampleText(anchored.example))]
+      : [point(LIGHTBOX_STEERING_EXAMPLE_WITHHELD_LABEL, LIGHTBOX_STEERING_EXAMPLE_BRING_REASONS[anchored.fault])])
   ];
 }

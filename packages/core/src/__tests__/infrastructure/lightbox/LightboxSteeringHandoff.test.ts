@@ -105,9 +105,12 @@ describe('bringing craft steering to the Workshop', () => {
     expect(bring(words, ALICE, withTile(words))).toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.steeringNoInstance });
   });
 
-  it('drops the example, and keeps the note, when its first part no longer stands in the quote holding the instance', () => {
+  it('withholds the example, saying why, and keeps the note, when its first part no longer stands in the quote holding the instance', () => {
     const note = noteTitled('Being verbs · note II');
     const drifted = { ...note, example: { before: 'too dark to see', after: 'the dark swallowed everything' } };
-    expect(sent(drifted, ALICE, withTile(drifted)).points.map((point) => point.label)).toEqual(['Stance', 'Nudge']);
+    expect(sent(drifted, ALICE, withTile(drifted)).points.slice(1)).toEqual([
+      { label: 'Nudge', text: 'An action that lets the dark do something may be worth a look, so the state becomes an event.' },
+      { label: 'Example withheld', text: 'Not brought: its first part no longer stands whole in the note\'s quote, holding the instance.' }
+    ]);
   });
 });

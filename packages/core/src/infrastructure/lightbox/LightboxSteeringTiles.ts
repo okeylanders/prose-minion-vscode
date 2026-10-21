@@ -19,13 +19,18 @@
  *   `before` must be a run of whole words of the note's checked quote, as
  *   the chapter has it, that holds an instance of the figure. Found by the
  *   verifier's own rules (exact, then folded), through a span filter, so
- *   what the board shows as `before` is the chapter's own text. Otherwise
- *   the example alone is withheld, with the host's reason, and the note
- *   stands. The example is never evidence and never a quote.
+ *   what the board shows as `before` is the chapter's own text. That text
+ *   can be longer than the reading's (a soft line break and its indent, a
+ *   spaced dash), so the pair as the chapter has it is held to the
+ *   example's contract again: its bounds, a change between its parts, and
+ *   one Workshop point for the whole pair (PR #160 F-02). Otherwise the
+ *   example alone is withheld, with the host's reason, and the note stands.
+ *   The example is never evidence and never a quote.
  * - **The task lines** say what an instance of each figure is, and which
  *   figures the chapter holds none of (no count is given).
  */
 
+import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import type {
   LightboxNumberRow,
   LightboxSteeringExample,
@@ -34,7 +39,7 @@ import type {
   LightboxVerifiedQuote
 } from '@messages';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
-import { LIGHTBOX_STEERING_STATS } from '@shared/constants/lightboxSteering';
+import { LIGHTBOX_STEERING_STATS, lightboxSteeringExampleText } from '@shared/constants/lightboxSteering';
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxClaimAssembler } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import {
@@ -42,7 +47,7 @@ import {
   lightboxPatternInstancePhrase,
   verifyLightboxPatternInstance
 } from '@/infrastructure/lightbox/LightboxNumberInstances';
-import { LIGHTBOX_STEERING_EXAMPLE_REASONS } from '@/infrastructure/lightbox/LightboxSteeringCodec';
+import { LIGHTBOX_STEERING_EXAMPLE_REASONS, lightboxSteeringExamplePairFault } from '@/infrastructure/lightbox/LightboxSteeringCodec';
 import { lightboxSteeringNoteTitle, type LightboxDecodedSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringWire';
 
 /** Letters, digits, apostrophes and hyphens join a word: a run of whole words starts and ends beside none of them. */
@@ -96,28 +101,44 @@ export function lightboxSteeringExampleFields(
   if (!example) {
     return withheld ? { exampleWithheld: withheld } : {};
   }
-  const anchored = quote ? anchorLightboxSteeringExample(verifier, stat, quote, example) : undefined;
-  if (!anchored) {
-    return { exampleWithheld: phase === 'fresh' ? LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchored : LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchoredCarried };
+  const anchored: LightboxSteeringAnchor = quote ? anchorLightboxSteeringExample(verifier, stat, quote, example) : { fault: 'unanchored' };
+  if ('fault' in anchored) {
+    return { exampleWithheld: LIGHTBOX_STEERING_ANCHOR_REASONS[anchored.fault][phase] };
   }
-  return { example: anchored, ...(withheld ? { exampleWithheld: withheld } : {}) };
+  return { example: anchored.example, ...(withheld ? { exampleWithheld: withheld } : {}) };
 }
+
+/** Why an example does not stand in its note's quote as the chapter has it. */
+export type LightboxSteeringAnchorFault = 'unanchored' | 'long' | 'same' | 'fit';
+
+/** The example as the chapter has it, or why it cannot be shown. */
+export type LightboxSteeringAnchor = { example: LightboxSteeringExample } | { fault: LightboxSteeringAnchorFault };
+
+/** The host's reason for each fault, fresh and carried. */
+const LIGHTBOX_STEERING_ANCHOR_REASONS: Readonly<Record<LightboxSteeringAnchorFault, { fresh: string; carried: string }>> = {
+  unanchored: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchored, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.unanchoredCarried },
+  long: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredLong, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredLong },
+  same: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredSame, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredSame },
+  fit: { fresh: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredFit, carried: LIGHTBOX_STEERING_EXAMPLE_REASONS.anchoredFit }
+};
 
 /**
  * The example with its `before` as the chapter has it, when `before` is a
  * run of whole words inside the checked quote's span that holds an instance
- * of the figure; else undefined. The quote is the note's own, as verified,
- * so the example can never anchor anywhere else in the chapter.
+ * of the figure, and the pair as the chapter has it still keeps the
+ * example's contract: each part within its bounds, a change between them,
+ * and the whole within one Workshop point. The quote is the note's own, as
+ * verified, so the example can never anchor anywhere else in the chapter.
  */
 export function anchorLightboxSteeringExample(
   verifier: LightboxQuoteVerifier,
   stat: LightboxSteeringStatId,
   quote: Pick<LightboxVerifiedQuote, 'paragraph' | 'text'>,
   example: LightboxSteeringExample
-): LightboxSteeringExample | undefined {
+): LightboxSteeringAnchor {
   const source = verifier.paragraphs[quote.paragraph - 1];
   if (source === undefined) {
-    return undefined;
+    return { fault: 'unanchored' };
   }
   const spans: Array<{ start: number; end: number }> = [];
   for (let at = source.indexOf(quote.text); at >= 0; at = source.indexOf(quote.text, at + 1)) {
@@ -132,7 +153,19 @@ export function anchorLightboxSteeringExample(
     spans.some((span) => span.start <= start && end <= span.end) &&
     whole(start, end) &&
     holds(paragraph, start, end));
-  return verdict.found && verdict.paragraph === quote.paragraph ? { before: verdict.text, after: example.after } : undefined;
+  if (!verdict.found || verdict.paragraph !== quote.paragraph) {
+    return { fault: 'unanchored' };
+  }
+  const anchored = { before: verdict.text, after: example.after };
+  const fault = lightboxSteeringExamplePairFault(anchored);
+  if (fault) {
+    return { fault: fault === 'same' ? 'same' : 'long' };
+  }
+  // Implied by the two parts' bounds today; checked so a change of budget can never clip a brought example.
+  if (lightboxSteeringExampleText(anchored).length > WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters) {
+    return { fault: 'fit' };
+  }
+  return { example: anchored };
 }
 
 /**
