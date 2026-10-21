@@ -18,10 +18,15 @@
  *   engine's own estimated tokens, so the estimate can price F "up to" it.
  *   Readings past the bound are left out in board order, and the digest
  *   says how many, from which lenses.
- * Its `key` names the board, its text and every item it held by content
- * (`basis`): the same board measured again under another preset or
- * average, or a cited tile read again, is another key. The run records the
- * key it read; the call's reply is checked against these items only.
+ * Its `key` names the board, its text, its measurement context (the
+ * preset's comparison, where the writer's average came from, and every
+ * figure row with its range, average and standout) and every item it held
+ * by content (`basis`). The same text measured again under another preset
+ * or average is another key, even when nothing the digest shows changed;
+ * so is a cited tile read again. The run records the key it read; the
+ * call's reply is checked against these items only. Whether the Opinion
+ * still holds is its standing (`lightboxOpinionStanding`), by the items it
+ * cites, not this key.
  */
 
 import { createHash } from 'node:crypto';
@@ -100,7 +105,13 @@ export function buildLightboxOpinionDigest(
     boardId: board.boardId,
     contentHash: board.source.contentHash,
     key: createHash('sha256')
-      .update(JSON.stringify([board.boardId, board.source.contentHash, [...items.values()].map((item) => [item.key, item.basis]), left.map((item) => item.key)]))
+      .update(JSON.stringify([
+        board.boardId,
+        board.source.contentHash,
+        measurementContext(board),
+        [...items.values()].map((item) => [item.key, item.basis]),
+        left.map((item) => item.key)
+      ]))
       .digest('hex'),
     section,
     items,
@@ -125,6 +136,16 @@ export function buildLightboxOpinionTaskSection(): string {
 /** F's whole user message: the digest, then the task. */
 export function buildLightboxOpinionUserMessage(digest: Pick<LightboxOpinionDigest, 'section'>): string {
   return `${digest.section}\n\n${buildLightboxOpinionTaskSection()}`;
+}
+
+/** What the board was measured against: the preset's comparison, the writer's average and its source, every figure row. */
+function measurementContext(board: LightboxBoard): unknown {
+  const { standards, numbers } = board.measured;
+  return [
+    standards ?? null,
+    numbers.baseline,
+    numbers.rows.map((row) => [row.stat, row.value, row.range ?? null, row.writer ?? null, row.standout ?? null])
+  ];
 }
 
 function headSection(board: LightboxBoard): string {

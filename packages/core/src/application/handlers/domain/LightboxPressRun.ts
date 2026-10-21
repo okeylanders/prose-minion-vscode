@@ -85,7 +85,7 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
       outputChannel.appendLine(
         `[LightboxReadingHandler] Group F landed on digest ${outcome.digestKey.slice(0, 12)}` +
           (now === outcome.digestKey ? ', the board it read' : `; the board's digest is now ${now.slice(0, 12)}`) +
-          (standing ? (standing.stale ? `: stale, ${standing.changed.length} observations cite items that changed` : ': current') : '')
+          (standing ? (standing.stale ? `: stale, ${staleNote(standing.changed.length)}` : ': current') : '')
       );
     }
     return true;
@@ -118,6 +118,11 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
     }
   };
   return { listener, bind: (run) => { started = run; } };
+}
+
+/** How many of a landing Opinion's observations cite something that changed. */
+function staleNote(changed: number): string {
+  return changed === 1 ? '1 observation cites items that changed' : `${changed} observations cite items that changed`;
 }
 
 /**
