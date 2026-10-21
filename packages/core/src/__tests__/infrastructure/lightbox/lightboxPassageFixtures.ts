@@ -5,7 +5,7 @@
  * "Alice's Adventures in Wonderland", 1865) or written for the tests.
  */
 
-import type { LightboxBoard } from '@messages';
+import type { LightboxBoard, LightboxPassageRow, LightboxPassageSentenceRow } from '@messages';
 import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -30,6 +30,20 @@ export function createPassageService(): LightboxService {
     { enrichWithStandards: async (stats: object) => stats } as never,
     { mintBoardId: () => `board-${++id}`, now: () => 1_700_000_000_000 }
   );
+}
+
+/**
+ * The rows as sentence rows. A row outside every sentence (PR #161 N-01)
+ * fails the test: ordinary prose has none, so a test reading sentences
+ * checks that too.
+ */
+export function lightboxSentenceRows(rows: readonly LightboxPassageRow[]): LightboxPassageSentenceRow[] {
+  return rows.map((row) => {
+    if ('outside' in row) {
+      throw new Error(`Expected a sentence row, got a stretch outside every sentence in ¶${row.outside.paragraph}`);
+    }
+    return row;
+  });
 }
 
 /** Board `text` as a file and return the board with its passage index. */

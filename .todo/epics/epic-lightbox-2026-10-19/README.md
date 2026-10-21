@@ -1085,8 +1085,9 @@ lens, and adds its items to 4D's digest.
   - **Deviations and limits** are in the slice's
     [implementation notes](slice-4e-inspector-aids.md#implementation-notes-2026-10-21).
     One item went to tech debt: the board's
-    [sentence rule](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
-    gives a closing quotation mark to the next sentence.
+    [sentence rule](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+    gives a closing quotation mark to the next sentence (since resolved:
+    see the next entry).
   - **Verification.**
 
     | Check | `20775cf` (base) | Slice 4E head |
@@ -1124,6 +1125,7 @@ lens, and adds its items to 4D's digest.
       reproduced.
     - See the review's
       [author response](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md#author-response-2026-10-21).
+
 - **2026-10-21. Slice 4F (Group G, Craft steering) is planned** on
   `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`, at
   the writer's request: "Think steering the craft." See the
@@ -1198,3 +1200,104 @@ lens, and adds its items to 4D's digest.
   - **Next.** Merge the sentence-rule fix (PR #161) when it lands, and
     regenerate the worked examples and evidence whose sentence figures
     move.
+
+- **2026-10-21. The sentence rule keeps closing marks and joins speech
+  tags,** on `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159)
+  at `058feb5` and merged with its review fixes at `2e62aa7`. It resolves
+  the
+  [sentence-rule debt](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md),
+  recorded in
+  [ADR 2026-10-21](../../../docs/adr/2026-10-21-sentence-closing-marks.md).
+  Slice 4F (craft steering) reads sentence spans and merges this later.
+  - **Closing marks.** `proseSentenceSpans` keeps the run of `”`, `’`,
+    `"`, `'`, `)` and `]` written directly after a sentence's `.`, `!` or
+    `?`. A stretch of only space and closing marks is no sentence.
+    - `“Oh dear!”` is 2 words in 1 sentence.
+    - An elision's apostrophe never moves.
+  - **Speech tags** (the coordinator's default, by standard punctuation).
+    A sentence goes on across ender, closing quotation mark, space and a
+    lower-case letter.
+    - `“Wait!” she cried.` and `“Who are you?” said the Caterpillar.` are
+      each one sentence; `“Wait.” She turned.` stays two.
+    - A bare `!`, a bracket, an elision or a paragraph break never joins.
+    - The known limit: a capitalised tag (`“Wait!” Alice said.`) stays a
+      sentence of its own.
+  - **Figures move on purpose.** Literal figures on the *Alice* fixtures,
+    at the original rule, after closing marks, and after speech tags, are
+    in the [evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md),
+    with inspector captures at each.
+    - Closing marks move whole-text counts by at most one in ordinary
+      prose, and per-paragraph counts wherever a paragraph ends with a
+      closing mark (2,028 → 1,702 over the whole book).
+    - Speech tags move both. The whole book goes 1,628 → 1,388 sentences
+      and 16.2 → 19.1 words per sentence; the Tea-Party goes 13.6 → 16.1.
+      Its 240 joins were audited, and none is false.
+    - The audit found an interleaved end (`!"?”`, Chapter VIII), now read
+      as one end.
+    - Count agreement holds, now also on the dialogue-heavy Tea-Party.
+    - Group F's worked example was regenerated from its builder after
+      each change.
+  - **Verification.**
+
+    | Check | `058feb5` (base) | `2e62aa7` (4E with its fixes) | Head |
+    |---|---|---|---|
+    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 440 suites / 6,019 tests / 59 snapshots | 444 suites / 6,102 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes | Passes |
+
+    - Built after `npm ci` into a real `node_modules`. `webview.js`
+      SHA-256 is `2f86917e…`, 4E's own after its fixes: the rule runs
+      host-side, and the webview only shows what the host measured.
+    - `extension.js` is `865b2c9f…` (`b8cb056a…` at `058feb5`). Both
+      bundles were reproduced by a second build.
+    - No live or billable call.
+
+- **2026-10-21. PR #161's N-01 fixed, and Slice 4F merged into the
+  sentence rule.** Astra found no blocking defect in PR #161 and one P3,
+  fixed before merge. See the
+  [review and author response](../../../docs/pr-reviews/pr-161-sentence-boundary-review.md).
+  - **N-01.** A counted token can stand in no sentence: a lone `'` is a
+    hapax word, and a stretch of only space and closing marks is no
+    longer a sentence. Its well claimed a sentence it could not light,
+    or lit an unrelated paragraph.
+    - Such an instance now gets a row of its own stretch, lit, marked
+      "outside any sentence".
+    - It is counted apart (`outside`), never as a sentence, and never
+      put in the nearest one.
+    - Whether such a token is vocabulary at all is inherited, and now
+      [Low tech debt](../../tech-debt/2026-10-21-prose-stats-punctuation-only-words.md).
+  - **The merge.** `epic/lightbox` at `2f040ab` (PR #160, Slice 4F,
+    group G). PR #161 merges second, so it carries the integration.
+    - Conflicts were in group F's worked example, the tech-debt index,
+      the agents guide's inventory and this file.
+    - Both sides were kept in each.
+  - **What moved on the combined tree**, against `2f040ab`:
+    - **Group F's worked example.** The request is its builder's byte for
+      byte: 15 sentences, 33.9 words per sentence, pacing Very slow,
+      ×2.37. The response keeps 4F's tile ids and states 33.9; Blunt's
+      "about twice" reads "more than twice".
+    - **`LightboxCraftHandoff.test.ts`.** The number reading's Figure
+      point is "Sentence length: 33.9 words per sentence", not 29.9.
+    - **Nothing else moved.**
+      - Groups A–E's and G's requests still match their builders.
+      - Craft steering's counts are unchanged: 4F's suites pass as
+        written, and the rebuilt evidence's steering measure is identical.
+        The rule can move a short run in general: a closing mark no longer
+        adds a word to the next sentence, and a speech tag lengthens its
+        speech's sentence. The excerpt has no run under either rule.
+      - The measure's header comment now names the merged rule.
+    - **4F's committed evidence is left as recorded at its head.**
+      Rebuilt on the combined tree, its `chapter.json` moves only in the
+      sentence figures, the group F estimate (+3 tokens) and group F's
+      reading. Its `workshop.json` is byte-identical. The fields are
+      listed in the
+      [sentence-rule evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md).
+  - **Verification**, at the merge, after `npm ci`:
+    - 456 suites / 6,259 tests / 59 snapshots;
+    - lint 0 errors / 1,133 warnings, identical per file and rule to the
+      N-01 head;
+    - typecheck and build with `verify:bundle` pass.
+    - `webview.js` SHA-256 is `cb08d7b9…`, and `extension.js` is
+      `a548648c…`. Both were reproduced by a second build.
+    - No live or billable call.

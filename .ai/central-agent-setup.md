@@ -811,8 +811,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4F with its PR #160 fixes, merged with Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
-- 451 suites / 6,167 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, the sentence rule (closing marks, speech tags, and instances outside every sentence) merged with Lightbox Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
+- 456 suites / 6,259 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1193,13 +1193,23 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
 - **Pending is only the pin on screen's.** Going back to a pin or board
   whose answer is held asks nothing and drops any other request, so a late
   answer can never replace what is shown (PR #159 F-01).
+- **An instance outside every sentence keeps its own row.** A counted
+  token can stand where no sentence is (a lone `'` is a hapax word). Its row
+  is that stretch of its own paragraph, lit, and the passage counts it apart
+  (`outside`, "1 instance, outside any sentence"). Never put it in the
+  nearest sentence, and never count it as one (PR #161 N-01).
 - **Cut in linear time.** The row bound limits rows, not what one row
   holds. Match ranges to instances in one walk and cut segments in one
   open/close sweep, never by scanning every instance per segment (PR #159
   N-01).
 - **Sentences are the board's.** Rows use each paragraph's
-  `proseSentenceSpans`. Fix the sentence rule there, not in the well
-  ([tech debt](.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md)).
+  `proseSentenceSpans`. Change the sentence rule there, never in the well.
+  A sentence keeps the closing marks written directly after its end, and
+  a lower-case speech tag continues its speech's sentence
+  ([ADR 2026-10-21](docs/adr/2026-10-21-sentence-closing-marks.md)). The
+  rule feeds every sentence figure, so a change to it moves measured
+  figures: pin it with literal before/after figures on the *Alice*
+  fixtures, and regenerate any worked example whose request states them.
 
 ### Operational Tips
 

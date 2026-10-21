@@ -15,10 +15,10 @@
  *   `LIGHTBOX_STEERING_SHORT_RUN` consecutive sentences of at most
  *   `LIGHTBOX_STEERING_SHORT_SENTENCE_WORDS` words, within one paragraph
  *   (`proseSentenceSpans`, the prose-stats word rule). The sentences are the
- *   shared rule's, whatever it decides about a closing quotation mark: this
- *   module never splits text itself. A span with no letter (a closing mark
- *   that rule leaves alone at a paragraph's end) is no sentence: it neither
- *   extends nor breaks a run. A run never crosses a paragraph break, so a
+ *   shared rule's (which keeps a closing quotation mark with its sentence,
+ *   ADR 2026-10-21): this module never splits text itself. A span with no
+ *   letter (a dash or markup left after a paragraph's last sentence, say)
+ *   is no sentence: it neither extends nor breaks a run. A run never crosses a paragraph break, so a
  *   stretch of one-line paragraphs is not a run;
  * - **constructions**, a partition of the instances, from the tokens around
  *   each one as the word-frequency tool's tagger (wink, `tagTextTokens`)

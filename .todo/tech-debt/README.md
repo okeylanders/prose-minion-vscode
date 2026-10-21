@@ -102,12 +102,12 @@ elsewhere.
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
 | Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; the writer chose a data basis, epic decision 25) | Decided (Slice 5's first step) |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
-| Medium | [A closing quotation mark after a sentence's end counts as a sentence](2026-10-21-prose-sentences-closing-quote.md) (Lightbox Slice 4E; `“Oh dear!”` is "2 sentences", and a well's row can begin with "”") | Identified |
 | Low | [The word-pattern figures miss a form wrapped in underscore emphasis](2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Lightbox Slice 4F; `_was_` counts nowhere, consistently) | Identified |
 | Low | [Craft steering's construction breakdown is a next-word heuristic](2026-10-21-lightbox-steering-construction-heuristics.md) (Lightbox Slice 4F) | Identified |
 | Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; split before Slice 5 adds to them) | Identified |
 | Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
 | Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
+| Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
 
 ## Review Guidance
 
@@ -119,6 +119,8 @@ elsewhere.
   focused concern and narrow the parent document.
 
 ## Recently resolved
+
+- [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end, and a lower-case speech tag continues its speech's sentence ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
 
 - [Webview CSS uses features above the declared Chromium 102 floor](../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md): the writer raised the floor to VS Code 1.82 (Chromium 114); scrollbar styling and `text-wrap: pretty` stay as graceful exceptions ([ADR 2026-10-21](../../docs/adr/2026-10-21-vscode-engine-floor.md), 2026-10-21).
 

@@ -324,7 +324,7 @@ This section records what landed and where it differs from the plan above.
   sentence's end starts the next sentence, so `“Oh dear!”` is "2 words in
   2 sentences" and a row can begin with "”". This is the writer's two-word
   case. It is recorded as
-  [tech debt](../../tech-debt/2026-10-21-prose-sentences-closing-quote.md)
+  [tech debt, since resolved](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md)
   (Medium), not patched in the well, so the well and the board count the
   same sentences.
 - **Past 50 rows** the well counts what is not listed, but cannot page to

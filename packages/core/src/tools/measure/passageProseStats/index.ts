@@ -47,21 +47,74 @@ export function countProseSentences(text: string): number {
 }
 
 /**
- * The same sentences as spans of `text`, each running to the end of its
- * closing punctuation; a run with no text in it is no sentence. The
- * Lightbox checks that two borrowed fields share one of these (PR #150 F-04).
+ * Whether a stretch of text holds anything but space and the marks that
+ * close a quotation or a bracket. One that does not is no sentence.
+ */
+function holdsSentence(stretch: string): boolean {
+  return /[^\s”’"')\]]/.test(stretch);
+}
+
+/**
+ * Whether `text` goes on at `at` with space, then a lower-case letter, and no
+ * paragraph break (the blank-line rule) in the space: a speech tag.
+ */
+function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean {
+  speechTag.lastIndex = at;
+  const space = speechTag.exec(text);
+  return space !== null && !/\n\s*\n/.test(space[0]);
+}
+
+/**
+ * The same sentences as spans of `text`. The Lightbox checks that two
+ * borrowed fields share one of these (PR #150 F-04).
+ *
+ * The rule (ADR 2026-10-21, sentence closing marks):
+ * - A sentence ends at a run of `.`, `!` or `?` (an ellipsis written `...`
+ *   is such a run; `…` is not, and does not end one).
+ * - It keeps the closing marks written directly after that run, with no
+ *   space between: `”`, `’`, `"`, `'`, `)` and `]`, in any order, so
+ *   `“Oh dear!”`, `‘Stop.’`, `(See below.)` and `“He said ‘No!’”` each end
+ *   with their marks. Enders and marks may interleave: `“Did you say
+ *   "What a pity!"?”` ends once, at its `”`.
+ * - An apostrophe is kept only inside that unbroken run, where it follows
+ *   the ender or another closing mark. An elision's apostrophe follows a
+ *   letter (`goin’`) or opens a word after a space (`’Twas`), so it never
+ *   moves.
+ * - A stretch with nothing in it but space and closing marks is no
+ *   sentence. A closing mark after a space (`Oh! ” she said`) is not kept,
+ *   and opens the next sentence as it always did.
+ * - **Speech tags.** A sentence continues across ender, closing quotation
+ *   mark, space and a lower-case letter, as standard punctuation reads it:
+ *   `“Wait!” she cried.`, `“Who are you?” said the Caterpillar.` and
+ *   `“I was thinking...” she trailed off.` are each one sentence.
+ *   - A quotation mark (`”`, `’`, `"` or `'`) must come directly after an
+ *     ender of the run. A bare `!` or `?` before lower-case text (`Wait! she
+ *     cried`) ends a sentence, and so does a bracket (`(See below.) then`).
+ *   - The space may break a line but not a paragraph: a blank line ends
+ *     the sentence.
+ *   - A capitalised tag cannot be told from a new sentence without a
+ *     parser, so `“Wait!” Alice said.` is two sentences, as
+ *     `“Wait.” She turned.` is.
+ * - Nothing else is decided here: `Mr.` ends a sentence.
  */
 export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
   const spans: Array<{ start: number; end: number }> = [];
-  const enders = /[.!?]+/g;
+  // Fresh literals per call, so no global or sticky regex's lastIndex is shared.
+  // An end is an ender and every ender and closing mark written straight after it: `!"?”` is one.
+  const enders = /[.!?][.!?”’"')\]]*/g;
+  const speechTag = /\s+(?=\p{Ll})/uy;
   let start = 0;
   for (let match = enders.exec(text); match; match = enders.exec(text)) {
-    if (text.slice(start, match.index).trim().length > 0) {
-      spans.push({ start, end: match.index + match[0].length });
+    const end = match.index + match[0].length;
+    if (/[.!?][”’"']/.test(match[0]) && continuesIntoTag(text, end, speechTag)) {
+      continue;
     }
-    start = match.index + match[0].length;
+    if (holdsSentence(text.slice(start, match.index))) {
+      spans.push({ start, end });
+    }
+    start = end;
   }
-  if (text.slice(start).trim().length > 0) {
+  if (holdsSentence(text.slice(start))) {
     spans.push({ start, end: text.length });
   }
   return spans;

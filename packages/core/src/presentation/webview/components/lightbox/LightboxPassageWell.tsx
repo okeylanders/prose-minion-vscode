@@ -9,13 +9,15 @@
  * - **Sentences.** Every sentence holding an instance of a pinned counted
  *   term, as an ordered list in a scrollable, labelled, focusable well, the
  *   instances lit, each row with its ¶ address. An address is a board item:
- *   hover lights its paragraph, click pins it, lit by the term.
+ *   hover lights its paragraph, click pins it, lit by the term. An instance
+ *   no sentence holds has a row of its own stretch, marked "outside any
+ *   sentence" (PR #161 N-01).
  *
  * The inspector reads changes out politely; a well's text is not read out
  * (`aria-live="off"`), only its heading and notes.
  */
 import * as React from 'react';
-import type { LightboxPassageSegment, LightboxPassageRow } from '@messages';
+import type { LightboxPassageSegment, LightboxPassageRow, LightboxPassageSentenceRow } from '@messages';
 import type { LightboxPassageWellView } from '@hooks/domain/lightbox/lightboxPassages';
 import type { LightboxItemRef, LightboxTermRef } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
@@ -37,7 +39,37 @@ const LightboxPassageText: React.FC<{ segments: readonly LightboxPassageSegment[
 );
 
 /** The paragraphs a row stands in, in order, each once. */
-const rowParagraphs = (row: LightboxPassageRow) => [...new Set(row.sentences.map((sentence) => sentence.paragraph))];
+const rowParagraphs = (row: LightboxPassageRow) => ('outside' in row
+  ? [row.outside.paragraph]
+  : [...new Set(row.sentences.map((sentence) => sentence.paragraph))]);
+
+/** A row's key: its first sentence, or its paragraph and first segment for a stretch outside every sentence. */
+const rowKey = (row: LightboxPassageRow) => ('outside' in row
+  ? `outside:${row.outside.paragraph}:${row.outside.segments[0]?.instances?.[0] ?? ''}`
+  : `${row.sentences[0].paragraph}:${row.sentences[0].sentence}`);
+
+/** The sentences of a row, or its stretch outside every sentence, marked as such. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const LightboxRowText: React.FC<{ row: LightboxPassageRow }> = ({ row }) => ('outside' in row
+  ? (
+    <>
+      <LightboxPassageText segments={row.outside.segments} />
+      <span className="pm-lb-well-outside"> · outside any sentence</span>
+    </>
+  )
+  : <LightboxSentences row={row} />);
+
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const LightboxSentences: React.FC<{ row: LightboxPassageSentenceRow }> = ({ row }) => (
+  <>
+    {row.sentences.map((sentence, index) => (
+      <React.Fragment key={`${sentence.paragraph}:${sentence.sentence}`}>
+        {index > 0 && (sentence.paragraph !== row.sentences[index - 1].paragraph ? <span className="pm-lb-well-break"> ¶ </span> : ' ')}
+        <LightboxPassageText segments={sentence.segments} />
+      </React.Fragment>
+    ))}
+  </>
+);
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const LightboxSentenceRow: React.FC<{
@@ -45,7 +77,7 @@ const LightboxSentenceRow: React.FC<{
   term: LightboxTermRef;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
 }> = ({ row, term, bind }) => (
-  <li className="pm-lb-well-row">
+  <li className={`pm-lb-well-row${'outside' in row ? ' is-outside' : ''}`}>
     <span className="pm-lb-well-where">
       {rowParagraphs(row).map((paragraph) => (
         <LightboxItemButton
@@ -59,12 +91,7 @@ const LightboxSentenceRow: React.FC<{
       ))}
     </span>
     <span className="pm-lb-well-text">
-      {row.sentences.map((sentence, index) => (
-        <React.Fragment key={`${sentence.paragraph}:${sentence.sentence}`}>
-          {index > 0 && (sentence.paragraph !== row.sentences[index - 1].paragraph ? <span className="pm-lb-well-break"> ¶ </span> : ' ')}
-          <LightboxPassageText segments={sentence.segments} />
-        </React.Fragment>
-      ))}
+      <LightboxRowText row={row} />
     </span>
   </li>
 );
@@ -94,7 +121,7 @@ export const LightboxPassageWell: React.FC<LightboxPassageWellProps> = ({ view, 
           <ol className="pm-lb-well-rows">
             {passage.rows.map((row) => (
               <LightboxSentenceRow
-                key={`${row.sentences[0].paragraph}:${row.sentences[0].sentence}`}
+                key={rowKey(row)}
                 row={row}
                 term={term}
                 bind={bind}

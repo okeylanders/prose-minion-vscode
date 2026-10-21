@@ -126,7 +126,7 @@ No provider was called.
   row can begin with "”" (the third row of `word`), and ¶2 reads "2
   sentences". The well uses this rule on purpose, so its sentences are the
   ones the board counts. This is recorded as
-  [tech debt](../../../../.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md).
+  [tech debt, since resolved](../../../../.todo/archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md).
 
 ## Results
 
