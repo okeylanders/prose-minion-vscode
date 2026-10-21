@@ -1,8 +1,9 @@
 # Webview CSS Uses Features Above the Declared Chromium 102 Floor
 
 **Date Identified**: 2026-10-21 (PR #156 F-04 follow-up)
-**Status**: Identified
-**Priority**: Medium
+**Reviewed**: 2026-10-21
+**Status**: Resolved 2026-10-21: the writer raised the floor to VS Code 1.82 (Chromium 114), [ADR 2026-10-21](../../../docs/adr/2026-10-21-vscode-engine-floor.md)
+**Priority**: Was Medium; resolved
 **Estimated Effort**: Medium (a floor decision, then either fallbacks or a raised `engines.vscode`)
 
 ## Problem
@@ -64,7 +65,7 @@ uses out meanwhile.
 - `packages/core/src/presentation/webview/index.css` (the theme tokens)
 - `.todo/epics/epic-lightbox-2026-10-19/slice-2a-tab-and-counted-board.md`
   (the floor note)
-- [PR #156 review](../../docs/pr-reviews/pr-156-lightbox-story-lenses-review.md)
+- [PR #156 review](../../../docs/pr-reviews/pr-156-lightbox-story-lenses-review.md)
   (F-04)
 
 ## Completion Criteria
@@ -73,3 +74,34 @@ uses out meanwhile.
 - Every remaining use above the floor has a fallback, or the floor is
   raised above it, and the guard's `KNOWN` inventory is empty or explains
   each entry left.
+
+## Resolution
+
+Resolved on 2026-10-21 (`epic/lightbox-vscode-floor`). The writer chose to
+raise the floor rather than add fallbacks;
+[ADR 2026-10-21](../../../docs/adr/2026-10-21-vscode-engine-floor.md) records
+the decision and its sources.
+
+- **The floor.** `engines.vscode` is `^1.82.0`. VS Code 1.82 is the first
+  stable release on Electron 25, which ships Chromium 114 (the 1.82 release
+  notes name Chromium 114.0.5735.289). This covers `color-mix()`,
+  `@container` and the `translate` property.
+- **The guard.** `webviewCssFloor.test.ts` pins `^1.82.0` and sets
+  `FLOOR_CHROME = 114`. Features at or below 114 left its list. CSS nesting
+  stays, at 120: MDN lists 112 to 119 as partial (no nested rule that starts
+  with a type selector).
+- **A correction.** The four `text-wrap` uses in the table above are
+  `text-wrap: pretty`, which MDN lists at Chrome 117. Only the property and
+  its `wrap`, `nowrap` and `balance` values are 114. So the guard now
+  counts `text-wrap: pretty` on its own.
+- **What is left.** `KNOWN` holds two entries, each explained by the guard's
+  `GRACEFUL` list and a test that allows nothing else there:
+  - `scrollbar-width` / `scrollbar-color` (121), 4 uses in the Lexical
+    Gravity widget sheet. Chromium 114 to 120 draw default scrollbars.
+  - `text-wrap: pretty` (117), 4 uses in `styles/workshop/context.css`.
+    Chromium 114 to 116 wrap lines as usual.
+
+  These are decided allowances, not open debt, so no follow-up item was
+  split out.
+- **Also updated:** the README's requirements, the Slice 2A note (a dated
+  line), `.ai/central-agent-setup.md`, and the Lightbox ribbon's comments.
