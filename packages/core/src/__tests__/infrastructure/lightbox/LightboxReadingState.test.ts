@@ -94,19 +94,27 @@ describe('reading-group transitions', () => {
     expect(lightboxPlannedCalls(['genre', 'voice', 'lineage', 'spark', 'rhythm'], { mode: 'all' })).toEqual([
       { group: 'A', lenses: ['headline', 'motif', 'tension', 'gravity', 'palette'] },
       { group: 'B', lenses: ['characters', 'subtext'] },
-      { group: 'D', lenses: ['stock', 'numbers'] }
+      { group: 'D', lenses: ['stock', 'numbers'] },
+      { group: 'E', lenses: ['template', 'pressure', 'artifacts', 'summary'] }
     ]);
     expect(lightboxPlannedCalls([], { mode: 'rest' }, [{ group: 'A', status: 'ok' }, { group: 'B', status: 'cancelled' }]))
       .toEqual([
         { group: 'B', lenses: ['characters', 'voice', 'subtext'] },
         { group: 'C', lenses: ['genre', 'lineage', 'spark'] },
-        { group: 'D', lenses: ['stock', 'rhythm', 'numbers'] }
+        { group: 'D', lenses: ['stock', 'rhythm', 'numbers'] },
+        { group: 'E', lenses: ['template', 'pressure', 'artifacts', 'summary'] }
       ]);
     expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'voice' })).toEqual([{ group: 'B', lenses: ['voice'] }]);
     expect(lightboxPlannedCalls(['voice'], { mode: 'lens', lens: 'voice' })).toEqual([]);
     // Slice 4B: the craft lenses are one call of their own, and read alone like any lens.
     expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'numbers' })).toEqual([{ group: 'D', lenses: ['numbers'] }]);
-    expect(lightboxPlannedCalls(['stock', 'rhythm', 'numbers'], { mode: 'all' }).map((call) => call.group)).toEqual(['A', 'B', 'C']);
+    expect(lightboxPlannedCalls(['stock', 'rhythm', 'numbers'], { mode: 'all' }).map((call) => call.group)).toEqual(['A', 'B', 'C', 'E']);
+    // Slice 4C: template and summary are read together on a re-read, since engagement sits on the movements;
+    // with one of them off, the other is read alone.
+    expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'template' })).toEqual([{ group: 'E', lenses: ['template', 'summary'] }]);
+    expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'summary' })).toEqual([{ group: 'E', lenses: ['template', 'summary'] }]);
+    expect(lightboxPlannedCalls(['summary'], { mode: 'lens', lens: 'template' })).toEqual([{ group: 'E', lenses: ['template'] }]);
+    expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'pressure' })).toEqual([{ group: 'E', lenses: ['pressure'] }]);
   });
 });
 

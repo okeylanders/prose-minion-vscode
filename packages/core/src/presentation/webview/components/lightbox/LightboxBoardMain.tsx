@@ -22,6 +22,7 @@ import type { UseLightboxFocusReturn } from '@hooks/domain/lightbox/controllers/
 import type { LightboxRunLineView } from '@hooks/domain/lightbox/lightboxRunLine';
 import { lightboxTensionLane, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxEndingsLane } from '@hooks/domain/lightbox/lightboxCraft';
+import { lightboxEngagementLane, lightboxMovementsLane, lightboxPressureLaneView } from '@hooks/domain/lightbox/lightboxPlot';
 import { Icon } from '@components/shared/Icon';
 import { LightboxRibbon } from '@components/lightbox/LightboxRibbon';
 import { LightboxRunLine } from '@components/lightbox/LightboxRunLine';
@@ -128,7 +129,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   const [tensionArc] = lightboxTilesOfKind(board, 'tension-arc');
   const trim = board.measured.standards?.publishingFormat?.trimLabel;
   const drawReading = (kind: LightboxReadingTileKind) =>
-    React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind, actions });
+    React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind, actions, lensesOff });
   const laneOn = lensOn(LIGHTBOX_TILE_LENS[LIGHTBOX_READING_LAYOUT.lane]);
 
   return (
@@ -179,6 +180,11 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         tension={lightboxTensionLane(board, tensionOn)}
         tensionTileId={tensionArc?.id}
         endings={lensOn('rhythm') ? lightboxEndingsLane(board, true) : undefined}
+        plot={{
+          movements: lightboxMovementsLane(board, lensOn('summary')),
+          pressure: lightboxPressureLaneView(board, lensOn('pressure')),
+          engagement: lightboxEngagementLane(board, lensesOff)
+        }}
       />
       {tensionOn
         ? drawReading(LIGHTBOX_READING_LAYOUT.underRibbon)

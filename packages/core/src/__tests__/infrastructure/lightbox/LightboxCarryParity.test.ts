@@ -157,6 +157,8 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
     // Slice 4B: group D reads the same eight paragraphs, against each text's own measured figures.
     beforeAll(() => measure(paragraphs, edited, thinned, unquoted));
     const craftBody = (): Body => framedJson(readWorkedExample('D').response) as Body;
+    // Slice 4C: group E reads the same paragraphs; `thinned` takes the ¶8 beat's words and a watch mention.
+    const storyBody = (): Body => framedJson(readWorkedExample('E').response) as Body;
     // Group C with a spark that stands on "sleepy", which `edited` removes
     // while the spark's quote stands.
     const sparkBody = (): Body => {
@@ -193,13 +195,14 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
     // (Slice 4), which `unquoted` and `edited` exercise; D's tier mix,
     // handoffs and numbers readings (Slice 4B) lose beats, sentences and
     // measured instances under the same edits.
-    it('carry and a fresh reading agree for groups A, B, C and D, including partial evidence survival', () => {
+    it('carry and a fresh reading agree for groups A to E, including partial evidence survival', () => {
       expect(readWorkedExample('D').paragraphs).toEqual(paragraphs);
       const groups = [
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
         ['C', sparkBody],
-        ['D', craftBody]
+        ['D', craftBody],
+        ['E', storyBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -312,7 +315,8 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         ['A', collisionBody],
         ['B', () => framedJson(readWorkedExample('B').response) as Body],
         ['C', sparkBody],
-        ['D', craftBody]
+        ['D', craftBody],
+        ['E', storyBody]
       ] as const;
       for (const [group, body] of groups) {
         const lenses = readWorkedExample(group).lenses;
@@ -343,16 +347,17 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
 
     it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
       const lenses = readWorkedExample('A').lenses;
-      const drawnKinds = new Set((['A', 'B', 'C', 'D'] as const).flatMap((group) => {
+      const drawnKinds = new Set((['A', 'B', 'C', 'D', 'E'] as const).flatMap((group) => {
         const body = group === 'A' ? collisionBody() : framedJson(readWorkedExample(group).response) as Body;
         return readOn(group, readWorkedExample(group).lenses, paragraphs, body).tiles.map((tile) => tile.kind);
       }));
       // Every reading kind the board can draw, so a new kind cannot skip this sweep.
       expect([...drawnKinds].sort()).toEqual(Object.keys(LIGHTBOX_TILE_LENS).sort());
       expect([...drawnKinds].sort()).toEqual([
-        'air-lock', 'character', 'echo', 'familiar-phrase', 'genre-neighbor', 'gravity-collision', 'gravity-field',
-        'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'number-usage', 'palette-cluster', 'reader-promise',
-        'rhythm-endings', 'signature', 'spark', 'stock-tiers', 'subtext', 'swatch', 'tension-arc', 'voice'
+        'air-lock', 'artifact', 'character', 'echo', 'familiar-phrase', 'genre-neighbor', 'gravity-collision', 'gravity-field',
+        'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'movement', 'number-usage', 'palette-cluster',
+        'pressure-thread', 'reader-promise', 'rhythm-endings', 'signature', 'spark', 'stock-tiers', 'subtext', 'swatch',
+        'synopsis', 'template', 'template-beat', 'tension-arc', 'voice'
       ]);
       const once = parity('A', lenses, collisionBody(), paragraphs, edited).carried;
       expect(outcome(once).drawn).toEqual(expect.arrayContaining([

@@ -73,7 +73,15 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   'rhythm-endings': 'read',
   handoff: 'read',
   // A figure code measured as standing out, read for how it is used.
-  'number-usage': 'counted-read'
+  'number-usage': 'counted-read',
+  // Slice 4C: the template, its beats, the synopsis and the movements are read;
+  // a thread's span and an object's mentions are counted by code.
+  template: 'read',
+  'template-beat': 'read',
+  'pressure-thread': 'counted-read',
+  artifact: 'counted-read',
+  synopsis: 'read',
+  movement: 'read'
 };
 
 /** The lens each reading kind belongs to. */
@@ -100,7 +108,13 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   echo: 'stock',
   'rhythm-endings': 'rhythm',
   handoff: 'rhythm',
-  'number-usage': 'numbers'
+  'number-usage': 'numbers',
+  template: 'template',
+  'template-beat': 'template',
+  'pressure-thread': 'pressure',
+  artifact: 'artifacts',
+  synopsis: 'summary',
+  movement: 'summary'
 };
 
 /** What one reading of each kind is called, e.g. in the inspector's "Theme & motif · Motif". */
@@ -127,7 +141,13 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   echo: 'Echo',
   'rhythm-endings': 'How paragraphs end',
   handoff: 'Handoff',
-  'number-usage': 'How it is used'
+  'number-usage': 'How it is used',
+  template: 'Template',
+  'template-beat': 'Template beat',
+  'pressure-thread': 'Thread',
+  artifact: 'Object',
+  synopsis: 'Synopsis',
+  movement: 'Movement'
 };
 
 /**
@@ -234,7 +254,7 @@ export const LIGHTBOX_NUMBER_USAGE_LABELS: Readonly<Record<LightboxNumberUsage, 
 };
 
 /** The reading groups, in board order (D6). */
-export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D'];
+export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D', 'E'];
 
 export interface LightboxLensDescriptor {
   id: LightboxLensId;
@@ -257,7 +277,11 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   spark: { label: 'Spark', group: 'C' },
   stock: { label: 'Stock & signature', group: 'D' },
   rhythm: { label: 'Rhythm & handoffs', group: 'D' },
-  numbers: { label: 'The numbers', group: 'D' }
+  numbers: { label: 'The numbers', group: 'D' },
+  template: { label: 'Template & freshness', group: 'E' },
+  pressure: { label: 'Pressure', group: 'E' },
+  artifacts: { label: 'Artifacts', group: 'E' },
+  summary: { label: 'Summary & movements', group: 'E' }
 };
 
 /** Every lens, in rail order (which is also group order). */
@@ -294,9 +318,30 @@ export interface LightboxPlannedCall {
 }
 
 /**
+ * Lenses read together whenever either is re-read on its own (Slice 4C):
+ * engagement, in the template block, sits on the movements the summary block
+ * draws, and the host checks one against the other in the same response, so
+ * re-reading one alone would leave engagement on movements of another call.
+ */
+const LIGHTBOX_READ_TOGETHER: Readonly<Partial<Record<LightboxLensId, readonly LightboxLensId[]>>> = {
+  template: ['summary'],
+  summary: ['template']
+};
+
+/** What "Re-read this tile" reads for `lens`: the lens, with any lens read together with it that is on, in rail order. */
+export function lightboxRereadLenses(lens: LightboxLensId, lensesOff: readonly LightboxLensId[]): LightboxLensId[] {
+  if (lensesOff.includes(lens)) {
+    return [];
+  }
+  const together = [lens, ...(LIGHTBOX_READ_TOGETHER[lens] ?? [])].filter((candidate) => !lensesOff.includes(candidate));
+  return LIGHTBOX_LENSES.map((descriptor) => descriptor.id).filter((candidate) => together.includes(candidate));
+}
+
+/**
  * The calls a press makes (D6). A lens that is off is left out of its group,
  * and a group with no lens on is not called. `rest` skips the groups whose
- * readings already landed; `lens` re-reads one lens that is on.
+ * readings already landed; `lens` re-reads one lens that is on, with the
+ * lenses read together with it (`lightboxRereadLenses`).
  */
 export function lightboxPlannedCalls(
   lensesOff: readonly LightboxLensId[],
@@ -304,7 +349,8 @@ export function lightboxPlannedCalls(
   readings: readonly Pick<LightboxReadingGroup, 'group' | 'status'>[] = []
 ): LightboxPlannedCall[] {
   if (scope.mode === 'lens') {
-    return lensesOff.includes(scope.lens) ? [] : [{ group: lightboxLensGroup(scope.lens), lenses: [scope.lens] }];
+    const lenses = lightboxRereadLenses(scope.lens, lensesOff);
+    return lenses.length === 0 ? [] : [{ group: lightboxLensGroup(scope.lens), lenses }];
   }
   return LIGHTBOX_READING_GROUPS.flatMap((group) => {
     const lenses = lightboxGroupLenses(group).filter((lens) => !lensesOff.includes(lens));

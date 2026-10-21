@@ -10,11 +10,15 @@
  * own under it, with the lane's actions (Slice 4). Group D's tiles join the
  * grid (Slice 4B): stock and signature draws its signature phrases,
  * familiar phrasing, air-locks and echoes inside it, rhythm its handoffs, and
- * the numbers tile its readings under the measured figures.
+ * the numbers tile its readings under the measured figures. Group E's
+ * tiles join the grid (Slice 4C): summary and movements full width with its
+ * movements inside it, template and freshness with its beats, pressure and
+ * artifacts.
  */
 import * as React from 'react';
 import type {
   LightboxBoard,
+  LightboxLensId,
   LightboxMeasuredTileKind,
   LightboxReadingTileKind,
   LightboxSparkTile,
@@ -45,6 +49,10 @@ import {
 } from '@components/lightbox/LightboxStock';
 import { LightboxHandoffs, LightboxRhythm } from '@components/lightbox/LightboxRhythm';
 import { LightboxNumbers } from '@components/lightbox/LightboxNumbers';
+import { LightboxMovements, LightboxSummary } from '@components/lightbox/LightboxSummary';
+import { LightboxTemplate, LightboxTemplateBeats } from '@components/lightbox/LightboxTemplate';
+import { LightboxPressure } from '@components/lightbox/LightboxPressure';
+import { LightboxArtifacts } from '@components/lightbox/LightboxArtifacts';
 
 /** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring. */
 export interface LightboxTileActions {
@@ -56,6 +64,8 @@ export interface LightboxTileProps {
   board: LightboxBoard;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
   actions?: LightboxTileActions;
+  /** The lenses the writer turned off, for a tile whose parts depend on another lens (engagement on the movements). */
+  lensesOff?: readonly LightboxLensId[];
 }
 
 /** The Spark lane through the renderer map, with the board's actions. */
@@ -93,7 +103,13 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   echo: LightboxEchoes,
   'rhythm-endings': LightboxRhythm,
   handoff: LightboxHandoffs,
-  'number-usage': LightboxNumbers
+  'number-usage': LightboxNumbers,
+  synopsis: LightboxSummary,
+  movement: LightboxMovements,
+  template: LightboxTemplate,
+  'template-beat': LightboxTemplateBeats,
+  'pressure-thread': LightboxPressure,
+  artifact: LightboxArtifacts
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -123,7 +139,8 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
   underRibbon: 'tension-arc',
   grid: [
     'motif', 'gravity-field', 'palette-cluster', 'character', 'lineage', 'genre-neighbor', 'voice', 'subtext',
-    'stock-tiers', 'rhythm-endings', 'number-usage'
+    'stock-tiers', 'rhythm-endings', 'number-usage',
+    'synopsis', 'template', 'pressure-thread', 'artifact'
   ],
   lane: 'spark',
   /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals. */
@@ -136,7 +153,9 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
     'familiar-phrase': 'stock-tiers',
     'air-lock': 'stock-tiers',
     echo: 'stock-tiers',
-    handoff: 'rhythm-endings'
+    handoff: 'rhythm-endings',
+    movement: 'synopsis',
+    'template-beat': 'template'
   }
   /* eslint-enable @typescript-eslint/naming-convention */
 };

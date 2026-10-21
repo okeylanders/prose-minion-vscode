@@ -27,7 +27,7 @@ import type {
   LightboxRunProgress,
   LightboxRunScope
 } from '@messages';
-import { lightboxLensLabel } from '@shared/constants/lightbox';
+import { lightboxLensLabel, lightboxRereadLenses } from '@shared/constants/lightbox';
 import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
@@ -86,8 +86,12 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
 }
 
 /** What a tile's "Re-read" would cost. */
-export function lightboxRereadNote(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): string | undefined {
-  const call = rereadCall(estimate, lens);
+export function lightboxRereadNote(
+  estimate: LightboxRunEstimate | null | undefined,
+  lens: LightboxLensId,
+  lensesOff: readonly LightboxLensId[] = []
+): string | undefined {
+  const call = rereadCall(estimate, lens, lensesOff);
   return call ? lightboxCallsNote([call]) : undefined;
 }
 
@@ -121,7 +125,7 @@ export function lightboxRereadAvailability(input: LightboxRereadInput): { note?:
   if (estimate === undefined) {
     return { reason: 'Estimating the cost…' };
   }
-  const call = rereadCall(estimate, lens);
+  const call = rereadCall(estimate, lens, input.lensesOff);
   if (!call) {
     return { reason: 'This tile cannot be re-read until the board is estimated.' };
   }
@@ -136,8 +140,19 @@ export function lightboxRereadAvailability(input: LightboxRereadInput): { note?:
   return { note: lightboxCallsNote([call]) };
 }
 
-function rereadCall(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): LightboxCallEstimate | undefined {
-  return estimate?.rereads.find((candidate) => candidate.lenses.length === 1 && candidate.lenses[0] === lens);
+/**
+ * The estimate of what "Re-read" sends for `lens`: the call the host priced
+ * for exactly the lenses it reads with this one (`lightboxRereadLenses`:
+ * template and summary are read together, Slice 4C).
+ */
+function rereadCall(
+  estimate: LightboxRunEstimate | null | undefined,
+  lens: LightboxLensId,
+  lensesOff: readonly LightboxLensId[]
+): LightboxCallEstimate | undefined {
+  const lenses = lightboxRereadLenses(lens, lensesOff);
+  return estimate?.rereads.find((candidate) =>
+    candidate.lenses.length === lenses.length && candidate.lenses.every((entry, index) => entry === lenses[index]));
 }
 
 export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLineView {

@@ -9,8 +9,9 @@
  *   marker `⟦¶n⟧`; then the context files, in a labeled section that says
  *   they are never evidence; then the task (the lenses, the frame, the
  *   ribbon columns the tension arc scores and the paragraph endings read,
- *   the counted words the palette groups, and the measured figures that
- *   stand out, which the numbers lens reads). The chapter section is identical
+ *   the counted words the palette groups, the measured figures that
+ *   stand out, which the numbers lens reads, and group E's paragraph span
+ *   for the movements and whether engagement is asked). The chapter section is identical
  *   for every group of a board, so it is the stable leading content of each
  *   call (open question 1). The system messages differ per group, so a
  *   caching change would also move the lens files behind the chapter.
@@ -41,14 +42,19 @@ export const LIGHTBOX_PROMPT_FILES = {
     spark: 'lightbox/32-spark.md',
     stock: 'lightbox/50-stock-signature.md',
     rhythm: 'lightbox/51-rhythm-handoffs.md',
-    numbers: 'lightbox/52-numbers.md'
+    numbers: 'lightbox/52-numbers.md',
+    template: 'lightbox/53-template.md',
+    pressure: 'lightbox/54-pressure.md',
+    artifacts: 'lightbox/55-artifacts.md',
+    summary: 'lightbox/56-summary-movements.md'
   } satisfies Record<LightboxLensId, string>,
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by the protocol's group ids. */
   examples: {
     A: 'lightbox/40-example-group-a.md',
     B: 'lightbox/41-example-group-b.md',
     C: 'lightbox/42-example-group-c.md',
-    D: 'lightbox/43-example-group-d.md'
+    D: 'lightbox/43-example-group-d.md',
+    E: 'lightbox/44-example-group-e.md'
   } satisfies Record<LightboxReadingGroupId, string>
   /* eslint-enable @typescript-eslint/naming-convention */
 } as const;
@@ -68,7 +74,11 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   spark: 'spark',
   stock: 'stock and signature',
   rhythm: 'rhythm and handoffs',
-  numbers: 'the numbers'
+  numbers: 'the numbers',
+  template: 'template and freshness',
+  pressure: 'pressure',
+  artifacts: 'artifacts',
+  summary: 'summary and movements'
 };
 
 /** A context file as the prompt carries it. */
@@ -184,7 +194,30 @@ export function buildLightboxTaskSection(
   if (request.lenses.includes('numbers')) {
     lines.push(...lightboxNumberTaskLines(numbers));
   }
+  lines.push(...lightboxPlotTaskLines(request.lenses, columns));
   return lines.join('\n');
+}
+
+/**
+ * Group E's task lines (Slice 4C): the paragraphs the movements tile, and
+ * whether engagement is asked, which it is only when the movements are read
+ * in the same call.
+ */
+function lightboxPlotTaskLines(
+  lenses: readonly LightboxLensId[],
+  columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[]
+): string[] {
+  const last = columns[columns.length - 1]?.to ?? 0;
+  const lines: string[] = [];
+  if (lenses.includes('summary')) {
+    lines.push(`The movements cover all ${last.toLocaleString('en-US')} paragraphs: the first starts at ¶1 and the last ends at ¶${last}.`);
+  }
+  if (lenses.includes('template')) {
+    lines.push(lenses.includes('summary')
+      ? 'The template block\'s engagement gives exactly one level for each movement the summary block draws, naming it by that movement\'s id.'
+      : 'The movements are not read in this call: give the template block\'s engagement as an empty list.');
+  }
+  return lines;
 }
 
 /** The ribbon columns a per-column reading covers (the tension arc, the paragraph endings). */

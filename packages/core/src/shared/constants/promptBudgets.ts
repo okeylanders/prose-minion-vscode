@@ -165,6 +165,22 @@ export interface PromptBudgets {
     handoffs: number;
     /** Usage readings one numbers block may give: at most one per measured figure. */
     numberReadings: number;
+    /** Beats one template block may mark as aligning, subverting or departing (Slice 4C). */
+    templateBeats: number;
+    /** Threads one pressure block may draw. */
+    pressureThreads: number;
+    /** Escalation quotes one thread may give between its plant and its resolution. */
+    threadEscalations: number;
+    /** Objects one artifacts block may name. */
+    artifacts: number;
+    /** Quoted states one object's arc may give. */
+    artifactSteps: number;
+    /** Movements one summary block may draw; they tile the chapter. */
+    movements: number;
+    /** Quotes a synopsis may give; at least two must be found. */
+    synopsisQuotes: number;
+    /** Sentences a synopsis may run to (the prose-stats sentence rule). */
+    synopsisSentences: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -428,7 +444,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     airLocks: 3,
     echoes: 3,
     handoffs: 3,
-    numberReadings: 6
+    numberReadings: 6,
+    templateBeats: 6,
+    pressureThreads: 6,
+    threadEscalations: 3,
+    artifacts: 8,
+    artifactSteps: 5,
+    movements: 8,
+    synopsisQuotes: 3,
+    synopsisSentences: 4
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

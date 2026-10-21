@@ -129,7 +129,7 @@ describe('LightboxService measured set (D5)', () => {
     expect(board).toEqual(expect.objectContaining({
       boardVersion: 0,
       boardId: 'board-1',
-      readings: ['A', 'B', 'C', 'D'].map((group) => ({
+      readings: ['A', 'B', 'C', 'D', 'E'].map((group) => ({
         group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []
       }))
     }));

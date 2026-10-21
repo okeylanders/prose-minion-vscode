@@ -17,6 +17,7 @@
 import { MessageEnvelope, MessageType } from './base';
 import type { LightboxReadingGroup, LightboxReadingTileKind } from './lightboxReadings';
 import type { LightboxNumbersMeasure, LightboxSentenceSummary } from './lightboxNumbers';
+import type { LightboxSectionsMeasure } from './lightboxSections';
 
 // ---------------------------------------------------------------------------
 // Tiles and registers
@@ -191,6 +192,8 @@ export interface LightboxMeasuredSet {
   sentences: LightboxSentenceSummary;
   /** The figures that stand out, against the preset and the writer's own average (Slice 4B). */
   numbers: LightboxNumbersMeasure;
+  /** The chapter's headings, scene breaks or chapter lines, detected by code (Slice 4C). */
+  sections: LightboxSectionsMeasure;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,7 +209,7 @@ export interface LightboxBoard {
   paragraphs: LightboxParagraphMetric[];
   ribbon: LightboxRibbonColumn[];
   measured: LightboxMeasuredSet;
-  /** Groups A, B and C, in that order. */
+  /** Groups A to E, in that order. */
   readings: LightboxReadingGroup[];
 }
 

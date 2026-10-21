@@ -5,9 +5,10 @@
  * - A full run of a group clears it and marks it `running` with every lens
  *   it reads `pending`; its outcome replaces it.
  * - A tile's re-read (one lens) leaves the group's other lenses' tiles in
- *   place: only that lens is `pending`, and only its tiles, withheld blocks
- *   and withheld claims are replaced when it lands. If the re-read fails or
- *   is stopped, the earlier readings stay.
+ *   place: only the lenses its call reads are `pending` (the lens, with any
+ *   read together with it: Slice 4C's template and summary), and only their
+ *   tiles, withheld blocks and withheld claims are replaced when it lands.
+ *   If the re-read fails or is stopped, the earlier readings stay.
  * - Stopping a run marks its still-running groups `cancelled`; groups that
  *   already landed keep what they hold.
  * - Usage accumulates per group, so a group's usage is what its readings on
@@ -45,7 +46,7 @@ export function startLightboxGroups(
       return group;
     }
     if (lens) {
-      return withoutError({ ...group, status: 'running', pending: [lens] });
+      return withoutError({ ...group, status: 'running', pending: [...call.lenses] });
     }
     return {
       group: group.group,
@@ -101,18 +102,20 @@ export function settleLightboxGroup(
       quoteChecks: outcome.quoteChecks
     };
   }
+  // The lenses the call read: the one pressed, with any read together with it.
+  const read: readonly LightboxLensId[] = outcome.lenses.length > 0 ? outcome.lenses : [lens];
   const others = <T extends { lens: LightboxLensId }>(entries: readonly T[]): T[] =>
-    entries.filter((entry) => entry.lens !== lens);
+    entries.filter((entry) => !read.includes(entry.lens));
   return {
     ...base,
     status: 'ok',
-    lenses: inRailOrder([...group.lenses, lens]),
+    lenses: inRailOrder([...group.lenses, ...read]),
     tiles: inLensOrder([...others(group.tiles), ...outcome.tiles]),
     withheldBlocks: inLensOrder([...others(group.withheldBlocks), ...outcome.withheldBlocks]),
     withheldClaims: inLensOrder([...others(group.withheldClaims), ...outcome.withheldClaims]),
     frictions: inLensOrder([...others(group.frictions), ...outcome.frictions]),
     quoteChecks: inLensOrder([...others(group.quoteChecks), ...outcome.quoteChecks]),
-    ...staleField(group.staleLenses?.filter((mark) => mark.lens !== lens))
+    ...staleField(group.staleLenses?.filter((mark) => !read.includes(mark.lens)))
   };
 }
 

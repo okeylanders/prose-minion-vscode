@@ -161,6 +161,8 @@ export function lightboxWithheldQuoteText(quote: LightboxWithheldQuote): string 
       return 'No longer in the chapter: the text changed after this was read, and these words are gone.';
     case 'no-instance':
       return 'Found, but it holds no instance of the measured figure, so it cannot show how that figure is used.';
+    case 'out-of-order':
+      return 'Found, but it stands before the step it follows, so the arc would no longer run in paragraph order.';
   }
 }
 

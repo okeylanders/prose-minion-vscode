@@ -30,6 +30,7 @@ import {
 import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
+import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
 import {
   LIGHTBOX_ECHO_ACCURACY,
   LIGHTBOX_FAMILIAR_KIND_LABELS,
@@ -269,6 +270,14 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
         { label: 'Instances', value: 'Each quote holds one, checked by the detector that counted the figure' }
       ];
     }
+    // Group E (Slice 4C): each kind's fields and the checks code ran (the boundary, the span, the counts).
+    case 'template':
+    case 'template-beat':
+    case 'pressure-thread':
+    case 'artifact':
+    case 'synopsis':
+    case 'movement':
+      return lightboxPlotDetails(tile, board) ?? [];
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':

@@ -95,7 +95,7 @@ export interface LightboxReadingRunnerOptions {
 
 /** Long enough for a book-sized chapter to be read and answered. */
 const DEFAULT_GROUP_TIMEOUT_MILLISECONDS = 300_000;
-/** One call per reading group at most, so this runs them all at once (four from Slice 4B). */
+/** One call per reading group at most, so this runs them all at once (five from Slice 4C). */
 const DEFAULT_GROUP_CONCURRENCY = LIGHTBOX_READING_GROUPS.length;
 const PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 const READING_TEMPERATURE = 0.4;

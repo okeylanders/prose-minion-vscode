@@ -13,7 +13,9 @@
  * changed; a read mark is never drawn in the measured rhythm lane. Focus
  * lights the columns whose paragraphs the hovered or pinned item touches, in
  * its register's color. Columns, the measured lane labels and the read
- * lanes are hoverable and pinnable.
+ * lanes are hoverable and pinnable. Under the columns, the story lanes
+ * (Slice 4C, `LightboxRibbonPlot`): Sections (measured), Movements and
+ * Engagement (read, hatched) and Pressure (counted from read threads).
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxRibbonColumn } from '@messages';
@@ -23,6 +25,7 @@ import type { LightboxEndingsLane } from '@hooks/domain/lightbox/lightboxCraft';
 import { LIGHTBOX_ENDING_LABELS } from '@shared/constants/lightbox';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
+import { LightboxRibbonPlot, type LightboxRibbonPlotLanes } from '@components/lightbox/LightboxRibbonPlot';
 
 export interface LightboxRibbonProps {
   board: LightboxBoard;
@@ -37,6 +40,8 @@ export interface LightboxRibbonProps {
   tensionTileId?: string;
   /** How each column's paragraphs end, once the rhythm lens has read them (Slice 4B). */
   endings?: LightboxEndingsLane;
+  /** The story lanes under the columns (Slice 4C). */
+  plot?: LightboxRibbonPlotLanes;
 }
 
 const RHYTHM_LANE_HEIGHT = 34;
@@ -79,7 +84,8 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
   tensionLensOn,
   tension,
   tensionTileId,
-  endings
+  endings,
+  plot
 }) => {
   const { ribbon } = board;
   const hasFocus = focusedItem !== null;
@@ -108,7 +114,9 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           {focusLine(focusedItem)}
         </span>
       </div>
-      <div className="pm-lb-ribbon-wrap">
+      {/* One plain CSS grid, for Chromium 102 (VS Code 1.75): every label block and track is a direct
+          child, sharing one label track and one column track (PR #156 F-03, F-04). */}
+      <div className="pm-lb-ribbon-grid">
         <div className="pm-lb-ribbon-labels">
           <LightboxItemButton binding={bind({ kind: 'lane', lane: 'rhythm' })} className="pm-lb-lane-label pm-lb-h34">
             <i className="pm-lb-lane-key is-measured" />Rhythm
@@ -194,6 +202,7 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
             );
           })}
         </div>
+        {plot && <LightboxRibbonPlot board={board} lanes={plot} bind={bind} />}
       </div>
     </div>
   );

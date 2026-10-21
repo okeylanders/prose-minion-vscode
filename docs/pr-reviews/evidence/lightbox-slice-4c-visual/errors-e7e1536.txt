@@ -1,0 +1,54 @@
+floor-sections-measured@1440: the paragraph lanes' labels end at 1057px, right of their track at 343px
+floor-sections-measured@1440: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@1440: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-sections-measured@1440: the story lanes' labels end at 1057px, right of their track at 343px
+floor-sections-measured@1440: the story lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@1440: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-ribbon@1440: the paragraph lanes' labels end at 1057px, right of their track at 343px
+floor-ribbon@1440: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@1440: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-ribbon@1440: the story lanes' labels end at 1057px, right of their track at 343px
+floor-ribbon@1440: the story lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@1440: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-stale-ribbon@1440: the paragraph lanes' labels end at 1057px, right of their track at 343px
+floor-stale-ribbon@1440: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@1440: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endingsstale, Focus, ¶
+floor-stale-ribbon@1440: the story lanes' labels end at 1057px, right of their track at 343px
+floor-stale-ribbon@1440: the story lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@1440: the story lanes' labels outside their track: Sections, Movementsstale, Pressurestale, Engagementstale
+floor-sections-measured@1000: the paragraph lanes' labels end at 965px, right of their track at 315px
+floor-sections-measured@1000: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@1000: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-sections-measured@1000: the story lanes' labels end at 965px, right of their track at 315px
+floor-sections-measured@1000: the story lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@1000: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-ribbon@1000: the paragraph lanes' labels end at 965px, right of their track at 315px
+floor-ribbon@1000: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@1000: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-ribbon@1000: the story lanes' labels end at 965px, right of their track at 315px
+floor-ribbon@1000: the story lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@1000: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-stale-ribbon@1000: the paragraph lanes' labels end at 965px, right of their track at 315px
+floor-stale-ribbon@1000: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@1000: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endingsstale, Focus, ¶
+floor-stale-ribbon@1000: the story lanes' labels end at 965px, right of their track at 315px
+floor-stale-ribbon@1000: the story lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@1000: the story lanes' labels outside their track: Sections, Movementsstale, Pressurestale, Engagementstale
+floor-sections-measured@500: the paragraph lanes' labels end at 469px, right of their track at 31px
+floor-sections-measured@500: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@500: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-sections-measured@500: the story lanes' labels end at 469px, right of their track at 31px
+floor-sections-measured@500: the story lanes' labels overlap their track by 0 of the shorter height
+floor-sections-measured@500: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-ribbon@500: the paragraph lanes' labels end at 469px, right of their track at 31px
+floor-ribbon@500: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@500: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endings, Focus, ¶
+floor-ribbon@500: the story lanes' labels end at 469px, right of their track at 31px
+floor-ribbon@500: the story lanes' labels overlap their track by 0 of the shorter height
+floor-ribbon@500: the story lanes' labels outside their track: Sections, Movements, Pressure, Engagement
+floor-stale-ribbon@500: the paragraph lanes' labels end at 469px, right of their track at 31px
+floor-stale-ribbon@500: the paragraph lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@500: the paragraph lanes' labels outside their track: Rhythm, Dialogue, Tension, Endingsstale, Focus, ¶
+floor-stale-ribbon@500: the story lanes' labels end at 469px, right of their track at 31px
+floor-stale-ribbon@500: the story lanes' labels overlap their track by 0 of the shorter height
+floor-stale-ribbon@500: the story lanes' labels outside their track: Sections, Movementsstale, Pressurestale, Engagementstale

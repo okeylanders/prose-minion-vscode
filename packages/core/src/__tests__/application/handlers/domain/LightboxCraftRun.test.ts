@@ -53,9 +53,9 @@ describe('a press with the craft lenses on (Slice 4B)', () => {
     expect(sentenceLength?.writer?.average).toBe(2_240 / 480);
   });
 
-  it('reads four groups, group D with its own prompt files and a task naming only what stands out', async () => {
+  it('reads every group, group D with its own prompt files and a task naming only what stands out', async () => {
     const { host, tab } = await pressAll();
-    expect(host.runInitial.mock.calls.map(([request]) => groupOf(request)).sort()).toEqual(['A', 'B', 'C', 'D']);
+    expect(host.runInitial.mock.calls.map(([request]) => groupOf(request)).sort()).toEqual(['A', 'B', 'C', 'D', 'E']);
     const groupD = requestFor(host.runInitial.mock.calls, 'D');
     expect(groupD.systemMessage).toBe(
       'SYSTEM lightbox/00-lightbox-shared.md + lightbox/50-stock-signature.md + lightbox/51-rhythm-handoffs.md + ' +
@@ -70,7 +70,7 @@ describe('a press with the craft lenses on (Slice 4B)', () => {
     for (const group of ['A', 'B', 'C']) {
       expect(requestFor(host.runInitial.mock.calls, group).userMessage).not.toContain('stand out');
     }
-    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 4 });
+    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload).toMatchObject({ phase: 'finished', groupsBack: 5 });
   });
 
   it('lands group D on the board: its tiles drawn, and a numbers reading only of a figure that stands out', async () => {

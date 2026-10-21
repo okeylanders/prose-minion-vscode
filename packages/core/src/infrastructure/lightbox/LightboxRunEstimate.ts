@@ -124,7 +124,12 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   // Slice 4B: guesses from the group D worked example's length, labelled so, until Slice 6 measures them.
   stock: 2_000,
   rhythm: 700,
-  numbers: 650
+  numbers: 650,
+  // Slice 4C: guesses from the group E worked example's length, labelled so, until Slice 6 measures them.
+  template: 1_100,
+  pressure: 1_100,
+  artifacts: 1_300,
+  summary: 900
 };
 
 /** Each tension score and its comma. */

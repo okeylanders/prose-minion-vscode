@@ -29,13 +29,15 @@ import {
   isLightboxNumberStat,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
-import { findLightboxTile } from '@hooks/domain/lightbox/lightboxReadings';
+import { findLightboxTile, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
+import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
 
 export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
 
-/** The measured ribbon lanes. Tension is read, and arrives with the readings. */
-export type LightboxMeasuredLane = 'rhythm' | 'dialogue';
+/** The measured ribbon lanes (Sections: Slice 4C). Tension is read, and arrives with the readings. */
+export type LightboxMeasuredLane = 'rhythm' | 'dialogue' | 'sections';
 
 export type LightboxItemRef =
   | { kind: 'word'; word: string }
@@ -45,7 +47,11 @@ export type LightboxItemRef =
   | { kind: 'paragraphs'; from: number; to: number }
   | { kind: 'reading'; tileId: string }
   /** A measured figure on the numbers tile (Slice 4B): it lights the paragraphs holding an instance. */
-  | { kind: 'standout'; stat: LightboxNumberStatId };
+  | { kind: 'standout'; stat: LightboxNumberStatId }
+  /** A measured section (Slice 4C), by its place on the board's Sections lane, from 1. */
+  | { kind: 'section'; index: number }
+  /** The Pressure lane (Slice 4C): where the threads read stand open, counted by code. */
+  | { kind: 'pressure' };
 
 export interface LightboxResolvedItem {
   ref: LightboxItemRef;
@@ -94,6 +100,10 @@ export function lightboxItemKey(ref: LightboxItemRef): string {
       return `reading:${ref.tileId}`;
     case 'standout':
       return `standout:${ref.stat}`;
+    case 'section':
+      return `section:${ref.index}`;
+    case 'pressure':
+      return 'pressure';
   }
 }
 
@@ -127,9 +137,15 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
       return phrase ? { kind: 'phrase', phrase } : null;
     }
     case 'lane':
-      return record.lane === 'rhythm' || record.lane === 'dialogue'
+      return record.lane === 'rhythm' || record.lane === 'dialogue' || record.lane === 'sections'
         ? { kind: 'lane', lane: record.lane }
         : null;
+    case 'section': {
+      const sectionIndex = index('index');
+      return sectionIndex !== undefined ? { kind: 'section', index: sectionIndex } : null;
+    }
+    case 'pressure':
+      return { kind: 'pressure' };
     case 'paragraphs': {
       const from = index('from');
       const to = index('to');
@@ -166,7 +182,11 @@ export function resolveLightboxItem(
       return term ? termItem(ref, term, 'Repeated phrase', `“${term.term}”`) : undefined;
     }
     case 'lane':
-      return ref.lane === 'rhythm' ? rhythmLane(board) : dialogueLane(board);
+      return ref.lane === 'rhythm' ? rhythmLane(board) : ref.lane === 'dialogue' ? dialogueLane(board) : sectionsLane(board);
+    case 'section':
+      return sectionItem(board, ref.index);
+    case 'pressure':
+      return pressureItem(board);
     case 'paragraphs':
       return paragraphsItem(board, ref);
     case 'reading': {
@@ -263,6 +283,68 @@ function termItem(
       '. Counted by code; nothing here is a reading.',
     paragraphs: [...term.paragraphs],
     support: [`${term.term} ×${term.count}`, `${term.percentage}% of words`]
+  };
+}
+
+/** The Sections lane (Slice 4C): what code found, lighting the paragraphs that open a section. */
+function sectionsLane(board: LightboxBoard): LightboxResolvedItem {
+  const measure = board.measured.sections;
+  return {
+    ref: { kind: 'lane', lane: 'sections' },
+    register: 'measured',
+    where: 'Measure · Lane',
+    title: 'Sections',
+    claim: `${lightboxSectionsNote(measure)} Detected by code from headings, scene breaks and chapter lines; nothing here is a reading.`,
+    paragraphs: measure.sections.flatMap((section) => (section.marker !== undefined ? [section.marker] : [])),
+    support: [
+      `${measure.fired.headings.length} headings`,
+      `${measure.fired['scene-breaks'].length} scene breaks`,
+      `${measure.fired['chapter-lines'].length} chapter lines`
+    ]
+  };
+}
+
+/** One measured section: its paragraphs, and the marker that opens it. */
+function sectionItem(board: LightboxBoard, index: number): LightboxResolvedItem | undefined {
+  const section = board.measured.sections.sections[index - 1];
+  if (!section) {
+    return undefined;
+  }
+  const opened = section.marker !== undefined ? `opened in ¶${section.marker}` : 'before the first marker';
+  return {
+    ref: { kind: 'section', index },
+    register: 'measured',
+    where: 'Measure · Section',
+    title: section.label,
+    claim: `¶${section.from}–¶${section.to}, ${opened}. Found by code; nothing here is a reading.`,
+    paragraphs: Array.from({ length: section.to - section.from + 1 }, (_unused, offset) => section.from + offset),
+    support: [paragraphCountLabel(section.to - section.from + 1)]
+  };
+}
+
+/** The Pressure lane: the paragraphs any drawn thread stands open across, and the host's counts. */
+function pressureItem(board: LightboxBoard): LightboxResolvedItem | undefined {
+  const threads = lightboxTilesOfKind(board, 'pressure-thread');
+  if (threads.length === 0) {
+    return undefined;
+  }
+  const counts = lightboxPressureCounts(threads);
+  const open = new Set<number>();
+  for (const thread of threads) {
+    const end = thread.resolution ? thread.resolution.paragraph - 1 : thread.span.to;
+    for (let index = thread.planted.paragraph; index <= end; index++) {
+      open.add(index);
+    }
+  }
+  return {
+    ref: { kind: 'pressure' },
+    register: 'counted-read',
+    where: 'Pressure · Lane',
+    title: 'Open threads',
+    claim: `${counts.threads} threads · ${counts.resolved} resolved here · ${counts.carriedOut} carried out of the chapter · ` +
+      `${counts.dormant} dormant. Counted by code from the threads read; lit where any stands open.`,
+    paragraphs: [...open].sort((a, b) => a - b),
+    support: [`${counts.threads} threads`, `${counts.carriedOut} carried out`]
   };
 }
 

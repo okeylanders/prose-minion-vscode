@@ -111,10 +111,20 @@ describe('prompt budgets', () => {
       airLocks: 3,
       echoes: 3,
       handoffs: 3,
-      numberReadings: 6
+      numberReadings: 6,
+      templateBeats: 6,
+      pressureThreads: 6,
+      threadEscalations: 3,
+      artifacts: 8,
+      artifactSteps: 5,
+      movements: 8,
+      synopsisQuotes: 3,
+      synopsisSentences: 4
     });
     // One usage reading per measured figure at most (Slice 4B: six figures).
     expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(6);
+    // A synopsis's quotes stay within a claim's quotes, and engagement gives one entry per movement (Slice 4C).
+    expect(PROMPT_BUDGETS.lightbox.synopsisQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
     // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.
     expect(1 + PROMPT_BUDGETS.lightbox.subtextContextQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
     // One story carries each of the three stances at most once.

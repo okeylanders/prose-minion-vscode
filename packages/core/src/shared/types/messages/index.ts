@@ -32,6 +32,7 @@ export * from './configuredResources';
 export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
+export * from './lightboxRuns';
 export * from './lightboxEstimate';
 export * from './lightboxStoryTiles';
 export * from './lightboxGravity';
@@ -41,6 +42,8 @@ export * from './lightboxProjectFiles';
 export * from './lightboxContextFiles';
 export * from './lightboxCraftTiles';
 export * from './lightboxNumbers';
+export * from './lightboxPlotTiles';
+export * from './lightboxSections';
 
 // Union types for message routing
 import {
@@ -257,7 +260,7 @@ import {
   LightboxCancelRunMessage,
   LightboxRunProgressMessage,
   LightboxGroupResultMessage
-} from './lightboxReadings';
+} from './lightboxRuns';
 import {
   LightboxAddContextFilesMessage,
   LightboxRemoveContextFileMessage,

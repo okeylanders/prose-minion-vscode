@@ -24,6 +24,8 @@
  *   sentences from each paragraph's sentence lengths, and the figures that
  *   stand out against the preset and the writer's own average
  *   (`LightboxNumbers`), each counted by its one detector.
+ * - **Sections** (Slice 4C): the chapter's headings, scene breaks or chapter
+ *   lines, detected from the paragraph model (`LightboxSections`).
  */
 
 import type {
@@ -56,6 +58,7 @@ import {
   measureLightboxNumbers,
   type LightboxWriterAverages
 } from '@/infrastructure/lightbox/LightboxNumbers';
+import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
 
 /** How many of each list the board keeps. Presentation sizes, not prompt budgets. */
 export const LIGHTBOX_MEASURED_SIZES = {
@@ -268,7 +271,8 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       standards: standards?.items,
       averageWordsPerSentence: inputs.stats.averageWordsPerSentence,
       writer: inputs.writer ?? { summary: { kind: 'absent', note: LIGHTBOX_BASELINE_NOTES.notMeasured } }
-    })
+    }),
+    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text))
   };
 }
 

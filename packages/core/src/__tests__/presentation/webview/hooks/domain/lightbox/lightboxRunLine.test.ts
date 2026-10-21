@@ -120,7 +120,7 @@ describe('the run line', () => {
   it('counts quotes checked and withheld once everything landed, and offers a re-read', () => {
     const view = line(makeReadBoard({ paraphraseOne: true }));
     expect(view.status).toBe('done');
-    expect(view.note).toMatch(/^\d+ quotes checked · 1 withheld · 4 calls$/);
+    expect(view.note).toMatch(/^\d+ quotes checked · 1 withheld · 5 calls$/);
     expect(view.action).toMatchObject({ label: 'Re-read', scope: { mode: 'all' } });
   });
 

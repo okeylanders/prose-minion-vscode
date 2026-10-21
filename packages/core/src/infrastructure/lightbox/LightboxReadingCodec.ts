@@ -55,6 +55,12 @@ import {
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
 import { decodeNumbersBlock, decodeRhythmBlock, decodeStockBlock } from '@/infrastructure/lightbox/LightboxCraftCodec';
+import {
+  decodeArtifactsBlock,
+  decodePressureBlock,
+  decodeSummaryBlock,
+  decodeTemplateBlock
+} from '@/infrastructure/lightbox/LightboxPlotCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
 /** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
@@ -223,6 +229,14 @@ function decodeBlock(
       return decodeRhythmBlock(value, path, friction, context.columnCount);
     case 'numbers':
       return decodeNumbersBlock(value, path, friction);
+    case 'template':
+      return decodeTemplateBlock(value, path, friction);
+    case 'pressure':
+      return decodePressureBlock(value, path, friction);
+    case 'artifacts':
+      return decodeArtifactsBlock(value, path, friction);
+    case 'summary':
+      return decodeSummaryBlock(value, path, friction);
   }
 }
 
