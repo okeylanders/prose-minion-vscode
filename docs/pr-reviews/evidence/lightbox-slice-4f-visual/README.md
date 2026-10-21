@@ -154,14 +154,31 @@ two examples in the re-read are phrases written for this evidence.
 ## Results
 
 From the committed `facts.json`, against the bundle a clean `npm run build`
-writes at this branch's implementation commit (`0f75de0`) and again at the
-commit after it, which changes no webview code (`webview.js` SHA-256
-`6c2963092fae2bf4c6565a2ade0aa01eb08a934a3acde099ab85979642f73468` both
-times).
+writes at this branch's merge of `epic/lightbox` (`d9db6e5`: PR #160's
+review fixes, with PR #158's VS Code 1.82 floor and PR #159's Slice 4E):
+`webview.js` SHA-256
+`24658aba3f52180b878e3e08bb19cb03bf6ee07e1c432bdb11d4b9c590a71b59`.
 The bundle was built from an empty `dist/`, after `npm ci` into the
 worktree's own `node_modules` (a real directory, not a symlink: webpack's
 production module ids come from file paths). Every state reads the same at
 1440, 1000 and 500 px.
+
+**Rerenders.**
+- **First run** (`0f75de0`, and again at `18d03d7`, which changes no
+  webview code): `webview.js` SHA-256 `6c296309…`, the bundle PR #160
+  reviewed.
+- **After PR #160's fixes and the merge (2026-10-21).**
+  - `states/chapter.json` changed only by what 4E adds to the board
+    (the hapax list, style-flag paragraphs and ids). `workshop.json` and
+    `log.txt` are byte-identical.
+  - `facts.json` is identical, entry for entry, ribbon grid included. No
+    state here changes under the fixes: the Alice opening has no paragraph
+    large enough to matter (F-01), no example the anchor now withholds
+    (F-02), and intensifiers stand out beside dialogue, which the numbers
+    lens reads (N-01). The tests cover each.
+  - Every 1000 and 500 px screenshot changed with 4E's board, and at
+    1440 px the inspector and the Workshop composer did; `errors.txt` is
+    still empty.
 
 | State | What the page shows |
 |---|---|
