@@ -31,6 +31,8 @@ import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/li
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
 import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
+import { lightboxOpinionDetails } from '@hooks/domain/lightbox/lightboxOpinion';
+import { lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
 import {
   LIGHTBOX_ECHO_ACCURACY,
   LIGHTBOX_FAMILIAR_KIND_LABELS,
@@ -157,6 +159,8 @@ export interface LightboxInspectorReading {
   lens: LightboxLensId;
   /** Read against an earlier version of the text (D4). */
   stale: boolean;
+  /** The Opinion's own words for why it is stale (Slice 4D); other readings use the board's. */
+  staleNote?: string;
   evidence: LightboxInspectorEvidence[];
   withheld: Array<{ paragraph: number; text: string }>;
   details: LightboxInspectorDetail[];
@@ -278,6 +282,9 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
     case 'synopsis':
     case 'movement':
       return lightboxPlotDetails(tile, board) ?? [];
+    // Slice 4D: the one evaluative tile, what stood and what it read.
+    case 'opinion':
+      return lightboxOpinionDetails(tile);
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':
@@ -286,11 +293,18 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
   }
 }
 
+/** Read against an earlier text (D4); the Opinion, also when anything it cites changed since (Slice 4D). */
+function readingIsStale(board: LightboxBoard, tile: LightboxReadingTile): boolean {
+  return lightboxLensIsStale(board, tile.lens) || (tile.kind === 'opinion' && lightboxOpinionStanding(tile, board).stale);
+}
+
 function readingView(tile: LightboxReadingTile, stale: boolean, board: LightboxBoard): LightboxInspectorReading {
+  const staleNote = tile.kind === 'opinion' ? lightboxOpinionStanding(tile, board).note : undefined;
   return {
     tile,
     lens: tile.lens,
     stale,
+    ...(staleNote ? { staleNote } : {}),
     evidence: tile.evidence.map((quote) => ({
       paragraph: quote.paragraph,
       text: quote.text,
@@ -333,7 +347,7 @@ export function buildLightboxInspectorView(
           .slice(0, TOUCHING_SHOWN)
           .map((touch) => ({ ref: touch.ref, label: touch.title }))
       : [],
-    ...(item.reading ? { reading: readingView(item.reading, lightboxLensIsStale(board, item.reading.lens), board) } : {})
+    ...(item.reading ? { reading: readingView(item.reading, readingIsStale(board, item.reading), board) } : {})
   };
 }
 

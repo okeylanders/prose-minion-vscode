@@ -21,6 +21,13 @@
   font-size: 10.5px;
   color: var(--pm-muted);
 }
+/* The lens card's cost note can run to two lines ("· the Opinion up to its digest bound", Slice 4D): keep it off the eyebrow. */
+[data-pm-surface="lightbox"] .pm-lb-lenses .pm-ws-block-head {
+  gap: 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-lenses .pm-ws-block-head .pm-lb-meta {
+  text-align: right;
+}
 [data-pm-surface="lightbox"] .pm-lb-source-path {
   display: flex;
   align-items: center;

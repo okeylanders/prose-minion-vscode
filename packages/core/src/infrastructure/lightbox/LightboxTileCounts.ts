@@ -187,5 +187,8 @@ export function recountLightboxTile(
     case 'synopsis':
     case 'movement':
       return { ...tile, support };
+    // Slice 4D: the Opinion counts nothing; it is carried by its own rules (`LightboxOpinionGates`).
+    case 'opinion':
+      return tile;
   }
 }

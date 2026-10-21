@@ -29,6 +29,10 @@
  *   anchors or not at all: a thread with its plant and its resolution, a
  *   synopsis with two quotes, a movement with its boundary; the freshness
  *   reading with its label, and its basis only when both halves are current;
+ * - the Opinion (Slice 4D, `LightboxOpinionHandoff`) travels as the one
+ *   view the writer names, only while it stands on the board as it is: its
+ *   headline, body and Why points, and the quotes its observations cite,
+ *   found again;
  * - the item carries the claim (with a story's stances, a pair's speaker,
  *   or a craft tile's own host counts, as labeled points) and those quotes:
  *   never the board or any other tile; and it is bounded by
@@ -68,6 +72,7 @@ import { locateLightboxTile } from '@/infrastructure/lightbox/LightboxHandoff';
 import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxPlotAnchorRefusal, lightboxPlotPoints, lightboxPlotTravelOrder } from '@/infrastructure/lightbox/LightboxPlotHandoff';
+import { prepareLightboxOpinionHandoff } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
 
@@ -129,6 +134,12 @@ export function prepareLightboxTileHandoff(
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.setAside);
   }
   const verifier = createLightboxQuoteVerifier(paragraphTexts);
+  if (tile.kind === 'opinion') {
+    const opinion = prepareLightboxOpinionHandoff(request, tile, board, verifier);
+    return opinion.ok
+      ? { ok: true, handoff: { kind: 'tile', tile: opinion.tile }, quotesChecked: opinion.quotesChecked, quotesFound: opinion.quotesFound }
+      : opinion;
+  }
   const said = tile.kind === 'subtext' ? foundAgain(verifier, tile.said) : undefined;
   if (tile.kind === 'subtext' && !said) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidGone);

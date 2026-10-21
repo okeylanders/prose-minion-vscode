@@ -13,7 +13,8 @@
  * the numbers tile its readings under the measured figures. Group E's
  * tiles join the grid (Slice 4C): summary and movements full width with its
  * movements inside it, template and freshness with its beats, pressure and
- * artifacts.
+ * artifacts. The Opinion (Slice 4D), the one evaluative tile, is drawn last
+ * on the board, full width, after the Spark lane.
  */
 import * as React from 'react';
 import type {
@@ -53,11 +54,13 @@ import { LightboxMovements, LightboxSummary } from '@components/lightbox/Lightbo
 import { LightboxTemplate, LightboxTemplateBeats } from '@components/lightbox/LightboxTemplate';
 import { LightboxPressure } from '@components/lightbox/LightboxPressure';
 import { LightboxArtifacts } from '@components/lightbox/LightboxArtifacts';
+import { LightboxOpinion, type LightboxOpinionActions } from '@components/lightbox/LightboxOpinion';
 
-/** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring. */
+/** What the board lets a tile do beyond hover and pin: the Spark lane's "Not for me" and Bring; the Opinion's views (Slice 4D). */
 export interface LightboxTileActions {
   onDismissSpark?: (tileId: string, dismissed: boolean) => void;
   bringSpark?: { view: (spark: LightboxSparkTile) => LightboxSparkBring; onBring: (tileId: string) => void };
+  opinion?: LightboxOpinionActions;
 }
 
 export interface LightboxTileProps {
@@ -109,7 +112,8 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   template: LightboxTemplate,
   'template-beat': LightboxTemplateBeats,
   'pressure-thread': LightboxPressure,
-  artifact: LightboxArtifacts
+  artifact: LightboxArtifacts,
+  opinion: LightboxOpinion
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -125,14 +129,15 @@ export const LIGHTBOX_MEASURED_LAYOUT: Readonly<{
 /**
  * Where each reading sits: the headline takes the board's heading, the
  * tension arc's line sits under the ribbon, the rest join the grid after the
- * counted tiles, the reader promise is drawn by the genre tile, and the
- * sparks take the lane under the grid.
+ * counted tiles, the reader promise is drawn by the genre tile, the sparks
+ * take the lane under the grid, and the Opinion comes last of all.
  */
 export const LIGHTBOX_READING_LAYOUT: Readonly<{
   heading: LightboxReadingTileKind;
   underRibbon: LightboxReadingTileKind;
   grid: readonly LightboxReadingTileKind[];
   lane: LightboxReadingTileKind;
+  last: LightboxReadingTileKind;
   within: Readonly<Partial<Record<LightboxReadingTileKind, LightboxReadingTileKind>>>;
 }> = {
   heading: 'headline',
@@ -143,6 +148,7 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
     'synopsis', 'template', 'pressure-thread', 'artifact'
   ],
   lane: 'spark',
+  last: 'opinion',
   /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals. */
   within: {
     'reader-promise': 'genre-neighbor',

@@ -61,6 +61,7 @@ packages/core/src/
 │           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
 │           ├── LightboxHandoffRoute.ts    # Its handoffs to the Workshop (Build as a lens, Bring to Workshop) and the Workshop tray
 │           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files, spark set-aside
+│           ├── LightboxPressRun.ts        # A press's run listener and landing, and group F's digest port by board id (Slice 4D)
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           └── workshop/                  # Room owner + 12 composed route owners
@@ -85,7 +86,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -114,6 +115,7 @@ packages/core/src/
             ├── lightboxNumbers.ts  # The measured numbers: rows, standouts, the writer's baseline summary, sentence summary
             ├── lightboxPlotTiles.ts # Group E tiles: template (freshness, engagement by movement tile id), template beat, pressure thread, artifact, synopsis, movement
             ├── lightboxSections.ts # The measured Sections lane: signal, sections, and where each signal fired
+            ├── lightboxOpinion.ts  # Group F's Opinion tile: observations and their cites, three views, what was withheld, the digest it read
             ├── lightboxContextFiles.ts # Lightbox context files and their messages
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
@@ -183,7 +185,8 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxSparks.ts       # The spark lane: shown and set aside (pure)
 │       │   ├── lightboxCraft.ts        # Group D as drawn: tier shares, endings tally and lane, sentence columns, number bars (pure)
 │       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
-│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape
+│       │   ├── lightboxOpinion.ts      # The Opinion as drawn: view tabs, Why rows, observations and what changed, Bring block, inspector details (pure)
+│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
 │       └── workshop/
@@ -800,8 +803,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4C after the PR #156 re-review):
-- 421 suites / 5,821 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes and re-review fix, merged with Slice 4C's PR #156 fixes and its F-04 fix):
+- 430 suites / 5,916 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1062,7 +1065,7 @@ adding a way to put a source on the Lightbox board:
 ### Lightbox Reading Groups
 
 Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
-D3, D4 and D7 (Slices 4B and 4C) when adding a lens or a reading tile kind:
+D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
 
 - **Everything a kind joins.** A lens belongs to one group
   (`LIGHTBOX_LENSES`), with that group's numbered prompt files, its worked
@@ -1093,6 +1096,24 @@ D3, D4 and D7 (Slices 4B and 4C) when adding a lens or a reading tile kind:
   failure withholds the whole set as one claim naming the rule it broke.
 - **Measured lanes are recomputed, never carried.** The Sections lane
   (`LightboxSections`) is measured with every board and is never stale.
+- **A group that reads the board (group F, the Opinion, Slice 4D).**
+  `lightboxGroupReadsBoard` marks it.
+  - **When it runs.** It runs after a press's chapter groups settle, only
+    while the run owns its board.
+  - **What it reads.** It reads `LightboxOpinionDigest`, built through the
+    press owner's port by board id, never the chapter. The digest is bounded
+    by `opinionDigestTokens` and priced at that bound, "up to". Its key
+    covers the board's measurement context.
+  - **What it can cite.** It cites board items by host key: tile ids and
+    measured refs, from `lightboxOpinionItems`. That one shared function
+    renders the digest, gates the reply and decides the Opinion's standing.
+  - **Standing is derived, never stored.** A cited item gone, not current
+    or saying something else (its basis) makes it stale. A new kind that
+    can be cited joins `lightboxOpinionItems`, with its own lines in host
+    words.
+  - **The text rules.** The one evaluative tile's rules are
+    `LightboxOpinionPhrasing`, a conservative word check with its limits
+    stated. Keep it stricter than it needs to be, not looser.
 - **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
   and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
   one column track), never a row with its own label width, so a column

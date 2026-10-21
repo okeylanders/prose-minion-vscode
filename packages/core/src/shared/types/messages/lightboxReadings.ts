@@ -40,6 +40,7 @@ import type {
   LightboxTemplateBeatTile,
   LightboxTemplateTile
 } from './lightboxPlotTiles';
+import type { LightboxOpinionTile } from './lightboxOpinion';
 import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
@@ -52,7 +53,12 @@ import type {
 // Groups and lenses (D6)
 // ---------------------------------------------------------------------------
 
-export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E';
+/**
+ * Groups A–E read the chapter; group F (Slice 4D) reads the board: the
+ * Opinion runs after the other groups of a press settle, on the board's
+ * verified digest, never on the chapter.
+ */
+export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
 /**
  * The lenses, each in one reading group: Slice 2B's six, Slice 3's lexical
@@ -60,8 +66,9 @@ export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E';
  * lineage and Spark in group C, Slice 4B's craft lenses in group D
  * (stock and signature, rhythm and handoffs, the numbers), and Slice 4C's
  * story lenses in group E (template and freshness, pressure, artifacts,
- * summary and movements). A lens the writer turns off is left out of its
- * group's prompt, and a group with no lens on is not called.
+ * summary and movements), and Slice 4D's Opinion, alone in group F. A lens
+ * the writer turns off is left out of its group's prompt, and a group with
+ * no lens on is not called.
  */
 export type LightboxLensId =
   | 'headline'
@@ -81,7 +88,8 @@ export type LightboxLensId =
   | 'template'
   | 'pressure'
   | 'artifacts'
-  | 'summary';
+  | 'summary'
+  | 'opinion';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -158,6 +166,7 @@ export interface LightboxCountedSupport {
  * (`lightboxGravity.ts`). Slice 4: an adjacent story, a said/meant pair and
  * a spark (`lightboxStoryTiles.ts`). Slice 4B: the craft kinds
  * (`lightboxCraftTiles.ts`). Slice 4C: the story kinds (`lightboxPlotTiles.ts`).
+ * Slice 4D: the Opinion (`lightboxOpinion.ts`), the one evaluative tile.
  */
 export type LightboxReadingTileKind =
   | 'headline'
@@ -188,7 +197,8 @@ export type LightboxReadingTileKind =
   | 'pressure-thread'
   | 'artifact'
   | 'synopsis'
-  | 'movement';
+  | 'movement'
+  | 'opinion';
 
 export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
@@ -202,7 +212,11 @@ export interface LightboxReadingTileBase {
    * Never model-supplied.
    */
   paragraphs: number[];
-  /** At least one; a claim with none is withheld instead. */
+  /**
+   * At least one; a claim with none is withheld instead. The Opinion alone
+   * may hold none: it cites board items, and its evidence is only the
+   * quotes those items hold (Slice 4D).
+   */
   evidence: LightboxVerifiedQuote[];
   withheldQuotes: LightboxWithheldQuote[];
   support: LightboxCountedSupport[];
@@ -292,7 +306,8 @@ export type LightboxReadingTile =
   | LightboxPressureThreadTile
   | LightboxArtifactTile
   | LightboxSynopsisTile
-  | LightboxMovementTile;
+  | LightboxMovementTile
+  | LightboxOpinionTile;
 
 /** A lens block that failed validation, withheld by kind with its reason (D7). */
 export interface LightboxWithheldBlock {

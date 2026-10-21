@@ -22,6 +22,10 @@ export type LightboxTileFrameProps = {
   span: 3 | 6;
   /** A hint beside the badge, e.g. "sized by count". */
   footnote?: React.ReactNode;
+  /** A chip before the register badge, for a tile with a place of its own (the Opinion's "The one evaluative tile"). */
+  chip?: React.ReactNode;
+  /** A class of the tile's own, for its frame's colors (`is-opinion`). */
+  className?: string;
   children: React.ReactNode;
 } & ({ kind: LightboxTileKind; register?: never } | { kind?: never; register: LightboxRegister });
 
@@ -30,6 +34,8 @@ export const LightboxTileFrame: React.FC<LightboxTileFrameProps> = ({
   title,
   span,
   footnote,
+  chip,
+  className,
   children,
   ...registerSource
 }) => {
@@ -38,13 +44,20 @@ export const LightboxTileFrame: React.FC<LightboxTileFrameProps> = ({
     : registerSource.register;
   return (
     <section
-      className={`pm-lb-tile pm-lb-span${span} pm-lb-reg-${register}`}
+      className={`pm-lb-tile pm-lb-span${span} pm-lb-reg-${register}${className ? ` ${className}` : ''}`}
       aria-label={title}
       data-register={register}
     >
       <div className="pm-lb-tile-head">
         <p className="pm-lb-tile-eyebrow">{title}</p>
-        <span className="pm-lb-badge">{LIGHTBOX_REGISTER_BADGES[register]}</span>
+        {chip ? (
+          <span className="pm-lb-tile-badges">
+            {chip}
+            <span className="pm-lb-badge">{LIGHTBOX_REGISTER_BADGES[register]}</span>
+          </span>
+        ) : (
+          <span className="pm-lb-badge">{LIGHTBOX_REGISTER_BADGES[register]}</span>
+        )}
       </div>
       {children}
       {footnote && <p className="pm-lb-foot">{footnote}</p>}

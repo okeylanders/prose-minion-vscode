@@ -5,7 +5,9 @@
  * against their own excerpt of Lewis Carroll's "Alice's Adventures in
  * Wonderland" (1865, public domain). No writer's text is committed. Group D
  * (Slice 4B) is read against the board's own measured standouts and column
- * keys, as the runner reads it.
+ * keys, as the runner reads it. Group F (Slice 4D) is an Opinion written for
+ * this board, read through the production codec and gates against the
+ * board's own digest.
  */
 import type {
   LightboxBoard,
@@ -22,6 +24,7 @@ import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberIn
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
+import { itemKey, readOpinion, withOpinion, type OpinionBody } from '@/__tests__/infrastructure/lightbox/lightboxOpinionFixtures';
 
 /**
  * One group as the host would hold it after its call landed. `mutate` breaks
@@ -80,10 +83,63 @@ export function readGroup(
   };
 }
 
-/** The counted board with every group read. */
+/** The counted board with every group read; group F weighs the others (`opinionOn`). */
 export function makeReadBoard(options: { paraphraseOne?: boolean; collision?: boolean } = {}): LightboxBoard {
   const board = makeBoard(8);
-  return { ...board, readings: LIGHTBOX_READING_GROUPS.map((group) => readGroup(group, options)) };
+  const read = { ...board, readings: LIGHTBOX_READING_GROUPS.map((group) => (group === 'F' ? board.readings.find((entry) => entry.group === 'F') as LightboxReadingGroup : readGroup(group, options))) };
+  return withOpinion(read, readOpinion(read, opinionOn(read), 'lbt-test-F-1'));
+}
+
+/**
+ * An Opinion of `board` (groups A–E read): five observations citing its
+ * tiers, its narrator's aside, its measured dialogue, three threads, two
+ * objects, a familiar phrase and a movement, and three views of them.
+ */
+export function opinionOn(board: LightboxBoard): OpinionBody {
+  const key = (label: string) => itemKey(board, label);
+  return {
+    observations: [
+      { id: 'O1', text: 'Half of the beats the reading classified are the chapter\'s own, and they gather in Alice\'s talk to herself and the narrator\'s asides.',
+        cites: [{ tile: key('Stock & signature · Cognitive economy') }, { tile: key('Stock & signature · Signature: The narrator'), quote: 0 }] },
+      { id: 'O2', text: 'Speech is scarce, 12.5 per 100 words against the preset\'s range of 40 to 55, so the narration holds the floor.',
+        cites: [{ measured: 'standout:dialogue' }] },
+      { id: 'O3', text: 'Three threads stay open when the chapter ends, and the question of getting out has gone untouched since ¶5.',
+        cites: [{ tile: key('Pressure · Thread: Where is') }, { tile: key('Pressure · Thread: How will') }, { tile: key('Pressure · Thread: Will the fall') }] },
+      { id: 'O4', text: 'Objects do the plotting: the watch turns notice into pursuit, and the jar is taken down, found empty and put away within ¶7.',
+        cites: [{ tile: key('Artifacts · Object: The watch') }, { tile: key('Artifacts · Object: The marmalade jar'), quote: 1 }] },
+      { id: 'O5', text: 'The turn from idling to pursuit is carried by a familiar phrase the reading marks as carrying weight.',
+        cites: [{ tile: key('Stock & signature · Familiar phrasing: burning'), quote: 0 }, { tile: key('Summary & movements · Movement: The chase') }] }
+    ],
+    views: {
+      enthusiastic: {
+        headline: 'A voice that sounds like no other turns a fall into a browse, and two objects quietly plot the way down.',
+        body: 'Half of what the reading classified is the chapter\'s own: Alice\'s talk to herself and the narrator\'s asides. The watch and the jar carry the plot, and three open threads carry the reader past the last paragraph.',
+        why: [
+          { weight: 'strength', text: 'The signature beats gather where Alice talks to herself.', observations: ['O1'] },
+          { weight: 'strength', text: 'Objects plot the way down, and open threads pull the reader on.', observations: ['O4', 'O3'] }
+        ]
+      },
+      neutral: {
+        headline: 'A distinctive voice carries a familiar descent; scarce speech trades pace for texture.',
+        body: 'Voice and objects carry the chapter, and its threads stay open past the last paragraph. The scarce speech suits the fall and slows the chase, and the turn into pursuit leans on a familiar phrase.',
+        why: [
+          { weight: 'strength', text: 'Voice and objects do the plotting.', observations: ['O1', 'O4'] },
+          { weight: 'even', text: 'The scarce speech fits the fall and slows the chase.', observations: ['O2'] },
+          { weight: 'concern', text: 'The turn into pursuit rests on a stock phrase.', observations: ['O5'] }
+        ]
+      },
+      blunt: {
+        headline: 'Little speech slows the chase, and its turn rests on a stock phrase.',
+        body: 'Speech sits at 12.5 per 100 words. In the fall that is the point; in the chase it costs momentum. The moment Alice starts to run is told in a stock phrase, and one thread is planted and never touched again.',
+        why: [
+          { weight: 'concern', text: 'Scarce speech slows the chase.', observations: ['O2'] },
+          { weight: 'concern', text: 'The turn into pursuit is told in a stock phrase.', observations: ['O5'] },
+          { weight: 'even', text: 'One thread is planted and never touched again.', observations: ['O3'] }
+        ]
+      }
+    },
+    friction: 'The tier mix and the threads are readings, not counts, and the slow middle may be the design rather than a cost.'
+  };
 }
 
 /** A host estimate for `makeBoard(8)`, all lenses on. */

@@ -119,7 +119,19 @@ describe('prompt budgets', () => {
       artifactSteps: 5,
       movements: 8,
       synopsisQuotes: 3,
-      synopsisSentences: 4
+      synopsisSentences: 4,
+      // Slice 4D: the Opinion's digest bound (priced "up to" it) and its ceilings, which fit a Workshop tile.
+      opinionDigestTokens: 9_000,
+      opinionQuotesPerItem: 3,
+      opinionParagraphsPerLine: 12,
+      opinionSections: 24,
+      opinionObservations: 6,
+      opinionCitesPerObservation: 3,
+      opinionObservationCharacters: 200,
+      opinionHeadlineCharacters: 120,
+      opinionBodyCharacters: 320,
+      opinionWhyPoints: 4,
+      opinionWhyCharacters: 120
     });
     // One usage reading per measured figure at most (Slice 4B: six figures).
     expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(6);

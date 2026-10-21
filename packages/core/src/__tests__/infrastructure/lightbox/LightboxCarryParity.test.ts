@@ -19,6 +19,7 @@ import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 import { WITNESS_PARAGRAPHS, witnessBody } from './lightboxWitnessFixtures';
 import { boardWithNumbers } from './lightboxCraftFixtures';
+import { aliceOpinionBoard, readOpinion } from './lightboxOpinionFixtures';
 import { buildLightboxInspectorView } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
@@ -345,17 +346,22 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       expect(projection(narrated.carried)).toEqual(projection(narrated.fresh));
     });
 
-    it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
+    it('covers every reading kind, and the partial survivals hold or withhold as they should', async () => {
       const lenses = readWorkedExample('A').lenses;
-      const drawnKinds = new Set((['A', 'B', 'C', 'D', 'E'] as const).flatMap((group) => {
+      const drawnKinds = new Set<string>((['A', 'B', 'C', 'D', 'E'] as const).flatMap((group) => {
         const body = group === 'A' ? collisionBody() : framedJson(readWorkedExample(group).response) as Body;
         return readOn(group, readWorkedExample(group).lenses, paragraphs, body).tiles.map((tile) => tile.kind);
       }));
+      // Group F (Slice 4D) reads the board the others drew; its fresh-and-carried parity is LightboxOpinionCarry.test.ts.
+      const opinion = readOpinion(await aliceOpinionBoard()).tile;
+      if (opinion) {
+        drawnKinds.add(opinion.kind);
+      }
       // Every reading kind the board can draw, so a new kind cannot skip this sweep.
       expect([...drawnKinds].sort()).toEqual(Object.keys(LIGHTBOX_TILE_LENS).sort());
       expect([...drawnKinds].sort()).toEqual([
         'air-lock', 'artifact', 'character', 'echo', 'familiar-phrase', 'genre-neighbor', 'gravity-collision', 'gravity-field',
-        'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'movement', 'number-usage', 'palette-cluster',
+        'gravity-literal', 'handoff', 'headline', 'lineage', 'motif', 'movement', 'number-usage', 'opinion', 'palette-cluster',
         'pressure-thread', 'reader-promise', 'rhythm-endings', 'signature', 'spark', 'stock-tiers', 'subtext', 'swatch',
         'synopsis', 'template', 'template-beat', 'tension-arc', 'voice'
       ]);

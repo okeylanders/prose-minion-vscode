@@ -15,6 +15,11 @@ import { LIGHTBOX_PROMPT_FILES } from '@/infrastructure/lightbox/LightboxReading
 import { LIGHTBOX_GRAVITY_LINE_HITS } from '@shared/constants/lightbox';
 import { LIGHTBOX_UNUSED_REACH } from '@shared/constants/lightboxPlot';
 import { LIGHTBOX_MOVEMENT_ID, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES } from '@/infrastructure/lightbox/LightboxPlotWire';
+import {
+  LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS,
+  LIGHTBOX_OPINION_OBSERVATION_ID
+} from '@/infrastructure/lightbox/LightboxOpinionWire';
+import { LIGHTBOX_OPINION_REWRITE_WORDS, LIGHTBOX_OPINION_WRITER_WORDS } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
 import { readLightboxPrompt } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 
 const B = PROMPT_BUDGETS.lightbox;
@@ -176,5 +181,38 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(summary).toContain(`\`title\`: at most ${B.labelCharacters} characters`);
     expect(summary).toContain(`\`gist\`: one line of at most ${B.noteCharacters} characters`);
     expect(summary).toContain('If any of that fails, every movement is withheld');
+  });
+
+  it('states the Opinion\'s ceilings and rules (Slice 4D)', () => {
+    const opinion = lens('opinion');
+    expect(opinion).toContain(`and up to ${B.opinionQuotesPerItem} of its quotes, numbered \`q0\`, \`q1\`, \`q2\``);
+    expect(B.opinionQuotesPerItem).toBe(3);
+    expect(opinion).toContain(`\`observations\`: ${LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS}–${B.opinionObservations} observations about the chapter`);
+    expect(opinion).toContain(`\`id\`: \`O1\` to \`O${B.opinionObservations}\`, each used once.`);
+    expect([
+      LIGHTBOX_OPINION_OBSERVATION_ID.test('O1'),
+      LIGHTBOX_OPINION_OBSERVATION_ID.test(`O${B.opinionObservations}`),
+      LIGHTBOX_OPINION_OBSERVATION_ID.test(`O${B.opinionObservations + 1}`),
+      LIGHTBOX_OPINION_OBSERVATION_ID.test('O0')
+    ]).toEqual([true, true, false, false]);
+    expect(opinion).toContain(`\`text\`: one sentence, at most ${B.opinionObservationCharacters} characters`);
+    expect(opinion).toContain(`\`cites\`: 1–${B.opinionCitesPerObservation} board items the observation stands on`);
+    expect(opinion).toContain(`\`headline\`: one sentence, at most ${B.opinionHeadlineCharacters} characters`);
+    expect(opinion).toContain(`\`body\`: a short paragraph, at most ${B.opinionBodyCharacters} characters`);
+    expect(opinion).toContain(
+      `\`why\`: 1–${B.opinionWhyPoints} points. Each has a \`weight\`, \`strength\`, \`even\` or \`concern\`; ` +
+        `a \`text\` of at most ${B.opinionWhyCharacters} characters; and \`observations\`: the 1–${B.opinionCitesPerObservation} observation ids it weighs.`
+    );
+    expect(opinion).toContain(`\`friction\`: one to three sentences, at most ${n(B.frictionCharacters)} characters`);
+    expect(opinion).toContain(`The whole response stays under ${n(B.groupResponseCharacters)} characters.`);
+    // Every word the rewrite check withholds is one the prompt forbids, or a form of one.
+    for (const word of ['should', 'must', 'try', 'consider', 'cut', 'trim', 'tighten', 'shorten', 'rewrite', 'replace', 'remove', 'fix', 'needs to']) {
+      expect(LIGHTBOX_OPINION_REWRITE_WORDS).toContain(word);
+      expect(opinion).toContain(`"${word}"`);
+    }
+    for (const word of ['you', 'your', 'the writer', 'the author']) {
+      expect(LIGHTBOX_OPINION_WRITER_WORDS).toContain(word);
+      expect(opinion).toContain(`"${word}"`);
+    }
   });
 });

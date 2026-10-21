@@ -41,7 +41,7 @@ import {
   LightboxRunScope,
   MessageType
 } from '@/shared/types/messages';
-import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
+import { frame, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { LIGHTBOX_LENSES, LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
@@ -68,6 +68,37 @@ export const ok = (group: LightboxReadingGroupId, raw = examples[group].response
 
 export const groupOf = (request: InitialRunRequest) => request.toolName.slice(-1).toUpperCase() as LightboxReadingGroupId;
 
+/**
+ * Group F's stand-in reply (Slice 4D): the worked example's, when the call
+ * reads the example's own board; otherwise an Opinion that cites the first
+ * two readings of the digest it was sent, by their keys, stating no figure,
+ * so it stands on any board with two readings.
+ */
+export function opinionReplyFor(request: InitialRunRequest): string {
+  if (request.userMessage === examples.F.request) {
+    return examples.F.response;
+  }
+  const keys = [...request.userMessage.matchAll(/^\[(lbt-[^\]]+)\]/gm)].map((match) => match[1]);
+  const [first, second] = keys.length >= 2 ? keys : [keys[0], undefined];
+  const cite = (key: string | undefined) => (key ? { tile: key } : { measured: 'headline' });
+  const view = (headline: string) => ({
+    headline,
+    body: 'The board\'s readings agree on what the chapter does, and the Opinion weighs only them.',
+    why: [{ weight: 'even', text: 'Both observations weigh the same.', observations: ['O1', 'O2'] }]
+  });
+  return frame('F', {
+    version: 1,
+    opinion: {
+      observations: [
+        { id: 'O1', text: 'The first reading on the board carries the chapter.', cites: [cite(first)] },
+        { id: 'O2', text: 'The second reading leans the same way.', cites: [cite(second)] }
+      ],
+      views: { enthusiastic: view('What works is plain.'), neutral: view('Weighed evenly, it holds.'), blunt: view('What costs is plain.') },
+      friction: 'A stand-in Opinion for tests: it weighs two readings and no more.'
+    }
+  });
+}
+
 /** Let every settled promise run its continuations. */
 export const settle = async (): Promise<void> => {
   for (let round = 0; round < 5; round++) {
@@ -85,6 +116,8 @@ export interface LightboxReadingHostOptions {
   writerChapters?: Record<string, string>;
   /** A stand-in for the writer's average, in place of the real baseline (PR #155 F-01: one a test can change). */
   writerBaseline?: Pick<LightboxWriterBaseline, 'measure'>;
+  /** The run tokens, in order; `run-<n>-token` by default (the group F worked example's ids come from its own, Slice 4D). */
+  mintToken?: () => string;
 }
 
 /** One webview tab: its own handler, router, transport and log, over the host's shared services. */
@@ -107,7 +140,7 @@ export interface LightboxReadingTab {
 export async function createLightboxReadingHost(options: LightboxReadingHostOptions = {}) {
   let boardIds = 0;
   const runInitial = jest.fn(async (request: InitialRunRequest) =>
-    (options.respond ?? ((call) => ok(groupOf(call))))(request)
+    (options.respond ?? ((call) => ok(groupOf(call), groupOf(call) === 'F' ? opinionReplyFor(call) : undefined)))(request)
   );
 
   // The prompt files: answered at once, or held until `releasePrompts()`.
@@ -140,7 +173,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
     log,
     {
       catalog: { contextLength: () => options.contextLength ?? 200_000, pricing: () => pricing },
-      mintToken: () => `run-${++tokens}-token`
+      mintToken: options.mintToken ?? (() => `run-${++tokens}-token`)
     }
   );
   let shelved = 0;

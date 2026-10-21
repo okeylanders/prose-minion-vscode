@@ -32,7 +32,9 @@
  * - **Runs belong to their board.** Group results are written onto the board
  *   by its id through `LightboxService.updateReadings`, so a hidden tab, a
  *   reveal or a switch back to the source finds them; a result for a board
- *   that no longer exists is dropped.
+ *   that no longer exists is dropped (`LightboxPressRun`). Group F, the
+ *   Opinion, reads that board's digest when it starts, after the press's
+ *   other groups settle (Slice 4D).
  * - **Outcomes are published, not posted by the run (PR #148).** The service
  *   publishes a `readings` change only for the current board, so a stale run
  *   never publishes over a newer one. This handler subscribes the first time
@@ -62,13 +64,8 @@ import {
   setLightboxSparkDismissed
 } from '@/infrastructure/lightbox/LightboxSparkLane';
 import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
-import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import {
-  settleLightboxGroup,
-  startLightboxGroups,
-  stopLightboxGroups
-} from '@/infrastructure/lightbox/LightboxReadingState';
+import { startLightboxGroups, stopLightboxGroups } from '@/infrastructure/lightbox/LightboxReadingState';
 import {
   isLightboxLensId,
   LIGHTBOX_LENSES,
@@ -93,6 +90,7 @@ import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
 import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
+import { lightboxOpinionPort, lightboxPressRun } from '@handlers/domain/LightboxPressRun';
 
 const SOURCE = 'extension.lightbox';
 const STOPPED = 'Stopped before this group came back.';
@@ -270,57 +268,27 @@ export class LightboxReadingHandler {
       return;
     }
 
-    let groupsBack = 0;
-    // The run's streamed characters so far, as the runner last reported them.
-    let outputCharacters = 0;
-    // Set once the runner accepts the press; its callbacks only ever fire after that.
-    let started: LightboxActiveRun | undefined;
-    const start = this.runner.startReserved(reservation, press.source, preparedCalls, {
-      onGroup: (outcome) => {
-        if (!started) {
-          return;
-        }
-        // Published to the subscribed webviews when this is still the current board.
-        // Its number usages are held to what stands out on the board now, not at the press (PR #155 F-01).
-        const board = this.lightboxService.updateReadings(
-          boardId,
-          (readings, current) => readings.map((group) => (group.group === outcome.group
-            ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), lens)
-            : group)),
-          { token: started.token, group: outcome.group }
-        );
-        if (!board) {
-          this.outputChannel.appendLine(`[LightboxReadingHandler] Dropped group ${outcome.group}: its board is gone`);
-          return;
-        }
-        groupsBack += 1;
-        this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters, ...lensField(lens) });
-      },
-      onProgress: (characters) => {
-        outputCharacters = characters;
-        if (started) {
-          this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters, ...lensField(lens) });
-        }
-      },
-      onFinished: (summary) => {
-        if (!started) {
-          return;
-        }
-        this.ownRuns.delete(started.token);
-        const cost = summary.usage?.costUsd;
-        this.outputChannel.appendLine(
-          `[LightboxReadingHandler] Run ${started.token} finished: ${summary.outcomes.length} groups, ` +
-            `${summary.usage?.totalTokens ?? 0} tokens${cost !== undefined ? `, $${cost.toFixed(4)}` : ''}`
-        );
-        this.postProgress({ boardId, token: started.token, phase: 'finished', groups, groupsBack, outputCharacters, ...lensField(lens) });
-      }
+    // What the run hears and lands (`LightboxPressRun`); group F reads this board's digest when it starts (Slice 4D).
+    const pressRun = lightboxPressRun({
+      service: this.lightboxService,
+      boardId,
+      groups,
+      lens,
+      press,
+      postProgress: (progress) => this.postProgress(progress),
+      onFinished: (token) => this.ownRuns.delete(token),
+      outputChannel: this.outputChannel
+    });
+    const start = this.runner.startReserved(reservation, press.source, preparedCalls, pressRun.listener, {
+      opinion: lightboxOpinionPort(this.lightboxService, boardId)
     });
     if (!start.started) {
       this.releasePress(reservation);
       refuse(start.message, groups);
       return;
     }
-    started = start.run;
+    const started = start.run;
+    pressRun.bind(started);
     this.ownRuns.set(started.token, started);
     this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls, lens));
     this.postProgress({ boardId, token: started.token, phase: 'started', groups, groupsBack: 0, outputCharacters: 0, ...lensField(lens) });

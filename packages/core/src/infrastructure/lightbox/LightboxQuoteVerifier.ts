@@ -80,7 +80,13 @@ interface NormalizationUnit {
   normalized: string;
 }
 
-const DOUBLE_QUOTES = /["“”„‟″〝〞＂«»]/u;
+/**
+ * Every double quotation mark the Lightbox recognizes, as one set: the
+ * verifier folds each to `"`, and the Opinion may use none of them
+ * (`LightboxOpinionPhrasing`, PR #157 N-01).
+ */
+export const LIGHTBOX_DOUBLE_QUOTATION_MARKS = '"“”„‟″〝〞＂«»';
+const DOUBLE_QUOTES = new RegExp(`[${LIGHTBOX_DOUBLE_QUOTATION_MARKS}]`, 'u');
 const SINGLE_QUOTES = /['‘’‚‛′`´]/u;
 const DASHES = /[-‐‑‒–—―−⁃﹘﹣－]/u;
 const LETTER = /\p{L}/u;

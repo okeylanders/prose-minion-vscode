@@ -50,6 +50,7 @@ describe('the Lightbox tile map', () => {
       LIGHTBOX_READING_LAYOUT.heading,
       LIGHTBOX_READING_LAYOUT.underRibbon,
       LIGHTBOX_READING_LAYOUT.lane,
+      LIGHTBOX_READING_LAYOUT.last,
       ...LIGHTBOX_READING_LAYOUT.grid,
       ...Object.keys(LIGHTBOX_READING_LAYOUT.within)
     ];

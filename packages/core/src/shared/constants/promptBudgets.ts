@@ -181,6 +181,29 @@ export interface PromptBudgets {
     synopsisQuotes: number;
     /** Sentences a synopsis may run to (the prose-stats sentence rule). */
     synopsisSentences: number;
+    /**
+     * The Opinion's digest of the board (Slice 4D), in the engine's own
+     * estimated tokens: what group F may read, and what its estimate prices
+     * it at ("up to"), since the digest is built only when the call starts.
+     */
+    opinionDigestTokens: number;
+    /** Found quotes the digest shows for one tile, citable as q0, q1, … */
+    opinionQuotesPerItem: number;
+    /** Paragraph addresses one digest line lists before "and n more". */
+    opinionParagraphsPerLine: number;
+    /** Sections of the Sections lane the digest names; past them it says how many more. */
+    opinionSections: number;
+    /** Observations one Opinion may give (at least two). */
+    opinionObservations: number;
+    /** Board items one observation may cite. */
+    opinionCitesPerObservation: number;
+    opinionObservationCharacters: number;
+    /** A view's headline, body and Why points fit a Workshop tile's title, claim and points, so a brought view travels whole. */
+    opinionHeadlineCharacters: number;
+    opinionBodyCharacters: number;
+    /** Why points one view may give (at least one), each citing at most `opinionCitesPerObservation` observations. */
+    opinionWhyPoints: number;
+    opinionWhyCharacters: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -452,7 +475,18 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     artifactSteps: 5,
     movements: 8,
     synopsisQuotes: 3,
-    synopsisSentences: 4
+    synopsisSentences: 4,
+    opinionDigestTokens: 9_000,
+    opinionQuotesPerItem: 3,
+    opinionParagraphsPerLine: 12,
+    opinionSections: 24,
+    opinionObservations: 6,
+    opinionCitesPerObservation: 3,
+    opinionObservationCharacters: 200,
+    opinionHeadlineCharacters: 120,
+    opinionBodyCharacters: 320,
+    opinionWhyPoints: 4,
+    opinionWhyCharacters: 120
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

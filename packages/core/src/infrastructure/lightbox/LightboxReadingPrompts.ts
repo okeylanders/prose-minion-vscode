@@ -16,6 +16,13 @@
  *   call (open question 1). The system messages differ per group, so a
  *   caching change would also move the lens files behind the chapter.
  *
+ * Group F, the Opinion (Slice 4D), is the exception: it reads the board's
+ * verified digest, never the chapter (`LightboxOpinionDigest` builds its
+ * user message), and its system message is its own lens file and worked
+ * example only. The shared rules describe reading a chapter and forbid
+ * grading; the Opinion reads the board and is the fenced exception to that
+ * rule (ADR D7 addendum), so its file states its whole protocol.
+ *
  * The writer's text is sent as it stands, except that the marker brackets
  * `⟦` and `⟧` are replaced with plain ones, so nothing in the text can pose
  * as a host marker.
@@ -25,6 +32,7 @@ import type { LightboxLensId, LightboxNumberRow, LightboxReadingGroupId, Lightbo
 import { countWords } from '@/utils/textUtils';
 import { LIGHTBOX_LENS_KEYS, lightboxGroupSentinels } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxNumberTaskLines } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 
 export const LIGHTBOX_PROMPT_FILES = {
   shared: 'lightbox/00-lightbox-shared.md',
@@ -46,7 +54,8 @@ export const LIGHTBOX_PROMPT_FILES = {
     template: 'lightbox/53-template.md',
     pressure: 'lightbox/54-pressure.md',
     artifacts: 'lightbox/55-artifacts.md',
-    summary: 'lightbox/56-summary-movements.md'
+    summary: 'lightbox/56-summary-movements.md',
+    opinion: 'lightbox/57-opinion.md'
   } satisfies Record<LightboxLensId, string>,
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by the protocol's group ids. */
   examples: {
@@ -54,7 +63,8 @@ export const LIGHTBOX_PROMPT_FILES = {
     B: 'lightbox/41-example-group-b.md',
     C: 'lightbox/42-example-group-c.md',
     D: 'lightbox/43-example-group-d.md',
-    E: 'lightbox/44-example-group-e.md'
+    E: 'lightbox/44-example-group-e.md',
+    F: 'lightbox/45-example-group-f.md'
   } satisfies Record<LightboxReadingGroupId, string>
   /* eslint-enable @typescript-eslint/naming-convention */
 } as const;
@@ -78,7 +88,8 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   template: 'template and freshness',
   pressure: 'pressure',
   artifacts: 'artifacts',
-  summary: 'summary and movements'
+  summary: 'summary and movements',
+  opinion: 'the Opinion'
 };
 
 /** A context file as the prompt carries it. */
@@ -116,8 +127,11 @@ export interface LightboxBuiltUserMessage {
   chapterSection: string;
 }
 
-/** The prompt files for a group's system message, in order. */
+/** The prompt files for a group's system message, in order. Group F's are its own: its lens file, then its example. */
 export function lightboxSystemPromptFiles(request: LightboxGroupRequest): string[] {
+  if (lightboxGroupReadsBoard(request.group)) {
+    return [...request.lenses.map((lens) => LIGHTBOX_PROMPT_FILES.lenses[lens]), LIGHTBOX_PROMPT_FILES.examples[request.group]];
+  }
   return [
     LIGHTBOX_PROMPT_FILES.shared,
     ...request.lenses.map((lens) => LIGHTBOX_PROMPT_FILES.lenses[lens]),

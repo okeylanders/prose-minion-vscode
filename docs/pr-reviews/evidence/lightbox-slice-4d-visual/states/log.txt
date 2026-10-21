@@ -1,0 +1,24 @@
+[LightboxHandler] Board built for Drafts/alice-chapter-1-opening.md: 508 words, 8 paragraphs
+[LightboxReadingRunner] Run 5b1e09c4-evidence started: groups A, B, D, E, F
+[LightboxReadingRunner] Group A read (headline): 1 tiles, 0 blocks withheld, 0 claims withheld, 2 quotes checked (0 withheld), ignored unrequested motif, tension, gravity, palette
+[LightboxReadingRunner] Group B read (characters, voice): 4 tiles, 0 blocks withheld, 0 claims withheld, 7 quotes checked (0 withheld), ignored unrequested subtext
+[LightboxReadingRunner] Group D read (stock, numbers): 12 tiles, 0 blocks withheld, 0 claims withheld, 31 quotes checked (0 withheld), ignored unrequested rhythm
+[LightboxReadingRunner] Group E read (pressure, artifacts, summary): 12 tiles, 0 blocks withheld, 0 claims withheld, 22 quotes checked (0 withheld), ignored unrequested template
+[LightboxReadingRunner] Run 5b1e09c4-evidence group F digest: 33 items, 29 readings, 0 left out, about 2,988 tokens, key 6f93cb4f00b6
+[LightboxReadingRunner] Group F read (opinion) against a digest of 33 items: 6 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 6f93cb4f00b6, the board it read: current
+[LightboxReadingRunner] Run 5b1e09c4-evidence finished: A ok, B ok, D ok, E ok, F ok
+[LightboxReadingHandler] Run 5b1e09c4-evidence finished: 5 groups, 0 tokens
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 2 quotes, 3 points
+[WorkshopLightboxTileHandler] Tile staged above the composer (ta-1, 143 words)
+[LightboxHandler] The Workshop staged a tile: 2 quotes carried, 2 of 2 quotes found again
+[LightboxReadingRunner] Run run-2-evidence started: groups F (re-read opinion)
+[LightboxReadingRunner] Run run-2-evidence group F digest: 33 items, 29 readings, 0 left out, about 2,988 tokens, key 6f93cb4f00b6
+[LightboxReadingRunner] Group F read (opinion) against a digest of 33 items: 6 observations drawn, 0 withheld; 2 views drawn, 1 withheld
+[LightboxReadingHandler] Group F landed on digest 6f93cb4f00b6, the board it read: current
+[LightboxReadingRunner] Run run-2-evidence finished: F ok
+[LightboxReadingHandler] Run run-2-evidence finished: 1 groups, 0 tokens
+[LightboxReadingRunner] Run run-3-evidence started: groups D (re-read stock)
+[LightboxReadingRunner] Group D read (stock): 9 tiles, 0 blocks withheld, 0 claims withheld, 24 quotes checked (0 withheld), ignored unrequested rhythm, numbers
+[LightboxReadingRunner] Run run-3-evidence finished: D ok
+[LightboxReadingHandler] Run run-3-evidence finished: 1 groups, 0 tokens

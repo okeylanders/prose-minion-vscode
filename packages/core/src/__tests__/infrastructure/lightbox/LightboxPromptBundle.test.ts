@@ -11,7 +11,7 @@
  * objects and movements, each count and range the host's.
  */
 import type { LightboxNumberRow, LightboxReadingGroupId } from '@messages';
-import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
+import { LIGHTBOX_READING_GROUPS, lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
@@ -50,14 +50,17 @@ function decodeExample(group: LightboxReadingGroupId) {
   return { example, decoded, assembled };
 }
 
+/** The groups that read the chapter; group F's example reads the board (`LightboxOpinionBundle.test.ts`, Slice 4D). */
+const CHAPTER_GROUPS = LIGHTBOX_READING_GROUPS.filter((group) => !lightboxGroupReadsBoard(group));
+
 describe('Lightbox prompt bundle', () => {
   beforeAll(async () => {
-    for (const group of LIGHTBOX_READING_GROUPS) {
+    for (const group of CHAPTER_GROUPS) {
       MEASURED.set(group, (await boardWithNumbers(readWorkedExample(group).paragraphs)).measured.numbers.rows);
     }
   });
 
-  describe.each(LIGHTBOX_READING_GROUPS.map((group) => [group]))('worked example, group %s', (group) => {
+  describe.each(CHAPTER_GROUPS.map((group) => [group]))('worked example, group %s', (group) => {
     it('shows exactly the request the host sends for its paragraphs', async () => {
       const { example } = decodeExample(group);
       expect(example.paragraphs).toHaveLength(8);

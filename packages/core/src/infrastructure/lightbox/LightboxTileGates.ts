@@ -34,6 +34,11 @@
  *   gives one, and its quotes in paragraph order; an artifact on a counted
  *   term. The movements are held as a set (`lightboxMovementSetGate`, also
  *   applied by both phases), and engagement follows them.
+ * - group F (Slice 4D, `LightboxOpinionGates`): the Opinion stands while
+ *   one of its views does. Its observations and views are gated first, by
+ *   their own rules (cited items on the board, quotes the tiles hold, the
+ *   text rules), and it alone may stand with no quote of its own: it cites
+ *   board items, and never quotes.
  * Lineage, signature phrases, air-locks, echoes, paragraph endings, the
  * template and its beats have no rule beyond a found quote: what they add is the reading's claim,
  * decoded strictly, and nothing in it changes with the text (an ending
@@ -117,7 +122,11 @@ export const LIGHTBOX_GATE_REASONS = {
     carried: 'None of its quotes still holds an instance of the figure it reads.'
   },
   /** The text is the same, but the figure was measured again and stands out differently (PR #155 F-01). */
-  numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.'
+  numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.',
+  opinionNoView: {
+    fresh: 'No view stood: each broke a rule (below), so the Opinion is not drawn.',
+    carried: 'No view still stands on what the board holds now (below), so the Opinion is withheld.'
+  }
 } as const;
 
 /** A tile as the gate sees it: its kind, its found quotes and its host counts. */
@@ -137,6 +146,8 @@ export interface LightboxGateCandidate {
   phraseHeld?: boolean;
   /** A pressure thread's quotes as found (Slice 4C). */
   thread?: LightboxThreadCandidate;
+  /** The Opinion's views that stood their own gates (Slice 4D, `LightboxOpinionGates`). */
+  opinionViews?: number;
 }
 
 export interface LightboxGateContext {
@@ -161,6 +172,9 @@ export function lightboxFieldKey(name: string): string {
 /** Whether a reading can stand on the board, and a collision's witness when it can. */
 export function lightboxTileGate(candidate: LightboxGateCandidate, context: LightboxGateContext): LightboxGateVerdict {
   const refuse = (reason: string): LightboxGateVerdict => ({ ok: false, reason });
+  if (candidate.kind === 'opinion') {
+    return (candidate.opinionViews ?? 0) > 0 ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.opinionNoView[context.phase]);
+  }
   if (candidate.kind === 'number-usage') {
     if (!candidate.stat || !context.standouts.has(candidate.stat)) {
       return refuse(LIGHTBOX_GATE_REASONS.numberNotStandout[context.phase]);

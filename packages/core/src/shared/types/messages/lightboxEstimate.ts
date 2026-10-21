@@ -19,6 +19,13 @@ export interface LightboxCallEstimate {
   expectedOutputTokens: number;
   /** What the engine reserves for the reply in its fit check (the call's output ceiling). */
   reservedOutputTokens: number;
+  /**
+   * Group F (Slice 4D): the call's input is priced at its bound, "up to".
+   * The Opinion reads the board's digest, which is built only when the call
+   * starts, after the other groups land; `inputTokens` reserves the
+   * digest's whole bound (`PROMPT_BUDGETS.lightbox.opinionDigestTokens`).
+   */
+  inputBound?: 'digest';
   fit: LightboxFit;
   /** Absent when the catalog has no live pricing. */
   costUsd?: number;

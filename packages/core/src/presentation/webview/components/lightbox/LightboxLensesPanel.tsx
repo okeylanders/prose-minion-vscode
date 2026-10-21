@@ -41,8 +41,8 @@ export const LightboxLensesPanel: React.FC<LightboxLensesPanelProps> = ({ lenses
       );
     })}
     <p className="pm-lb-caption">
-      Readings run only when you press Read, as up to five grouped calls. A lens you turn off is left out of
-      its call, and a call with no lens on is not made.
+      Readings run only when you press Read, as up to six grouped calls; the Opinion is the last, on the checked
+      board. A lens you turn off is left out of its call, and a call with no lens on is not made.
     </p>
   </section>
 );

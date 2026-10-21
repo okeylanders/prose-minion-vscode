@@ -81,7 +81,9 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   'pressure-thread': 'counted-read',
   artifact: 'counted-read',
   synopsis: 'read',
-  movement: 'read'
+  movement: 'read',
+  // Slice 4D: the one evaluative tile is read, and drawn with its own chip ("The one evaluative tile").
+  opinion: 'read'
 };
 
 /** The lens each reading kind belongs to. */
@@ -114,7 +116,8 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   'pressure-thread': 'pressure',
   artifact: 'artifacts',
   synopsis: 'summary',
-  movement: 'summary'
+  movement: 'summary',
+  opinion: 'opinion'
 };
 
 /** What one reading of each kind is called, e.g. in the inspector's "Theme & motif · Motif". */
@@ -147,7 +150,8 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   'pressure-thread': 'Thread',
   artifact: 'Object',
   synopsis: 'Synopsis',
-  movement: 'Movement'
+  movement: 'Movement',
+  opinion: 'Opinion'
 };
 
 /**
@@ -253,8 +257,20 @@ export const LIGHTBOX_NUMBER_USAGE_LABELS: Readonly<Record<LightboxNumberUsage, 
   habit: 'Reads as habit'
 };
 
-/** The reading groups, in board order (D6). */
-export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D', 'E'];
+/** The reading groups, in board order (D6): A–E read the chapter, and F, last, reads the board (Slice 4D). */
+export const LIGHTBOX_READING_GROUPS: readonly LightboxReadingGroupId[] = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+/**
+ * The group that reads the board, not the chapter (Slice 4D): the Opinion.
+ * In a press it starts only after every other group of that press has
+ * settled, on the board's verified digest as those groups left it.
+ */
+export const LIGHTBOX_BOARD_GROUP = 'F' satisfies LightboxReadingGroupId;
+
+/** Whether a group reads the board (the Opinion's digest) rather than the chapter. */
+export function lightboxGroupReadsBoard(group: LightboxReadingGroupId): boolean {
+  return group === LIGHTBOX_BOARD_GROUP;
+}
 
 export interface LightboxLensDescriptor {
   id: LightboxLensId;
@@ -281,7 +297,8 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   template: { label: 'Template & freshness', group: 'E' },
   pressure: { label: 'Pressure', group: 'E' },
   artifacts: { label: 'Artifacts', group: 'E' },
-  summary: { label: 'Summary & movements', group: 'E' }
+  summary: { label: 'Summary & movements', group: 'E' },
+  opinion: { label: 'Opinion', group: 'F' }
 };
 
 /** Every lens, in rail order (which is also group order). */
@@ -341,7 +358,9 @@ export function lightboxRereadLenses(lens: LightboxLensId, lensesOff: readonly L
  * The calls a press makes (D6). A lens that is off is left out of its group,
  * and a group with no lens on is not called. `rest` skips the groups whose
  * readings already landed; `lens` re-reads one lens that is on, with the
- * lenses read together with it (`lightboxRereadLenses`).
+ * lenses read together with it (`lightboxRereadLenses`). Group F, the
+ * Opinion, is always the last call: the runner starts it only once the
+ * others have settled (Slice 4D).
  */
 export function lightboxPlannedCalls(
   lensesOff: readonly LightboxLensId[],

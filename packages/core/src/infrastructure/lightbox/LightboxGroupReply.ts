@@ -30,6 +30,10 @@ import {
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { lightboxRejectionOf, type LightboxRejection } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import type { LightboxPreparedCall } from '@/infrastructure/lightbox/LightboxRunEstimate';
 import {
   failedLightboxGroup,
@@ -43,6 +47,18 @@ import {
  * tension score stays on the paragraphs it read (PR #150 F-06).
  */
 export type LightboxGroupTools = Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter' | 'columnKeys' | 'standouts'>;
+
+/** The tools over the whole chapter, built once per run before any call is sent; throws when the chapter cannot be prepared. */
+export function lightboxGroupTools(source: LightboxRunSource): LightboxGroupTools {
+  return {
+    verifier: createLightboxQuoteVerifier(source.material.paragraphs),
+    counter: createLightboxTermCounter(source.material.paragraphs),
+    // Each ribbon column's text as read, so a stale tension score stays on it (PR #150 F-06).
+    columnKeys: lightboxColumnKeys(source.material.paragraphs, source.material.columns),
+    // What a numbers reading may name, and how its quotes are checked (Slice 4B).
+    standouts: lightboxStandoutRows(source.material.numbers)
+  };
+}
 
 export interface LightboxGroupReplyPorts {
   recovery: RejectedModelResponseRecovery;
@@ -67,7 +83,7 @@ export async function readLightboxGroupReply(
 ): Promise<LightboxGroupOutcome> {
   const content = result.rawContent ?? result.content;
   if (result.finishReason === 'length') {
-    return failedLightboxGroup(call, await quarantine(ports, call, content, result, {
+    return failedLightboxGroup(call, await quarantineLightboxReply(ports, call, content, result, {
       message: `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
     }), result);
   }
@@ -80,7 +96,7 @@ export async function readLightboxGroupReply(
       columnCount: source.material.columns.length
     });
   } catch (error) {
-    return failedLightboxGroup(call, await quarantine(ports, call, content, result, lightboxRejectionOf(error)), result);
+    return failedLightboxGroup(call, await quarantineLightboxReply(ports, call, content, result, lightboxRejectionOf(error)), result);
   }
 
   let ordinal = 0;
@@ -115,9 +131,9 @@ export async function readLightboxGroupReply(
  * Save the paid body for recovery; the returned sentence tells the writer
  * where it went. The rejection's message is logged and shown; its
  * diagnostic is written only beside the body, in the recovery store's
- * gitignored folder.
+ * gitignored folder. Shared with group F's reply (`LightboxOpinionReply`).
  */
-async function quarantine(
+export async function quarantineLightboxReply(
   ports: LightboxGroupReplyPorts,
   call: LightboxPreparedCall,
   content: string,

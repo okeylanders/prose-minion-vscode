@@ -79,7 +79,8 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   template: 'template',
   pressure: 'pressure-thread',
   artifacts: 'artifact',
-  summary: 'synopsis'
+  summary: 'synopsis',
+  opinion: 'opinion'
 };
 
 export interface LightboxTileAssemblyContext {
@@ -282,6 +283,10 @@ class GroupAssembly implements LightboxClaimAssembler {
         return;
       case 'summary':
         this.plot.summary(block);
+        return;
+      case 'opinion':
+        // The Opinion is assembled from the board's digest (`LightboxOpinionReply`), never from the chapter.
+        this.withheldBlocks.push({ kind: 'opinion', lens: 'opinion', reason: 'The Opinion reads the board, not the chapter, so it is not read with a chapter group.' });
         return;
     }
   }

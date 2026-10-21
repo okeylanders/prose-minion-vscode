@@ -10,6 +10,12 @@
  * engine's own rule. Cost is estimated input tokens times the catalog's
  * prompt price plus typical output tokens times its completion price, or
  * absent when the catalog has no live pricing.
+ *
+ * Group F, the Opinion (Slice 4D), reads the board's digest, built only
+ * when its call starts, after the other groups land. Its call is measured
+ * with its own system message and task and the digest's whole bound
+ * (`digestTokens`), so its fit and cost are "up to" that bound, and the
+ * estimate says so (`inputBound`).
  */
 
 import type {
@@ -44,6 +50,12 @@ export interface LightboxPreparedCall {
   userMessage: string;
   /** The estimator's tokens for the chapter section alone. */
   chapterTokens: number;
+  /**
+   * Group F: the tokens reserved for the digest, which is not in
+   * `userMessage` until the call starts. Measured as part of the request,
+   * at its bound.
+   */
+  digestTokens?: number;
 }
 
 /** Everything an estimate prices, and so everything a press must still find unchanged (PR #149 F-02). */
@@ -129,7 +141,9 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   template: 1_100,
   pressure: 1_100,
   artifacts: 1_300,
-  summary: 900
+  summary: 900,
+  // Slice 4D: a guess from the group F worked example's length, labelled so, until Slice 6 measures it.
+  opinion: 1_400
 };
 
 /** Each tension score and its comma. */
@@ -165,13 +179,15 @@ function measureCall(call: LightboxPreparedCall, facts: LightboxModelFacts, colu
   let fit: LightboxFit = 'unknown';
   let inputTokens: number;
   let chapterRoomTokens: number | undefined;
+  // Group F's digest is priced at its bound: it joins the request when the call starts (Slice 4D).
+  const digestTokens = call.digestTokens ?? 0;
   if (facts.contextLength !== undefined) {
     const window = measureContextWindow(messages, facts.contextLength, reserved);
-    inputTokens = window.requestTokens;
-    fit = window.requestTokens + window.outputTokens + window.headroomTokens <= facts.contextLength ? 'fits' : 'too-large';
+    inputTokens = window.requestTokens + digestTokens;
+    fit = inputTokens + window.outputTokens + window.headroomTokens <= facts.contextLength ? 'fits' : 'too-large';
     chapterRoomTokens = facts.contextLength - window.headroomTokens - window.outputTokens - (inputTokens - call.chapterTokens);
   } else {
-    inputTokens = estimateRequestTokens(messages);
+    inputTokens = estimateRequestTokens(messages) + digestTokens;
   }
   const costUsd = facts.pricing
     ? inputTokens * facts.pricing.promptUsdPerToken + expected * facts.pricing.completionUsdPerToken
@@ -184,7 +200,8 @@ function measureCall(call: LightboxPreparedCall, facts: LightboxModelFacts, colu
       expectedOutputTokens: expected,
       reservedOutputTokens: reserved,
       fit,
-      ...(costUsd !== undefined ? { costUsd } : {})
+      ...(costUsd !== undefined ? { costUsd } : {}),
+      ...(call.digestTokens !== undefined ? { inputBound: 'digest' as const } : {})
     },
     chapterRoomTokens,
     chapterTokens: call.chapterTokens
