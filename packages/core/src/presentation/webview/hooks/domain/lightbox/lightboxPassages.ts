@@ -140,22 +140,48 @@ export function buildLightboxPassageWellView(
     };
   }
   if (passage.kind === 'instances' && item.kind === 'instances') {
-    const { more } = passage;
     return {
       ...frame,
       status: 'ready',
       passage,
-      header: `${pluralize(passage.instances, 'instance')} in ${pluralize(passage.sentences, 'sentence')}`,
-      ...(more.rows > 0
-        ? {
-            more: `The well lists up to ${LIGHTBOX_PASSAGE_BOUNDS.rows} rows: ${pluralize(more.sentences, 'more sentence')} ` +
-              `with ${pluralize(more.instances, 'instance')} ${more.sentences === 1 ? 'is' : 'are'} not listed.`
-          }
-        : {})
+      header: lightboxInstancesHeader(passage),
+      ...(passage.more.rows > 0 ? { more: lightboxInstancesMore(passage.more) } : {})
     };
   }
   // A reply of the other kind answers nothing this pin asked.
   return { ...frame, status: 'loading', note: 'Finding the sentences…' };
+}
+
+/**
+ * "28 instances in 26 sentences". Instances no sentence holds (PR #161
+ * N-01) are counted apart, never as sentences: "3 instances in 2
+ * sentences, 1 outside any sentence", or "1 instance, outside any
+ * sentence" when none is in one.
+ */
+export function lightboxInstancesHeader(passage: Pick<LightboxInstancesPassage, 'instances' | 'sentences' | 'outside'>): string {
+  const instances = pluralize(passage.instances, 'instance');
+  if (passage.outside === 0) {
+    return `${instances} in ${pluralize(passage.sentences, 'sentence')}`;
+  }
+  if (passage.outside === passage.instances) {
+    return `${instances}, outside any sentence`;
+  }
+  return `${instances} in ${pluralize(passage.sentences, 'sentence')}, ${passage.outside} outside any sentence`;
+}
+
+/** What the row bound left out: "… 164 more sentences with 190 instances are not listed." */
+function lightboxInstancesMore(more: LightboxInstancesPassage['more']): string {
+  const bound = `The well lists up to ${LIGHTBOX_PASSAGE_BOUNDS.rows} rows:`;
+  if (more.outside === 0) {
+    return `${bound} ${pluralize(more.sentences, 'more sentence')} with ${pluralize(more.instances, 'instance')} ` +
+      `${more.sentences === 1 ? 'is' : 'are'} not listed.`;
+  }
+  const inSentences = more.instances - more.outside;
+  const sentences = more.sentences > 0
+    ? `${pluralize(more.sentences, 'more sentence')} with ${pluralize(inSentences, 'instance')}, and `
+    : '';
+  return `${bound} ${sentences}${pluralize(more.outside, 'instance')} outside any sentence ` +
+    `${more.sentences + more.outside === 1 ? 'is' : 'are'} not listed.`;
 }
 
 /** What every state of the well shares: its kind, heading, name, and the term it is about. */

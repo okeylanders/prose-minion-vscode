@@ -87,12 +87,31 @@ export interface LightboxPassageSentence {
 }
 
 /**
- * One row of the sentences well: a sentence, or the consecutive sentences an
- * instance runs across (a phrase over a sentence or paragraph break).
+ * A row of the sentences well holding sentences: a sentence, or the
+ * consecutive sentences an instance runs across (a phrase over a sentence or
+ * paragraph break).
  */
-export interface LightboxPassageRow {
+export interface LightboxPassageSentenceRow {
   sentences: LightboxPassageSentence[];
 }
+
+/**
+ * A stretch of one paragraph that no sentence holds, with the instances in
+ * it lit. The sentence rule counts no sentence in a stretch of only space,
+ * closing marks and end marks (ADR 2026-10-21), yet a counted token can
+ * stand there: a straight `'` is a word to the vocabulary figures (PR #161
+ * N-01). Such an instance is shown where it is, never in a sentence nearby.
+ */
+export interface LightboxPassageOutsideRow {
+  outside: {
+    paragraph: number;
+    /** The stretch, outer space trimmed. */
+    segments: LightboxPassageSegment[];
+  };
+}
+
+/** One row of the sentences well, in text order. */
+export type LightboxPassageRow = LightboxPassageSentenceRow | LightboxPassageOutsideRow;
 
 export interface LightboxParagraphsPassage {
   kind: 'paragraphs';
@@ -110,10 +129,12 @@ export interface LightboxInstancesPassage {
   instances: number;
   /** Distinct sentences holding one. */
   sentences: number;
+  /** Instances that no sentence holds, each in an outside row. */
+  outside: number;
   /** In text order, up to `LIGHTBOX_PASSAGE_BOUNDS.rows`. */
   rows: LightboxPassageRow[];
-  /** What lies past the bound and was not sent. */
-  more: { rows: number; sentences: number; instances: number };
+  /** What lies past the bound and was not sent; `outside` counts the instances there that no sentence holds. */
+  more: { rows: number; sentences: number; instances: number; outside: number };
 }
 
 /**

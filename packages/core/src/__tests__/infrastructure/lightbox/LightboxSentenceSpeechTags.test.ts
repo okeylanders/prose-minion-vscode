@@ -25,7 +25,7 @@ import { findLightboxSentencePair } from '@/infrastructure/lightbox/LightboxSent
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { lightboxCollisionWitness } from '@/infrastructure/lightbox/LightboxTileGates';
 import { buildLightboxPassage } from '@/infrastructure/lightbox/LightboxPassages';
-import { boardWithPassages, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
+import { boardWithPassages, lightboxSentenceRows, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { TEA_PARTY_CURLY } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
@@ -33,7 +33,7 @@ const metricOf = (text: string) => measureLightboxParagraph(splitLightboxParagra
 
 /** A row's sentences as the well shows them. */
 const rowTexts = (rows: readonly LightboxPassageRow[]): string[] =>
-  rows.flatMap((row) => row.sentences.map((sentence) => sentence.segments.map((segment) => segment.text).join('')));
+  lightboxSentenceRows(rows).flatMap((row) => row.sentences.map((sentence) => sentence.segments.map((segment) => segment.text).join('')));
 
 function instancesOf(built: LightboxBoardWithPassages, word: string) {
   const passage = buildLightboxPassage(built.board, built.passages, { kind: 'instances', term: { kind: 'word', word } });
@@ -86,7 +86,7 @@ describe('the paragraph metrics: the rhythm lane and the inspector\'s paragraph 
   it('shows ¶8 of the worked examples\' Alice with its speech, in the "alice" well', async () => {
     const passage = instancesOf(await boardWithPassages(readWorkedExample('A').paragraphs.join('\n\n')), 'alice');
     expect([passage.instances, passage.sentences]).toEqual([7, 6]); // unchanged
-    const row = passage.rows.find((candidate) => candidate.sentences[0].paragraph === 8);
+    const row = lightboxSentenceRows(passage.rows).find((candidate) => candidate.sentences[0].paragraph === 8);
     // marks: "thought Alice to herself, …"; base: "” thought Alice to herself, …".
     expect(rowTexts(row ? [row] : [])).toEqual([
       '“Well!” thought Alice to herself, “after such a fall as this, I shall think nothing of tumbling down stairs!'

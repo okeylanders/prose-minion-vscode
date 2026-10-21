@@ -102,6 +102,7 @@ elsewhere.
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
 | Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; decide before Slice 5 saves boards) | Identified |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
+| Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
 
 ## Review Guidance
 

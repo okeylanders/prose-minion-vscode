@@ -50,6 +50,7 @@ const SENTENCES: LightboxPassageWellView = {
     kind: 'instances',
     instances: 2,
     sentences: 3,
+    outside: 0,
     rows: [
       {
         sentences: [
@@ -59,7 +60,7 @@ const SENTENCES: LightboxPassageWellView = {
       },
       { sentences: [{ paragraph: 2, sentence: 2, segments: [{ text: 'The ' }, { text: 'end never', instances: [1] }, { text: ' came.' }] }] }
     ],
-    more: { rows: 3, sentences: 3, instances: 4 }
+    more: { rows: 3, sentences: 3, instances: 4, outside: 0 }
   },
   more: 'The well lists up to 50 rows: 3 more sentences with 4 instances are not listed.'
 };
@@ -83,6 +84,37 @@ describe('the sentences well', () => {
     expect(clicked).toEqual([{ kind: 'paragraphs', from: 2, to: 2, via: PHRASE }]);
     expect(screen.getByText('The well lists up to 50 rows: 3 more sentences with 4 instances are not listed.')).not.toBeNull();
     expect(screen.getByText(/^Sentences/).textContent).toBe('Sentences · 2 instances in 3 sentences');
+  });
+
+  it('shows an instance no sentence holds in its own stretch, lit and marked, with its paragraph\'s address (PR #161 N-01)', () => {
+    const { bind, clicked } = binder();
+    const APOSTROPHE = { kind: 'hapax', word: '\'' } as const;
+    render(<LightboxPassageWell
+      view={{
+        kind: 'instances',
+        status: 'ready',
+        label: 'Sentences',
+        regionLabel: 'Sentences holding “\'”',
+        term: APOSTROPHE,
+        header: '1 instance, outside any sentence',
+        passage: {
+          kind: 'instances',
+          instances: 1,
+          sentences: 0,
+          outside: 1,
+          rows: [{ outside: { paragraph: 1, segments: [{ text: '\'', instances: [0] }] } }],
+          more: { rows: 0, sentences: 0, instances: 0, outside: 0 }
+        }
+      }}
+      bind={bind}
+    />);
+    const [row] = within(screen.getByRole('region', { name: 'Sentences holding “\'”' })).getAllByRole('listitem');
+    expect(row.classList.contains('is-outside')).toBe(true);
+    expect(row.querySelector('.pm-lb-well-text')?.textContent).toBe('\' · outside any sentence');
+    expect([...row.querySelectorAll('mark')].map((mark) => [mark.textContent, mark.getAttribute('data-instances')])).toEqual([['\'', '0']]);
+    fireEvent.click(within(row).getByRole('button', { name: '¶1' }));
+    expect(clicked).toEqual([{ kind: 'paragraphs', from: 1, to: 1, via: APOSTROPHE }]);
+    expect(screen.getByText(/^Sentences/).textContent).toBe('Sentences · 1 instance, outside any sentence');
   });
 
   it('reads a refusal or a wait as a status note, with no well', () => {

@@ -1158,6 +1158,11 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
 - **Pending is only the pin on screen's.** Going back to a pin or board
   whose answer is held asks nothing and drops any other request, so a late
   answer can never replace what is shown (PR #159 F-01).
+- **An instance outside every sentence keeps its own row.** A counted
+  token can stand where no sentence is (a lone `'` is a hapax word). Its row
+  is that stretch of its own paragraph, lit, and the passage counts it apart
+  (`outside`, "1 instance, outside any sentence"). Never put it in the
+  nearest sentence, and never count it as one (PR #161 N-01).
 - **Cut in linear time.** The row bound limits rows, not what one row
   holds. Match ranges to instances in one walk and cut segments in one
   open/close sweep, never by scanning every instance per segment (PR #159

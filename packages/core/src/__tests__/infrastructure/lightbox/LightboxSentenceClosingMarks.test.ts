@@ -22,14 +22,14 @@ import { findLightboxSentencePair } from '@/infrastructure/lightbox/LightboxSent
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { lightboxCollisionWitness } from '@/infrastructure/lightbox/LightboxTileGates';
 import { buildLightboxPassage } from '@/infrastructure/lightbox/LightboxPassages';
-import { boardWithPassages, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
+import { boardWithPassages, lightboxSentenceRows, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
 import { TEA_PARTY_CURLY } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
 const metricOf = (text: string) => measureLightboxParagraph(splitLightboxParagraphs(text)[0]);
 
 /** A row's sentences as the well shows them. */
 const rowTexts = (rows: readonly LightboxPassageRow[]): string[] =>
-  rows.flatMap((row) => row.sentences.map((sentence) => sentence.segments.map((segment) => segment.text).join('')));
+  lightboxSentenceRows(rows).flatMap((row) => row.sentences.map((sentence) => sentence.segments.map((segment) => segment.text).join('')));
 
 describe('the paragraph metrics: the rhythm lane and the inspector\'s paragraph line', () => {
   it('reads “Oh dear!” as 2 words in 1 sentence', () => {

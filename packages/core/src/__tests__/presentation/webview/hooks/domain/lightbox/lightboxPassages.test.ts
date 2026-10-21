@@ -71,8 +71,9 @@ describe('the well', () => {
     kind: 'instances',
     instances: 5,
     sentences: 4,
+    outside: 0,
     rows: [{ sentences: [{ paragraph: 2, sentence: 1, segments: [{ text: 'thought ' }, { text: 'Alice', instances: [0] }] }] }],
-    more: { rows: 0, sentences: 0, instances: 0 }
+    more: { rows: 0, sentences: 0, instances: 0, outside: 0 }
   };
 
   it('waits for the sentences, then counts instances and sentences in agreement with their numbers', () => {
@@ -98,12 +99,25 @@ describe('the well', () => {
   });
 
   it('states its row bound and what lies past it', () => {
-    const bounded: LightboxPassage = { ...sentences, instances: 240, sentences: 214, more: { rows: 164, sentences: 164, instances: 190 } };
+    const bounded: LightboxPassage = { ...sentences, instances: 240, sentences: 214, more: { rows: 164, sentences: 164, instances: 190, outside: 0 } };
     expect(buildLightboxPassageWellView(board, ALICE, answerTo(board, ALICE, bounded))?.more)
       .toBe('The well lists up to 50 rows: 164 more sentences with 190 instances are not listed.');
-    const single: LightboxPassage = { ...sentences, more: { rows: 1, sentences: 1, instances: 1 } };
+    const single: LightboxPassage = { ...sentences, more: { rows: 1, sentences: 1, instances: 1, outside: 0 } };
     expect(buildLightboxPassageWellView(board, ALICE, answerTo(board, ALICE, single))?.more)
       .toBe('The well lists up to 50 rows: 1 more sentence with 1 instance is not listed.');
+  });
+
+  it('counts an instance no sentence holds apart, never as a sentence (PR #161 N-01)', () => {
+    const header = (passage: LightboxPassage) => buildLightboxPassageWellView(board, ALICE, answerTo(board, ALICE, passage))?.header;
+    expect(header({ ...sentences, instances: 1, sentences: 0, outside: 1 })).toBe('1 instance, outside any sentence');
+    expect(header({ ...sentences, instances: 2, sentences: 0, outside: 2 })).toBe('2 instances, outside any sentence');
+    expect(header({ ...sentences, instances: 3, sentences: 2, outside: 1 })).toBe('3 instances in 2 sentences, 1 outside any sentence');
+    const more = (rest: { rows: number; sentences: number; instances: number; outside: number }) =>
+      buildLightboxPassageWellView(board, ALICE, answerTo(board, ALICE, { ...sentences, instances: 60, sentences: 55, outside: 3, more: rest }))?.more;
+    expect(more({ rows: 4, sentences: 3, instances: 5, outside: 1 }))
+      .toBe('The well lists up to 50 rows: 3 more sentences with 4 instances, and 1 instance outside any sentence are not listed.');
+    expect(more({ rows: 1, sentences: 0, instances: 1, outside: 1 }))
+      .toBe('The well lists up to 50 rows: 1 instance outside any sentence is not listed.');
   });
 
   it('shows a paragraph whole, lit by the term the writer came from, with the way back', () => {
