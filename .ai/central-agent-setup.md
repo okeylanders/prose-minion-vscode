@@ -86,7 +86,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -116,6 +116,7 @@ packages/core/src/
             ├── lightboxPlotTiles.ts # Group E tiles: template (freshness, engagement by movement tile id), template beat, pressure thread, artifact, synopsis, movement
             ├── lightboxSections.ts # The measured Sections lane: signal, sections, and where each signal fired
             ├── lightboxOpinion.ts  # Group F's Opinion tile: observations and their cites, three views, what was withheld, the digest it read
+            ├── lightboxSteering.ts # Group G's craft steering: the measure per figure, the reading and instance-note tiles, stance, nudge, the one example
             ├── lightboxContextFiles.ts # Lightbox context files and their messages
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
@@ -186,6 +187,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxCraft.ts        # Group D as drawn: tier shares, endings tally and lane, sentence columns, number bars (pure)
 │       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
 │       │   ├── lightboxOpinion.ts      # The Opinion as drawn: view tabs, Why rows, observations and what changed, Bring block, inspector details (pure)
+│       │   ├── lightboxSteering.ts     # Craft steering as drawn: figure sections and construction shares, the `steering` item ref, inspector details (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
@@ -441,7 +443,7 @@ usePersistence({
      - `passageProseStats`: Word count, sentence analysis, pacing metrics
      - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice and filler detectors are exported, with offsets, so the Lightbox's numbers count and check quotes by the same rules
      - `beingVerbs`: The forms of "be" as whole words (the Lightbox's being-verbs figure; contractions not counted)
-     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
+     - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas; `tagTextTokens` gives each token's tag and offset (the Lightbox's craft steering sorts instances by construction with it)
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
    - HTTP client for OpenRouter API
@@ -803,8 +805,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4D with its PR #157 fixes and re-review fix, merged with Slice 4C's PR #156 fixes and its F-04 fix):
-- 430 suites / 5,916 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4F on Slice 4D with its PR #157 fixes, merged with Slice 4C's PR #156 fixes and its F-04 fix):
+- 439 suites / 6,047 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1065,7 +1067,7 @@ adding a way to put a source on the Lightbox board:
 ### Lightbox Reading Groups
 
 Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
-D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
+D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile kind:
 
 - **Everything a kind joins.** A lens belongs to one group
   (`LIGHTBOX_LENSES`), with that group's numbered prompt files, its worked
@@ -1114,6 +1116,31 @@ D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
   - **The text rules.** The one evaluative tile's rules are
     `LightboxOpinionPhrasing`, a conservative word check with its limits
     stated. Keep it stricter than it needs to be, not looser.
+- **Craft steering (group G, Slice 4F; ADR D7 second addendum).** The
+  second fenced exception to "describe, never grade".
+  - **Ownership.** Steering owns being verbs, adverbs and intensifiers
+    (`LIGHTBOX_STEERING_STATS`); the numbers lens reads only
+    `LIGHTBOX_NUMBERS_READ_STATS`, and its codec and gate refuse the rest.
+    A new figure belongs to exactly one of the two lists.
+  - **Measured first, by the numbers' own detectors.** Totals and rates
+    come from `LIGHTBOX_NUMBER_PATTERNS`, so they equal the numbers rows;
+    constructions come from the word-frequency tagger. Every quote is
+    checked with `lightboxPatternInstanceFilter`, the same detector, fresh,
+    on carry and at Bring.
+  - **The fence.** `LightboxSteeringPhrasing` holds every claim, why, nudge
+    and example: no listed word (cut, delete, remove, fix, wrong, bad,
+    should, must), no quotation mark, no figure, and no clause opened with
+    an order in a why or nudge. A nudge exists only for a note that leans
+    or compensates.
+  - **The one example is never a quote.** Its `before` is anchored by code
+    inside the note's checked quote, holding the instance, and is checked
+    again on carry and at Bring; it is never evidence, never searched by
+    the verifier, never in the Opinion's digest, and drawn and brought
+    under "One way it could go". A fault withholds the example alone.
+  - **Host titles carry no digit** ("Being verbs · note II"), so nothing the
+    Opinion is shown offers a figure it might state.
+  - **Sentences are the shared rule's.** The short-run signal reads
+    `proseSentenceSpans` and never splits text itself.
 - **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
   and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
   one column track), never a row with its own label width, so a column

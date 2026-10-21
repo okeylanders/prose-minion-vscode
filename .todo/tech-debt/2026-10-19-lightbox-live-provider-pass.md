@@ -26,6 +26,10 @@ examples. Four things therefore rest on assumptions:
    quarantined.
 4. **Timeout and concurrency.** Five minutes per group and three at once are
    defaults, not measured.
+5. **Craft steering (group G, Slice 4F).** Its typical output (1,600
+   tokens) is a guess from the worked example's length. How often a real
+   reply's notes are withheld (a quote with no instance, a nudge that gives
+   an order, an example not anchored in its quote) is unknown.
 
 ## Recommendation
 
@@ -38,7 +42,10 @@ primed:
   after it, and adjust `LIGHTBOX_TYPICAL_OUTPUT_TOKENS` if the ratio is far
   from 1;
 - record the verified and withheld quote counts, withheld blocks, and any
-  quarantine, and tighten the prompt where a rule is missed.
+  quarantine, and tighten the prompt where a rule is missed;
+- for group G, record withheld notes and examples by reason, and the
+  writer's view of whether the stances and nudges read as steering, not
+  grading.
 
 ## Related Files
 

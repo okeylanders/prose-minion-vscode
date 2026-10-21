@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3, D4, D6, D7 and its **second addendum (2026-10-21)**, D11
 **Writer decisions:** 13 (amended), 20–24 (and 25, recorded for Slice 5) in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Planned on `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`. Slice 4E (reading aids in the inspector) is built in parallel on `epic/lightbox-slice-4e-inspector`; it will probably merge first, and this slice merges it in afterwards.
+**Status:** Implemented on `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf` (see [Implementation notes](#implementation-notes-2026-10-21)). Slice 4E (reading aids in the inspector) is built in parallel on `epic/lightbox-slice-4e-inspector`; it will probably merge first, and this slice merges it in afterwards, with the shared sentence-rule fix (`epic/lightbox-sentence-rule`).
 **Before:** Slice 5. The saved-board format must hold these kinds and the measured breakdown.
 
 ## Why
@@ -66,7 +66,7 @@ brought there, with its example labelled as one.
 - **The estimate** prices G's call like any group's: its exact messages and a
   typical output, a guess from the worked example's length, labelled as one
   until Slice 6 measures it. The run line and the lens card count it ("up to
-  seven grouped calls").
+  7 grouped calls", from the group list).
 
 ## Ownership (decision 20)
 
@@ -152,21 +152,23 @@ One frame, `===LIGHTBOX_GROUP_G_V1===`, `"version": 1`, key `"steering"`:
 - `notes`: 0–`steeringNotes` (4) per figure. A note is exactly `{para,
   quote, stance, why, nudge, example}`; `stance` is `earns`, `leans` or
   `compensates`; `why` at most `steeringWhyCharacters` (160); `nudge` is a
-  string of at most `steeringNudgeCharacters` (160) when the stance leans or
+  string of at most `steeringNudgeCharacters` (120) when the stance leans or
   compensates, and `null` when it earns. A note that breaks a rule is
-  withheld by its host title ("Adverbs (-ly) · note 2"), never its words.
+  withheld by its host title ("Adverbs (-ly) · note II"), never its words.
 - `example` (decision 23, the writer's choice): `null`, or one `{before,
   after}`. It is the nudge applied to the quoted instance, an illustration,
   never a replacement for the writer's text. A fault in it withholds **the
   example alone**, with a host reason the note shows; the note stands:
   - an example on a note that earns;
-  - more than one (a list of two or more: none is shown);
+  - more than one (a list: the first is read, and the rest are withheld
+    with a host reason the note shows);
   - `before` not a run of whole words of the note's **checked quote**, or a
     run that holds no instance of the figure (checked by code, with the
     figure's instance filter, on the quote's own span), or longer than
-    `steeringExampleBeforeWords` (8) words;
+    `steeringExampleBeforeWords` (8) words or `steeringExampleCharacters`
+    (56) characters;
   - `after` empty, longer than `steeringExampleAfterWords` (6) words or
-    `steeringExampleCharacters` (60) characters, the same as `before`
+    `steeringExampleCharacters` (56) characters, the same as `before`
     (case and spacing folded), or breaking a text rule below.
   The anchoring is checked where the quote is: at assembly, on carry
   against the carried quote, and again at Bring. The example is never a
@@ -200,7 +202,9 @@ note, the safe failure; plain diagnosis without a listed word passes.
 | `steering-reading` | steering | counted-read | A figure code measured, read for how it works here: `stat`, the claim, quotes each holding an instance |
 | `steering-note` | steering | read | One instance: `stat`, one quote holding an instance, `stance`, the why (its claim), `nudge` and at most one `example` (leans or compensates only), or the host's reason its example was withheld, `ordinal` |
 
-Titles are the host's: the figure's label, and "<label> · note n".
+Titles are the host's: the figure's label, and "<label> · note n" with
+its place as a Roman numeral ("Being verbs · note II"), so no host digit
+reaches the Opinion as a figure it might state (PR #157 F-01).
 
 ## Gates and carry (`LightboxTileGates`, fresh and carried)
 
@@ -223,8 +227,8 @@ attachment shape):
 
 | Kind | Quotes | Points |
 |---|---|---|
-| `steering-reading` | its quotes, re-checked with the instance filter | "Figure": the host's total, rate, narration and dialogue |
-| `steering-note` | its quote, re-checked with the instance filter, or refused | "Stance"; "Nudge" (leans or compensates); "One way it could go (an example)": `before → after`, only while its `before` still lies in the re-checked quote and holds an instance; "Figure": the figure's label |
+| `steering-reading` | its quotes, re-checked with the instance filter | "Figure": the host's total, rate, narration and dialogue; "By construction"; "Short runs", with the run's stated threshold |
+| `steering-note` | its quote, re-checked with the instance filter, or refused | "Stance", with the figure's label ("Leans · Being verbs"); "Nudge" (leans or compensates); "One way it could go": `before → after`, only while its `before` still lies in the re-checked quote and holds an instance |
 
 The note's why is the item's claim. A stale tile, a lens being read again,
 or a quote no longer holding an instance is refused in host words.
@@ -297,7 +301,7 @@ ain't), on "being" in "was being", and on linking verbs (seem, become):
   withheld) and the instance check; a
   reading's figure and counts; a measured row's counts; evidence; Bring.
 - **Numbers tile.** A standout among the three says "Read under Craft
-  steering" where a reading would be.
+  steering, below" where a reading would be.
 - **Rail.** The Lenses card lists Craft steering; its caption says up to
   seven grouped calls.
 - CSS stays on the Chromium 102 floor (`webviewCssFloor.test.ts`), with the
@@ -355,3 +359,167 @@ leans or compensates. The numbers
 lens no longer reads the three figures. Carried onto an edited chapter,
 every note is held to the same rules a fresh read meets, and Bring carries a
 note's quote, stance, why, nudge and its example, labelled as one.
+
+## Implementation notes (2026-10-21)
+
+This section records what landed and where it differs from the plan above.
+The plan's own numbers were corrected in place where the budgets settled
+them (a nudge's 120 characters, an example's 56); each is noted below.
+
+### What landed
+
+- **Contracts.** `LightboxReadingGroupId` gains `'G'` and `LightboxLensId`
+  gains `'steering'`. The two kinds, `steering-reading` (counted-read) and
+  `steering-note` (read), live in `shared/types/messages/lightboxSteering.ts`
+  with the measure (`LightboxSteeringMeasure`, now required on
+  `LightboxMeasuredSet`). The Opinion's measured refs gain
+  `steering:<stat>`.
+- **Host modules** (all in `LIGHTBOX_MODULES` and the boundary tests, each
+  under 300 lines): `LightboxSteeringMeasure` (the counts), `…Wire` (decoded
+  shapes, host titles), `…Phrasing` (the text rules), `…Codec` (the block),
+  `…Tiles` (assembly, the example's anchor, the task lines) and `…Handoff`
+  (Bring's quote check and points). `LightboxNumberInstances` exports the
+  pattern instance filter both lenses use; the word-frequency tool exports
+  `tagTextTokens` (offsets with tags; `tagPartsOfSpeech` is rebuilt on it,
+  same output); Style Flags exports `STYLE_FLAG_WEAK_VERBS` (same list).
+- **Shared constants.** `shared/constants/lightboxSteering.ts`: the stats,
+  `LIGHTBOX_NUMBERS_READ_STATS` (sentence length, dialogue, passive voice),
+  stance and construction labels, the example label, and the count lines
+  the digest, Bring and the tile share.
+- **Prompts.** `58-steering.md` and `46-example-group-g.md`; `52-numbers.md`
+  reads 0–3 figures and names the three it leaves to steering;
+  `00-lightbox-shared.md` names sentinel `G`. Examples 43 (group D) and 45
+  (group F) are regenerated by the production builders: D's request no
+  longer lists intensifiers and its intensifiers reading is gone; F's
+  digest gains the steering items and cites D's renumbered tiles (D-11 →
+  D-10, D-12 → D-11).
+- **Webview.** `components/lightbox/LightboxSteering.tsx` (one full-width
+  tile after the numbers), `hooks/domain/lightbox/lightboxSteering.ts`
+  (sections, the `steering` item ref, inspector details) and
+  `styles/lightbox/steering.css` (on the Chromium 102 floor; no `KNOWN`
+  entry). Three measured-ramp colours the tier mix already used are now
+  tokens (`--pm-lb-measured-ramp-2…4` in `tokens.css`).
+
+### Where it differs from the plan
+
+- **Budgets.** `steeringNudgeCharacters` is 120 (the plan said 160 in one
+  place) and `steeringExampleCharacters` is 56 for both parts (the plan
+  said 60 for `after`), so a brought nudge and a brought `before → after`
+  each fit one Workshop point (120 characters). The prompt-budget test pins
+  both relations. `numberReadings` drops from 6 to 3, one per figure the
+  numbers lens still reads.
+- **More than one example.** The first is read and the rest withheld with a
+  host reason, as the coordinator's brief asked ("second example
+  withheld"), not "none is shown".
+- **Note titles** use Roman numerals ("Being verbs · note II"), the
+  movement titles' rule, so the Opinion is never shown a host digit it
+  might state (PR #157 F-01).
+- **Bring points.** A reading carries Figure, By construction and Short
+  runs (the run threshold stated: "0 in runs of 3 or more sentences of 8
+  words or fewer"). A note carries Stance with the figure's label ("Leans ·
+  Being verbs"), Nudge and "One way it could go", three points at most.
+- **An example's `after`** is held to the word, quotation and figure rules
+  but not to the instruction-opener check: it is a phrase, not a clause.
+- **The numbers task** with nothing to read says so: "None of the figures
+  this lens reads (sentence length, dialogue, passive voice) stands out in
+  this chapter".
+- **Withheld examples** say why, in the host's words: on a note that earns;
+  one past the first; broken shape; a part too long; no change; a text rule
+  (prefixed "Its example was withheld."); not anchored in the quote, fresh
+  or carried.
+- **The worked example's nudges** name the move and end "may be worth a
+  look": two that opened "Worth a look:" read twice under the board's own
+  label, found while making the evidence.
+- **The lens card** caption counts the calls from the group list ("up to 7
+  grouped calls").
+
+### Found and fixed in review of my own tests
+
+- The codec told a note's own refusals ("Its why was withheld. …") from a
+  shape error by sniffing the message's first word, and "Its" did not match
+  "It ", so those reasons gained "It broke the format:". A refusal is now
+  its own error class (`SteeringNoteRefusal`), with literal tests for each
+  reason.
+
+### The being-verbs investigation
+
+The rate (`countLightboxFigures`), craft steering's total and the quote
+check all run `findBeingVerbs`, so they agree, line for line
+(`LightboxBeingVerbsAgreement.test.ts`): contractions (she's, I'm, they're,
+isn't, wasn't, ain't), linking verbs (seemed, became) and `_was_` count 0
+and are no instance in all three; she'd been, was being (2), `*was*` and
+would-be count and are instances in all three. The writer's readings were
+withheld correctly: they quoted contractions and linking verbs (and one
+quote was not in the chapter). Nothing was fixed in the detector. The task
+line now says what an instance is, figure by figure, and names those
+exclusions; `58-steering.md` says the same. The underscore case is tech
+debt ([2026-10-21-lightbox-word-patterns-miss-underscore-emphasis](../../tech-debt/2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md)).
+
+### Measured on the Alice opening (¶1–¶8, 508 words)
+
+| Figure | Total · rate | Narration · dialogue | Constructions | Short runs |
+|---|---|---|---|---|
+| Being verbs | 17 · 33.5 | 15 · 2 | be + adjective 4, be + -ing 5, be + past participle 1, there or it + be 4, other 3 | 0 |
+| Adverbs (-ly) | 7 · 13.8 | 7 · 0 | with a verb 4 (weak verbs 1), dialogue tag 0, before an adjective 1, before an adverb 0, other 2 | 0 |
+| Intensifiers and fillers | 11 · 21.7 | 11 · 0 | before a generic word 4, before an adjective or adverb 4, other 3 | 0 |
+
+Totals and rates equal the numbers rows, pinned with literal values. No
+instance sits in a run of three short sentences under today's sentence
+rule or under the coming fix that keeps a closing quotation mark with its
+sentence (`epic/lightbox-sentence-rule`); the steering tests use fixtures
+that hold under both rules.
+
+### Prompts and the worked example
+
+- Group G's request is the builder's byte for byte; its response decodes
+  through the production codec with 3 readings, 7 notes, 3 anchored
+  examples, 13 quotes exact and nothing withheld.
+- The largest valid group G response (every field at its bound, every quote
+  240 characters, 3 figures of 4 notes each, compact JSON, framed) is 12,586
+  characters, under the 32,000 cap: no ceiling debt for G.
+- Group F's digest on the example board: 45 items, 38 readings, 0 left out,
+  about 4,020 tokens.
+- Group G's typical output (1,600 tokens) is a guess, added to
+  [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md).
+
+### Tests
+
+New files: `LightboxSteeringMeasure`, `LightboxSteeringReadings` (codec,
+text rules with the pinned list and its plain-diagnosis controls, the
+example, the instance witnesses moved from the craft tests, gates, task
+lines, the largest response), `LightboxSteeringCarry`,
+`LightboxSteeringHandoff`, `LightboxBeingVerbsAgreement`,
+`LightboxOpinionSteering`, the production-root `LightboxSteeringRun` (G sent
+with A–E, F after G, the estimate, a re-read, a stop and a foreign frame),
+`LightboxAppSteering` and `lightboxSteering` (webview). The prompt-budget
+sync test pins the steering lens's ceilings, stances, forbidden list and
+example label. Existing tests moved off the three figures onto sentence
+length, dialogue and passive voice, and count seven calls.
+
+Verification, base `20775cf` against this branch's head: 439 suites / 6,047 tests / 59 snapshots at the head, against 430 / 5,916 / 59 at base;
+`npm run lint` 0 errors and the same 1,133 warnings, identical per file
+and rule; typecheck clean; `npm run build` with `verify:bundle` OK (3
+size warnings, as at base); `git diff --check` clean.
+
+### Evidence
+
+[`docs/pr-reviews/evidence/lightbox-slice-4f-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4f-visual/README.md):
+eleven Lightbox states and the Workshop composer at 1440, 1000 and 500 px,
+from real host output with a stub model; `errors.txt` empty. `webview.js`
+SHA-256 `6c2963092fae2bf4c6565a2ade0aa01eb08a934a3acde099ab85979642f73468`
+from a clean build after `npm ci`.
+
+### Tech debt
+
+- [Word patterns miss underscore emphasis](../../tech-debt/2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Low)
+- [Steering's construction breakdown is a heuristic](../../tech-debt/2026-10-21-lightbox-steering-construction-heuristics.md) (Low)
+- [Lightbox modules near the size limit](../../tech-debt/2026-10-21-lightbox-modules-near-size-limit.md) (Medium)
+- Group G's output guess, in [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md) (Medium)
+
+### For the writer
+
+- Whether "be + past participle" should read adjectival participles ("she
+  was tired") as *be + adjective*, which needs a word list (see the
+  heuristics note).
+- Whether a note should also be able to say a figure is the voice's own by
+  design, beyond Earns (today that goes in the why or the friction).
