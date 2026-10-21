@@ -2,8 +2,11 @@
  * LightboxPartsOfSpeech — parts of speech, repeated phrases and style flags
  * (ADR 2026-10-19 D5). The tags come from the word-frequency tool's offline
  * tagger; a repeated phrase is shown only when one of its words is not a
- * stopword. Words and phrases light their paragraphs; style flags are counts
- * without places, so they are shown but not pinnable.
+ * stopword. Words and phrases light their paragraphs. A style flag that
+ * counts instances (Slice 4E: adverbs, passive voice, weak verbs, filler
+ * words) is a board item too: hover lights its paragraphs, click pins it and
+ * lists its sentences. Repetitive Words and Clichés count words and phrases,
+ * not instances, so they are shown as counts only.
  */
 import * as React from 'react';
 import type { LightboxBoard } from '@messages';
@@ -71,11 +74,20 @@ export const LightboxPartsOfSpeech: React.FC<LightboxPartsOfSpeechProps> = ({ bo
       {styleFlags.length > 0 && (
         <p className="pm-lb-flags">
           <span className="pm-lb-phrases-label">Style flags</span>
-          {styleFlags.map((flag) => (
+          {styleFlags.map((flag) => (flag.id ? (
+            <LightboxItemButton
+              key={flag.type}
+              binding={bind({ kind: 'flag', flag: flag.id })}
+              className="pm-lb-flag is-item"
+              title={flag.examples.join(', ')}
+            >
+              {flag.type} <b>{flag.count.toLocaleString('en-US')}</b>
+            </LightboxItemButton>
+          ) : (
             <span key={flag.type} className="pm-lb-flag" title={flag.examples.join(', ')}>
               {flag.type} <b>{flag.count.toLocaleString('en-US')}</b>
             </span>
-          ))}
+          )))}
         </p>
       )}
     </LightboxTileFrame>

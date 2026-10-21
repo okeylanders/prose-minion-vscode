@@ -59,7 +59,7 @@ export const LightboxStatRow: React.FC<LightboxStatRowProps> = ({ board }) => {
   const [pace, paceNote] = splitPacing(headline.pacing);
   const standards = board.measured.standards;
   const stats = [
-    { value: number(headline.wordCount), label: 'words' },
+    { value: number(headline.wordCount), label: headline.wordCount === 1 ? 'word' : 'words' },
     { value: String(headline.averageWordsPerSentence), label: 'avg words / sentence' },
     { value: `${headline.dialoguePercentage}%`, label: 'dialogue' },
     { value: String(headline.readabilityScore), label: 'readability · simplified' },
@@ -78,8 +78,8 @@ export const LightboxStatRow: React.FC<LightboxStatRowProps> = ({ board }) => {
         ))}
       </div>
       <div className="pm-lb-chips">
-        <span className="pm-lb-chip"><b>{number(headline.paragraphCount)}</b> paragraphs</span>
-        <span className="pm-lb-chip"><b>{number(headline.sentenceCount)}</b> sentences</span>
+        <span className="pm-lb-chip"><b>{number(headline.paragraphCount)}</b> {headline.paragraphCount === 1 ? 'paragraph' : 'paragraphs'}</span>
+        <span className="pm-lb-chip"><b>{number(headline.sentenceCount)}</b> {headline.sentenceCount === 1 ? 'sentence' : 'sentences'}</span>
         <span className="pm-lb-chip"><b>{number(headline.uniqueWordCount)}</b> unique</span>
         <span className="pm-lb-chip">
           <b>{number(headline.hapaxCount)}</b> hapax · {headline.hapaxPercent}%

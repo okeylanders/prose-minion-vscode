@@ -1,0 +1,29 @@
+[LightboxHandler] Board built for Drafts/alice-chapter-1.md: 2186 words, 31 paragraphs
+[LightboxPassageHandler] ¶11–¶11: 1 paragraph sent, 0 past the bound (board board-alice-1).
+[LightboxPassageHandler] The instances of a top word: 27 in 26 sentences, 26 rows sent, 0 past the bound (board board-alice-1).
+[LightboxPassageHandler] ¶2–¶2, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶4–¶4, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶5–¶5, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶6–¶6, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶8–¶8, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶9–¶9, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶11–¶11, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶12–¶12, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶13–¶13, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶15–¶15, lit by a top word: 1 paragraph sent, 0 past the bound, 3 lit (board board-alice-1).
+[LightboxPassageHandler] ¶16–¶16, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶17–¶17, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶18–¶18, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶22–¶22, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶23–¶23, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶24–¶24, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶25–¶25, lit by a top word: 1 paragraph sent, 0 past the bound, 2 lit (board board-alice-1).
+[LightboxPassageHandler] ¶26–¶26, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] ¶27–¶27, lit by a top word: 1 paragraph sent, 0 past the bound, 1 lit (board board-alice-1).
+[LightboxPassageHandler] The instances of a part-of-speech word: 53 in 32 sentences, 32 rows sent, 0 past the bound (board board-alice-1).
+[LightboxPassageHandler] The instances of a repeated phrase: 8 in 6 sentences, 6 rows sent, 0 past the bound (board board-alice-1).
+[LightboxPassageHandler] The instances of a style flag: 119 in 48 sentences, 48 rows sent, 0 past the bound (board board-alice-1).
+[LightboxPassageHandler] The instances of a hapax word: 1 in 1 sentence, 1 row sent, 0 past the bound (board board-alice-1).
+[LightboxHandler] Board built for Drafts/alice-chapter-1.md: 2186 words, 31 paragraphs
+[LightboxHandler] Board built for Drafts/alice-whole-book.md: 26448 words, 815 paragraphs
+[LightboxPassageHandler] The instances of a top word: 385 in 378 sentences, 50 rows sent, 328 past the bound (board board-alice-3).

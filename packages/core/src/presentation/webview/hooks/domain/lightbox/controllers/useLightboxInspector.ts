@@ -27,7 +27,8 @@ import {
   paragraphCountLabel,
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
-import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxLensIsStale, lightboxWithheldQuoteText, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import { isLightboxTermRef } from '@hooks/domain/lightbox/lightboxTerms';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
 import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
@@ -234,7 +235,7 @@ function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): Lightb
       return [{ label: 'An open door', value: 'A question to think with: an offer, never an instruction' }];
     case 'stock-tiers':
       return [
-        ...lightboxTierShares(tile).map((share) => ({ label: share.label, value: `${share.count} of ${tile.classified} beats`, measured: `${share.percent}%` })),
+        ...lightboxTierShares(tile).map((share) => ({ label: share.label, value: `${share.count} of ${pluralize(tile.classified, 'beat')}`, measured: `${share.percent}%` })),
         { label: 'Counted', value: 'By code, from the beats the reading classified and code found: a share of those beats, not of the chapter' }
       ];
     case 'signature':
@@ -365,7 +366,7 @@ export interface LightboxInspectorState {
 
 export interface LightboxInspectorActions {
   clear: () => void;
-  /** Pin one paragraph (the ¶ chips). */
+  /** Pin one paragraph (the ¶ chips); from a counted term, the paragraph keeps it to light (Slice 4E). */
   pinParagraph: (index: number) => void;
   /** Show another page of the pinned item's addresses; the pin stays. */
   showParagraphPage: (page: number) => void;
@@ -408,10 +409,11 @@ export function useLightboxInspector({
   }, [paging, selected, view]);
 
   const clear = React.useCallback(() => onSelect(null), [onSelect]);
-  const pinParagraph = React.useCallback(
-    (index: number) => onSelect({ kind: 'paragraphs', from: index, to: index }),
-    [onSelect]
-  );
+  const pinParagraph = React.useCallback((index: number) => {
+    // What brought the writer here: the pinned term, or the term the pinned paragraph was itself reached from.
+    const via = isLightboxTermRef(selected) ? selected : selected?.kind === 'paragraphs' ? selected.via : undefined;
+    onSelect({ kind: 'paragraphs', from: index, to: index, ...(via ? { via } : {}) });
+  }, [onSelect, selected]);
   const showParagraphPage = React.useCallback((page: number) => {
     if (selected) {
       setPaging({ pin: selected, page });

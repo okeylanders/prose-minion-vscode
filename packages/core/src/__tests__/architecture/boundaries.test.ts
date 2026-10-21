@@ -1016,6 +1016,9 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxStale.ts',
   'shared/types/messages/lightboxHandoff.ts',
   'shared/types/messages/lightboxProjectFiles.ts',
+  // Slice 4E: the inspector's passages, their contract and bounds.
+  'shared/types/messages/lightboxPassages.ts',
+  'shared/constants/lightboxPassages.ts',
   'shared/constants/lightbox.ts',
   'shared/constants/lightboxPlot.ts',
   'shared/constants/lightboxOpinion.ts',
@@ -1077,16 +1080,25 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxTileCounts.ts',
   'infrastructure/lightbox/LightboxContextShelf.ts',
   'infrastructure/lightbox/LightboxFileKey.ts',
+  // Slice 4E: instance finders by each figure's own rule, the board's text kept host-side, and passages cut from it.
+  'infrastructure/lightbox/LightboxInstances.ts',
+  'infrastructure/lightbox/LightboxPassageIndex.ts',
+  'infrastructure/lightbox/LightboxPassages.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',
   'application/handlers/domain/LightboxProjectFiles.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'application/handlers/domain/LightboxPressRun.ts',
+  'application/handlers/domain/LightboxPassageHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
   'presentation/webview/hooks/domain/useLightboxHandoff.ts',
   'presentation/webview/hooks/domain/useLightboxProjectFiles.ts',
+  // Slice 4E: the inspector's passages (transport), counted terms and the wells as drawn (pure).
+  'presentation/webview/hooks/domain/useLightboxPassages.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
@@ -1108,6 +1120,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
   'presentation/webview/components/lightbox/LightboxGravity.tsx',
   'presentation/webview/components/lightbox/LightboxGravityOrbit.tsx',
+  'presentation/webview/components/lightbox/LightboxHapaxList.tsx',
   'presentation/webview/components/lightbox/LightboxHeadline.tsx',
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
@@ -1118,6 +1131,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxOpinion.tsx',
   'presentation/webview/components/lightbox/LightboxPalette.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxPassageWell.tsx',
   'presentation/webview/components/lightbox/LightboxProjectPicker.tsx',
   'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
   'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
@@ -1145,6 +1159,8 @@ const LIGHTBOX_MODULES = [
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
@@ -1194,6 +1210,11 @@ const LIGHTBOX_ROUTE_OWNERS = [
       'LIGHTBOX_REMOVE_CONTEXT_FILE',
       'LIGHTBOX_SET_SPARK_DISMISSED'
     ]
+  },
+  {
+    // Slice 4E: the text a pinned paragraph or counted item stands in
+    owner: 'application/handlers/domain/LightboxPassageHandler.ts',
+    messageTypes: ['LIGHTBOX_REQUEST_PASSAGE']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
@@ -1206,7 +1227,8 @@ const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
   'LIGHTBOX_HAND_OFF_RESULT',
   'LIGHTBOX_WORKSHOP_TRAY',
   'LIGHTBOX_PROJECT_CATALOG',
-  'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS'
+  'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS',
+  'LIGHTBOX_PASSAGE'
 ] as const;
 /**
  * The project picker the Workshop's context selector and the Lightbox share
@@ -1850,6 +1872,7 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {

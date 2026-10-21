@@ -171,10 +171,35 @@ export interface LightboxPartsOfSpeech {
   adverbs: LightboxCountedTerm[];
 }
 
+/**
+ * The style flags whose count is a count of instances, each found by its
+ * Style Flags detector (Slice 4E). Repetitive Words and Clichés count the
+ * words and phrases found, not their instances, so they have no id.
+ */
+export type LightboxStyleFlagId = 'adverbs' | 'passive-voice' | 'weak-verbs' | 'filler-words';
+
 export interface LightboxStyleFlag {
   type: string;
   count: number;
   examples: string[];
+  /** Set for a flag whose instances can be found (Slice 4E): the inspector lists their sentences. */
+  id?: LightboxStyleFlagId;
+  /** 1-based, ascending: the paragraphs an instance touches; empty for a flag without an id. */
+  paragraphs: number[];
+}
+
+/**
+ * A word the text uses once, by the rule the headline's `hapaxCount` counts
+ * (Slice 4E): `proseStatsWords`, whitespace-split, lower-cased, letters and
+ * apostrophes kept.
+ */
+export interface LightboxHapaxWord {
+  /** As counted: "rabbithole" for "rabbit-hole". Names the word to the host. */
+  term: string;
+  /** As the text has it, from its first to its last counted character: "Rabbit-Hole". */
+  written: string;
+  /** Its one paragraph, 1-based. */
+  paragraph: number;
 }
 
 export interface LightboxMeasuredSet {
@@ -188,6 +213,8 @@ export interface LightboxMeasuredSet {
     trigrams: LightboxCountedTerm[];
   };
   styleFlags: LightboxStyleFlag[];
+  /** Every word used once, in order of first appearance; exactly `headline.hapaxCount` of them (Slice 4E). */
+  hapax: LightboxHapaxWord[];
   /** The longest and the very short sentences, per paragraph (Slice 4B). */
   sentences: LightboxSentenceSummary;
   /** The figures that stand out, against the preset and the writer's own average (Slice 4B). */

@@ -102,6 +102,7 @@ elsewhere.
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
 | Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; decide before Slice 5 saves boards) | Identified |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
+| Medium | [A closing quotation mark after a sentence's end counts as a sentence](2026-10-21-prose-sentences-closing-quote.md) (Lightbox Slice 4E; `“Oh dear!”` is "2 sentences", and a well's row can begin with "”") | Identified |
 
 ## Review Guidance
 
