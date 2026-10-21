@@ -100,7 +100,7 @@ export function lightboxSparkPhrasingFault(question: string): string | undefined
   if (!text.replace(CLOSING_MARKS, '').endsWith('?')) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.notQuestion;
   }
-  if (text.split(CLAUSE_BREAK).some(opensWithInstruction)) {
+  if (lightboxOpensWithInstruction(text)) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.instruction;
   }
   const folded = fold(text);
@@ -111,6 +111,15 @@ export function lightboxSparkPhrasingFault(question: string): string | undefined
     return LIGHTBOX_SPARK_PHRASING_REASONS.number;
   }
   return undefined;
+}
+
+/**
+ * Whether any clause of `text` opens with an instruction, by the same opener
+ * rule a spark is held to: shared with the Opinion's text rules (Slice 4D),
+ * which hold every view to "diagnosis, never a rewrite".
+ */
+export function lightboxOpensWithInstruction(text: string): boolean {
+  return text.split(CLAUSE_BREAK).some(opensWithInstruction);
 }
 
 /** A clause instructs when it, or (unless it opens as a question) any of its comma segments, opens with an instruction. */

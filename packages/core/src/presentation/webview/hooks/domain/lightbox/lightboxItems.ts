@@ -33,6 +33,7 @@ import { findLightboxTile, lightboxTilesOfKind } from '@hooks/domain/lightbox/li
 import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
+import { lightboxObservationItem } from '@hooks/domain/lightbox/lightboxOpinion';
 
 export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
 
@@ -51,7 +52,9 @@ export type LightboxItemRef =
   /** A measured section (Slice 4C), by its place on the board's Sections lane, from 1. */
   | { kind: 'section'; index: number }
   /** The Pressure lane (Slice 4C): where the threads read stand open, counted by code. */
-  | { kind: 'pressure' };
+  | { kind: 'pressure' }
+  /** One of the Opinion's observations (Slice 4D), by the tile's host id and the observation's id: it lights what it cites. */
+  | { kind: 'observation'; tileId: string; observation: string };
 
 export interface LightboxResolvedItem {
   ref: LightboxItemRef;
@@ -104,6 +107,8 @@ export function lightboxItemKey(ref: LightboxItemRef): string {
       return `section:${ref.index}`;
     case 'pressure':
       return 'pressure';
+    case 'observation':
+      return `observation:${ref.tileId}:${ref.observation}`;
   }
 }
 
@@ -157,6 +162,11 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
     }
     case 'standout':
       return isLightboxNumberStat(record.stat) ? { kind: 'standout', stat: record.stat } : null;
+    case 'observation': {
+      const tileId = text('tileId');
+      const observation = text('observation');
+      return tileId && observation && /^O[1-6]$/.test(observation) ? { kind: 'observation', tileId, observation } : null;
+    }
     default:
       return null;
   }
@@ -195,6 +205,22 @@ export function resolveLightboxItem(
     }
     case 'standout':
       return standoutItem(board, ref);
+    case 'observation': {
+      const observation = lightboxObservationItem(board, ref.tileId, ref.observation);
+      return observation
+        ? {
+            ref,
+            register: 'read',
+            where: `Opinion · Observation ${ref.observation}`,
+            title: observation.text,
+            // What it stands on, by the board's own names; nothing here is counted.
+            claim: `Cites ${observation.cites.join('; ')}.`,
+            paragraphs: observation.paragraphs,
+            support: [],
+            reading: observation.tile
+          }
+        : undefined;
+    }
   }
 }
 

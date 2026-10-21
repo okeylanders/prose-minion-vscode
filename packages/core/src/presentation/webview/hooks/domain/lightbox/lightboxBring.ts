@@ -9,21 +9,28 @@
  * host would refuse (a stale tile, a lens being read again, a tile with no
  * quote), shows the host's answer, and shows **Bound** only while the
  * Workshop's own tray holds the tile: a tile the writer sent or removed
- * there can be brought again.
+ * there can be brought again. The Opinion (Slice 4D) brings the one view on
+ * show, by name; it is disabled where the host would refuse it (stale,
+ * the view withheld, or no quote cited).
  */
 
 import type {
   LightboxBoard,
   LightboxHandOffPayload,
+  LightboxOpinionViewId,
   LightboxReadingTile,
   LightboxWorkshopTrayTile
 } from '@messages';
 import { lightboxHandOffConcerns, type LightboxHandOffState } from '@hooks/domain/lightbox/lightboxHandoff';
+import { lightboxOpinionBringBlock } from '@hooks/domain/lightbox/lightboxOpinion';
+import { lightboxOpinionDefaultView } from '@shared/constants/lightboxOpinion';
 
 export const LIGHTBOX_BRING_LABEL = 'Bring to Workshop';
 /** A spark is an offer phrased as a question; it travels as one. */
 export const LIGHTBOX_BRING_SPARK_LABEL = 'Bring as a question';
 export const LIGHTBOX_BOUND_LABEL = 'Bound for Workshop';
+/** The Opinion travels as the one view the writer is looking at. */
+export const LIGHTBOX_BRING_VIEW_LABEL = 'Bring this view to Workshop';
 
 export type LightboxBringState = 'ready' | 'sending' | 'bound' | 'refused';
 
@@ -40,9 +47,13 @@ export interface LightboxBringView {
 const NOTE = 'Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.';
 const BOUND_NOTE = 'Waiting above the Workshop composer. Send it with a message or remove it there.';
 
-/** The request the webview sends: it names the tile, nothing more. */
-export function lightboxBringRequest(boardId: string, tileId: string): Extract<LightboxHandOffPayload, { kind: 'tile' }> {
-  return { kind: 'tile', boardId, tileId };
+/** The request the webview sends: it names the tile and, for the Opinion, the view on show; nothing more. */
+export function lightboxBringRequest(
+  boardId: string,
+  tileId: string,
+  view?: LightboxOpinionViewId
+): Extract<LightboxHandOffPayload, { kind: 'tile' }> {
+  return { kind: 'tile', boardId, tileId, ...(view ? { view } : {}) };
 }
 
 /** Whether the Workshop's tray holds this tile of this board. */
@@ -55,9 +66,11 @@ export function lightboxBringView(
   board: LightboxBoard,
   tile: LightboxReadingTile,
   handoff: LightboxHandOffState | null,
-  tray: readonly LightboxWorkshopTrayTile[]
+  tray: readonly LightboxWorkshopTrayTile[],
+  /** The Opinion's view on show (Slice 4D). */
+  opinionView?: LightboxOpinionViewId
 ): LightboxBringView {
-  const label = tile.kind === 'spark' ? LIGHTBOX_BRING_SPARK_LABEL : LIGHTBOX_BRING_LABEL;
+  const label = tile.kind === 'spark' ? LIGHTBOX_BRING_SPARK_LABEL : tile.kind === 'opinion' ? LIGHTBOX_BRING_VIEW_LABEL : LIGHTBOX_BRING_LABEL;
   if (lightboxTileBound(tray, board.boardId, tile.id)) {
     return { label: LIGHTBOX_BOUND_LABEL, disabled: true, note: BOUND_NOTE, state: 'bound' };
   }
@@ -67,15 +80,17 @@ export function lightboxBringView(
   const mine = lightboxHandOffConcerns(handoff, 'tile', board.boardId, tile.id);
   // One handoff at a time: while anything is on its way, every Bring waits.
   const sending = handoff?.status === 'sending';
+  // The Opinion is held to what the host checks of its view; any other tile needs a quote to carry.
+  const blocked = tile.kind === 'opinion'
+    ? lightboxOpinionBringBlock(board, tile, opinionView ?? lightboxOpinionDefaultView(tile))
+    : tile.evidence.length === 0 ? 'It has no quote to carry.' : undefined;
   const reason = stale
     ? 'Read against an earlier version of the chapter. Read the lens again before bringing it.'
     : reading
       ? 'This lens is being read again.'
-      : tile.evidence.length === 0
-        ? 'It has no quote to carry.'
-        : sending
-          ? mine ? 'Bringing it to the Workshop…' : 'Something else is on its way to the Workshop.'
-          : undefined;
+      : blocked ?? (sending
+        ? mine ? 'Bringing it to the Workshop…' : 'Something else is on its way to the Workshop.'
+        : undefined);
   if (reason) {
     return { label, disabled: true, reason, note: reason, state: mine && sending ? 'sending' : 'ready' };
   }

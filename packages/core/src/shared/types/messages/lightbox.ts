@@ -209,7 +209,7 @@ export interface LightboxBoard {
   paragraphs: LightboxParagraphMetric[];
   ribbon: LightboxRibbonColumn[];
   measured: LightboxMeasuredSet;
-  /** Groups A to E, in that order. */
+  /** Groups A to F, in that order: A–E read the chapter, F the board (Slice 4D). */
   readings: LightboxReadingGroup[];
 }
 

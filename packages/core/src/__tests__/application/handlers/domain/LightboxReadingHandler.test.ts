@@ -58,12 +58,14 @@ describe('LightboxReadingHandler', () => {
       ['A', ['headline', 'motif', 'tension', 'gravity', 'palette']],
       ['B', ['characters']],
       ['D', ['stock', 'rhythm', 'numbers']],
-      ['E', ['template', 'pressure', 'artifacts', 'summary']]
+      ['E', ['template', 'pressure', 'artifacts', 'summary']],
+      // The Opinion, last (Slice 4D).
+      ['F', ['opinion']]
     ]);
     // A tile's re-read prices its own lens, except that template and summary are read together (Slice 4C).
     expect(estimate?.rereads.map((call) => call.lenses)).toEqual([
       ['headline'], ['motif'], ['tension'], ['gravity'], ['palette'], ['characters'], ['stock'], ['rhythm'], ['numbers'],
-      ['template', 'summary'], ['pressure'], ['artifacts'], ['template', 'summary']
+      ['template', 'summary'], ['pressure'], ['artifacts'], ['template', 'summary'], ['opinion']
     ]);
     expect(estimate?.costUsd).toBeGreaterThan(0);
   });
@@ -80,24 +82,27 @@ describe('LightboxReadingHandler', () => {
     const progress = ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
     const characters = progress.filter((entry) => entry.phase !== 'started').map((entry) => entry.outputCharacters);
     expect(characters.every((count, index) => index === 0 || count >= characters[index - 1])).toBe(true);
-    expect(progress[progress.length - 1]).toMatchObject({ phase: 'finished', outputCharacters: 7_500 });
+    // Six calls of 1,500 characters each: groups A–E, then the Opinion (Slice 4D).
+    expect(progress[progress.length - 1]).toMatchObject({ phase: 'finished', outputCharacters: 9_000 });
   });
 
   it('reads the board: groups run, land on the board by id, and the run finishes', async () => {
     const { run, settle, ofType, service, board, runInitial } = await setup();
     await run();
     await settle();
-    expect(runInitial).toHaveBeenCalledTimes(5);
+    expect(runInitial).toHaveBeenCalledTimes(6);
     const boards = ofType(MessageType.LIGHTBOX_BOARD);
-    expect(boards[0].payload.board?.readings.map((group) => group.status)).toEqual(['running', 'running', 'running', 'running', 'running']);
+    expect(boards[0].payload.board?.readings.map((group) => group.status)).toEqual(['running', 'running', 'running', 'running', 'running', 'running']);
     const progress = ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
-    expect(progress[0]).toMatchObject({ phase: 'started', token: 'run-1-token', groups: ['A', 'B', 'C', 'D', 'E'] });
-    expect(progress[progress.length - 1]).toMatchObject({ phase: 'finished', groupsBack: 5 });
+    expect(progress[0]).toMatchObject({ phase: 'started', token: 'run-1-token', groups: ['A', 'B', 'C', 'D', 'E', 'F'] });
+    expect(progress[progress.length - 1]).toMatchObject({ phase: 'finished', groupsBack: 6 });
     const results = ofType(MessageType.LIGHTBOX_GROUP_RESULT).map((message) => message.payload);
     expect(results.map((result) => [result.group.group, result.group.status, result.token])).toEqual(expect.arrayContaining([
       ['A', 'ok', 'run-1-token'], ['B', 'ok', 'run-1-token'], ['C', 'ok', 'run-1-token'], ['D', 'ok', 'run-1-token'],
-      ['E', 'ok', 'run-1-token']
+      ['E', 'ok', 'run-1-token'], ['F', 'ok', 'run-1-token']
     ]));
+    // The Opinion lands last, once the others have.
+    expect(results.at(-1)?.group.group).toBe('F');
     const stored = service.currentBoard();
     expect(stored?.boardId).toBe(board.boardId);
     expect(stored?.readings.every((group) => group.status === 'ok' && group.tiles.length > 0)).toBe(true);
@@ -149,7 +154,7 @@ describe('LightboxReadingHandler', () => {
     await route(MessageType.LIGHTBOX_CANCEL_RUN, { boardId: board.boardId, token: 'run-1-token' });
     await settle();
     const readings = service.currentBoard()!.readings;
-    expect(readings.map((group) => group.status)).toEqual(['ok', 'cancelled', 'cancelled', 'cancelled', 'cancelled']);
+    expect(readings.map((group) => group.status)).toEqual(['ok', 'cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled']);
     expect(readings[0].tiles.length).toBeGreaterThan(0);
     expect(readings[1].error).toBe('Stopped before this group came back.');
     const cancelled = ofType(MessageType.LIGHTBOX_RUN_PROGRESS).find((message) => message.payload.phase === 'cancelled');
@@ -275,6 +280,6 @@ describe('LightboxReadingHandler', () => {
     await run();
     handler.dispose();
     expect(runner.activeRun(board.boardId)).toBeUndefined();
-    expect(service.currentBoard()!.readings.map((group) => group.status)).toEqual(['cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled']);
+    expect(service.currentBoard()!.readings.map((group) => group.status)).toEqual(['cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled', 'cancelled']);
   });
 });

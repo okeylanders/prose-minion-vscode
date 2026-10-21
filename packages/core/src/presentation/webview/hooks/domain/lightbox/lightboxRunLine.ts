@@ -9,7 +9,9 @@
  * withheld, and offers the next press: "Read the rest" when a group stopped
  * or failed, "Re-read" when everything landed, and says how many lenses are
  * stale after the text changed (D4). Every figure comes from the host's
- * estimate and board.
+ * estimate and board. The Opinion (Slice 4D) is priced "up to" its
+ * digest's bound, and the cost note says so; while it is the one group
+ * still out, the line says it is weighing the board.
  *
  * Everything is the board's own (PR #149 F-03): an estimate for another
  * board is no estimate ("Estimating the cost…", nothing to press), and Stop
@@ -27,7 +29,7 @@ import type {
   LightboxRunProgress,
   LightboxRunScope
 } from '@messages';
-import { lightboxLensLabel, lightboxRereadLenses } from '@shared/constants/lightbox';
+import { LIGHTBOX_BOARD_GROUP, lightboxLensLabel, lightboxRereadLenses } from '@shared/constants/lightbox';
 import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
@@ -82,7 +84,11 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
     ? `est. ${formatLightboxCost(costs.reduce<number>((sum, value) => sum + (value as number), 0))}`
     : 'cost unavailable';
   const unknown = calls.some((call) => call.fit === 'unknown') ? ' · model window unknown' : '';
-  return `${count} · ${cost}${unknown}`;
+  // The Opinion's digest is built when it starts, so its call is priced at the digest's bound (Slice 4D).
+  const bound = calls.some((call) => call.inputBound === 'digest')
+    ? calls.length === 1 ? ' · up to its digest bound' : ' · the Opinion up to its digest bound'
+    : '';
+  return `${count} · ${cost}${unknown}${bound}`;
 }
 
 /** What a tile's "Re-read" would cost. */
@@ -167,9 +173,13 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   if (running.length > 0 || input.awaitingStart) {
     const groups = activeRun?.groups.length ? activeRun.groups : running.map((group) => group.group);
     const back = groups.length - running.length;
+    // The Opinion runs last, once the others are back (Slice 4D).
+    const weighing = running.length === 1 && running[0].group === LIGHTBOX_BOARD_GROUP && groups.length > 1;
     return {
       status: 'running',
-      note: running.length === 0 ? 'Starting…' : `Reading… ${back} of ${pluralize(groups.length, 'lens group')} back`,
+      note: running.length === 0
+        ? 'Starting…'
+        : `${weighing ? 'Weighing the board for the Opinion…' : 'Reading…'} ${back} of ${pluralize(groups.length, 'lens group')} back`,
       ...(activeRun && running.length > 0 ? { stopToken: activeRun.token } : {})
     };
   }

@@ -61,6 +61,7 @@ import {
   decodeSummaryBlock,
   decodeTemplateBlock
 } from '@/infrastructure/lightbox/LightboxPlotCodec';
+import { decodeOpinionBlock } from '@/infrastructure/lightbox/LightboxOpinionCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
 /** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
@@ -237,6 +238,8 @@ function decodeBlock(
       return decodeArtifactsBlock(value, path, friction);
     case 'summary':
       return decodeSummaryBlock(value, path, friction);
+    case 'opinion':
+      return decodeOpinionBlock(value, path, friction);
   }
 }
 

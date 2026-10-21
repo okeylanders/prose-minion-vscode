@@ -11,7 +11,8 @@
  * - a borrowed field (Slice 3): Lexical Gravity's Build lens, prefilled, and
  *   nothing built until the writer presses Build;
  * - a reading tile (Slice 4): a pending attachment above the composer, its
- *   claim and verified quotes only, and nothing sent until the writer sends.
+ *   claim and verified quotes only, and nothing sent until the writer sends;
+ *   the Opinion (Slice 4D) travels as the one view the writer shows.
  *
  * The tray (`LIGHTBOX_WORKSHOP_TRAY`) is what the Workshop holds: the
  * Lightbox tiles waiting above its composer, each staged only on the
@@ -22,6 +23,7 @@ import { MessageEnvelope, MessageType } from './base';
 import type { WorkshopLexicalGravityBuildSeed } from './workshop/lexicalGravity';
 import type { WorkshopLightboxTile } from './workshop/lightboxTiles';
 import type { WorkshopSeedFailure, WorkshopSeedOutcome } from './workshop/seedDelivery';
+import type { LightboxOpinionViewId } from './lightboxOpinion';
 
 /** What the Lightbox can hand over: a borrowed field as a lens to build (Slice 3), or a reading tile (Slice 4). */
 export type LightboxHandOffKind = 'lexical-gravity-seed' | 'tile';
@@ -39,6 +41,11 @@ export type LightboxHandOffPayload =
       boardId: string;
       /** The host-minted id of a reading tile. */
       tileId: string;
+      /**
+       * The Opinion only (Slice 4D): the view the writer is looking at. The
+       * host brings that view, by its name; any other tile ignores it.
+       */
+      view?: LightboxOpinionViewId;
     };
 
 export interface LightboxHandOffMessage extends MessageEnvelope<LightboxHandOffPayload> {

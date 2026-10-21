@@ -238,8 +238,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
       <p className="pm-lb-inspector-note">{view.registerNote}</p>
       {reading?.stale && (
         <p className="pm-lb-stale-note">
-          <b>Stale</b> Read against an earlier version of this chapter. The quotes below were checked again
-          against this one; a quote whose words are gone is withheld.
+          <b>Stale</b> {reading.staleNote ?? 'Read against an earlier version of this chapter. The quotes below were checked again ' +
+            'against this one; a quote whose words are gone is withheld.'}
         </p>
       )}
 

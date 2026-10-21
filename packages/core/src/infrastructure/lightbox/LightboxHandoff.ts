@@ -30,6 +30,7 @@ import {
 } from '@messages';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { isLightboxOpinionView } from '@shared/constants/lightboxOpinion';
 
 /** Slice 3's handoff: a borrowed field, as a Build lens seed. */
 export const LIGHTBOX_SEED_HAND_OFF_KIND = 'lexical-gravity-seed' satisfies LightboxHandOffPayload['kind'];
@@ -81,7 +82,7 @@ export function parseLightboxHandOffRequest(payload: unknown): LightboxHandOffPa
   if (!payload || typeof payload !== 'object') {
     return undefined;
   }
-  const { kind, boardId, fieldId, tileId } = payload as Record<string, unknown>;
+  const { kind, boardId, fieldId, tileId, view } = payload as Record<string, unknown>;
   const id = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
   if (!id(boardId)) {
     return undefined;
@@ -89,7 +90,11 @@ export function parseLightboxHandOffRequest(payload: unknown): LightboxHandOffPa
   if (kind === SEED_KIND) {
     return id(fieldId) ? { kind: SEED_KIND, boardId, fieldId } : undefined;
   }
-  return kind === 'tile' && id(tileId) ? { kind: 'tile', boardId, tileId } : undefined;
+  if (kind !== 'tile' || !id(tileId) || (view !== undefined && !isLightboxOpinionView(view))) {
+    return undefined;
+  }
+  // The Opinion's view, by name (Slice 4D); any other tile ignores it.
+  return { kind: 'tile', boardId, tileId, ...(view !== undefined ? { view } : {}) };
 }
 
 export type LightboxHandoffPreparation =

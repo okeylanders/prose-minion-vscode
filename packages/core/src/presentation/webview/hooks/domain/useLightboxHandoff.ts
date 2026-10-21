@@ -22,6 +22,7 @@
 import * as React from 'react';
 import {
   LightboxHandOffPayload,
+  LightboxOpinionViewId,
   LightboxHandOffResultMessage,
   LightboxWorkshopTrayMessage,
   LightboxWorkshopTrayTile,
@@ -47,8 +48,8 @@ export interface LightboxHandoffActions {
   handleWorkshopTray: (message: LightboxWorkshopTrayMessage) => void;
   /** Ask the host to build a pinned borrowed field as a lens in the Workshop. */
   buildLens: (fieldId: string) => void;
-  /** Ask the host to stage a reading tile above the Workshop composer. */
-  bringTile: (tileId: string) => void;
+  /** Ask the host to stage a reading tile above the Workshop composer; for the Opinion, the view on show. */
+  bringTile: (tileId: string, view?: LightboxOpinionViewId) => void;
   /** The tray's "Open Workshop →". */
   openWorkshop: () => void;
 }
@@ -105,9 +106,9 @@ export function useLightboxHandoff({ boardId }: UseLightboxHandoffOptions): UseL
     }
   }, [boardId, send]);
 
-  const bringTile = React.useCallback((tileId: string) => {
+  const bringTile = React.useCallback((tileId: string, view?: LightboxOpinionViewId) => {
     if (boardId) {
-      send(lightboxBringRequest(boardId, tileId));
+      send(lightboxBringRequest(boardId, tileId, view));
     }
   }, [boardId, send]);
 

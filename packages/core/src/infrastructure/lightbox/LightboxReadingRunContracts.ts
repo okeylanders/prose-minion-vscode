@@ -19,6 +19,7 @@ import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import type { LightboxGroupRequest, LightboxReadingMaterial } from '@/infrastructure/lightbox/LightboxReadingPrompts';
 import type { LightboxModelFacts, LightboxModelPricing } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import type { LightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 
 /** The engine surface the runner uses. */
 export interface LightboxReadingEngines {
@@ -62,6 +63,12 @@ export interface LightboxGroupOutcome {
   usage?: TokenUsage;
   /** Per lens; empty for a failed call. */
   quoteChecks: LightboxLensQuoteChecks[];
+  /**
+   * Group F (Slice 4D): the key of the digest the call read
+   * (`LightboxOpinionDigest.key`), so its landing is correlated with the
+   * board it weighed as well as the run that read it.
+   */
+  digestKey?: string;
 }
 
 export interface LightboxRunSummary {
@@ -77,6 +84,22 @@ export interface LightboxRunListener {
   onProgress(outputCharacters: number): void;
   /** Every group settled, and the run was not stopped. */
   onFinished(summary: LightboxRunSummary): void;
+}
+
+/**
+ * What group F reads (Slice 4D): the board's digest, built from the board as
+ * it stands when F starts, after every other group of its run has settled.
+ * Supplied by the press's owner, which holds the board; `refusal` is why
+ * there is nothing to weigh (writer-facing), and nothing is sent then.
+ */
+export interface LightboxOpinionPort {
+  digest(): LightboxOpinionDigest | { refusal: string };
+}
+
+/** What a run is started with beyond its calls. */
+export interface LightboxRunOptions {
+  /** Group F's board; without it, an F call fails with nothing sent. */
+  opinion?: LightboxOpinionPort;
 }
 
 /**

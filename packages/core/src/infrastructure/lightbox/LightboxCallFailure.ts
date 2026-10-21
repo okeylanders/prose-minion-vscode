@@ -98,22 +98,39 @@ export function describeLightboxCallFailure(error: unknown): LightboxCallFailure
 /**
  * A failure of the host's own work around the calls (PR #149 F-10): setting
  * the run up over the chapter (the quote verifier and term counter), before
- * anything is sent, or checking a reply that came back. Described the same
- * way, by category and at most a built-in error class.
+ * anything is sent, or checking a reply that came back; for group F
+ * (Slice 4D), gathering the board's digest before its call, or checking its
+ * reply against that digest. Described the same way, by category and at
+ * most a built-in error class.
  */
-export function describeLightboxHostFailure(error: unknown, stage: 'setup' | 'check'): LightboxCallFailure {
+export function describeLightboxHostFailure(error: unknown, stage: 'setup' | 'check' | 'digest' | 'weigh'): LightboxCallFailure {
   const name = error instanceof Error && BUILT_IN_ERRORS.has(error.name) ? ` (${error.name})` : '';
-  return stage === 'setup'
-    ? {
-      category: 'setup-failed',
-      message: 'The chapter could not be prepared for checking quotes, so nothing was sent.',
-      log: `setup-failed${name}`
-    }
-    : {
-      category: 'check-failed',
-      message: `The reading came back but could not be checked against the chapter. ${TRY_AGAIN}`,
-      log: `check-failed${name}`
-    };
+  switch (stage) {
+    case 'setup':
+      return {
+        category: 'setup-failed',
+        message: 'The chapter could not be prepared for checking quotes, so nothing was sent.',
+        log: `setup-failed${name}`
+      };
+    case 'digest':
+      return {
+        category: 'setup-failed',
+        message: 'The board could not be gathered for the Opinion, so nothing was sent.',
+        log: `setup-failed (digest)${name}`
+      };
+    case 'check':
+      return {
+        category: 'check-failed',
+        message: `The reading came back but could not be checked against the chapter. ${TRY_AGAIN}`,
+        log: `check-failed${name}`
+      };
+    case 'weigh':
+      return {
+        category: 'check-failed',
+        message: `The Opinion came back but could not be checked against the board. ${TRY_AGAIN}`,
+        log: `check-failed (opinion)${name}`
+      };
+  }
 }
 
 function unavailableMessage(reason: AgentRunUnavailableReason, retryAfterSeconds?: number): string {

@@ -33,6 +33,7 @@ import './styles/lightbox/gravity.css';
 import './styles/lightbox/story.css';
 import './styles/lightbox/craft.css';
 import './styles/lightbox/plot.css';
+import './styles/lightbox/opinion.css';
 import * as React from 'react';
 import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
@@ -46,6 +47,7 @@ import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
 import { LightboxProjectPicker } from '@components/lightbox/LightboxProjectPicker';
+import type { LightboxOpinionActions } from '@components/lightbox/LightboxOpinion';
 import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
@@ -53,6 +55,7 @@ import { useLightboxProjectFiles } from '@hooks/domain/useLightboxProjectFiles';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
+import { useLightboxOpinionView } from '@hooks/domain/lightbox/controllers/useLightboxOpinionView';
 import {
   buildLightboxRunLine,
   lightboxCallsNote,
@@ -76,6 +79,8 @@ export const LightboxApp: React.FC = () => {
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
   const escape = useLightboxEscape({ pinned: lightbox.selected !== null, onClear: inspector.clear });
+  // The Opinion's view the writer chose on this board: a webview preference only (Slice 4D).
+  const opinionView = useLightboxOpinionView({ boardId: board?.boardId });
 
   const routes = React.useMemo<MessageHandlerMap>(() => {
     const chromeRoutes = buildFullTabChromeRoutes(chrome);
@@ -148,16 +153,31 @@ export const LightboxApp: React.FC = () => {
     : undefined), [board, handoff, requestBuildLens]);
 
   // Bring to Workshop (Slice 4): the inspector's action and the spark lane's, from one view.
+  // The Opinion brings the view on show, by name (Slice 4D).
+  const { chosen: opinionChosen, choose: chooseOpinionView } = opinionView;
   const bring = React.useMemo(() => (board
     ? {
-        view: (tile: Parameters<typeof lightboxBringView>[1]) => lightboxBringView(board, tile, handoff, tray),
-        onBring: bringTile,
+        view: (tile: Parameters<typeof lightboxBringView>[1]) => lightboxBringView(board, tile, handoff, tray, opinionChosen),
+        onBring: (tileId: string) => bringTile(tileId, opinionChosen),
         onOpenWorkshop: openWorkshop
       }
-    : undefined), [board, bringTile, handoff, openWorkshop, tray]);
+    : undefined), [board, bringTile, handoff, openWorkshop, opinionChosen, tray]);
 
   const { setSparkDismissed } = lightbox;
+  // The Opinion's tabs, its own re-read (priced "up to" its digest bound) and its Bring (Slice 4D).
+  const opinionActions = React.useMemo<LightboxOpinionActions>(() => ({
+    chosen: opinionChosen,
+    onChoose: chooseOpinionView,
+    reread: {
+      ...lightboxRereadAvailability({ estimate, lens: 'opinion', lensesOff, providerPaused: chrome.providerPaused, running }),
+      onReread: () => run({ mode: 'lens', lens: 'opinion' })
+    },
+    ...(board
+      ? { bring: { view: (tile, view) => lightboxBringView(board, tile, handoff, tray, view), onBring: bringTile, onOpenWorkshop: openWorkshop } }
+      : {})
+  }), [board, bringTile, chooseOpinionView, chrome.providerPaused, estimate, handoff, lensesOff, openWorkshop, opinionChosen, run, running, tray]);
   const tileActions = React.useMemo(() => ({
+    opinion: opinionActions,
     onDismissSpark: setSparkDismissed,
     bringSpark: bring && {
       view: (spark: Parameters<typeof lightboxBringView>[1]) => {
@@ -167,7 +187,7 @@ export const LightboxApp: React.FC = () => {
       },
       onBring: bring.onBring
     }
-  }), [bring, setSparkDismissed]);
+  }), [bring, opinionActions, setSparkDismissed]);
 
   usePersistence({
     ...lightbox.persistedState,
@@ -176,6 +196,7 @@ export const LightboxApp: React.FC = () => {
     ...focus.persistedState,
     ...inspector.persistedState,
     ...escape.persistedState,
+    ...opinionView.persistedState,
     ...chrome.persistedState
   });
 

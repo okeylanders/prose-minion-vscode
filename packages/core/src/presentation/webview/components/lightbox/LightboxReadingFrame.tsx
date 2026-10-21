@@ -32,6 +32,9 @@ export interface LightboxReadingFrameProps {
   after?: React.ReactNode;
   /** The stale note before the aside, for a frame whose aside holds its readings (the numbers). */
   staleFirst?: boolean;
+  /** The frame's own chip and class (the Opinion, Slice 4D). */
+  chip?: React.ReactNode;
+  frameClass?: string;
   children: React.ReactNode;
 }
 
@@ -46,12 +49,21 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   footnote,
   after,
   staleFirst,
+  chip,
+  frameClass,
   children
 }) => {
   const read = view.phase === 'ok';
   const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
   return (
-    <LightboxTileFrame kind={kind} span={span} title={title} footnote={read && view.tiles.length > 0 ? footnote : undefined}>
+    <LightboxTileFrame
+      kind={kind}
+      span={span}
+      title={title}
+      footnote={read && view.tiles.length > 0 ? footnote : undefined}
+      chip={chip}
+      className={frameClass}
+    >
       {staleFirst && view.stale && <LightboxStaleNote />}
       {aside}
       {!staleFirst && view.stale && <LightboxStaleNote />}

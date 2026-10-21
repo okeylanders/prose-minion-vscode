@@ -262,7 +262,9 @@ export class LightboxService {
           paragraphs: paragraphTexts,
           averageWordsPerSentence: board.measured.headline.averageWordsPerSentence,
           columns: board.ribbon,
-          numbers: board.measured.numbers.rows
+          numbers: board.measured.numbers.rows,
+          // The Opinion's measured citations are held to the rebuilt board's figures (Slice 4D).
+          measured: board.measured
         })
       };
       carried = true;

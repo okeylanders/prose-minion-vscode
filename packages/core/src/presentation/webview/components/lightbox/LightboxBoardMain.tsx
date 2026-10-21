@@ -5,8 +5,9 @@
  * it is read), any refusal (naming the refused source and, over a retained
  * board, the source still shown), the toolbar (tile filter, register legend,
  * and the run line), the sticky paragraph ribbon and the tension arc's line,
- * the counted tiles, then the readings, and the Spark lane under them, all
- * through the exhaustive renderer map. A lens that is off is not drawn.
+ * the counted tiles, then the readings, the Spark lane under them, and the
+ * Opinion last, all through the exhaustive renderer map. A lens that is off
+ * is not drawn.
  */
 import * as React from 'react';
 import type {
@@ -131,6 +132,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   const drawReading = (kind: LightboxReadingTileKind) =>
     React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind, actions, lensesOff });
   const laneOn = lensOn(LIGHTBOX_TILE_LENS[LIGHTBOX_READING_LAYOUT.lane]);
+  // The Opinion, the one evaluative tile, is the board's last (Slice 4D).
+  const lastOn = lensOn(LIGHTBOX_TILE_LENS[LIGHTBOX_READING_LAYOUT.last]);
 
   return (
     <div className="pm-lb-scroll">
@@ -201,7 +204,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         {showRead && readingGrid.map(drawReading)}
       </div>
       {showRead && laneOn && drawReading(LIGHTBOX_READING_LAYOUT.lane)}
-      {showRead && readingGrid.length === 0 && !laneOn && (
+      {showRead && lastOn && drawReading(LIGHTBOX_READING_LAYOUT.last)}
+      {showRead && readingGrid.length === 0 && !laneOn && !lastOn && (
         <p className="pm-lb-empty-note">Every reading lens is off. Turn one on in the rail to see where it will land.</p>
       )}
     </div>

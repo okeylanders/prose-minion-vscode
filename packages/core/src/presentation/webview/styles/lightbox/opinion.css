@@ -1,0 +1,282 @@
+/* ============================================================
+   Prose Minion — Lightbox: the Opinion (Slice 4D; ADR 2026-10-19 D7
+   addendum)
+
+   The one evaluative tile, full width and last on the board, as the
+   design draws it (docs/design/lightbox/NewLenses.dc.html, section 8): a
+   warm frame and chip of its own beside its register, three view
+   buttons, the view's headline, paragraph and Why list with weight chips,
+   and the observations the views share. It is a reading, so its frame
+   stays dashed; the warm color marks it as the one tile that weighs.
+   ============================================================ */
+
+[data-pm-surface="lightbox"] {
+  --pm-lb-opinion: #e9c08f;
+  --pm-lb-opinion-soft: rgba(233, 192, 143, 0.08);
+  --pm-lb-opinion-line: rgba(233, 192, 143, 0.45);
+}
+
+[data-pm-surface="lightbox"] .pm-lb-tile.pm-lb-opinion {
+  margin-top: 16px;
+  border-color: var(--pm-lb-opinion-line);
+  background: linear-gradient(180deg, rgba(233, 192, 143, 0.06) 0%, var(--pm-surface) 140px);
+}
+[data-pm-surface="lightbox"] .pm-lb-opinion .pm-lb-tile-eyebrow {
+  color: var(--pm-lb-opinion);
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-chip {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  color: var(--pm-lb-opinion);
+  background: var(--pm-lb-opinion-soft);
+  border: 1px solid var(--pm-lb-opinion-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-rule {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+}
+
+/* ---------- The three views ---------- */
+[data-pm-surface="lightbox"] .pm-lb-op-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 0 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab {
+  appearance: none;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 52px;
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--pm-border-2);
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab:hover {
+  border-color: var(--pm-lb-opinion-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab:focus-visible {
+  outline: 2px solid var(--pm-lb-opinion);
+  outline-offset: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab.is-on {
+  border-color: var(--pm-lb-opinion);
+  background: rgba(233, 192, 143, 0.10);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-opinion);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab-sub {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-tab.is-withheld .pm-lb-op-tab-sub {
+  color: var(--pm-accent-hi);
+}
+
+/* ---------- The view on show ---------- */
+[data-pm-surface="lightbox"] .pm-lb-op-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 11px;
+  border: 1px solid var(--pm-border-soft);
+  background: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-head {
+  margin: 0;
+  max-width: 980px;
+  font-family: var(--pm-lb-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-text {
+  margin: 0;
+  max-width: 880px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-why {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-w {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-weight {
+  flex: none;
+  min-width: 84px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-weight.is-strength {
+  color: #15110d;
+  background: var(--pm-green);
+  font-weight: 600;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-weight.is-concern {
+  color: #15110d;
+  background: var(--pm-accent-hi);
+  font-weight: 600;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-weight.is-even {
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-w-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-ev {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-lb-read);
+}
+
+/* ---------- The observations the views share ---------- */
+[data-pm-surface="lightbox"] .pm-lb-op-part {
+  margin-top: 14px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-obs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-o {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--pm-border-soft);
+  background: transparent;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-o.is-weighed {
+  border-color: var(--pm-lb-opinion-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-o.is-changed {
+  border-style: dashed;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-o.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-op-o.is-sel {
+  border-color: var(--pm-lb-opinion);
+  background: var(--pm-lb-opinion-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-o:focus-visible {
+  outline: 2px solid var(--pm-lb-opinion);
+  outline-offset: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-oid {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-otext {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-cite {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-digest {
+  margin: 10px 0 0;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-op-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 14px;
+}
+[data-pm-surface="lightbox"] .pm-lb-op-action {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  [data-pm-surface="lightbox"] .pm-lb-op-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-pm-surface="lightbox"] .pm-lb-op-w {
+    flex-direction: column;
+    gap: 4px;
+  }
+  [data-pm-surface="lightbox"] .pm-lb-op-head {
+    font-size: 19px;
+  }
+}

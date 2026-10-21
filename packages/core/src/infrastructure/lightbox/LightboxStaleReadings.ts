@@ -36,6 +36,11 @@
  *   tiles the chapter; engagement with its movements; a thread's quotes in
  *   order with its span recomputed; an object recounted with its arc in
  *   order;
+ * - carries group F's Opinion last, held to its own rules against the
+ *   carried board (Slice 4D, `LightboxOpinionGates`): an observation whose
+ *   cited tile did not survive, or whose cited quote is gone from it, is
+ *   withheld, a view weighing it with it, and the tile with no view left;
+ *   what stands is stale, as every carried lens is;
  * - keeps the writer's own marks on what survives: a spark set aside stays
  *   set aside (Slice 4), since its id and its words are unchanged;
  * - sets aside a group that was still being read when the text changed: its
@@ -45,6 +50,7 @@
  */
 
 import type {
+  LightboxBoard,
   LightboxCountedSupport,
   LightboxLensId,
   LightboxNumberRow,
@@ -55,7 +61,9 @@ import type {
   LightboxWithheldClaim,
   LightboxWithheldQuote
 } from '@messages';
-import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
+import { LIGHTBOX_LENSES, lightboxGroupReadsBoard } from '@shared/constants/lightbox';
+import { lightboxOpinionItemMap } from '@shared/constants/lightboxOpinionItems';
+import { carryLightboxOpinion } from '@/infrastructure/lightbox/LightboxOpinionGates';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { carryLightboxCraftEvidence, recheckLightboxQuote } from '@/infrastructure/lightbox/LightboxCarryQuotes';
 import {
@@ -86,6 +94,12 @@ export interface LightboxCarryContext {
   columns?: ReadonlyArray<{ from: number; to: number }>;
   /** The current board's measured figures, so a numbers reading is held to what stands out now (Slice 4B). */
   numbers?: readonly LightboxNumberRow[];
+  /**
+   * The rebuilt board's measured set (Slice 4D): what the Opinion's measured
+   * citations are held to. Without it, an Opinion citing a measured figure
+   * cannot be checked, and that observation is withheld.
+   */
+  measured?: LightboxBoard['measured'];
 }
 
 /** Writer-facing: a group that was mid-run when the text changed. */
@@ -119,8 +133,37 @@ export function carryLightboxReadings(
     ),
     standouts: lightboxStandoutRows(context.numbers)
   };
-  return readings.map((group) => carryGroup(group, tools));
+  // The Opinion reads the other groups' tiles, so it is carried after them, against what survived (Slice 4D).
+  const carried = readings.map((group) => (lightboxGroupReadsBoard(group.group) ? group : carryGroup(group, tools)));
+  return carried.map((group) => (lightboxGroupReadsBoard(group.group) ? carryOpinionGroup(group, carried, context) : group));
 }
+
+/** Group F carried: each Opinion held to its rules against the carried board's items, then stale-marked like any lens. */
+function carryOpinionGroup(
+  group: LightboxReadingGroup,
+  carried: readonly LightboxReadingGroup[],
+  context: LightboxCarryContext
+): LightboxReadingGroup {
+  if (group.status === 'not-run') {
+    return group;
+  }
+  const items = lightboxOpinionItemMap({ ...(context.measured ? { measured: context.measured } : {}), readings: carried });
+  const tiles: LightboxReadingTile[] = [];
+  const withheldClaims: LightboxWithheldClaim[] = group.withheldClaims.map((claim) => ({ ...claim, quotes: claim.quotes.map(withoutAddresses) }));
+  for (const tile of group.tiles) {
+    const result = tile.kind === 'opinion' ? carryLightboxOpinion(tile, items) : { tile };
+    if ('tile' in result) {
+      tiles.push(result.tile);
+    } else {
+      withheldClaims.push(...result.withheld);
+    }
+  }
+  const staleLenses = staleMarks(group, context.readAgainst);
+  const { pending: _pending, staleLenses: _previous, ...rest } = group;
+  const next: LightboxReadingGroup = { ...rest, tiles, withheldClaims, ...(staleLenses.length > 0 ? { staleLenses } : {}) };
+  return group.status === 'running' ? { ...next, status: 'cancelled', error: LIGHTBOX_CHANGED_WHILE_READING } : next;
+}
+
 
 function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxReadingGroup {
   if (group.status === 'not-run') {
