@@ -35,11 +35,8 @@ import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import { STYLE_FLAG_FILLER_WORDS } from '@/tools/measure/styleFlags';
 import { BEING_VERB_ELIDED_FORMS, BEING_VERB_FORMS, BEING_VERB_NEGATED_FORMS } from '@/tools/measure/beingVerbs';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import {
-  LIGHTBOX_NUMBER_PATTERNS,
-  LIGHTBOX_NUMBER_STATS,
-  type LightboxNumberPatternId
-} from '@/infrastructure/lightbox/LightboxNumbers';
+import { LIGHTBOX_NUMBER_STATS, type LightboxNumberPatternId } from '@/infrastructure/lightbox/LightboxNumbers';
+import { lightboxParagraphPattern } from '@/infrastructure/lightbox/LightboxSpanIndex';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
 import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
 
@@ -141,21 +138,12 @@ export function lightboxInstanceFilter(row: LightboxNumberRow, paragraphs: reado
  * over the whole paragraph as the figure was counted, so a span cut mid-word
  * ("ly tired" of "only tired") holds no match it would not have counted.
  * Shared by the numbers lens and craft steering (Slice 4F), which hold a
- * quote to the figure's own detector whether or not it stands out.
+ * quote to the figure's own detector whether or not it stands out. Each
+ * paragraph is detected once per text and each span answered by binary
+ * search (`LightboxSpanIndex`, PR #162 F-01).
  */
 export function lightboxPatternInstanceFilter(stat: LightboxNumberPatternId, paragraphs: readonly string[]): LightboxSpanFilter {
-  const detect = LIGHTBOX_NUMBER_PATTERNS[stat];
-  const matches = new Map<number, Array<{ start: number; end: number }>>();
-  return (paragraph, start, end) => {
-    const source = paragraphs[paragraph - 1];
-    if (source === undefined) {
-      return false;
-    }
-    if (!matches.has(paragraph)) {
-      matches.set(paragraph, detect(source));
-    }
-    return (matches.get(paragraph) ?? []).some((match) => start <= match.start && match.end <= end);
-  };
+  return (paragraph, start, end) => lightboxParagraphPattern(paragraphs, stat, paragraph)?.holds(start, end) ?? false;
 }
 
 /** A word pattern's quote, by its detector: the first accepted span holding an instance, else `no-instance` or the verifier's failure. */

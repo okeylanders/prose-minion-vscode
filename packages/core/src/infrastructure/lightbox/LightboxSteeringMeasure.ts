@@ -101,6 +101,7 @@ import {
   lightboxFigureFraction,
   lightboxFigureRate
 } from '@/infrastructure/lightbox/LightboxNumbers';
+import { lightboxIntervalReach, lightboxLastAtOrBefore } from '@/infrastructure/lightbox/LightboxSpanIndex';
 import { LIGHTBOX_STEERING_CONSTRUCTIONS, LIGHTBOX_STEERING_STATS } from '@shared/constants/lightboxSteering';
 
 /** A run of short sentences needs at least this many in a row. */
@@ -165,8 +166,8 @@ export function measureLightboxSteering(input: LightboxSteeringInput): LightboxS
     if (found.every(({ matches }) => matches.length === 0)) {
       return;
     }
-    const dialogue = intervalReach(findDialogueSpans(paragraph));
-    const runs = intervalReach(shortRunIntervals(paragraph));
+    const dialogue = lightboxIntervalReach(findDialogueSpans(paragraph));
+    const runs = lightboxIntervalReach(shortRunIntervals(paragraph));
     let tokens: TokenIndex | undefined;
     if (tagged) {
       try {
@@ -269,42 +270,6 @@ export function shortRunIntervals(paragraph: string): Array<{ start: number; end
   return runs;
 }
 
-/**
- * For intervals in any order: at a position, the furthest end of any
- * interval starting at or before it (-Infinity when none does), by binary
- * search over the sorted starts and a running maximum of the ends. "Some
- * interval holds [a, b]" is `reach(a) >= b`, exactly what a scan finds.
- */
-function intervalReach(intervals: ReadonlyArray<{ start: number; end: number }>): (at: number) => number {
-  const sorted = [...intervals].sort((a, b) => a.start - b.start);
-  const starts = sorted.map((interval) => interval.start);
-  const reach: number[] = [];
-  sorted.forEach((interval, index) => {
-    reach.push(Math.max(index > 0 ? reach[index - 1] : -Infinity, interval.end));
-  });
-  return (at) => {
-    const index = lastAtOrBefore(starts, at);
-    return index < 0 ? -Infinity : reach[index];
-  };
-}
-
-/** The last index whose value is at most `at`, in ascending `values`; -1 when there is none. */
-function lastAtOrBefore(values: readonly number[], at: number): number {
-  let low = 0;
-  let high = values.length - 1;
-  let found = -1;
-  while (low <= high) {
-    const middle = (low + high) >> 1;
-    if (values[middle] <= at) {
-      found = middle;
-      low = middle + 1;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return found;
-}
-
 /** A paragraph's tokens, read once: where each placed one stands, and each token's neighbour by each rule. */
 interface TokenIndex {
   tokens: readonly TaggedToken[];
@@ -363,7 +328,7 @@ function indexTokens(source: readonly TaggedToken[]): TokenIndex {
 
 /** The token whose span holds `offset`, or -1. Placed tokens do not overlap, so at most one does. */
 function tokenAt(index: TokenIndex, offset: number): number {
-  const at = lastAtOrBefore(index.starts, offset);
+  const at = lightboxLastAtOrBefore(index.starts, offset);
   return at >= 0 && offset < index.ends[at] ? index.placed[at] : -1;
 }
 

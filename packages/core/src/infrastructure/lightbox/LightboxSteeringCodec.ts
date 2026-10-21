@@ -65,6 +65,8 @@ export const LIGHTBOX_STEERING_EXAMPLE_REASONS = {
   unanchoredCarried: 'Its example\'s first part no longer stands in its checked quote holding the instance, so it is not shown.',
   /** Dialogue is voice (epic decision 26): fresh and carried alike. */
   voice: 'Its example\'s first part holds an instance only in dialogue, the character\'s voice, so it is not shown.',
+  /** A first part that holds narration but also takes in a character's words (PR #162 F-02): fresh and carried alike. */
+  speech: 'Its example\'s first part takes in words a character speaks, the character\'s voice, so it is not shown.',
   /** The pair as the chapter has it, once anchored (PR #160 F-02): fresh and carried alike. */
   anchoredLong: `Its example's first part, as the chapter has it, runs past ${B.steeringExampleBeforeWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
   anchoredSame: 'Its example shows no change: as the chapter has it, its first part reads as its second.',

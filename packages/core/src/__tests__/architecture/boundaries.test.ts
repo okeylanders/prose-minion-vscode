@@ -1073,6 +1073,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxSteeringHandoff.ts',
   // Dialogue is voice (epic decision 26): where a note's instance stands, and what that withholds.
   'infrastructure/lightbox/LightboxSteeringVoice.ts',
+  // PR #162 F-01: each paragraph's instances and dialogue spans, indexed once per text.
+  'infrastructure/lightbox/LightboxSpanIndex.ts',
   'infrastructure/lightbox/LightboxFirstReadingTiles.ts',
   'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',

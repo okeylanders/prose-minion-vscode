@@ -44,13 +44,18 @@ describe('the host\'s words for a note in dialogue', () => {
       withheld: {
         fresh: 'Its instance is in dialogue, the character\'s voice, so no nudge or example the reading gave is shown.',
         carried: 'Its instance now stands in dialogue, the character\'s voice, so its nudge, and any example, are no longer shown.'
-      }
+      },
+      earns: 'Its instance is in dialogue, the character\'s voice.'
     });
-    const lines = [LIGHTBOX_STEERING_VOICE_REASONS.none, ...Object.values(LIGHTBOX_STEERING_VOICE_REASONS.withheld)];
+    const lines = [
+      LIGHTBOX_STEERING_VOICE_REASONS.none,
+      ...Object.values(LIGHTBOX_STEERING_VOICE_REASONS.withheld),
+      LIGHTBOX_STEERING_VOICE_REASONS.earns
+    ];
     expect(lines.every((line) => line.length <= WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters)).toBe(true);
   });
 
-  it('holds a note\'s fields: dialogue keeps the stance and drops the nudge and example; narration and earns are untouched', () => {
+  it('holds a note\'s fields: dialogue keeps the stance, drops the nudge and example, and marks every stance; narration marks none', () => {
     const leaning = { stance: 'leans' as const, nudge: 'A verb may be worth a look.', example: { before: 'was dark', after: 'darkened' } };
     expect(holdLightboxSteeringVoice(leaning, 'dialogue', 'fresh')).toEqual({ stance: 'leans', voice: LIGHTBOX_STEERING_VOICE_REASONS.withheld.fresh });
     expect(holdLightboxSteeringVoice(leaning, 'dialogue', 'carried')).toEqual({ stance: 'leans', voice: LIGHTBOX_STEERING_VOICE_REASONS.withheld.carried });
@@ -60,7 +65,13 @@ describe('the host\'s words for a note in dialogue', () => {
     expect(holdLightboxSteeringVoice({ stance: 'leans' as const, voice: LIGHTBOX_STEERING_VOICE_REASONS.withheld.fresh }, 'dialogue', 'carried'))
       .toEqual({ stance: 'leans', voice: LIGHTBOX_STEERING_VOICE_REASONS.withheld.fresh });
     expect(holdLightboxSteeringVoice(leaning, 'narration', 'fresh')).toBe(leaning);
-    const earns = { stance: 'earns' as const };
-    expect(holdLightboxSteeringVoice(earns, 'dialogue', 'fresh')).toBe(earns);
+    // A note that earns keeps its fields and is marked as the character's voice (PR #162 N-01).
+    const earns = { stance: 'earns' as const, exampleWithheld: 'A note that earns its place shows no example, so this one is not shown.' };
+    expect(holdLightboxSteeringVoice(earns, 'dialogue', 'fresh')).toEqual({ ...earns, voice: LIGHTBOX_STEERING_VOICE_REASONS.earns });
+    expect(holdLightboxSteeringVoice(earns, 'dialogue', 'carried')).toEqual({ ...earns, voice: LIGHTBOX_STEERING_VOICE_REASONS.earns });
+    // In narration, or with no instance placed, no line stands: one drawn before is dropped.
+    expect(holdLightboxSteeringVoice({ ...earns, voice: LIGHTBOX_STEERING_VOICE_REASONS.earns }, 'narration', 'carried')).toEqual(earns);
+    expect(holdLightboxSteeringVoice({ stance: 'leans' as const, voice: LIGHTBOX_STEERING_VOICE_REASONS.none }, undefined, 'carried'))
+      .toEqual({ stance: 'leans' });
   });
 });

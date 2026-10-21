@@ -177,6 +177,30 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     expect(within(inspector).queryByText('Worth a look')).toBeNull();
   });
 
+  it('marks a note that earns in dialogue with the host\'s line too, on the tile and in the inspector (PR #162 N-01)', () => {
+    const line = 'Its instance is in dialogue, the character\'s voice.';
+    const spoken = readGroup('G', {
+      mutate: (body) => {
+        body.steering.figures[0].notes.push({
+          para: 4, quote: 'I shall be late', stance: 'earns', why: 'The Rabbit’s fret is his own, in his own plain words.',
+          nudge: null, example: null
+        });
+      }
+    });
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(spoken), refusal: null });
+    const voice = noteWith('The Rabbit’s fret is his own, in his own plain words.');
+    expect(within(voice).getByText('Earns')).not.toBeNull();
+    expect(voice.querySelector('.pm-lb-steer-voice')?.textContent).toBe(`In dialogue ${line}`);
+    // A note that earns in narration has no line.
+    const narration = noteWith('The progressive keeps her idle thinking going while nothing happens, which is the scene’s whole point.');
+    expect(narration.querySelector('.pm-lb-steer-voice')).toBeNull();
+    fireEvent.click(voice);
+    const inspector = screen.getByLabelText('Inspector');
+    expect(within(inspector).getByText('In dialogue')).not.toBeNull();
+    expect(within(inspector).getByText(line)).not.toBeNull();
+  });
+
   it('says on the tile when its readings were read against an earlier version of the chapter', () => {
     const read = readGroup('G');
     render(<LightboxApp />);

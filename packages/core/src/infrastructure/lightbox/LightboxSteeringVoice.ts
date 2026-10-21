@@ -15,22 +15,27 @@
  *   dialogue split uses. Its limit applies: single-quoted speech (‘…’, or
  *   Gutenberg's '…') reads as narration. A quote holding an instance in
  *   narration is a narration note, whatever else it holds.
- * - **In dialogue.** A nudge and example the reading gave are withheld,
- *   with the host's reason (`voice`); the note and its stance stand. A note
- *   that leans or compensates with no nudge is shown with the same kind of
- *   line, saying the board offers none there.
- * - **In narration.** A note that leans or compensates names its nudge, as
- *   before: one with none is withheld by the gate (`LightboxTileGates`),
- *   fresh, or on carry when its instance has left dialogue. Its example
- *   anchors only on an instance in narration
- *   (`anchorLightboxSteeringExample`), so it never rewrites a line a
- *   character speaks.
+ * - **In dialogue.** Every note says so with the host's voice line, whatever
+ *   its stance (PR #162 N-01): the digest, the board, the inspector and
+ *   Bring all read that line as the mark of the character's voice. A note
+ *   that leans or compensates loses any nudge and example the reading gave
+ *   (its line says why); one with no nudge says the board offers none
+ *   there. A note that earns has nothing to withhold, and its line says
+ *   only where its instance stands.
+ * - **In narration.** No voice line stands. A note that leans or
+ *   compensates names its nudge, as before: one with none is withheld by
+ *   the gate (`LightboxTileGates`), fresh, or on carry when its instance has
+ *   left dialogue. Its example anchors only on an instance in narration,
+ *   and only on a span that takes in no speech at all
+ *   (`anchorLightboxSteeringExample`, PR #162 F-02), so it never rewrites a
+ *   word a character speaks, even beside the narration it holds.
+ * Each paragraph is detected and matched once per text, and each question
+ * answered by binary search (`LightboxSpanIndex`, PR #162 F-01).
  */
 
 import type { LightboxSteeringNoteTile, LightboxSteeringStatId, LightboxVerifiedQuote } from '@messages';
-import { findDialogueSpans } from '@/utils/dialogueSpans';
-import { LIGHTBOX_NUMBER_PATTERNS } from '@/infrastructure/lightbox/LightboxNumbers';
-import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import type { LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { lightboxParagraphDialogue, lightboxParagraphPattern } from '@/infrastructure/lightbox/LightboxSpanIndex';
 
 /** Where a note's instance stands: the character's voice, or the narration's craft. */
 export type LightboxSteeringVoice = 'dialogue' | 'narration';
@@ -43,7 +48,9 @@ export const LIGHTBOX_STEERING_VOICE_REASONS = {
   withheld: {
     fresh: 'Its instance is in dialogue, the character\'s voice, so no nudge or example the reading gave is shown.',
     carried: 'Its instance now stands in dialogue, the character\'s voice, so its nudge, and any example, are no longer shown.'
-  }
+  },
+  /** A note that earns: nothing to withhold, its place said all the same (PR #162 N-01). */
+  earns: 'Its instance is in dialogue, the character\'s voice.'
 } as const;
 
 /**
@@ -56,63 +63,57 @@ export function lightboxSteeringInstanceVoice(
   stat: LightboxSteeringStatId,
   quote: Pick<LightboxVerifiedQuote, 'paragraph' | 'text'> | undefined
 ): LightboxSteeringVoice | undefined {
-  const source = quote ? verifier.paragraphs[quote.paragraph - 1] : undefined;
-  if (!quote || source === undefined) {
+  if (!quote || verifier.paragraphs[quote.paragraph - 1] === undefined) {
     return undefined;
   }
-  const instances = LIGHTBOX_NUMBER_PATTERNS[stat](source);
-  const dialogue = findDialogueSpans(source);
-  const spoken = (start: number, end: number) => dialogue.some((span) => span.start <= start && end <= span.end);
   let voice: LightboxSteeringVoice | undefined;
   // The first span the verifier accepts that holds an instance: the span the quote check found.
   verifier.verify(quote.paragraph, quote.text, (paragraph, start, end) => {
-    const held = paragraph === quote.paragraph ? instances.filter((match) => start <= match.start && match.end <= end) : [];
-    if (held.length === 0) {
+    const pattern = paragraph === quote.paragraph ? lightboxParagraphPattern(verifier.paragraphs, stat, paragraph) : undefined;
+    if (!pattern?.holds(start, end)) {
       return false;
     }
-    voice = held.every((match) => spoken(match.start, match.end)) ? 'dialogue' : 'narration';
+    voice = pattern.holdsInNarration(start, end) ? 'narration' : 'dialogue';
     return true;
   });
   return voice;
 }
 
 /** Whether `start`–`end` of a paragraph (1-based) holds an instance of `stat` in narration: where an example may anchor. */
-export function lightboxSteeringNarrationFilter(
-  verifier: LightboxQuoteVerifier,
-  stat: LightboxSteeringStatId
-): (paragraph: number, start: number, end: number) => boolean {
-  const found = new Map<number, Array<{ start: number; end: number }>>();
-  return (paragraph, start, end) => {
-    const source = verifier.paragraphs[paragraph - 1];
-    if (source === undefined) {
-      return false;
-    }
-    if (!found.has(paragraph)) {
-      const dialogue = findDialogueSpans(source);
-      found.set(paragraph, LIGHTBOX_NUMBER_PATTERNS[stat](source)
-        .filter((match) => !dialogue.some((span) => span.start <= match.start && match.end <= span.end)));
-    }
-    return (found.get(paragraph) ?? []).some((match) => start <= match.start && match.end <= end);
-  };
+export function lightboxSteeringNarrationFilter(verifier: LightboxQuoteVerifier, stat: LightboxSteeringStatId): LightboxSpanFilter {
+  return (paragraph, start, end) => lightboxParagraphPattern(verifier.paragraphs, stat, paragraph)?.holdsInNarration(start, end) ?? false;
+}
+
+/** Whether `start`–`end` of a paragraph (1-based) takes in any speech, its quotation marks included: where an example may not anchor. */
+export function lightboxSteeringSpeechFilter(verifier: LightboxQuoteVerifier): LightboxSpanFilter {
+  return (paragraph, start, end) => lightboxParagraphDialogue(verifier.paragraphs, paragraph)?.overlaps(start, end) ?? false;
 }
 
 /** The fields of a note the voice rule decides. */
 export type LightboxSteeringVoiceFields = Pick<LightboxSteeringNoteTile, 'stance' | 'nudge' | 'example' | 'exampleWithheld' | 'voice'>;
 
 /**
- * A note's fields under the voice rule. In dialogue, a note that leans or
- * compensates keeps its stance, loses any nudge and example (and an
- * example's reason, moot there) and gains its voice line. Anywhere else, and
- * for a note that earns, the fields are returned as they are: a leaning note
- * in narration with no nudge is the gate's to withhold.
+ * A note's fields under the voice rule. In dialogue, every note carries a
+ * voice line: one that leans or compensates keeps its stance, loses any
+ * nudge and example (and an example's reason, moot there) and says why;
+ * one that earns keeps its fields and says where it stands. Anywhere else
+ * no voice line stands, and the other fields are as they are: a leaning
+ * note in narration with no nudge is the gate's to withhold.
  */
 export function holdLightboxSteeringVoice<T extends LightboxSteeringVoiceFields>(
   fields: T,
   voice: LightboxSteeringVoice | undefined,
   phase: 'fresh' | 'carried'
 ): T {
-  if (fields.stance === 'earns' || voice !== 'dialogue') {
-    return fields;
+  if (voice !== 'dialogue') {
+    if (fields.voice === undefined) {
+      return fields;
+    }
+    const { voice: _line, ...unmarked } = fields;
+    return unmarked as T;
+  }
+  if (fields.stance === 'earns') {
+    return { ...fields, voice: LIGHTBOX_STEERING_VOICE_REASONS.earns };
   }
   const { nudge, example, exampleWithheld, voice: line, ...rest } = fields;
   const offered = nudge !== undefined || example !== undefined || exampleWithheld !== undefined;

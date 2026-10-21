@@ -231,6 +231,8 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(steering).toContain('**Dialogue is voice.**');
     expect(steering).toContain('gives `"nudge": null` and `"example": null`: the board shows no nudge or example in dialogue, and withholds any it is given');
     expect(steering).toContain('For `earns`, and for an instance in dialogue, `"nudge": null`. A note that leans or compensates in narration with no nudge is withheld.');
+    // An example that takes in any speech is withheld, even beside the narration it holds (PR #162 F-02).
+    expect(steering).toContain('holding the instance in narration and none of a character\'s spoken words (an example that takes in speech is withheld)');
     // The steering measure's own dialogue: double quotation marks only.
     expect(steering).toContain('Dialogue here is words inside double quotation marks (“…” or "…"); the board reads single-quoted speech as narration.');
   });

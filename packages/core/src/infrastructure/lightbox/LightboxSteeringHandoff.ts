@@ -14,11 +14,13 @@
  *   instances in runs of short sentences, with the run's stated threshold.
  * - **Dialogue is voice** (epic decision 26): the note's instance is placed
  *   again on its quote as it travels. In dialogue the note carries its
- *   stance and the host's "In dialogue" line, and no nudge or example.
+ *   stance and the host's "In dialogue" line, whatever its stance (PR #162
+ *   N-01), and no nudge or example.
  * - **A note** carries its stance (with its figure), its nudge, and its one
  *   example labelled "One way it could go", as `before → after`. The example
  *   travels only while its `before` still lies in the note's re-checked
- *   quote holding the instance, and the pair as the chapter has it keeps the
+ *   quote holding the instance in narration, taking in no word a character
+ *   speaks (PR #162 F-02), and the pair as the chapter has it keeps the
  *   example's bounds (`anchorLightboxSteeringExample`), so it always fits
  *   its point whole: nothing is ever clipped (PR #160 F-02). When it does
  *   not, the item says the example was withheld and why, in host words. It
@@ -49,6 +51,7 @@ type Quote = { paragraph: number; text: string };
 export const LIGHTBOX_STEERING_EXAMPLE_BRING_REASONS: Readonly<Record<LightboxSteeringAnchorFault, string>> = {
   unanchored: 'Not brought: its first part no longer stands whole in the note\'s quote, holding the instance.',
   voice: 'Not brought: its first part holds an instance only in dialogue, the character\'s voice.',
+  speech: 'Not brought: its first part takes in words a character speaks, the character\'s voice.',
   long: 'Not brought: its first part, as the chapter has it, runs past the words or characters an example may have.',
   same: 'Not brought: as the chapter has it, its first part reads as its second.',
   fit: 'Not brought: as the chapter has it, the pair does not fit one Workshop point.'

@@ -33,6 +33,7 @@ type Note = LightboxSteeringNoteTile & { voice?: string };
 const VOICE_NONE = 'Its instance is in dialogue, the character\'s voice: the board reads it there but offers no nudge or example.';
 const VOICE_FRESH = 'Its instance is in dialogue, the character\'s voice, so no nudge or example the reading gave is shown.';
 const VOICE_CARRIED = 'Its instance now stands in dialogue, the character\'s voice, so its nudge, and any example, are no longer shown.';
+const VOICE_EARNS = 'Its instance is in dialogue, the character\'s voice.';
 const NO_NUDGE_FRESH = 'It leans or compensates in narration, so it names the craft move worth a look, and this one names none.';
 const NO_NUDGE_CARRIED = 'Its instance no longer stands in dialogue, and in narration a note that leans or compensates names a nudge; this one has none.';
 const EXAMPLE_VOICE = 'Its example\'s first part holds an instance only in dialogue, the character\'s voice, so it is not shown.';
@@ -92,8 +93,8 @@ describe('fresh: a note in dialogue keeps its stance, and shows no nudge or exam
       ['Being verbs · note III', 'leans', NUDGE, { before: 'The hall was dark', after: 'Dark filled the hall' }, null, null],
       ['Adverbs (-ly) · note I', 'leans', null, null, null, VOICE_FRESH],
       ['Intensifiers and fillers · note I', 'compensates', null, null, null, VOICE_FRESH],
-      // A note that earns has nothing to withhold, in dialogue too.
-      ['Intensifiers and fillers · note II', 'earns', null, null, null, null]
+      // A note that earns has nothing to withhold, but says it stands in dialogue all the same (PR #162 N-01).
+      ['Intensifiers and fillers · note II', 'earns', null, null, null, VOICE_EARNS]
     ]);
     // No field is left undefined on a note in dialogue.
     expect(Object.keys(notesOf(group)[0]).filter((key) => ['nudge', 'example', 'exampleWithheld'].includes(key))).toEqual([]);
@@ -206,5 +207,82 @@ describe('at Bring: the rule is checked again on the quote as it travels', () =>
     expect(lines('Being verbs · note III')).toEqual(['claim: The figure carries the line here.', 'stance: Leans · figure: Being verbs']);
     const digest = items.map((item) => [item.label, ...item.lines].join('\n')).join('\n');
     expect([digest.includes(NUDGE), digest.includes('Dark filled the hall')]).toEqual([false, false]);
+  });
+});
+
+describe('a note that earns, in dialogue, is marked as the character\'s voice everywhere (PR #162 N-01)', () => {
+  /** Three figures, each with a note that earns on the spoken ¶1, and one that earns on ¶2's narration. */
+  const EARNS = response([
+    figure('being-verbs', [note(1, 'I’m late, I’m really very late', 'earns'), note(2, 'The hall was dark', 'earns')],
+      [{ para: 2, quote: 'The hall was dark' }]),
+    figure('adverbs', [note(1, 'I’m really very late', 'earns')], [{ para: 1, quote: 'I’m really very late' }]),
+    figure('intensifiers', [note(1, 'really very late', 'earns')], [{ para: 1, quote: 'really very late' }])
+  ]);
+  const edited = (index: number, line: string) => LINES.map((text, at) => (at === index ? line : text));
+  const carry = (group: LightboxReadingGroup, after: readonly string[]) =>
+    carryLightboxReadings([group], { readAgainst: 'old', paragraphs: after, averageWordsPerSentence: 12 })[0];
+
+  it('draws each with its stance and the host\'s line, for all three figures; narration has none', () => {
+    expect(shown(readG(LINES, EARNS))).toEqual([
+      ['Being verbs · note I', 'earns', null, null, null, VOICE_EARNS],
+      ['Being verbs · note II', 'earns', null, null, null, null],
+      ['Adverbs (-ly) · note I', 'earns', null, null, null, VOICE_EARNS],
+      ['Intensifiers and fillers · note I', 'earns', null, null, null, VOICE_EARNS]
+    ]);
+  });
+
+  it('places the line again on carry: dropped once the instance is narration, drawn once it is dialogue', () => {
+    const read = readG(LINES, EARNS);
+    expect(shown(carry(read, edited(0, 'I’m late, I’m really very late, said the Rabbit, and he hurried on.'))).map((row) => row[5]))
+      .toEqual([null, null, null, null]);
+    const unmarked = notesOf(carry(read, edited(0, 'I’m late, I’m really very late, said the Rabbit, and he hurried on.')))[0];
+    expect(Object.keys(unmarked)).not.toContain('voice');
+    expect(shown(carry(read, edited(1, '“The hall was dark,” she said, and the door was shut against the cold.'))).map((row) => row[5]))
+      .toEqual([VOICE_EARNS, VOICE_EARNS, VOICE_EARNS, VOICE_EARNS]);
+  });
+
+  describe('in the digest and at Bring', () => {
+    let board: LightboxBoard;
+    beforeAll(async () => {
+      const measured = await boardWithNumbers(LINES);
+      const g = readG(LINES, EARNS);
+      board = { ...measured, readings: LIGHTBOX_READING_GROUPS.map((group) => (group === 'G' ? g : emptyLightboxReadingGroup(group))) };
+    });
+    const tileTitled = (title: string) =>
+      board.readings.flatMap((group) => group.tiles).find((tile) => tile.title === title) as LightboxReadingTile;
+    const points = (tile: LightboxReadingTile) => {
+      const prepared = prepareLightboxTileHandoff({ kind: 'tile', boardId: board.boardId, tileId: tile.id }, board, LINES);
+      if (!prepared.ok) {
+        throw new Error(prepared.reason);
+      }
+      return prepared.handoff.tile.points;
+    };
+
+    it('tells the Opinion\'s digest each is in dialogue, for all three figures', () => {
+      const items = lightboxOpinionItems(board);
+      const lines = (title: string) => items.find((item) => item.label.endsWith(title))?.lines[1];
+      expect(['Being verbs · note I', 'Being verbs · note II', 'Adverbs (-ly) · note I', 'Intensifiers and fillers · note I'].map(lines)).toEqual([
+        `stance: Earns · figure: Being verbs · ${DIGEST_VOICE}`,
+        'stance: Earns · figure: Being verbs',
+        `stance: Earns · figure: Adverbs (-ly) · ${DIGEST_VOICE}`,
+        `stance: Earns · figure: Intensifiers and fillers · ${DIGEST_VOICE}`
+      ]);
+    });
+
+    it('brings each with its stance and the host\'s line, for all three figures', () => {
+      expect(points(tileTitled('Being verbs · note I'))).toEqual([
+        { label: 'Stance', text: 'Earns · Being verbs' },
+        { label: 'In dialogue', text: VOICE_EARNS }
+      ]);
+      expect(points(tileTitled('Being verbs · note II'))).toEqual([{ label: 'Stance', text: 'Earns · Being verbs' }]);
+      expect(points(tileTitled('Adverbs (-ly) · note I'))).toEqual([
+        { label: 'Stance', text: 'Earns · Adverbs (-ly)' },
+        { label: 'In dialogue', text: VOICE_EARNS }
+      ]);
+      expect(points(tileTitled('Intensifiers and fillers · note I'))).toEqual([
+        { label: 'Stance', text: 'Earns · Intensifiers and fillers' },
+        { label: 'In dialogue', text: VOICE_EARNS }
+      ]);
+    });
   });
 });
