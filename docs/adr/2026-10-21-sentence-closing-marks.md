@@ -59,6 +59,11 @@ ender.**
    - `“Wait.”`, `‘Stop.’` and `'Stop.'`;
    - `(See below.)` and `[It was not.]`;
    - nested quotations: `“He said ‘Stop!’”`, and `‘He said “Stop!”’`.
+
+   Enders and closing marks may interleave, and the run still ends one
+   sentence: `“Did you say ‘What a pity!’?”` ends once, at its `”`. The
+   speech-tag audit found this in *Alice* (Chapter VIII). Before, its `?”`
+   belonged to no sentence.
 3. **Apostrophes are kept only inside that run.** `'` and `’` also mark
    elisions (`goin’`, `’Twas`). Inside the run, an apostrophe follows the
    ender or another closing mark, never a letter, so it cannot be an
@@ -93,9 +98,9 @@ punctuation and the writer's chapter is about half dialogue.
    - `“I’m going.” she said, and went.`, a lower-case tag after `.”`.
 
    `“Wait.” She turned.` stays two.
-8. **Only a quotation mark carries it.** The first mark of the run joined
-   in rule 2 must be a quotation mark: `”`, `’`, `"` or `'`, directly
-   after the ender.
+8. **Only a quotation mark carries it.** Within the run joined in rule 2,
+   a quotation mark (`”`, `’`, `"` or `'`) must come directly after an
+   ender.
    - A bare `!` or `?` before lower-case text ends a sentence (`Wait! she
      cried.`).
    - So does a bracket (`(See below.) then …`).
@@ -118,7 +123,8 @@ punctuation and the writer's chapter is about half dialogue.
   `stopped.`. Each text still counts the same sentences and words; only
   the mark's side of the cut moved.
 - **A lower-case word after a closing quote always joins**, tag or not.
-  Across the whole of *Alice*, every such join continues its sentence:
+  Across the whole of *Alice* there are 240 joins, 110 of them before
+  "said". Every one continues its sentence:
   `“Do bats eat cats?” for, you see,`, `“Hjckrrh!” from the Gryphon`.
   The text punctuates these as one sentence, and so does the rule. A
   writer who starts a new sentence in lower case after a quotation would
@@ -161,13 +167,13 @@ alone, and both.
 
 **What speech tags moved:**
 - **Whole-text figures move.**
-  - The book goes 1,628 → 1,389 sentences, and 16.2 → 19.0 words per
+  - The book goes 1,628 → 1,388 sentences, and 16.2 → 19.1 words per
     sentence.
   - The Tea-Party (Chapter VII, about half dialogue) goes 32 → 27
     sentences, and 13.6 → 16.1.
   - The worked examples go 16 → 15 sentences, and 31.8 → 33.9.
 - **Per-paragraph figures move again,** and the very short sentences fall
-  most: on the book, 428 → 193.
+  most: on the book, 428 → 192.
 - **Wells, standouts and handoffs.**
   - A well's "M sentences" can fall where an item stood in both speech
     and tag: the book's "alice" 378 → 377; Chapter I's Weak Verbs 48 → 47.

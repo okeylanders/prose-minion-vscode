@@ -81,6 +81,14 @@ describe('each quotation convention', () => {
     // marks: ['"Oh dear!"', ' she said.', ' "Wait."']
   });
 
+  it('joins after a question about an exclamation, as Gutenberg sets it (Chapter VIII)', () => {
+    const text = '\'Did you say "What a pity!"?\' the Rabbit asked.';
+    expect(sentencesOf(text)).toEqual([text]);
+    // Before enders and marks were one run: ['\'Did you say "What a pity!"', '?\' the Rabbit asked.'],
+    // the tag sentence beginning with the question's own "?'".
+    // marks: ['\'Did you say "What a pity!"', ' the Rabbit asked.']
+  });
+
   it('joins after nested quotations, ”’ and ’”', () => {
     expect(sentencesOf('‘He said “Stop!”’ she whispered.')).toEqual(['‘He said “Stop!”’ she whispered.']);
     // marks: ['‘He said “Stop!”’', ' she whispered.']

@@ -110,6 +110,12 @@ describe('nested quotations', () => {
     expect(sentencesOf('“He said ‘Stop!’” She ran.')).toEqual(['“He said ‘Stop!’”', ' She ran.']); // was ['“He said ‘Stop!', '’” She ran.']
   });
 
+  it('ends once where enders and marks interleave, as a question about an exclamation does', () => {
+    expect(sentencesOf('“Did you say ‘What a pity!’?” She sighed.')).toEqual(['“Did you say ‘What a pity!’?”', ' She sighed.']);
+    // was ['“Did you say ‘What a pity!', '’?', '” She sighed.']; the first closing-marks
+    // rule ended at "!’", leaving "?”" in no sentence: ['“Did you say ‘What a pity!’', ' She sighed.']
+  });
+
   it('keeps ”’ together too: the apostrophe follows a closing mark of the run, not a letter', () => {
     expect(sentencesOf('‘He said “Stop!”’ She ran.')).toEqual(['‘He said “Stop!”’', ' She ran.']); // was ['‘He said “Stop!', '”’ She ran.']
   });

@@ -74,7 +74,8 @@ function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean 
  * - It keeps the closing marks written directly after that run, with no
  *   space between: `”`, `’`, `"`, `'`, `)` and `]`, in any order, so
  *   `“Oh dear!”`, `‘Stop.’`, `(See below.)` and `“He said ‘No!’”` each end
- *   with their marks.
+ *   with their marks. Enders and marks may interleave: `“Did you say
+ *   "What a pity!"?”` ends once, at its `”`.
  * - An apostrophe is kept only inside that unbroken run, where it follows
  *   the ender or another closing mark. An elision's apostrophe follows a
  *   letter (`goin’`) or opens a word after a space (`’Twas`), so it never
@@ -86,8 +87,8 @@ function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean 
  *   mark, space and a lower-case letter, as standard punctuation reads it:
  *   `“Wait!” she cried.`, `“Who are you?” said the Caterpillar.` and
  *   `“I was thinking...” she trailed off.` are each one sentence.
- *   - The quotation mark (`”`, `’`, `"` or `'`) must come directly after
- *     the ender. A bare `!` or `?` before lower-case text (`Wait! she
+ *   - A quotation mark (`”`, `’`, `"` or `'`) must come directly after an
+ *     ender of the run. A bare `!` or `?` before lower-case text (`Wait! she
  *     cried`) ends a sentence, and so does a bracket (`(See below.) then`).
  *   - The space may break a line but not a paragraph: a blank line ends
  *     the sentence.
@@ -99,12 +100,13 @@ function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean 
 export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
   const spans: Array<{ start: number; end: number }> = [];
   // Fresh literals per call, so no global or sticky regex's lastIndex is shared.
-  const enders = /[.!?]+([”’"')\]]*)/g;
+  // An end is an ender and every ender and closing mark written straight after it: `!"?”` is one.
+  const enders = /[.!?][.!?”’"')\]]*/g;
   const speechTag = /\s+(?=\p{Ll})/uy;
   let start = 0;
   for (let match = enders.exec(text); match; match = enders.exec(text)) {
     const end = match.index + match[0].length;
-    if (/^[”’"']/.test(match[1]) && continuesIntoTag(text, end, speechTag)) {
+    if (/[.!?][”’"']/.test(match[0]) && continuesIntoTag(text, end, speechTag)) {
       continue;
     }
     if (holdsSentence(text.slice(start, match.index))) {
