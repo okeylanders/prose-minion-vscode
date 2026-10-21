@@ -70,7 +70,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented, awaiting review (`epic/lightbox-slice-4e-inspector`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented; PR #159 review fixes in, awaiting re-review (`epic/lightbox-slice-4e-inspector`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1092,3 +1092,26 @@ land before Slice 5 (decision 14).
     - Visual evidence at 1440, 1000 and 500 px from real host output:
       [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
     - No live or billable call.
+  - **PR #159 review fixes (2026-10-21).** Astra requested changes for one
+    finding (F-01) and noted one nonblocking optimization (N-01). Both are
+    fixed.
+    - **F-01** (`86d269a`). Going back to a held passage no longer leaves
+      another pin's request pending. Before, its late answer replaced the
+      held one and stranded the well at "Finding the sentences…".
+      - Four regressions fail on `058feb5`: the held ¶2 → Back sequence
+        through `LightboxApp`, and three hook cases.
+      - A tenth evidence state, `back-late`, shows the fix in Chromium.
+    - **N-01** (`31a4550`). A passage is cut in time linear in what it
+      sends, by one walk and one open/close sweep, with nothing dropped.
+      - Before the change was kept, it matched `058feb5`'s cutting on
+        7,077 passages.
+      - The new long-row tests take about a tenth of their 1 s ceiling.
+        On `058feb5` they take 2 to 4 s.
+    - **Merged with PR #158** (`6d63a6e`): the Chromium 114 floor. The 4E
+      stylesheets pass its guard as they are.
+    - **Verification.** 440 suites / 6,019 tests / 59 snapshots; lint
+      identical per file and rule (0 errors / 1,133 warnings); typecheck
+      and build with `verify:bundle` pass; bundle SHA-256 `2f86917e…`,
+      reproduced.
+    - See the review's
+      [author response](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md#author-response-2026-10-21).

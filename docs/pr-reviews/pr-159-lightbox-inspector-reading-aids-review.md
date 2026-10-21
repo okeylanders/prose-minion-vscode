@@ -111,3 +111,125 @@ Independent interactive/native rendering was not available in this review enviro
 ## Acceptance boundary
 
 Fix F-01 and retain its interrupted-navigation controls before accepting Slice 4E. N-01 is a nonblocking optimization follow-up. Keep the writer checkpoint and wider native/live verification explicit; do not infer Slice 5 readiness or a frozen saved-board format from this report or the author's chapter-run statement. This commit contains only the review report; publication/CI status is reported separately rather than recursively changing the reviewed implementation.
+
+## Author response (2026-10-21)
+
+**F-01: fixed. N-01: fixed.** Each fix has its own commit. PR #158 is
+merged in, and the evidence was re-rendered from the head bundle. The
+docs commit on top records this response, the slice notes, the epic
+progress and the agents guide. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | Pending is only ever the request for the pin on screen. Going back to a pin or board whose answer is held asks nothing and drops any other request. That request's late answer is never taken, and the dropped pin, pinned again, asks again under a new id | `LightboxAppPassages.test.tsx`: the held ¶2 → Back sequence with the real host handler (1). `useLightboxPassages.test.ts`: a held pin, a held board, the dropped pin asked again (3) | `86d269a` |
+| N-01 | Low / P3 · nonblocking | **Fixed** | One walk matches sentences, or a range's paragraphs, to the instances that touch them. One sweep over where instances open and close cuts the segments, with an open set, so overlapping instances keep their own ids. Nothing is dropped | `LightboxPassages.test.ts`, "one long row" (2): literal counts and a coarse 1 s ceiling | `31a4550` |
+| Evidence | — | **Added** | A tenth state, `back-late`, runs your sequence in Chromium against the head bundle. It fails against the bundle you read | The harness's `back-late` expectations | `e3f8c68` |
+| PR #158 | Merge | **Merged and verified again** | The Chromium 114 floor. The one conflict was the tech-debt index, and both sides were kept. The 4E stylesheets pass the retargeted guard as they are | Full gates below | `6d63a6e` |
+
+### How each new test was checked against `058feb5`
+
+**F-01.** I put `058feb5`'s `useLightboxPassages.ts` back in place and
+ran both suites:
+- **Failed:** the 4 new tests.
+  - Held pin and held board: "ready" expected, "loading" received.
+  - Dropped pin asked again: 3 requests expected, 2 received.
+  - `LightboxApp`: the well read "Finding the sentences…".
+- **Passed:** the 12 earlier tests. These are your controls: a stale id,
+  another board or hash, an unpin, the ordinary Back, one request per pin
+  and board, and no text in `setState`.
+
+With the fix restored, all 16 pass.
+
+**N-01.** I put `058feb5`'s `LightboxPassages.ts` back in place.
+- Both "one long row" tests passed every literal count. The old cutting
+  was correct, as you found.
+- Both failed at their ceilings. The one-sentence test ran 12.4 s, almost
+  all of it in its three passages. The sentence-chain test ran 2.3 s, and
+  its phrase passage was over the 1 s ceiling.
+- With the fix, each passage takes about a tenth of the ceiling. The
+  earlier 10 tests in the file pass on both.
+
+### F-01: pending follows the pin on screen
+
+**Root cause.** Your reading is right. The early return in
+`requestPassageForPin` joined two cases: the pin's request is already
+pending, and the pin's answer is already held. In the second case it
+left `pending` holding another pin's request. `handlePassage` then
+matched that request's late answer, took it, and replaced the one held
+answer. The request effect's dependencies had not changed, so nothing
+asked again.
+
+**Fix.** The two cases are now separate:
+- **The pin's own request is pending.** Nothing happens. This is the
+  repeated request.
+- **The pin's answer is held.** `pending` is cleared and nothing is
+  asked.
+- **Otherwise** a new request replaces whatever was pending, as before.
+
+So `pending` is never a request for anything but the pin on screen.
+`handlePassage` still requires the request id, board id and content hash
+to match it. Taking an answer is therefore tied to the current request
+and selection by construction, not by a second check.
+
+**What changes for the writer:** nothing on the ordinary paths. After
+Back from an unanswered paragraph, the word's sentences are there at
+once. Pressing that paragraph again asks for it again.
+
+### N-01: linear in what is sent
+
+**Root cause.** The row bound limits rows, not what one row holds.
+`segmentsOf` filtered every span for every interval. `sentenceOf` did the
+same for each of a row's sentences. I found the second case beside yours:
+"Alice. Alice. …" makes the phrase "alice alice" cross every sentence
+break, so one row holds every sentence.
+
+**Fix.**
+- `instancesTouching` walks ranges (a row's trimmed sentences, or a
+  range's paragraphs) and the instances, both in text order, with an open
+  list.
+- `segmentsOf` sorts the opens and closes once, sweeps them, and names
+  each stretch by the instances open over it, sorted.
+- At 25,000 instances in one sentence, the word's passage went from about
+  4.1 s to 0.12 s in the probe, the phrase's from 3.1 s to 0.09 s, and the
+  lit paragraph's from 3.5 s to 0.05 s.
+
+**Proof of sameness.** Before keeping the change, I ran a throwaway
+differential test that built 7,077 passages with both `058feb5`'s cutting
+and the new one, and found them deep-equal. It covered:
+- every listed entry on the six agreement fixtures, as instances and as
+  each paragraph lit by it;
+- an overlapping `had had`, a phrase across a paragraph break, and the
+  two long shapes.
+
+It was deleted after use. The rebuilt evidence states are also
+byte-identical.
+
+### Verification
+
+| Check | `20775cf` (base) | `058feb5` (reviewed) | Head |
+| --- | --- | --- | --- |
+| Full jest | 430 suites / 5,916 tests / 59 snapshots | 440 / 6,012 / 59 | **440 / 6,019 / 59** |
+| Lint | 0 errors / 1,133 warnings | Identical per file and rule | **Identical per file and rule** |
+| Typecheck | Passes | Passes | **Passes** |
+| Build (with `verify:bundle`) | Passes; `0f6624f4…` | Passes; `8d0545de…` | **Passes; `2f86917e…`** |
+| Diff whitespace check | | Clean | **Clean** |
+
+- The head is the two fixes merged with `e8389bf`.
+- The 6,019 tests are the reviewed 6,012, plus the 6 review tests, plus 1
+  from PR #158's floor guard.
+- The head bundle,
+  `2f86917e89befed61189d1422fbb71e211c2ea59e28fbd0c9a0e8db06de2ae04`, was
+  built after `npm ci` into a real `node_modules`, and a second build
+  reproduced it.
+
+**Evidence.** All 30 captures pass the harness with an empty `errors.txt`.
+Against `8d0545de…`, the harness writes 3 errors, `back-late` at each
+width, and every other state passes. The 27 earlier captures show the same
+DOM facts as before.
+
+**Limits, as you set them.** This is DOM, transport and timing evidence
+in headless Chromium. It is not native VS Code, a screen reader, or the
+writer's checkpoint. Slice 5's format and readiness stay open. No live or
+billable call was made.

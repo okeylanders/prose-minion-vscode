@@ -809,8 +809,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4E: reading aids in the inspector):
-- 440 suites / 6,012 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4E with its PR #159 fixes, merged with PR #158's VS Code 1.82 floor):
+- 440 suites / 6,019 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1155,6 +1155,13 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
   content hash, under a webview-minted id. `useLightboxPassages` takes only
   the answer still pending, for the board on screen. A newer board says "the
   text changed" until its answer lands. No passage text enters `setState`.
+- **Pending is only the pin on screen's.** Going back to a pin or board
+  whose answer is held asks nothing and drops any other request, so a late
+  answer can never replace what is shown (PR #159 F-01).
+- **Cut in linear time.** The row bound limits rows, not what one row
+  holds. Match ranges to instances in one walk and cut segments in one
+  open/close sweep, never by scanning every instance per segment (PR #159
+  N-01).
 - **Sentences are the board's.** Rows use each paragraph's
   `proseSentenceSpans`. Fix the sentence rule there, not in the well
   ([tech debt](.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md)).
