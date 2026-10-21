@@ -433,3 +433,71 @@ host-authored routing inside a line, and `evidenceText` read whole lines.
   byte-identical, and `facts.json` is identical apart from the new
   `ribbonGrid` entries. `errors.txt` is empty.
 - No live or billable call was made.
+
+
+## Second independent re-review (2026-10-21)
+
+**Reviewer:** Astra · **Reviewed head:** `13be7758513c1e9669da140d0625467f01e821ab` · **Previous reviewed/report head:** `2981992aecf5fc14a57cdbd6bd26f9741b681dbc`.
+
+**Verdict: Opinion-specific findings addressed; full-stack approval remains blocked by inherited PR #156 F-04 (P2).** The residual F-01 routing-figure problem is now corrected, including the second affected annotation in gravity fields. N-01 remains fixed. This is not an all-blockers-clear verdict: the merged Slice 4C implementation still requires CSS subgrid on the declared VS Code 1.75 / Chromium 102 floor, as documented in the [independent #156 re-review](https://github.com/okeylanders/prose-minion-vscode/blob/dc3d5f9414245c9f6e708d769b487d23113e9434/docs/pr-reviews/pr-156-lightbox-story-lenses-review.md#independent-re-review-2026-10-21).
+
+The original review, first independent re-review and both author responses above are preserved byte for byte (435 existing lines). This pass covers the correction/merge delta, not a duplicate review of unchanged code or a reversal of earlier evidence. The current implementation includes #156 at `e7e1536`; its later report-only `dc3d5f9` does not change that implementation baseline.
+
+### Updated disposition
+
+| Item | Independent disposition at `13be7758` |
+| --- | --- |
+| F-01 · P2 | **Addressed, including the residual.** Host ids, generated quote indices, the inline Subtext routing note and gravity degree labels confer no numeric authority. Genuine displayed numbers still do. |
+| N-01 · P3 | **Still addressed.** All 11 shared double-quote characters are rejected by Opinion phrasing; the verifier's previous matching behavior is retained. |
+| Inherited #156 F-01 / F-02 / F-03 / N-01 | The reviewed corrections are merged. Original witnesses remain resolved within their documented contracts; F-03's modern-grid correction is distinct from its compatibility regression. |
+| Inherited #156 F-04 · P2 | **Still open in this head.** Shared ribbon CSS is identical to the reviewed #156 implementation and has no unsupported-subgrid fallback. Not a new Opinion finding. |
+
+### Numeric evidence, not routing labels
+
+The two annotated paths in `lightboxOpinionItems.ts` now distinguish `shown` from `evidence`. Subtext contributes its speaker but not the host's “the said line is q0” note. Gravity contributes total/per-degree hit values and paragraph drift addresses but not the hard-coded bucket labels `1°`, `2°`, `3°`. `item()` hashes and renders `shown` exactly as before while deriving figures from `evidence`. No global q-text stripping or broad suppression of zero was added.
+
+The original “The passage contains 0 spoken lines.” witness is now withheld by the production codec/digest/gates and the real press handler/runner. Dependent Neutral is refused by fresh Bring; a Blunt view that does not weigh the rejected observation remains transferable. The matched annotation-free control also rejects zero. Putting a real zero in the same Subtext tile's title still draws and brings it. A formerly accepted zero observation injected into a valid previous Opinion is withheld by real carry, rather than merely becoming stale while retaining the false observation.
+
+The additional gravity case rejects “borrowed 3 times” for the real Fire field, which has two hits, fresh, carried and through Bring; “2 times” survives. A sharper synthetic field excludes all three label-only digits, preserves genuine per-degree hits 1/2/3 and zero, and includes or removes drift-only paragraph addresses 13/17 with the actual drift data. Genuine q0-containing title, claim, speaker, source quote and quote-note content is retained as evidence, with successful Bring controls. These are literal expectations and contrasting controls, not expectations derived from the output lines being tested.
+
+Direct comparison with the pre-fix item module across **68 every-lens items** finds identical rendered blocks, lines, basis hashes, quotes and current flags. The only figure-set changes are removal of Fire's label-only 3 and the three Subtext tiles' routing-only zeros. All numeric paths were reviewed: other host digits are displayed counts, paragraph/section addresses, ranges or units, not routing metadata. The earlier ID-digit rejection and all shared-quote controls still pass. This closes F-01's original and residual scope without claiming that a permitted real number cannot be used with the wrong semantic meaning, a documented limitation of the lexical rule.
+
+### Merge interaction and inherited compatibility
+
+The merged Sections, pressure predicate, artifact assembler, ribbon component and ribbon styles were compared with exact #156 correction head `e7e1536`; the relevant implementations are identical. `LightboxReadingTiles` retains the Opinion-specific group-F dispatch protection alongside the merged artifact tally correction. The old quote-verifier and Opinion phrasing fixes are byte-identical to `2981992`.
+
+The earlier two documentation conflicts are resolved by the author's merge, and GitHub reports this head mergeable. That resolves the previous PR-CI scheduling blocker, not the inherited runtime bug. The original #156 modern-grid offset is not reopened: the open issue is its unguarded `grid-template-columns: subgrid` on the expressly supported older runtime. No fresh minimum-runtime/native reproduction is claimed here; see #156 F-04's source/runtime evidence and requested compatible layout/fallback.
+
+### Independent checks and evidence
+
+| Check | Independent result at `13be7758` |
+| --- | --- |
+| Full Jest | **429 suites / 5,910 tests / 59 snapshots passed**, 193.459 s, first full attempt |
+| Typecheck | All three stages passed |
+| Lint | **0 errors / 1,133 warnings**, exact normalized file/rule/severity/message multiset parity with original `f5e1451`, prior correction `40a9317` and corrected #156 `e7e1536` |
+| Production build / `verify:bundle` | Passed, same three webpack size/performance warnings |
+| Rebuilt bundle SHA-256 | **`55276cadc0548dbb8af861bf14614b2bdb6d9976c4bee21692b36154ba3276fd`**, exactly matching the revised supplied evidence |
+| Original plus expanded gate/carry/Bring controls | **86/86 passed** across four suites, including real-handler rejection, legitimate-content controls and prior quote/identity fixes |
+| Lifecycle / digest / phrase-pair replay | **14/14**, **5/5**, **19/19** passed respectively; phrase/pair replay includes 93 term-span parity cases |
+| New merged front-matter → Opinion controls | **6/6 passed** |
+| Production-bundle DOM | **345 assertions passed**: 260 original + 85 current correction/control checks; no non-CSS runtime errors |
+| Diff / boundaries | `git diff --check` passed; no tracked implementation/test/lockfile changes |
+| Exact implementation-head GitHub CI | Both [PR run 39545730739](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39545730739) and [push run 39545726985](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39545726985) succeeded |
+
+Full tests used the established disk-backed dependencies/cache, Node 24.19.0 / npm 11.9.0, 2 GiB Node heap, one worker and 1,000 MB idle-worker limit. External probes do not join or inflate the repository totals. The original 72-probe replay initially had one obsolete carry expectation fail because the former false zero was correctly gone; only that expectation/setup was updated to exercise a previously accepted Opinion on carry. An isolated pre-fix item-module replay of the 14 new controls gives **eight expected corrective-witness failures and six passing controls**; no tracked implementation was swapped. The current implementation passes all 14.
+
+The corrected base's completed independent logs were inspected and reused, not rerun unnecessarily: exact `e7e1536` has **420 suites / 5,815 tests / 59 snapshots**, successful typecheck/lint/build, and bundle `9493dfce…`. The target branch's later `dc3d5f9` changes only its review report. Thus current head gates are independent and compared with the actual merged implementation baseline, not inferred from the author's totals.
+
+The new front-matter integration probes drive the actual service/handler and A→F call path. Both supported YAML closers remove phantom section refs from F's digest and cause an invented `section:1` citation to be withheld. Real same-paragraph body headings and body scene breaks remain citable at their actual addresses; unclosed YAML-shaped prose is not over-suppressed. A 31-section source retains the first 24 with seven omitted. Metadata/heading sentinel words remain absent from F's input. These checks exercise the merge's effect on Opinion, without repeating the whole #156 review.
+
+All **22 changed 4D PNGs** were inspected as actual pixels: seven Lightbox states at three widths and the changed Workshop1440 capture. The two other Workshop PNGs are byte-identical. Every changed Lightbox pixel lies in the upper ribbon/header area (at or above y295), leaving the visible Opinion card pixel-identical; Workshop1440 changes only 19 header pixels. Existing partial narrow-screen coverage and Workshop500 clipping remain limitations, not newly accepted unseen controls.
+
+The committed `facts.json` is exactly equal to the previous version after removing its 21 new `ribbonGrid` entries. Those entries consistently report eight compared paragraph/pressure columns, three movement bands, zero edge deltas and no clipped labels. `errors.txt` is empty. These are inspected author-supplied modern-browser facts, not reviewer geometry or minimum-runtime acceptance. The current harness still does not establish vertical label/track adjacency on an unsupported-subgrid engine.
+
+The production host builder regenerated `chapter.json`, `workshop.json` and `log.txt` byte-identically to both earlier independent runs and current committed states. The unchanged example omits Subtext and Lexical gravity and has no front matter; its parity alone therefore cannot prove the corrections. The new adversarial probes supply that missing coverage. ASCII/Unicode bound-test digest text and accounting are also unchanged.
+
+### Acceptance boundaries
+
+No implementation, repository test or lockfile was edited by this review. The approved publication changes only this report, and its own exact-head push and PR CI are checked after publication. Production DOM assertions establish bundled semantics and controlled messaging, not CSS layout, browser hit-testing or native IPC. Supplied browser measurements remain attributed evidence, not fresh reviewer measurements. No previously denied browser route or unauthorized computer was retried; no live/billable provider or private manuscript was used.
+
+The author-recorded writer checkpoint and decisions 15/16 remain unauthenticated acceptance claims. Conservative phrasing heuristics, rendered-text basis/versioning debt and board-order digest truncation remain as documented, not newly accepted model quality or format guarantees. This report is not writer/native acceptance, Slice 5 readiness, saved-board-format approval, merge permission or deployment authorization. Resolve and re-review inherited #156 F-04 before treating the stack as approved.
