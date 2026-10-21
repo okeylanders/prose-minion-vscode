@@ -139,3 +139,150 @@ The review's final remote check at **02:32 UTC** confirmed the same open, unmerg
 Correct F-01 with content-versus-identity regression controls, then re-review the changed head. N-01 is a small nonblocking quote-class consistency correction. Keep #156's open findings, the native/live writer checkpoint and the pre-Slice-5 basis decision visible as separate work. Recheck head/base and CI if either branch moves.
 
 Publication is limited to **this review report only**. No implementation edit, GitHub comment/formal review, merge or deployment accompanies it. Post-publication CI is checked separately against the exact report commit, not assumed from the implementation-head result above.
+
+
+## Author response (2026-10-21)
+
+**F-01: fixed. N-01: fixed.** Both fixes are in `a35d4b9`. The docs commit
+on top of it reruns the visual evidence and records the review in the
+slice notes, the epic README and the agents guide. Nothing above this
+section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | An item's allowed figures come only from what it shows as evidence: its label, lines and quotes, with their paragraph addresses. Never its key, never its quotes' q-numbers. | `LightboxOpinionIdentityDigits.test.ts` (9); `LightboxOpinionRun.test.ts`, the host-minted id cases (2) | `a35d4b9` |
+| N-01 | Low / P3 · nonblocking | **Fixed** | The phrasing check uses the quote verifier's own double-quote set, now exported as `LIGHTBOX_DOUBLE_QUOTATION_MARKS` | `LightboxOpinionReadings.test.ts`, the N-01 case (1) | `a35d4b9` |
+| PR body | Evidence description | **Corrected** | The `bound` evidence state is "Bound for Workshop", not the digest at its bound. The evidence README now says so, and the slice notes record a saturated-digest result | The new digest case in `LightboxOpinionDigest.test.ts` (1) | docs commit |
+| Evidence | Evidence completeness | **Corrected** | `facts.json` and `errors.txt` are committed beside the screenshots, with the clean-build bundle hash | — | docs commit |
+
+### How each new test was checked against `f5e1451`
+
+**F-01.** I reverted the fix's one line in place, so `item()` again scans
+the whole digest block, as at `f5e1451`. Then I ran the 11 new F-01 tests.
+- **Failed:** the 5 digit witnesses (items, fresh, carry, Bring, and the
+  real-handler run), each at its behavioral assertion. Bring prepared
+  Neutral with the claim "The image appears 87654321 times in the
+  passage.", as you found.
+- **Passed:** the 4 id-only controls, the run-level control and the 2
+  displayed-figure controls.
+
+With the fix restored, all 11 pass.
+
+**N-01.** I ran the paired test with the verifier's set exported, which is
+a behavior-neutral refactor (all 37 Lightbox infrastructure suites pass),
+and with `f5e1451`'s phrasing class. It failed at the first fullwidth case:
+the observation was drawn. With the shared set, it passes.
+
+**The saturated-digest case** in `LightboxOpinionDigest.test.ts` is a new
+bound check, not a fix witness. It passes on `f5e1451` too. The message of
+`a35d4b9` lists it with the tests that fail there, which overstates it.
+
+### F-01: an id is identity, never evidence
+
+**Root cause.** The finding is correct. `item()` in `lightboxOpinionItems.ts`
+used one string for two jobs:
+- **Identity.** The `basis` that standing compares.
+- **Numeric authority.** The `figures` an Opinion citing the item may
+  state.
+
+That string is the item's digest block. Its first line is `[key] label`,
+and each quote line starts `qN ¶n:`. A host id carries the first eight
+characters of the run token, and a quote line carries its own index, so
+digits that mean nothing became figures the item "shows". On the fixed
+`5b1e09c4` prefix, `5`, `1`, `09` and `4` were already allowed this way.
+
+**Fix.**
+- **Figures come from the item's evidence.** `item()` now builds `figures`
+  from `evidenceText(label, lines, quotes)`: the label, each line, and each
+  quote as `¶n text note`. The digest block and `basis` are unchanged, so
+  no digest, key or standing moves.
+- **Documented.** The module note and the `figures` field say so
+  ("Numeric authority is narrower than identity").
+- **Carry and Bring are covered by the same fix.** Carry gates against the
+  rebuilt board's items. Bring sends only views that passed those gates.
+
+**Tests.** Each case is read on two boards that differ only in their ids'
+run prefix: `87654321` (the witness) and `abcdefab` (the id-only control).
+The run-level cases mint UUID-shaped tokens through the real handler.
+
+| Test | Witness and control | On `f5e1451` |
+| --- | --- | --- |
+| Item figures | Every item has the same figures whatever digits its key holds, and every allowed figure is one its label, lines or quotes show | The digit board's items allowed `87654321`, and every quoted item allowed its q-numbers |
+| Displayed figures (both prefixes) | The worked example still draws whole: its stated figures are 29.9, 14.3, 12.2 and 30, ¶5 and ¶7. "The watch is mentioned 2 times, first in ¶4." still stands on the watch's host counts | Passed (a control) |
+| Fresh (both prefixes) | O1 cites the headline's q0 and says "The image appears 87654321 times in the passage."; Neutral's body says the same. O1 is withheld for its figure; Enthusiastic and Neutral are withheld for weighing it; Blunt stands | On digit ids, O1 and Neutral were drawn |
+| Carried (both prefixes) | An Opinion drawn on the headline, with O1 then stating the invented count, is carried onto changed text. The headline carries under the same id, and O1 is withheld for its figure | On digit ids, O1 stayed drawn |
+| Selected-view Bring (both prefixes) | Neutral is refused as withheld. Blunt travels, and its title, claim, points and quotes never state the digits (its ids do, as every id of the run does) | Neutral was brought with the invented count as its claim |
+| Real handler, host-minted tokens `87654321-4c1d-…` and `abcdefab-4c1d-…` | A press through `LightboxReadingHandler`, the runner and `LightboxOpinionReply`: O1 is withheld for its figure, only Blunt stands, and Bring of Neutral is refused | On the digit token, O1 and Neutral were drawn |
+
+### N-01: one double-quote set
+
+**Root cause.** Correct as found. The phrasing check kept its own class,
+`["“”„‟«»]`. The verifier's set also holds `″`, `〝`, `〞` and `＂`.
+
+**Fix.** `LightboxQuoteVerifier` exports its set as one string,
+`LIGHTBOX_DOUBLE_QUOTATION_MARKS`, and builds its own pattern from it. The
+phrasing check builds its pattern from the same string, so the two cannot
+drift. The verifier's behavior is unchanged. The phrasing module's note
+lists the set.
+
+**Tests.** In `LightboxOpinionReadings.test.ts`, one case covers all of
+this:
+- **Paired.** ＂…＂ and 〝…〞, then straight and curly as controls, each
+  withheld in an observation and in Neutral's body, with the host's
+  quotation reason.
+- **The whole set.** Every mark in `LIGHTBOX_DOUBLE_QUOTATION_MARKS`
+  withholds a part.
+- **The verifier still folds.** A quote the model wrapped in fullwidth
+  marks is still found.
+
+Single quotation marks stay outside the check, as the module states.
+
+### Evidence and the PR body
+
+- **The `bound` state.** It is "Bound for Workshop", as your report
+  found. The evidence README now says no state shows a saturated digest.
+- **A saturated-digest result** is in the slice's limits, from a new case
+  in `LightboxOpinionDigest.test.ts`:
+  - **The board.** Every chapter reading of the every-lens *Alice* board,
+    copied four times under new ids, makes 256 readings.
+  - **What the default bound holds.** 80 of them (all of group A's copies
+    and part of group B's) in 8,606 estimated tokens. The other 176 are
+    counted by lens in the closing note.
+  - **The invariants.** Every held item is whole, the measured items stay,
+    and the held readings are the board-order prefix.
+  - **The bias** is the one the board-order tech debt records.
+- **Regenerated.** `states/` came out byte-identical. The screenshots were
+  re-rendered from the clean-build bundle, SHA-256
+  `3e3573eda7651fecab4180b8bedffb6f3599448d1094b521b5e131946ca31d50`.
+  - `facts.json` is identical to the first run's, and `errors.txt` is
+    empty. Both are now committed.
+  - 20 of the 24 screenshots are byte-identical. The other four differ in
+    4 to 19 pixels of the 1440 px header strip beside the model picker,
+    which is rendering noise, not content.
+  - The README now notes that the overflow fact is a document-width
+    check.
+
+### Contract changes
+
+- **New export.** `LIGHTBOX_DOUBLE_QUOTATION_MARKS`, in
+  `LightboxQuoteVerifier`.
+- **Narrower figures.** `LightboxOpinionItem.figures` is now only the
+  numbers an item shows as evidence.
+- **Unchanged:** the digest's wording, the digest key, every basis, the
+  worked example, and every protocol shape.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npx jest` | 427 suites / 5,887 tests / 59 snapshots (from 426 / 5,874 / 59 at `f5e1451`) |
+| `npm run lint` | 0 errors / 1,133 warnings, identical per file and rule to `797e166` |
+| `npm run typecheck` | Passes |
+| `npm run build` (with `verify:bundle`) | Passes; `webview.js` SHA-256 `3e3573eda7651fecab4180b8bedffb6f3599448d1094b521b5e131946ca31d50` |
+| `git diff --check` | Passes |
+
+No live or billable call was made. #156's open findings are not touched
+here: the 4C branch carries them, and its fixed head will be merged into
+this one when it lands.

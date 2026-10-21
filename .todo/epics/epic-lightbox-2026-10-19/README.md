@@ -957,3 +957,20 @@ land before Slice 5 (decision 14).
     - Visual evidence at 1440, 1000 and 500 px from real host output with a
       stub model: [`lightbox-slice-4d-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4d-visual/README.md).
     - No live or billable call.
+  - **PR #157 review fixes (2026-10-21).** Astra requested changes for one
+    finding (F-01) and one nonblocking note (N-01); both are fixed.
+    - **F-01.** Digits inside a host-minted tile id, or a quote's
+      q-number, no longer count as figures an Opinion may state. An item's
+      figures now come only from its label, lines and quotes. The witness
+      and its id-only control are covered fresh, on carry, through Bring
+      and through a real-handler run under UUID-shaped tokens.
+    - **N-01.** The no-quotation rule shares the quote verifier's
+      double-quote set, so fullwidth and CJK marks are withheld too.
+    - **Evidence.** It was re-rendered from the fixed bundle, with
+      `facts.json` and `errors.txt` now committed. The slice notes record a
+      saturated-digest result.
+    - **Verification.** 427 suites / 5,887 tests / 59 snapshots (from 426 /
+      5,874 / 59); lint identical per file and rule; typecheck and build
+      with `verify:bundle` pass.
+    - See the review's
+      [author response](../../../docs/pr-reviews/pr-157-lightbox-opinion-review.md#author-response-2026-10-21).

@@ -260,7 +260,9 @@ does, and its claim is that view's headline.
 
 **The text rules** (`LightboxOpinionPhrasing`) apply to **every**
 observation and every view, not only Blunt (a deviation, stricter):
-- **no double quotation marks.** It cites; it never quotes;
+- **no double quotation marks.** It cites; it never quotes. The set is the
+  quote verifier's own, `LIGHTBOX_DOUBLE_QUOTATION_MARKS`: straight, curly,
+  low, guillemets, double prime, fullwidth and CJK (PR #157 N-01);
 - **no writer words**: you, your, yours, yourself, you're, you've, you'd,
   you'll, the writer('s), the author('s);
 - **no rewrite words** (`LIGHTBOX_OPINION_REWRITE_WORDS`): rewrite,
@@ -272,6 +274,10 @@ observation and every view, not only Blunt (a deviation, stricter):
 - **no figure the cited items do not show.** An observation may state only
   figures its cited items show. A view may state only figures the items of
   its observations show. `O1`–`O6` are not figures; paragraph numbers are.
+  What an item "shows" is its evidence: its label, its lines, and its
+  quotes with their paragraph addresses. Its key and its quotes' q-numbers
+  are identity and addresses, never figures, since a host id carries the
+  run token's digits (PR #157 F-01).
 
 **Stated limits** (also in the module):
 - the checks are English word lists, not a parse;
@@ -349,8 +355,38 @@ of the Opinion.**
 
 - **No ceiling debt.** F's largest response, with every field at its
   ceiling, is 8,031 characters against the 32,000 cap.
+- **A saturated digest** (a probe, now a test in
+  `LightboxOpinionDigest.test.ts`). Every chapter reading of the every-lens
+  *Alice* board, copied four times under new ids, makes 256 readings. The
+  default bound holds 80 of them, all of group A's copies and part of
+  group B's, in 8,606 estimated tokens, and leaves out 176, which the
+  closing note counts by lens. Every held item is whole, the measured
+  items stay, and the held readings are the board-order prefix. This is
+  the bias the
+  [board-order tech debt](../../tech-debt/2026-10-21-lightbox-opinion-digest-board-order-cut.md)
+  records.
 - **Font.** In the evidence's monospace system font, observation ids
   ("O1") look like "01".
+
+### Review fixes (PR #157, 2026-10-21)
+
+Astra's review requested changes for one finding and one nonblocking note,
+both fixed. Her report, with the author response and resolution ledger, is
+[`pr-157-lightbox-opinion-review.md`](../../../docs/pr-reviews/pr-157-lightbox-opinion-review.md).
+- **F-01: an id is identity, never evidence.** `lightboxOpinionItems` built
+  an item's allowed figures from its whole digest block, key and q-numbers
+  included. So "The image appears 87654321 times" passed when the cited
+  tile's id was `lbt-87654321-A-1`, and Bring carried it.
+  - **Fix.** Figures now come only from the item's label, lines and quotes
+    (with their paragraph addresses). The digest's wording and every basis
+    are unchanged.
+  - **Tests.** Fresh, carried, selected-view Bring and a real-handler run
+    under host-minted UUID tokens, each read on digit ids and on letter ids
+    (the control). An item's figures do not change with the digits in its
+    key.
+- **N-01: one double-quote set.** The phrasing check now uses the quote
+  verifier's set, exported as `LIGHTBOX_DOUBLE_QUOTATION_MARKS`, so ＂ and
+  〝〞 are withheld as straight and curly quotes always were.
 
 ### Verification
 
