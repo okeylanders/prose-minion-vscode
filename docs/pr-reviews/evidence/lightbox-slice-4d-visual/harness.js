@@ -14,10 +14,15 @@
  * session, behind the real seed delivery, built them, with only the provider
  * played (see README.md and tools/build-opinion.test.ts).
  *
- * Each Lightbox state also records the ribbon's one grid (PR #156 F-03), as
- * the 4C harness does: column and band edges against the story lanes, and
+ * Each Lightbox state also records the ribbon's one grid (PR #156 F-03,
+ * F-04), with the 4C harness's own measurement: column, track and band
+ * edges against the story lanes, each label block beside its track, and
  * clipped lane labels (`ribbonGrid` in facts.json). Any edge more than half
- * a pixel out of line, or a clipped label, is written to errors.txt.
+ * a pixel out of line, a label block not beside its track, a missing track
+ * or a cell count that does not match, or a clipped label, is written to
+ * errors.txt: it fails rather than skips. Three `floor-` states simulate
+ * the declared floor (Chromium 102 has no subgrid) by dropping every
+ * `subgrid` declaration first, and record how many they dropped.
  *
  * The estimate is only ever an answer to the tab's own request (PR #149
  * F-03), so it is not replayed: the stubbed API answers each
@@ -182,6 +187,10 @@ const scenarios = [
   { name: 'withheld', surface: 'lightbox', messages: withheld, act: choose('Blunt') },
   // Stock & signature read again: the tiles O1 and O6 cite have new ids, so the Opinion is stale.
   { name: 'stale', surface: 'lightbox', messages: stale, act: scrollTo(OPINION) },
+  // The declared floor (VS Code 1.75, Chromium 102), simulated for subgrid: the Opinion read, hovered, and stale.
+  { name: 'floor-neutral', surface: 'lightbox', messages: done, act: scrollTo(OPINION), floor: true },
+  { name: 'floor-observation-hover', surface: 'lightbox', messages: done, act: hoverObservation, floor: true },
+  { name: 'floor-stale', surface: 'lightbox', messages: stale, act: scrollTo(OPINION), floor: true },
   // The Workshop: the Blunt view staged above the composer, as its session holds it.
   {
     name: 'composer', surface: 'workshop', messages: [...chrome, ...workshop.composer],
@@ -204,53 +213,144 @@ const viewports = [
   { tag: '500', width: 500, height: 1800 }
 ];
 
-// The ribbon's one grid (PR #156 F-03), measured as ../lightbox-slice-4c-visual/harness.js measures it:
-// the paragraph columns against the story lanes' cells and bands, and clipped lane labels.
+// The ribbon's one grid (PR #156 F-03, F-04), measured exactly as ../lightbox-slice-4c-visual/harness.js measures it.
+/*
+ * Where the ribbon's two parts draw their paragraph columns (PR #156 F-03,
+ * F-04), measured in the page:
+ * - each main column's edges against the story lanes' column of the same
+ *   index (the Pressure lane draws one cell per column), the two column
+ *   tracks' edges, and every band's edges against the main columns it spans;
+ * - each part's label block beside its track (F-04): to its left, and
+ *   overlapping it vertically by at least half the shorter's height, with
+ *   every lane label's vertical centre inside its track;
+ * - any lane label its track clips.
+ * Rounded to 0.01 px. Found by class, not by DOM shape, so it measures any
+ * build of the ribbon.
+ */
 const ribbonGeometry = () => {
   const round = (value) => Math.round(value * 100) / 100;
-  const box = (element) => {
-    const rect = element.getBoundingClientRect();
-    return { left: round(rect.left), right: round(rect.right) };
+  const rect = (element) => {
+    const r = element.getBoundingClientRect();
+    return { left: round(r.left), right: round(r.right), top: round(r.top), bottom: round(r.bottom) };
   };
   const delta = (a, b) => round(Math.max(Math.abs(a.left - b.left), Math.abs(a.right - b.right)));
   const mainTrack = document.querySelector('.pm-lb-ribbon-cols');
   const storyTrack = document.querySelector('.pm-lb-plot-lanes');
-  if (!mainTrack || !storyTrack) {
-    return null;
+  const storyLabels = document.querySelector('.pm-lb-ribbon-plot-labels, .pm-lb-ribbon-plot .pm-lb-ribbon-labels');
+  const mainLabels = [...document.querySelectorAll('.pm-lb-ribbon-labels')].find((labels) => labels !== storyLabels);
+  const missing = [
+    ...(mainTrack ? [] : ['the paragraph columns']),
+    ...(storyTrack ? [] : ['the story lanes']),
+    ...(mainLabels ? [] : ['the paragraph lanes\' labels']),
+    ...(storyLabels ? [] : ['the story lanes\' labels'])
+  ];
+  if (missing.length > 0) {
+    return { missing };
   }
-  const columns = [...mainTrack.querySelectorAll(':scope > .pm-lb-col')].map(box);
-  const cells = [...storyTrack.querySelectorAll(':scope > .pm-lb-plot-pressure')].map(box);
+  const columns = [...mainTrack.querySelectorAll(':scope > .pm-lb-col')].map(rect);
+  const cells = [...storyTrack.querySelectorAll(':scope > .pm-lb-plot-pressure')].map(rect);
   const columnDeltas = cells.length === columns.length ? columns.map((column, index) => delta(column, cells[index])) : [];
   const bandDeltas = [...storyTrack.querySelectorAll(':scope > .pm-lb-band')].map((band) => {
     const [start, end] = band.style.gridColumn.split('/').map((part) => Number.parseInt(part.trim(), 10));
-    return { band: band.getAttribute('aria-label'), delta: delta(box(band), { left: columns[start - 1].left, right: columns[end - 2].right }) };
+    return delta(rect(band), { left: columns[start - 1].left, right: columns[end - 2].right });
   });
-  const clipped = [...document.querySelectorAll('.pm-lb-ribbon-grid .pm-lb-lane-label')]
+  const beside = (part, labels, track) => {
+    const l = rect(labels);
+    const t = rect(track);
+    const overlap = Math.min(l.bottom, t.bottom) - Math.max(l.top, t.top);
+    const shorter = Math.min(l.bottom - l.top, t.bottom - t.top);
+    const outside = [...labels.querySelectorAll('.pm-lb-lane-label')]
+      .filter((label) => {
+        const r = label.getBoundingClientRect();
+        const centre = (r.top + r.bottom) / 2;
+        return centre < t.top - 0.5 || centre > t.bottom + 0.5;
+      })
+      .map((label) => label.textContent.trim());
+    return {
+      part,
+      labelsRight: l.right,
+      trackLeft: t.left,
+      toTheLeft: l.right <= t.left + 0.5,
+      verticalOverlap: round(shorter > 0 ? overlap / shorter : 0),
+      labelsOutsideTrack: outside
+    };
+  };
+  const clipped = [...document.querySelectorAll('.pm-lb-ribbon .pm-lb-lane-label')]
     .filter((label) => label.scrollWidth > label.clientWidth + 0.5)
     .map((label) => label.textContent.trim());
   return {
     columns: columns.length,
-    labelTrack: [...document.querySelectorAll('.pm-lb-ribbon-grid .pm-lb-ribbon-labels')].map((labels) => round(labels.getBoundingClientRect().width)),
-    mainTrack: box(mainTrack),
-    storyTrack: box(storyTrack),
-    trackEdgeDelta: delta(box(mainTrack), box(storyTrack)),
+    cells: cells.length,
+    labelTrack: [mainLabels, storyLabels].map((labels) => round(labels.getBoundingClientRect().width)),
+    mainTrack: rect(mainTrack),
+    storyTrack: rect(storyTrack),
+    trackEdgeDelta: delta(rect(mainTrack), rect(storyTrack)),
     columnsCompared: columnDeltas.length,
     maxColumnEdgeDelta: columnDeltas.length > 0 ? Math.max(...columnDeltas) : null,
-    maxBandEdgeDelta: bandDeltas.length > 0 ? Math.max(...bandDeltas.map((entry) => entry.delta)) : null,
     bandsCompared: bandDeltas.length,
+    maxBandEdgeDelta: bandDeltas.length > 0 ? Math.max(...bandDeltas) : null,
+    adjacency: [beside('paragraph lanes', mainLabels, mainTrack), beside('story lanes', storyLabels, storyTrack)],
     clippedLabels: clipped
   };
 };
-const misaligned = (grid) => {
+
+/**
+ * What is wrong with the ribbon's grid in a state, as a list; empty when it is
+ * whole. It fails rather than skips: a missing track or label block, a
+ * Pressure lane whose cells do not match the columns, or no band where the
+ * state draws bands, is a fault, not a comparison left out. `expect` says
+ * what the state draws (`cells`, `bands`).
+ */
+const ribbonFaults = (grid, expect) => {
   if (!grid) {
-    return [];
+    return ['no ribbon measured'];
+  }
+  if (grid.missing) {
+    return grid.missing.map((part) => `missing ${part}`);
   }
   const out = [];
   if (grid.trackEdgeDelta > 0.5) { out.push(`column tracks differ by ${grid.trackEdgeDelta}px`); }
+  if (expect.cells && grid.cells !== grid.columns) { out.push(`${grid.cells} pressure cells for ${grid.columns} columns`); }
+  if (!expect.cells && grid.cells !== 0) { out.push(`${grid.cells} pressure cells where none are drawn`); }
   if (grid.maxColumnEdgeDelta !== null && grid.maxColumnEdgeDelta > 0.5) { out.push(`a column's edges differ by ${grid.maxColumnEdgeDelta}px`); }
+  if (expect.bands && grid.bandsCompared === 0) { out.push('no band to compare'); }
   if (grid.maxBandEdgeDelta !== null && grid.maxBandEdgeDelta > 0.5) { out.push(`a band's edges differ by ${grid.maxBandEdgeDelta}px`); }
+  for (const pair of grid.adjacency) {
+    if (!pair.toTheLeft) { out.push(`the ${pair.part}' labels end at ${pair.labelsRight}px, right of their track at ${pair.trackLeft}px`); }
+    if (pair.verticalOverlap < 0.5) { out.push(`the ${pair.part}' labels overlap their track by ${pair.verticalOverlap} of the shorter height`); }
+    if (pair.labelsOutsideTrack.length > 0) { out.push(`the ${pair.part}' labels outside their track: ${pair.labelsOutsideTrack.join(', ')}`); }
+  }
   if (grid.clippedLabels.length > 0) { out.push(`clipped labels: ${grid.clippedLabels.join(', ')}`); }
   return out;
+};
+
+/*
+ * The declared floor, simulated for one feature: Chromium 102 (VS Code 1.75)
+ * has no CSS subgrid and drops a `subgrid` declaration as invalid, so a
+ * floor state removes every such declaration from the page's stylesheets
+ * after it renders, then measures the same grid. Not a Chromium 102 run.
+ */
+const dropSubgrid = () => {
+  let dropped = 0;
+  const visit = (rules) => {
+    for (const rule of rules) {
+      if (rule.style) {
+        for (const property of ['grid-template-columns', 'grid-template-rows', 'grid-template']) {
+          if (/\bsubgrid\b/.test(rule.style.getPropertyValue(property))) {
+            rule.style.removeProperty(property);
+            dropped += 1;
+          }
+        }
+      }
+      if (rule.cssRules) {
+        visit(rule.cssRules);
+      }
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    try { visit(sheet.cssRules); } catch { /* a sheet the page cannot read */ }
+  }
+  return dropped;
 };
 
 const lightboxFacts = () => {
@@ -337,6 +437,7 @@ const workshopFacts = () => ({
       if (scenario.act) {
         await scenario.act(tab);
       }
+      const dropped = scenario.floor ? await tab.evaluate(dropSubgrid) : 0;
       await tab.evaluate(() => document.fonts.ready);
       await tab.waitForTimeout(600);
       let previous = await tab.screenshot({ animations: 'disabled', caret: 'hide' });
@@ -353,7 +454,11 @@ const workshopFacts = () => ({
       if (scenario.surface === 'lightbox') {
         // Measured on its own: evaluate sends one function's source to the page.
         pageFacts.ribbonGrid = await tab.evaluate(ribbonGeometry);
-        for (const problem of misaligned(pageFacts.ribbonGrid)) {
+        if (scenario.floor) {
+          pageFacts.subgridDeclarationsDropped = dropped;
+        }
+        // Every 4D state reads groups D and E, so the ribbon draws Pressure cells and movement bands.
+        for (const problem of ribbonFaults(pageFacts.ribbonGrid, scenario.expect ?? { cells: true, bands: true })) {
           errors.push(`${scenario.name}@${viewport.tag}: ${problem}`);
         }
       }

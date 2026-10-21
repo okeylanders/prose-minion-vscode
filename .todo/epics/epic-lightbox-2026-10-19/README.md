@@ -1017,3 +1017,10 @@ land before Slice 5 (decision 14).
       identical per file and rule; typecheck and build with
       `verify:bundle` pass. The bundle was built after `npm ci` into a
       real `node_modules`, SHA-256 `55276cad…`.
+  - **The second 4C merge (F-04, 2026-10-21).** 4C's plain ribbon grid
+    and floor guard are merged in (`7125c48`). The guard passes with the
+    Opinion's stylesheets. The 4D evidence checks each label beside its
+    track, including in three simulated-floor states.
+    - **Verification.** 430 suites / 5,916 tests / 59 snapshots; lint
+      identical; typecheck and build with `verify:bundle` pass; bundle
+      SHA-256 `0f6624f4…`.

@@ -85,23 +85,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -191,23 +214,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -297,23 +343,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -411,23 +480,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 174.8,
+        "bottom": 296.8
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 313.8,
+        "bottom": 392.8
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -519,23 +611,46 @@
     ],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -621,23 +736,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -727,25 +865,446 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
       },
       "storyTrack": {
         "left": 431.8,
-        "right": 1057
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
+  },
+  "lightbox-floor-neutral@1440": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-observation-hover@1440": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 174.8,
+        "bottom": 296.8
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 313.8,
+        "bottom": 392.8
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-stale@1440": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwithheld [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": "Stale Something it cites changed since it was read (O1, O6): a tile was read again or withheld, a lens went stale, or a figure was measured again. Re-read the Opinion to weigh the board as it stands.",
+      "observations": [
+        {
+          "id": "O1 · changed since",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy · changed since",
+            "Stock & signature · Signature: The narrator’s aside · changed since¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6 · changed since",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity · changed since¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": true,
+        "title": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "note": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 1,
+    "tray": "1 tile bound for Workshop·Open Workshop →",
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 153.05,
+        "bottom": 275.05
+      },
+      "storyTrack": {
+        "left": 431.8,
+        "right": 1057,
+        "top": 292.05,
+        "bottom": 371.05
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 421.8,
+          "trackLeft": 431.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
   },
   "workshop-composer@1440": {
     "pills": [
@@ -855,23 +1414,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -961,23 +1543,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1067,23 +1672,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1181,23 +1809,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1289,23 +1940,46 @@
     ],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1391,23 +2065,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1497,25 +2194,446 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
       },
       "storyTrack": {
         "left": 403.8,
-        "right": 965
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
+  },
+  "lightbox-floor-neutral@1000": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-observation-hover@1000": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 62,
+        "bottom": 184
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 201,
+        "bottom": 280
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-stale@1000": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwithheld [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": "Stale Something it cites changed since it was read (O1, O6): a tile was read again or withheld, a lens went stale, or a figure was measured again. Re-read the Opinion to weigh the board as it stands.",
+      "observations": [
+        {
+          "id": "O1 · changed since",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy · changed since",
+            "Stock & signature · Signature: The narrator’s aside · changed since¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6 · changed since",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity · changed since¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": true,
+        "title": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "note": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 1,
+    "tray": "1 tile bound for Workshop·Open Workshop →",
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 40.25,
+        "bottom": 162.25
+      },
+      "storyTrack": {
+        "left": 403.8,
+        "right": 965,
+        "top": 179.25,
+        "bottom": 258.25
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 393.8,
+          "trackLeft": 403.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
   },
   "workshop-composer@1000": {
     "pills": [
@@ -1625,23 +2743,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1731,23 +2872,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1837,23 +3001,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -1951,23 +3138,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -2059,23 +3269,46 @@
     ],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -2161,23 +3394,46 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
   },
@@ -2267,25 +3523,446 @@
     "posted": [],
     "ribbonGrid": {
       "columns": 8,
+      "cells": 8,
       "labelTrack": [
         78.8,
         78.8
       ],
       "mainTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 62,
+        "bottom": 184
       },
       "storyTrack": {
         "left": 119.8,
-        "right": 469
+        "right": 469,
+        "top": 201,
+        "bottom": 280
       },
       "trackEdgeDelta": 0,
       "columnsCompared": 8,
       "maxColumnEdgeDelta": 0,
-      "maxBandEdgeDelta": 0,
       "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
       "clippedLabels": []
     }
+  },
+  "lightbox-floor-neutral@500": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 62,
+        "bottom": 184
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 201,
+        "bottom": 280
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-observation-hover@500": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwhat costs the most [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": null,
+      "observations": [
+        {
+          "id": "O1",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy",
+            "Stock & signature · Signature: The narrator’s aside¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": false,
+        "title": null,
+        "note": "Stages its claim and the quotes found in the chapter above the Workshop composer. Nothing is sent until you send it there.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "staleNotes": 0,
+    "tray": null,
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 62,
+        "bottom": 184
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 201,
+        "bottom": 280
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
+  },
+  "lightbox-floor-stale@500": {
+    "runLine": "62 quotes checked · 0 withheld · 5 callsRe-read5 calls · est. $0.25 · the Opinion up to its digest bound",
+    "opinion": {
+      "last": true,
+      "afterSparkLane": null,
+      "register": "read",
+      "chip": "The one evaluative tile",
+      "rule": "Same facts, three temperaments. Each view may weigh only the observations below, and code withholds a view that cites anything else.",
+      "tabs": [
+        "Enthusiasticwhat is working [aria-pressed=false]",
+        "Neutralweighed evenly [aria-pressed=true]",
+        "Bluntwithheld [aria-pressed=false]"
+      ],
+      "headline": "A distinctive voice carries a familiar descent; long sentences and scarce speech trade pace for texture.",
+      "body": "Voice and objects carry the chapter, and its threads stay open past the last paragraph. The long sentences and the scarce speech suit the fall and slow the chase, and the turn into pursuit leans on a familiar phrase.",
+      "why": [
+        "StrengthVoice and objects do the plotting.O1 · O4",
+        "EvenThe long sentences fit the fall and slow the chase.O2 · O5",
+        "ConcernThe turn into pursuit rests on a stock phrase.O6"
+      ],
+      "withheldView": null,
+      "stale": "Stale Something it cites changed since it was read (O1, O6): a tile was read again or withheld, a lens went stale, or a figure was measured again. Re-read the Opinion to weigh the board as it stands.",
+      "observations": [
+        {
+          "id": "O1 · changed since",
+          "cites": [
+            "Stock & signature · Cognitive economy: Cognitive economy · changed since",
+            "Stock & signature · Signature: The narrator’s aside · changed since¶8(Which was very likely true.)"
+          ]
+        },
+        {
+          "id": "O2",
+          "cites": [
+            "Measured · The numbers: Sentence length",
+            "The numbers · How it is used: Sentence length¶7for she had plenty of time as she went down to look about her"
+          ]
+        },
+        {
+          "id": "O3",
+          "cites": [
+            "Pressure · Thread: Where is the Rabbit hurrying, and why is it late?",
+            "Pressure · Thread: How will she get out again?",
+            "Pressure · Thread: Will the fall ever end?"
+          ]
+        },
+        {
+          "id": "O4",
+          "cites": [
+            "Artifacts · Object: The watch",
+            "Artifacts · Object: The marmalade jar¶7to her great disappointment it was empty"
+          ]
+        },
+        {
+          "id": "O5",
+          "cites": [
+            "Measured · The numbers: Dialogue",
+            "The numbers · How it is used: Dialogue"
+          ]
+        },
+        {
+          "id": "O6 · changed since",
+          "cites": [
+            "Stock & signature · Familiar phrasing: burning with curiosity · changed since¶4burning with curiosity, she ran across the field after it",
+            "Summary & movements · Movement: The chase"
+          ]
+        }
+      ],
+      "digest": "Read 33 board items.",
+      "reread": "Re-read the Opinion1 call · est. $0.07 · up to its digest bound",
+      "bring": {
+        "state": "is-ready",
+        "label": "Bring this view to Workshop →",
+        "disabled": true,
+        "title": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "note": "Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.",
+        "openWorkshop": false
+      },
+      "footnote": "One call returns all three. It runs last, on the checked board, and goes stale when anything it cites changes. Ignore it and nothing else on the board changes. Where it strains: The Opinion leans on readings that are hypotheses: the tier mix and how the numbers are used are a model's reading of counted figures. The slow middle may be the design rather than a cost; Blunt fits the chase better than the fall."
+    },
+    "lit": [],
+    "staleNotes": 1,
+    "tray": "1 tile bound for Workshop·Open Workshop →",
+    "horizontalOverflow": false,
+    "posted": [],
+    "ribbonGrid": {
+      "columns": 8,
+      "cells": 8,
+      "labelTrack": [
+        78.8,
+        78.8
+      ],
+      "mainTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 62,
+        "bottom": 184
+      },
+      "storyTrack": {
+        "left": 119.8,
+        "right": 469,
+        "top": 201,
+        "bottom": 280
+      },
+      "trackEdgeDelta": 0,
+      "columnsCompared": 8,
+      "maxColumnEdgeDelta": 0,
+      "bandsCompared": 3,
+      "maxBandEdgeDelta": 0,
+      "adjacency": [
+        {
+          "part": "paragraph lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        },
+        {
+          "part": "story lanes",
+          "labelsRight": 109.8,
+          "trackLeft": 119.8,
+          "toTheLeft": true,
+          "verticalOverlap": 1,
+          "labelsOutsideTrack": []
+        }
+      ],
+      "clippedLabels": []
+    },
+    "subgridDeclarationsDropped": 0
   },
   "workshop-composer@500": {
     "pills": [

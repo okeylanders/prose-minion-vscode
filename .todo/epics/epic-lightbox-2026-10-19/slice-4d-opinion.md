@@ -404,6 +404,11 @@ both fixed. Her report, with the author response and resolution ledger, is
   sections follow 4C's front-matter fix: metadata split by a blank line no
   longer makes a section, and a new digest case pins it. The 4D evidence
   harness measures 4C's one ribbon grid.
+- **Merged with Slice 4C's F-04 fix** (`7125c48`): the ribbon as one plain
+  grid that holds on Chromium 102. 4C's floor guard passes with
+  `opinion.css` and the 4D `rail.css` lines, which use nothing above that
+  floor. The 4D harness checks each label block beside its track and adds
+  three simulated-floor states.
 
 ### Verification
 

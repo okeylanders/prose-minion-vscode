@@ -372,6 +372,7 @@ edited.
 | --- | --- | --- | --- |
 | F-01 residual · P2 (Subtext's inline `q0`) | **Fixed** | `57ebfd7` | Run against `40a9317`'s `lightboxOpinionItems.ts`, the 6 new witnesses failed and the controls passed; with the fix, all pass. Details below |
 | Slice 4C merge (PR #156 fixes, `e7e1536`) | **Merged and verified again** | `9585609` (merge), `3a2e507` (Opinion re-check) | No conflicts in code. The digest's sections now follow 4C's front-matter fix, with a new case that fails before the merge. The 4D harness measures 4C's ribbon grid: 0 px apart in every state and width |
+| Slice 4C F-04 merge (the ribbon as one plain grid, `d98780b`) | **Merged and verified again** | `7125c48` (merge); the harness and evidence follow on top | The doc conflicts kept both slices' text, with no code conflicts. 4C's floor guard passes with `opinion.css` and the 4D `rail.css` lines, without adding to `KNOWN`. The 4D harness checks the grid as 4C's does, with three simulated-floor states: 0 px apart and every label beside its track. Verification is in the note below |
 
 **What was wrong.** Your finding is correct. `kindLines` writes
 host-authored routing inside a line, and `evidenceText` read whole lines.
@@ -433,3 +434,17 @@ host-authored routing inside a line, and `evidenceText` read whole lines.
   byte-identical, and `facts.json` is identical apart from the new
   `ribbonGrid` entries. `errors.txt` is empty.
 - No live or billable call was made.
+
+**After the second Slice 4C merge (F-04, `7125c48`).**
+- Checks: full `npx jest` passes, with 430 suites / 5,916 tests / 59
+  snapshots; lint is identical per file and rule; typecheck passes; build
+  with `verify:bundle` passes; `git diff --check` passes.
+- After a fresh `npm ci`, the clean-build `webview.js` SHA-256 is
+  `0f6624f4185b4aa7739c9e37b7ccd781d45788a455d9f18a958199abb90bf3f6`.
+- The rerendered evidence:
+  - `states/` is byte-identical;
+  - all 30 Lightbox captures (10 states, the 3 floor states included, at
+    3 widths) are 0 px out of line, with every label beside its track;
+  - `errors.txt` is empty;
+  - the Opinion's screenshots are unchanged apart from header-strip noise
+    at 1440 px.
