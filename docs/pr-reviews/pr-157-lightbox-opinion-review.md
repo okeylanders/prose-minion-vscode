@@ -286,3 +286,77 @@ Single quotation marks stay outside the check, as the module states.
 No live or billable call was made. #156's open findings are not touched
 here: the 4C branch carries them, and its fixed head will be merged into
 this one when it lands.
+
+## Independent re-review (2026-10-21)
+
+**Reviewed correction head:** `40a9317e07dccb07ba7190d29d9e416f9e370aaf`
+**Delta:** `e4400cd4145fd87608ffe5a44a59a7cf3998c751..40a9317` (fix `a35d4b9` plus its documentation/evidence commit; 18 files, +2,385 / −20). The original implementation comparison remains `f5e1451`; `e4400cd` added only this report. The original report and the complete author response above are preserved verbatim.
+
+**Current verdict: Request changes. F-01 is partially fixed, but remains open at P2. N-01 is fixed.** The original random-ID witness is now rejected, and the double-quote variants are blocked. However, a real Subtext item's inline `q0` annotation still becomes numeric authority, so the promised quote-index exclusion is incomplete. This is the remaining part of F-01, not a new unrelated finding. Full repository gates pass despite the residual counterexample.
+
+| ID | Current disposition | Independently established result |
+| --- | --- | --- |
+| F-01 · P2 | **Partially fixed; open** | Host-ID digits and ordinary quote-prefix labels no longer authorize figures. Subtext's inline `q0` still authorizes an unsupported zero, fresh and on carry; fresh Bring transfers it. |
+| N-01 · P3 | **Fixed** | Opinion uses the verifier's shared double-quote set; fullwidth/CJK witnesses and straight/curly controls are withheld. Existing verifier behavior is preserved. |
+| Evidence description/completeness | **Corrected, with the limits below** | The PR body/README now identify Bound for Workshop correctly; `facts.json` and empty `errors.txt` are committed. No saturated-digest screenshot or fresh native/browser acceptance is claimed. |
+
+### F-01 residual — Subtext's inline q0 is still treated as evidence
+
+**Locations:** [`lightboxOpinionItems.ts:254–255`](https://github.com/okeylanders/prose-minion-vscode/blob/40a9317e07dccb07ba7190d29d9e416f9e370aaf/packages/core/src/shared/constants/lightboxOpinionItems.ts#L254-L255), [`343`](https://github.com/okeylanders/prose-minion-vscode/blob/40a9317e07dccb07ba7190d29d9e416f9e370aaf/packages/core/src/shared/constants/lightboxOpinionItems.ts#L343) and [`352–353`](https://github.com/okeylanders/prose-minion-vscode/blob/40a9317e07dccb07ba7190d29d9e416f9e370aaf/packages/core/src/shared/constants/lightboxOpinionItems.ts#L352-L353).
+
+The new `evidenceText(label, lines, quotes)` correctly excludes the item's key and the generated q-prefixes before each quote. But `kindLines` also renders this Subtext annotation inside `lines`:
+
+```text
+speaker: White Rabbit · the said line is q0; the claim is what it is read as meaning
+```
+
+`evidenceText` scans every line unchanged, including that routing annotation. On the actual every-lens Alice worked-example board, the item `Subtext · Said / meant: White Rabbit` therefore has allowed figures **`0` and `4`**. Four is a legitimate paragraph address. Zero appears nowhere in the title, claim, speaker or source quotes; it comes only from `q0`.
+
+**Production reproduction:** Enable Subtext, cite that tile's first quote from O1, and give O1 and Neutral's body the sentence **“The passage contains 0 spoken lines.”** Keep a second valid observation and the required views. The real digest/codec/gates draw O1 and Neutral, and selected-view Bring prepares the unsupported sentence as its claim alongside the verified ¶4 quote **“Oh dear! Oh dear! I shall be late!”**. A separate run through the real reading handler/runner reproduces the same acceptance after enabling Subtext; this is not merely a hand-built item-map result.
+
+The freshly rebuilt production webview renders the zero claim as current in O1 and Neutral, displays the Rabbit's actual speech beneath it, and enables Bring. Clicking sends the correct Neutral IDs-only request; the prepared host handoff contains both the unsupported zero claim and the verified speech. As before, rendering is faithful to the incorrectly accepted host result.
+
+**Controls and carry:**
+
+- A matched fixture retaining the same ID/title/claim/found quotes but using the ordinary headline kind removes the Subtext-specific annotation. It no longer allows zero: O1 is withheld for its figure, dependent views are withheld and Neutral Bring is refused. Adding an actual displayed `0` to that control's title restores numeric eligibility, as the documented rule permits.
+- An ordinary three-quote reading excludes `q0`, `q1`, `q2`, its ordinal and its eight-digit ID fragment while retaining genuine counts and ¶11/¶13/¶17. This confirms the correction works outside the inline annotation path.
+- Carry onto changed text retains the false-zero observation. Its Opinion correctly becomes stale, and **stale Bring correctly refuses it**. The transfer failure is demonstrated on the fresh/current board, not misrepresented as a stale-ownership bypass.
+
+The cited zero is an expressly excluded quote address, not a genuine displayed count reused with the wrong meaning. The conservative semantic-limit caveat therefore does not dispose of this witness. The added item-level regression derives its expected figures from the same `item.lines`, so it inadvertently accepts this annotation too.
+
+**Remaining correction:** Keep host-authored quote-routing annotations outside numeric authority even when they appear within a descriptive line. Use semantic evidence fields or otherwise distinguish those annotations, preserving genuine numeric content and paragraph addresses. Add the real Subtext witness, its paired annotation-free/displayed-zero controls, host execution, carry and fresh selected-view Bring to the regression set. Do not globally strip legitimate source text merely because it resembles a quote key.
+
+### What is independently fixed
+
+The original 54-probe suite was first replayed with its old bad-acceptance assertions intact: 52 passed, and only the two former bug witnesses failed because the bad behavior was rejected. Changing only those expectations to require rejection, while retaining the controls, makes all 54 pass. In particular, `87654321` in a host ID no longer authorizes that invented count or its Bring payload, and the same-content letter-ID control still rejects it. The original valid diagnosis and bounded-transfer cases remain passing.
+
+For N-01, all eleven characters in `LIGHTBOX_DOUBLE_QUOTATION_MARKS` are prohibited in Opinion. Direct old/new verifier comparisons preserve results for the recognized typography and 84 normalized/missing-span cases; the independent 19 phrase/pair controls, including 93 term-span cases, also pass. One initial probe assumed stronger double-prime wrapper handling than the old verifier provides; it was corrected to compare old/new behavior rather than manufacture a regression. Single quotation marks and the other documented English heuristic limits are unchanged. **N-01 is closed.**
+
+### Re-review verification
+
+| Check | Independent corrected-head result |
+| --- | --- |
+| Full Jest | **427 suites / 5,887 tests / 59 snapshots passed** (195.407 s) |
+| Typecheck | All three stages passed |
+| Lint | **0 errors / 1,133 warnings**; exact normalized file/rule/severity/message multiset parity with the original reviewed head, and transitively the unchanged implementation base |
+| Production build / `verify:bundle` | Passed; same three known webpack size/performance warnings |
+| Rebuilt bundle | SHA-256 **`3e3573eda7651fecab4180b8bedffb6f3599448d1094b521b5e131946ca31d50`**, exactly matching the refreshed evidence |
+| Independent gate/correction probes | **70 passed / 2 failed** in the final 72-test run: both failures are required-rejection assertions for the residual Subtext q0 issue, at item/gate and real-handler boundaries. The adapted original 54 are included and pass. |
+| Lifecycle / digest / host-state replay | **14/14 lifecycle tests; 5/5 digest/builder tests** passed, with original assertions unchanged |
+| Phrase/pair regression replay | **19/19 checks** passed, including 93 term-span cases |
+| Production DOM | **303 assertions passed**: 260 original plus 43 correction/residual/control assertions against the new bundle; original ID-digit rejection, current Subtext-zero acceptance and its annotation-free rejection control reach their expected UI states |
+| Host-state and digest provenance | `chapter.json`, `workshop.json`, `log.txt`, the independent digest texts and their summary are byte-identical to the original independent regeneration; host states also match the current committed evidence |
+| Delta whitespace | `git diff --check e4400cd..40a9317` passed |
+| Correction-head PR CI | [Run 39542996143](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39542996143) succeeded |
+
+Full gates used the same Node/npm environment and disk-backed, one-worker commands as the original review; the suite passed on its first full attempt. The independent required-rejection failures are not hidden by the green repository suite. No implementation, tracked test or lockfile was edited. The old head/base gates were reused, not falsely reported as rerun. Only the two-commit correction delta and affected boundaries were re-reviewed; #156's unchanged findings were not reopened or presumed fixed.
+
+### Refreshed visual evidence and remaining acceptance boundaries
+
+All four changed PNGs were inspected as actual pixels and compared with the earlier committed images. **Twenty of 24 are byte-identical.** Blunt, Enthusiastic and stale at 1440px each change exactly four pixels in bounding box `(1007,22,1009,24)`; Workshop at 1440px changes nineteen pixels in `(735,22,1009,28)` (right/bottom edges exclusive). Those are header-control pixels, consistent with minor rendering variation; the card/observation/composer content is unchanged. The earlier inspection of the twenty identical images remains applicable. Existing narrow clipping and the inherited ribbon alignment issue remain outside this correction's closure.
+
+The newly committed `facts.json` contains 24 state/width entries, all reporting `horizontalOverflow: false`; `errors.txt` is zero bytes. These are now inspectable author capture artifacts rather than missing files. Their claimed identity to an uncommitted first-run facts file cannot be independently established. The exact rebuilt-bundle hash and regenerated host-state parity are verified, but the captured overflow/error results are still **not a fresh reviewer browser or native VS Code run**. Document-width measurements do not exclude inner clipping.
+
+The PR body and README now explicitly say `bound` means Bound for Workshop and no screenshot shows a saturated digest. The new saturated-digest test is a bound control, not an old-head failing fix witness, as the author response now acknowledges. The original independent default-bound/257-transition probes still pass unchanged. No live/provider-quality, private-manuscript, authenticated writer-decision or Slice 5 saved-format acceptance is inferred.
+
+**Next step:** finish F-01's quote-address exclusion for Subtext, then re-review that targeted change. N-01 needs no further correction. Report-only publication preserves the original review and author response; it does not authorize implementation changes, comments/formal review, merge or deployment. Exact post-publication CI is checked separately.
