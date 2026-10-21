@@ -809,8 +809,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, the sentence rule keeps closing marks, on Lightbox Slice 4E):
-- 442 suites / 6,058 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, the sentence rule's closing marks and speech tags, on Lightbox Slice 4E with its PR #159 fixes and PR #158's VS Code 1.82 floor):
+- 444 suites / 6,100 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1120,15 +1120,18 @@ D3, D4 and D7 (Slices 4B, 4C and 4D) when adding a lens or a reading tile kind:
   - **The text rules.** The one evaluative tile's rules are
     `LightboxOpinionPhrasing`, a conservative word check with its limits
     stated. Keep it stricter than it needs to be, not looser.
-- **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
+- **One ribbon grid, on the Chromium 114 floor.** Every ribbon label block
   and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
   one column track), never a row with its own label width, so a column
   index is one horizontal place in every lane (PR #156 F-03). The grid must
-  hold on Chromium 102, the floor VS Code 1.75 sets (`engines.vscode:
-  ^1.75.0`): plain CSS grid, no `subgrid` or row wrappers (F-04).
-  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor.
-  The visual evidence harness measures the column edges and each label
-  block beside its track, including in states that simulate the floor.
+  hold on Chromium 114, the floor VS Code 1.82 sets (`engines.vscode:
+  ^1.82.0`; [ADR 2026-10-21](docs/adr/2026-10-21-vscode-engine-floor.md)):
+  plain CSS grid, no `subgrid` (Chrome 117) or row wrappers (F-04).
+  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor;
+  the only uses it allows are features Chromium 114 drops gracefully
+  (its `GRACEFUL` list). The visual evidence harness measures the column
+  edges and each label block beside its track, including in states that
+  simulate the floor.
 
 ### Lightbox Passages
 
@@ -1152,6 +1155,13 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
   content hash, under a webview-minted id. `useLightboxPassages` takes only
   the answer still pending, for the board on screen. A newer board says "the
   text changed" until its answer lands. No passage text enters `setState`.
+- **Pending is only the pin on screen's.** Going back to a pin or board
+  whose answer is held asks nothing and drops any other request, so a late
+  answer can never replace what is shown (PR #159 F-01).
+- **Cut in linear time.** The row bound limits rows, not what one row
+  holds. Match ranges to instances in one walk and cut segments in one
+  open/close sweep, never by scanning every instance per segment (PR #159
+  N-01).
 - **Sentences are the board's.** Rows use each paragraph's
   `proseSentenceSpans`. Change the sentence rule there, never in the well.
   A sentence keeps the closing marks written directly after its end

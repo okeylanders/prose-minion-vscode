@@ -57,8 +57,8 @@
    (PR #156 F-03): one label track, as wide as the widest label with its stale
    badge, and one track of paragraph columns, so a column index is the same
    horizontal place in both parts. Every label block and every track is a
-   direct child, placed by column; no subgrid, which Chromium 102 (VS Code
-   1.75, the declared floor) does not have (F-04). */
+   direct child, placed by column; no subgrid, which Chromium 114 (VS Code
+   1.82, the declared floor) does not have (F-04). */
 [data-pm-surface="lightbox"] .pm-lb-ribbon-grid {
   display: grid;
   grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);

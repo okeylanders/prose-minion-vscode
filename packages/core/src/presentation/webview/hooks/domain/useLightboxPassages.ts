@@ -8,9 +8,12 @@
  * when it answers the request still pending, for that board and text
  * (PR #149 F-03, PR #154 F-01). A new pin, a new board or changed text asks
  * again and drops what was pending; a board message that changes only the
- * readings asks nothing. Until the answer lands, the well says it is waiting,
- * or that the text changed when the same pin was showing an older board's
- * passage (`buildLightboxPassageWellView`).
+ * readings asks nothing; going back to the pin (or board) whose answer is
+ * held asks nothing and drops what was pending too (PR #159 F-01). So the
+ * pending request is always the pin on screen's, and an answer is taken only
+ * for it. Until the answer lands, the well says it is waiting, or that the
+ * text changed when the same pin was showing an older board's passage
+ * (`buildLightboxPassageWellView`).
  *
  * Nothing persists. The chapter's text stays in memory while it is pinned;
  * the pin itself (ids, and the term a paragraph was reached from) is
@@ -75,13 +78,23 @@ export function useLightboxPassages({ board, selected }: UseLightboxPassagesArgs
   const item = React.useMemo(() => (board && selected ? lightboxPassageItemOf(board, selected) : null), [board, selected]);
   const key = board && item ? lightboxPassageRequestKey(board, item) : null;
 
-  /** Ask for the pin's passage once per board, text and item; with nothing to ask, wait for nothing. */
+  /**
+   * Ask for the pin's passage once per board, text and item; with nothing to
+   * ask, wait for nothing. What is pending is only ever the request for the
+   * pin on screen: returning to a pin whose answer is held drops a request
+   * made for another pin in between, so its late answer cannot replace the
+   * one on screen (PR #159 F-01). That pin, pinned again, asks again.
+   */
   const requestPassageForPin = React.useCallback(() => {
     if (!board || !item || !key) {
       pending.current = null;
       return;
     }
-    if (pending.current?.key === key || answered.current === key) {
+    if (pending.current?.key === key) {
+      return;
+    }
+    if (answered.current === key) {
+      pending.current = null;
       return;
     }
     ids.current.count += 1;

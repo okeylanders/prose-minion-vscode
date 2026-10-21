@@ -102,7 +102,6 @@ elsewhere.
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
 | Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; decide before Slice 5 saves boards) | Identified |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
-| Medium | [Webview CSS uses features above the declared Chromium 102 floor](2026-10-21-webview-css-above-chromium-102.md) (found by the PR #156 F-04 guard; `color-mix()` theme tokens) | Identified |
 
 ## Review Guidance
 
@@ -115,7 +114,9 @@ elsewhere.
 
 ## Recently resolved
 
-- [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
+- [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end, and a lower-case speech tag continues its speech's sentence ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
+
+- [Webview CSS uses features above the declared Chromium 102 floor](../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md): the writer raised the floor to VS Code 1.82 (Chromium 114); scrollbar styling and `text-wrap: pretty` stay as graceful exceptions ([ADR 2026-10-21](../../docs/adr/2026-10-21-vscode-engine-floor.md), 2026-10-21).
 
 - [Lightbox readings vanish when the chapter changes](../archive/tech-debt/2026-10-19-lightbox-stale-readings.md): readings carry onto the changed chapter, stale and re-checked (Lightbox Slice 3, 2026-10-19).
 

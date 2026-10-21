@@ -61,6 +61,7 @@
       "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -127,6 +128,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -194,6 +196,7 @@
       "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 16
@@ -260,6 +263,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -326,9 +330,10 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
-    "statesSaved": 10
+    "statesSaved": 11
   },
   "flag@1440": {
     "inspector": {
@@ -392,9 +397,10 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
-    "statesSaved": 10
+    "statesSaved": 11
   },
   "hapax@1440": {
     "inspector": {
@@ -458,9 +464,80 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
+  },
+  "back-late@1440": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 15
   },
   "changed@1440": {
     "inspector": {
@@ -529,6 +606,7 @@
     "held": [
       "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 13
@@ -597,6 +675,7 @@
       "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -663,6 +742,7 @@
       "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -729,6 +809,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -796,9 +877,10 @@
       "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
-    "statesSaved": 16
+    "statesSaved": 15
   },
   "pos@1000": {
     "inspector": {
@@ -862,6 +944,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -928,9 +1011,10 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
-    "statesSaved": 11
+    "statesSaved": 10
   },
   "flag@1000": {
     "inspector": {
@@ -994,6 +1078,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1060,9 +1145,80 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 12
+  },
+  "back-late@1000": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 15
   },
   "changed@1000": {
     "inspector": {
@@ -1131,6 +1287,7 @@
     "held": [
       "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 13
@@ -1199,6 +1356,7 @@
       "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1265,6 +1423,7 @@
       "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1331,6 +1490,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1398,6 +1558,7 @@
       "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 13
@@ -1464,9 +1625,10 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
-    "statesSaved": 11
+    "statesSaved": 10
   },
   "phrase@500": {
     "inspector": {
@@ -1530,6 +1692,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1596,6 +1759,7 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10
@@ -1662,9 +1826,80 @@
       "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 12
+  },
+  "back-late@500": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4321,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3852,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 14
   },
   "changed@500": {
     "inspector": {
@@ -1733,6 +1968,7 @@
     "held": [
       "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
     ],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 13
@@ -1801,6 +2037,7 @@
       "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
     ],
     "held": [],
+    "released": 0,
     "missing": [],
     "statesWithText": 0,
     "statesSaved": 10

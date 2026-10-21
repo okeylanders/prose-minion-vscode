@@ -15,7 +15,8 @@
  * `lightbox_request_passage` the tab posts with the host's recorded answer
  * for that board and item, echoing the request's id, and each
  * `lightbox_set_lenses` with the host's recorded estimates (the tab takes
- * only its own board's). A state that holds answers (`hold`) answers none.
+ * only its own board's). A state that holds answers (`hold`) answers none
+ * until it releases them (`__pmRelease`), each with its own request's id.
  *
  * It fails rather than skips: a well, list or note a state expects that is
  * missing, a lit count that disagrees with the board's count, a request the
@@ -68,6 +69,8 @@ const page = `<!DOCTYPE html>
     window.__pmStates = [];
     window.__pmMissing = [];
     window.__pmHeld = [];
+    window.__pmHeldRequests = [];
+    window.__pmReleased = 0;
     window.__pmHold = false;
     window.__pmEstimates = [];
     window.__pmPassages = {};
@@ -81,15 +84,22 @@ const page = `<!DOCTYPE html>
           }
         }
         if (m.type === 'lightbox_request_passage') {
-          if (window.__pmHold) { window.__pmHeld.push(m.payload.boardId + ' ' + canonical(m.payload.item)); return; }
-          const key = m.payload.boardId + ' ' + canonical(m.payload.item);
-          const recorded = window.__pmPassages[key];
-          if (!recorded) { window.__pmMissing.push(key); return; }
-          answer({ type: 'lightbox_passage', source: 'extension.lightbox', timestamp: 1, payload: Object.assign({}, recorded, { requestId: m.payload.requestId }) });
+          if (window.__pmHold) { window.__pmHeld.push(m.payload.boardId + ' ' + canonical(m.payload.item)); window.__pmHeldRequests.push(m.payload); return; }
+          window.__pmAnswerPassage(m.payload);
         }
       },
       getState: () => undefined,
       setState: (state) => { window.__pmStates.push(JSON.stringify(state)); }
+    };
+    window.__pmAnswerPassage = (request) => {
+      const key = request.boardId + ' ' + canonical(request.item);
+      const recorded = window.__pmPassages[key];
+      if (!recorded) { window.__pmMissing.push(key); return; }
+      answer({ type: 'lightbox_passage', source: 'extension.lightbox', timestamp: 1, payload: Object.assign({}, recorded, { requestId: request.requestId }) });
+    };
+    /** Answer every held request now, late, each with its own id. */
+    window.__pmRelease = () => {
+      for (const request of window.__pmHeldRequests.splice(0)) { window.__pmReleased += 1; window.__pmAnswerPassage(request); }
     };
     window.acquireVsCodeApi = () => window.__pmVsCodeApi;
     window.proseMinionAssets = { vhsLoadingGif: '', loadingGifs: [], loadingGifList: [], loadingGifCredits: {}, noticeShots: {} };
@@ -207,6 +217,20 @@ const scenarios = [
     },
     expect: { region: `Sentences holding “${chapter.items.hapax.written}”`, count: 1, hapax: true }
   },
+  // Back to the word before ¶2 answers, then ¶2's answer comes late (PR #159 F-01): the word's sentences stay, and nothing more is asked.
+  {
+    name: 'back-late', messages: chapter.idle,
+    act: async (tab) => {
+      await click(tab, cloudWord(tab, 'alice', countOf.alice));
+      await tab.evaluate(() => { window.__pmHold = true; });
+      await click(tab, tab.locator('.pm-lb-well-address'));
+      await click(tab, tab.locator('.pm-lb-passage-back'));
+      await tab.evaluate(() => { window.__pmHold = false; window.__pmRelease(); });
+      await tab.waitForTimeout(250);
+      await reveal(INSPECTOR)(tab);
+    },
+    expect: { region: 'Sentences holding “alice”', count: countOf.alice, requests: 2, released: 1 }
+  },
   // The text changed while ¶11 was pinned: the newer board's answer is held, so the well says so and shows no text.
   {
     name: 'changed', messages: chapter.idle,
@@ -290,6 +314,7 @@ const pageFacts = () => {
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     requests: window.__pmPosted.filter((m) => m.type === 'lightbox_request_passage').map((m) => `${m.payload.boardId} ${canonical(m.payload.item)}`),
     held: window.__pmHeld,
+    released: window.__pmReleased,
     missing: window.__pmMissing,
     statesWithText: window.__pmStates.filter((state) => snippets.some((snippet) => state.includes(snippet))).length,
     statesSaved: window.__pmStates.length
@@ -340,6 +365,8 @@ const faults = (facts, expect) => {
     if (passage.back !== '← Back to “alice”') { out.push(`the way back reads "${passage.back}"`); }
   }
   if (expect.scrolls && !passage.wellScrolls) { out.push('the paragraph well does not scroll'); }
+  if (expect.requests !== undefined && facts.requests.length !== expect.requests) { out.push(`${facts.requests.length} passage requests, expected ${expect.requests}: ${facts.requests.join('; ')}`); }
+  if (expect.released !== undefined && facts.released !== expect.released) { out.push(`${facts.released} held answers released late, expected ${expect.released}`); }
   return out;
 };
 

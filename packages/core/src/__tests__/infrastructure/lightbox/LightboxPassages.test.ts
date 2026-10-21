@@ -136,3 +136,84 @@ describe('an instances passage', () => {
     }
   });
 });
+
+/**
+ * The row bound limits rows, not what one row holds (PR #159 N-01). Before
+ * the fix, each segment scanned every instance, so these passages took two
+ * to four seconds each and grew with the square of the instances. One
+ * second is a coarse ceiling: the linear cut takes about a tenth of it, and
+ * the board is built before the clock starts. Nothing is dropped to keep it
+ * fast: every count is literal.
+ */
+describe('one long row', () => {
+  const INSTANCES = 25_000;
+  const CEILING_MS = 1_000;
+
+  function timed<T>(build: () => T): { passage: T; ms: number } {
+    const started = performance.now();
+    const passage = build();
+    return { passage, ms: performance.now() - started };
+  }
+
+  const litIn = (rows: ReadonlyArray<{ sentences: ReadonlyArray<{ segments: readonly LightboxPassageSegment[] }> }>) =>
+    new Set(rows.flatMap((row) => row.sentences.flatMap((sentence) => sentence.segments.flatMap((segment) => segment.instances ?? [])))).size;
+
+  it('cuts one sentence holding 25,000 instances in linear time, and lights every one', async () => {
+    // One sentence: "Alice Alice … Alice." The word and the phrase are both on the board.
+    const { board, passages } = await boardWithPassages(`${Array.from({ length: INSTANCES }, () => 'Alice').join(' ')}.`);
+    expect(lightboxBoardCountOf(board, { kind: 'word', word: 'alice' })).toBe(25_000);
+    expect(lightboxBoardCountOf(board, { kind: 'phrase', phrase: 'alice alice' })).toBe(24_999);
+
+    const word = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'word', word: 'alice' } })));
+    expect({ instances: word.passage.instances, sentences: word.passage.sentences, rows: word.passage.rows.length, more: word.passage.more })
+      .toEqual({ instances: 25_000, sentences: 1, rows: 1, more: { rows: 0, sentences: 0, instances: 0 } });
+    const wordSegments = word.passage.rows[0].sentences[0].segments;
+    expect(wordSegments).toHaveLength(50_000);
+    expect(segments(wordSegments.slice(0, 3))).toEqual([['Alice', [0]], [' '], ['Alice', [1]]]);
+    expect(segments(wordSegments.slice(-2))).toEqual([['Alice', [24_999]], ['.']]);
+    expect(litIn(word.passage.rows)).toBe(25_000);
+
+    // Overlapping instances keep their own numbers: each inner word is in two,
+    // and a stretch in one instance only is one segment ("Alice " at the start).
+    const phrase = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'alice alice' } })));
+    expect({ instances: phrase.passage.instances, sentences: phrase.passage.sentences, rows: phrase.passage.rows.length })
+      .toEqual({ instances: 24_999, sentences: 1, rows: 1 });
+    const phraseSegments = phrase.passage.rows[0].sentences[0].segments;
+    expect(phraseSegments).toHaveLength(49_998);
+    expect(segments(phraseSegments.slice(0, 5))).toEqual([['Alice ', [0]], ['Alice', [0, 1]], [' ', [1]], ['Alice', [1, 2]], [' ', [2]]]);
+    expect(segments(phraseSegments.slice(-3))).toEqual([['Alice', [24_997, 24_998]], [' Alice', [24_998]], ['.']]);
+    expect(litIn(phrase.passage.rows)).toBe(24_999);
+
+    const paragraph = timed(() => paragraphsOf(buildLightboxPassage(board, passages, { kind: 'paragraphs', from: 1, to: 1, via: { kind: 'word', word: 'alice' } })));
+    expect(paragraph.passage.lit).toBe(25_000);
+    expect(paragraph.passage.paragraphs[0].segments).toHaveLength(50_000);
+
+    expect({ word: word.ms < CEILING_MS, phrase: phrase.ms < CEILING_MS, paragraph: paragraph.ms < CEILING_MS })
+      .toEqual({ word: true, phrase: true, paragraph: true });
+  }, 60_000);
+
+  it('joins the 25,000 sentences one phrase runs across into one row in linear time', async () => {
+    // "Alice. Alice. … Alice.": the phrase "alice alice" crosses every sentence break.
+    const { board, passages } = await boardWithPassages(Array.from({ length: INSTANCES }, () => 'Alice.').join(' '));
+    expect(lightboxBoardCountOf(board, { kind: 'phrase', phrase: 'alice alice' })).toBe(24_999);
+
+    const phrase = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'alice alice' } })));
+    expect({ instances: phrase.passage.instances, sentences: phrase.passage.sentences, rows: phrase.passage.rows.length })
+      .toEqual({ instances: 24_999, sentences: 25_000, rows: 1 });
+    const row = phrase.passage.rows[0].sentences;
+    expect(row).toHaveLength(25_000);
+    expect(row.slice(0, 2).map((sentence) => [sentence.sentence, segments(sentence.segments)])).toEqual([
+      [1, [['Alice.', [0]]]],
+      [2, [['Alice', [0, 1]], ['.', [1]]]]
+    ]);
+    expect(segments(row[24_999].segments)).toEqual([['Alice', [24_998]], ['.']]);
+    expect(litIn(phrase.passage.rows)).toBe(24_999);
+
+    // The word stands in one sentence each, so the row bound holds and says what lies past it.
+    const word = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'word', word: 'alice' } }));
+    expect({ instances: word.instances, sentences: word.sentences, rows: word.rows.length, more: word.more })
+      .toEqual({ instances: 25_000, sentences: 25_000, rows: 50, more: { rows: 24_950, sentences: 24_950, instances: 24_950 } });
+
+    expect(phrase.ms < CEILING_MS).toBe(true);
+  }, 60_000);
+});

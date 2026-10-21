@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D4, D5, D10, D12
 **Writer decisions:** 17, 18 and 19 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Implemented, awaiting review (`epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`). Built beside Slice 4F (craft steering), which takes the decisions after 19.
+**Status:** Implemented; the PR #159 review fixes are in, awaiting re-review (`epic/lightbox-slice-4e-inspector`, from `epic/lightbox` at `20775cf`, merged with `e8389bf`). Built beside Slice 4F (craft steering), which takes the decisions after 19.
 **Before:** Slice 5.
 
 ## Outcome
@@ -120,7 +120,8 @@ Each well finds instances with the rule that made the figure it shows:
 - **Hover** stays as the Top Words footnote says: "Hover a word to light
   its paragraphs. Click to pin it."
 - CSS joins `inspector.css` and `tiles.css`, uses the `--pm-…` tokens, and
-  stays at the Chromium 102 floor (`webviewCssFloor.test.ts`).
+  stays at the webview CSS floor (`webviewCssFloor.test.ts`): Chromium
+  102 when planned, Chromium 114 since PR #158.
 - The live inspector does not read a well's text out (`aria-live="off"`).
 
 ## Tests
@@ -339,18 +340,74 @@ This section records what landed and where it differs from the plan above.
 - **Standout figures and the numbers row** do not open a well. That is
   the numbers lens's ground (Slice 4F).
 
+### Review fixes (PR #159, 2026-10-21)
+
+Astra's review requested changes for one finding and noted one
+nonblocking optimization. Both are fixed. Her report, with the author
+response and resolution ledger, is
+[`pr-159-lightbox-inspector-reading-aids-review.md`](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md).
+- **F-01: going back to a held passage (`86d269a`).**
+  - **The bug.** Going back to a pin whose answer the webview held left
+    another pin's request pending. Its late answer replaced the held one,
+    and the well read "Finding the sentences…" with nothing more asked.
+    Through the UI: "alice", then a row's ¶2, then Back before ¶2
+    answers, then ¶2's answer.
+  - **The fix.** `useLightboxPassages` keeps pending only the request for
+    the pin on screen. Going back to a held pin or board asks nothing and
+    drops what was pending, so that answer is never taken. The dropped pin,
+    pinned again, asks again under a new id.
+  - **Tests.** All four fail on `058feb5`; the earlier controls pass on
+    both.
+    - The held ¶2 → Back sequence runs through `LightboxApp` with the real
+      host handler.
+    - Three hook cases cover a held pin, a held board, and the dropped pin
+      asked again.
+  - **Evidence.** A tenth state, `back-late`, holds ¶2's answer and
+    releases it after Back. Against the bundle the review read, it fails
+    at every width and every other state passes.
+- **N-01: one long row (`31a4550`).**
+  - **The cost.** The row bound limits rows, not what one row holds.
+    - Each segment scanned every instance, and each of a row's sentences
+      did the same.
+    - So one sentence of 25,000 instances, or a phrase across 25,000
+      sentence breaks, took seconds on the extension host.
+  - **The fix.** One walk matches sentences, or a range's paragraphs, to
+    the instances that touch them. One sweep over where instances open and
+    close cuts each into segments. Overlapping instances keep their own
+    numbers, and nothing is dropped.
+  - **Proof of sameness.** Before the change was kept, a throwaway
+    differential check compared it with `058feb5`'s cutting and found
+    7,077 passages identical:
+    - every listed entry on the agreement fixtures, as instances;
+    - each paragraph lit by each entry;
+    - overlapping, cross-paragraph and long texts.
+
+    Rebuilt, the evidence's host states are byte-identical.
+  - **Tests.** "One long row" in `LightboxPassages.test.ts` pins literal
+    counts on both shapes, under a coarse 1 s ceiling.
+    - On `058feb5` the counts pass and the ceilings fail, at about 2 to
+      4 s a passage.
+    - Now each passage takes about a tenth of the ceiling.
+- **Merged with PR #158 (`6d63a6e`).** The floor is now VS Code 1.82
+  (Chromium 114). Slice 4E's stylesheets pass the retargeted guard as they
+  are, with nothing added to its lists.
+
 ### Verification
 
-| Check | `20775cf` (base) | Slice 4E head |
-|---|---|---|
-| `npx jest` | 430 suites / 5,916 tests / 59 snapshots | 440 suites / 6,012 tests / 59 snapshots |
-| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
-| `npm run typecheck` | Passes | Passes |
-| `npm run build` (with `verify:bundle`) | Passes; `webview.js` `0f6624f4…` | Passes; `webview.js` `8d0545de…` |
-| `git diff --check` | | Clean |
+| Check | `20775cf` (base) | `058feb5` (reviewed) | Head (fixes, merged with `e8389bf`) |
+|---|---|---|---|
+| `npx jest` | 430 suites / 5,916 tests / 59 snapshots | 440 / 6,012 / 59 | 440 / 6,019 / 59 |
+| `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | Identical per file and rule |
+| `npm run typecheck` | Passes | Passes | Passes |
+| `npm run build` (with `verify:bundle`) | Passes; `webview.js` `0f6624f4…` | Passes; `8d0545de…` | Passes; `2f86917e…` |
+| Diff whitespace check | | Clean | Clean |
 
-- Both bundles were built from an empty `dist/` after `npm ci` into a real
-  `node_modules`. The head bundle built twice gave the same hash.
+- Every bundle was built from an empty `dist/`, after `npm ci` into a real
+  `node_modules`. Each head bundle built twice gave the same hash.
+- The head's 6,019 tests are:
+  - the reviewed 6,012;
+  - the six review tests;
+  - one test from PR #158's floor guard.
 - Visual evidence:
   [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
 - No live or billable call.

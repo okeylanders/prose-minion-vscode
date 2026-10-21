@@ -17,7 +17,7 @@
  * across both tracks, its label block, its lane track), never a row of its
  * own: the label block takes the grid's shared label track and the lanes its
  * column track, so a column index is one place in every lane. Plain CSS
- * grid, no subgrid, so it holds on Chromium 102 (VS Code 1.75; PR #156
+ * grid, no subgrid, so it holds on Chromium 114 (VS Code 1.82; PR #156
  * F-03, F-04). Every
  * position comes from the host's ranges and quotes on the current text,
  * never an old column (PR #150 F-06). The two-level ribbon above 96

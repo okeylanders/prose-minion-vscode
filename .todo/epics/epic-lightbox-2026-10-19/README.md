@@ -70,7 +70,7 @@ carried into the Workshop.
 | 4B | [Craft lenses (Group D)](slice-4b-craft-lenses.md) | Stock & signature (tiers counted from classified beats, familiar phrasing counted, air-locks, echoes), Rhythm & handoffs (measured sentence lengths, read endings, adjacent-sentence handoffs), What stands out in the numbers (measured standouts against ranges and the writer's own average, with how each is used) | Implemented, awaiting review (`epic/lightbox-slice-4b-craft`) |
 | 4C | [Story lenses (Group E)](slice-4c-story-lenses.md) | Template & freshness (with engagement per movement and a counted basis), Pressure, Artifacts, Summary & movements, and a measured Sections lane | Implemented, awaiting review (`epic/lightbox-slice-4c-story`) |
 | 4D | [Opinion (Group F)](slice-4d-opinion.md) | The one evaluative tile: three views over one set of observations that cite the board, run last on the verified digest | Implemented, awaiting review (`epic/lightbox-slice-4d-opinion`) |
-| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented, awaiting review (`epic/lightbox-slice-4e-inspector`) |
+| 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Implemented; PR #159 review fixes in, awaiting re-review (`epic/lightbox-slice-4e-inspector`) |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare; the format holds every tile kind through 4D, the Sections layer and a list of sources | Planned (last, by decisions 5 and 14) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -932,7 +932,8 @@ land before Slice 5 (decision 14).
       states that simulate the floor.
     - Older above-floor CSS, mainly `color-mix()` in the theme tokens, went
       to
-      [tech debt](../../tech-debt/2026-10-21-webview-css-above-chromium-102.md).
+      [tech debt](../../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md)
+      (resolved 2026-10-21 by raising the floor to VS Code 1.82).
 
     After F-04: 421 suites / 5,821 tests / 59 snapshots; lint identical.
 
@@ -1092,44 +1093,75 @@ land before Slice 5 (decision 14).
     - Visual evidence at 1440, 1000 and 500 px from real host output:
       [`lightbox-slice-4e-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-4e-visual/README.md).
     - No live or billable call.
+  - **PR #159 review fixes (2026-10-21).** Astra requested changes for one
+    finding (F-01) and noted one nonblocking optimization (N-01). Both are
+    fixed.
+    - **F-01** (`86d269a`). Going back to a held passage no longer leaves
+      another pin's request pending. Before, its late answer replaced the
+      held one and stranded the well at "Finding the sentences…".
+      - Four regressions fail on `058feb5`: the held ¶2 → Back sequence
+        through `LightboxApp`, and three hook cases.
+      - A tenth evidence state, `back-late`, shows the fix in Chromium.
+    - **N-01** (`31a4550`). A passage is cut in time linear in what it
+      sends, by one walk and one open/close sweep, with nothing dropped.
+      - Before the change was kept, it matched `058feb5`'s cutting on
+        7,077 passages.
+      - The new long-row tests take about a tenth of their 1 s ceiling.
+        On `058feb5` they take 2 to 4 s.
+    - **Merged with PR #158** (`6d63a6e`): the Chromium 114 floor. The 4E
+      stylesheets pass its guard as they are.
+    - **Verification.** 440 suites / 6,019 tests / 59 snapshots; lint
+      identical per file and rule (0 errors / 1,133 warnings); typecheck
+      and build with `verify:bundle` pass; bundle SHA-256 `2f86917e…`,
+      reproduced.
+    - See the review's
+      [author response](../../../docs/pr-reviews/pr-159-lightbox-inspector-reading-aids-review.md#author-response-2026-10-21).
 
-- **2026-10-21. The sentence rule keeps closing marks,** on
-  `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159) at
-  `058feb5`. It resolves the
+- **2026-10-21. The sentence rule keeps closing marks and joins speech
+  tags,** on `epic/lightbox-sentence-rule`, stacked on Slice 4E (PR #159)
+  at `058feb5` and merged with its review fixes at `2e62aa7`. It resolves
+  the
   [sentence-rule debt](../../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md),
   recorded in
   [ADR 2026-10-21](../../../docs/adr/2026-10-21-sentence-closing-marks.md).
   Slice 4F (craft steering) reads sentence spans and merges this later.
-  - **The rule.** `proseSentenceSpans` keeps the run of `”`, `’`, `"`,
-    `'`, `)` and `]` written directly after a sentence's `.`, `!` or `?`,
-    and a stretch of only space and closing marks is no sentence.
+  - **Closing marks.** `proseSentenceSpans` keeps the run of `”`, `’`,
+    `"`, `'`, `)` and `]` written directly after a sentence's `.`, `!` or
+    `?`. A stretch of only space and closing marks is no sentence.
     - `“Oh dear!”` is 2 words in 1 sentence.
     - An elision's apostrophe never moves.
-    - `“Wait!” she cried.` is still two sentences: lower-case
-      continuations, abbreviations and ellipses are unchanged.
-  - **Figures move on purpose.** Literal before/after figures on the
-    *Alice* fixtures are in the
-    [evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md),
-    with an inspector capture before and after.
-    - Whole-text counts drop by at most one in ordinary prose: the
-      worked examples go 17 → 16 sentences and 29.9 → 31.8 words per
-      sentence.
-    - Per-paragraph counts drop wherever a paragraph ends with a closing
-      mark: 2,028 → 1,702 over the whole book.
-    - The well headers do not move, and count agreement holds, now also
-      on the dialogue-heavy Tea-Party.
-    - Group F's worked example was regenerated from its builder.
+  - **Speech tags** (the coordinator's default, by standard punctuation).
+    A sentence goes on across ender, closing quotation mark, space and a
+    lower-case letter.
+    - `“Wait!” she cried.` and `“Who are you?” said the Caterpillar.` are
+      each one sentence; `“Wait.” She turned.` stays two.
+    - A bare `!`, a bracket, an elision or a paragraph break never joins.
+    - The known limit: a capitalised tag (`“Wait!” Alice said.`) stays a
+      sentence of its own.
+  - **Figures move on purpose.** Literal figures on the *Alice* fixtures,
+    at the original rule, after closing marks, and after speech tags, are
+    in the [evidence](../../../docs/pr-reviews/evidence/sentence-rule/README.md),
+    with inspector captures at each.
+    - Closing marks move whole-text counts by at most one in ordinary
+      prose, and per-paragraph counts wherever a paragraph ends with a
+      closing mark (2,028 → 1,702 over the whole book).
+    - Speech tags move both. The whole book goes 1,628 → 1,389 sentences
+      and 16.2 → 19.0 words per sentence. The Tea-Party goes 13.6 → 16.1.
+    - Count agreement holds, now also on the dialogue-heavy Tea-Party.
+    - Group F's worked example was regenerated from its builder after
+      each change.
   - **Verification.**
 
-    | Check | `058feb5` (base) | Head |
-    |---|---|---|
-    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 442 suites / 6,058 tests / 59 snapshots |
-    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule |
-    | `npm run typecheck` | Passes | Passes |
-    | `npm run build` (with `verify:bundle`) | Passes | Passes |
+    | Check | `058feb5` (base) | `2e62aa7` (4E with its fixes) | Head |
+    |---|---|---|---|
+    | `npx jest` | 440 suites / 6,012 tests / 59 snapshots | 440 suites / 6,019 tests / 59 snapshots | 444 suites / 6,100 tests / 59 snapshots |
+    | `npm run lint` | 0 errors / 1,133 warnings | Identical per file and rule | Identical per file and rule |
+    | `npm run typecheck` | Passes | Passes | Passes |
+    | `npm run build` (with `verify:bundle`) | Passes | Passes | Passes |
 
-    - `webview.js` SHA-256 `8d0545de…` at both, after `npm ci` into a
-      real `node_modules`. The rule runs host-side, so only `extension.js`
-      changes: `b8cb056a…` → `8baf2770…`. The head's two bundles were
-      reproduced by a second build.
+    - Built after `npm ci` into a real `node_modules`. `webview.js`
+      SHA-256 is `2f86917e…`, 4E's own after its fixes: the rule runs
+      host-side, and the webview only shows what the host measured.
+    - `extension.js` is `efae929f…`. Both bundles were reproduced by a
+      second build.
     - No live or billable call.
