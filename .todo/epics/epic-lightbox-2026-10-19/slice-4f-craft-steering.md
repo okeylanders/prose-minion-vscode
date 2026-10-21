@@ -2,7 +2,7 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3, D4, D6, D7 and its **second addendum (2026-10-21)**, D11
-**Writer decisions:** 13 (amended), 20–24 in the [epic table](README.md#writer-decisions-2026-10-19)
+**Writer decisions:** 13 (amended), 20–24 (and 25, recorded for Slice 5) in the [epic table](README.md#writer-decisions-2026-10-19)
 **Status:** Planned on `epic/lightbox-slice-4f-steering`, from `epic/lightbox` at `20775cf`. Slice 4E (reading aids in the inspector) is built in parallel on `epic/lightbox-slice-4e-inspector`; it will probably merge first, and this slice merges it in afterwards.
 **Before:** Slice 5. The saved-board format must hold these kinds and the measured breakdown.
 
@@ -241,6 +241,12 @@ or a quote no longer holding an instance is refused in host words.
   and the example never enter the digest.**
 - The worked example of group F is rebuilt: its board gains the measured
   items, and group D's tile ids shift (below).
+- **The basis is unchanged here.** The writer chose a canonical data basis
+  for saved boards (epic decision 25), which Slice 5 builds first. Until
+  then bases hash the rendered item as today, so existing standing holds.
+  Steering's items keep their label, lines, quotes, counts and figures as
+  separate fields, like every other item, so the data basis can be derived
+  without parsing rendered text.
 
 ## Prompts and the worked example
 

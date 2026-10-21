@@ -21,6 +21,13 @@ lenses first (Slices 4B–4D, epic decision 14), so this slice starts after
 
 Fixed before the codec is written, so later boards need no migration:
 
+- **First step: the Opinion's citation basis** (epic decision 25, the
+  writer's choice, 2026-10-21). A citation's basis becomes a hash of the
+  cited item's canonical data (its key, kind, quotes with their ¶ addresses,
+  counts and figures), not of the digest's rendered wording, and a saved
+  board carries an explicit basis/format version
+  ([tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)).
+
 - **Every tile kind** on the board when this slice starts: the measured
   tiles and every reading kind through Slice 4D (Groups A–F, including the
   craft, story and Opinion kinds) and Slice 4F's Craft steering kinds

@@ -59,6 +59,7 @@ carried into the Workshop.
 | 22 | Steering readings (2026-10-21) | Per figure, **one reading of how it works here and up to four instance notes**. A note is one checked quote holding an instance, a stance (**Earns · Leans · Compensates**), a why, and a nudge only when it leans or compensates (Slice 4F) |
 | 23 | Nudges (2026-10-21) | **A nudge names the craft move, framed as worth a look**: no quotation marks, never cut, delete, remove, fix, wrong, bad, should or must. **The writer chose one illustrative example** ("feel free to give one example so the user understands"): a note that leans or compensates may show at most one, a phrase from its checked quote (checked by code to hold the instance) and a few words showing one way the move could go, labelled "One way it could go", never styled as a quote. This supersedes "never supply the writer's words" for that one example only; real rewriting happens in the Workshop. The **second fenced exception** to "describe, never grade", in a dated ADR addendum to D7; decision 13 amended for steering nudges only (Slice 4F) |
 | 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
+| 25 | The Opinion's citation basis for saved boards (2026-10-21) | **The writer chose a data basis**: a citation's basis becomes a hash of the cited item's canonical data (its key, kind, quotes with their ¶ addresses, counts and figures), not of the digest's rendered wording, and saved boards carry an explicit basis/format version. **Slice 5 implements it as its first step**, after 4E and 4F merge; until then bases are computed as today ([tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)) |
 
 ## Slices
 
@@ -1054,3 +1055,9 @@ lens, and adds its items to 4D's digest.
     example so the writer sees what the move looks like, anchored to the
     checked quote and labelled as an illustration. Folded into the plan
     before it was committed.
+  - **Decision 25, recorded here, built in Slice 5:** the writer chose a
+    canonical data basis for the Opinion's citations, with a basis/format
+    version on saved boards. 4F does not change how bases are computed; its
+    digest items keep label, lines, quotes, counts and figures as separate
+    fields, so the data basis can be derived without parsing rendered
+    text.
