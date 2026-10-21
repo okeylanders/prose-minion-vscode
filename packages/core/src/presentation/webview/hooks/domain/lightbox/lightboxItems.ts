@@ -11,12 +11,17 @@
  * tile is named by its host-minted id, which is unique per run, so a pin
  * from an earlier reading resolves to nothing rather than to a newer one. A
  * spark the writer set aside is not an item until it is brought back.
+ *
+ * Counted terms (top words, part-of-speech words, phrases, and from Slice 4E
+ * hapax words and instance-counting style flags) are `lightboxTerms`'s. A
+ * paragraph pinned from a term carries it as `via` (Slice 4E), so the
+ * paragraph's text is lit where the term stands; `via` is not part of the
+ * paragraph's identity.
  */
 
 import type {
   LightboxBoard,
   LightboxCountedSupport,
-  LightboxCountedTerm,
   LightboxNumberStatId,
   LightboxParagraphMetric,
   LightboxReadingTile,
@@ -34,18 +39,27 @@ import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
 import { lightboxObservationItem } from '@hooks/domain/lightbox/lightboxOpinion';
+import {
+  LightboxTermRef,
+  countedTermItem,
+  isLightboxTermRef,
+  lightboxParagraphCountLabel,
+  lightboxTermKey,
+  parseLightboxTermRef,
+  resolveLightboxTerm
+} from '@hooks/domain/lightbox/lightboxTerms';
 
-export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
+export type { LightboxPartOfSpeech, LightboxTermRef } from '@hooks/domain/lightbox/lightboxTerms';
 
 /** The measured ribbon lanes (Sections: Slice 4C). Tension is read, and arrives with the readings. */
 export type LightboxMeasuredLane = 'rhythm' | 'dialogue' | 'sections';
 
 export type LightboxItemRef =
-  | { kind: 'word'; word: string }
-  | { kind: 'pos'; pos: LightboxPartOfSpeech; word: string }
-  | { kind: 'phrase'; phrase: string }
+  /** A top word, part-of-speech word, repeated phrase, hapax word or style flag (`lightboxTerms`). */
+  | LightboxTermRef
   | { kind: 'lane'; lane: LightboxMeasuredLane }
-  | { kind: 'paragraphs'; from: number; to: number }
+  /** With `via`: the counted term the writer came from, lit in the paragraph's text (Slice 4E). */
+  | { kind: 'paragraphs'; from: number; to: number; via?: LightboxTermRef }
   | { kind: 'reading'; tileId: string }
   /** A measured figure on the numbers tile (Slice 4B): it lights the paragraphs holding an instance. */
   | { kind: 'standout'; stat: LightboxNumberStatId }
@@ -77,24 +91,12 @@ export interface LightboxResolvedItem {
  */
 export const LIGHTBOX_LONG_RUN_FACTOR = 1.5;
 
-const POS_LABELS: Record<LightboxPartOfSpeech, string> = {
-  nouns: 'Noun',
-  verbs: 'Verb',
-  adjectives: 'Adjective',
-  adverbs: 'Adverb'
-};
-
-const PARTS_OF_SPEECH: readonly LightboxPartOfSpeech[] = ['nouns', 'verbs', 'adjectives', 'adverbs'];
-
-/** A stable identity for comparing references. */
+/** A stable identity for comparing references. A paragraph's `via` is not part of it. */
 export function lightboxItemKey(ref: LightboxItemRef): string {
+  if (isLightboxTermRef(ref)) {
+    return lightboxTermKey(ref);
+  }
   switch (ref.kind) {
-    case 'word':
-      return `word:${ref.word}`;
-    case 'pos':
-      return `pos:${ref.pos}:${ref.word}`;
-    case 'phrase':
-      return `phrase:${ref.phrase}`;
     case 'lane':
       return `lane:${ref.lane}`;
     case 'paragraphs':
@@ -127,20 +129,10 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
   const index = (key: string): number | undefined =>
     Number.isInteger(record[key]) && (record[key] as number) >= 1 ? (record[key] as number) : undefined;
 
+  if (isLightboxTermRef(record as { kind: string })) {
+    return parseLightboxTermRef(record);
+  }
   switch (record.kind) {
-    case 'word': {
-      const word = text('word');
-      return word ? { kind: 'word', word } : null;
-    }
-    case 'pos': {
-      const word = text('word');
-      const pos = PARTS_OF_SPEECH.find((candidate) => candidate === record.pos);
-      return word && pos ? { kind: 'pos', pos, word } : null;
-    }
-    case 'phrase': {
-      const phrase = text('phrase');
-      return phrase ? { kind: 'phrase', phrase } : null;
-    }
     case 'lane':
       return record.lane === 'rhythm' || record.lane === 'dialogue' || record.lane === 'sections'
         ? { kind: 'lane', lane: record.lane }
@@ -154,7 +146,8 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
     case 'paragraphs': {
       const from = index('from');
       const to = index('to');
-      return from !== undefined && to !== undefined && from <= to ? { kind: 'paragraphs', from, to } : null;
+      const via = parseLightboxTermRef(record.via);
+      return from !== undefined && to !== undefined && from <= to ? { kind: 'paragraphs', from, to, ...(via ? { via } : {}) } : null;
     }
     case 'reading': {
       const tileId = text('tileId');
@@ -177,20 +170,10 @@ export function resolveLightboxItem(
   board: LightboxBoard,
   ref: LightboxItemRef
 ): LightboxResolvedItem | undefined {
+  if (isLightboxTermRef(ref)) {
+    return resolveLightboxTerm(board, ref);
+  }
   switch (ref.kind) {
-    case 'word': {
-      const term = board.measured.topWords.find((candidate) => candidate.term === ref.word);
-      return term ? termItem(ref, term, 'Word') : undefined;
-    }
-    case 'pos': {
-      const term = board.measured.partsOfSpeech[ref.pos].find((candidate) => candidate.term === ref.word);
-      return term ? termItem(ref, term, POS_LABELS[ref.pos]) : undefined;
-    }
-    case 'phrase': {
-      const { bigrams, trigrams } = board.measured.phrases;
-      const term = [...bigrams, ...trigrams].find((candidate) => candidate.term === ref.phrase);
-      return term ? termItem(ref, term, 'Repeated phrase', `“${term.term}”`) : undefined;
-    }
     case 'lane':
       return ref.lane === 'rhythm' ? rhythmLane(board) : ref.lane === 'dialogue' ? dialogueLane(board) : sectionsLane(board);
     case 'section':
@@ -255,12 +238,12 @@ export function lightboxItemsTouching(board: LightboxBoard, index: number): Ligh
   const touching: LightboxResolvedItem[] = [];
   for (const term of board.measured.topWords) {
     if (term.paragraphs.includes(index)) {
-      touching.push(termItem({ kind: 'word', word: term.term }, term, 'Word'));
+      touching.push(countedTermItem({ kind: 'word', word: term.term }, term, 'Word'));
     }
   }
   for (const term of [...board.measured.phrases.bigrams, ...board.measured.phrases.trigrams]) {
     if (term.paragraphs.includes(index)) {
-      touching.push(termItem({ kind: 'phrase', phrase: term.term }, term, 'Repeated phrase', `“${term.term}”`));
+      touching.push(countedTermItem({ kind: 'phrase', phrase: term.term }, term, 'Repeated phrase', `“${term.term}”`));
     }
   }
   for (const group of board.readings) {
@@ -289,27 +272,6 @@ function readingItem(ref: LightboxItemRef, tile: LightboxReadingTile): LightboxR
 /** "rabbit ×4", or a named term the chapter does not hold. */
 export function supportLabel(term: LightboxCountedSupport): string {
   return term.count > 0 ? `${term.term} ×${term.count}` : `${term.term} · not in the chapter`;
-}
-
-function termItem(
-  ref: LightboxItemRef,
-  term: LightboxCountedTerm,
-  kindLabel: string,
-  title = term.term
-): LightboxResolvedItem {
-  const places = term.paragraphs.length;
-  return {
-    ref,
-    register: 'measured',
-    where: `Measure · ${kindLabel}`,
-    title,
-    claim:
-      `Appears ${timesLabel(term.count)}` +
-      (places > 0 ? ` across ${paragraphCountLabel(places)}` : '') +
-      '. Counted by code; nothing here is a reading.',
-    paragraphs: [...term.paragraphs],
-    support: [`${term.term} ×${term.count}`, `${term.percentage}% of words`]
-  };
 }
 
 /** The Sections lane (Slice 4C): what code found, lighting the paragraphs that open a section. */
@@ -458,10 +420,4 @@ function pooled(span: readonly LightboxParagraphMetric[]): {
   };
 }
 
-function timesLabel(count: number): string {
-  return count === 1 ? 'once' : `${count.toLocaleString('en-US')} times`;
-}
-
-export function paragraphCountLabel(count: number): string {
-  return `${count.toLocaleString('en-US')} ${count === 1 ? 'paragraph' : 'paragraphs'}`;
-}
+export const paragraphCountLabel = lightboxParagraphCountLabel;

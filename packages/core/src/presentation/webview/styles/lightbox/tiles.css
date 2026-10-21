@@ -327,3 +327,109 @@
   color: var(--pm-muted);
   margin: 12px 0 0;
 }
+
+/* ---------- Top words with the hapax list under the cloud (Slice 4E) ---------- */
+/* The panel is a column: the cloud, then the words used once filling the room
+   the row gives it beside Parts of speech. */
+[data-pm-surface="lightbox"] .pm-lb-tile.pm-lb-top-words {
+  display: flex;
+  flex-direction: column;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 8px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+}
+/* The well is placed out of flow, so its words never make the panel taller
+   than its row; side by side it fills the spare height, stacked it keeps
+   a minimum of its own. */
+[data-pm-surface="lightbox"] .pm-lb-hapax-box {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 176px;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-well {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px 4px;
+  padding: 8px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  margin: 0;
+  padding: 1px 5px;
+  font-family: var(--pm-lb-serif);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word:hover,
+[data-pm-surface="lightbox"] .pm-lb-hapax-word.is-hot {
+  background: var(--pm-lb-measured-soft);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word.is-sel {
+  box-shadow: inset 0 0 0 1px var(--pm-lb-measured);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-more {
+  appearance: none;
+  margin: 4px 0 0;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px dashed var(--pm-border-2);
+  background: none;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-more:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-lb-measured-line);
+}
+
+/* A style flag that counts instances is a board item (Slice 4E). */
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item {
+  appearance: none;
+  background: none;
+  margin: 0;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item:hover,
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item.is-hot {
+  border-color: var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item.is-sel {
+  border-color: var(--pm-lb-measured);
+  background: var(--pm-lb-measured-soft);
+}

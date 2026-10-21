@@ -88,11 +88,26 @@ describe('useLightboxInspector', () => {
     );
 
     expect(result.current.view?.title).toBe('down');
+    // From a counted word, the paragraph keeps the word to light in its text (Slice 4E).
     act(() => result.current.pinParagraph(4));
-    expect(onSelect).toHaveBeenLastCalledWith({ kind: 'paragraphs', from: 4, to: 4 });
+    expect(onSelect).toHaveBeenLastCalledWith({ kind: 'paragraphs', from: 4, to: 4, via: { kind: 'word', word: 'down' } });
     act(() => result.current.clear());
     expect(onSelect).toHaveBeenLastCalledWith(null);
     expect(result.current.persistedState).toEqual({});
+  });
+
+  it('pins a paragraph with nothing to light from anything but a counted term, and keeps a paragraph\'s own term (Slice 4E)', () => {
+    const onSelect = jest.fn();
+    const pinFrom = (selected: LightboxItemRef) => {
+      const { result } = renderHook(() => useLightboxInspector({ board: makeBoard(6), selected, onSelect }));
+      act(() => result.current.pinParagraph(5));
+      return onSelect.mock.calls[onSelect.mock.calls.length - 1][0];
+    };
+    expect(pinFrom({ kind: 'lane', lane: 'rhythm' })).toEqual({ kind: 'paragraphs', from: 5, to: 5 });
+    expect(pinFrom({ kind: 'paragraphs', from: 2, to: 6 })).toEqual({ kind: 'paragraphs', from: 5, to: 5 });
+    expect(pinFrom({ kind: 'paragraphs', from: 2, to: 6, via: { kind: 'hapax', word: 'tunnel' } }))
+      .toEqual({ kind: 'paragraphs', from: 5, to: 5, via: { kind: 'hapax', word: 'tunnel' } });
+    expect(pinFrom({ kind: 'flag', flag: 'adverbs' })).toEqual({ kind: 'paragraphs', from: 5, to: 5, via: { kind: 'flag', flag: 'adverbs' } });
   });
 });
 

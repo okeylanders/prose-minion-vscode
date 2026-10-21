@@ -1095,6 +1095,10 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/useLightbox.ts',
   'presentation/webview/hooks/domain/useLightboxHandoff.ts',
   'presentation/webview/hooks/domain/useLightboxProjectFiles.ts',
+  // Slice 4E: the inspector's passages (transport), counted terms and the wells as drawn (pure).
+  'presentation/webview/hooks/domain/useLightboxPassages.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
@@ -1116,6 +1120,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
   'presentation/webview/components/lightbox/LightboxGravity.tsx',
   'presentation/webview/components/lightbox/LightboxGravityOrbit.tsx',
+  'presentation/webview/components/lightbox/LightboxHapaxList.tsx',
   'presentation/webview/components/lightbox/LightboxHeadline.tsx',
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
@@ -1126,6 +1131,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxOpinion.tsx',
   'presentation/webview/components/lightbox/LightboxPalette.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxPassageWell.tsx',
   'presentation/webview/components/lightbox/LightboxProjectPicker.tsx',
   'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
   'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
@@ -1153,6 +1159,8 @@ const LIGHTBOX_MODULES = [
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
