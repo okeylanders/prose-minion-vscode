@@ -16,6 +16,7 @@
 
 import { MessageEnvelope, MessageType } from './base';
 import type { LightboxReadingGroup, LightboxReadingTileKind } from './lightboxReadings';
+import type { LightboxNumbersMeasure, LightboxSentenceSummary } from './lightboxNumbers';
 
 // ---------------------------------------------------------------------------
 // Tiles and registers
@@ -79,6 +80,12 @@ export interface LightboxParagraphMetric {
   dialogueWords: number;
   /** `dialogueWords ÷ words`, 0–1, three decimals. */
   dialogueShare: number;
+  /**
+   * The words in each of the paragraph's sentences, in order, by the
+   * prose-stats sentence splitter (`proseSentenceSpans`) and word rule
+   * (Slice 4B). Its length is `sentences`.
+   */
+  sentenceWords: number[];
 }
 
 /**
@@ -180,6 +187,10 @@ export interface LightboxMeasuredSet {
     trigrams: LightboxCountedTerm[];
   };
   styleFlags: LightboxStyleFlag[];
+  /** The longest and the very short sentences, per paragraph (Slice 4B). */
+  sentences: LightboxSentenceSummary;
+  /** The figures that stand out, against the preset and the writer's own average (Slice 4B). */
+  numbers: LightboxNumbersMeasure;
 }
 
 // ---------------------------------------------------------------------------

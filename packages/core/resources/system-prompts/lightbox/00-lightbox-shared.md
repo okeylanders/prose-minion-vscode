@@ -44,7 +44,7 @@ Return exactly one frame, for the group the task names, and nothing else:
 {"version":1, ...one key per lens the task lists...}
 ===END_LIGHTBOX_GROUP_A_V1===
 
-- Use the sentinels for your group: `===LIGHTBOX_GROUP_A_V1===` and `===END_LIGHTBOX_GROUP_A_V1===` for group A, with `B` or `C` in place of `A` for the others.
+- Use the sentinels for your group: `===LIGHTBOX_GROUP_A_V1===` and `===END_LIGHTBOX_GROUP_A_V1===` for group A, with `B`, `C` or `D` in place of `A` for the others.
 - The opening sentinel is the first line and the closing sentinel the last. No Markdown fences, and no commentary before, between or after them.
 - Between them is one JSON object, ideally on one line: `"version": 1`, plus exactly the lens keys the task lists. Never add a lens the task did not ask for.
 - Use exactly the fields each lens shows, in plain text: no Markdown, no HTML, no ids, no scores except the ones a lens asks for, and no counts.

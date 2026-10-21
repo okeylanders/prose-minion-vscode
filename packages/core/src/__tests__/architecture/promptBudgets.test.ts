@@ -104,8 +104,17 @@ describe('prompt budgets', () => {
       subtextPairs: 4,
       subtextContextQuotes: 2,
       sparks: 4,
-      sparkCharacters: 240
+      sparkCharacters: 240,
+      stockBeats: 40,
+      signaturePhrases: 4,
+      familiarPhrases: 6,
+      airLocks: 3,
+      echoes: 3,
+      handoffs: 3,
+      numberReadings: 6
     });
+    // One usage reading per measured figure at most (Slice 4B: six figures).
+    expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(6);
     // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.
     expect(1 + PROMPT_BUDGETS.lightbox.subtextContextQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
     // One story carries each of the three stances at most once.

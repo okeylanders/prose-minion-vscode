@@ -8,7 +8,9 @@
  * line between blank lines is a paragraph.
  *
  * Per-paragraph counts reuse the measure tools' own rules: words are
- * whitespace-separated tokens, sentences use `countProseSentences`, and
+ * whitespace-separated tokens, sentences are `proseSentenceSpans` (the
+ * prose-stats count, with each sentence's words kept for the rhythm lens,
+ * Slice 4B), and
  * dialogue uses the shared dialogue-span matcher (straight and curly double
  * quotes), never a matcher of its own. Because no dialogue span crosses a
  * paragraph break, per-paragraph dialogue words sum to the whole-text count.
@@ -21,7 +23,7 @@ import { createHash } from 'node:crypto';
 import type { LightboxParagraphMetric, LightboxRibbonColumn } from '@messages';
 import { countWords } from '@/utils/textUtils';
 import { countDialogueWords } from '@/utils/dialogueSpans';
-import { countProseSentences } from '@/tools/measure/passageProseStats';
+import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 
 /** A paragraph of the source text. `text` is trimmed; offsets bound it exactly. */
 export interface LightboxParagraph {
@@ -74,7 +76,8 @@ function pushParagraph(text: string, from: number, to: number, paragraphs: Light
 
 /** Words, sentences, rhythm and dialogue share for one paragraph. */
 export function measureLightboxParagraph(paragraph: LightboxParagraph): LightboxParagraphMetric {
-  const sentences = countProseSentences(paragraph.text);
+  const sentenceWords = lightboxSentenceWords(paragraph.text);
+  const sentences = sentenceWords.length;
   const dialogueWords = countDialogueWords(paragraph.text);
   return {
     index: paragraph.index,
@@ -84,8 +87,14 @@ export function measureLightboxParagraph(paragraph: LightboxParagraph): Lightbox
     sentences,
     avgWordsPerSentence: roundTo(sentences > 0 ? paragraph.words / sentences : 0, 1),
     dialogueWords,
-    dialogueShare: roundTo(paragraph.words > 0 ? dialogueWords / paragraph.words : 0, 3)
+    dialogueShare: roundTo(paragraph.words > 0 ? dialogueWords / paragraph.words : 0, 3),
+    sentenceWords
   };
+}
+
+/** The words in each sentence of `text`, by the prose-stats splitter and word rule. */
+export function lightboxSentenceWords(text: string): number[] {
+  return proseSentenceSpans(text).map(({ start, end }) => countWords(text.slice(start, end)));
 }
 
 /**

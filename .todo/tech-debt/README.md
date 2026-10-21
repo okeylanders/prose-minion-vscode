@@ -98,6 +98,7 @@ elsewhere.
 | Low | [A carried said line does not follow speech that moved past narration](2026-10-20-lightbox-carried-said-line-moved-speech.md) | Identified |
 | Low | [The shared project picker still leans on Workshop-named seams](2026-10-20-shared-picker-workshop-named-seams.md) (the modal shell's folder, the catalog service's name) | Identified |
 | Low | [The configured catalog lists only one of two same-named files across workspace folders](2026-10-20-context-catalog-cross-root-collapse.md) (older than PR #154; found in its F-02 review) | Identified |
+| Low | [A maximal group D response can exceed the per-group response cap](2026-10-20-lightbox-group-d-response-ceiling.md) (Lightbox Slice 4B) | Identified |
 
 ## Review Guidance
 

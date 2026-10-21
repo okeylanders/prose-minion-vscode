@@ -64,7 +64,7 @@ describe('tallies and wording', () => {
     const tally = lightboxQuoteTally(makeReadBoard({ paraphraseOne: true }));
     expect(tally.withheld).toBe(1);
     expect(tally.checked).toBeGreaterThan(20);
-    expect(tally.calls).toBe(3);
+    expect(tally.calls).toBe(4);
   });
 
   it('says why a quote was withheld, never with the quote itself', () => {

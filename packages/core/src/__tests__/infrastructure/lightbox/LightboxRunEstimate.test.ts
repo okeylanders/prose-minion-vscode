@@ -3,10 +3,13 @@
  * the engine's own estimator, cost from live prices, and the book-sized
  * warning. Also the catalog's live-only pricing lookup.
  */
+import type { LightboxNumberRow } from '@messages';
 import {
   LIGHTBOX_TYPICAL_OUTPUT_TOKENS,
   estimateLightboxRun,
+  lightboxEstimateKey,
   lightboxExpectedOutputTokens,
+  lightboxStandoutsKey,
   type LightboxEstimateInput,
   type LightboxPreparedCall
 } from '@/infrastructure/lightbox/LightboxRunEstimate';
@@ -107,6 +110,45 @@ describe('estimateLightboxRun', () => {
   it('prices only the lenses a call reads, and the tension arc by its columns', () => {
     expect(lightboxExpectedOutputTokens(['headline'], 31)).toBe(LIGHTBOX_TYPICAL_OUTPUT_TOKENS.headline + 40);
     expect(lightboxExpectedOutputTokens(['tension'], 96) - lightboxExpectedOutputTokens(['tension'], 31)).toBe(130);
+  });
+
+  it('prices group D by its lenses, and its paragraph endings by the columns (Slice 4B)', () => {
+    expect(lightboxExpectedOutputTokens(['stock', 'rhythm', 'numbers'], 8)).toBe(
+      40 + LIGHTBOX_TYPICAL_OUTPUT_TOKENS.stock + LIGHTBOX_TYPICAL_OUTPUT_TOKENS.rhythm + LIGHTBOX_TYPICAL_OUTPUT_TOKENS.numbers + 3 * 8
+    );
+    expect(lightboxExpectedOutputTokens(['rhythm'], 96) - lightboxExpectedOutputTokens(['rhythm'], 8)).toBe(3 * 88);
+    // Within the reservation every group call makes.
+    expect(lightboxExpectedOutputTokens(['stock', 'rhythm', 'numbers'], 96)).toBeLessThan(PROMPT_BUDGETS.lightbox.groupOutputTokens);
+  });
+});
+
+describe('the estimate key and the standouts it names (Slice 4B)', () => {
+  const row = (stat: LightboxNumberRow['stat'], value: number, standout?: LightboxNumberRow['standout']): LightboxNumberRow => ({
+    stat, label: stat, unit: '', value, instances: 3, instanceLabel: '', paragraphs: [1], ...(standout ? { standout } : {})
+  });
+  const keyOf = (standoutsKey: string) => lightboxEstimateKey({
+    boardId: 'board-1', contentHash: 'h', lensesOff: [], contextRevision: 0,
+    facts: { model: 'provider/model', contextLength: 200_000, pricing: PRICES }, standoutsKey
+  });
+  const rows = [
+    row('sentence-length', 21.4, { direction: 'above', against: ['writer'], reference: 14 }),
+    row('adverbs', 9.1)
+  ];
+
+  it('names each standout\'s figure, direction, bases and reference, and nothing a re-measure leaves alone', () => {
+    expect(lightboxStandoutsKey(rows)).toBe(JSON.stringify([['sentence-length', 'above', ['writer'], 14]]));
+    // A figure's value moving within its standout does not change the task the numbers lens is sent.
+    expect(lightboxStandoutsKey([{ ...rows[0], value: 22 }, rows[1]])).toBe(lightboxStandoutsKey(rows));
+  });
+
+  it('moves the estimate key when what stands out changes, so a press never sends a task its estimate did not price', () => {
+    const base = keyOf(lightboxStandoutsKey(rows));
+    const newStandout = keyOf(lightboxStandoutsKey([rows[0], row('adverbs', 30, { direction: 'above', against: ['writer'] })]));
+    const newReference = keyOf(lightboxStandoutsKey([
+      row('sentence-length', 21.4, { direction: 'above', against: ['standards', 'writer'], reference: 18 }), rows[1]
+    ]));
+    expect(new Set([base, newStandout, newReference]).size).toBe(3);
+    expect(keyOf(lightboxStandoutsKey(rows))).toBe(base);
   });
 });
 

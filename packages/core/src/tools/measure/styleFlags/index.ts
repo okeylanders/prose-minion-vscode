@@ -1,7 +1,47 @@
 /**
  * Style Flags Tool
  * Identifies style patterns and potential issues in prose
+ *
+ * The adverb, passive-voice and filler detectors are exported (Lightbox
+ * Slice 4B), so the Lightbox's measured standouts count, place and check a
+ * quote with the very rules the tool counts by. The tool counts through
+ * them; its output is unchanged (pinned by its tests).
  */
+
+/** One match of a detector: its offsets in the text and the text matched. */
+export interface StyleFlagMatch {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** Fillers and intensifiers the tool flags, as whole words, any case. */
+export const STYLE_FLAG_FILLER_WORDS = [
+  'just', 'really', 'very', 'quite', 'rather', 'somewhat', 'somehow', 'actually', 'basically', 'literally'
+] as const;
+
+function matchesOf(text: string, pattern: RegExp): StyleFlagMatch[] {
+  return [...text.matchAll(pattern)].map((match) => ({
+    start: match.index ?? 0,
+    end: (match.index ?? 0) + match[0].length,
+    text: match[0]
+  }));
+}
+
+/** Words ending in -ly (a heuristic: "only" and "family" count too). */
+export function findAdverbs(text: string): StyleFlagMatch[] {
+  return matchesOf(text, /\b\w+ly\b/gi);
+}
+
+/** was/were/been/being followed by a word ending in -ed (a heuristic: irregular participles are missed). */
+export function findPassiveVoice(text: string): StyleFlagMatch[] {
+  return matchesOf(text, /\b(was|were|been|being)\s+\w+ed\b/gi);
+}
+
+/** Each of `STYLE_FLAG_FILLER_WORDS`, as a whole word. */
+export function findFillerWords(text: string): StyleFlagMatch[] {
+  return matchesOf(text, new RegExp(`\\b(${STYLE_FLAG_FILLER_WORDS.join('|')})\\b`, 'gi'));
+}
 
 export interface StyleFlagsInput {
   text: string;
@@ -44,8 +84,7 @@ export class StyleFlags {
 
   private checkAdverbs(text: string): StyleFlag {
     // Match words ending in -ly
-    const adverbPattern = /\b\w+ly\b/gi;
-    const matches = text.match(adverbPattern) || [];
+    const matches = findAdverbs(text).map((match) => match.text);
     const examples = this.getUniqueExamples(matches, 5);
 
     return {
@@ -57,8 +96,7 @@ export class StyleFlags {
 
   private checkPassiveVoice(text: string): StyleFlag {
     // Simple passive voice detection (was/were/been + past participle)
-    const passivePattern = /\b(was|were|been|being)\s+\w+ed\b/gi;
-    const matches = text.match(passivePattern) || [];
+    const matches = findPassiveVoice(text).map((match) => match.text);
     const examples = this.getUniqueExamples(matches, 5);
 
     return {
@@ -84,9 +122,7 @@ export class StyleFlags {
 
   private checkFillerWords(text: string): StyleFlag {
     // Common filler words
-    const fillers = ['just', 'really', 'very', 'quite', 'rather', 'somewhat', 'somehow', 'actually', 'basically', 'literally'];
-    const pattern = new RegExp(`\\b(${fillers.join('|')})\\b`, 'gi');
-    const matches = text.match(pattern) || [];
+    const matches = findFillerWords(text).map((match) => match.text);
     const examples = this.getUniqueExamples(matches, 5);
 
     return {

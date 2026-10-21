@@ -17,7 +17,7 @@ import type { LightboxBoard, LightboxLensId } from '@messages';
 import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import type { LightboxRunSource } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
-import { lightboxEstimateKey, type LightboxModelFacts } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import { lightboxEstimateKey, lightboxStandoutsKey, type LightboxModelFacts } from '@/infrastructure/lightbox/LightboxRunEstimate';
 
 export interface LightboxPressSnapshot {
   board: LightboxBoard;
@@ -57,7 +57,9 @@ export function lightboxPressSnapshot(inputs: LightboxPressInputs, boardId?: str
         columns: board.ribbon.map(({ from, to }) => ({ from, to })),
         context: inputs.shelf.materials(),
         // The palette builds its clusters from what the board counted most (Slice 3).
-        countedWords: board.measured.topWords.map((term) => term.term)
+        countedWords: board.measured.topWords.map((term) => term.term),
+        // The numbers lens reads the figures the board measured as standing out (Slice 4B).
+        numbers: board.measured.numbers.rows
       },
       sourceWords: board.source.wordCount,
       contextWords: inputs.shelf.totalWords(),
@@ -69,7 +71,8 @@ export function lightboxPressSnapshot(inputs: LightboxPressInputs, boardId?: str
       contentHash: board.source.contentHash,
       lensesOff: inputs.lensesOff,
       contextRevision: inputs.shelf.revision(),
-      facts
+      facts,
+      standoutsKey: lightboxStandoutsKey(board.measured.numbers.rows)
     })
   };
 }

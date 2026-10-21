@@ -61,10 +61,10 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
 
     expect(host.board.paragraphs).toHaveLength(1);
     expect(estimate?.fit).toBe('fits');
-    expect(host.runInitial).toHaveBeenCalledTimes(3);
+    expect(host.runInitial).toHaveBeenCalledTimes(4);
     expect(phases[0]).toBe('started');
     expect(phases.at(-1)).toBe('finished');
-    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok']);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok']);
     expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
     expect(tab.logged()).toMatch(/Group A read \(.+\): \d+ tiles, .* \d+ quotes checked/);
     expect(unhandled).not.toHaveBeenCalled();
@@ -83,9 +83,10 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
 
     expect(host.runInitial).not.toHaveBeenCalled();
     const progress = tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
-    expect(progress.map((payload) => payload.phase)).toEqual(['started', 'streaming', 'streaming', 'streaming', 'finished']);
-    expect(progress.at(-1)).toMatchObject({ token: 'run-1-token', groupsBack: 3 });
+    expect(progress.map((payload) => payload.phase)).toEqual(['started', 'streaming', 'streaming', 'streaming', 'streaming', 'finished']);
+    expect(progress.at(-1)).toMatchObject({ token: 'run-1-token', groupsBack: 4 });
     expect(host.service.currentBoard()?.readings.map((group) => [group.status, group.error])).toEqual([
+      ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED],
       ['failed', SETUP_FAILED]
@@ -98,7 +99,7 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
     // Released: the next press reads the board.
     await tab.run();
     await settle();
-    expect(host.runInitial).toHaveBeenCalledTimes(3);
-    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok']);
+    expect(host.runInitial).toHaveBeenCalledTimes(4);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok', 'ok']);
   });
 });

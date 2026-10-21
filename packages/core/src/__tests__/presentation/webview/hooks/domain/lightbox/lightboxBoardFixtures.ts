@@ -5,7 +5,7 @@
  */
 import type { LightboxBoard, LightboxCountedTerm, LightboxParagraphMetric } from '@messages';
 import { buildLightboxRibbon } from '@/infrastructure/lightbox/LightboxParagraphs';
-import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
+import { emptyLightboxReadingGroup, LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 
 const term = (name: string, paragraphs: number[], count = paragraphs.length): LightboxCountedTerm => ({
   term: name,
@@ -28,6 +28,7 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
       words,
       sentences,
       avgWordsPerSentence: words / sentences,
+      sentenceWords: Array.from({ length: sentences }, () => words / sentences),
       dialogueWords,
       dialogueShare: dialogueWords / words
     };
@@ -87,8 +88,35 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
         bigrams: [term('thought alice', [2, 6], 2)],
         trigrams: []
       },
-      styleFlags: [{ type: 'Adverbs (-ly words)', count: 4, examples: ['suddenly'] }]
+      styleFlags: [{ type: 'Adverbs (-ly words)', count: 4, examples: ['suddenly'] }],
+      sentences: { longest: { words: 40, paragraph: 3 }, veryShort: 0, underWords: 6 },
+      numbers: {
+        rows: [
+          {
+            stat: 'dialogue',
+            label: 'Dialogue',
+            unit: '% of words',
+            value: 12.5,
+            instances: 3,
+            instanceLabel: 'paragraphs of narration',
+            paragraphs: [1, 3, 5],
+            range: { min: 40, max: 55, status: 'below' },
+            standout: { direction: 'below', against: ['standards'] }
+          },
+          {
+            stat: 'adverbs',
+            label: 'Adverbs (-ly)',
+            unit: 'per 1,000 words',
+            value: 20,
+            instances: 4,
+            instanceLabel: 'words ending in -ly',
+            paragraphs: [3, 5],
+            top: [{ term: 'suddenly', count: 2 }]
+          }
+        ],
+        baseline: { kind: 'absent', note: 'No chapters or manuscript files are configured, so there is no average of your own.' }
+      }
     },
-    readings: (['A', 'B', 'C'] as const).map(emptyLightboxReadingGroup)
+    readings: LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
   };
 }

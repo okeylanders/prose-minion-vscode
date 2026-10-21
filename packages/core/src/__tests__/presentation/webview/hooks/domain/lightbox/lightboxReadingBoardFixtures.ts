@@ -3,7 +3,9 @@
  * the hand-built `makeBoard(8)`, and the readings are the prompt bundle's
  * worked examples decoded and verified by the production codec and verifier
  * against their own excerpt of Lewis Carroll's "Alice's Adventures in
- * Wonderland" (1865, public domain). No writer's text is committed.
+ * Wonderland" (1865, public domain). No writer's text is committed. Group D
+ * (Slice 4B) is read against the board's own measured standouts and column
+ * keys, as the runner reads it.
  */
 import type {
   LightboxBoard,
@@ -15,6 +17,9 @@ import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCo
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
+import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
 
@@ -52,11 +57,14 @@ export function readGroup(
   }
   const decoded = decodeLightboxGroup(response, { group, lenses: example.lenses, columnCount: 8 });
   let id = 0;
+  const board = makeBoard(8);
   const assembled = assembleLightboxGroup(decoded, {
     verifier: createLightboxQuoteVerifier(example.paragraphs),
     counter: createLightboxTermCounter(example.paragraphs),
     mintId: () => `lbt-test-${group}-${++id}`,
-    averageWordsPerSentence: 8.4
+    averageWordsPerSentence: 8.4,
+    columnKeys: lightboxColumnKeys(example.paragraphs, board.ribbon),
+    standouts: lightboxStandoutRows(board.measured.numbers.rows)
   });
   return {
     group,
@@ -75,7 +83,7 @@ export function readGroup(
 /** The counted board with every group read. */
 export function makeReadBoard(options: { paraphraseOne?: boolean; collision?: boolean } = {}): LightboxBoard {
   const board = makeBoard(8);
-  return { ...board, readings: (['A', 'B', 'C'] as const).map((group) => readGroup(group, options)) };
+  return { ...board, readings: LIGHTBOX_READING_GROUPS.map((group) => readGroup(group, options)) };
 }
 
 /** A host estimate for `makeBoard(8)`, all lenses on. */

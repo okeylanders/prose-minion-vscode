@@ -20,6 +20,10 @@
  *   tagger counted. The counts equal the Metrics tab's; an occurrence whose
  *   token could not be located (none is known) would be left out of both
  *   its count and its paragraphs rather than counted without a place.
+ * - **Sentences and the numbers** (Slice 4B): the longest and very short
+ *   sentences from each paragraph's sentence lengths, and the figures that
+ *   stand out against the preset and the writer's own average
+ *   (`LightboxNumbers`), each counted by its one detector.
  */
 
 import type {
@@ -46,6 +50,12 @@ import {
   type WordFrequencyOutput
 } from '@/tools/measure/wordFrequency';
 import { LightboxParagraph, splitLightboxParagraphs } from '@/infrastructure/lightbox/LightboxParagraphs';
+import {
+  LIGHTBOX_BASELINE_NOTES,
+  lightboxSentenceSummary,
+  measureLightboxNumbers,
+  type LightboxWriterAverages
+} from '@/infrastructure/lightbox/LightboxNumbers';
 
 /** How many of each list the board keeps. Presentation sizes, not prompt budgets. */
 export const LIGHTBOX_MEASURED_SIZES = {
@@ -92,6 +102,8 @@ export interface LightboxMeasureInputs {
   paragraphs: readonly LightboxParagraph[];
   /** The text the tools measured; tagged words are located in it. */
   text: string;
+  /** The writer's own average; absent where no baseline is measured. */
+  writer?: LightboxWriterAverages;
 }
 
 /** Where each frequency token occurs, by paragraph. */
@@ -234,9 +246,10 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
         paragraphs: index.paragraphsOfPhrase(entry.phrase)
       }));
 
+  const standards = standardsComparison(inputs.stats);
   return {
     headline: headlineStats(inputs.stats),
-    standards: standardsComparison(inputs.stats),
+    standards,
     topWords: words(inputs.frequency.topWords, LIGHTBOX_MEASURED_SIZES.topWords, (word) => index.paragraphsOfWord(word)),
     partsOfSpeech: placeLightboxPartsOfSpeech(inputs.frequency, inputs.text),
     phrases: {
@@ -247,7 +260,15 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       type: flag.type,
       count: flag.count,
       examples: [...flag.examples]
-    }))
+    })),
+    sentences: lightboxSentenceSummary(inputs.paragraphs.map((paragraph) => paragraph.text)),
+    numbers: measureLightboxNumbers({
+      text: inputs.text,
+      paragraphs: inputs.paragraphs.map((paragraph) => paragraph.text),
+      standards: standards?.items,
+      averageWordsPerSentence: inputs.stats.averageWordsPerSentence,
+      writer: inputs.writer ?? { summary: { kind: 'absent', note: LIGHTBOX_BASELINE_NOTES.notMeasured } }
+    })
   };
 }
 

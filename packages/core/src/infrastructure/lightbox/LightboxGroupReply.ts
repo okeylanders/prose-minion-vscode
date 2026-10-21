@@ -42,7 +42,7 @@ import {
  * chapter. `columnKeys` names each ribbon column's text as read, so a stale
  * tension score stays on the paragraphs it read (PR #150 F-06).
  */
-export type LightboxGroupTools = Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter' | 'columnKeys'>;
+export type LightboxGroupTools = Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter' | 'columnKeys' | 'standouts'>;
 
 export interface LightboxGroupReplyPorts {
   recovery: RejectedModelResponseRecovery;

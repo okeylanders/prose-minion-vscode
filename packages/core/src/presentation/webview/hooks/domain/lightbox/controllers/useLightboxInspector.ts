@@ -29,7 +29,14 @@ import {
 } from '@hooks/domain/lightbox/lightboxItems';
 import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
-import { LIGHTBOX_LINEAGE_STANCE_LABELS } from '@shared/constants/lightbox';
+import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
+import {
+  LIGHTBOX_ECHO_ACCURACY,
+  LIGHTBOX_FAMILIAR_KIND_LABELS,
+  LIGHTBOX_HANDOFF_EFFECT_LABELS,
+  LIGHTBOX_LINEAGE_STANCE_LABELS,
+  LIGHTBOX_NUMBER_USAGE_LABELS
+} from '@shared/constants/lightbox';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
   measured: 'Measured',
@@ -173,7 +180,7 @@ export interface LightboxInspectorView {
   reading?: LightboxInspectorReading;
 }
 
-function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
+function readingDetails(tile: LightboxReadingTile, board: LightboxBoard): LightboxInspectorDetail[] {
   switch (tile.kind) {
     case 'motif':
       return [{ label: 'How it moves', value: tile.gist }];
@@ -220,6 +227,48 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
       ];
     case 'spark':
       return [{ label: 'An open door', value: 'A question to think with: an offer, never an instruction' }];
+    case 'stock-tiers':
+      return [
+        ...lightboxTierShares(tile).map((share) => ({ label: share.label, value: `${share.count} of ${tile.classified} beats`, measured: `${share.percent}%` })),
+        { label: 'Counted', value: 'By code, from the beats the reading classified and code found: a share of those beats, not of the chapter' }
+      ];
+    case 'signature':
+      return [{ label: 'Signature', value: 'A line the reading calls the chapter’s own' }];
+    case 'familiar-phrase':
+      return [
+        { label: 'Kind', value: LIGHTBOX_FAMILIAR_KIND_LABELS[tile.familiar] },
+        ...(tile.support[0] ? [{ label: 'Counted', value: `${tile.support[0].count} in the chapter, by code` }] : []),
+        { label: 'Familiar', value: 'Familiar to a reader, not a fault' }
+      ];
+    case 'air-lock':
+      return [{ label: 'Air-lock', value: 'Closure-complete and quotable: a craft signal, not a risk' }];
+    case 'echo':
+      return [
+        { label: 'Sounds reminiscent of', value: tile.reminiscentOf },
+        { label: 'Accuracy', value: LIGHTBOX_ECHO_ACCURACY }
+      ];
+    case 'rhythm-endings': {
+      const tally = lightboxEndingTally(tile, board.ribbon);
+      return [
+        { label: 'Endings, as read', value: `Lands ${tally.lands} · Holds ${tally.holds} · Opens ${tally.opens}` },
+        ...(tally.opensAt.length > 0 ? [{ label: 'Opens at', value: tally.opensAt.map((index) => `¶${index}`).join(', ') }] : []),
+        ...(tally.unread > 0 ? [{ label: 'Not shown', value: `${tally.unread} changed since the reading` }] : [])
+      ];
+    }
+    case 'handoff':
+      return [
+        { label: 'Sentences', value: `¶${tile.from.paragraph}: two adjacent sentences, checked by code` },
+        { label: 'Carried', value: tile.carried },
+        { label: 'Effect', value: LIGHTBOX_HANDOFF_EFFECT_LABELS[tile.effect] }
+      ];
+    case 'number-usage': {
+      const row = board.measured.numbers.rows.find((candidate) => candidate.stat === tile.stat);
+      return [
+        ...(row ? [{ label: 'Figure', value: row.label, measured: lightboxNumberValue(row) }] : []),
+        { label: 'Reads as', value: LIGHTBOX_NUMBER_USAGE_LABELS[tile.usage].replace(/^Reads as /, '') },
+        { label: 'Instances', value: 'Each quote holds one, checked by the detector that counted the figure' }
+      ];
+    }
     case 'headline':
     case 'tension-arc':
     case 'palette-cluster':
@@ -228,7 +277,7 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
   }
 }
 
-function readingView(tile: LightboxReadingTile, stale: boolean): LightboxInspectorReading {
+function readingView(tile: LightboxReadingTile, stale: boolean, board: LightboxBoard): LightboxInspectorReading {
   return {
     tile,
     lens: tile.lens,
@@ -240,7 +289,7 @@ function readingView(tile: LightboxReadingTile, stale: boolean): LightboxInspect
       ...(quote.note ? { note: quote.note } : {})
     })),
     withheld: tile.withheldQuotes.map((quote) => ({ paragraph: quote.paragraph, text: lightboxWithheldQuoteText(quote) })),
-    details: readingDetails(tile),
+    details: readingDetails(tile, board),
     degrees: tile.kind === 'gravity-field' ? lightboxDegreeRows(tile) : [],
     friction: tile.friction
   };
@@ -275,7 +324,7 @@ export function buildLightboxInspectorView(
           .slice(0, TOUCHING_SHOWN)
           .map((touch) => ({ ref: touch.ref, label: touch.title }))
       : [],
-    ...(item.reading ? { reading: readingView(item.reading, lightboxLensIsStale(board, item.reading.lens)) } : {})
+    ...(item.reading ? { reading: readingView(item.reading, lightboxLensIsStale(board, item.reading.lens), board) } : {})
   };
 }
 

@@ -1005,6 +1005,9 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxEstimate.ts',
   'shared/types/messages/lightboxGravity.ts',
   'shared/types/messages/lightboxStoryTiles.ts',
+  'shared/types/messages/lightboxCraftTiles.ts',
+  'shared/types/messages/lightboxNumbers.ts',
+  'shared/types/messages/lightboxContextFiles.ts',
   'shared/types/messages/lightboxStale.ts',
   'shared/types/messages/lightboxHandoff.ts',
   'shared/types/messages/lightboxProjectFiles.ts',
@@ -1023,6 +1026,14 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxSparkPhrasing.ts',
   'infrastructure/lightbox/LightboxDialogueAnchor.ts',
   'infrastructure/lightbox/LightboxSparkLane.ts',
+  'infrastructure/lightbox/LightboxNumbers.ts',
+  'infrastructure/lightbox/LightboxNumberInstances.ts',
+  'infrastructure/lightbox/LightboxWriterBaseline.ts',
+  'infrastructure/lightbox/LightboxSourceChecks.ts',
+  'infrastructure/lightbox/LightboxCraftCodec.ts',
+  'infrastructure/lightbox/LightboxCraftTiles.ts',
+  'infrastructure/lightbox/LightboxSentencePairs.ts',
+  'infrastructure/lightbox/LightboxCarryQuotes.ts',
   'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',
   'infrastructure/lightbox/LightboxTileHandoff.ts',
@@ -1056,6 +1067,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCraft.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
@@ -1073,17 +1085,20 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
   'presentation/webview/components/lightbox/LightboxLineage.tsx',
   'presentation/webview/components/lightbox/LightboxMotifs.tsx',
+  'presentation/webview/components/lightbox/LightboxNumbers.tsx',
   'presentation/webview/components/lightbox/LightboxPalette.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
   'presentation/webview/components/lightbox/LightboxProjectPicker.tsx',
   'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
   'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
   'presentation/webview/components/lightbox/LightboxReadingPlaceholder.tsx',
+  'presentation/webview/components/lightbox/LightboxRhythm.tsx',
   'presentation/webview/components/lightbox/LightboxRibbon.tsx',
   'presentation/webview/components/lightbox/LightboxRunLine.tsx',
   'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
   'presentation/webview/components/lightbox/LightboxSparkLane.tsx',
   'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxStock.tsx',
   'presentation/webview/components/lightbox/LightboxSubtext.tsx',
   'presentation/webview/components/lightbox/LightboxTensionArc.tsx',
   'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
@@ -1098,6 +1113,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCraft.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
@@ -1792,6 +1808,8 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxService\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxReadingRunner\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
+    // Slice 4B: the writer's baseline holds one cache; only the composition root builds it.
+    expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });

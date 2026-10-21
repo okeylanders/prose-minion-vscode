@@ -13,9 +13,18 @@
       "title": "Lightbox · chapter 6.12 (interactive)",
       "expand": "fill",
       "is_interactive": true
+    },
+    "NewLenses.dc.html": {
+      "x": 1980,
+      "y": 0,
+      "w": 1440,
+      "h": 4500,
+      "title": "New sections + Opinion · draft (Alice ch. I)",
+      "expand": "fill",
+      "is_interactive": true
     }
   },
-  "order": ["Main.dc.html"],
+  "order": ["Main.dc.html", "NewLenses.dc.html"],
   "notes": {
     "data": {
       "x": 1520,

@@ -85,7 +85,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette and story blocks), quote verifier, dialogue anchor, spark phrasing, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, spark lane, handoff checks (field and tile); context shelf and opaque file keys
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); context shelf and opaque file keys
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -109,6 +109,9 @@ packages/core/src/
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
+            ├── lightboxCraftTiles.ts # Group D tiles: tier mix, signature, familiar phrase, air-lock, echo, endings, handoff, number usage
+            ├── lightboxNumbers.ts  # The measured numbers: rows, standouts, the writer's baseline summary, sentence summary
+            ├── lightboxContextFiles.ts # Lightbox context files and their messages
             ├── lightboxEstimate.ts # Fit and per-call/run estimates
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
@@ -175,6 +178,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request; handoff state matching (pure)
 │       │   ├── lightboxBring.ts        # "Bring to Workshop" view and request; Bound from the Workshop tray (pure)
 │       │   ├── lightboxSparks.ts       # The spark lane: shown and set aside (pure)
+│       │   ├── lightboxCraft.ts        # Group D as drawn: tier shares, endings tally and lane, sentence columns, number bars (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
@@ -428,7 +432,8 @@ usePersistence({
      - `proseAssistant`: General prose analysis and improvement suggestions
    - **Measure Tools**: Statistical analysis tools
      - `passageProseStats`: Word count, sentence analysis, pacing metrics
-     - `styleFlags`: Identifies style patterns and issues
+     - `styleFlags`: Identifies style patterns and issues; its adverb, passive-voice and filler detectors are exported, with offsets, so the Lightbox's numbers count and check quotes by the same rules
+     - `beingVerbs`: The forms of "be" as whole words (the Lightbox's being-verbs figure; contractions not counted)
      - `wordFrequency`: Word usage patterns, Top 100, stopwords, hapax (list), POS via wink, bigrams/trigrams, length histogram, optional lemmas
 
 4. **OpenRouter Integration** ([OpenRouterClient.ts](packages/core/src/infrastructure/api/providers/OpenRouterClient.ts))
@@ -791,8 +796,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-09, Sprint 05 Slice 7):
-- 299 suites / 4,249 tests / 2 snapshots
+**Test Inventory** (measured 2026-10-20, Lightbox Slice 4B after the PR #155 review):
+- 411 suites / 5,712 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

@@ -16,6 +16,7 @@ import type {
   LightboxCallEstimate,
   LightboxFit,
   LightboxLensId,
+  LightboxNumberRow,
   LightboxReadingGroupId,
   LightboxRunEstimate
 } from '@messages';
@@ -53,6 +54,13 @@ export interface LightboxPricedInputs {
   /** `LightboxContextShelf.revision()`. */
   contextRevision: number;
   facts: LightboxModelFacts;
+  /**
+   * The board's standout figures (`lightboxStandoutsKey`), which the numbers
+   * lens's task names: a board measured again with the same text (a new
+   * preset, a changed baseline) changes them, so a press never sends a task
+   * its estimate did not price (Slice 4B).
+   */
+  standoutsKey?: string;
 }
 
 /**
@@ -70,8 +78,16 @@ export function lightboxEstimateKey(inputs: LightboxPricedInputs): string {
     inputs.facts.model ?? null,
     inputs.facts.contextLength ?? null,
     inputs.facts.pricing?.promptUsdPerToken ?? null,
-    inputs.facts.pricing?.completionUsdPerToken ?? null
+    inputs.facts.pricing?.completionUsdPerToken ?? null,
+    inputs.standoutsKey ?? null
   ]);
+}
+
+/** The standouts a numbers task names: each figure's id, direction, bases and reference. */
+export function lightboxStandoutsKey(rows: readonly LightboxNumberRow[]): string {
+  return JSON.stringify(rows
+    .filter((row) => row.standout)
+    .map((row) => [row.stat, row.standout?.direction, row.standout?.against, row.standout?.reference ?? null]));
 }
 
 export interface LightboxEstimateInput {
@@ -104,17 +120,25 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   subtext: 640,
   genre: 820,
   lineage: 900,
-  spark: 620
+  spark: 620,
+  // Slice 4B: guesses from the group D worked example's length, labelled so, until Slice 6 measures them.
+  stock: 2_000,
+  rhythm: 700,
+  numbers: 650
 };
 
 /** Each tension score and its comma. */
 const TENSION_TOKENS_PER_COLUMN = 2;
+/** Each paragraph ending ("lands", quoted) and its comma (Slice 4B; a guess). */
+const ENDING_TOKENS_PER_COLUMN = 3;
 /** The sentinels and the JSON root. */
 const FRAME_TOKENS = 40;
 
 export function lightboxExpectedOutputTokens(lenses: readonly LightboxLensId[], columnCount: number): number {
   return lenses.reduce(
-    (sum, lens) => sum + LIGHTBOX_TYPICAL_OUTPUT_TOKENS[lens] + (lens === 'tension' ? TENSION_TOKENS_PER_COLUMN * columnCount : 0),
+    (sum, lens) => sum + LIGHTBOX_TYPICAL_OUTPUT_TOKENS[lens] +
+      (lens === 'tension' ? TENSION_TOKENS_PER_COLUMN * columnCount : 0) +
+      (lens === 'rhythm' ? ENDING_TOKENS_PER_COLUMN * columnCount : 0),
     FRAME_TOKENS
   );
 }

@@ -155,6 +155,16 @@ export interface PromptBudgets {
     sparks: number;
     /** One spark's question. */
     sparkCharacters: number;
+    /** Beats one stock block may classify into the cognitive-economy tiers (Slice 4B). */
+    stockBeats: number;
+    signaturePhrases: number;
+    familiarPhrases: number;
+    airLocks: number;
+    echoes: number;
+    /** Adjacent-sentence samples one rhythm block may give. */
+    handoffs: number;
+    /** Usage readings one numbers block may give: at most one per measured figure. */
+    numberReadings: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -411,7 +421,14 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     subtextPairs: 4,
     subtextContextQuotes: 2,
     sparks: 4,
-    sparkCharacters: 240
+    sparkCharacters: 240,
+    stockBeats: 40,
+    signaturePhrases: 4,
+    familiarPhrases: 6,
+    airLocks: 3,
+    echoes: 3,
+    handoffs: 3,
+    numberReadings: 6
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

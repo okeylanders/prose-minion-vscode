@@ -21,6 +21,7 @@ import type { LightboxFilter } from '@hooks/domain/useLightbox';
 import type { UseLightboxFocusReturn } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import type { LightboxRunLineView } from '@hooks/domain/lightbox/lightboxRunLine';
 import { lightboxTensionLane, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxEndingsLane } from '@hooks/domain/lightbox/lightboxCraft';
 import { Icon } from '@components/shared/Icon';
 import { LightboxRibbon } from '@components/lightbox/LightboxRibbon';
 import { LightboxRunLine } from '@components/lightbox/LightboxRunLine';
@@ -177,6 +178,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         tensionLensOn={tensionOn}
         tension={lightboxTensionLane(board, tensionOn)}
         tensionTileId={tensionArc?.id}
+        endings={lensOn('rhythm') ? lightboxEndingsLane(board, true) : undefined}
       />
       {tensionOn
         ? drawReading(LIGHTBOX_READING_LAYOUT.underRibbon)

@@ -38,6 +38,9 @@ export * from './lightboxGravity';
 export * from './lightboxStale';
 export * from './lightboxHandoff';
 export * from './lightboxProjectFiles';
+export * from './lightboxContextFiles';
+export * from './lightboxCraftTiles';
+export * from './lightboxNumbers';
 
 // Union types for message routing
 import {
@@ -253,11 +256,13 @@ import {
   LightboxRunMessage,
   LightboxCancelRunMessage,
   LightboxRunProgressMessage,
-  LightboxGroupResultMessage,
+  LightboxGroupResultMessage
+} from './lightboxReadings';
+import {
   LightboxAddContextFilesMessage,
   LightboxRemoveContextFileMessage,
   LightboxContextFilesMessage
-} from './lightboxReadings';
+} from './lightboxContextFiles';
 import {
   LightboxHandOffMessage,
   LightboxHandOffResultMessage,

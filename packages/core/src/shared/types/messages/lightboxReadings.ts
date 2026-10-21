@@ -25,6 +25,16 @@ import type {
   LightboxSubtextTile
 } from './lightboxStoryTiles';
 import type {
+  LightboxAirLockTile,
+  LightboxEchoTile,
+  LightboxFamiliarPhraseTile,
+  LightboxHandoffTile,
+  LightboxNumberUsageTile,
+  LightboxRhythmEndingsTile,
+  LightboxSignatureTile,
+  LightboxStockTiersTile
+} from './lightboxCraftTiles';
+import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
   LightboxGravityLiteralTile,
@@ -36,13 +46,15 @@ import type {
 // Groups and lenses (D6)
 // ---------------------------------------------------------------------------
 
-export type LightboxReadingGroupId = 'A' | 'B' | 'C';
+export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D';
 
 /**
  * The lenses, each in one reading group: Slice 2B's six, Slice 3's lexical
- * gravity and palette in group A, and Slice 4's subtext in group B and
- * lineage and Spark in group C. A lens the writer turns off is left out of
- * its group's prompt, and a group with no lens on is not called.
+ * gravity and palette in group A, Slice 4's subtext in group B and
+ * lineage and Spark in group C, and Slice 4B's craft lenses in group D
+ * (stock and signature, rhythm and handoffs, the numbers). A lens the
+ * writer turns off is left out of its group's prompt, and a group with no
+ * lens on is not called.
  */
 export type LightboxLensId =
   | 'headline'
@@ -55,7 +67,10 @@ export type LightboxLensId =
   | 'subtext'
   | 'genre'
   | 'lineage'
-  | 'spark';
+  | 'spark'
+  | 'stock'
+  | 'rhythm'
+  | 'numbers';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -83,13 +98,17 @@ export interface LightboxVerifiedQuote {
  * - `too-short`: too few letters to anchor anything.
  * - `no-longer-in-chapter`: the quote was found when the chapter was read, but
  *   the chapter has changed since and its words are gone (stale readings, D4).
+ * - `no-instance`: the words are in the paragraph, but hold no instance of
+ *   the measured figure a numbers reading names (Slice 4B), by the detector
+ *   that counted it.
  */
 export type LightboxQuoteFailure =
   | 'undeclared-paragraph'
   | 'not-in-paragraph'
   | 'not-in-chapter'
   | 'too-short'
-  | 'no-longer-in-chapter';
+  | 'no-longer-in-chapter'
+  | 'no-instance';
 
 /**
  * A quote the host could not find where the reading said it was. Its text is
@@ -123,7 +142,8 @@ export interface LightboxCountedSupport {
  * genre tile draws it below the neighbors. Slice 3: a borrowed field, a
  * collision, a literal set-aside, a diction cluster and a swatch
  * (`lightboxGravity.ts`). Slice 4: an adjacent story, a said/meant pair and
- * a spark (`lightboxStoryTiles.ts`).
+ * a spark (`lightboxStoryTiles.ts`). Slice 4B: the craft kinds
+ * (`lightboxCraftTiles.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
@@ -140,7 +160,15 @@ export type LightboxReadingTileKind =
   | 'reader-promise'
   | 'subtext'
   | 'lineage'
-  | 'spark';
+  | 'spark'
+  | 'stock-tiers'
+  | 'signature'
+  | 'familiar-phrase'
+  | 'air-lock'
+  | 'echo'
+  | 'rhythm-endings'
+  | 'handoff'
+  | 'number-usage';
 
 export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
@@ -226,7 +254,15 @@ export type LightboxReadingTile =
   | LightboxReaderPromiseTile
   | LightboxSubtextTile
   | LightboxLineageTile
-  | LightboxSparkTile;
+  | LightboxSparkTile
+  | LightboxStockTiersTile
+  | LightboxSignatureTile
+  | LightboxFamiliarPhraseTile
+  | LightboxAirLockTile
+  | LightboxEchoTile
+  | LightboxRhythmEndingsTile
+  | LightboxHandoffTile
+  | LightboxNumberUsageTile;
 
 /** A lens block that failed validation, withheld by kind with its reason (D7). */
 export interface LightboxWithheldBlock {
@@ -302,23 +338,6 @@ export interface LightboxReadingGroup {
   error?: string;
   /** Lenses read against an earlier version of the text; absent when every reading is current. */
   staleLenses?: LightboxStaleLens[];
-}
-
-// ---------------------------------------------------------------------------
-// Context files (D9)
-// ---------------------------------------------------------------------------
-
-/** A project file that informs readings. It is never searched for quotes. */
-export interface LightboxContextFile {
-  /** Host-minted. */
-  id: string;
-  displayPath: string;
-  wordCount: number;
-  /**
-   * The file's opaque identity (`LightboxProjectCatalogEntry.fileKey`), so the
-   * project picker marks attached only the very file on the shelf (PR #154 F-02).
-   */
-  fileKey: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,30 +465,4 @@ export interface LightboxGroupResultPayload {
 
 export interface LightboxGroupResultMessage extends MessageEnvelope<LightboxGroupResultPayload> {
   type: MessageType.LIGHTBOX_GROUP_RESULT;
-}
-
-/** "Add context file": the host's file picker is the input. Zero payload. */
-export interface LightboxAddContextFilesMessage extends MessageEnvelope<Record<string, never>> {
-  type: MessageType.LIGHTBOX_ADD_CONTEXT_FILES;
-}
-
-export interface LightboxRemoveContextFilePayload {
-  id: string;
-}
-
-export interface LightboxRemoveContextFileMessage extends MessageEnvelope<LightboxRemoveContextFilePayload> {
-  type: MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE;
-}
-
-export interface LightboxContextFilesPayload {
-  files: LightboxContextFile[];
-  totalWords: number;
-  /** `PROMPT_BUDGETS.contextFiles.words`. */
-  ceilingWords: number;
-  /** Writer-facing, when an add was refused. */
-  notice?: string;
-}
-
-export interface LightboxContextFilesMessage extends MessageEnvelope<LightboxContextFilesPayload> {
-  type: MessageType.LIGHTBOX_CONTEXT_FILES;
 }
