@@ -800,8 +800,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4C after the PR #156 review):
-- 420 suites / 5,815 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-21, Lightbox Slice 4C after the PR #156 re-review):
+- 421 suites / 5,821 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1093,11 +1093,15 @@ D3, D4 and D7 (Slices 4B and 4C) when adding a lens or a reading tile kind:
   failure withholds the whole set as one claim naming the rule it broke.
 - **Measured lanes are recomputed, never carried.** The Sections lane
   (`LightboxSections`) is measured with every board and is never stale.
-- **One ribbon grid.** Every ribbon lane is a row of `.pm-lb-ribbon-grid`
-  (one label track, one column track, subgrid rows), never a row with its
-  own label width, so a column index is one horizontal place in every lane
-  (PR #156 F-03). The visual evidence harness measures the column edges
-  and records them.
+- **One ribbon grid, on the Chromium 102 floor.** Every ribbon label block
+  and track is a direct child of `.pm-lb-ribbon-grid` (one label track,
+  one column track), never a row with its own label width, so a column
+  index is one horizontal place in every lane (PR #156 F-03). The grid must
+  hold on Chromium 102, the floor VS Code 1.75 sets (`engines.vscode:
+  ^1.75.0`): plain CSS grid, no `subgrid` or row wrappers (F-04).
+  `webviewCssFloor.test.ts` fails on any new CSS feature above that floor.
+  The visual evidence harness measures the column edges and each label
+  block beside its track, including in states that simulate the floor.
 
 ### Operational Tips
 

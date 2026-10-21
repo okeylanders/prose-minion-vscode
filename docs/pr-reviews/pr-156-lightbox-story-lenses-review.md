@@ -361,3 +361,18 @@ The newly committed `facts.json` is internally consistent: **33 matching main/st
 The current rebuilt bundle now matches the author-recorded screenshot-bundle hash exactly, closing the previous mismatch for the revised evidence. The earlier clean `797e166` hash `65228e9a…` remains preserved reviewer evidence. The claimed historical symlinked-install cause is consistent with path-derived webpack module ids, but that exact historical installation was not reconstructed; no stronger claim about its provenance is made.
 
 No fresh browser/native VS Code run, live/billable model call or private manuscript input was used. DOM probes establish bundled semantics and controlled protocol, not browser hit-testing, CSS geometry or native IPC. The author's real-chapter acceptance and product decisions 10–16 remain attributed, unauthenticated acceptance claims. **This report is not Slice 5 readiness, saved-board-schema approval, merge permission or deployment authorization.** Next step: correct F-04, verify the declared minimum runtime alongside modern layouts, then re-review that delta.
+
+## Author response to the re-review (2026-10-21)
+
+**F-04 is addressed in `9fadf6d`, without raising the floor.** The ribbon is one plain CSS grid with no row wrappers and no `subgrid`. Every label block and track is a direct child, placed by column: labels in the shared `minmax(74px, max-content)` track, tracks in the column track, and the story part's rule across both. The evidence README now states which measurements compare cells and bands, correcting the earlier "every state" wording.
+
+**Floor guard.** A new architecture test, `webviewCssFloor.test.ts`, scans every webview stylesheet (comments stripped) for features newer than Chromium 102. Each feature carries its first Chrome version from MDN browser-compat-data 6.1.5: `subgrid` 117, `:has()` 105, `@container` and container units 105, nesting 112/120, and more. `@layer` (99) is at the floor and allowed. The guard pins `engines.vscode: ^1.75.0`, keeps the ribbon's two sheets free of all such features, and fails on `e7e1536`'s `ribbon.css`. It also found older uses outside this PR, the largest being 99 `color-mix()` (Chrome 111) uses, including the theme tokens. They are inventoried per file as a ratchet and filed as Medium tech debt (`2026-10-21-webview-css-above-chromium-102.md`), since the floor itself is the writer's decision.
+
+**Harness and proof.** The harness now checks that each label block is beside its track: to its left, overlapping it vertically, with every lane label's centre inside it. It fails rather than skips on a missing track or label block, mismatched cells, or absent bands. Three `floor-` states drop every `subgrid` declaration before measuring, which is how Chromium 102 treats it (a simulation in Chromium 141, not a 102 run).
+- **On `e7e1536`'s bundle** (clean rebuild, the recorded `9493dfce…`), every ordinary state passes. Each floor state stacks the labels above their tracks: 54 faults (`errors-e7e1536.txt`, one picture under `before/`), while every edge still coincides at 0px.
+- **On the fix**, there are 0 faults across 42 measurements:
+  - 36 with readings, comparing 300 cell pairs and 240 bands at 0px;
+  - 6 pre-read, comparing tracks and adjacency only, as the README now states.
+- The bundle is `webview.js` SHA-256 `c016b535a53b38451e4676b494fe8a5477ce8dfbc1d27de67746ff8f14bb34c2` (clean `npm ci` and `npm run build`), and the host states regenerate byte-identical.
+
+**Verification at the fix head:** full Jest 421 suites / 5,821 tests / 59 snapshots, all passing; lint identical (0 errors / 1,133 warnings); typecheck, build with `verify:bundle` and `git diff --check` pass.
