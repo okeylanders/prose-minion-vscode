@@ -10,8 +10,10 @@
  * measurement services, from public-domain text: Chapter I of Lewis
  * Carroll's "Alice's Adventures in Wonderland" (1865), ¶1–¶8 as the worked
  * examples hold them, and the opening in curly, straight, mixed and wrapped
- * quotes. A few counts are literal, checked by hand and with grep against
- * the text, not taken from the code under test.
+ * quotes; and Chapter VII's dialogue-heavy Tea-Party opening, as Gutenberg
+ * sets it and in curly double quotes, where nearly every sentence ends with a
+ * closing mark (ADR 2026-10-21). A few counts are literal, checked by hand
+ * and with grep against the text, not taken from the code under test.
  */
 
 import type { LightboxBoard, LightboxInstancesPassage, LightboxPassageRow, LightboxPassageTerm } from '@messages';
@@ -19,7 +21,7 @@ import { buildLightboxPassage } from '@/infrastructure/lightbox/LightboxPassages
 import { LIGHTBOX_PASSAGE_BOUNDS } from '@shared/constants/lightboxPassages';
 import { extractFrequencyWords } from '@/tools/measure/wordFrequency';
 import { proseStatsWords } from '@/tools/measure/passageProseStats';
-import { boardWithPassages, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
+import { boardWithPassages, lightboxSentenceRows, type LightboxBoardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import {
   ALICE_OPENING_CURLY,
@@ -28,6 +30,7 @@ import {
   ALICE_OPENING_WRAPPED,
   aliceWords
 } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
+import { TEA_PARTY_CURLY, TEA_PARTY_SINGLE } from '@/__tests__/tools/measure/passageProseStats/teaPartyFixtures';
 
 const EXAMPLE = readWorkedExample('A').paragraphs.join('\n\n');
 
@@ -37,6 +40,8 @@ const FIXTURES: ReadonlyArray<[string, string]> = [
   ['the opening, straight quotes', ALICE_OPENING_STRAIGHT],
   ['the opening, mixed quotes', ALICE_OPENING_MIXED],
   ['the opening, wrapped lines', ALICE_OPENING_WRAPPED],
+  ['the Tea-Party, single quotes', TEA_PARTY_SINGLE],
+  ['the Tea-Party, curly double quotes', TEA_PARTY_CURLY],
   // Long enough that the most frequent words pass the row bound.
   ['6,000 words of the opening\'s vocabulary', aliceWords(6000)]
 ];
@@ -83,13 +88,17 @@ function listedEntries(board: LightboxBoard): Array<{ label: string; term: Light
   ];
 }
 
-/** Each lit instance's text, its pieces joined in order (a space between sentences). */
+/**
+ * Each lit instance's text, its pieces joined in order (a space between
+ * sentences). A row outside every sentence (PR #161 N-01) lights its
+ * instances in its one stretch.
+ */
 function litTexts(rows: readonly LightboxPassageRow[]): Map<number, string> {
   const texts = new Map<number, string>();
   for (const row of rows) {
-    for (const sentence of row.sentences) {
+    for (const stretch of 'outside' in row ? [row.outside] : row.sentences) {
       const pieces = new Map<number, string>();
-      for (const segment of sentence.segments) {
+      for (const segment of stretch.segments) {
         for (const id of segment.instances ?? []) {
           pieces.set(id, (pieces.get(id) ?? '') + segment.text);
         }
@@ -128,12 +137,14 @@ describe.each(FIXTURES)('on %s, every listed entry\'s well agrees with its count
     for (const entry of listedEntries(built.board)) {
       const passage = instancesOf(built, entry.term);
       const lit = litTexts(passage.rows);
-      const sentences = new Set(passage.rows.flatMap((row) => row.sentences.map((sentence) => `${sentence.paragraph}:${sentence.sentence}`)));
+      const sentences = new Set(passage.rows.flatMap((row) => ('outside' in row ? [] : row.sentences.map((sentence) => `${sentence.paragraph}:${sentence.sentence}`))));
+      const litOutside = new Set(passage.rows.flatMap((row) => ('outside' in row ? row.outside.segments.flatMap((segment) => segment.instances ?? []) : [])));
       const problems = [
         passage.instances !== entry.count && `found ${passage.instances}`,
         lit.size + passage.more.instances !== entry.count && `lit ${lit.size} + ${passage.more.instances} past the bound`,
         [...lit.values()].some((value) => !entry.reads(value)) && 'an instance that does not read as its term',
         sentences.size + passage.more.sentences !== passage.sentences && `${sentences.size} sentences shown + ${passage.more.sentences} past the bound`,
+        litOutside.size + passage.more.outside !== passage.outside && `${litOutside.size} outside any sentence + ${passage.more.outside} past the bound`,
         passage.rows.length > LIGHTBOX_PASSAGE_BOUNDS.rows && `${passage.rows.length} rows sent`
       ].filter(Boolean);
       if (problems.length > 0) {
@@ -169,7 +180,7 @@ describe('literal counts on the worked examples\' ¶1–¶8 (checked with grep a
   it('puts both of "sister" in ¶2\'s first sentence, lit where the text has them', () => {
     const passage = instancesOf(built, { kind: 'word', word: 'sister' });
     expect({ instances: passage.instances, sentences: passage.sentences, rows: passage.rows.length }).toEqual({ instances: 2, sentences: 1, rows: 1 });
-    const [sentence] = passage.rows[0].sentences;
+    const [sentence] = lightboxSentenceRows(passage.rows)[0].sentences;
     expect(sentence.paragraph).toBe(2);
     expect(sentence.sentence).toBe(1);
     expect(sentence.segments.filter((segment) => segment.instances).map((segment) => [segment.text, segment.instances]))

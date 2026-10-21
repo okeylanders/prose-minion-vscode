@@ -11,6 +11,12 @@
  *   share a sentence are one row. Rows past `LIGHTBOX_PASSAGE_BOUNDS.rows`
  *   are not sent; the passage says how many sentences and instances they
  *   hold.
+ * - **Outside every sentence.** The sentence rule counts no sentence in a
+ *   stretch of only space, closing marks and end marks, but a counted token
+ *   can stand there (a straight `'` is a word to the vocabulary figures).
+ *   Its row is that stretch of its own paragraph, lit, and the passage
+ *   counts it apart (`outside`): never a sentence nearby, never a sentence
+ *   invented (PR #161 N-01).
  *
  * Instances are numbered from 0 in text order, the same in both kinds, so
  * the number of distinct instances lit is the number found, and the number
@@ -38,6 +44,7 @@ import type {
 import { LIGHTBOX_PASSAGE_BOUNDS } from '@shared/constants/lightboxPassages';
 import type { LightboxSpan } from '@/infrastructure/lightbox/LightboxInstances';
 import type { LightboxPassageIndex, LightboxSentenceSpan } from '@/infrastructure/lightbox/LightboxPassageIndex';
+import type { LightboxParagraph } from '@/infrastructure/lightbox/LightboxParagraphs';
 
 /** An instance and its number. */
 interface NumberedSpan extends LightboxSpan {
@@ -113,40 +120,106 @@ function paragraphsPassage(
   return via ? { ...passage, lit: lit.size } : passage;
 }
 
+/** A row in the making: instances sharing sentences, or sharing one stretch that no sentence holds. */
+type RowGroup =
+  | { kind: 'sentences'; first: number; last: number; spans: NumberedSpan[] }
+  | { kind: 'outside'; paragraph: number; start: number; end: number; spans: NumberedSpan[] };
+
 function instancesPassage(index: LightboxPassageIndex, spans: readonly NumberedSpan[]): LightboxInstancesPassage {
   const sentences = index.sentences();
   // Each instance's first and last sentence, then runs of instances that share a sentence, merged.
-  const groups: Array<{ first: number; last: number; spans: NumberedSpan[] }> = [];
+  // An instance no sentence touches keeps its own stretch of its paragraph (PR #161 N-01).
+  const groups: RowGroup[] = [];
   for (const span of spans) {
     const first = firstSentenceEndingAfter(sentences, span.start);
+    const open = groups[groups.length - 1];
+    const sentence = sentences[first];
+    if (sentence === undefined || sentence.end <= span.start || sentence.start >= span.end) {
+      const stretch = outsideStretch(index, sentences, first, span);
+      if (open?.kind === 'outside' && open.start === stretch.start) {
+        open.spans.push(span);
+      } else {
+        groups.push({ kind: 'outside', ...stretch, spans: [span] });
+      }
+      continue;
+    }
     let last = first;
     while (last + 1 < sentences.length && sentences[last + 1].start < span.end) {
       last += 1;
     }
-    const open = groups[groups.length - 1];
-    if (open && first <= open.last) {
+    if (open?.kind === 'sentences' && first <= open.last) {
       open.last = Math.max(open.last, last);
       open.spans.push(span);
     } else {
-      groups.push({ first, last, spans: [span] });
+      groups.push({ kind: 'sentences', first, last, spans: [span] });
     }
   }
-  const sentencesIn = (group: { first: number; last: number }) => group.last - group.first + 1;
+  const sentencesIn = (group: RowGroup) => (group.kind === 'sentences' ? group.last - group.first + 1 : 0);
+  const outsideIn = (group: RowGroup) => (group.kind === 'outside' ? group.spans.length : 0);
+  const sum = (of: readonly RowGroup[], count: (group: RowGroup) => number) => of.reduce((total, group) => total + count(group), 0);
   const shown = groups.slice(0, LIGHTBOX_PASSAGE_BOUNDS.rows);
   const hidden = groups.slice(LIGHTBOX_PASSAGE_BOUNDS.rows);
   return {
     kind: 'instances',
     instances: spans.length,
-    sentences: groups.reduce((sum, group) => sum + sentencesIn(group), 0),
-    rows: shown.map((group): LightboxPassageRow => ({
-      sentences: rowSentences(index.text, sentences.slice(group.first, group.last + 1), group.spans)
-    })),
+    sentences: sum(groups, sentencesIn),
+    outside: sum(groups, outsideIn),
+    rows: shown.map((group): LightboxPassageRow => (group.kind === 'sentences'
+      ? { sentences: rowSentences(index.text, sentences.slice(group.first, group.last + 1), group.spans) }
+      : { outside: { paragraph: group.paragraph, segments: segmentsOf(index.text, group.start, group.end, group.spans) } })),
     more: {
       rows: hidden.length,
-      sentences: hidden.reduce((sum, group) => sum + sentencesIn(group), 0),
-      instances: hidden.reduce((sum, group) => sum + group.spans.length, 0)
+      sentences: sum(hidden, sentencesIn),
+      instances: sum(hidden, (group) => group.spans.length),
+      outside: sum(hidden, outsideIn)
     }
   };
+}
+
+/**
+ * The stretch of its own paragraph that holds `span`, which no sentence
+ * touches: from the end of the sentence before it in that paragraph (or the
+ * paragraph's start) to the start of the sentence after it there (or the
+ * paragraph's end), outer space trimmed. `first` is the first sentence
+ * ending after the span's start, as `firstSentenceEndingAfter` found it.
+ */
+function outsideStretch(
+  index: LightboxPassageIndex,
+  sentences: readonly LightboxSentenceSpan[],
+  first: number,
+  span: LightboxSpan
+): { paragraph: number; start: number; end: number } {
+  const paragraph = paragraphAt(index.paragraphs, span.start);
+  const after = sentences[first] !== undefined && sentences[first].end > span.start ? sentences[first] : undefined;
+  const before = after ? sentences[first - 1] : sentences[first];
+  let start = before?.paragraph === paragraph.index ? before.end : paragraph.start;
+  let end = after?.paragraph === paragraph.index ? after.start : paragraph.end;
+  while (start < span.start && /\s/.test(index.text[start])) {
+    start += 1;
+  }
+  while (end > span.end && /\s/.test(index.text[end - 1])) {
+    end -= 1;
+  }
+  return { paragraph: paragraph.index, start, end };
+}
+
+/**
+ * The paragraph holding `offset`: the last one starting at or before it. A
+ * counted token is never space, and paragraphs hold all of a text but the
+ * space between them, so it is always inside the one found.
+ */
+function paragraphAt(paragraphs: readonly LightboxParagraph[], offset: number): LightboxParagraph {
+  let low = 0;
+  let high = paragraphs.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (paragraphs[middle].start <= offset) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return paragraphs[low];
 }
 
 /** The first sentence that ends after `offset` (an instance starts inside it), by binary search. */

@@ -82,7 +82,7 @@ Further independent checks:
 
 ### Closing-quote sentence debt is not a new finding
 
-`proseSentenceSpans` itself is unchanged by this PR. Its preexisting rule can count a closing quote after `.!?` as another sentence or put it at the start of the next row. The new wells consistently expose that rule, and the author explicitly records it in [the Medium-priority debt item](../../.todo/tech-debt/2026-10-21-prose-sentences-closing-quote.md). A display-only splitter would make the counts disagree. This review neither treats the inherited rule as a new Slice 4E blocker nor marks that debt resolved; changes to it must repin the affected measured figures deliberately.
+`proseSentenceSpans` itself is unchanged by this PR. Its preexisting rule can count a closing quote after `.!?` as another sentence or put it at the start of the next row. The new wells consistently expose that rule, and the author explicitly records it in [the Medium-priority debt item](../../.todo/archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md). A display-only splitter would make the counts disagree. This review neither treats the inherited rule as a new Slice 4E blocker nor marks that debt resolved; changes to it must repin the affected measured figures deliberately.
 
 ## Verification and evidence limits
 

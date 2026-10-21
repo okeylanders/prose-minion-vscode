@@ -98,7 +98,9 @@ describe('measureLightboxParagraph', () => {
   it('counts sentences with the prose-stats rule and derives the rhythm', () => {
     const [, first, , third] = measure(ALICE_OPENING_CURLY);
 
-    expect(first.sentences).toBe(2); // split at "?" inside the speech, as the tool splits
+    // One sentence, ending “…conversation?” with its closing mark. The former rule
+    // counted 2: the ” after the "?" stood alone as a sentence (ADR 2026-10-21).
+    expect(first.sentences).toBe(1);
     expect(third).toEqual(expect.objectContaining({ words: 21, sentences: 1, avgWordsPerSentence: 21 }));
     expect(first.avgWordsPerSentence).toBe(Math.round((first.words / first.sentences) * 10) / 10);
   });

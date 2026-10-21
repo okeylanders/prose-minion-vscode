@@ -390,7 +390,8 @@
   margin-bottom: 0;
 }
 [data-pm-surface="lightbox"] .pm-lb-well-number,
-[data-pm-surface="lightbox"] .pm-lb-well-break {
+[data-pm-surface="lightbox"] .pm-lb-well-break,
+[data-pm-surface="lightbox"] .pm-lb-well-outside {
   font-family: var(--pm-mono);
   font-size: 10.5px;
   color: var(--pm-muted);

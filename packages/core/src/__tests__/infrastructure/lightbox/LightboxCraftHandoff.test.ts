@@ -102,8 +102,10 @@ describe('bringing a group D reading to the Workshop', () => {
       { label: 'Effect', text: 'Continues' }
     ]);
     expect(pointsOf('number-usage')).toEqual([
-      // Rounded only as shown (PR #155 F-04).
-      { label: 'Figure', text: 'Sentence length: 29.9 words per sentence; your average 14.3' },
+      // Rounded only as shown (PR #155 F-04). The sentence rule (ADR 2026-10-21)
+      // moved it from 29.9: a closing quote and a lower-case speech tag stay in
+      // their sentence, so the opening has 15 sentences, not 17.
+      { label: 'Figure', text: 'Sentence length: 33.9 words per sentence; your average 14.3' },
       { label: 'Reads as', text: 'deliberate' }
     ]);
   });

@@ -6,10 +6,10 @@
  * in Wonderland" (1865, public domain) and lines written for these tests.
  */
 
-import type { LightboxPassage, LightboxPassageSegment } from '@messages';
+import type { LightboxPassage, LightboxPassageRow, LightboxPassageSegment } from '@messages';
 import { buildLightboxPassage, lightboxBoardCountOf } from '@/infrastructure/lightbox/LightboxPassages';
 import { ALICE_OPENING_CURLY, ALICE_PARAGRAPHS } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
-import { boardWithPassages } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
+import { boardWithPassages, lightboxSentenceRows } from '@/__tests__/infrastructure/lightbox/lightboxPassageFixtures';
 
 const segments = (list: readonly LightboxPassageSegment[]) => list.map((segment) => (segment.instances ? [segment.text, segment.instances] : [segment.text]));
 
@@ -91,8 +91,8 @@ describe('an instances passage', () => {
     expect(lightboxBoardCountOf(board, { kind: 'phrase', phrase: 'end never' })).toBe(2);
     const passage = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'end never' } }));
     expect({ instances: passage.instances, sentences: passage.sentences, more: passage.more })
-      .toEqual({ instances: 2, sentences: 3, more: { rows: 0, sentences: 0, instances: 0 } });
-    expect(passage.rows.map((row) => row.sentences.map((sentence) => [sentence.paragraph, sentence.sentence, segments(sentence.segments)])))
+      .toEqual({ instances: 2, sentences: 3, more: { rows: 0, sentences: 0, instances: 0, outside: 0 } });
+    expect(lightboxSentenceRows(passage.rows).map((row) => row.sentences.map((sentence) => [sentence.paragraph, sentence.sentence, segments(sentence.segments)])))
       .toEqual([
         [[1, 1, [['It was the '], ['end', [0]]]], [2, 1, [['Never', [0]], [' mind.']]]],
         [[2, 2, [['The '], ['end never', [1]], [' came.']]]]
@@ -103,7 +103,7 @@ describe('an instances passage', () => {
     const { board, passages } = await boardWithPassages('He had had had enough. It had had its day.');
     expect(lightboxBoardCountOf(board, { kind: 'phrase', phrase: 'had had' })).toBe(3);
     const passage = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'had had' } }));
-    expect(passage.rows.map((row) => row.sentences.map((sentence) => segments(sentence.segments)))).toEqual([
+    expect(lightboxSentenceRows(passage.rows).map((row) => row.sentences.map((sentence) => segments(sentence.segments)))).toEqual([
       [[['He '], ['had ', [0]], ['had', [0, 1]], [' had', [1]], [' enough.']]],
       [[['It '], ['had had', [2]], [' its day.']]]
     ]);
@@ -115,7 +115,7 @@ describe('an instances passage', () => {
     expect(hapax).toEqual({ term: 'daisychain', written: 'daisy-chain', paragraph: 3 });
     const one = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'hapax', word: 'daisychain' } }));
     expect({ instances: one.instances, sentences: one.sentences }).toEqual({ instances: 1, sentences: 1 });
-    expect(one.rows[0].sentences[0].segments.filter((segment) => segment.instances)).toEqual([{ text: 'daisy-chain', instances: [0] }]);
+    expect(lightboxSentenceRows(one.rows)[0].sentences[0].segments.filter((segment) => segment.instances)).toEqual([{ text: 'daisy-chain', instances: [0] }]);
 
     const adverbs = board.measured.styleFlags.find((flag) => flag.id === 'adverbs');
     const flagged = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'flag', flag: 'adverbs' } }));
@@ -155,8 +155,8 @@ describe('one long row', () => {
     return { passage, ms: performance.now() - started };
   }
 
-  const litIn = (rows: ReadonlyArray<{ sentences: ReadonlyArray<{ segments: readonly LightboxPassageSegment[] }> }>) =>
-    new Set(rows.flatMap((row) => row.sentences.flatMap((sentence) => sentence.segments.flatMap((segment) => segment.instances ?? [])))).size;
+  const litIn = (rows: readonly LightboxPassageRow[]) =>
+    new Set(lightboxSentenceRows(rows).flatMap((row) => row.sentences.flatMap((sentence) => sentence.segments.flatMap((segment) => segment.instances ?? [])))).size;
 
   it('cuts one sentence holding 25,000 instances in linear time, and lights every one', async () => {
     // One sentence: "Alice Alice … Alice." The word and the phrase are both on the board.
@@ -166,8 +166,8 @@ describe('one long row', () => {
 
     const word = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'word', word: 'alice' } })));
     expect({ instances: word.passage.instances, sentences: word.passage.sentences, rows: word.passage.rows.length, more: word.passage.more })
-      .toEqual({ instances: 25_000, sentences: 1, rows: 1, more: { rows: 0, sentences: 0, instances: 0 } });
-    const wordSegments = word.passage.rows[0].sentences[0].segments;
+      .toEqual({ instances: 25_000, sentences: 1, rows: 1, more: { rows: 0, sentences: 0, instances: 0, outside: 0 } });
+    const wordSegments = lightboxSentenceRows(word.passage.rows)[0].sentences[0].segments;
     expect(wordSegments).toHaveLength(50_000);
     expect(segments(wordSegments.slice(0, 3))).toEqual([['Alice', [0]], [' '], ['Alice', [1]]]);
     expect(segments(wordSegments.slice(-2))).toEqual([['Alice', [24_999]], ['.']]);
@@ -178,7 +178,7 @@ describe('one long row', () => {
     const phrase = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'alice alice' } })));
     expect({ instances: phrase.passage.instances, sentences: phrase.passage.sentences, rows: phrase.passage.rows.length })
       .toEqual({ instances: 24_999, sentences: 1, rows: 1 });
-    const phraseSegments = phrase.passage.rows[0].sentences[0].segments;
+    const phraseSegments = lightboxSentenceRows(phrase.passage.rows)[0].sentences[0].segments;
     expect(phraseSegments).toHaveLength(49_998);
     expect(segments(phraseSegments.slice(0, 5))).toEqual([['Alice ', [0]], ['Alice', [0, 1]], [' ', [1]], ['Alice', [1, 2]], [' ', [2]]]);
     expect(segments(phraseSegments.slice(-3))).toEqual([['Alice', [24_997, 24_998]], [' Alice', [24_998]], ['.']]);
@@ -200,7 +200,7 @@ describe('one long row', () => {
     const phrase = timed(() => instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'phrase', phrase: 'alice alice' } })));
     expect({ instances: phrase.passage.instances, sentences: phrase.passage.sentences, rows: phrase.passage.rows.length })
       .toEqual({ instances: 24_999, sentences: 25_000, rows: 1 });
-    const row = phrase.passage.rows[0].sentences;
+    const row = lightboxSentenceRows(phrase.passage.rows)[0].sentences;
     expect(row).toHaveLength(25_000);
     expect(row.slice(0, 2).map((sentence) => [sentence.sentence, segments(sentence.segments)])).toEqual([
       [1, [['Alice.', [0]]]],
@@ -212,7 +212,7 @@ describe('one long row', () => {
     // The word stands in one sentence each, so the row bound holds and says what lies past it.
     const word = instancesOf(buildLightboxPassage(board, passages, { kind: 'instances', term: { kind: 'word', word: 'alice' } }));
     expect({ instances: word.instances, sentences: word.sentences, rows: word.rows.length, more: word.more })
-      .toEqual({ instances: 25_000, sentences: 25_000, rows: 50, more: { rows: 24_950, sentences: 24_950, instances: 24_950 } });
+      .toEqual({ instances: 25_000, sentences: 25_000, rows: 50, more: { rows: 24_950, sentences: 24_950, instances: 24_950, outside: 0 } });
 
     expect(phrase.ms < CEILING_MS).toBe(true);
   }, 60_000);

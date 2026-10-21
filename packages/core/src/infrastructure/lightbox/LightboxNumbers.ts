@@ -204,9 +204,10 @@ export function measureLightboxNumbers(input: LightboxNumbersInput): LightboxNum
 
 /**
  * The longest and the very short sentences, paragraph by paragraph, by the
- * prose-stats splitter and word rule. A span with no letter in it (a closing
- * quotation mark or bracket the splitter leaves after an end mark) is no
- * sentence a reader reads, so it is not counted as very short.
+ * prose-stats splitter and word rule. A span with no letter in it (a scene
+ * break such as `* * *`, or a bare number) is no sentence a reader reads, so
+ * it is not counted as very short. (A closing mark after an end mark is
+ * part of its sentence, ADR 2026-10-21, so it is never such a span.)
  */
 export function lightboxSentenceSummary(paragraphs: readonly string[]): LightboxSentenceSummary {
   let longest: LightboxSentenceSummary['longest'] = null;
