@@ -1,0 +1,226 @@
+[
+  {
+    "name": "Alice ch. VII opening, curly (PR #161 fixture)",
+    "words": 435,
+    "beingVerbs": 26,
+    "rate": 59.8,
+    "writerRatio": 2.39,
+    "standouts": [
+      "dialogue above",
+      "being-verbs above",
+      "intensifiers above"
+    ],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 26,
+        "rate": 59.8,
+        "narration": 11,
+        "dialogue": 15,
+        "inShortRuns": 1,
+        "constructions": {
+          "adjective": 1,
+          "progressive": 5,
+          "passive": 1,
+          "expletive": 10,
+          "other": 9
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 5,
+        "rate": 11.5,
+        "narration": 3,
+        "dialogue": 2,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 1,
+          "dialogue-tag": 0,
+          "before-adjective": 0,
+          "before-adverb": 1,
+          "other": 3
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 8,
+        "rate": 18.4,
+        "narration": 1,
+        "dialogue": 7,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 0,
+          "before-modifier": 4,
+          "other": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "Alice ch. VII opening, Gutenberg single quotes (PR #161 fixture)",
+    "words": 435,
+    "beingVerbs": 26,
+    "rate": 59.8,
+    "writerRatio": 2.39,
+    "standouts": [
+      "dialogue below",
+      "being-verbs above",
+      "intensifiers above"
+    ],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 26,
+        "rate": 59.8,
+        "narration": 26,
+        "dialogue": 0,
+        "inShortRuns": 1,
+        "constructions": {
+          "adjective": 1,
+          "progressive": 5,
+          "passive": 1,
+          "expletive": 10,
+          "other": 9
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 5,
+        "rate": 11.5,
+        "narration": 5,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 1,
+          "dialogue-tag": 0,
+          "before-adjective": 0,
+          "before-adverb": 1,
+          "other": 3
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 8,
+        "rate": 18.4,
+        "narration": 8,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 0,
+          "before-modifier": 4,
+          "other": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "Alice ch. I ¶1–¶8 (worked examples D and G)",
+    "words": 508,
+    "beingVerbs": 17,
+    "rate": 33.5,
+    "writerRatio": 1.34,
+    "standouts": [
+      "sentence-length above",
+      "dialogue below",
+      "intensifiers above"
+    ],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 17,
+        "rate": 33.5,
+        "narration": 15,
+        "dialogue": 2,
+        "inShortRuns": 0,
+        "constructions": {
+          "adjective": 4,
+          "progressive": 5,
+          "passive": 1,
+          "expletive": 4,
+          "other": 3
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 7,
+        "rate": 13.8,
+        "narration": 7,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 4,
+          "dialogue-tag": 0,
+          "before-adjective": 1,
+          "before-adverb": 0,
+          "other": 2
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 11,
+        "rate": 21.7,
+        "narration": 11,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 4,
+          "before-modifier": 4,
+          "other": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "Alice ch. I heading and five paragraphs (lightboxProseFixtures)",
+    "words": 226,
+    "beingVerbs": 7,
+    "rate": 31,
+    "writerRatio": 1.24,
+    "standouts": [],
+    "steering": [
+      {
+        "stat": "being-verbs",
+        "total": 7,
+        "rate": 31,
+        "narration": 6,
+        "dialogue": 1,
+        "inShortRuns": 0,
+        "constructions": {
+          "adjective": 2,
+          "progressive": 3,
+          "passive": 0,
+          "expletive": 0,
+          "other": 2
+        }
+      },
+      {
+        "stat": "adverbs",
+        "total": 4,
+        "rate": 17.7,
+        "narration": 4,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "with-verb": 1,
+          "dialogue-tag": 0,
+          "before-adjective": 1,
+          "before-adverb": 0,
+          "other": 2
+        }
+      },
+      {
+        "stat": "intensifiers",
+        "total": 4,
+        "rate": 17.7,
+        "narration": 4,
+        "dialogue": 0,
+        "inShortRuns": 0,
+        "constructions": {
+          "generic": 2,
+          "before-modifier": 1,
+          "other": 1
+        }
+      }
+    ]
+  }
+]

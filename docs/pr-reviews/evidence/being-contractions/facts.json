@@ -1,0 +1,1532 @@
+{
+  "numbers-before@1440": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "39.1 per 1,000 words · 1.56× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "17 being verbs · 39.1 per 1,000 words",
+          "11 in narration · 6 in dialogue"
+        ],
+        "rows": [
+          "be + adjective0",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be3",
+          "other8"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": "Worth a lookA verb for the slight itself may be worth a look.",
+            "example": "without being invited → uninvited",
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": "Worth a lookA sharper word for the rudeness may be worth a look.",
+            "example": null,
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [
+      "Withheld · Being verbs · note IIIIt leans or compensates, so it names the craft move worth a look, and this one names none."
+    ],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "numbers-after@1440": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "steering-before@1440": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "39.1 per 1,000 words · 1.56× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "17 being verbs · 39.1 per 1,000 words",
+          "11 in narration · 6 in dialogue"
+        ],
+        "rows": [
+          "be + adjective0",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be3",
+          "other8"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": "Worth a lookA verb for the slight itself may be worth a look.",
+            "example": "without being invited → uninvited",
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": "Worth a lookA sharper word for the rudeness may be worth a look.",
+            "example": null,
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [
+      "Withheld · Being verbs · note IIIIt leans or compensates, so it names the craft move worth a look, and this one names none."
+    ],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "steering-after@1440": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "inspector-after@1440": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": "Being verbs · note II",
+      "details": [
+        "StanceLeans: The sentence leans on it where another choice could carry the meaning.",
+        "In dialogueIts instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown.",
+        "Figure26 · 59.8 per 1,000Being verbs",
+        "InstancesEach quote holds one, checked by the detector that counted the figure"
+      ]
+    },
+    "horizontalOverflow": false
+  },
+  "numbers-before@500": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "39.1 per 1,000 words · 1.56× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "17 being verbs · 39.1 per 1,000 words",
+          "11 in narration · 6 in dialogue"
+        ],
+        "rows": [
+          "be + adjective0",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be3",
+          "other8"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": "Worth a lookA verb for the slight itself may be worth a look.",
+            "example": "without being invited → uninvited",
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": "Worth a lookA sharper word for the rudeness may be worth a look.",
+            "example": null,
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [
+      "Withheld · Being verbs · note IIIIt leans or compensates, so it names the craft move worth a look, and this one names none."
+    ],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "numbers-after@500": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "steering-before@500": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "39.1 per 1,000 words · 1.56× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "17 being verbs · 39.1 per 1,000 words",
+          "11 in narration · 6 in dialogue"
+        ],
+        "rows": [
+          "be + adjective0",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be3",
+          "other8"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": "Worth a lookA verb for the slight itself may be worth a look.",
+            "example": "without being invited → uninvited",
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": "Worth a lookA sharper word for the rudeness may be worth a look.",
+            "example": null,
+            "exampleWithheld": null,
+            "voice": null
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [
+      "Withheld · Being verbs · note IIIIt leans or compensates, so it names the craft move worth a look, and this one names none."
+    ],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "steering-after@500": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": null,
+      "details": []
+    },
+    "horizontalOverflow": false
+  },
+  "inspector-after@500": {
+    "numbers": [
+      {
+        "name": "Sentence lengthwords per sentence",
+        "value": "13.2 words per sentence · 0.92× your average of 14.3",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Dialogue% of words",
+        "value": "50.8 % of words · 1.69× your average of 30",
+        "standout": "Stands out above your average",
+        "steered": null
+      },
+      {
+        "name": "Passive voiceper 1,000 words",
+        "value": "2.3 per 1,000 words · 1.53× your average of 1.5",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Being verbsper 1,000 words",
+        "value": "59.8 per 1,000 words · 2.39× your average of 25",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      },
+      {
+        "name": "Adverbs (-ly)per 1,000 words",
+        "value": "11.5 per 1,000 words · 1.15× your average of 10",
+        "standout": null,
+        "steered": null
+      },
+      {
+        "name": "Intensifiers and fillersper 1,000 words",
+        "value": "18.4 per 1,000 words · 6.13× your average of 3",
+        "standout": "Stands out above your average",
+        "steered": "Read under Craft steering, below"
+      }
+    ],
+    "steering": [
+      {
+        "label": "Being verbs",
+        "head": [
+          "Being verbs",
+          "26 being verbs · 59.8 per 1,000 words",
+          "11 in narration · 15 in dialogue"
+        ],
+        "rows": [
+          "be + adjective1",
+          "be + -ing5",
+          "be + past participle1",
+          "there or it + be10",
+          "other9"
+        ],
+        "meta": [
+          "1 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Being verbs carry the quarrel at the table: most stand in what the guests say to each other, and the narration keeps a few to set the scene.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶1",
+            "quotes": [
+              "a Dormouse was sitting between them, fast asleep"
+            ],
+            "why": "The scene is set as a state: the sleeper is placed rather than shown.",
+            "nudge": "Worth a lookA verb that puts the Dormouse there may be worth a look.",
+            "example": "a Dormouse was sitting → a Dormouse sat",
+            "exampleWithheld": null,
+            "voice": null
+          },
+          {
+            "stance": "Leans",
+            "paragraph": "¶7",
+            "quotes": [
+              "It wasn’t very civil of you to sit down without being invited"
+            ],
+            "why": "The Hare scolds through a plain state, as the whole table does.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          },
+          {
+            "stance": "Compensates",
+            "paragraph": "¶12",
+            "quotes": [
+              "I’m glad they’ve begun asking riddles"
+            ],
+            "why": "Alice answers from her own state, a habit of her speech in this scene.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice: the board reads it there but offers no nudge or example."
+          }
+        ]
+      },
+      {
+        "label": "Adverbs (-ly)",
+        "head": [
+          "Adverbs (-ly)",
+          "5 -ly words · 11.5 per 1,000 words",
+          "3 in narration · 2 in dialogue"
+        ],
+        "rows": [
+          "with a verb1",
+          "in a dialogue tag0",
+          "before an adjective0",
+          "before an adverb1",
+          "other3"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": null,
+        "notes": []
+      },
+      {
+        "label": "Intensifiers and fillers",
+        "head": [
+          "Intensifiers and fillers",
+          "8 intensifiers and fillers · 18.4 per 1,000 words",
+          "1 in narration · 7 in dialogue"
+        ],
+        "rows": [
+          "before a generic word0",
+          "before an adjective or adverb4",
+          "other4"
+        ],
+        "meta": [
+          "0 in runs of short sentences (3 or more in a row, each 8 words or fewer)"
+        ],
+        "reading": "Very and just gather in the guests’ complaints and retorts, swelling them; the narration has almost none.",
+        "notes": [
+          {
+            "stance": "Leans",
+            "paragraph": "¶6",
+            "quotes": [
+              "it wasn’t very civil of you to offer it"
+            ],
+            "why": "The intensifier lifts a mild word in Alice’s retort.",
+            "nudge": null,
+            "example": null,
+            "exampleWithheld": null,
+            "voice": "In dialogue Its instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown."
+          }
+        ]
+      }
+    ],
+    "steeringWithheld": [],
+    "inspector": {
+      "title": "Being verbs · note II",
+      "details": [
+        "StanceLeans: The sentence leans on it where another choice could carry the meaning.",
+        "In dialogueIts instance is in dialogue, the character's voice, so no nudge or example the reading gave is shown.",
+        "Figure26 · 59.8 per 1,000Being verbs",
+        "InstancesEach quote holds one, checked by the detector that counted the figure"
+      ]
+    },
+    "horizontalOverflow": false
+  }
+}
