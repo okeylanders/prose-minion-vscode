@@ -14,7 +14,7 @@
  * with groups A–E read from their worked examples.
  */
 import type { LightboxBoard, LightboxOpinionTile } from '@messages';
-import { lightboxOpinionFigures, lightboxOpinionItemMap } from '@shared/constants/lightboxOpinionItems';
+import { lightboxOpinionItemMap } from '@shared/constants/lightboxOpinionItems';
 import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
 import { LIGHTBOX_OPINION_GATE_REASONS } from '@/infrastructure/lightbox/LightboxOpinionGates';
 import { LIGHTBOX_OPINION_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
@@ -78,13 +78,12 @@ describe('a tile id is identity, never evidence (PR #157 F-01)', () => {
       const twin = letters.get(key.split(DIGITS).join(LETTERS));
       expect([key, [...item.figures].sort()]).toEqual([key, [...(twin?.figures ?? [])].sort()]);
       expect(item.figures.has(DIGITS)).toBe(false);
-      // Every figure an item allows is one its label, lines or quotes (with their paragraph addresses) show.
-      const shown = new Set(lightboxOpinionFigures([
-        item.label,
-        ...item.lines,
-        ...item.quotes.map((quote) => `¶${quote.paragraph} ${quote.text} ${quote.note ?? ''}`)
-      ].join('\n')));
-      expect([...item.figures].filter((figure) => !shown.has(figure))).toEqual([]);
+    }
+    // Literal values, read off the board's data (PR #157 recheck: never derived from the lines under test).
+    // The headline counts rabbit ×4 (¶3, ¶4), rabbit-hole ×3 (¶1, ¶4, ¶6), fall ×1 (¶8), and quotes ¶4 and ¶6:
+    // none of its key's 8, 7, 6, 5, 4, 3, 2, 1 nor its quotes' q0 and q1 counts for itself.
+    for (const [prefix, items] of [[DIGITS, digits], [LETTERS, letters]] as const) {
+      expect([prefix, [...(items.get(`lbt-${prefix}-A-1`)?.figures ?? [])].sort()]).toEqual([prefix, ['1', '3', '4', '6', '8']]);
     }
   });
 

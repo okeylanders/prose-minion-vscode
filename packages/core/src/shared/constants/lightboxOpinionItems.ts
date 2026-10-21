@@ -229,18 +229,45 @@ function readingItems(group: LightboxReadingGroup, board: LightboxOpinionBoard):
     });
 }
 
-/** Each kind's own fields, in host words around the tile's values. */
-function kindLines(tile: LightboxReadingTile, board: LightboxOpinionBoard): string[] {
+/**
+ * A digest line that holds host-authored routing or labels beside its values
+ * (PR #157 F-01): `shown` is rendered in the digest as it always was, so no
+ * basis moves; `evidence` is the same line without them, and is all the line
+ * lends the item's figures.
+ */
+interface AnnotatedLine {
+  shown: string;
+  evidence: string;
+}
+type ItemLine = string | AnnotatedLine;
+
+function annotated(shown: string, evidence: string): AnnotatedLine {
+  return { shown, evidence };
+}
+
+/**
+ * Each kind's own fields, in host words around the tile's values. A line
+ * with routing or labels in it (Subtext's q0, a field's degree labels) is
+ * `annotated`; every other number a line writes is the reading's or the
+ * board's own value: a count, a share, a claimed pull or affinity, a ¶
+ * address, a measured figure, a section's number and how many there are, or
+ * a unit ("per 1,000 words"). Movement numbers are written as Roman
+ * numerals, which hold no digit.
+ */
+function kindLines(tile: LightboxReadingTile, board: LightboxOpinionBoard): ItemLine[] {
   switch (tile.kind) {
     case 'motif':
       return [`gist: ${tile.gist}`];
-    case 'gravity-field':
+    case 'gravity-field': {
+      const rest = (tile.belowLine ? ' · below the gravity line' : '') +
+        (tile.drift ? ` · first ¶${tile.drift.first}, last ¶${tile.drift.last}, densest ¶${tile.drift.densest.from}–¶${tile.drift.densest.to}` : '');
+      const [first, second, third] = tile.degreeHits;
       return [
         `metaphor: ${tile.metaphor} · claimed pull ${tile.pull} (a claim, not a measurement)`,
-        `hits ${tile.hits} (1° ${tile.degreeHits[0]}, 2° ${tile.degreeHits[1]}, 3° ${tile.degreeHits[2]})` +
-          (tile.belowLine ? ' · below the gravity line' : '') +
-          (tile.drift ? ` · first ¶${tile.drift.first}, last ¶${tile.drift.last}, densest ¶${tile.drift.densest.from}–¶${tile.drift.densest.to}` : '')
+        // The degree labels 1°, 2°, 3° name the buckets; only the hits in them are evidence.
+        annotated(`hits ${tile.hits} (1° ${first}, 2° ${second}, 3° ${third})${rest}`, `hits ${tile.hits} (${first}, ${second}, ${third})${rest}`)
       ];
+    }
     case 'gravity-collision':
       return [`fields: ${tile.fields[0]} and ${tile.fields[1]} share a sentence in ¶${tile.witness.paragraph}`];
     case 'gravity-literal':
@@ -252,7 +279,8 @@ function kindLines(tile: LightboxReadingTile, board: LightboxOpinionBoard): stri
     case 'genre-neighbor':
       return [`claimed affinity ${tile.affinity} (a claim, not a score)`, ...(tile.nearMiss ? [`near miss: ${tile.nearMiss}`] : [])];
     case 'subtext':
-      return [`speaker: ${tile.speaker} · the said line is q0; the claim is what it is read as meaning`];
+      // "q0" routes the reader to the said line; only the speaker is evidence.
+      return [annotated(`speaker: ${tile.speaker} · the said line is q0; the claim is what it is read as meaning`, `speaker: ${tile.speaker}`)];
     case 'lineage':
       return [`source: ${tile.source}`, ...tile.stances.map((row) => `${LIGHTBOX_LINEAGE_STANCE_LABELS[row.stance]}: ${row.note}`)];
     case 'stock-tiers':
@@ -332,22 +360,25 @@ function item(
   key: string,
   kind: LightboxOpinionItem['kind'],
   label: string,
-  lines: string[],
+  lines: readonly ItemLine[],
   quotes: LightboxVerifiedQuote[],
   paragraphs: number[],
   current: boolean
 ): LightboxOpinionItem {
-  const shaped: Omit<LightboxOpinionItem, 'basis' | 'figures'> = { key, kind, label, lines, quotes, paragraphs, current };
+  const shown = lines.map((line) => (typeof line === 'string' ? line : line.shown));
+  const shaped: Omit<LightboxOpinionItem, 'basis' | 'figures'> = { key, kind, label, lines: shown, quotes, paragraphs, current };
   // Identity is everything the digest block says; numeric authority is only what the item shows (PR #157 F-01).
   const text = lightboxOpinionItemText({ ...shaped, basis: '', figures: new Set() });
-  return { ...shaped, basis: lightboxOpinionHash(text), figures: new Set(lightboxOpinionFigures(evidenceText(label, lines, quotes))) };
+  const evidence = lines.map((line) => (typeof line === 'string' ? line : line.evidence));
+  return { ...shaped, basis: lightboxOpinionHash(text), figures: new Set(lightboxOpinionFigures(evidenceText(label, evidence, quotes))) };
 }
 
 /**
- * What an item shows as evidence: its label, its lines, and its quotes with
- * their paragraph addresses and notes. Never its key, which is identity (a
+ * What an item shows as evidence: its label, its lines' evidence (an
+ * annotated line without its routing or labels), and its quotes with their
+ * paragraph addresses and notes. Never its key, which is identity (a
  * host-minted id holds the run token's digits), nor the q0, q1, … numbers
- * the digest gives its quotes, which are addresses for citing them.
+ * the digest gives its quotes or a line uses to route, which are addresses.
  */
 function evidenceText(label: string, lines: readonly string[], quotes: readonly LightboxVerifiedQuote[]): string {
   return [label, ...lines, ...quotes.map((quote) => `¶${quote.paragraph} ${quote.text}${quote.note ? ` ${quote.note}` : ''}`)].join('\n');

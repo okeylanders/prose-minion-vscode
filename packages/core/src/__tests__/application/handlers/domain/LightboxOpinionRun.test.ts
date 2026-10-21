@@ -281,6 +281,65 @@ describe('the Opinion\'s standing follows what it cites (Slice 4D)', () => {
   });
 });
 
+describe('a host routing note inside a line is not evidence (PR #157 F-01 residual)', () => {
+  /** The digest key of the item labelled `label` in the request F was sent. */
+  const keyIn = (request: InitialRunRequest, label: string): string => {
+    const line = request.userMessage.split('\n').find((candidate) => candidate.startsWith('[lbt-') && candidate.includes(`] ${label}`));
+    if (!line) {
+      throw new Error(`no ${label} in the digest`);
+    }
+    return line.slice(1, line.indexOf(']'));
+  };
+
+  it.each([
+    ['The passage contains 0 spoken lines.', false],
+    // The control: a figure the Rabbit's said line does show (¶4).
+    ['The Rabbit speaks once, in ¶4.', true]
+  ])('reads "%s" against the Subtext said line through the real handler: drawn %s', async (text, drawn) => {
+    const host = await createLightboxReadingHost({
+      respond: (request) => {
+        if (groupOf(request) !== 'F') {
+          return answer(request);
+        }
+        const view = (headline: string, observations: string[], body = 'The two readings weigh evenly, and the chapter keeps its pace.') =>
+          ({ headline, body, why: [{ weight: 'even', text: 'They weigh the same.', observations }] });
+        return ok('F', frame('F', {
+          version: 1,
+          opinion: {
+            observations: [
+              { id: 'O1', text, cites: [{ tile: keyIn(request, 'Subtext · Said / meant: White Rabbit'), quote: 0 }] },
+              { id: 'O2', text: 'The headline reading follows the hurry and the fall.', cites: [{ tile: keyIn(request, 'Headline · Headline:'), quote: 0 }] }
+            ],
+            views: {
+              enthusiastic: view('Both readings carry the chapter.', ['O1', 'O2']),
+              neutral: view('One reading carries the chapter.', ['O1'], text),
+              blunt: view('The fall does the work.', ['O2'])
+            },
+            friction: 'A stand-in Opinion for these checks: it weighs two readings and no more.'
+          }
+        }));
+      }
+    });
+    const tab = host.openTab();
+    // Every lens on, Subtext with them.
+    await tab.setLenses([]);
+    await tab.run();
+    await settle();
+    const board = host.service.currentBoard() as LightboxBoard;
+    const tile = lightboxOpinionTile(board) as LightboxOpinionTile;
+    const bringNeutral = prepareLightboxTileHandoff({ kind: 'tile', boardId: board.boardId, tileId: tile.id, view: 'neutral' }, board, examples.A.paragraphs);
+    if (drawn) {
+      expect(tile.views.map((view) => view.view)).toEqual(['enthusiastic', 'neutral', 'blunt']);
+      expect(bringNeutral.ok && bringNeutral.handoff.tile.claim).toBe(text);
+    } else {
+      expect(tile.withheldObservations.find((entry) => entry.id === 'O1')?.reason)
+        .toBe(LIGHTBOX_OPINION_PHRASING_REASONS.figure('This observation'));
+      expect(tile.views.map((view) => view.view)).toEqual(['blunt']);
+      expect(bringNeutral).toEqual({ ok: false, reason: LIGHTBOX_OPINION_HANDOFF_REFUSALS.withheld });
+    }
+  });
+});
+
 describe('a host-minted id is identity, never evidence (PR #157 F-01)', () => {
   // The digits-first token is the witness; the letters-first one, otherwise identical, is the id-only control.
   it.each([['87654321-4c1d-4e2f-9a0b-1c2d3e4f5a6b'], ['abcdefab-4c1d-4e2f-9a0b-1c2d3e4f5a6b']])(
