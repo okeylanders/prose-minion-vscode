@@ -7,7 +7,8 @@
  */
 import type { LightboxBoard } from '@messages';
 import { LIGHTBOX_OPINION_GATE_REASONS } from '@/infrastructure/lightbox/LightboxOpinionGates';
-import { LIGHTBOX_OPINION_PHRASING_REASONS } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
+import { LIGHTBOX_OPINION_PHRASING_REASONS, lightboxOpinionPhrasingFault } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
+import { LIGHTBOX_DOUBLE_QUOTATION_MARKS, createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
 import { lightboxOpinionDefaultView } from '@shared/constants/lightboxOpinion';
 import { aliceOpinionBoard, itemKey, opinionBody, readOpinion, type OpinionBody } from './lightboxOpinionFixtures';
@@ -175,6 +176,23 @@ describe('the Opinion, read on the board it weighs (Slice 4D)', () => {
       expect(bluntFault('The fall is "slow" and the chase is quick.')).toBe(LIGHTBOX_OPINION_PHRASING_REASONS.quotes('The Blunt view'));
       // An apostrophe is not a quotation mark.
       expect(observationFault('Half of the beats are the chapter\'s own, in Alice\'s talk to herself.')).toBeUndefined();
+    });
+
+    it('withholds every double quotation mark the quote verifier knows, fullwidth and CJK included (PR #157 N-01)', () => {
+      const neutralFault = (body: string) => withheldView(readOpinion(board, edited((opinion) => { opinion.views.neutral.body = body; })), 'neutral');
+      // Paired: the variants the review found passing, then the straight and curly controls that always were withheld.
+      for (const [open, close] of [['＂', '＂'], ['〝', '〞'], ['"', '"'], ['“', '”']]) {
+        const text = `The image says ${open}the stone remembers${close} at the end.`;
+        expect([open, observationFault(text)]).toEqual([open, LIGHTBOX_OPINION_PHRASING_REASONS.quotes('This observation')]);
+        expect([open, neutralFault(text)]).toEqual([open, LIGHTBOX_OPINION_PHRASING_REASONS.quotes('The Neutral view')]);
+      }
+      // One set, shared with the verifier: every mark it folds as a double quote withholds the part.
+      for (const mark of LIGHTBOX_DOUBLE_QUOTATION_MARKS) {
+        expect([mark, lightboxOpinionPhrasingFault([`The fall ${mark}slows${mark} the chase.`], new Set(), 'This view')])
+          .toEqual([mark, LIGHTBOX_OPINION_PHRASING_REASONS.quotes('This view')]);
+      }
+      // The verifier still finds a quote the model wrapped in fullwidth marks.
+      expect(createLightboxQuoteVerifier(['She said ＂no＂ twice.']).verify(1, 'She said "no" twice.').found).toBe(true);
     });
 
     it('is about the work, never the writer: second person or naming the writer withholds it', () => {

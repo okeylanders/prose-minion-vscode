@@ -150,6 +150,28 @@ describe('the board\'s digest, what group F reads (Slice 4D)', () => {
     expect([...tight.items.keys()].filter((key) => !key.startsWith('lbt-'))).toEqual([...all.items.keys()].filter((key) => !key.startsWith('lbt-')));
   });
 
+  it('holds a saturated board to the default bound: a whole-item prefix in board order, the rest counted by lens', () => {
+    // Every chapter reading four times over, under new ids: far more than 9,000 estimated tokens of readings.
+    const saturated: LightboxBoard = {
+      ...everyLens,
+      readings: everyLens.readings.map((group) => (group.group === 'F' ? group : {
+        ...group,
+        tiles: [0, 1, 2, 3].flatMap((copy) => group.tiles.map((tile) => ({ ...tile, id: `${tile.id}-c${copy}` })))
+      }))
+    };
+    const readings = [...buildLightboxOpinionDigest(saturated, Number.MAX_SAFE_INTEGER).items.values()]
+      .filter((item) => item.kind === 'tile').map((item) => item.key);
+    const digest = buildLightboxOpinionDigest(saturated);
+    expect(digest.tokens).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.opinionDigestTokens);
+    expect(digest.leftOut).toBeGreaterThan(0);
+    expect(digest.readings + digest.leftOut).toBe(readings.length);
+    const held = [...digest.items.values()].filter((item) => item.kind === 'tile').map((item) => item.key);
+    expect(held).toEqual(readings.slice(0, held.length));
+    expect(digest.section).toContain(`- Left out to keep the digest within its bound: ${digest.leftOut} readings, from `);
+    // Measured figures are never what goes.
+    expect([...digest.items.values()].filter((item) => item.kind === 'measured').length).toBeGreaterThan(0);
+  });
+
   it('names a section by its range and marker, never by its heading\'s words', async () => {
     // ¶1 is the excerpt's own heading, "Chapter I: Down the Rabbit-Hole"; a second opens ¶5.
     const headed = await boardWithNumbers([...ALICE.slice(0, 4), '# The Long Hall of Doors', ...ALICE.slice(4)]);

@@ -29,8 +29,16 @@ import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
 import { buildLightboxOpinionDigest, buildLightboxOpinionUserMessage } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@/infrastructure/lightbox/LightboxOpinionCall';
+import { LIGHTBOX_OPINION_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
+import { LIGHTBOX_OPINION_PHRASING_REASONS } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
+import { prepareLightboxTileHandoff } from '@/infrastructure/lightbox/LightboxTileHandoff';
 import { WRITER_AVERAGES } from '@/__tests__/infrastructure/lightbox/lightboxCraftFixtures';
-import { OPINION_EXAMPLE_LENSES_OFF, OPINION_EXAMPLE_PREFIX } from '@/__tests__/infrastructure/lightbox/lightboxOpinionFixtures';
+import { frame } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
+import {
+  OPINION_EXAMPLE_LENSES_OFF,
+  OPINION_EXAMPLE_PREFIX,
+  opinionBody
+} from '@/__tests__/infrastructure/lightbox/lightboxOpinionFixtures';
 import {
   CHAPTER,
   CONTEXT_TEXT,
@@ -271,4 +279,44 @@ describe('the Opinion\'s standing follows what it cites (Slice 4D)', () => {
     expect(lightboxOpinionTile(board)).toBeUndefined();
     expect(press.groupF().tiles).toEqual([]);
   });
+});
+
+describe('a host-minted id is identity, never evidence (PR #157 F-01)', () => {
+  // The digits-first token is the witness; the letters-first one, otherwise identical, is the id-only control.
+  it.each([['87654321-4c1d-4e2f-9a0b-1c2d3e4f5a6b'], ['abcdefab-4c1d-4e2f-9a0b-1c2d3e4f5a6b']])(
+    'withholds a count that only the run token\'s digits hold, and never brings it (token %s)',
+    async (token) => {
+      const prefix = token.slice(0, 8);
+      const invented = 'The image appears 87654321 times in the passage.';
+      const host = await createLightboxReadingHost({
+        writerBaseline: { measure: async () => WRITER_AVERAGES },
+        mintToken: () => token,
+        respond: (request) => {
+          if (groupOf(request) !== 'F') {
+            return answer(request);
+          }
+          // The worked example on this run's ids, with O1 and Neutral stating a count only the ids hold.
+          const body = JSON.parse(JSON.stringify(opinionBody()).split(`lbt-${OPINION_EXAMPLE_PREFIX}-`).join(`lbt-${prefix}-`));
+          body.observations[0] = { id: 'O1', text: invented, cites: [{ tile: `lbt-${prefix}-A-1`, quote: 0 }] };
+          body.views.neutral.body = invented;
+          return ok('F', frame('F', { version: 1, opinion: body }));
+        }
+      });
+      const tab = host.openTab();
+      await tab.setLenses(OPINION_EXAMPLE_LENSES_OFF);
+      await tab.run();
+      await settle();
+      const board = host.service.currentBoard() as LightboxBoard;
+      const tile = lightboxOpinionTile(board) as LightboxOpinionTile;
+      expect(tile.id).toBe(`lbt-${prefix}-F-1`);
+      expect(tile.withheldObservations.find((entry) => entry.id === 'O1')?.reason)
+        .toBe(LIGHTBOX_OPINION_PHRASING_REASONS.figure('This observation'));
+      expect(tile.views.map((view) => view.view)).toEqual(['blunt']);
+      const bring = (view: 'neutral' | 'blunt') =>
+        prepareLightboxTileHandoff({ kind: 'tile', boardId: board.boardId, tileId: tile.id, view }, board, examples.A.paragraphs);
+      expect(bring('neutral')).toEqual({ ok: false, reason: LIGHTBOX_OPINION_HANDOFF_REFUSALS.withheld });
+      const blunt = bring('blunt');
+      expect(blunt.ok && blunt.handoff.tile.claim).not.toContain('87654321');
+    }
+  );
 });

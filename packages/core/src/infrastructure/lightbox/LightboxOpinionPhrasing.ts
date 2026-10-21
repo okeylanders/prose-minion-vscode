@@ -5,9 +5,11 @@
  * The Opinion may evaluate: that is the fenced exception. It may not do the
  * rest of what grading tends to do, and code checks what it can of that, in
  * every observation and every view's headline, body and Why points:
- * - **It cites, it never quotes.** No double quotation mark of any kind:
- *   chapter words reach the writer only as the quotes the cited tiles hold,
- *   shown under the observations.
+ * - **It cites, it never quotes.** No double quotation mark of any kind the
+ *   quote verifier recognizes (`LIGHTBOX_DOUBLE_QUOTATION_MARKS`: straight,
+ *   curly, low, guillemets, double prime, fullwidth and CJK): chapter words
+ *   reach the writer only as the quotes the cited tiles hold, shown under
+ *   the observations.
  * - **About the work, never the writer.** No second person ("you", "your",
  *   "yourself") and no naming of the writer or the author.
  * - **Diagnosis, never a rewrite** (decision 15 says it of Blunt; every
@@ -36,6 +38,7 @@
 
 import { lightboxOpinionFigures } from '@shared/constants/lightboxOpinionItems';
 import { lightboxOpensWithInstruction } from '@/infrastructure/lightbox/LightboxSparkPhrasing';
+import { LIGHTBOX_DOUBLE_QUOTATION_MARKS } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 
 /** Words and phrases that direct a change or a rewrite, wherever they stand. Lower case, matched as whole words. */
 export const LIGHTBOX_OPINION_REWRITE_WORDS: readonly string[] = [
@@ -58,7 +61,8 @@ export const LIGHTBOX_OPINION_PHRASING_REASONS = {
   figure: (part: string) => `${part} states a figure the board items it cites do not show.`
 } as const;
 
-const QUOTATION_MARKS = /["“”„‟«»]/u;
+/** The verifier's own set, so the two never disagree on what a double quotation mark is (PR #157 N-01). */
+const QUOTATION_MARKS = new RegExp(`[${LIGHTBOX_DOUBLE_QUOTATION_MARKS}]`, 'u');
 const PERCENT = /%|\bper\s?cent\b/iu;
 /** Observation ids are keys, not figures: "O3" holds no number. */
 const OBSERVATION_IDS = /\bO[1-6]\b/gu;

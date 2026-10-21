@@ -28,6 +28,12 @@
  * something else; a section that moved has another range. Any of these
  * changes what the Opinion read, and a citation records the basis it read.
  * `current` is false while the item's lens is stale or being read again.
+ *
+ * **Numeric authority** is narrower than identity (PR #157 F-01): `figures`
+ * are the numbers the item shows as evidence (its label, lines, quotes and
+ * their paragraph addresses), never digits of its key or of its quotes'
+ * q-numbers. A host id carries the run token's first eight characters, so
+ * its digits mean nothing.
  */
 
 import type {
@@ -88,7 +94,11 @@ export interface LightboxOpinionItem {
   current: boolean;
   /** Its content identity (`lightboxOpinionHash` of everything it says). */
   basis: string;
-  /** Every number its label, lines and quotes show, without thousands commas: what an Opinion citing it may state. */
+  /**
+   * Every number its label, lines and quotes (with their paragraph addresses)
+   * show, without thousands commas: what an Opinion citing it may state.
+   * Never a digit of its key or of a quote's q-number (PR #157 F-01).
+   */
   figures: ReadonlySet<string>;
 }
 
@@ -328,8 +338,19 @@ function item(
   current: boolean
 ): LightboxOpinionItem {
   const shaped: Omit<LightboxOpinionItem, 'basis' | 'figures'> = { key, kind, label, lines, quotes, paragraphs, current };
+  // Identity is everything the digest block says; numeric authority is only what the item shows (PR #157 F-01).
   const text = lightboxOpinionItemText({ ...shaped, basis: '', figures: new Set() });
-  return { ...shaped, basis: lightboxOpinionHash(text), figures: new Set(lightboxOpinionFigures(text)) };
+  return { ...shaped, basis: lightboxOpinionHash(text), figures: new Set(lightboxOpinionFigures(evidenceText(label, lines, quotes))) };
+}
+
+/**
+ * What an item shows as evidence: its label, its lines, and its quotes with
+ * their paragraph addresses and notes. Never its key, which is identity (a
+ * host-minted id holds the run token's digits), nor the q0, q1, … numbers
+ * the digest gives its quotes, which are addresses for citing them.
+ */
+function evidenceText(label: string, lines: readonly string[], quotes: readonly LightboxVerifiedQuote[]): string {
+  return [label, ...lines, ...quotes.map((quote) => `¶${quote.paragraph} ${quote.text}${quote.note ? ` ${quote.note}` : ''}`)].join('\n');
 }
 
 /** "¶2, ¶4, ¶7", at most `opinionParagraphsPerLine` addresses, then how many more. */
