@@ -2,7 +2,9 @@
 
 **Date Identified**: 2026-10-19
 **Source**: User request (Okey)
-**Status**: Planned. Research complete; ADR next.
+**Status**: Planned. ADR proposed:
+[ADR 2026-10-21 — Draft Edit Engine and Document Write-Back](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
+Where this note and the ADR differ, the ADR wins.
 **Priority**: Medium
 **Estimated Effort**: Medium–Large (four slices; Workshop actions follow)
 
@@ -247,9 +249,10 @@ is never applied in bulk.
      `code: category`). Severity: `Information` for fixable issues, `Warning`
      for tense/agreement. A `CodeActionProvider` offers "Replace with '…'"
      (preferred for fixable), "Fix all Prose Minion proofread issues", and
-     "Dismiss". Flags are session-only: cleared on close, by the Clear
-     command, or on the next run. On edit, flags on the changed lines are
-     cleared.
+     "Dismiss". Each action is a command routed back through the core
+     applier, never a raw `WorkspaceEdit` (ADR D7). Flags are session-only:
+     cleared on close, by the Clear command, or on the next run. On edit,
+     the adapter shifts flag ranges, and drops flags an edit overlaps.
    - **Fix** (shared applier): one `WorkspaceEdit` for all `fix` issues,
      applied in one go (one Ctrl+Z reverts it). Re-anchor at apply time
      against the *current* document. If `document.version` moved, re-run step
@@ -309,7 +312,7 @@ Prompt rules, in `resources/system-prompts/proofread/`:
 |-------|---------------------|----------------|
 | Domain | `domain/models/DraftEdit.ts` | `DraftEditPass`, `DraftRecommendation`, `ProposedEdit`, `AnchoredEdit`, the pass-policy type. |
 | Domain | `domain/models/ProofreadIssue.ts` | Proofread types; `FIXABLE`/`FLAG_ONLY` table. |
-| Platform port | `platform/DocumentEditor.ts` | `snapshot(uri?) → { uri, version, text, languageId, selection? }` and `applyEdits(uri, edits, { expectedVersion, confirm })` returning `applied \| stale \| refused`. **Shared with Apply to Draft.** |
+| Platform port | `platform/DocumentEditor.ts` | `snapshot(uri)` reads the live buffer. `applyEdits(uri, edits, { expectedVersion, review })` returns `submitted \| declined \| stale` (ADR D3). The applier reconciles what actually landed (ADR D4). **Shared with Apply to Draft.** |
 | Platform port | `platform/IssueAnnotator.ts` | `show(uri, issues)`, `clear(uri)`. Host-agnostic: a desktop host could render marks differently. |
 | Pure core (shared) | `utils/draftEdit/maskProtectedRegions.ts`, `chunkParagraphs.ts`, `anchorEdits.ts` | Masking, chunking, and anchoring. Heavily unit-tested; no I/O. |
 | Pure core (pass) | `utils/proofread/proofreadGuard.ts` | Proofread's category policy and mechanical guard. |
@@ -409,13 +412,14 @@ forbid editor writes inside Show vs. Tell and Creative Variations
   `WorkshopDraftEditHandler`. It is composed in `WorkshopSliceComposition` and
   registered through `registerMutation`. It delegates to `DraftEditUseCase`
   from `CoreServices` and constructs nothing itself.
-- **Messages.** `WORKSHOP_DRAFT_EDIT { turnId, pass, findingKey? }` from the
-  webview, and `WORKSHOP_DRAFT_EDIT_RESULT { turnId, summary }` back. The
-  host resolves the turn, `session.getExcerpt()`, and its `source`. URIs never
-  cross to the webview.
-- **Enablement is host-derived** (as with `turnRewindability`). The host
-  publishes a per-bubble `draftEditTarget: 'document' | 'unavailable'`
-  (reason included). Actions are enabled only when all of these hold:
+- **Messages.** `WORKSHOP_DRAFT_EDIT { turnId, pass }` from the webview, and
+  `WORKSHOP_DRAFT_EDIT_RESULT { turnId, outcome }` back. The host resolves
+  the turn, `session.getExcerpt()`, and its `source`. URIs never cross to the
+  webview.
+- **Enablement is host-derived** (as with `turnRewindability`). The snapshot
+  publishes `turnDraftEditability`, keyed by turn id, with a reason when
+  unavailable. It is derived, not persisted. Actions are enabled only when
+  all of these hold:
   - the source is `file` or `editor-selection`;
   - the turn's `excerptVersion` equals the current excerpt version (the same
     staleness rule that disables Add finding);
@@ -430,8 +434,13 @@ forbid editor writes inside Show vs. Tell and Creative Variations
   - A `manual` source has no document, so v1 shows actions disabled with a
     reason.
   - All of this lives in one resolver, `WorkshopExcerptWriteTarget`.
+- **Write confinement.** A Workshop URI comes from session state, so it must
+  be a `file:` path inside an open workspace folder with no symlinked
+  ancestors, and never a configured external resource. It is checked before
+  the snapshot and again before apply (ADR D5).
 - **After applying, re-pin.** The edited document makes the excerpt stale.
-  Re-pin through the existing `tryReplaceExcerpt` → `replaceExcerpt` path,
+  Re-pin through the existing `tryReplaceExcerpt` → `replaceExcerpt` path
+  (extracted into a shared `WorkshopExcerptReplacer`, ADR D9),
   which bumps the version, mints the `excerpt_revision` divider, and queues
   the versioned `<pinned-excerpt>` frame. That way the room learns about the
   edits the same way it learns about any manual revision. Consequence: like
