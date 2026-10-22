@@ -8,6 +8,14 @@
  * shown and Show older (PR #163 F-04), which goes on from the rows shown
  * when the page reached a board deep in the history (PR #163 N-03). Dates
  * are pinned to UTC.
+ *
+ * Slice 5A.1 (epic decision 33): a named row shows its name first and its
+ * date under it, every row the models that read it; the head names the
+ * board on screen, with Name or Rename; Rename opens a field in place
+ * (Enter saves, Escape cancels, each returning focus to the action that
+ * opened it; leaving the field saves); and a confirmed delete keeps focus
+ * on its row until the row goes, then moves it on (5A tech debt). Names
+ * and model ids are made up.
  */
 
 import * as React from 'react';
@@ -34,6 +42,7 @@ function panel(overrides: Partial<LightboxBoardsPanelProps> = {}) {
     rereading: false,
     onOpen: jest.fn(),
     onDelete: jest.fn(),
+    onRename: jest.fn(),
     onReadCurrentText: jest.fn(),
     timeZone: 'UTC',
     ...overrides
@@ -146,5 +155,165 @@ describe('LightboxBoardsPanel', () => {
       .toBe('Boards are kept for this session only: no folder is open. Open one folder to save them.');
     expect(container.querySelector('.pm-lb-boards-list')).toBeNull();
     expect(container.querySelector('.pm-ws-block-head')?.textContent).toBe('Boardsthis session');
+  });
+
+  describe('names (Slice 5A.1)', () => {
+    const NAME = '3.2.1 - after the cut - model B';
+    const NAMED: LightboxBoardShelf = {
+      ...SHELF,
+      name: NAME,
+      boards: [
+        { ...SHELF.boards[0], name: NAME, models: ['provider/model-v1', 'provider/model-b'] },
+        SHELF.boards[1]
+      ]
+    };
+    const field = () => screen.getByRole('textbox') as HTMLInputElement;
+
+    it('shows a named row\'s name first with its date under it, the models that read each row, and an unnamed row as before', () => {
+      const { container } = panel({ shelf: NAMED });
+
+      const rows = Array.from(container.querySelectorAll('.pm-lb-saved-board'));
+      expect(rows.map((row) => row.textContent)).toEqual([
+        `${NAME}Oct 22, 2026, 3:10 PM2 lenses read · ≈ $0.02Read by model-v1 and model-bOn screen`,
+        'Oct 22, 2026, 2:05 PMMeasured onlyOpen'
+      ]);
+      expect(rows[0].querySelector('.pm-lb-saved-board-models')?.getAttribute('title')).toBe('provider/model-v1, provider/model-b');
+      expect(rows[1].querySelector('.pm-lb-saved-board-models')).toBeNull();
+    });
+
+    it('names the board on screen in the head, with Name for an unnamed board and Rename for a named one', () => {
+      const { container, rerender, props } = panel();
+      expect(container.querySelector('.pm-lb-board-name')?.textContent).toBe('Unnamed boardName');
+      expect(screen.getByRole('button', { name: 'Name the board on screen' })).toBeTruthy();
+
+      rerender(<LightboxBoardsPanel {...props} shelf={NAMED} />);
+      expect(container.querySelector('.pm-lb-board-name')?.textContent).toBe(`${NAME}Rename`);
+      expect(screen.getByRole('button', { name: 'Rename the board on screen' })).toBeTruthy();
+    });
+
+    it('renames a row in place: Enter saves and gives focus back to its Rename; an unchanged name sends nothing', () => {
+      const { props } = panel({ shelf: NAMED });
+      const rename = screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 2:05 PM' });
+
+      fireEvent.click(rename);
+      expect(field().getAttribute('aria-label')).toBe('Name for the board saved Oct 22, 2026, 2:05 PM');
+      expect(document.activeElement).toBe(field());
+      expect(field().value).toBe('');
+      expect(field().maxLength).toBe(120);
+      fireEvent.change(field(), { target: { value: '  model A ' } });
+      fireEvent.keyDown(field(), { key: 'Enter' });
+
+      expect(props.onRename).toHaveBeenCalledWith(OLDER, 'model A');
+      expect(screen.queryByRole('textbox')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 2:05 PM' }));
+
+      // The named row: its name to start from; Enter with it unchanged sends nothing.
+      fireEvent.click(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 3:10 PM' }));
+      expect(field().value).toBe(NAME);
+      fireEvent.keyDown(field(), { key: 'Enter' });
+      expect(props.onRename).toHaveBeenCalledTimes(1);
+    });
+
+    it('Escape cancels, sends nothing, gives focus back, and goes no further', () => {
+      const { props } = panel({ shelf: NAMED });
+      const outside = jest.fn();
+      document.addEventListener('keydown', outside);
+      fireEvent.click(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 3:10 PM' }));
+      fireEvent.change(field(), { target: { value: 'model C' } });
+
+      fireEvent.keyDown(field(), { key: 'Escape' });
+
+      expect(props.onRename).not.toHaveBeenCalled();
+      expect(screen.queryByRole('textbox')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 3:10 PM' }));
+      expect(outside).not.toHaveBeenCalled();
+      document.removeEventListener('keydown', outside);
+    });
+
+    it('names the board on screen from the head: the field starts empty, Enter names it, and focus returns to Name', () => {
+      const { props } = panel();
+      fireEvent.click(screen.getByRole('button', { name: 'Name the board on screen' }));
+      expect(field().getAttribute('aria-label')).toBe('Name for the board on screen');
+      expect(field().value).toBe('');
+
+      fireEvent.change(field(), { target: { value: NAME } });
+      fireEvent.keyDown(field(), { key: 'Enter' });
+
+      expect(props.onRename).toHaveBeenCalledWith(null, NAME);
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Name the board on screen' }));
+    });
+
+    it('unnames with an empty field, and refuses a name with a tab in the field, which stays open', () => {
+      const { props } = panel({ shelf: NAMED });
+      fireEvent.click(screen.getByRole('button', { name: 'Rename the board on screen' }));
+      fireEvent.change(field(), { target: { value: 'model\tC' } });
+      fireEvent.keyDown(field(), { key: 'Enter' });
+
+      expect(props.onRename).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert').textContent).toBe('A board\'s name is one line, with no tabs or line breaks.');
+      expect(field().getAttribute('aria-invalid')).toBe('true');
+
+      fireEvent.change(field(), { target: { value: '   ' } });
+      expect(screen.queryByRole('alert')).toBeNull();
+      fireEvent.keyDown(field(), { key: 'Enter' });
+      expect(props.onRename).toHaveBeenCalledWith(null, '');
+    });
+
+    it('leaving the field saves the name, and leaves focus where it went', () => {
+      const { props } = panel();
+      fireEvent.click(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 2:05 PM' }));
+      fireEvent.change(field(), { target: { value: 'model A' } });
+
+      fireEvent.blur(field());
+
+      expect(props.onRename).toHaveBeenCalledWith(OLDER, 'model A');
+      expect(screen.queryByRole('textbox')).toBeNull();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it('says a session-only name lasts as long as the session', () => {
+      const { container } = panel({ shelf: { availability: { kind: 'session', reason: 'no-workspace' }, name: NAME, boards: [], unreadable: 0 } });
+      expect(container.querySelector('.pm-lb-board-name')?.textContent).toBe(`${NAME}RenameA name lasts as long as this session, as the board does.`);
+    });
+  });
+
+  describe('focus after a confirmed delete (5A tech debt)', () => {
+    const THIRD = 'drafts-alice-1-md-9b099095/2026-10-22T13-00-00-000Z.board.json';
+    const THREE: LightboxBoardShelf = {
+      ...SHELF,
+      boards: [...SHELF.boards, { ...SHELF.boards[1], fileId: THIRD, savedAt: Date.parse('2026-10-22T13:00:00.000Z') }]
+    };
+    const confirm = (when: string) => {
+      fireEvent.click(screen.getByRole('button', { name: `Delete the board saved ${when}` }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    };
+
+    it('stays on the row until it goes, then moves to the next row\'s Delete', () => {
+      const { props, rerender } = panel({ shelf: THREE });
+      confirm('Oct 22, 2026, 2:05 PM');
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete the board saved Oct 22, 2026, 2:05 PM' }));
+
+      rerender(<LightboxBoardsPanel {...props} shelf={{ ...THREE, boards: THREE.boards.filter((board) => board.fileId !== OLDER) }} />);
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete the board saved Oct 22, 2026, 1:00 PM' }));
+    });
+
+    it('moves to the head\'s Name when the last row goes', () => {
+      const { props, rerender } = panel();
+      confirm('Oct 22, 2026, 2:05 PM');
+
+      rerender(<LightboxBoardsPanel {...props} shelf={{ ...SHELF, boards: [SHELF.boards[0]] }} />);
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Name the board on screen' }));
+    });
+
+    it('control: a delete the host refused keeps the row, and focus on its Delete', () => {
+      const { props, rerender } = panel();
+      confirm('Oct 22, 2026, 2:05 PM');
+
+      rerender(<LightboxBoardsPanel {...props} shelf={{ ...SHELF, notice: 'That saved board could not be deleted. The output log says why.' }} />);
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete the board saved Oct 22, 2026, 2:05 PM' }));
+    });
   });
 });

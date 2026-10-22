@@ -3,11 +3,19 @@
  * saved board's date and time, lenses, stale lenses and approximate cost;
  * the board on screen; where boards are kept; what a board opened from a
  * file says about that file; and, past one page, how many are shown (PR
- * #163 F-04). Dates are pinned to UTC.
+ * #163 F-04). Slice 5A.1 (decisions 33 and 34): a named row's name first,
+ * the models that read each board, the head's name for the board on screen,
+ * and the changed-file notice the board shows above itself, the rail's own.
+ * Dates are pinned to UTC; names and model ids are made up.
  */
 
 import type { LightboxBoardShelf, LightboxSavedBoardSummary } from '@messages';
-import { LIGHTBOX_BOARDS_PAGE, buildLightboxBoardsView } from '@hooks/domain/lightbox/lightboxBoardsView';
+import {
+  LIGHTBOX_BOARDS_PAGE,
+  buildLightboxBoardsView,
+  lightboxChangedFileNotice,
+  lightboxModelsNote
+} from '@hooks/domain/lightbox/lightboxBoardsView';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 
 const UTC = { timeZone: 'UTC' };
@@ -70,6 +78,7 @@ describe('buildLightboxBoardsView', () => {
   it('says why boards are kept for the session only, with no list and no caption', () => {
     expect(buildLightboxBoardsView(shelf({ availability: { kind: 'session', reason: 'no-workspace' } }), true, UTC)).toEqual({
       status: 'this session',
+      board: { label: 'Unnamed board', named: false, name: '', action: 'Name', note: 'A name lasts as long as this session, as the board does.' },
       rows: [],
       availability: 'Boards are kept for this session only: no folder is open. Open one folder to save them.'
     });
@@ -123,5 +132,77 @@ describe('buildLightboxBoardsView', () => {
     expect(buildLightboxBoardsView(shelf({ boards: [saved({})] }), false, UTC)).toEqual({
       status: 'none', rows: [], empty: 'Board a chapter, and the boards saved from it show here.'
     });
+  });
+});
+
+describe('names and models (Slice 5A.1)', () => {
+  const NAME = '3.2.1 - after the cut - model B';
+
+  it('shows a named row\'s name first, its date and time under it, and an unnamed row as before', () => {
+    const view = buildLightboxBoardsView(shelf({
+      boards: [saved({ fileId: 'b', name: NAME, onScreen: true }), saved({ fileId: 'a' })]
+    }), true, UTC);
+
+    expect(view.rows.map((row) => [row.name ?? null, row.when])).toEqual([[NAME, 'Oct 22, 2026, 2:05 PM'], [null, 'Oct 22, 2026, 2:05 PM']]);
+    expect(view.rows[1]).not.toHaveProperty('name');
+  });
+
+  it('names the models that read a row, shortened and once each; a measured-only row has no model line', () => {
+    const view = buildLightboxBoardsView(shelf({
+      boards: [
+        saved({ fileId: 'b', lenses: EVERY_LENS, models: ['provider/model-v1', 'provider/model-b'] }),
+        saved({ fileId: 'a' })
+      ]
+    }), true, UTC);
+
+    expect(view.rows[0]).toMatchObject({ models: 'Read by model-v1 and model-b', modelIds: 'provider/model-v1, provider/model-b' });
+    expect(view.rows[1]).not.toHaveProperty('models');
+  });
+
+  it('writes the model line: one, two, more than two, the same name from two providers once, and a long name cut', () => {
+    expect(lightboxModelsNote(undefined)).toBeUndefined();
+    expect(lightboxModelsNote([])).toBeUndefined();
+    expect(lightboxModelsNote(['provider/model-v1'])).toBe('Read by model-v1');
+    expect(lightboxModelsNote(['model-v1'])).toBe('Read by model-v1');
+    expect(lightboxModelsNote(['provider/model-v1', 'provider/model-b', 'other/model-c', 'other/model-d'])).toBe('Read by model-v1, model-b and 2 more');
+    expect(lightboxModelsNote(['provider/model-v1', 'mirror/model-v1'])).toBe('Read by model-v1');
+    expect(lightboxModelsNote([`provider/${'m'.repeat(40)}`])).toBe(`Read by ${'m'.repeat(31)}…`);
+  });
+
+  it('names the board on screen in the head, or says it is unnamed, with Name or Rename', () => {
+    expect(buildLightboxBoardsView(shelf({ boards: [saved({ onScreen: true })] }), true, UTC).board)
+      .toEqual({ label: 'Unnamed board', named: false, name: '', action: 'Name' });
+    expect(buildLightboxBoardsView(shelf({ name: NAME, boards: [saved({ name: NAME, onScreen: true })] }), true, UTC).board)
+      .toEqual({ label: NAME, named: true, name: NAME, action: 'Rename' });
+  });
+
+  it('says when a name waits for the board\'s next save, and that a session-only name lasts as long as the session', () => {
+    expect(buildLightboxBoardsView(shelf({ name: NAME, boards: [saved({})] }), true, UTC).board?.note)
+      .toBe('Not in a saved file yet: the name is saved with this board\'s next save.');
+    expect(buildLightboxBoardsView(shelf({ name: NAME, availability: { kind: 'session', reason: 'multi-root' } }), true, UTC).board)
+      .toMatchObject({ label: NAME, note: 'A name lasts as long as this session, as the board does.' });
+  });
+
+  it('has no head until the host answers, and none with no board on screen', () => {
+    expect(buildLightboxBoardsView(null, true, UTC).board).toBeUndefined();
+    expect(buildLightboxBoardsView(shelf({ name: NAME }), false, UTC).board).toBeUndefined();
+  });
+});
+
+describe('the changed-file notice above the board (Slice 5A.1, epic decision 34)', () => {
+  const snapshot = { fileId: 'a', savedAt: Date.parse('2026-10-21T09:00:00.000Z'), dropped: 0 };
+
+  it('is the rail\'s own note, from the same shelf, and only while it offers Read the current text', () => {
+    const changed = shelf({ boards: [saved({ onScreen: true })], snapshot: { ...snapshot, file: 'changed' } });
+    expect(lightboxChangedFileNotice(changed, UTC)).toEqual(buildLightboxBoardsView(changed, true, UTC).snapshot);
+    expect(lightboxChangedFileNotice(changed, UTC)?.readCurrentText).toBe(true);
+
+    for (const file of ['same', 'unreadable', 'none'] as const) {
+      const quiet = shelf({ boards: [saved({ onScreen: true })], snapshot: { ...snapshot, file } });
+      expect(lightboxChangedFileNotice(quiet, UTC)).toBeUndefined();
+      expect(buildLightboxBoardsView(quiet, true, UTC).snapshot?.readCurrentText).toBe(false);
+    }
+    expect(lightboxChangedFileNotice(shelf({ boards: [saved({})] }), UTC)).toBeUndefined();
+    expect(lightboxChangedFileNotice(null, UTC)).toBeUndefined();
   });
 });

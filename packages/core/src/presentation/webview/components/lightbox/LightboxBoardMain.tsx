@@ -1,11 +1,14 @@
 /**
  * LightboxBoardMain — the board's main column (ADR 2026-10-19 D3–D7).
  *
- * Props-only. Lays out, in order: the board header (with the headline once
- * it is read), any refusal (naming the refused source and, over a retained
- * board, the source still shown), the toolbar (tile filter, register legend,
- * and the run line), the sticky paragraph ribbon and the tension arc's line,
- * the counted tiles, then the readings, the Spark lane under them, and the
+ * Props-only. Lays out, in order: the changed-file notice of a saved board
+ * whose file now holds another text, with "Read the current text" (Slice
+ * 5A.1, epic decision 34: the rail's own notice, from the same shelf, so the
+ * two come and go together), the board header (with the headline once it is
+ * read), any refusal (naming the refused source and, over a retained board,
+ * the source still shown), the toolbar (tile filter, register legend, and
+ * the run line), the sticky paragraph ribbon and the tension arc's line, the
+ * counted tiles, then the readings, the Spark lane under them, and the
  * Opinion last, all through the exhaustive renderer map. A lens that is off
  * is not drawn.
  */
@@ -21,6 +24,7 @@ import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import type { LightboxFilter } from '@hooks/domain/useLightbox';
 import type { UseLightboxFocusReturn } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import type { LightboxRunLineView } from '@hooks/domain/lightbox/lightboxRunLine';
+import type { LightboxSnapshotView } from '@hooks/domain/lightbox/lightboxBoardsView';
 import { lightboxTensionLane, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxEndingsLane } from '@hooks/domain/lightbox/lightboxCraft';
 import { lightboxEngagementLane, lightboxMovementsLane, lightboxPressureLaneView } from '@hooks/domain/lightbox/lightboxPlot';
@@ -49,6 +53,12 @@ export interface LightboxBoardMainProps {
   onStop: (token: string) => void;
   /** The Spark lane's actions ("Not for me", Bring). */
   actions?: LightboxTileActions;
+  /** A saved board whose file has changed since (`lightboxChangedFileNotice`), and the re-read it offers (Slice 5A.1). */
+  changedFile?: {
+    view: LightboxSnapshotView;
+    rereading: boolean;
+    onReadCurrentText: () => void;
+  };
 }
 
 const FILTERS: ReadonlyArray<{ id: LightboxFilter; label: string }> = [
@@ -84,7 +94,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   onDismissRefusal,
   onRun,
   onStop,
-  actions
+  actions,
+  changedFile
 }) => {
   const refusalNotice = refusal && (
     <div className="pm-lb-refusal" role="alert">
@@ -137,6 +148,20 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
 
   return (
     <div className="pm-lb-scroll">
+      {changedFile && (
+        <div className="pm-lb-snapshot is-warn pm-lb-board-notice" role="status" aria-label="The saved board and its file">
+          <Icon name="alert" size={14} />
+          <div className="pm-lb-snapshot-body">
+            <p>{changedFile.view.opened}</p>
+            <p>{changedFile.view.file}</p>
+            {changedFile.view.dropped && <p>{changedFile.view.dropped}</p>}
+            <button type="button" className="pm-lb-button" onClick={changedFile.onReadCurrentText} disabled={changedFile.rereading}>
+              <Icon name="refresh" size={13} />
+              {changedFile.rereading ? 'Reading…' : 'Read the current text'}
+            </button>
+          </div>
+        </div>
+      )}
       <p className="pm-lb-main-eyebrow">
         <i />
         {fileName(board.source.displayPath)} · {board.source.paragraphCount.toLocaleString('en-US')} ¶

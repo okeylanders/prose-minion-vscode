@@ -1165,6 +1165,8 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
+  // Slice 5A.1: naming a board in place, in the rail.
+  'presentation/webview/components/lightbox/LightboxBoardNameField.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
