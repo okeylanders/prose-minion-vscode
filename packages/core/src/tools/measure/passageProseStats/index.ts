@@ -96,7 +96,19 @@ function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean 
  *     parser, so `“Wait!” Alice said.` is two sentences, as
  *     `“Wait.” She turned.` is.
  * - Nothing else is decided here: `Mr.` ends a sentence.
+ *
+ * The rule's id is `PROSE_SENTENCE_RULE_ID`.
  */
+/**
+ * The id of the sentence rule above (closing marks and speech tags, ADR
+ * 2026-10-21). A saved Lightbox board records which rule measured its
+ * sentence figures (ADR 2026-10-19 D12 addendum). A change to what the rule
+ * returns is a new rule, so it gets a new id: `measurementRuleIds.test.ts`
+ * pins this one to its output and fails when the output moves and the id
+ * does not.
+ */
+export const PROSE_SENTENCE_RULE_ID = 'closing-marks-speech-tags-2026-10-21';
+
 export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
   const spans: Array<{ start: number; end: number }> = [];
   // Fresh literals per call, so no global or sticky regex's lastIndex is shared.

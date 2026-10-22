@@ -42,6 +42,15 @@ export interface DialogueSpan {
   closed: boolean;
 }
 
+/**
+ * The id of the matcher below (straight and curly double quotes, kept within
+ * a paragraph). A saved Lightbox board records which rule measured its
+ * dialogue figures (ADR 2026-10-19 D12 addendum). A change to what it
+ * returns is a new rule with a new id; `measurementRuleIds.test.ts` pins this
+ * one to its output.
+ */
+export const DIALOGUE_SPANS_RULE_ID = 'double-quotes-2026-10-19';
+
 const DOUBLE_QUOTE_OPENERS: ReadonlySet<string> = new Set(['"', '“']);
 const DOUBLE_QUOTE_CLOSERS: ReadonlySet<string> = new Set(['"', '”']);
 

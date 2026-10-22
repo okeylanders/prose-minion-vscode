@@ -43,6 +43,14 @@ export interface LightboxParagraphRange {
   to: number;
 }
 
+/**
+ * The id of the paragraph rule below (the blank-line splitter, D4). A saved
+ * board records which rule numbered its paragraphs (ADR 2026-10-19 D12
+ * addendum). A change to what it returns is a new rule with a new id;
+ * `measurementRuleIds.test.ts` pins this one to its output.
+ */
+export const LIGHTBOX_PARAGRAPH_RULE_ID = 'blank-line-2026-10-19';
+
 /** Split `text` into paragraphs with the shared blank-line rule. */
 export function splitLightboxParagraphs(text: string): LightboxParagraph[] {
   const paragraphs: LightboxParagraph[] = [];
