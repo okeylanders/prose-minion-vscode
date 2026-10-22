@@ -1102,6 +1102,11 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxInstances.ts',
   'infrastructure/lightbox/LightboxPassageIndex.ts',
   'infrastructure/lightbox/LightboxPassages.ts',
+  // Slice 5A: the saved board's format 1, its decoders by layer.
+  'infrastructure/storage/LightboxBoardSchema.ts',
+  'infrastructure/storage/LightboxBoardMeasuredCodec.ts',
+  'infrastructure/storage/LightboxBoardTileCodec.ts',
+  'infrastructure/storage/LightboxBoardCodec.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',
