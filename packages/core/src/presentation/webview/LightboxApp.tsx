@@ -23,6 +23,10 @@
  * paragraph's text and a pinned counted term's sentences, asked of the host
  * by board id and hash, and never persisted.
  *
+ * The rail's saved boards (Slice 5A) are `useLightboxBoards`'s: the shelf of
+ * the board on screen, Open and Delete. An opened board arrives as any board
+ * does; "Read the current text" is the source's own re-read.
+ *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
  */
@@ -39,6 +43,7 @@ import './styles/lightbox/craft.css';
 import './styles/lightbox/plot.css';
 import './styles/lightbox/opinion.css';
 import './styles/lightbox/steering.css';
+import './styles/lightbox/boards.css';
 import * as React from 'react';
 import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
@@ -48,6 +53,7 @@ import { Icon } from '@components/shared/Icon';
 import { LightboxSourcePanel } from '@components/lightbox/LightboxSourcePanel';
 import { LightboxLensesPanel } from '@components/lightbox/LightboxLensesPanel';
 import { LightboxContextList } from '@components/lightbox/LightboxContextList';
+import { LightboxBoardsPanel } from '@components/lightbox/LightboxBoardsPanel';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
@@ -58,6 +64,7 @@ import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
 import { useLightboxProjectFiles } from '@hooks/domain/useLightboxProjectFiles';
 import { useLightboxPassages } from '@hooks/domain/useLightboxPassages';
+import { useLightboxBoards } from '@hooks/domain/useLightboxBoards';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
@@ -85,6 +92,8 @@ export const LightboxApp: React.FC = () => {
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   // The pin's text: a paragraph whole, or a counted term's sentences, from the host (Slice 4E).
   const passages = useLightboxPassages({ board, selected: lightbox.selected });
+  // The rail's saved boards (Slice 5A): the shelf of the board on screen, Open and Delete.
+  const savedBoards = useLightboxBoards({ board });
   // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
   const escape = useLightboxEscape({ pinned: lightbox.selected !== null, onClear: inspector.clear });
   // The Opinion's view the writer chose on this board: a webview preference only (Slice 4D).
@@ -110,11 +119,13 @@ export const LightboxApp: React.FC = () => {
       [MessageType.LIGHTBOX_WORKSHOP_TRAY]: handoffs.handleWorkshopTray,
       [MessageType.LIGHTBOX_PROJECT_CATALOG]: projectFiles.handleCatalog,
       [MessageType.LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS]: projectFiles.handleSearchResults,
-      [MessageType.LIGHTBOX_PASSAGE]: passages.handlePassage
+      [MessageType.LIGHTBOX_PASSAGE]: passages.handlePassage,
+      [MessageType.LIGHTBOX_BOARDS]: savedBoards.handleBoards
     };
   }, [
     chrome,
     passages.handlePassage,
+    savedBoards.handleBoards,
     projectFiles.handleCatalog,
     projectFiles.handleSearchResults,
     lightbox.handleBoard,
@@ -206,6 +217,7 @@ export const LightboxApp: React.FC = () => {
     ...focus.persistedState,
     ...inspector.persistedState,
     ...passages.persistedState,
+    ...savedBoards.persistedState,
     ...escape.persistedState,
     ...opinionView.persistedState,
     ...chrome.persistedState
@@ -271,6 +283,15 @@ export const LightboxApp: React.FC = () => {
               rereading={lightbox.rereading}
               onChooseFromProject={chooseFromProject}
               onRefresh={lightbox.refreshSource}
+            />
+            <LightboxBoardsPanel
+              shelf={savedBoards.shelf}
+              hasBoard={board !== null}
+              opening={savedBoards.opening}
+              rereading={lightbox.rereading}
+              onOpen={savedBoards.openBoard}
+              onDelete={savedBoards.deleteBoard}
+              onReadCurrentText={lightbox.refreshSource}
             />
             <LightboxContextList
               context={lightbox.context}

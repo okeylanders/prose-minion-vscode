@@ -1131,6 +1131,9 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/useLightboxProjectFiles.ts',
   // Slice 4E: the inspector's passages (transport), counted terms and the wells as drawn (pure).
   'presentation/webview/hooks/domain/useLightboxPassages.ts',
+  // Slice 5A: the rail's saved boards (transport) and their words (pure).
+  'presentation/webview/hooks/domain/useLightboxBoards.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
@@ -1150,6 +1153,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
@@ -1208,6 +1212,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
