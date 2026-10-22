@@ -20,7 +20,9 @@
  * `lightbox_open_board` with the opened board and then its shelf,
  * `lightbox_refresh_source` with the re-read board and the save the host
  * pushed, and `lightbox_set_lenses` with the estimate for the board then on
- * screen. A state whose page does not show what the host's answers say is
+ * screen. The `earlier-rule` state restores a board saved under another
+ * citation rule and reads its Opinion's standing and Bring from the page.
+ * A state whose page does not show what the host's answers say is
  * written to errors.txt, and the harness exits 1: it fails rather than
  * skips.
  */
@@ -127,6 +129,21 @@ const showBoards = async (tab) => {
   });
   await tab.mouse.move(4, 4);
 };
+// Scroll the Opinion tile to the top of its scroller, under the sticky ribbon when it is in the board.
+const showOpinion = async (tab) => {
+  await tab.evaluate(() => {
+    const element = document.querySelector('.pm-lb-opinion');
+    if (!element) { return; }
+    let scroller = element.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight + 1) { scroller = scroller.parentElement; }
+    element.scrollIntoView({ block: 'start' });
+    const ribbon = document.querySelector('.pm-lb-ribbon');
+    const under = ribbon && scroller && scroller.contains(ribbon) ? ribbon.getBoundingClientRect().bottom + 12 : (scroller?.getBoundingClientRect().top ?? 0) + 12;
+    if (scroller) { scroller.scrollTop -= Math.max(0, under - element.getBoundingClientRect().top); }
+    document.scrollingElement.scrollLeft = 0;
+  });
+  await tab.mouse.move(4, 4);
+};
 const press = (name) => async (tab) => {
   await tab.getByRole('button', { name, exact: true }).click();
   await tab.waitForTimeout(400);
@@ -137,6 +154,9 @@ const OLDEST = 'Oct 22, 2026, 2:05 PM';
 const SECOND = 'Oct 22, 2026, 2:06 PM';
 const NEWEST = 'Oct 22, 2026, 2:07 PM';
 const ROW = (when, meta, action) => `${when}${meta}${action}`;
+const EARLIER_RULE = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
+/** What the stand-in Opinion's Bring says when its standing allows it: it cites tiles, not quotes. */
+const NO_QUOTE = 'Its observations cite no quote, and a Workshop tile carries at least one.';
 
 const scenarios = [
   {
@@ -145,7 +165,8 @@ const scenarios = [
       status: '3 saved',
       rows: [ROW(NEWEST, 'Every lens read · ≈ $0.07', 'On screen'), ROW(SECOND, '8 lenses read · ≈ $0.02', 'Open'), ROW(OLDEST, 'Measured only', 'Open')],
       current: [0],
-      snapshot: null
+      snapshot: null,
+      opinion: { staleNote: null, bringDisabled: true, bringNote: NO_QUOTE }
     }
   },
   {
@@ -209,6 +230,17 @@ const scenarios = [
       snapshot: null,
       note: 'Boards are kept for this session only: no folder is open. Open one folder to save them.'
     }
+  },
+  {
+    // The writer-data rule: a file saved under another citation rule, restored after a reload, opens whole.
+    name: 'earlier-rule', data: states.earlierRule, act: showOpinion,
+    expect: {
+      status: '2 saved',
+      rows: [ROW(SECOND, 'Every lens read · ≈ $0.07', 'On screen'), ROW(OLDEST, 'Measured only', 'Open')],
+      current: [0],
+      snapshot: { tone: 'is-quiet', text: [`Opened from the board saved ${SECOND}.`, 'The file still holds the text it was read from.'], readCurrentText: false },
+      opinion: { staleNote: `Stale ${EARLIER_RULE}`, bringDisabled: true, bringNote: EARLIER_RULE }
+    }
   }
 ];
 
@@ -241,6 +273,15 @@ const facts = () => {
       ? document.activeElement.getAttribute('aria-label') || clean(document.activeElement.textContent)
       : null,
     staleNotes: document.querySelectorAll('.pm-lb-stale-note').length,
+    opinion: (() => {
+      const tile = document.querySelector('.pm-lb-opinion');
+      const bring = tile?.querySelector('.pm-lb-op-action.pm-lb-bring');
+      return tile ? {
+        staleNote: clean(tile.querySelector('.pm-lb-stale-note')?.textContent),
+        bringDisabled: bring?.querySelector('button')?.disabled ?? null,
+        bringNote: clean(bring?.querySelector('.pm-lb-run-note')?.textContent)
+      } : null;
+    })(),
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     posted: window.__pmPosted
       .filter((m) => ['lightbox_request_boards', 'lightbox_open_board', 'lightbox_delete_board', 'lightbox_refresh_source'].includes(m.type))
@@ -259,6 +300,7 @@ const faults = (seen, expect) => {
   if (!same(seen.current, expect.current)) { out.push(`on screen ${JSON.stringify(seen.current)}, not ${JSON.stringify(expect.current)}`); }
   if (!same(seen.snapshot, expect.snapshot)) { out.push(`snapshot ${JSON.stringify(seen.snapshot)}, not ${JSON.stringify(expect.snapshot)}`); }
   if (expect.note && seen.note !== expect.note) { out.push(`note "${seen.note}", not "${expect.note}"`); }
+  if (expect.opinion && !same(seen.opinion, expect.opinion)) { out.push(`the Opinion ${JSON.stringify(seen.opinion)}, not ${JSON.stringify(expect.opinion)}`); }
   if (expect.confirm && seen.confirm !== expect.confirm) { out.push(`confirm "${seen.confirm}", not "${expect.confirm}"`); }
   if (expect.focused && seen.focused !== expect.focused) { out.push(`focus on "${seen.focused}", not "${expect.focused}"`); }
   if (seen.subtitle !== (expect.subtitle ?? 'Drafts/alice-1.md · 508 words')) { out.push(`subtitle "${seen.subtitle}", not "${expect.subtitle ?? 'Drafts/alice-1.md · 508 words'}"`); }

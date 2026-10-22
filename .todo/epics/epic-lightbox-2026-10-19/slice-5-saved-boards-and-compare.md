@@ -50,7 +50,9 @@ decision 32 records what the format holds.
    - Rewording a digest line keeps every Opinion current; changing any
      canonical field makes the Opinions that cite the item stale.
    - The rule is versioned: a saved board records the basis it was cited
-     under (`rules.opinionBasis`).
+     under (`rules.opinionBasis`). A board cited under another rule still
+     opens (decision 32's writer-data rule): only its Opinion loses
+     standing.
    - The standing rules are unchanged: an Opinion is stale when a cited
      item is gone, not current, or says something else.
    - The [tech debt](../../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)
@@ -92,6 +94,19 @@ decision 32 records what the format holds.
 7. **What a saved board records (decision 32).** See the format below.
    Not saved: which Opinion view was showing, the filter, the pin, the
    lens toggles, or any other webview preference.
+8. **The writer-data rule (decision 32, 2026-10-22): a saved board only
+   ever loses standing, never the board.** Saved boards are the writer's
+   data; no internal rule change may lock the writer out of one.
+   - A file whose `rules.opinionBasis` is not this build's decodes and opens
+     whole, as long as the id is well formed.
+   - Its Opinion is stale, with the host's reason: "Saved under an earlier
+     citation rule; read the Opinion again to bring it current." Its cited
+     bases are not compared, since two rules' bases never match.
+   - Bring for that Opinion is refused with the same reason. Every other
+     kind behaves as it does on any board.
+   - The board keeps the id while its readings are kept (a re-read of
+     unchanged text, or a carry onto changed text). Reading the Opinion
+     again cites it under this build's rule, and the board then says so.
 
 ### What the format holds (format 1)
 
@@ -268,11 +283,12 @@ and deletes one after a confirm.
 
 ### Implementation notes (2026-10-22)
 
-Eleven commits on `epic/lightbox-slice-5a-saved-boards`: the plan, the
+Thirteen commits on `epic/lightbox-slice-5a-saved-boards`: the plan, the
 data basis (decision 25), the rule ids, the board naming its rules, the
 codec, the store, the service's room, the host's saving and opening, the
-rail, the regression fixture, and this evidence and these notes. What the
-writer may want to redirect, beyond decisions 27–31:
+rail, the regression fixture, this evidence and these notes, then the
+writer-data rule (decision 8 above) and its evidence. What the writer may
+want to redirect, beyond decisions 27–31:
 
 - **When a save names the board on screen.** A committed save records the
   file the board was last saved to, by board id; the rail marks that file
@@ -296,10 +312,10 @@ writer may want to redirect, beyond decisions 27–31:
   opens is refused by its own snapshot check, as for any newer source.
 - **Bring from a saved board whose file is not in this workspace** (moved,
   or another folder open) is refused as unreadable: it cannot be checked.
-- **A saved board's basis rule must be this build's.** A file whose
-  `rules.opinionBasis` differs does not decode (`basis`): a later basis
-  rule is a new format, with a migration. The other rule ids may be any
-  well-formed id; 5B labels them.
+- **Any well-formed rule id is read,** the Opinion's basis included (the
+  writer-data rule, decision 8 above). A board whose Opinion was cited
+  under another basis rule loses only that Opinion's standing; 5B labels
+  the measuring rules' ids.
 - **A file with several sources** decodes, and opening it is refused with a
   reason.
 - **A restore that fails** (its file gone or unreadable) is logged; the

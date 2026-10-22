@@ -68,7 +68,7 @@ carried into the Workshop.
 | 29 | Opening a saved board (2026-10-22) | *Default.* **A snapshot**: it shows exactly as saved, against its own saved text and rules; nothing is measured again. When the file's text now differs (content hash), a notice offers **Read the current text**, which builds a board from the file and carries the readings, marked stale. Bring from such a snapshot is refused with a reason that points there (Slice 5A) |
 | 30 | Reload (2026-10-22) | *Default.* **The last board on screen comes back**: a window reload, or reopening the tab after one, reopens it from the store instead of losing its readings. Session-only mode keeps the old behaviour; the ADR's "readings are lost on reload" consequence is amended (Slice 5A) |
 | 31 | The Boards rail (2026-10-22) | *Default.* The open source's saved boards, newest first: when, the lenses read, an approximate cost when recorded, and which is on screen. **Open**, and **Delete** with a confirm step; keyboard reachable; plain CSS on the Chromium 114 floor (Slice 5A) |
-| 32 | What a saved board records (2026-10-22) | The board whole (every tile kind, every measured layer, readings with what was withheld and their stale marks), its **sources as a list, each with its text**, and **the ids of the rules that measured it**: paragraphs, sentences (ADR 2026-10-21), dialogue, being verbs (decision 26) and the Opinion's citation basis (decision 25). Not saved: the Opinion view showing, or any other webview preference. Compare is **Slice 5B**, a later PR, and needs no format change (ADR D12 addendum, 2026-10-22) |
+| 32 | What a saved board records (2026-10-22) | The board whole (every tile kind, every measured layer, readings with what was withheld and their stale marks), its **sources as a list, each with its text**, and **the ids of the rules that measured it**: paragraphs, sentences (ADR 2026-10-21), dialogue, being verbs (decision 26) and the Opinion's citation basis (decision 25). Not saved: the Opinion view showing, or any other webview preference. Compare is **Slice 5B**, a later PR, and needs no format change (ADR D12 addendum, 2026-10-22). **The writer-data rule (2026-10-22): a saved board only ever loses standing, never the board.** A file whose Opinion was cited under another basis rule opens whole: its Opinion is stale with the host's reason ("Saved under an earlier citation rule; read the Opinion again to bring it current."), its Bring is refused with it, and every other kind is as saved. Reading the Opinion again cites it under this build's rule. |
 
 ## Slices
 
@@ -1417,14 +1417,20 @@ lens, and adds its items to 4D's digest.
     replace a board a run is reading; six witnesses with held promises.
   - **The rail's Boards section**, with the changed-file note, Read the
     current text, and an in-row delete confirm.
+  - **The writer-data rule** (the coordinator's change before the PR,
+    decision 32): a saved board only ever loses standing, never the board.
+    A file whose Opinion was cited under another basis rule opens whole;
+    its Opinion is stale with the host's reason and its Bring refused,
+    until the Opinion is read again. The `basis` file-rejection reason is
+    gone; `board-v1.json` is unchanged.
   - **Verification**, after `npm ci` into a real `node_modules`:
-    471 suites / 6,505 tests / 59 snapshots; lint 0 errors / 1,133
+    472 suites / 6,512 tests / 59 snapshots; lint 0 errors / 1,133
     warnings, identical per file and rule; typecheck and build with
-    `verify:bundle` pass; `webview.js` SHA-256 `b2d0afec…` (twice),
-    `extension.js` `f8df6063…`; visual evidence in
-    `docs/pr-reviews/evidence/lightbox-slice-5a-visual/`, 18 captures,
-    `errors.txt` empty, 108 errors against the base bundle. No live or
-    billable call.
+    `verify:bundle` pass; `webview.js` SHA-256 `c7e47504…` (twice),
+    `extension.js` `bfc03e8e…`; visual evidence in
+    `docs/pr-reviews/evidence/lightbox-slice-5a-visual/`, 21 captures,
+    `errors.txt` empty; 129 errors against the base bundle, 3 (all
+    `earlier-rule`) against `dc9280c`'s. No live or billable call.
   - **Tech debt:** a spark set aside saves with the next save; a reopened
     board's passages use today's rules; focus after a confirmed delete; the
     size note reviewed.

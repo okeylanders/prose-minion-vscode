@@ -18,6 +18,11 @@
  *    stale, and a fourth file. This is `read-current`.
  * 7. A second workspace with no folder open boards and reads the chapter:
  *    `session-only`.
+ * 8. A third workspace boards and reads the chapter; its read file is then
+ *    rewritten as a build with another citation rule would have saved it
+ *    (`rules.opinionBasis` a synthetic id), and a reload restores it:
+ *    `earlier-rule` (the writer-data rule: a saved board only ever loses
+ *    standing, never the board).
  *
  * Not part of the test suite: copy it to packages/core/src/__tests__/ and run
  * `npx jest packages/core/src/__tests__/build-boards.test.ts`, with
@@ -32,6 +37,7 @@ jest.mock('p-limit', () => ({
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { posix } from 'path';
 import {
   MessageType,
   type ExtensionToWebviewMessage,
@@ -54,6 +60,8 @@ const OUT = `${DIR}/states`;
 const NOW = Date.UTC(2026, 9, 22, 14, 4, 30);
 /** The chapter as the writer changed it on disk: one closing line more, written for this evidence. */
 const CHANGED = `${CHAPTER}\n\nThe writer added this closing line after the board was saved.`;
+/** A citation rule this build does not have: the id a build with another rule would have saved. */
+const EARLIER_BASIS = 'rendered-text-2026-10-21';
 /** Every lens but groups A's and B's. */
 const ONLY_A_AND_B: LightboxLensId[] = LIGHTBOX_LENSES.map((lens) => lens.id)
   .filter((lens) => ![...lightboxGroupLenses('A'), ...lightboxGroupLenses('B')].includes(lens));
@@ -112,7 +120,7 @@ async function answerTo(tab: LightboxBoardsTab, type: MessageType, payload: obje
   };
 }
 
-it('dumps the rail, opened, changed, read-current and session-only states', async () => {
+it('dumps the rail, opened, changed, read-current, session-only and earlier-rule states', async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const host = createLightboxBoardsHost({ now: () => NOW });
   host.writeChapter(CHAPTER_PATH, CHAPTER);
@@ -171,16 +179,37 @@ it('dumps the rail, opened, changed, read-current and session-only states', asyn
   const sessionOnly = await scene(sessionTab, 'board-1', 'session-only');
   expect(session.savedFiles()).toEqual([]);
 
+  // A board saved under another citation rule, restored after a reload.
+  const earlier = createLightboxBoardsHost({ now: () => NOW });
+  earlier.writeChapter(CHAPTER_PATH, CHAPTER);
+  const earlierTab = earlier.openTab();
+  await earlierTab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+  await earlierTab.shelf(null, 'first-mount');
+  await earlierTab.choose(CHAPTER_PATH);
+  await quiet();
+  await press(earlierTab, 'board-1', [], { mode: 'all' });
+  const readFile = posix.join('/workspace/prose-minion/boards', earlier.savedFiles()[1]);
+  const savedJson = JSON.parse(new TextDecoder().decode(earlier.fileSystem.files.get(readFile)));
+  savedJson.board.rules.opinionBasis = EARLIER_BASIS;
+  earlier.fileSystem.files.set(readFile, new TextEncoder().encode(`${JSON.stringify(savedJson, null, 2)}\n`));
+  const reloaded = createLightboxBoardsHost({ now: () => NOW, fileSystem: earlier.fileSystem, memory: earlier.memory });
+  const reloadedTab = reloaded.openTab();
+  await reloadedTab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+  await reloadedTab.shelf(null, 'restore');
+  expect(reloaded.service.currentBoard()?.rules.opinionBasis).toBe(EARLIER_BASIS);
+  const earlierRule = await scene(reloadedTab, 'board-1', 'earlier-rule');
+
   const states = {
     rail,
     opened: { ...rail, opens: { [first]: { ...opened, estimate: openedEstimate } } },
     changed: { ...rail, opens: { [second]: { ...changed, estimate: changedEstimate } }, refresh: readCurrent },
-    sessionOnly
+    sessionOnly,
+    earlierRule
   };
   fs.writeFileSync(path.join(OUT, 'boards.json'), `${JSON.stringify(states)}\n`);
 
   // The log names files, counts and reasons; never the chapter's words.
-  const log = `${host.lines.join('\n')}\n${session.lines.join('\n')}\n`;
+  const log = [host, session, earlier, reloaded].map((each) => `${each.lines.join('\n')}\n`).join('');
   for (const paragraph of CHAPTER.split('\n\n')) {
     expect(log.includes(paragraph.slice(0, 40))).toBe(false);
   }

@@ -662,14 +662,26 @@ so that 5B needs no change to it.
   the cited item's canonical data (its key and kind, quotes with ¶
   addresses, counts and figures, the reading's own words), never the
   digest's wording. Rewording the digest leaves every Opinion current.
+- **A saved board only ever loses standing, never the board** (the
+  writer-data rule, decision 32, 2026-10-22). Saved boards are the writer's
+  data, and no change to an internal rule may make one unopenable. A file
+  whose Opinion was cited under another basis rule (`rules.opinionBasis`)
+  decodes and opens whole, as long as the id is well formed. Its Opinion is
+  stale with the host's reason, "Saved under an earlier citation rule; read
+  the Opinion again to bring it current.", its cited bases are not
+  compared, and its Bring is refused with the same reason. Every other kind
+  behaves as on any board. The board keeps that id while its readings are
+  kept; reading the Opinion again cites it under this build's rule, and the
+  board records that.
 - **The codec** (`LightboxBoardCodec`, pure) is separate from the Workshop
   session codec, as transcript export is. Its keys are exact. Its decoders
   are typed against the contracts, so a new tile kind or field does not
   compile until the codec reads it. Invalid tiles and group notes are
   dropped and counted. The measured layers, the paragraph model, a group's
   own fields and its stale marks decode whole or the board is invalid: a
-  dropped stale mark would show a stale reading as current. Reasons are
-  host-owned, and an unknown key is counted, never named. There are no
+  dropped stale mark would show a stale reading as current. Any well-formed
+  rule id is read and kept. Reasons are host-owned, and an unknown key is
+  counted, never named. There are no
   migrations; a later format follows ADR 2026-07-30's release rule, with
   `board-v1.json`, written by this build from public-domain *Alice*, as its
   authentic fixture.

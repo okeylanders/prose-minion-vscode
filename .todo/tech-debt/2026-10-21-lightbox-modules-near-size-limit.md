@@ -31,7 +31,9 @@ Slice 5 (saved boards) will add to at least `LightboxService.ts` and
 **After Slice 5A (2026-10-22).** 5A moved the service's board assembly to
 `LightboxBoardAssembly.ts`, its source key to `LightboxSourceKey.ts` and its
 retained boards to `LightboxRetainedBoards.ts` before adding the saved-board
-surface, so `LightboxService.ts` went from 486 to 462 lines. It did not add
+surface, so `LightboxService.ts` went from 486 to 462 lines, then 475 with
+the writer-data rule (readings keep the basis rule they were cited under).
+It did not add
 to `LightboxReadingTiles.ts`. Its new modules, and the ones it touched, now
 stand at:
 
@@ -43,8 +45,8 @@ stand at:
 | `packages/core/src/application/handlers/domain/LightboxHandler.ts` | 486 (unchanged) |
 | `packages/core/src/application/handlers/domain/LightboxReadingHandler.ts` | 483 (+18: the run's save) |
 | `packages/core/src/infrastructure/lightbox/LightboxReadingTiles.ts` | 478 |
+| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 475 (was 486) |
 | `packages/core/src/presentation/webview/hooks/domain/useLightbox.ts` | 469 (unchanged) |
-| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 462 (was 486) |
 
 Slice 5B will add Compare's routes to `index.ts` and its file reads to the
 store: split the store's listing and summaries out first, and move the

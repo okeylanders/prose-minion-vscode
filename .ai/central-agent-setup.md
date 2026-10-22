@@ -817,7 +817,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) on `epic/lightbox` at `3e6a156`):
-- 471 suites / 6,505 tests / 59 snapshots
+- 472 suites / 6,512 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1256,8 +1256,14 @@ records, when it saves, or how a saved one comes back:
   that measured it (`LightboxMeasureRules`). Change what a rule returns and
   give it a new id beside the rule, then record its fingerprint as a new
   entry in `measurementRuleIds.test.ts`; never edit a recorded one. The
-  Opinion's basis is fingerprinted over the fixture's board; a board whose
-  basis id is not this build's does not decode.
+  Opinion's basis is fingerprinted over the fixture's board.
+- **A saved board only ever loses standing, never the board** (the
+  writer-data rule). Any well-formed rule id decodes and is kept. A board
+  whose Opinion was cited under another basis rule opens whole; its Opinion
+  is stale with `LIGHTBOX_OPINION_EARLIER_RULE`, and its Bring is refused
+  with it, until it is read again (group F's landing moves
+  `rules.opinionBasis` to this build's). Never add a file-rejection reason
+  for an internal rule change: lose the standing it affects instead.
 - **The Opinion's basis is data.** A citation's basis hashes the cited
   item's canonical data (`lightboxOpinionBasis`), never the digest's
   words. A new item kind gives its canonical data there, with a case that

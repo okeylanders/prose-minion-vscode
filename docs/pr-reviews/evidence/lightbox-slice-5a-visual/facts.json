@@ -17,9 +17,14 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-65pglvhp-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-wzjw0osm-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -49,10 +54,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-1vfr7tql-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-1vfr7tql-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-y0r03ybe-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-y0r03ybe-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -82,10 +92,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-jg6i821r-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-jg6i821r-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-iec3t1km-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-iec3t1km-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -109,12 +124,17 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-3690xyd9-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-3690xyd9-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-txwyvx2e-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-txwyvx2e-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-3690xyd9-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-txwyvx2e-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -137,9 +157,14 @@
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
     "focused": "Keep",
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-fnhzy71c-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-jzfa2ksb-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -156,9 +181,50 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-zblp8k3i-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-qf3bvvby-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-uod777y6-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -181,9 +247,14 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-7nbttnfu-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-5drmj8s0-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -213,10 +284,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-poxw9hww-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-poxw9hww-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-zs6sildz-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-zs6sildz-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -246,10 +322,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-l2wyx6d7-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-l2wyx6d7-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-12hlintp-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-12hlintp-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -273,12 +354,17 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-nlkz1eg1-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-nlkz1eg1-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-qfbmn3ut-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-qfbmn3ut-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-nlkz1eg1-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-qfbmn3ut-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -301,9 +387,14 @@
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
     "focused": "Keep",
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-a9u8tomh-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-lk5iik1y-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -320,9 +411,50 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-6lwgh9pw-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-6anvdhkw-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-r7pdenm7-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -345,9 +477,14 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-f426sbfc-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-q4mnp2g0-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -377,10 +514,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-wu5zgnbq-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-wu5zgnbq-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xknhwjfu-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-xknhwjfu-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -410,10 +552,15 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-1lrzgiol-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-1lrzgiol-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ix8fa4wf-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-ix8fa4wf-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -437,12 +584,17 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v6id699e-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-v6id699e-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-iydlupg9-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-iydlupg9-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v6id699e-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-iydlupg9-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -465,9 +617,14 @@
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
     "focused": "Keep",
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9htw354w-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-nm9j18x5-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -484,9 +641,50 @@
     "confirm": null,
     "focused": null,
     "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9pqn7ibp-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2frjhoy5-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7cm3dl28-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
