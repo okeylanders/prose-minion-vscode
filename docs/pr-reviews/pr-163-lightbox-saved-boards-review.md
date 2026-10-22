@@ -1,5 +1,7 @@
 # PR Review — Lightbox Saved Boards, Slice 5A
 
+**Latest independent disposition:** Request changes at correction head `f3808b4`. All six original findings are resolved; one new P2 freshness issue and one new nonblocking P3 paging issue remain. See the [correction re-review](#independent-re-review-of-the-corrections-2026-10-22). The initial review below is historical.
+
 **Author:** okeylanders · **PR:** [#163](https://github.com/okeylanders/prose-minion-vscode/pull/163) (open, unmerged at review)  
 **Branches:** `epic/lightbox-slice-5a-saved-boards` → `epic/lightbox`  
 **Reviewed implementation head:** `bc1fdda4f73b86bd14549b9813822fcb0a0fe971`  
@@ -231,3 +233,78 @@ all `history`.
 | `git diff --check` | Clean |
 
 No live or billable call was made. The fixtures are public-domain *Alice*.
+
+## Independent re-review of the corrections (2026-10-22)
+
+**Reviewed head:** `f3808b40d49c17da97a4ff52ab05802a5f24a14d`. **Base / merge-base:** `3e6a1561cc60c084fa8493c8582ca829d5ca41fe`. **Delta:** four commits after report commit `a741f85c2435aaa35d005cf7900f18da74fde9e0`, 45 files, +2,256 / −482, including the author response and evidence. This review read the amended ADR, slice plan, agents guide and response, rather than treating the author's resolution ledger or green CI as verification.
+
+**Verdict: Request changes. All six original findings are resolved in their reported sequences.** The original ownership failures are not being carried forward under their old ID: F-05 below is a distinct, independently reproduced shelf-freshness gap *within* one adoption. N-03 is a new nonblocking pagination defect. Neither remaining finding loses a saved file. The author response above is preserved verbatim; the first review and its original ledger remain historical evidence.
+
+### Resolution ledger
+
+| ID | Re-review disposition | Independent verification at this head |
+| --- | --- | --- |
+| F-01 | **Resolved** | A → B → unchanged A moves the pointer to A; a fresh host restores the exact A board, with no duplicate files, both measured-only and fully read |
+| F-02 | **Resolved as reported** | Holding Characters or Opinion preparation across a completed same-ID Open sends no extra stub-provider call and leaves FIRST untouched; the old-adoption push cannot erase FIRST's changed-file state. Repeated FIRST → READ opens also invalidate the held press; a held explicit shelf request is rebuilt for the newest of three adoptions |
+| F-03 | **Resolved** | Two stores at the same timestamp stage at distinct UUID paths and are both held at the same final destination; the loser retries. Both return different files decoding to their own board IDs, with one correct commit callback each and no staging leftovers |
+| F-04 | **Resolved** | All 201 valid files are listed; only the oldest holds the requested text, and dedup finds it without writing. Two hundred neighboring-source files copied into the folder do not hide the owner's file; ordinary neighbor saves choose a different hashed folder |
+| N-01 | **Resolved** | Delete A → B → A forces a fresh A request; its answer removes the row, and stale delete/B replies cannot resurrect it |
+| N-02 | **Resolved** | The standalone canonical/Bring probe verifies identical earlier-rule refusal on standing, host and UI with both old-rule and text-stale marks; current, text-only, in-flight and all 78 non-Opinion controls retain their behavior |
+| F-05 | Medium / P2 · **Open** | An older same-adoption save push overwrites a newer successful changed-file comparison |
+| N-03 | Low / P3 · nonblocking · **Open** | Show older can do nothing repeatedly after restoring a board deep in history |
+
+The additional storage controls pass: a collision retry rechecks the commit point and can withdraw without deleting the contender; an ordinary rename failure does not retry; a disappeared staging file cannot produce success; file/selection-range keys are isolated; portable identity does not depend on the old URI; and cache invalidation responds to changed modification times. The deliberate run-priority control also passes: if a run starts before a queued Open actually adopts, Open can be refused by the existing reading guard. That is not confused with the corrected case where Open has already completed.
+
+### F-05 — Order shelf observations within an adoption
+
+**Location:** [`LightboxBoardLibrary.ts:193–196,219–221`](https://github.com/okeylanders/prose-minion-vscode/blob/f3808b40d49c17da97a4ff52ab05802a5f24a14d/packages/core/src/application/services/lightbox/LightboxBoardLibrary.ts#L193-L221), with [`useLightboxBoards.ts:100–119`](https://github.com/okeylanders/prose-minion-vscode/blob/f3808b40d49c17da97a4ff52ab05802a5f24a14d/packages/core/src/presentation/webview/hooks/domain/useLightboxBoards.ts#L100-L119).
+
+**Trigger:** a delayed save-triggered source comparison overlaps a chapter edit and a later rail action, without opening another snapshot. Readings and deletes intentionally retain the adoption number, so the new adoption guard cannot distinguish these observations.
+
+**Verified sequence using the production host/runner/store/library harness, public-domain Alice, and stub responses:**
+
+1. Measure and save FIRST; read and save READ; open READ.
+2. Hold the next chapter comparison *after* its old bytes have been read, then run Characters. Its committed save starts the held shelf push.
+3. Edit the chapter on disk. Delete FIRST. The deletion succeeds, and its explicit answer correctly says `snapshot.file: 'changed'`, at adoption **2**.
+4. Release the older comparison. The last posted message is now `requestId: null`, adoption **2**, `snapshot.file: 'same'`. The deleted row remains absent, but the newer file-change warning has been reversed.
+
+This is not an expectation that the rail continuously watches disk: a newer explicit request has already observed and reported the change. The older answer subsequently replaces that known state. A separate real-hook probe confirms that it takes the equal-adoption push and changes the held snapshot from `changed` to `same`, removing the required warning and **Read the current text** action. Both desired assertions fail on this head. The positive control accepting a genuinely newer save at the *same* adoption passes, so blanket rejection of equal-adoption pushes would be the wrong correction.
+
+**Expected:** give shelf work an ordering/freshness identity within an adoption, and prevent an older observation from superseding a newer one at host post and webview acceptance. Keep legitimate later save pushes working. Add the delayed-save → edit → Delete sequence and its no-interleaving/newer-save controls.
+
+**Impact and limits:** the rail falsely reassures the writer that saved text still matches the file and hides the offered re-read action. Bring continues to validate the source independently; this review does **not** claim unsafe handoff, file loss, live-model use or billing impact.
+
+### N-03 — Advance paging from the rows actually displayed
+
+**Location:** [`LightboxBoardsPanel.ts:173`](https://github.com/okeylanders/prose-minion-vscode/blob/f3808b40d49c17da97a4ff52ab05802a5f24a14d/packages/core/src/presentation/webview/components/lightbox/LightboxBoardsPanel.tsx#L170-L175), paired with [`lightboxBoardsView.ts:91–98`](https://github.com/okeylanders/prose-minion-vscode/blob/f3808b40d49c17da97a4ff52ab05802a5f24a14d/packages/core/src/presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts#L91-L98).
+
+**Trigger:** reload restores a saved board beyond the initial twenty rows. The view correctly extends the visible page to reach it, but the component's private `shown` counter still starts at twenty.
+
+**Verified:** with 65 files and current index 44, the panel displays 45 rows and says **Show 20 older**; one click still displays 45. Its sequence is **45 → 45 → 60 → 65**, not the advertised first jump to 65. With 206 files and current index 204, **Show 1 older** leaves 205 rows unchanged for **nine clicks**; only click ten reveals the last row. Newest-row controls correctly progress 20 → 23 and 20 → 40 → 60 → 65. The desired deep-current assertions fail. The supplied normal first-page screenshots do not exercise restored deep history.
+
+**Expected:** increment from the effective visible count, not a smaller hidden counter. This remains P3: all files are present and repeated clicks eventually reach them; the correction has removed the original silent host-side cutoff.
+
+### Fresh verification and evidence boundaries
+
+All runtime jobs were serialized in the isolated cloud review workspace. The package manifest/lockfile are unchanged; disk-backed dependencies were reused. No implementation or tracked tests were edited.
+
+| Check | Independent result |
+| --- | --- |
+| Exact-head full Jest | **474 suites / 6,533 tests / 59 snapshots pass**, 396.402 s in this cloud Jest VM |
+| External regression/contract probes | **38 pass / 4 fail**, 42 tests in 11 suites, 18.242 s in this cloud Jest VM. Exactly four desired assertions reproduce the two remaining findings: F-05 host and hook; N-03 at 65 and 206 files. No harness failure |
+| Standalone canonical/Bring checks | **Pass** in direct Node, including N-02; digest wording and rendered paragraph-cap changes do not alter canonical basis, while cited-data mutations do |
+| Typecheck | **Pass**, all three projects |
+| Lint | **0 errors / 1,133 warnings**; exact per-relative-file/rule/severity parity with the original reviewed head (which matched the independently checked base) |
+| Production build and `verify:bundle` | **Pass**, with the three existing webpack size/performance warnings; rebuilt bytes match the author’s reported hashes |
+| Regenerated host states | **Pass**, fresh builder over production host components; `boards.json` is byte-identical to the committed correction fixture |
+| Exact rebuilt production bundle in JSDOM | **71 positive assertions pass across nine host-fixture scenes**. Six further assertions independently witness the remaining defects: F-05 removes the changed-file warning/re-read action; N-03 requires ten clicks for the last row in a synthetic 206-row shelf. These witnesses confirm bad behavior, not passing desired guards |
+| Supplied pixel evidence | New 500 px history and 1440 px expanded-history captures inspected; no new clipping seen. The 21 earlier PNGs are byte-identical to the initial head; recorded facts cover 27 captures at 500/1000/1440 px, without horizontal overflow |
+| Source diff whitespace | Clean; the historical report's existing Markdown hard-break spaces were excluded from the implementation check |
+
+Rebuilt `webview.js` SHA-256: `59b1f612774f0d55fae820d1442e733670118dae445c9cb2320702f382150194`; `extension.js`: `edf2ea482c5d9d6669dc4e8c4775be96865492b882f40d832d11771f74b41754`. Correction-head [pull-request CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39840072681) and [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39840065206) were independently confirmed successful. They do not exercise the four failing external assertions above.
+
+The format-1 codec, golden fixture, canonical-basis code and measurement rule IDs are unchanged by these corrections. Fifteen independent codec/salvage/round-trip controls and the full saved-fixture tile/inspector/passage checks pass again. No migration or remeasurement is introduced. The new hashed-folder discovery does not enumerate the old, unmerged development-only slug folders; a known old file ID remains directly readable/deletable. Under this PR's first-shape/no-development-migration contract, that is not reported as a released-data compatibility failure. It must not be described as automatic discovery or migration of those development folders.
+
+Complete history removes the false cap, but warm listings still perform one sequential stat per file and retain cached summaries without a cap. A five-file warm-cache control verifies five stats and zero payload reads, then one changed modification time reloads only that payload. This is a scaling consideration, not a demonstrated latency defect; no native latency inference is drawn from Jest timings.
+
+The author response's writer choices, real-chapter narrative and readiness assertions remain author claims, not independently verified writer acceptance. Native VS Code, a real-chapter checkpoint, actual screen-reader behavior and minimum-Chromium rendering remain outside this cloud JSDOM/supplied-image evidence. Code approval, writer approval and readiness for Slice 5B remain separate. No private manuscript, paid/live provider call, user computer, GitHub comment/formal review, merge, deployment or extension publication was used.
