@@ -5,6 +5,11 @@
  * kept; and, for a board opened from a file, whether that file still holds
  * its text. Pure: the host's shelf in, words out, so every sentence is tested
  * without a webview. Nothing here carries the writer's text.
+ *
+ * The host lists every saved board of the source. The rail shows the newest
+ * page of them and says so when there are more: "Showing the newest 20 of
+ * 23", and a button that shows older ones (PR #163 F-04). The page always
+ * reaches the board on screen. The head counts them all.
  */
 
 import type { LightboxBoardShelf, LightboxSavedBoardSummary, LightboxSnapshotState } from '@messages';
@@ -35,12 +40,24 @@ export interface LightboxSnapshotView {
   dropped?: string;
 }
 
+/** How many rows the rail shows at first, and how many more each "Show older" adds. */
+export const LIGHTBOX_BOARDS_PAGE = 20;
+
+/** When the shelf holds more boards than are shown: how many are, and the button that shows older ones. */
+export interface LightboxBoardsPage {
+  note: string;
+  more: string;
+}
+
 export interface LightboxBoardsView {
   /** The head's chip: how many are saved, or that boards are kept for the session only. */
   status: string;
   /** Where boards are kept, when that is not simply the project. */
   availability?: string;
+  /** The newest boards, as many as are shown. */
   rows: LightboxSavedBoardRow[];
+  /** Present only when older boards are not shown. */
+  page?: LightboxBoardsPage;
   empty?: string;
   unreadable?: string;
   notice?: string;
@@ -51,6 +68,8 @@ export interface LightboxBoardsView {
 export interface LightboxBoardsViewOptions {
   /** The zone dates are shown in; the webview's own by default (tests pin one). */
   timeZone?: string;
+  /** How many of the newest boards are shown; one page by default. */
+  shown?: number;
 }
 
 const EVERY_LENS = LIGHTBOX_LENSES.length;
@@ -68,10 +87,16 @@ export function buildLightboxBoardsView(
     return { status: '…', rows: [], empty: 'Looking for saved boards…' };
   }
   const when = whenFormat(options.timeZone);
-  const rows = shelf.boards.map((board) => rowOf(board, when));
+  const total = shelf.boards.length;
+  // The newest page, and always as far as the board on screen.
+  const shown = Math.max(options.shown ?? LIGHTBOX_BOARDS_PAGE, shelf.boards.findIndex((board) => board.onScreen) + 1);
+  const rows = shelf.boards.slice(0, shown).map((board) => rowOf(board, when));
   const view: LightboxBoardsView = {
-    status: shelf.availability.kind === 'session' ? 'this session' : `${rows.length} saved`,
+    status: shelf.availability.kind === 'session' ? 'this session' : `${total} saved`,
     rows,
+    ...(rows.length < total ? {
+      page: { note: `Showing the newest ${rows.length} of ${total}.`, more: `Show ${Math.min(LIGHTBOX_BOARDS_PAGE, total - rows.length)} older` }
+    } : {}),
     ...(shelf.notice ? { notice: shelf.notice } : {}),
     ...(shelf.snapshot ? { snapshot: snapshotOf(shelf.snapshot, when) } : {})
   };
@@ -82,7 +107,7 @@ export function buildLightboxBoardsView(
   if (shelf.availability.lastSaveFailed) {
     view.availability = 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.';
   }
-  if (rows.length === 0) {
+  if (total === 0) {
     view.empty = 'No saved boards of this source yet. A board saves itself when it is first measured, and after each reading.';
   }
   if (shelf.unreadable > 0) {

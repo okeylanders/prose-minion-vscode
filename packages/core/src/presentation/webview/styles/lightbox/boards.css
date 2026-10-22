@@ -142,6 +142,18 @@
   line-height: 1.5;
   color: var(--pm-dim);
 }
+/* PR #163 F-04: how many of the source's boards are shown, and Show older. */
+[data-pm-surface="lightbox"] .pm-lb-boards-page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-page .pm-lb-boards-note {
+  margin: 0;
+}
 [data-pm-surface="lightbox"] .pm-lb-boards-notice {
   margin: 10px 0 0;
   font-size: 12px;

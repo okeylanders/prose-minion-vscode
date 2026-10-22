@@ -8,8 +8,9 @@
  * live in it, so a test changes the chapter on disk by writing it. A second
  * session (a reload) is a new host over the same file system and workspace
  * memento. Only the provider engine, the prompt files and the file reads'
- * resolver are stand-ins; a file read and an engine reply can be held, so a
- * test can order an open against a source choice or a run exactly. No
+ * resolver are stand-ins; a file read (before or after its bytes are read),
+ * a press's preparation and an engine reply can be held, so a test can order
+ * an open against a source choice, a press or a pushed shelf exactly. No
  * provider is called.
  *
  * The chapter is ¶1–¶8 of "Alice's Adventures in Wonderland" (1865, public
@@ -40,6 +41,8 @@ import {
   ExtensionToWebviewMessage,
   LightboxBoard,
   LightboxBoardsPayload,
+  LightboxLensId,
+  LightboxRunEstimate,
   LightboxSourceRefusal,
   MessageType
 } from '@/shared/types/messages';
@@ -100,6 +103,10 @@ export interface LightboxBoardsTab {
   choose: (relativePath: string) => Promise<void>;
   /** Read every lens on the board on screen, as the Read button does. */
   read: () => Promise<void>;
+  /** The estimate for the board on screen with every lens on, as the webview asks for it. */
+  estimate: () => Promise<LightboxRunEstimate | null | undefined>;
+  /** Press one lens on the board on screen at `estimate` (a fresh one by default), as a lens's Read does. */
+  press: (lens: LightboxLensId, estimate?: LightboxRunEstimate | null) => Promise<void>;
   dispose: () => void;
 }
 
@@ -137,15 +144,18 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
   let saves = 0;
   const store = new LightboxBoardStore(fileSystem, workspace, log, { memory, now: () => new Date(SAVED_AT(saves++)) });
 
-  // File reads go to the memory file system; a read can be held until the test releases it.
-  const held = new Map<string, Deferred<void>>();
+  // File reads go to the memory file system; a read can be held, before or after its bytes are read, until the test releases it.
+  const held = new Map<string, { gate: Deferred<void>; afterRead: boolean }>();
   const resolve = jest.fn(async ({ pathText }: { pathText: string }) => {
-    const gate = held.get(pathText);
-    if (gate) {
-      held.delete(pathText);
-      await gate.promise;
+    const hold = held.get(pathText);
+    held.delete(pathText);
+    if (hold && !hold.afterRead) {
+      await hold.gate.promise;
     }
     const text = decoder.decode(await fileSystem.readFile(pathText));
+    if (hold?.afterRead) {
+      await hold.gate.promise;
+    }
     const displayPath = path.posix.relative(WORKSPACE, pathText);
     return { text, relativePaths: [displayPath], displayPath };
   });
@@ -158,11 +168,24 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     fileSystem.files.set(absolute, encoder.encode(text));
     return absolute;
   };
-  /** Hold the next read of a workspace file until `release()`. */
-  const holdRead = (relativePath: string) => {
+  /** Hold the next read of a workspace file until `release()`; `afterRead` holds it once it has read the bytes on disk. */
+  const holdRead = (relativePath: string, options: { afterRead?: boolean } = {}) => {
     const gate = deferred<void>();
-    held.set(path.posix.join(WORKSPACE, relativePath), gate);
+    held.set(path.posix.join(WORKSPACE, relativePath), { gate, afterRead: options.afterRead ?? false });
     return { release: () => gate.resolve() };
+  };
+  /** Hold the runner's next preparation (its prompt files loading; an estimate prepares too) until `release()`; `reached` settles when it begins. */
+  const holdPrepare = () => {
+    const gate = deferred<void>();
+    const reached = deferred<void>();
+    const prepare = runner.prepare.bind(runner);
+    const spy = jest.spyOn(runner, 'prepare').mockImplementation(async (...args: Parameters<LightboxReadingRunner['prepare']>) => {
+      spy.mockRestore();
+      reached.resolve();
+      await gate.promise;
+      return prepare(...args);
+    });
+    return { reached: reached.promise, release: () => gate.resolve() };
   };
   /** Hold the store's next read of any file under the boards folder until `release()`. */
   const holdBoardRead = () => {
@@ -197,6 +220,12 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     const ofType = <T extends MessageType>(type: T) =>
       posted.filter((message) => message.type === type) as Array<Extract<ExtensionToWebviewMessage, { type: T }>>;
     let requests = 0;
+    const estimateNow = async () => {
+      const requestId = `estimate-${++requests}`;
+      await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [], requestId });
+      return ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).map((message) => message.payload).reverse()
+        .find((payload) => payload.requestId === requestId)?.estimate;
+    };
     return {
       route,
       posted,
@@ -215,12 +244,16 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
         await route(MessageType.LIGHTBOX_SET_SOURCE, { sourceUri: `file://${path.posix.join(WORKSPACE, relativePath)}`, relativePath });
       },
       read: async () => {
-        const requestId = `estimate-${++requests}`;
-        await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [], requestId });
-        const estimate = ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).map((message) => message.payload).reverse()
-          .find((payload) => payload.requestId === requestId)?.estimate;
+        const estimate = await estimateNow();
         await route(MessageType.LIGHTBOX_RUN, {
           boardId: service.currentBoard()?.boardId, scope: { mode: 'all' }, estimateKey: estimate?.key, model: estimate?.model
+        });
+      },
+      estimate: () => estimateNow(),
+      press: async (lens, given) => {
+        const estimate = given === undefined ? await estimateNow() : given;
+        await route(MessageType.LIGHTBOX_RUN, {
+          boardId: service.currentBoard()?.boardId, scope: { mode: 'lens', lens }, estimateKey: estimate?.key, model: estimate?.model
         });
       },
       dispose: () => {
@@ -231,7 +264,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     };
   };
 
-  /** The saved files, by file id (`<slug>/<name>`), sorted. */
+  /** The saved files, by file id (`<source-slug>-<source-hash>/<name>`), sorted. */
   const savedFiles = (): string[] => [...fileSystem.files.keys()]
     .filter((file) => file.startsWith(path.posix.join(WORKSPACE, 'prose-minion', 'boards')) && file.endsWith('.board.json'))
     .map((file) => path.posix.relative(path.posix.join(WORKSPACE, 'prose-minion', 'boards'), file))
@@ -250,6 +283,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     logged: () => lines.join('\n'),
     writeChapter,
     holdRead,
+    holdPrepare,
     holdBoardRead,
     openTab,
     savedFiles

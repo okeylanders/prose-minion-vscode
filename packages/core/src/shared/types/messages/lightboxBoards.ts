@@ -112,14 +112,18 @@ export interface LightboxDeleteBoardPayload {
 }
 
 /**
- * The shelf, answering one request by its id, or pushed after a save
- * (`requestId: null`). `boardId` names the board the shelf describes: the
- * one asked about, or, after an open, the board then on screen; `null` when
- * there is none.
+ * The shelf, answering one request by its id, or pushed after an adoption
+ * or a save (`requestId: null`). `boardId` names the board the shelf
+ * describes: the one asked about, or, after an open, the board then on
+ * screen; `null` when there is none. `adoption` is that board's adoption
+ * generation, ascending per session (PR #163 F-02): a board keeps its id
+ * across saved snapshots, so the webview never takes a shelf of an earlier
+ * adoption over the one it holds for the same board.
  */
 export interface LightboxBoardsPayload {
   requestId: string | null;
   boardId: string | null;
+  adoption: number | null;
   shelf: LightboxBoardShelf;
 }
 

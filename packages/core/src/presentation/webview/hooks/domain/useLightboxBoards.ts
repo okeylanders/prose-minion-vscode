@@ -11,9 +11,13 @@
  *
  * Correlation (the 4E passage pattern): every request carries a
  * webview-minted id, only the answer to the request still pending is taken,
- * and a newer request drops the older one. A save the host pushes
- * (`requestId: null`) is taken only for the board on screen. A shelf is shown
- * only beside the board it describes.
+ * and a newer request drops the older one. A shelf the host pushes after an
+ * adoption or a save (`requestId: null`) is taken only for the board on
+ * screen. A shelf is shown only beside the board it describes, and a board
+ * keeps its id across saved snapshots, so a shelf of an earlier adoption is
+ * never taken over a later one's for the same board (PR #163 F-02). A Delete
+ * forgets which board the held shelf answered for, so coming back to that
+ * board asks again (PR #163 N-01).
  *
  * Nothing persists: the files are the host's.
  */
@@ -52,6 +56,7 @@ const NO_PERSISTENCE: LightboxBoardsPersistence = {};
 
 interface ShelfAnswer {
   boardId: string | null;
+  adoption: number | null;
   shelf: LightboxBoardShelf;
 }
 
@@ -64,6 +69,7 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
   const onScreen = React.useRef(boardId);
   onScreen.current = boardId;
   const pending = React.useRef<string | null>(null);
+  const held = React.useRef<ShelfAnswer | null>(null);
   // The board the shelf held was answered for: a board change asks again only when it differs.
   const answeredFor = React.useRef<string | null | undefined>(undefined);
   // Request ids: this webview's prefix, so a reloaded webview never takes an answer meant for the one before it.
@@ -90,15 +96,26 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     requestShelfForBoard();
   }, [requestShelfForBoard]);
 
+  /** Hold a shelf, unless the one held is a later adoption's of the same board. */
+  const take = React.useCallback((next: ShelfAnswer): void => {
+    const current = held.current;
+    if (current && current.boardId === next.boardId && (current.adoption ?? -1) > (next.adoption ?? -1)) {
+      return;
+    }
+    held.current = next;
+    answeredFor.current = next.boardId;
+    setAnswer(next);
+  }, []);
+
   const handleBoards = React.useCallback((message: LightboxBoardsMessage) => {
     const payload = message.payload;
     if (!payload?.shelf) {
       return;
     }
+    const next: ShelfAnswer = { boardId: payload.boardId, adoption: payload.adoption ?? null, shelf: payload.shelf };
     if (payload.requestId === null) {
       if (payload.boardId !== null && payload.boardId === onScreen.current) {
-        answeredFor.current = payload.boardId;
-        setAnswer({ boardId: payload.boardId, shelf: payload.shelf });
+        take(next);
       }
       return;
     }
@@ -106,10 +123,9 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
       return;
     }
     pending.current = null;
-    answeredFor.current = payload.boardId;
     setOpening(null);
-    setAnswer({ boardId: payload.boardId, shelf: payload.shelf });
-  }, []);
+    take(next);
+  }, [take]);
 
   const openBoard = React.useCallback((fileId: string) => {
     setOpening(fileId);
@@ -118,6 +134,8 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
 
   const deleteBoard = React.useCallback((fileId: string) => {
     if (boardId !== null) {
+      // The held shelf lists the file until the answer lands: coming back to this board asks again (PR #163 N-01).
+      answeredFor.current = undefined;
       send(MessageType.LIGHTBOX_DELETE_BOARD, { boardId, fileId });
     }
   }, [boardId, send]);

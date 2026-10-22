@@ -39,9 +39,9 @@ import {
   quiet
 } from './lightboxBoardsHarness';
 
-const FIRST = 'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json';
-const READ = 'drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json';
-const THIRD = 'drafts-alice-1-md/2026-10-22T14-07-09-123Z.board.json';
+const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
+const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json';
+const THIRD = 'drafts-alice-1-md-9b099095/2026-10-22T14-07-09-123Z.board.json';
 const EVERY_LENS = LIGHTBOX_LENSES.map((lens) => lens.id);
 const PROJECT = { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false } as const;
 /** The chapter as the writer changed it on disk: one closing line more. */
@@ -105,9 +105,9 @@ describe('saving (epic decision 27)', () => {
     ]);
     // The file holds exactly the board on screen, and its text.
     expect(savedBoard(host, READ)).toEqual({ board: host.service.currentBoard(), text: CHAPTER });
-    // Each committed save is pushed to the rail, unasked.
+    // The board's adoption, and each committed save, is pushed to the rail, unasked.
     expect(tab.shelves().filter((answer) => answer.requestId === null).map((answer) => answer.shelf.boards.map((board) => board.fileId)))
-      .toEqual([[FIRST], [READ, FIRST]]);
+      .toEqual([[FIRST], [FIRST], [READ, FIRST]]);
     // A reload reopens the board on screen.
     expect(host.memory.values.get(LIGHTBOX_BOARD_POINTER_KEY)).toEqual({ root: WORKSPACE, fileId: READ });
   });
@@ -214,7 +214,7 @@ describe('opening a saved board (epic decision 29)', () => {
     const { host, tab } = await readChapter();
     const before = host.service.currentBoard();
 
-    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-1', fileId: 'drafts-alice-1-md/2026-01-01T00-00-00-000Z.board.json' });
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-1', fileId: 'drafts-alice-1-md-9b099095/2026-01-01T00-00-00-000Z.board.json' });
 
     expect(host.service.currentBoard()).toBe(before);
     expect(tab.refusals().map(({ reason, message, suggestion }) => ({ reason, message, suggestion }))).toEqual([{
@@ -316,7 +316,7 @@ describe('deleting a saved board', () => {
 
   it('leaves a file that does not read as a board, and says so', async () => {
     const { host, tab } = await readChapter();
-    const broken = 'drafts-alice-1-md/2026-10-21T09-00-00-000Z.board.json';
+    const broken = 'drafts-alice-1-md-9b099095/2026-10-21T09-00-00-000Z.board.json';
     host.fileSystem.files.set(path.posix.join(WORKSPACE, 'prose-minion', 'boards', broken), new TextEncoder().encode('{"formatVersion": 1'));
 
     await tab.route(MessageType.LIGHTBOX_DELETE_BOARD, { requestId: 'delete-1', boardId: 'board-1', fileId: broken });

@@ -37,6 +37,13 @@ export interface LightboxRetainedBoard {
   origin: LightboxBoardOrigin;
   /** The saved file that holds it: the one it was opened from, or last saved to (Slice 5A). */
   savedFileId?: string;
+  /**
+   * This adoption's generation, ascending per session (PR #163 F-02). A
+   * board keeps its id across saves and snapshots, so several adoptions can
+   * share one; the generation tells them apart. Readings landing on the
+   * adopted board keep it.
+   */
+  adoption: number;
 }
 
 /** A saved board to adopt as the board on screen, exactly as saved (Slice 5A, epic decision 29). */
@@ -65,6 +72,7 @@ export interface LightboxSavableBoard {
 export class LightboxRetainedBoards {
   private readonly entries = new Map<string, LightboxRetainedBoard>();
   private currentKey?: string;
+  private adoptions = 0;
 
   constructor(private readonly limit: number) {}
 
@@ -125,11 +133,11 @@ export class LightboxRetainedBoards {
   }
 
   /** Keep `entry` for its source and make it current, evicting the least recently adopted past the limit. */
-  adopt(key: string, entry: LightboxRetainedBoard): void {
+  adopt(key: string, entry: Omit<LightboxRetainedBoard, 'adoption'>): void {
     // Map order is recency: re-insert on every use, evict from the front. The
     // adopted entry is the newest, so eviction never takes the current board.
     this.entries.delete(key);
-    this.entries.set(key, entry);
+    this.entries.set(key, { ...entry, adoption: ++this.adoptions });
     this.currentKey = key;
     while (this.entries.size > this.limit) {
       this.entries.delete(this.entries.keys().next().value as string);

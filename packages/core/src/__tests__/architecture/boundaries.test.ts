@@ -1114,6 +1114,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardCodec.ts',
   // Slice 5A: the files on disk, their availability, writes and the reload pointer.
   'infrastructure/storage/LightboxBoardStore.ts',
+  // PR #163 F-04: one source's folder read whole, and each file's summary.
+  'infrastructure/storage/LightboxBoardFiles.ts',
   // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
   'infrastructure/lightbox/LightboxRetainedBoards.ts',
   'application/services/lightbox/LightboxBoardLibrary.ts',

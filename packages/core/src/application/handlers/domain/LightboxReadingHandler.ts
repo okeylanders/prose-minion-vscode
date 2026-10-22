@@ -22,10 +22,12 @@
  *   model with its window and prices). Its snapshot is captured, and its
  *   board reserved under a minted token, before anything is awaited. After
  *   the prompt files load, it starts only if this tab is still open, its
- *   reservation still holds, and the live key is still the one it named:
- *   any change in between (a context file removed, a lens toggled, a model
- *   or price changed, another board adopted) refuses it with nothing sent,
- *   and the webview asks for a fresh estimate. What runs is exactly what was
+ *   reservation still holds, the board is still the adoption it captured
+ *   (a saved snapshot of the same board keeps its id and key: PR #163
+ *   F-02), and the live key is still the one it named: any change in
+ *   between (a context file removed, a lens toggled, a model or price
+ *   changed, another board or snapshot adopted) refuses it with nothing
+ *   sent, and the webview asks for a fresh estimate. What runs is exactly what was
  *   priced, and nothing runs after its tab closed. The press also names the
  *   model the writer selected; one naming any model but the one in use is
  *   refused (PR #149 F-03 re-review).
@@ -252,10 +254,11 @@ export class LightboxReadingHandler {
       return;
     }
     // The snapshot must still be what is current, or the press would send what was not priced.
+    // A board opened or chosen meanwhile is another adoption, even under the same id and key (PR #163 F-02).
     const live = this.pressSnapshot(boardId);
-    if (!live || live.key !== press.key) {
+    if (!live || live.adoption !== press.adoption || live.key !== press.key) {
       this.releasePress(reservation);
-      refuse(live ? ESTIMATE_CHANGED : BOARD_CHANGED, groups, true);
+      refuse(live && live.adoption === press.adoption ? ESTIMATE_CHANGED : BOARD_CHANGED, groups, true);
       return;
     }
     const fit = estimateLightboxRun({

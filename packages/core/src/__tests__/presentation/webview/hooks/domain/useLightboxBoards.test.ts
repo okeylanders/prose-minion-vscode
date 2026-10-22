@@ -4,8 +4,10 @@
  * useLightboxBoards (Slice 5A): the rail asks for the shelf of the board on
  * screen on mount (naming no board when it has none, which lets the host
  * restore one) and on each new board; it takes only the pending request's
- * answer, and a pushed save only for the board on screen; Open and Delete
- * name the host's file id; nothing persists.
+ * answer, and a pushed save only for the board on screen; it never takes an
+ * earlier adoption's shelf over a later one's for the same board (PR #163
+ * F-02); a Delete makes the held shelf ask again (PR #163 N-01); Open and
+ * Delete name the host's file id; nothing persists.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -18,11 +20,11 @@ jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { useLightboxBoards } from '@hooks/domain/useLightboxBoards';
 
-const FILE = 'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json';
+const FILE = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
 const shelfOf = (count: number): LightboxBoardShelf => ({
   availability: { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false },
   boards: Array.from({ length: count }, (_, index) => ({
-    fileId: `drafts-alice-1-md/2026-10-22T14-0${5 + index}-09-123Z.board.json`,
+    fileId: `drafts-alice-1-md-9b099095/2026-10-22T14-0${5 + index}-09-123Z.board.json`,
     savedAt: 1_792_677_909_123 + index * 60_000,
     wordCount: 508,
     lenses: [],
@@ -32,8 +34,9 @@ const shelfOf = (count: number): LightboxBoardShelf => ({
   unreadable: 0
 });
 
-function reply(requestId: string | null, boardId: string | null, shelf: LightboxBoardShelf): LightboxBoardsMessage {
-  return { type: MessageType.LIGHTBOX_BOARDS, source: 'extension.lightbox', payload: { requestId, boardId, shelf }, timestamp: 1 };
+/** The host's answer; `adoption` is the board's adoption generation (1 unless a test says otherwise). */
+function reply(requestId: string | null, boardId: string | null, shelf: LightboxBoardShelf, adoption: number | null = 1): LightboxBoardsMessage {
+  return { type: MessageType.LIGHTBOX_BOARDS, source: 'extension.lightbox', payload: { requestId, boardId, adoption, shelf }, timestamp: 1 };
 }
 
 describe('useLightboxBoards', () => {
@@ -91,6 +94,50 @@ describe('useLightboxBoards', () => {
     expect(result.current.shelf).toBeNull();
     act(() => result.current.handleBoards(reply(null, 'board-6', shelfOf(2))));
     expect(result.current.shelf).toEqual(shelfOf(2));
+  });
+
+  it('never takes an earlier adoption\'s shelf over a later one\'s for the same board: a late push keeps no stale notice (PR #163 F-02)', () => {
+    const { result } = mount(makeBoard(6));
+    const first = sent()[0].payload.requestId;
+    // Adoption 5 is a saved snapshot opened from a file that has since changed; adoption 4 was the snapshot before it, same board id.
+    const opened: LightboxBoardShelf = { ...shelfOf(2), snapshot: { fileId: FILE, savedAt: 1_792_677_909_123, file: 'changed', dropped: 0 } };
+    const earlier: LightboxBoardShelf = {
+      ...shelfOf(3), snapshot: { fileId: 'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json', savedAt: 1_792_677_969_123, file: 'same', dropped: 0 }
+    };
+    act(() => result.current.handleBoards(reply(first, 'board-6', opened, 5)));
+    act(() => result.current.handleBoards(reply(null, 'board-6', earlier, 4)));
+    expect(result.current.shelf).toEqual(opened);
+
+    // Control, no change: a save pushed for the adoption on screen is taken.
+    const saved: LightboxBoardShelf = { ...opened, boards: shelfOf(3).boards };
+    act(() => result.current.handleBoards(reply(null, 'board-6', saved, 5)));
+    expect(result.current.shelf).toEqual(saved);
+    // Control, a later adoption of the board: taken.
+    act(() => result.current.handleBoards(reply(null, 'board-6', earlier, 6)));
+    expect(result.current.shelf).toEqual(earlier);
+    // Control, another board: not taken, whatever its adoption.
+    act(() => result.current.handleBoards(reply(null, 'board-9', opened, 9)));
+    expect(result.current.shelf).toEqual(earlier);
+  });
+
+  it('asks again for a board whose held shelf a Delete made stale, when the writer comes back to it (PR #163 N-01)', () => {
+    const { result, rerender } = mount(makeBoard(6));
+    act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(2))));
+    act(() => result.current.deleteBoard(FILE));
+    // To another board kept in the session, and back, before any answer lands.
+    rerender({ board: makeBoard(7) });
+    rerender({ board: makeBoard(6) });
+    expect(sent().map((message) => [message.type, message.payload.boardId])).toEqual([
+      [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6'],
+      [MessageType.LIGHTBOX_DELETE_BOARD, 'board-6'],
+      [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-7'],
+      [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6']
+    ]);
+    const deleted = shelfOf(2).boards.filter((board) => board.fileId !== FILE);
+    act(() => result.current.handleBoards(reply(sent()[1].payload.requestId, 'board-6', { ...shelfOf(2), boards: deleted })));
+    act(() => result.current.handleBoards(reply(sent()[3].payload.requestId, 'board-6', { ...shelfOf(2), boards: deleted })));
+    expect(result.current.shelf?.boards.map((board) => board.fileId)).toEqual(deleted.map((board) => board.fileId));
+    expect(result.current.shelf?.boards.map((board) => board.fileId)).not.toContain(FILE);
   });
 
   it('opens by the host\'s file id, says which until the answer, and deletes naming the board on screen', () => {

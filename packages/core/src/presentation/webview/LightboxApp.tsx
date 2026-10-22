@@ -285,6 +285,7 @@ export const LightboxApp: React.FC = () => {
               onRefresh={lightbox.refreshSource}
             />
             <LightboxBoardsPanel
+              key={board?.boardId ?? 'none'}
               shelf={savedBoards.shelf}
               hasBoard={board !== null}
               opening={savedBoards.opening}

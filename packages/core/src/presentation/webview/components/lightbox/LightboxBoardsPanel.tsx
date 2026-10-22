@@ -8,7 +8,10 @@
  * or keeps it. For a board opened from a file, the panel says whether the
  * file still holds its text and, when it does not, offers "Read the current
  * text". Where boards are kept, and why they are kept for the session only,
- * is said here too.
+ * is said here too. The newest page of boards shows first; when there are
+ * more, the panel says how many and offers "Show older" (PR #163 F-04).
+ * The board's id keys the panel in the app, so a new board starts at one
+ * page.
  *
  * Keyboard: every action is a button. Delete moves focus to the confirm
  * step's "Keep", the safe answer; Escape there keeps the board and returns
@@ -17,7 +20,7 @@
 import * as React from 'react';
 import type { LightboxBoardShelf } from '@messages';
 import { Icon } from '@components/shared/Icon';
-import { buildLightboxBoardsView } from '@hooks/domain/lightbox/lightboxBoardsView';
+import { LIGHTBOX_BOARDS_PAGE, buildLightboxBoardsView } from '@hooks/domain/lightbox/lightboxBoardsView';
 
 export interface LightboxBoardsPanelProps {
   shelf: LightboxBoardShelf | null;
@@ -44,7 +47,8 @@ export const LightboxBoardsPanel: React.FC<LightboxBoardsPanelProps> = ({
   onReadCurrentText,
   timeZone
 }) => {
-  const view = React.useMemo(() => buildLightboxBoardsView(shelf, hasBoard, { timeZone }), [hasBoard, shelf, timeZone]);
+  const [shown, setShown] = React.useState(LIGHTBOX_BOARDS_PAGE);
+  const view = React.useMemo(() => buildLightboxBoardsView(shelf, hasBoard, { timeZone, shown }), [hasBoard, shelf, shown, timeZone]);
   const [confirming, setConfirming] = React.useState<string | null>(null);
   const deleteButtons = React.useRef(new Map<string, HTMLButtonElement>());
   const keepButton = React.useRef<HTMLButtonElement | null>(null);
@@ -162,6 +166,14 @@ export const LightboxBoardsPanel: React.FC<LightboxBoardsPanelProps> = ({
             </li>
           ))}
         </ol>
+      )}
+      {view.page && (
+        <div className="pm-lb-boards-page">
+          <p className="pm-lb-boards-note" role="status">{view.page.note}</p>
+          <button type="button" className="pm-lb-button" onClick={() => setShown((count) => count + LIGHTBOX_BOARDS_PAGE)}>
+            {view.page.more}
+          </button>
+        </div>
       )}
       {view.empty && <p className="pm-lb-boards-empty">{view.empty}</p>}
       {view.unreadable && <p className="pm-lb-boards-note">{view.unreadable}</p>}

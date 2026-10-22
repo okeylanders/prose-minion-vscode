@@ -3,8 +3,9 @@
 /**
  * The rail's Boards section (Slice 5A; epic decision 31): newest first, the
  * board on screen marked, Open by file, Delete confirmed in the row (focus on
- * Keep, Escape keeps), and "Read the current text" offered only when a board
- * opened from a file no longer matches it. Dates are pinned to UTC.
+ * Keep, Escape keeps), "Read the current text" offered only when a board
+ * opened from a file no longer matches it, and, past one page, how many are
+ * shown and Show older (PR #163 F-04). Dates are pinned to UTC.
  */
 
 import * as React from 'react';
@@ -12,8 +13,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { LightboxBoardShelf } from '@messages';
 import { LightboxBoardsPanel, LightboxBoardsPanelProps } from '@components/lightbox/LightboxBoardsPanel';
 
-const NEWER = 'drafts-alice-1-md/2026-10-22T15-10-00-000Z.board.json';
-const OLDER = 'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json';
+const NEWER = 'drafts-alice-1-md-9b099095/2026-10-22T15-10-00-000Z.board.json';
+const OLDER = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
 const SHELF: LightboxBoardShelf = {
   availability: { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false },
   boards: [
@@ -99,6 +100,22 @@ describe('LightboxBoardsPanel', () => {
     expect(screen.getByRole('status').textContent).toBe(
       'Opened from the board saved Oct 22, 2026, 2:05 PM.The file still holds the text it was read from.'
     );
+  });
+
+  it('shows the newest twenty of more, says so, and shows older ones a page at a time (PR #163 F-04)', () => {
+    const boards = Array.from({ length: 23 }, (_, index) => ({
+      ...SHELF.boards[1], fileId: `f${index}`, savedAt: Date.parse('2026-10-22T14:05:00.000Z') - index * 60_000, onScreen: index === 0
+    }));
+    const { container } = panel({ shelf: { ...SHELF, boards } });
+    const rows = () => container.querySelectorAll('.pm-lb-saved-board').length;
+
+    expect(container.querySelector('.pm-ws-block-head')?.textContent).toBe('Boards23 saved');
+    expect(rows()).toBe(20);
+    expect(screen.getByRole('status').textContent).toBe('Showing the newest 20 of 23.');
+    fireEvent.click(screen.getByRole('button', { name: 'Show 3 older' }));
+    expect(rows()).toBe(23);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('button', { name: /older/ })).toBeNull();
   });
 
   it('says boards are kept for the session only, with nothing to open', () => {

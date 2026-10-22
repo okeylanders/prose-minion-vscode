@@ -32,8 +32,8 @@ import {
   type LightboxBoardsHostOptions
 } from './lightboxBoardsHarness';
 
-const FIRST = 'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json';
-const READ = 'drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json';
+const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
+const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json';
 const OTHER_PATH = 'Drafts/alice-2.md';
 const OTHER = 'Alice opened the little door and looked along the passage into the loveliest garden you ever saw.';
 

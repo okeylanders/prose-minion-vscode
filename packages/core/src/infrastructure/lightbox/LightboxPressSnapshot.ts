@@ -9,6 +9,10 @@
  * whole before its first await, and an estimate is priced on one snapshot,
  * not on a catalog read after its prompt files load. Comparing a press's key
  * with a fresh snapshot's is how the host knows nothing it priced has moved.
+ * The snapshot also names the board's adoption (PR #163 F-02). A saved
+ * snapshot of the same board has the same id, text and figures, so the same
+ * key and a valid estimate; but opened while a press prepares, it is a newer
+ * choice, and the press refuses rather than read it.
  *
  * Host-private: the paragraph and context texts are never posted.
  */
@@ -27,10 +31,12 @@ export interface LightboxPressSnapshot {
   facts: LightboxModelFacts;
   /** `LightboxRunEstimate.key` of exactly these inputs. */
   key: string;
+  /** The board's adoption generation when the snapshot was read (`LightboxService.adoptionOf`); not part of the key. */
+  adoption: number | undefined;
 }
 
 export interface LightboxPressInputs {
-  service: Pick<LightboxService, 'currentBoard' | 'readingSource'>;
+  service: Pick<LightboxService, 'currentBoard' | 'readingSource' | 'adoptionOf'>;
   shelf: Pick<LightboxContextShelf, 'materials' | 'totalWords' | 'revision'>;
   modelFacts: () => LightboxModelFacts;
   lensesOff: readonly LightboxLensId[];
@@ -48,6 +54,7 @@ export function lightboxPressSnapshot(inputs: LightboxPressInputs, boardId?: str
   }
   const board = text.board;
   const facts = inputs.modelFacts();
+  const adoption = inputs.service.adoptionOf(board.boardId);
   return {
     board,
     source: {
@@ -66,6 +73,7 @@ export function lightboxPressSnapshot(inputs: LightboxPressInputs, boardId?: str
       averageWordsPerSentence: board.measured.headline.averageWordsPerSentence
     },
     facts,
+    adoption,
     key: lightboxEstimateKey({
       boardId: board.boardId,
       contentHash: board.source.contentHash,

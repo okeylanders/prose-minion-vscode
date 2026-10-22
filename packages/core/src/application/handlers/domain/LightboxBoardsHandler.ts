@@ -15,8 +15,11 @@
  * - `LIGHTBOX_DELETE_BOARD` deletes one, after the rail's confirm step.
  *
  * Every answer is `LIGHTBOX_BOARDS`, echoing its request's id. From this
- * webview's first board message on, each committed save is pushed with
- * `requestId: null`. A request with no id is ignored, as the passage
+ * webview's first board message on, each adoption and each committed save
+ * is pushed with `requestId: null`. A shelf built across a newer adoption of
+ * its board (a snapshot keeps the board's id) is never posted: a push is
+ * dropped, since the newer adoption pushes its own, and an answer is built
+ * again (PR #163 F-02). A request with no id is ignored, as the passage
  * handler's are. Logs carry file ids and counts, never text.
  */
 
@@ -38,7 +41,9 @@ const LOG = '[LightboxBoardsHandler]';
 /** A file id is a slug folder and a timestamped name; anything longer is not one of the host's. */
 const FILE_ID_CHARACTERS = 160;
 
-export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'open' | 'remove' | 'restore' | 'shelf'>;
+export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'describesCurrent' | 'open' | 'remove' | 'restore' | 'shelf'>;
+/** An answer is built again at most this many times while its board keeps being adopted anew. */
+const ANSWER_ATTEMPTS = 3;
 
 export class LightboxBoardsHandler {
   private unsubscribe?: () => void;
@@ -117,23 +122,42 @@ export class LightboxBoardsHandler {
 
   /** The shelf of `boardId` (the board on screen for `null`), under `requestId` (`null`: a push). */
   private async answer(requestId: string | null, boardId: string | null, notice?: string): Promise<void> {
-    let answer: Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
-    try {
-      answer = await this.library.shelf(boardId);
-    } catch (error) {
-      this.outputChannel.appendLine(`${LOG} The saved boards could not be listed: ${error instanceof Error ? error.message : String(error)}`);
+    for (let attempt = 1; attempt <= ANSWER_ATTEMPTS; attempt++) {
+      let answer: Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
+      try {
+        answer = await this.library.shelf(boardId);
+      } catch (error) {
+        this.outputChannel.appendLine(`${LOG} The saved boards could not be listed: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+      }
+      if (this.disposed) {
+        return;
+      }
+      // Checked with nothing awaited before the post: an outdated shelf never leaves as current.
+      if (!this.library.describesCurrent(answer)) {
+        if (requestId === null) {
+          return;
+        }
+        if (attempt < ANSWER_ATTEMPTS) {
+          continue;
+        }
+        this.outputChannel.appendLine(`${LOG} The board kept changing while its shelf was listed; the request was left unanswered.`);
+        return;
+      }
+      const reply: LightboxBoardsMessage = {
+        type: MessageType.LIGHTBOX_BOARDS,
+        source: SOURCE,
+        payload: {
+          requestId,
+          boardId: answer.boardId,
+          adoption: answer.adoption,
+          shelf: notice ? { ...answer.shelf, notice } : answer.shelf
+        },
+        timestamp: Date.now()
+      };
+      void this.postMessage(reply);
       return;
     }
-    if (this.disposed) {
-      return;
-    }
-    const reply: LightboxBoardsMessage = {
-      type: MessageType.LIGHTBOX_BOARDS,
-      source: SOURCE,
-      payload: { requestId, boardId: answer.boardId, shelf: notice ? { ...answer.shelf, notice } : answer.shelf },
-      timestamp: Date.now()
-    };
-    void this.postMessage(reply);
   }
 }
 

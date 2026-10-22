@@ -3,7 +3,9 @@
  * 27, 28 and 30): where boards are saved, how a save is staged and
  * committed, that a file the store cannot read is never overwritten or
  * deleted, newest-first listings by source, delete, the reload pointer,
- * path containment, and logs that never carry the writer's text.
+ * path containment, and logs that never carry the writer's text. Whole
+ * histories, colliding slugs and two stores on one folder are in
+ * `LightboxBoardStoreHistory.test.ts` (PR #163 F-03, F-04).
  *
  * The board is the production service's measure of ¶1–¶8 of "Alice's
  * Adventures in Wonderland" (1865, public domain), read from the worked
@@ -17,6 +19,7 @@ import { createFakeWorkspace } from '@/__tests__/mocks/platform';
 import {
   LIGHTBOX_BOARD_POINTER_KEY,
   LightboxBoardStore,
+  lightboxBoardFolder,
   lightboxBoardSlug,
   lightboxSavedSourceKey,
   type LightboxBoardMemory
@@ -26,7 +29,8 @@ import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 
 const ROOT = '/workspace';
 const BOARDS = path.join(ROOT, 'prose-minion', 'boards');
-const SLUG = 'drafts-alice-1-md';
+/** The source's folder: its slug (`drafts-alice-1-md`), then the first eight hex digits of the SHA-256 of `file:Drafts/alice-1.md`. */
+const FOLDER = 'drafts-alice-1-md-9b099095';
 
 let BOARD: LightboxBoard;
 let TEXT: string;
@@ -52,9 +56,12 @@ function host(options: { folders?: string[]; clock?: string[] } = {}) {
   const workspace = createFakeWorkspace({ workspaceFolders: () => folders.map((folder) => ({ path: folder, name: path.basename(folder) })) });
   const lines: string[] = [];
   const times = [...(options.clock ?? ['2026-10-22T14:05:09.123Z', '2026-10-22T15:10:00.000Z', '2026-10-22T16:20:30.500Z', '2026-10-23T09:00:00.000Z'])];
+  let staged = 0;
   const store = new LightboxBoardStore(fileSystem, workspace, logSink(lines), {
     memory: memoryOf,
-    now: () => new Date(times.length > 1 ? (times.shift() as string) : times[0])
+    now: () => new Date(times.length > 1 ? (times.shift() as string) : times[0]),
+    // Each write's private staging id; a random UUID in production.
+    mintStagingId: () => `s${++staged}`
   });
   return { fileSystem, store, lines, folders };
 }
@@ -85,7 +92,7 @@ describe('LightboxBoardStore: where boards are saved', () => {
       expect(store.availability()).toEqual({ kind: 'session', reason });
       expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'session' });
       expect(await store.list(BOARD.source)).toEqual({ entries: [], unreadable: 0 });
-      expect(await store.read(`${SLUG}/2026-10-22T14-05-09-123Z.board.json`)).toEqual({ kind: 'unavailable' });
+      expect(await store.read(`${FOLDER}/2026-10-22T14-05-09-123Z.board.json`)).toEqual({ kind: 'unavailable' });
       expect(files(fileSystem)).toEqual([]);
     }
   });
@@ -95,11 +102,13 @@ describe('LightboxBoardStore: where boards are saved', () => {
     expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'session' });
     folders.push(ROOT);
     // A session-only save reads no clock, so this one takes its first time.
-    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${SLUG}/2026-10-22T14-05-09-123Z.board.json` });
-    expect(files(fileSystem)).toEqual([path.join(BOARDS, SLUG, '2026-10-22T14-05-09-123Z.board.json')]);
+    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${FOLDER}/2026-10-22T14-05-09-123Z.board.json` });
+    expect(files(fileSystem)).toEqual([path.join(BOARDS, FOLDER, '2026-10-22T14-05-09-123Z.board.json')]);
   });
 
-  it('names a source\'s folder by its path in lower-case words, so no path can leave the boards folder', () => {
+  it('names a source\'s folder by its path in lower-case words and a short hash of its key, so no path can leave the boards folder', () => {
+    expect(lightboxBoardFolder({ kind: 'file', displayPath: 'Drafts/alice-1.md' })).toBe(FOLDER);
+    expect(lightboxBoardFolder({ kind: 'file', displayPath: 'drafts/alice 1.md' })).toBe('drafts-alice-1-md-d72d7266');
     expect(lightboxBoardSlug({ kind: 'file', displayPath: 'Drafts/alice-1.md' })).toBe('drafts-alice-1-md');
     expect(lightboxBoardSlug({ kind: 'file', displayPath: '../../etc/passwd' })).toBe('etc-passwd');
     expect(lightboxBoardSlug({ kind: 'file', displayPath: 'Châpitre/Café été.md' })).toBe('chapitre-cafe-ete-md');
@@ -127,16 +136,16 @@ describe('LightboxBoardStore: saving', () => {
         return true;
       }
     });
-    const fileId = `${SLUG}/2026-10-22T14-05-09-123Z.board.json`;
+    const fileId = `${FOLDER}/2026-10-22T14-05-09-123Z.board.json`;
     expect(result).toEqual({ kind: 'saved', fileId });
-    expect(writes).toEqual([path.join(BOARDS, SLUG, '.2026-10-22T14-05-09-123Z.board.json.tmp-1')]);
-    expect(committed).toEqual(['staged .2026-10-22T14-05-09-123Z.board.json.tmp-1']);
+    expect(writes).toEqual([path.join(BOARDS, FOLDER, '.2026-10-22T14-05-09-123Z.board.json.tmp-s1')]);
+    expect(committed).toEqual(['staged .2026-10-22T14-05-09-123Z.board.json.tmp-s1']);
     expect(fileSystem.renameCalls).toEqual([{
-      fromPath: path.join(BOARDS, SLUG, '.2026-10-22T14-05-09-123Z.board.json.tmp-1'),
-      toPath: path.join(BOARDS, SLUG, '2026-10-22T14-05-09-123Z.board.json'),
+      fromPath: path.join(BOARDS, FOLDER, '.2026-10-22T14-05-09-123Z.board.json.tmp-s1'),
+      toPath: path.join(BOARDS, FOLDER, '2026-10-22T14-05-09-123Z.board.json'),
       overwrite: false
     }]);
-    expect(files(fileSystem)).toEqual([path.join(BOARDS, SLUG, '2026-10-22T14-05-09-123Z.board.json')]);
+    expect(files(fileSystem)).toEqual([path.join(BOARDS, FOLDER, '2026-10-22T14-05-09-123Z.board.json')]);
     const read = await store.read(fileId);
     expect(read.kind === 'board' && read.file.board.boardId).toBe(BOARD.boardId);
   });
@@ -159,14 +168,14 @@ describe('LightboxBoardStore: saving', () => {
     const saving = store.save({ board: BOARD, text: TEXT }, { onCommitted: (fileId) => order.push(`committed ${fileId}`) });
     const listing = store.list(BOARD.source);
     await Promise.all([saving, listing]);
-    expect(order).toEqual([`committed ${SLUG}/2026-10-22T14-05-09-123Z.board.json`, 'listed']);
-    expect((await listing).entries.map((entry) => entry.fileId)).toEqual([`${SLUG}/2026-10-22T14-05-09-123Z.board.json`]);
+    expect(order).toEqual([`committed ${FOLDER}/2026-10-22T14-05-09-123Z.board.json`, 'listed']);
+    expect((await listing).entries.map((entry) => entry.fileId)).toEqual([`${FOLDER}/2026-10-22T14-05-09-123Z.board.json`]);
   });
 
   it('never takes an existing file\'s name: two saves in one millisecond get two files', async () => {
     const { store, fileSystem } = host({ clock: ['2026-10-22T14:05:09.123Z'] });
-    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${SLUG}/2026-10-22T14-05-09-123Z.board.json` });
-    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${SLUG}/2026-10-22T14-05-09-123Z-2.board.json` });
+    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${FOLDER}/2026-10-22T14-05-09-123Z.board.json` });
+    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${FOLDER}/2026-10-22T14-05-09-123Z-2.board.json` });
     expect(files(fileSystem).map((file) => path.basename(file))).toEqual(['2026-10-22T14-05-09-123Z-2.board.json', '2026-10-22T14-05-09-123Z.board.json']);
   });
 
@@ -198,7 +207,7 @@ describe('LightboxBoardStore: saving', () => {
     // Another source with no saved board: its first measured board is saved.
     const other: LightboxBoard = { ...measuredOnly(), source: { ...BOARD.source, displayPath: 'Drafts/alice-2.md' } };
     expect(await store.save({ board: other, text: TEXT }, { onlyIfNewText: true }))
-      .toEqual({ kind: 'saved', fileId: 'drafts-alice-2-md/2026-10-22T15-10-00-000Z.board.json' });
+      .toEqual({ kind: 'saved', fileId: 'drafts-alice-2-md-47b46978/2026-10-22T15-10-00-000Z.board.json' });
   });
 });
 
@@ -213,9 +222,9 @@ describe('LightboxBoardStore: listing, reading and deleting', () => {
     const listing = await store.list(BOARD.source);
     expect(listing.unreadable).toBe(0);
     expect(listing.entries.map((entry) => [entry.fileId, entry.savedAt, entry.wordCount, entry.lenses.length, entry.staleLenses, entry.costUsd])).toEqual([
-      [`${SLUG}/2026-10-22T16-20-30-500Z.board.json`, Date.parse('2026-10-22T16:20:30.500Z'), 508, 20, ['motif'], 0.12],
-      [`${SLUG}/2026-10-22T15-10-00-000Z.board.json`, Date.parse('2026-10-22T15:10:00.000Z'), 508, 20, [], 0.12],
-      [`${SLUG}/2026-10-22T14-05-09-123Z.board.json`, Date.parse('2026-10-22T14:05:09.123Z'), 508, 0, [], undefined]
+      [`${FOLDER}/2026-10-22T16-20-30-500Z.board.json`, Date.parse('2026-10-22T16:20:30.500Z'), 508, 20, ['motif'], 0.12],
+      [`${FOLDER}/2026-10-22T15-10-00-000Z.board.json`, Date.parse('2026-10-22T15:10:00.000Z'), 508, 20, [], 0.12],
+      [`${FOLDER}/2026-10-22T14-05-09-123Z.board.json`, Date.parse('2026-10-22T14:05:09.123Z'), 508, 0, [], undefined]
     ]);
     expect(listing.entries[1].lenses).toEqual([
       'headline', 'motif', 'tension', 'gravity', 'palette', 'characters', 'voice', 'subtext', 'genre', 'lineage', 'spark',
@@ -223,28 +232,18 @@ describe('LightboxBoardStore: listing, reading and deleting', () => {
     ]);
   });
 
-  it('lists only the source\'s own boards when another source shares its folder', async () => {
-    const { store } = host();
-    const neighbour: LightboxBoard = { ...BOARD, source: { ...BOARD.source, displayPath: 'drafts/alice 1.md' } };
-    expect(lightboxBoardSlug(neighbour.source)).toBe(SLUG);
-    await store.save({ board: BOARD, text: TEXT });
-    await store.save({ board: neighbour, text: TEXT });
-    expect((await store.list(BOARD.source)).entries.map((entry) => entry.sourceKey)).toEqual(['file:Drafts/alice-1.md']);
-    expect((await store.list(neighbour.source)).entries.map((entry) => entry.sourceKey)).toEqual(['file:drafts/alice 1.md']);
-  });
-
   it('counts a file it cannot read, never overwrites or deletes it, and keeps saving beside it', async () => {
     const { store, fileSystem, lines } = host();
-    const garbagePath = path.join(BOARDS, SLUG, '2026-10-22T15-10-00-000Z.board.json');
+    const garbagePath = path.join(BOARDS, FOLDER, '2026-10-22T15-10-00-000Z.board.json');
     const garbage = new TextEncoder().encode('{ "formatVersion": 1, "kind": "lightbox-board", "savedAt": ');
     fileSystem.files.set(garbagePath, garbage);
-    const garbageId = `${SLUG}/2026-10-22T15-10-00-000Z.board.json`;
+    const garbageId = `${FOLDER}/2026-10-22T15-10-00-000Z.board.json`;
     expect(await store.list(BOARD.source)).toEqual({ entries: [], unreadable: 1 });
     expect(await store.read(garbageId)).toEqual({ kind: 'unreadable', reason: 'It is not readable JSON.' });
     expect(await store.delete(garbageId)).toEqual({ kind: 'unreadable' });
     // The clock's first save would take 14:05; the second lands on the garbage file's own time and takes the next name.
     await store.save({ board: BOARD, text: TEXT });
-    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${SLUG}/2026-10-22T15-10-00-000Z-2.board.json` });
+    expect(await store.save({ board: BOARD, text: TEXT })).toEqual({ kind: 'saved', fileId: `${FOLDER}/2026-10-22T15-10-00-000Z-2.board.json` });
     expect(fileSystem.files.get(garbagePath)).toEqual(garbage);
     expect((await store.list(BOARD.source))).toEqual(expect.objectContaining({ unreadable: 1 }));
     expect(lines).toContain(`[LightboxBoardStore] ${garbageId} is not read: not-json.`);
@@ -253,13 +252,13 @@ describe('LightboxBoardStore: listing, reading and deleting', () => {
   it('counts a board saved in another format, and a file too large to read, as unreadable', async () => {
     const { store, fileSystem } = host();
     await store.save({ board: BOARD, text: TEXT });
-    const saved = path.join(BOARDS, SLUG, '2026-10-22T14-05-09-123Z.board.json');
+    const saved = path.join(BOARDS, FOLDER, '2026-10-22T14-05-09-123Z.board.json');
     const json = JSON.parse(new TextDecoder().decode(fileSystem.files.get(saved)));
     json.formatVersion = 2;
-    fileSystem.files.set(path.join(BOARDS, SLUG, '2026-10-21T10-00-00-000Z.board.json'), new TextEncoder().encode(JSON.stringify(json)));
+    fileSystem.files.set(path.join(BOARDS, FOLDER, '2026-10-21T10-00-00-000Z.board.json'), new TextEncoder().encode(JSON.stringify(json)));
     const small = new LightboxBoardStore(fileSystem, createFakeWorkspace({ workspaceFolders: () => [{ path: ROOT, name: 'workspace' }] }), logSink([]), { maximumFileBytes: 1_000 });
-    expect(await store.read(`${SLUG}/2026-10-21T10-00-00-000Z.board.json`)).toEqual({ kind: 'unreadable', reason: 'It was saved in a board format this version does not read.' });
-    expect(await small.read(`${SLUG}/2026-10-22T14-05-09-123Z.board.json`)).toEqual({ kind: 'unreadable', reason: 'It is larger than a saved board can be.' });
+    expect(await store.read(`${FOLDER}/2026-10-21T10-00-00-000Z.board.json`)).toEqual({ kind: 'unreadable', reason: 'It was saved in a board format this version does not read.' });
+    expect(await small.read(`${FOLDER}/2026-10-22T14-05-09-123Z.board.json`)).toEqual({ kind: 'unreadable', reason: 'It is larger than a saved board can be.' });
     expect((await store.list(BOARD.source)).unreadable).toBe(1);
   });
 
@@ -279,11 +278,11 @@ describe('LightboxBoardStore: listing, reading and deleting', () => {
     await store.save({ board: BOARD, text: TEXT });
     for (const fileId of [
       '../../etc/passwd',
-      `${SLUG}/../../secret.board.json`,
+      `${FOLDER}/../../secret.board.json`,
       '/workspace/prose-minion/boards/drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json',
-      `${SLUG}/2026-10-22T14-05-09-123Z.board.json/..`,
+      `${FOLDER}/2026-10-22T14-05-09-123Z.board.json/..`,
       `Drafts/2026-10-22T14-05-09-123Z.board.json`,
-      `${SLUG}/notes.json`
+      `${FOLDER}/notes.json`
     ]) {
       expect({ fileId, read: await store.read(fileId), deleted: await store.delete(fileId) }).toEqual({ fileId, read: { kind: 'missing' }, deleted: { kind: 'missing' } });
     }
@@ -318,8 +317,8 @@ describe('LightboxBoardStore: logs', () => {
     const fileId = saved.kind === 'saved' ? saved.fileId : '';
     const json = JSON.parse(new TextDecoder().decode(fileSystem.files.get(path.join(BOARDS, fileId))));
     json.board.readings[0].tiles[0].zebraStripes = 1;
-    fileSystem.files.set(path.join(BOARDS, SLUG, '2026-10-20T10-00-00-000Z.board.json'), new TextEncoder().encode(JSON.stringify(json)));
-    await store.read(`${SLUG}/2026-10-20T10-00-00-000Z.board.json`);
+    fileSystem.files.set(path.join(BOARDS, FOLDER, '2026-10-20T10-00-00-000Z.board.json'), new TextEncoder().encode(JSON.stringify(json)));
+    await store.read(`${FOLDER}/2026-10-20T10-00-00-000Z.board.json`);
     await store.delete(fileId);
     expect(lines.length).toBeGreaterThanOrEqual(3);
     const words = TEXT.split(/\s+/);

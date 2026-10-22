@@ -9,8 +9,12 @@
  *   it stands (`saveAfterRun`). A board measured from new text saves itself
  *   once, unless a saved board of its source already holds that text. Every
  *   save is a new file and nothing is pruned. A committed save records the
- *   file that holds the board (`markSaved`), and the reload pointer follows
- *   the board on screen.
+ *   file that holds the board (`markSaved`).
+ * - **The board on screen (PR #163 F-01).** Every adoption (built, opened or
+ *   restored) is the board on screen, so the reload pointer follows it at
+ *   once: to the file that already holds it, without writing a duplicate,
+ *   or, for a board no file holds yet, to the file its save commits or the
+ *   newest one holding its text. Each adoption is pushed to the rail.
  * - **Open is a snapshot (decision 29).** The board exactly as saved, under
  *   a source ticket taken before anything is awaited: a newer source wins
  *   over it, and it wins over an older one (PR #148 F-01). It is refused at
@@ -20,10 +24,13 @@
  *   source was chosen reopens the last board on screen, under its own ticket.
  *   A restore that fails is logged; the writer asked for nothing, so nothing
  *   is refused.
- * - **The shelf.** The rail's listing for a board's source, newest first,
- *   and, for a snapshot, whether its file still holds the text it was read
- *   from. Read live; the listing is the last thing awaited, so answers leave
- *   in the store's order.
+ * - **The shelf.** The rail's listing for a board's source, every saved
+ *   board newest first, and, for a snapshot, whether its file still holds
+ *   the text it was read from. Read live; the listing is the last thing
+ *   awaited, so answers leave in the store's order. A shelf names the
+ *   adoption it was built for (PR #163 F-02): a board keeps its id across
+ *   snapshots, so a shelf built across a newer snapshot's adoption is
+ *   outdated (`describesCurrent`) and never posted as current.
  *
  * Logs carry file ids, counts and reasons; never the writer's text.
  */
@@ -65,6 +72,7 @@ export interface LightboxBoardLibraryPorts {
   service: Pick<
     LightboxService,
     | 'addOutcomeListener'
+    | 'adoptionOf'
     | 'adoptSaved'
     | 'beginSourceRequest'
     | 'currentBoard'
@@ -89,9 +97,10 @@ export interface LightboxBoardAction {
   notice?: string;
 }
 
-/** The rail's shelf, naming the board it describes (`null`: none). */
+/** The rail's shelf, naming the board it describes (`null`: none) and that board's adoption. */
 export interface LightboxBoardShelfAnswer {
   boardId: string | null;
+  adoption: number | null;
   shelf: LightboxBoardShelf;
 }
 
@@ -102,10 +111,11 @@ export class LightboxBoardLibrary {
 
   constructor(private readonly ports: LightboxBoardLibraryPorts) {
     this.shelfListeners = new ListenerSet<[]>(`${LOG} Shelf listener`, ports.outputChannel);
-    // A board measured from new text saves itself once (decision 27).
+    // Every adoption is the board on screen: the pointer follows it, and the rail hears it.
     this.unsubscribe = ports.service.addOutcomeListener((change) => {
       if (change.kind === 'board') {
-        void this.saveMeasured(change.board);
+        this.onScreen(change.board);
+        this.shelfListeners.emit();
       }
     });
   }
@@ -115,7 +125,7 @@ export class LightboxBoardLibrary {
     this.unsubscribe();
   }
 
-  /** Hear each committed save, so a rail shows it. Returns the unsubscribe closure the caller must own. */
+  /** Hear each adoption and each committed save, so a rail shows it. Returns the unsubscribe closure the caller must own. */
   addShelfListener(listener: () => void): () => void {
     return this.shelfListeners.add(listener);
   }
@@ -177,8 +187,10 @@ export class LightboxBoardLibrary {
     const { service, store } = this.ports;
     const savable = (boardId ? service.savable(boardId) : undefined) ?? service.currentSavable();
     if (!savable) {
-      return { boardId: null, shelf: { availability: store.availability(), boards: [], unreadable: 0 } };
+      return { boardId: null, adoption: null, shelf: { availability: store.availability(), boards: [], unreadable: 0 } };
     }
+    // Captured before the first await, and checked by `describesCurrent` before the shelf leaves.
+    const adoption = service.adoptionOf(savable.board.boardId) ?? null;
     const snapshot = await this.snapshotState(savable);
     // The listing is the last thing awaited: answers leave in the store's order.
     const listing = await store.list(savable.board.source);
@@ -194,6 +206,7 @@ export class LightboxBoardLibrary {
     }));
     return {
       boardId: savable.board.boardId,
+      adoption,
       shelf: {
         availability: store.availability(),
         boards,
@@ -201,6 +214,11 @@ export class LightboxBoardLibrary {
         ...(snapshot ? { snapshot } : {})
       }
     };
+  }
+
+  /** Whether a shelf still describes the adoption it was built for; a newer snapshot of the same board makes it outdated. */
+  describesCurrent(answer: LightboxBoardShelfAnswer): boolean {
+    return answer.boardId === null || this.ports.service.adoptionOf(answer.boardId) === answer.adoption;
   }
 
   private async restoreOnce(): Promise<void> {
@@ -252,7 +270,7 @@ export class LightboxBoardLibrary {
     if (adopted.kind === 'superseded') {
       return {};
     }
-    this.ports.store.rememberOnScreen(fileId);
+    // The adoption moved the reload pointer to this file (`onScreen`).
     outputChannel.appendLine(
       `${LOG} ${mode === 'open' ? 'Opened' : 'Restored'} ${fileId}` +
         (read.dropped > 0 ? `; ${read.dropped} unreadable parts were left out` : '')
@@ -264,13 +282,23 @@ export class LightboxBoardLibrary {
     return board !== undefined && this.ports.runs.activeRun(board.boardId) !== undefined;
   }
 
-  /** A board measured from text no saved board of its source holds saves itself, once. */
-  private async saveMeasured(board: LightboxBoard): Promise<void> {
+  /**
+   * A board adopted is on screen (PR #163 F-01). A file already holds it:
+   * the reload pointer moves there, and nothing is written. A board measured
+   * from text no saved board of its source holds saves itself, once; the
+   * pointer follows that save, or the newest file holding its text.
+   * Synchronous, from the adoption itself, so it is the newest choice's.
+   */
+  private onScreen(board: LightboxBoard): void {
     const savable = this.ports.service.savable(board.boardId);
-    if (!savable || savable.origin.kind !== 'built' || savable.savedFileId) {
+    if (!savable) {
       return;
     }
-    await this.save(savable, true);
+    if (savable.savedFileId) {
+      this.pointAt(board, savable.savedFileId);
+    } else if (savable.origin.kind === 'built') {
+      void this.save(savable, true);
+    }
   }
 
   private async save(savable: LightboxSavableBoard, onlyIfNewText: boolean): Promise<void> {

@@ -458,6 +458,15 @@ export class LightboxService {
     return entry && this.retained.savable(entry);
   }
 
+  /**
+   * The generation of the adoption kept under `boardId` (PR #163 F-02):
+   * work that awaits captures it first and checks it after, since a newer
+   * snapshot of the same board keeps the id. Undefined once none is kept.
+   */
+  adoptionOf(boardId: string): number | undefined {
+    return this.retained.byId(boardId)?.adoption;
+  }
+
   /** The retained board a board of `source` would replace, if any. */
   retainedForSource(source: LightboxBoard['source']): LightboxBoard | undefined {
     return this.retained.bySource(lightboxSourceKey(source))?.board;

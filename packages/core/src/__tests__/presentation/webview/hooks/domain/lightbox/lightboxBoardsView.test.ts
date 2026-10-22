@@ -1,12 +1,13 @@
 /**
  * The rail's Boards section in words (Slice 5A; epic decision 31): each
  * saved board's date and time, lenses, stale lenses and approximate cost;
- * the board on screen; where boards are kept; and what a board opened from
- * a file says about that file. Dates are pinned to UTC.
+ * the board on screen; where boards are kept; what a board opened from a
+ * file says about that file; and, past one page, how many are shown (PR
+ * #163 F-04). Dates are pinned to UTC.
  */
 
 import type { LightboxBoardShelf, LightboxSavedBoardSummary } from '@messages';
-import { buildLightboxBoardsView } from '@hooks/domain/lightbox/lightboxBoardsView';
+import { LIGHTBOX_BOARDS_PAGE, buildLightboxBoardsView } from '@hooks/domain/lightbox/lightboxBoardsView';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 
 const UTC = { timeZone: 'UTC' };
@@ -14,7 +15,7 @@ const PROJECT = { kind: 'project', displayPath: 'prose-minion/boards', lastSaveF
 const EVERY_LENS = LIGHTBOX_LENSES.map((lens) => lens.id);
 
 const saved = (overrides: Partial<LightboxSavedBoardSummary>): LightboxSavedBoardSummary => ({
-  fileId: 'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json',
+  fileId: 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json',
   savedAt: Date.parse('2026-10-22T14:05:09.123Z'),
   wordCount: 508,
   lenses: [],
@@ -87,6 +88,33 @@ describe('buildLightboxBoardsView', () => {
     });
     expect(buildLightboxBoardsView(shelf({ boards: [saved({})], unreadable: 1 }), true, UTC).unreadable)
       .toBe('1 file here could not be read as a board. It was left as it is.');
+  });
+
+  it('shows the newest page and says how many there are, counting every one in the head (PR #163 F-04)', () => {
+    const many = Array.from({ length: 2 * LIGHTBOX_BOARDS_PAGE + 3 }, (_, index) =>
+      saved({ fileId: `f${index}`, savedAt: Date.parse('2026-10-22T14:05:00.000Z') - index * 60_000, onScreen: index === 0 }));
+    const first = buildLightboxBoardsView(shelf({ boards: many }), true, UTC);
+    expect(LIGHTBOX_BOARDS_PAGE).toBe(20);
+    expect(first.status).toBe('43 saved');
+    expect(first.rows.map((row) => row.fileId)).toEqual(many.slice(0, 20).map((board) => board.fileId));
+    expect(first.page).toEqual({ note: 'Showing the newest 20 of 43.', more: 'Show 20 older' });
+
+    const second = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 40 });
+    expect(second.rows).toHaveLength(40);
+    expect(second.page).toEqual({ note: 'Showing the newest 40 of 43.', more: 'Show 3 older' });
+    const all = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 60 });
+    expect(all.rows).toHaveLength(43);
+    expect(all.page).toBeUndefined();
+
+    // The page reaches the board on screen, however old.
+    const older = many.map((board, index) => ({ ...board, onScreen: index === 30 }));
+    const reaching = buildLightboxBoardsView(shelf({ boards: older }), true, UTC);
+    expect(reaching.rows).toHaveLength(31);
+    expect(reaching.rows.at(-1)).toMatchObject({ fileId: 'f30', onScreen: true });
+    expect(reaching.page).toEqual({ note: 'Showing the newest 31 of 43.', more: 'Show 12 older' });
+
+    // One page or fewer: no note.
+    expect(buildLightboxBoardsView(shelf({ boards: many.slice(0, 20) }), true, UTC).page).toBeUndefined();
   });
 
   it('waits for the host, and with no board on screen says where boards will show', () => {
