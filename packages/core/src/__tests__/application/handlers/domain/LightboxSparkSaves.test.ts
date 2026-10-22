@@ -8,6 +8,9 @@
  *   spark back set aside.
  * - A board no file holds (session-only here) keeps today's behaviour: the
  *   mark is the in-memory board's, and its next save carries it.
+ * - The file is found when the rewrite's turn comes: a spark set aside while
+ *   a run's save is still being written marks the file that save writes,
+ *   even for a board no file held before it.
  * - A restore whose file is gone forgets the reload pointer (5A tech debt),
  *   so the next session does not try it again.
  *
@@ -25,6 +28,7 @@ import { MessageType, type LightboxBoard, type LightboxSparkTile } from '@/share
 import { decodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import { LIGHTBOX_BOARD_POINTER_KEY } from '@/infrastructure/storage/LightboxBoardStore';
 import { CHAPTER, CHAPTER_PATH, WORKSPACE, createLightboxBoardsHost, quiet } from './lightboxBoardsHarness';
+import { deferred } from './lightboxHandlerHarness';
 
 type Host = ReturnType<typeof createLightboxBoardsHost>;
 
@@ -100,6 +104,50 @@ describe('a spark set aside saves at once (epic decision 35)', () => {
 
     expect(host.savedFiles()).toEqual([]);
     expect(marks(host.service.currentBoard())[0]).toBe(1);
+  });
+});
+
+describe('a spark set aside while a run\'s save is being written', () => {
+  it('marks the file that save writes, though no file held the board when the spark was set aside', async () => {
+    // A first session saves the chapter's measured board; the next session boards the same text, so no new
+    // file holds its board (the measured save is held: that text is saved already), and reads it.
+    const first = createLightboxBoardsHost();
+    first.writeChapter(CHAPTER_PATH, CHAPTER);
+    const firstTab = first.openTab();
+    await firstTab.choose(CHAPTER_PATH);
+    await quiet();
+    const host = createLightboxBoardsHost({ fileSystem: first.fileSystem, memory: first.memory });
+    const tab = host.openTab();
+    await tab.choose(CHAPTER_PATH);
+    await quiet();
+    expect(host.service.savable('board-1')?.savedFileId).toBeUndefined();
+    // Hold the run's save at its commit, once its bytes are staged.
+    const gate = deferred<void>();
+    const reached = deferred<void>();
+    const rename = host.fileSystem.rename.bind(host.fileSystem);
+    const spy = jest.spyOn(host.fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (fromPath.includes('.tmp-')) {
+        spy.mockRestore();
+        reached.resolve();
+        await gate.promise;
+      }
+      return rename(fromPath, toPath, options);
+    });
+    const reading = tab.read();
+    await reached.promise;
+    const files = host.savedFiles();
+    const tileId = sparksOf(host.service.currentBoard())[0].id;
+    const setting = tab.route(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, { boardId: 'board-1', tileId, dismissed: true });
+
+    gate.resolve();
+    await reading;
+    await setting;
+    await quiet();
+
+    const written = host.savedFiles().filter((file) => !files.includes(file));
+    expect(written).toHaveLength(1);
+    expect(host.service.savable('board-1')?.savedFileId).toBe(written[0]);
+    expect(marks(boardIn(host, written[0]))[0]).toBe(1);
   });
 });
 

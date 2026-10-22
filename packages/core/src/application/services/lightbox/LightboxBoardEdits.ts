@@ -92,18 +92,20 @@ export class LightboxBoardEdits {
     return renameNotice(result, true);
   }
 
-  /** A spark on `boardId` was set aside or brought back: the file that holds the board takes its marks in place. */
+  /**
+   * A spark on `boardId` was set aside or brought back: the file that holds
+   * the board takes its marks in place. That file is found at the rewrite's
+   * turn, so a save still queued (a run that just ended) is the file marked;
+   * with none, the board's next save carries the marks.
+   */
   async keepSparks(boardId: string): Promise<void> {
     const { service, store, outputChannel } = this.ports;
-    if (!service.savable(boardId)?.savedFileId) {
-      return;
-    }
     const result = await store.replace(() => this.holding(boardId), (file) => {
       const board = service.savable(boardId)?.board;
       const readings = board && carryLightboxSparkMarks(file.board.readings, board.readings);
       return readings ? { ...file, board: { ...file.board, readings } } : undefined;
     });
-    if (result.kind !== 'replaced' && result.kind !== 'unchanged' && result.kind !== 'session') {
+    if (result.kind === 'unreadable' || result.kind === 'busy' || result.kind === 'failed') {
       outputChannel.appendLine(`${LOG} A spark's mark waits for the board's next save: its file was ${result.kind}`);
     }
   }
