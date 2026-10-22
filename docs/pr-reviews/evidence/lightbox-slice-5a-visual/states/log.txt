@@ -1,11 +1,11 @@
 [LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
 [LightboxReadingRunner] Run run-1-token started: groups A, B
 [LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
 [LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
 [LightboxReadingRunner] Run run-1-token finished: A ok, B ok
 [LightboxReadingHandler] Run run-1-token finished: 2 groups, 2400 tokens, $0.0200
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json (82567 bytes).
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json (82567 bytes).
 [LightboxReadingRunner] Run run-2-token started: groups C, D, E, G, F
 [LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
 [LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
@@ -16,11 +16,11 @@
 [LightboxReadingHandler] Group F landed on digest a53101679a83, the board it read: current
 [LightboxReadingRunner] Run run-2-token finished: C ok, D ok, E ok, G ok, F ok
 [LightboxReadingHandler] Run run-2-token finished: 5 groups, 6000 tokens, $0.0500
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-07-09-123Z.board.json (160090 bytes).
-[LightboxBoardLibrary] Opened drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json
-[LightboxBoardLibrary] Opened drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-07-09-123Z.board.json (160090 bytes).
+[LightboxBoardLibrary] Opened drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json
+[LightboxBoardLibrary] Opened drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json
 [LightboxHandler] Board built for Drafts/alice-1.md: 519 words, 9 paragraphs; the text changed, so its readings came along marked stale
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-08-09-123Z.board.json (85231 bytes).
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-08-09-123Z.board.json (85231 bytes).
 [LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
 [LightboxReadingRunner] Run run-1-token started: groups A, B, C, D, E, G, F
 [LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
@@ -35,7 +35,7 @@
 [LightboxReadingRunner] Run run-1-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
 [LightboxReadingHandler] Run run-1-token finished: 7 groups, 8400 tokens, $0.0700
 [LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
 [LightboxReadingRunner] Run run-1-token started: groups A, B, C, D, E, G, F
 [LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
 [LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
@@ -48,5 +48,293 @@
 [LightboxReadingHandler] Group F landed on digest 6107bb6e8cd1, the board it read: current
 [LightboxReadingRunner] Run run-1-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
 [LightboxReadingHandler] Run run-1-token finished: 7 groups, 8400 tokens, $0.0700
-[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json (160090 bytes).
-[LightboxBoardLibrary] Restored drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json (160090 bytes).
+[LightboxBoardLibrary] Restored drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json
+[LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
+[LightboxReadingRunner] Run run-1-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 6107bb6e8cd1
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 6107bb6e8cd1, the board it read: current
+[LightboxReadingRunner] Run run-1-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-1-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-2-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-2-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 291c5e324a5a
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 291c5e324a5a, the board it read: current
+[LightboxReadingRunner] Run run-2-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-2-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-07-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-3-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-3-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key aae283b2d5b5
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest aae283b2d5b5, the board it read: current
+[LightboxReadingRunner] Run run-3-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-3-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-08-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-4-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-4-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 8aa9b6a01d7a
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 8aa9b6a01d7a, the board it read: current
+[LightboxReadingRunner] Run run-4-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-4-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-09-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-5-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-5-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 9eac6e7e7ef0
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 9eac6e7e7ef0, the board it read: current
+[LightboxReadingRunner] Run run-5-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-5-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-10-09-123Z.board.json (160097 bytes).
+[LightboxReadingRunner] Run run-6-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-6-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 98c2a580ccc0
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 98c2a580ccc0, the board it read: current
+[LightboxReadingRunner] Run run-6-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-6-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-11-09-123Z.board.json (160209 bytes).
+[LightboxReadingRunner] Run run-7-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-7-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 04f40b38bfd7
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 04f40b38bfd7, the board it read: current
+[LightboxReadingRunner] Run run-7-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-7-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-12-09-123Z.board.json (160097 bytes).
+[LightboxReadingRunner] Run run-8-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-8-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 7d2332e96dff
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 7d2332e96dff, the board it read: current
+[LightboxReadingRunner] Run run-8-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-8-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-13-09-123Z.board.json (160097 bytes).
+[LightboxReadingRunner] Run run-9-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-9-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 02878b78a97a
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 02878b78a97a, the board it read: current
+[LightboxReadingRunner] Run run-9-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-9-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-14-09-123Z.board.json (160104 bytes).
+[LightboxReadingRunner] Run run-10-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-10-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 3af9b239c537
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 3af9b239c537, the board it read: current
+[LightboxReadingRunner] Run run-10-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-10-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-15-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-11-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-11-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 27b534c38d2f
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 27b534c38d2f, the board it read: current
+[LightboxReadingRunner] Run run-11-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-11-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-16-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-12-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-12-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 6fd34034b1f8
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 6fd34034b1f8, the board it read: current
+[LightboxReadingRunner] Run run-12-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-12-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-17-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-13-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-13-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 1985d4cd3a1e
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 1985d4cd3a1e, the board it read: current
+[LightboxReadingRunner] Run run-13-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-13-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-18-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-14-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-14-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 99f1c6cc6940
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 99f1c6cc6940, the board it read: current
+[LightboxReadingRunner] Run run-14-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-14-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-19-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-15-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-15-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 4715743ed27a
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 4715743ed27a, the board it read: current
+[LightboxReadingRunner] Run run-15-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-15-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-20-09-123Z.board.json (160118 bytes).
+[LightboxReadingRunner] Run run-16-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-16-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 9272d0943518
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 9272d0943518, the board it read: current
+[LightboxReadingRunner] Run run-16-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-16-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-21-09-123Z.board.json (160118 bytes).
+[LightboxReadingRunner] Run run-17-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-17-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 42f546d4c595
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 42f546d4c595, the board it read: current
+[LightboxReadingRunner] Run run-17-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-17-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-22-09-123Z.board.json (160118 bytes).
+[LightboxReadingRunner] Run run-18-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-18-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 6254c3e5a122
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 6254c3e5a122, the board it read: current
+[LightboxReadingRunner] Run run-18-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-18-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-23-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-19-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-19-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key b6d219263c2f
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest b6d219263c2f, the board it read: current
+[LightboxReadingRunner] Run run-19-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-19-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-24-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-20-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-20-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 5af0b5112401
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 5af0b5112401, the board it read: current
+[LightboxReadingRunner] Run run-20-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-20-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-25-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-21-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-21-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 31f6a16974aa
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 31f6a16974aa, the board it read: current
+[LightboxReadingRunner] Run run-21-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-21-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-26-09-123Z.board.json (160223 bytes).
+[LightboxReadingRunner] Run run-22-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-22-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 4cff55c9c1c3
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 4cff55c9c1c3, the board it read: current
+[LightboxReadingRunner] Run run-22-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-22-token finished: 7 groups, 8400 tokens, $0.0700
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-27-09-123Z.board.json (160223 bytes).

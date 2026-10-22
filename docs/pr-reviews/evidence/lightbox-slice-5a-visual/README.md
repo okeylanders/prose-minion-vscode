@@ -2,9 +2,11 @@
 
 Lightbox Slice 5A saves boards as files and brings them back:
 - a board saves itself when it is first measured and after each reading
-  run, one file per save, under `prose-minion/boards/`;
+  run, one file per save, under `prose-minion/boards/`, in a folder of its
+  source's own (`<source-slug>-<source-hash>/`);
 - the rail's **Boards** section lists the boards saved from the source on
-  screen, newest first, and opens or deletes one;
+  screen, newest first, and opens or deletes one; past twenty it shows the
+  newest twenty, says how many there are, and offers **Show older**;
 - a board opened from a file says whether the file still holds its text,
   and offers **Read the current text** when it does not;
 - with no folder open, or several, boards are kept for the session only,
@@ -21,11 +23,11 @@ which is unchanged.
 
 | Path | Contents |
 |---|---|
-| `lightbox/lightbox-<state>-<width>.png` | The Lightbox at 1440, 1000 and 500 px: seven states, scrolled to the Boards section, or to the Opinion for `earlier-rule` |
+| `lightbox/lightbox-<state>-<width>.png` | The Lightbox at 1440, 1000 and 500 px: nine states, scrolled to the Boards section (to its end for `history` and `history-older`), or to the Opinion for `earlier-rule` |
 | `states/boards.json` | The host's messages and answers for each state: the board a mount gets, the shelf the rail's mount request gets, each board's shelf, the estimate, the host's answer to each Open (the opened board, then its shelf), and to Read the current text (the re-read board, then the save it pushed) |
 | `states/log.txt` | Every line the host logged while the states were made |
 | `harness.js` | Renders a built `webview.js` as the Lightbox behind a stubbed VS Code API, replays each state's messages, answers the tab's own requests with the host's recorded answers (echoing each request's id), acts as the writer would, takes each screenshot once two consecutive frames match, and writes `facts.json` and `errors.txt`. It exits 1 when any state is wrong |
-| `facts.json` | What each state's page showed, read from the DOM: the Boards section's head, its rows as text, which row is marked on screen, the snapshot note, the confirm step and where focus is, the source line in the header, stale notes on the board, the Opinion's stale note and its Bring, the rail's requests, horizontal overflow, and whether any saved webview state named a board file |
+| `facts.json` | What each state's page showed, read from the DOM: the Boards section's head, its rows as text, which row is marked on screen, the snapshot note, the page note and its Show older button, the confirm step and where focus is, the source line in the header, stale notes on the board, the Opinion's stale note and its Bring, the rail's requests, horizontal overflow, and whether any saved webview state named a board file |
 | `errors.txt` | Every page error, console error, and failed expectation, one per line. It is empty for this run |
 | `tools/build-boards.test.ts` | How `states/` was made |
 
@@ -66,6 +68,14 @@ which is unchanged.
   The Opinion says "Stale Saved under an earlier citation rule; read the
   Opinion again to bring it current.", and its Bring is held with the same
   words. Every other tile is as saved.
+- **`history`** (PR #163 F-04). A fourth workspace boarded the chapter
+  and read it 22 times: 23 files of one source. The head says "23 saved";
+  the rail shows the newest twenty, 2:27 PM (On screen) back to 2:08 PM,
+  then "Showing the newest 20 of 23." and **Show 3 older**. Each read of
+  every lens records $0.07, and a board's cost is what its readings
+  recorded, so the rows run from "≈ $1.54" down to "≈ $0.21".
+- **`history-older`.** **Show 3 older** pressed: all 23 rows, down to
+  2:05 PM "Measured only", and no page note.
 
 ### How the states were made
 
@@ -81,7 +91,10 @@ which is unchanged.
 
 What it checks along the way:
 - **The files.** Three files after the two presses, then a fourth after
-  Read the current text, by name; none in the session-only window.
+  Read the current text, by name, in
+  `drafts-alice-1-md-9b099095/` (the slug, then the first eight hex digits
+  of the SHA-256 of `file:Drafts/alice-1.md`); none in the session-only
+  window; 23 in the `history` workspace, every one in its shelf.
 - **The restore.** The reloaded workspace's board carries the synthetic
   basis id.
 - **The log.** No log line carries the chapter's words: each paragraph's
@@ -112,10 +125,21 @@ saved at 14:05:09.123Z and one minute apart after that.
 
 From the committed `facts.json`, rendered from the bundle a clean
 `npm run build` writes at this branch's head (`webview.js` SHA-256
-`c7e47504afe36c0e437543ed0adcb538f5248296e484b7b383d9b89cb6a15fcf`).
+`59b1f612774f0d55fae820d1442e733670118dae445c9cb2320702f382150194`).
+
+**Re-rendered for PR #163's corrections (2026-10-22).** The host states
+were rebuilt: file ids now name the source's hashed folder, and each shelf
+names its board's adoption. With those two mapped back, the five earlier
+states' messages, estimates included, are identical to the ones built at
+`bc1fdda`. At this head the 21 earlier captures are byte-identical to the
+ones rendered from `c7e47504…`, and their DOM facts are the same apart
+from the webview's random request-id prefixes and the folder names in the
+rail's Open requests. A second render gave the same pixels in all 27 (two
+PNGs differ in their encoded bytes only). `history` and `history-older`
+are new.
 
 **Re-rendered for the writer-data rule (2026-10-22).** The first render
-used the bundle at `dc9280c` (`b2d0afec…`). At this head, the six earlier
+used the bundle at `dc9280c` (`b2d0afec…`). At `bc1fdda`, the six earlier
 states give the same DOM facts, apart from the webview's random request-id
 prefixes. Fifteen of their 18 PNGs are byte-identical; three differ in 15
 to 59 pixels, no channel by more than two levels: rendering noise.
@@ -135,8 +159,10 @@ file paths. Then `npm run build`, which empties `dist/` first and runs
 | `delete-confirm` | The confirm group on the 2:05 PM row; focus on Keep |
 | `session-only` | "this session"; the session-only sentence; no rows |
 | `earlier-rule` | "2 saved"; 2:06 PM On screen; the quiet note; the Opinion "Stale Saved under an earlier citation rule; read the Opinion again to bring it current."; its Bring disabled with the same words |
+| `history` | "23 saved"; 20 rows, 2:27 PM (On screen) to 2:08 PM; "Showing the newest 20 of 23." and Show 3 older |
+| `history-older` | "23 saved"; all 23 rows, to 2:05 PM "Measured only"; no page note |
 
-Across all 21 captures:
+Across all 27 captures:
 - no horizontal overflow;
 - no saved webview state named a board file (8 to 14 states saved per
   capture);
@@ -156,6 +182,11 @@ Across all 21 captures:
   rule, it wrote 3 errors and exited 1, one per width, all `earlier-rule`:
   the Opinion showed no stale note, and its Bring said only that it cites
   no quote. Every other state passed.
+- Against the bundle at `bc1fdda`, before PR #163's corrections (built
+  from an export of that commit, as for the base; `6a1db797…`), it wrote 9
+  errors and exited 1, three per width, all `history`: the rail showed all
+  23 rows with no page note, and had no Show older to press. Every other
+  state passed.
 
 ## Rerunning it
 

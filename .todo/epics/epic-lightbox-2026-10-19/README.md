@@ -63,11 +63,11 @@ carried into the Workshop.
 | 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
 | 25 | The Opinion's citation basis for saved boards (2026-10-21) | **The writer chose a data basis**: a citation's basis becomes a hash of the cited item's canonical data (its key, kind, quotes with their ¶ addresses, counts and figures), not of the digest's rendered wording, and saved boards carry an explicit basis/format version. **Slice 5 implements it as its first step**, after 4E and 4F merge; until then bases are computed as today ([tech debt](../../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)) |
 | 26 | Being-verb contractions, and dialogue as voice (2026-10-21) | **"Yes, count them."** A contraction of be is a being verb: I'm, 're (you're, we're, they're), 's read as *is* (the tagger reads a verb, and it is not *has* before been, got, gotten or had), isn't, aren't, wasn't, weren't and ain't (not before been, got, gotten or had). Never 's as a possessive or *has*, let's, 'd, 'll or 've. **The writer then added three rules:** after a name or noun the tagger reads as a possessive, the next word decides ("Tobin's late", "everyone's here" are *is*; "the Rabbit's watch", "Alice's sister" stay possessive; "the dog's barking" is read as *is*); "had" makes 's *has* ("it's had"), and ain't too; 'tis, 'twas and 'twere count as one being verb each. One shared detector (`findBeingVerbs`) feeds the rate, the numbers row, standouts, the writer's average, steering totals and the quote check, so they agree. "He's gone" counts as *is*: the stated limit. **Dialogue is voice, for all three steering figures** (the coordinator's default; the writer may narrow it to being verbs only): a note whose instance stands in dialogue may be drawn, with its stance, and may name a pattern, but carries no nudge and no example, by a host rule applied fresh, on carry and at Bring. Dialogue is steering's own split, double quotation marks only (Slice 4G) |
-| 27 | Saving (2026-10-22) | *The coordinator's default; the writer may redirect.* **A board saves itself** when a reading run ends having landed a group (finished, or stopped with groups back), and when a board with no readings is built for a source no saved board of which holds that text. One file per save, `prose-minion/boards/<source-slug>/<timestamp>.board.json`, never overwritten; no pruning; the writer deletes from the rail (Slice 5A) |
+| 27 | Saving (2026-10-22) | *The coordinator's default; the writer may redirect.* **A board saves itself** when a reading run ends having landed a group (finished, or stopped with groups back), and when a board with no readings is built for a source no saved board of which holds that text. One file per save, `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`, never overwritten; no pruning; the writer deletes from the rail (Slice 5A; the folder's hash from PR #163 F-04) |
 | 28 | Where boards save (2026-10-22) | *Default.* **The Lexical Gravity library's rule**: a single-folder workspace saves; no folder, or several, keeps boards for the session only, said plainly in the rail (Slice 5A) |
 | 29 | Opening a saved board (2026-10-22) | *Default.* **A snapshot**: it shows exactly as saved, against its own saved text and rules; nothing is measured again. When the file's text now differs (content hash), a notice offers **Read the current text**, which builds a board from the file and carries the readings, marked stale. Bring from such a snapshot is refused with a reason that points there (Slice 5A) |
 | 30 | Reload (2026-10-22) | *Default.* **The last board on screen comes back**: a window reload, or reopening the tab after one, reopens it from the store instead of losing its readings. Session-only mode keeps the old behaviour; the ADR's "readings are lost on reload" consequence is amended (Slice 5A) |
-| 31 | The Boards rail (2026-10-22) | *Default.* The open source's saved boards, newest first: when, the lenses read, an approximate cost when recorded, and which is on screen. **Open**, and **Delete** with a confirm step; keyboard reachable; plain CSS on the Chromium 114 floor (Slice 5A) |
+| 31 | The Boards rail (2026-10-22) | *Default.* The open source's saved boards, newest first: when, the lenses read, an approximate cost when recorded, and which is on screen. **Open**, and **Delete** with a confirm step; keyboard reachable; plain CSS on the Chromium 114 floor (Slice 5A). Every board is listed; past twenty the rail says how many and offers **Show older** (PR #163 F-04) |
 | 32 | What a saved board records (2026-10-22) | The board whole (every tile kind, every measured layer, readings with what was withheld and their stale marks), its **sources as a list, each with its text**, and **the ids of the rules that measured it**: paragraphs, sentences (ADR 2026-10-21), dialogue, being verbs (decision 26) and the Opinion's citation basis (decision 25). Not saved: the Opinion view showing, or any other webview preference. Compare is **Slice 5B**, a later PR, and needs no format change (ADR D12 addendum, 2026-10-22). **The writer-data rule (2026-10-22): a saved board only ever loses standing, never the board.** A file whose Opinion was cited under another basis rule opens whole: its Opinion is stale with the host's reason ("Saved under an earlier citation rule; read the Opinion again to bring it current."), its Bring is refused with it, and every other kind is as saved. Reading the Opinion again cites it under this build's rule. |
 
 ## Slices
@@ -1434,3 +1434,24 @@ lens, and adds its items to 4D's digest.
   - **Tech debt:** a spark set aside saves with the next save; a reopened
     board's passages use today's rules; focus after a confirmed delete; the
     size note reviewed.
+  - **PR #163's review** (request changes: four P2, two P3), all six
+    fixed, each with a regression test that fails on `bc1fdda`; see the
+    review's author response.
+    - **F-01:** every adoption moves the reload pointer to the file that
+      holds the board, without a duplicate save (A, B, then unchanged A
+      reloads to A).
+    - **F-02:** the service numbers each adoption; a press checks it after
+      its prompts load, and a shelf built across a newer adoption is never
+      posted or taken. Board ids still persist.
+    - **F-03:** staging names carry a random UUID; a taken final name is
+      never reported as this save.
+    - **F-04:** folders are `<source-slug>-<source-hash>/`, listings and the
+      same-text check read every file, and the rail shows the newest twenty
+      with "Showing the newest 20 of N" and Show older.
+    - **N-01:** a Delete makes the rail ask again on return. **N-02:** the
+      earlier-rule reason comes first at Bring.
+    - **Verification:** 474 suites / 6,533 tests / 59
+      snapshots; lint identical per file and rule; typecheck and build pass;
+      `webview.js` `59b1f612…`, `extension.js` `edf2ea48…`; evidence 27
+      captures, `errors.txt` empty, 9 errors against `bc1fdda`'s bundle (all
+      `history`).

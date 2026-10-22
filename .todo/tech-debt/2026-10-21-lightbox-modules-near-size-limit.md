@@ -1,7 +1,7 @@
 # Several Lightbox Modules Sit Just Under the 500-Line Limit
 
 **Date Identified**: 2026-10-21 (Lightbox Slice 4F)
-**Reviewed**: 2026-10-22 (Lightbox Slice 5A)
+**Reviewed**: 2026-10-22 (Lightbox Slice 5A, and its PR #163 corrections)
 **Status**: Identified
 **Priority**: Medium
 **Estimated Effort**: Small to Medium (one split per module, each behind its existing tests)
@@ -52,6 +52,14 @@ Slice 5B will add Compare's routes to `index.ts` and its file reads to the
 store: split the store's listing and summaries out first, and move the
 Lightbox unions out of the barrel's `index.ts` into the Lightbox message
 modules.
+
+**After PR #163's corrections (2026-10-22).** The store's split is done:
+its folder naming, reads, listings and summaries moved to
+`LightboxBoardFiles.ts` (227 lines), and `LightboxBoardStore.ts` is 349
+(was 490) with private staging and its commit retry. The adoption
+generation added `adoptionOf` to `LightboxService.ts` (484, +9) and one
+line to `LightboxReadingHandler.ts` (484, +1); `LightboxBoardLibrary.ts`
+is 365. The barrel's unions are still to move before 5B.
 
 ## Recommendation
 

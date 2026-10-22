@@ -23,6 +23,10 @@
  *    (`rules.opinionBasis` a synthetic id), and a reload restores it:
  *    `earlier-rule` (the writer-data rule: a saved board only ever loses
  *    standing, never the board).
+ * 9. A fourth workspace boards the chapter and reads it 22 times: 23 files
+ *    of one source, more than one page of the rail. This is `history`
+ *    (PR #163 F-04: every board listed, the rail showing the newest twenty
+ *    and saying so).
  *
  * Not part of the test suite: copy it to packages/core/src/__tests__/ and run
  * `npx jest packages/core/src/__tests__/build-boards.test.ts`, with
@@ -70,9 +74,10 @@ type Message = ExtensionToWebviewMessage;
 const stamped = (messages: Message[]) => messages.map((message) => ({ ...message, timestamp: 1 }));
 const withoutRequest = <T extends { requestId?: unknown }>({ requestId: _requestId, ...payload }: T) => payload;
 
+let presses = 0;
 /** Press Read as the webview does, after asking for its estimate. */
 async function press(tab: LightboxBoardsTab, boardId: string, lensesOff: LightboxLensId[], scope: LightboxRunScope): Promise<void> {
-  const requestId = `estimate-${lensesOff.length}-${scope.mode}`;
+  const requestId = `estimate-${lensesOff.length}-${scope.mode}-${++presses}`;
   await tab.route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff, requestId });
   const estimate = estimateAnswer(tab, requestId);
   await tab.route(MessageType.LIGHTBOX_RUN, { boardId, scope, estimateKey: estimate.estimate?.key, model: estimate.estimate?.model });
@@ -120,7 +125,7 @@ async function answerTo(tab: LightboxBoardsTab, type: MessageType, payload: obje
   };
 }
 
-it('dumps the rail, opened, changed, read-current, session-only and earlier-rule states', async () => {
+it('dumps the rail, opened, changed, read-current, session-only, earlier-rule and history states', async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const host = createLightboxBoardsHost({ now: () => NOW });
   host.writeChapter(CHAPTER_PATH, CHAPTER);
@@ -132,10 +137,11 @@ it('dumps the rail, opened, changed, read-current, session-only and earlier-rule
   await press(tab, 'board-1', ONLY_A_AND_B, { mode: 'all' });
   await press(tab, 'board-1', [], { mode: 'rest' });
   const files = host.savedFiles();
+  // The source's folder: its slug, then a short hash of its key (PR #163 F-04).
   expect(files).toEqual([
-    'drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json',
-    'drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json',
-    'drafts-alice-1-md/2026-10-22T14-07-09-123Z.board.json'
+    'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json',
+    'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json',
+    'drafts-alice-1-md-9b099095/2026-10-22T14-07-09-123Z.board.json'
   ]);
   const [first, second] = files;
 
@@ -199,17 +205,33 @@ it('dumps the rail, opened, changed, read-current, session-only and earlier-rule
   expect(reloaded.service.currentBoard()?.rules.opinionBasis).toBe(EARLIER_BASIS);
   const earlierRule = await scene(reloadedTab, 'board-1', 'earlier-rule');
 
+  // More than a page of one source's boards: the measured board and 22 reads.
+  const many = createLightboxBoardsHost({ now: () => NOW });
+  many.writeChapter(CHAPTER_PATH, CHAPTER);
+  const manyTab = many.openTab();
+  await manyTab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+  await manyTab.shelf(null, 'first-mount');
+  await manyTab.choose(CHAPTER_PATH);
+  await quiet();
+  for (let read = 0; read < 22; read++) {
+    await press(manyTab, 'board-1', [], { mode: 'all' });
+  }
+  expect(many.savedFiles()).toHaveLength(23);
+  const history = await scene(manyTab, 'board-1', 'history');
+  expect(history.shelves['board-1'].shelf.boards).toHaveLength(23);
+
   const states = {
     rail,
     opened: { ...rail, opens: { [first]: { ...opened, estimate: openedEstimate } } },
     changed: { ...rail, opens: { [second]: { ...changed, estimate: changedEstimate } }, refresh: readCurrent },
     sessionOnly,
-    earlierRule
+    earlierRule,
+    history
   };
   fs.writeFileSync(path.join(OUT, 'boards.json'), `${JSON.stringify(states)}\n`);
 
   // The log names files, counts and reasons; never the chapter's words.
-  const log = [host, session, earlier, reloaded].map((each) => `${each.lines.join('\n')}\n`).join('');
+  const log = [host, session, earlier, reloaded, many].map((each) => `${each.lines.join('\n')}\n`).join('');
   for (const paragraph of CHAPTER.split('\n\n')) {
     expect(log.includes(paragraph.slice(0, 40))).toBe(false);
   }

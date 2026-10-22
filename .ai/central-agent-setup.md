@@ -90,7 +90,7 @@ packages/core/src/
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
-│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer) and store (Slice 5A)
+│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163)
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
@@ -816,8 +816,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) on `epic/lightbox` at `3e6a156`):
-- 472 suites / 6,512 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) with PR #163's corrections, on `epic/lightbox` at `3e6a156`):
+- 474 suites / 6,533 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1269,10 +1269,16 @@ records, when it saves, or how a saved one comes back:
   words. A new item kind gives its canonical data there, with a case that
   rewording keeps it and a changed field moves it.
 - **One store, one queue.** `LightboxBoardStore` is built only in
-  `extension.ts`. It writes a new file per save through its queue: staged,
-  a synchronous commit point, then a rename that never overwrites. It never
-  deletes or overwrites a file it cannot read. Availability is read live:
-  one folder saves; none, or several, is session-only.
+  `extension.ts`. It writes a new file per save through its queue: staged
+  under a name with a random UUID (another window's store shares the
+  folder, not the queue), a synchronous commit point, then a rename that
+  never overwrites; a taken final name is never reported as this save. It
+  never deletes or overwrites a file it cannot read. Availability is read
+  live: one folder saves; none, or several, is session-only.
+- **One folder per source, read whole.** `<source-slug>-<source-hash>/`:
+  never a folder by slug alone. `LightboxBoardFiles` lists every board of
+  the source; never cap a listing or a same-text check. The rail pages
+  what it shows and says how many there are.
 - **One library decides.** `LightboxBoardLibrary`, built only in
   `extension.ts`, saves after a run that landed a group and on a source's
   first measured board, opens and restores. Handlers call it; none
@@ -1283,13 +1289,20 @@ records, when it saves, or how a saved one comes back:
   with nothing awaited at the adoption. A restore takes a ticket only when
   no source was chosen this session. Witness each with held promises
   (`LightboxBoardOwnership.test.ts`).
+- **A board id is not an adoption.** Snapshots keep their board's id.
+  Work that awaits captures `LightboxService.adoptionOf` before and checks
+  it after (a press's snapshot holds it beside its estimate key, and the
+  press checks both once its prompts load; a shelf names it, and
+  `describesCurrent` gates its post). Every adoption moves the reload
+  pointer (`LightboxBoardAdoptions.test.ts`).
 - **A snapshot is exactly as saved.** Nothing is measured again; its
   host-side parts are rebuilt from its own saved text. A changed file is
   said in the rail, and Bring is refused with words that point to "Read the
   current text", the existing re-read.
 - **The rail is correlated.** `useLightboxBoards` takes only the pending
-  request's answer, and a pushed save (`requestId: null`) only for the
-  board on screen; it persists nothing. File ids are the host's; the
+  request's answer, and a push (`requestId: null`) only for the board on
+  screen, never an earlier adoption's over a later one's; a Delete makes
+  it ask again on return; it persists nothing. File ids are the host's; the
   webview never names a path.
 - **Logs never carry the writer's text,** nor do tests, fixtures or
   evidence: use *Alice* or made-up names.

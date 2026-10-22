@@ -12,6 +12,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -24,7 +25,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-wzjw0osm-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-phr7qv51-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -49,6 +50,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -61,8 +63,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-y0r03ybe-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-y0r03ybe-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-4hftj39o-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-4hftj39o-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -87,6 +89,7 @@
       "readCurrentText": true
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -99,8 +102,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-iec3t1km-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-iec3t1km-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-obltxwuh-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-obltxwuh-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -119,6 +122,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -131,10 +135,10 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-txwyvx2e-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-txwyvx2e-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-5r627vbc-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-5r627vbc-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-txwyvx2e-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-5r627vbc-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -152,6 +156,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
@@ -164,7 +169,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-jzfa2ksb-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-n6op3obc-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -176,6 +181,7 @@
     "current": [],
     "snapshot": null,
     "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
     "notice": null,
     "caption": null,
     "confirm": null,
@@ -188,7 +194,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-qf3bvvby-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-i1b0c50n-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -212,6 +218,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -224,7 +231,109 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-uod777y6-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-eyerm0f7-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-0t1yx626-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2iqn2lc1-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -242,6 +351,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -254,7 +364,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-5drmj8s0-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-c1tc7jwn-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -279,6 +389,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -291,8 +402,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-zs6sildz-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-zs6sildz-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-lrety8wm-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-lrety8wm-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -317,6 +428,7 @@
       "readCurrentText": true
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -329,8 +441,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-12hlintp-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-12hlintp-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-gfhrzepk-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-gfhrzepk-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -349,6 +461,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -361,10 +474,10 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-qfbmn3ut-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-qfbmn3ut-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ozxun8gh-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-ozxun8gh-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-qfbmn3ut-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ozxun8gh-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -382,6 +495,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
@@ -394,7 +508,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-lk5iik1y-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-w4dwx4qn-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -406,6 +520,7 @@
     "current": [],
     "snapshot": null,
     "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
     "notice": null,
     "caption": null,
     "confirm": null,
@@ -418,7 +533,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-6anvdhkw-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-viruyf2o-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -442,6 +557,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -454,7 +570,109 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-r7pdenm7-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xuld1dvt-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ibvgp6ub-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-sw96orzi-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -472,6 +690,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -484,7 +703,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-q4mnp2g0-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-kvugw07j-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -509,6 +728,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -521,8 +741,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-xknhwjfu-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-xknhwjfu-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-c2s2j3o1-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-c2s2j3o1-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -547,6 +767,7 @@
       "readCurrentText": true
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -559,8 +780,8 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-ix8fa4wf-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-ix8fa4wf-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ouog7f1p-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-ouog7f1p-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
     ],
     "savedStates": 10,
     "savedStateNamesAFile": false
@@ -579,6 +800,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -591,10 +813,10 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-iydlupg9-1\",\"boardId\":null}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-iydlupg9-2\",\"fileId\":\"drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-48cqary6-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-48cqary6-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
       "lightbox_refresh_source {}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-iydlupg9-3\",\"boardId\":\"board-2\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-48cqary6-3\",\"boardId\":\"board-2\"}"
     ],
     "savedStates": 14,
     "savedStateNamesAFile": false
@@ -612,6 +834,7 @@
     ],
     "snapshot": null,
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
@@ -624,7 +847,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-nm9j18x5-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-f5519xzb-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -636,6 +859,7 @@
     "current": [],
     "snapshot": null,
     "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
     "notice": null,
     "caption": null,
     "confirm": null,
@@ -648,7 +872,7 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-2frjhoy5-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ksac6bxi-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false
@@ -672,6 +896,7 @@
       "readCurrentText": false
     },
     "note": null,
+    "page": null,
     "notice": null,
     "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
     "confirm": null,
@@ -684,7 +909,109 @@
     },
     "horizontalOverflow": false,
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-7cm3dl28-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ju9yzak5-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-d5yem1g7-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-mipu2jb9-1\",\"boardId\":null}"
     ],
     "savedStates": 8,
     "savedStateNamesAFile": false

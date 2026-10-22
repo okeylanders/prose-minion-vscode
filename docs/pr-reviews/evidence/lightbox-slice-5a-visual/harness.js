@@ -22,6 +22,8 @@
  * pushed, and `lightbox_set_lenses` with the estimate for the board then on
  * screen. The `earlier-rule` state restores a board saved under another
  * citation rule and reads its Opinion's standing and Bring from the page.
+ * The `history` states hold 23 boards of one source: the rail shows the
+ * newest twenty and says so, and Show older shows the rest (PR #163 F-04).
  * A state whose page does not show what the host's answers say is
  * written to errors.txt, and the harness exits 1: it fails rather than
  * skips.
@@ -144,6 +146,19 @@ const showOpinion = async (tab) => {
   });
   await tab.mouse.move(4, 4);
 };
+// Scroll so the element's bottom sits at the bottom of the window (the end of the Boards section).
+const showEnd = (selector) => async (tab) => {
+  await tab.evaluate((selector) => {
+    const element = document.querySelector(selector);
+    if (!element) { return; }
+    element.scrollIntoView({ block: 'end' });
+    let scroller = element.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight + 1) { scroller = scroller.parentElement; }
+    if (scroller) { scroller.scrollTop += 12; }
+    document.scrollingElement.scrollLeft = 0;
+  }, selector);
+  await tab.mouse.move(4, 4);
+};
 const press = (name) => async (tab) => {
   await tab.getByRole('button', { name, exact: true }).click();
   await tab.waitForTimeout(400);
@@ -155,6 +170,15 @@ const SECOND = 'Oct 22, 2026, 2:06 PM';
 const NEWEST = 'Oct 22, 2026, 2:07 PM';
 const ROW = (when, meta, action) => `${when}${meta}${action}`;
 const EARLIER_RULE = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
+/**
+ * The `history` source's 23 boards, newest first: 22 reads, 2:27 PM back to 2:06 PM, then the measured board at 2:05 PM.
+ * Each read of every lens records $0.07, and a board's cost is what its readings recorded, so the nth read's board shows n × $0.07.
+ */
+const HISTORY = Array.from({ length: 23 }, (_, newest) => {
+  const reads = 22 - newest;
+  const when = `Oct 22, 2026, 2:${String(5 + reads).padStart(2, '0')} PM`;
+  return ROW(when, reads === 0 ? 'Measured only' : `Every lens read · ≈ $${(0.07 * reads).toFixed(2)}`, newest === 0 ? 'On screen' : 'Open');
+});
 /** What the stand-in Opinion's Bring says when its standing allows it: it cites tiles, not quotes. */
 const NO_QUOTE = 'Its observations cite no quote, and a Workshop tile carries at least one.';
 
@@ -241,6 +265,21 @@ const scenarios = [
       snapshot: { tone: 'is-quiet', text: [`Opened from the board saved ${SECOND}.`, 'The file still holds the text it was read from.'], readCurrentText: false },
       opinion: { staleNote: `Stale ${EARLIER_RULE}`, bringDisabled: true, bringNote: EARLIER_RULE }
     }
+  },
+  {
+    // PR #163 F-04: every board is listed; the rail shows the newest twenty and says how many there are.
+    name: 'history', data: states.history, act: showEnd('.pm-lb-boards .pm-lb-caption'),
+    expect: {
+      status: '23 saved',
+      rows: HISTORY.slice(0, 20),
+      current: [0],
+      snapshot: null,
+      page: { note: 'Showing the newest 20 of 23.', more: 'Show 3 older' }
+    }
+  },
+  {
+    name: 'history-older', data: states.history, act: then(press('Show 3 older'), showEnd('.pm-lb-boards .pm-lb-caption')),
+    expect: { status: '23 saved', rows: HISTORY, current: [0], snapshot: null }
   }
 ];
 
@@ -266,6 +305,10 @@ const facts = () => {
       readCurrentText: Boolean([...snapshot.querySelectorAll('button')].find((button) => clean(button.textContent) === 'Read the current text'))
     } : null,
     note: clean(panel?.querySelector('.pm-lb-boards-note')?.textContent),
+    page: (() => {
+      const page = panel?.querySelector('.pm-lb-boards-page');
+      return page ? { note: clean(page.querySelector('[role="status"]')?.textContent), more: clean(page.querySelector('button')?.textContent) } : null;
+    })(),
     notice: clean(panel?.querySelector('.pm-lb-boards-notice')?.textContent),
     caption: clean(panel?.querySelector('.pm-lb-caption')?.textContent),
     confirm: panel?.querySelector('[role="group"]')?.getAttribute('aria-label') ?? null,
@@ -300,6 +343,7 @@ const faults = (seen, expect) => {
   if (!same(seen.current, expect.current)) { out.push(`on screen ${JSON.stringify(seen.current)}, not ${JSON.stringify(expect.current)}`); }
   if (!same(seen.snapshot, expect.snapshot)) { out.push(`snapshot ${JSON.stringify(seen.snapshot)}, not ${JSON.stringify(expect.snapshot)}`); }
   if (expect.note && seen.note !== expect.note) { out.push(`note "${seen.note}", not "${expect.note}"`); }
+  if (!same(seen.page, expect.page ?? null)) { out.push(`page ${JSON.stringify(seen.page)}, not ${JSON.stringify(expect.page ?? null)}`); }
   if (expect.opinion && !same(seen.opinion, expect.opinion)) { out.push(`the Opinion ${JSON.stringify(seen.opinion)}, not ${JSON.stringify(expect.opinion)}`); }
   if (expect.confirm && seen.confirm !== expect.confirm) { out.push(`confirm "${seen.confirm}", not "${expect.confirm}"`); }
   if (expect.focused && seen.focused !== expect.focused) { out.push(`focus on "${seen.focused}", not "${expect.focused}"`); }

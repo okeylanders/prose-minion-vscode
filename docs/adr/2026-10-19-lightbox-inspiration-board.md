@@ -607,7 +607,8 @@ on real chapters before it becomes a contract.
   (filter, selected tile, lens toggles), never the board.
   `boardVersion` stays `0`.
 - **Slice 5.** Boards save to `prose-minion/boards/` as
-  `<source-slug>/<timestamp>.board.json`, with `formatVersion: 1` and a codec
+  `<source-slug>-<source-hash>/<timestamp>.board.json` (the folder name as
+  amended by the addendum below, PR #163 F-04), with `formatVersion: 1` and a codec
   of their own. Like transcript export, they are not part of the Workshop
   session codec. Availability follows `LexicalGravityLensRepository`: no
   folder or several folders means session-only, stated in the UI. The Boards
@@ -622,8 +623,12 @@ restores boards; 5B, a later PR, compares two of them. The format is fixed
 so that 5B needs no change to it.
 
 - **The file.** One file per save, written once and never overwritten:
-  `prose-minion/boards/<source-slug>/<timestamp>.board.json`. The slug holds
-  only `[a-z0-9-]`, and every path is checked for containment. Its shape:
+  `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`.
+  The slug is the source's path in `[a-z0-9-]` only, for the writer to
+  read; the hash is the first eight hex digits of the SHA-256 of the
+  source's portable key (`file:<path>`, or `selection:<path>:<lines>`), so
+  two sources whose paths slug alike never share a folder (PR #163 F-04).
+  Every path is checked for containment. Its shape:
 
   ```jsonc
   { "formatVersion": 1, "kind": "lightbox-board", "savedAt": "<ISO>",
@@ -690,6 +695,19 @@ so that 5B needs no change to it.
   said in the rail) and `DictionaryHistoryStore` for writes: one queue, a
   staged temporary file, a synchronous commit point, then a rename that
   never overwrites. A file it cannot read is never overwritten or deleted.
+  - *Private staging (PR #163 F-03).* The queue is one store's; another
+    window on the same workspace has its own. Each write stages under a
+    name with a random UUID in it, so no other writer writes over its
+    bytes. A final name another writer took between the look and the
+    rename is never reported as this save: the store takes the next free
+    name and runs the commit point again, at most three times, then fails
+    the save.
+  - *Complete listings (PR #163 F-04).* A source's folder is read whole:
+    every board of the source is listed, newest first, and the same-text
+    check reads them all. The rail shows the newest twenty and says how
+    many there are ("Showing the newest 20 of 23", **Show older**). Each
+    file's summary is cached by its size and modification time, so a
+    listing decodes only the files that changed.
 - **When a board saves** (decision 27): when a run ends having landed a
   group, and when a board with no readings is built for a source no saved
   board of which holds that text. No pruning.
@@ -706,14 +724,32 @@ so that 5B needs no change to it.
   them. A fourth handler, `LightboxBoardsHandler`, owns the rail's three
   routes (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
   `LIGHTBOX_DELETE_BOARD`) and answers each with `LIGHTBOX_BOARDS` under its
-  request id; a committed save is pushed with `requestId: null`.
+  request id; each adoption and each committed save is pushed with
+  `requestId: null`. A shelf names the adoption it was built for.
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a
   ticket only when no source request has been made this session.
+  - *Adoptions (PR #163 F-02).* A board keeps its id across saves and
+    snapshots, so an id does not say which snapshot is on screen. The
+    service numbers every adoption (built, opened or restored; readings
+    landing keep it). Work that awaits captures the adoption first and
+    checks it after: a press captures it with its snapshot and checks it
+    once its prompts load, so a press still preparing when another snapshot
+    of its board is opened is refused with nothing sent (the estimate key
+    leaves it out: a snapshot of the same board has the same text and
+    figures, so the estimate shown stays good for a press made after the
+    open); a shelf built across a newer adoption is never posted (a
+    push is dropped, a request's answer is built again); the webview never
+    takes an earlier adoption's shelf over a later one's for the same
+    board.
 - **Reload** (decision 30). A window reload, or reopening the tab after one,
   reopens the last board the writer had on screen from the store. The
   pointer is a workspace memento, the one new port (`LightboxBoardMemory`).
+  It follows every adoption (PR #163 F-01): coming back to a board a file
+  already holds points at that file and writes nothing; a board no file
+  holds yet points at the file its save commits, or the newest file
+  holding its text.
   This amends the consequence below: in a single-folder workspace readings
   come back after a reload; session-only mode keeps the old behaviour.
 
