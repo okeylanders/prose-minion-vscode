@@ -18,12 +18,21 @@
  * The corpus is public-domain text from "Alice's Adventures in Wonderland"
  * (Lewis Carroll, 1865) and lines written for these tests with made-up
  * names, each exercising a case its rule's ADR names.
+ *
+ * The Opinion's citation basis (epic decision 25) reads a board, not a
+ * text, so its corpus is the format-1 fixture's board (`board-v1.json`):
+ * every item the Opinion could cite there, with its basis.
  */
 import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { splitLightboxParagraphs, LIGHTBOX_PARAGRAPH_RULE_ID } from '@/infrastructure/lightbox/LightboxParagraphs';
 import { proseSentenceSpans, PROSE_SENTENCE_RULE_ID } from '@/tools/measure/passageProseStats';
 import { findDialogueSpans, DIALOGUE_SPANS_RULE_ID } from '@/utils/dialogueSpans';
 import { findBeingVerbs, BEING_VERBS_RULE_ID } from '@/tools/measure/beingVerbs';
+import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
+import { lightboxOpinionItems } from '@shared/constants/lightboxOpinionItems';
+import { decodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 
 /** Each case its rule's ADR names, and ordinary prose around them. */
 const CORPUS: readonly string[] = [
@@ -91,7 +100,21 @@ const RECORDED: Readonly<Record<(typeof RULES)[number]['name'], Readonly<Record<
   dialogue: { 'double-quotes-2026-10-19': 'dd8f2b9fdde2205901eadd40e172a21e6552cffc5c03ba719f6f4f7a7804ea13' },
   beingVerbs: { 'contractions-next-word-2026-10-21': '9f6ad8623ded1666a88c0c6bc0e781658f546cddd8ccdea07f3e7825dc135a51' }
 };
+/** Every id the Opinion's basis has had, and its bases' fingerprint over the fixture's board. Append; never edit. */
+const RECORDED_BASIS: Readonly<Record<string, string>> = {
+  'item-data-2026-10-22': '38afd67a4a1aa0fc6aedf0764adf42e67254c372108c6cd8b62261ba270624d7'
+};
 /* eslint-enable @typescript-eslint/naming-convention */
+
+/** Every item the Opinion could cite on the format-1 fixture's board, with its basis. */
+function fixtureBases(): string[][] {
+  const decoded = decodeLightboxBoardFile(fs.readFileSync(path.resolve(__dirname, '../fixtures/board-v1.json'), 'utf8'));
+  const held = decoded.kind === 'board' ? lightboxBoardOfFile(decoded.file) : undefined;
+  if (held?.kind !== 'board') {
+    throw new Error('board-v1.json does not read as a one-source board');
+  }
+  return lightboxOpinionItems(held.board).map((item) => [item.key, item.basis]);
+}
 
 function fingerprint(run: (text: string) => unknown): string {
   return createHash('sha256').update(JSON.stringify(CORPUS.map(run)), 'utf8').digest('hex');
@@ -101,6 +124,15 @@ describe('measurement rule ids (ADR 2026-10-19 D12 addendum)', () => {
   it.each(RULES.map((rule) => [rule.name, rule] as const))('%s: its output is the one recorded for its id', (_name, rule) => {
     expect({ rule: rule.name, id: rule.id, fingerprint: fingerprint(rule.run) })
       .toEqual({ rule: rule.name, id: rule.id, fingerprint: RECORDED[rule.name][rule.id] });
+  });
+
+  it('opinionBasis: its bases over the format-1 fixture are the ones recorded for its id', () => {
+    const bases = fixtureBases();
+    // The headline, the standout and steering figures, the Sections, and every reading tile.
+    expect([bases.length, bases.filter(([key]) => !key.startsWith('lbt-')).length]).toEqual([82, 7]);
+    expect({ id: LIGHTBOX_OPINION_BASIS_RULE_ID, fingerprint: createHash('sha256').update(JSON.stringify(bases), 'utf8').digest('hex') })
+      .toEqual({ id: LIGHTBOX_OPINION_BASIS_RULE_ID, fingerprint: RECORDED_BASIS[LIGHTBOX_OPINION_BASIS_RULE_ID] });
+    expect(LIGHTBOX_OPINION_BASIS_RULE_ID).toMatch(/^[a-z]+(?:-[a-z]+)*-\d{4}-\d{2}-\d{2}$/);
   });
 
   it('gives each rule an id of its own, in lower-case words and a date', () => {
