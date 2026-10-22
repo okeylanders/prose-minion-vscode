@@ -77,6 +77,7 @@ import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/l
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxPlotAnchorRefusal, lightboxPlotPoints, lightboxPlotTravelOrder } from '@/infrastructure/lightbox/LightboxPlotHandoff';
 import { prepareLightboxOpinionHandoff } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
+import { LIGHTBOX_OPINION_EARLIER_RULE, lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
 import { lightboxSteeringPoints, lightboxSteeringQuoteAgain } from '@/infrastructure/lightbox/LightboxSteeringHandoff';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
@@ -132,6 +133,10 @@ export function prepareLightboxTileHandoff(
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.notOnBoard);
   }
   const { group, tile } = located;
+  // An Opinion cited under another basis rule says so first, as its standing does (decision 32; PR #163 N-02).
+  if (tile.kind === 'opinion' && lightboxOpinionStanding(tile, board).earlierRule) {
+    return refuse(LIGHTBOX_OPINION_EARLIER_RULE);
+  }
   if (group.staleLenses?.some((mark) => mark.lens === tile.lens)) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.stale);
   }

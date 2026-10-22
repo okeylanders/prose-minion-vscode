@@ -23,7 +23,7 @@ import type {
 } from '@messages';
 import { lightboxHandOffConcerns, type LightboxHandOffState } from '@hooks/domain/lightbox/lightboxHandoff';
 import { lightboxOpinionBringBlock } from '@hooks/domain/lightbox/lightboxOpinion';
-import { lightboxOpinionDefaultView } from '@shared/constants/lightboxOpinion';
+import { LIGHTBOX_OPINION_EARLIER_RULE, lightboxOpinionDefaultView, lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
 
 export const LIGHTBOX_BRING_LABEL = 'Bring to Workshop';
 /** A spark is an offer phrased as a question; it travels as one. */
@@ -84,9 +84,13 @@ export function lightboxBringView(
   const blocked = tile.kind === 'opinion'
     ? lightboxOpinionBringBlock(board, tile, opinionView ?? lightboxOpinionDefaultView(tile))
     : tile.evidence.length === 0 ? 'It has no quote to carry.' : undefined;
-  const reason = stale
-    ? 'Read against an earlier version of the chapter. Read the lens again before bringing it.'
-    : reading
+  // An Opinion cited under another basis rule says so first, as its standing does (decision 32; PR #163 N-02).
+  const earlierRule = tile.kind === 'opinion' && lightboxOpinionStanding(tile, board).earlierRule;
+  const reason = earlierRule
+    ? LIGHTBOX_OPINION_EARLIER_RULE
+    : stale
+      ? 'Read against an earlier version of the chapter. Read the lens again before bringing it.'
+      : reading
       ? 'This lens is being read again.'
       : blocked ?? (sending
         ? mine ? 'Bringing it to the Workshop…' : 'Something else is on its way to the Workshop.'

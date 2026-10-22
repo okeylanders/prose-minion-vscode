@@ -3,9 +3,10 @@
  * writer-data rule, epic decision 32): a saved board only ever loses
  * standing, never the board. Its Opinion is stale with a host reason, its
  * cited bases are not compared, and its Bring is refused with the same
- * reason, in the host and in the webview. Every other kind behaves as it
- * does now. The control, a board cited under this build's rule, reads its
- * standing normally.
+ * reason, in the host and in the webview, even when the Opinion is also
+ * marked read against an earlier text (PR #163 N-02). Every other kind
+ * behaves as it does now. The control, a board cited under this build's
+ * rule, reads its standing normally.
  *
  * The board is the every-kind board: the production service's measure of
  * ¶1–¶8 of "Alice's Adventures in Wonderland" (1865, public domain), read
@@ -13,8 +14,9 @@
  */
 import type { LightboxBoard, LightboxOpinionTile } from '@messages';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
-import { prepareLightboxTileHandoff } from '@/infrastructure/lightbox/LightboxTileHandoff';
+import { LIGHTBOX_TILE_HANDOFF_REFUSALS, prepareLightboxTileHandoff } from '@/infrastructure/lightbox/LightboxTileHandoff';
 import { lightboxOpinionBringBlock, lightboxOpinionTileView } from '@hooks/domain/lightbox/lightboxOpinion';
+import { lightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
 import { ALICE } from './lightboxOpinionFixtures';
 import { everyKindBoard } from './lightboxSavedBoardFixtures';
 
@@ -63,6 +65,26 @@ describe('an Opinion cited under another basis rule (the writer-data rule)', () 
   it('refuses its Bring with the same reason, in the host and in the webview', () => {
     expect(bring(earlier, opinion.id)).toEqual({ ok: false, reason: REASON });
     expect(lightboxOpinionBringBlock(earlier, opinion, 'enthusiastic')).toBe(REASON);
+  });
+
+  /** `on` with the Opinion marked read against an earlier text, as "Read the current text" carries it. */
+  const textStale = (on: LightboxBoard): LightboxBoard => ({
+    ...on,
+    readings: on.readings.map((group) => (group.group === 'F' ? { ...group, staleLenses: [{ lens: 'opinion', readAgainst: 'f'.repeat(64) }] } : group))
+  });
+
+  it('gives the same reason when the Opinion is also read against an earlier text, in the host and on its Bring (PR #163 N-02)', () => {
+    const both = textStale(earlier);
+    expect(lightboxOpinionStanding(opinion, both)).toMatchObject({ stale: true, readEarlier: true, earlierRule: true, note: REASON });
+    expect(bring(both, opinion.id)).toEqual({ ok: false, reason: REASON });
+    expect(lightboxBringView(both, opinion, null, [])).toMatchObject({ disabled: true, reason: REASON });
+  });
+
+  it('control: under this build\'s rule, an Opinion read against an earlier text gives that reason, as it did', () => {
+    const textOnly = textStale(board);
+    expect(bring(textOnly, opinion.id)).toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.stale });
+    expect(lightboxBringView(textOnly, opinion, null, []).reason)
+      .toBe('Read against an earlier version of the chapter. Read the lens again before bringing it.');
   });
 
   it('leaves every other kind as it is: each other tile brings exactly as it does under this build\'s rule', () => {
