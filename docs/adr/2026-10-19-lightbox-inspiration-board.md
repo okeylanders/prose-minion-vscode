@@ -191,7 +191,7 @@ The renderer sees only a `LightboxBoard`, defined in a new message module
 
 ```ts
 interface LightboxBoard {
-  boardVersion: 0;                    // draft until Slice 5 (see D12)
+  boardVersion: 0;                    // draft until Slice 5 (see D12); 1 from Slice 5A
   boardId: string;                    // host-minted
   source: LightboxSource;             // displayPath, sourceUri?, contentHash,
                                       // wordCount, paragraphCount, capturedAt
@@ -616,6 +616,87 @@ on real chapters before it becomes a contract.
   the fields and motifs that appeared or vanished. When the paragraph count
   changed, the comparison is labeled approximate.
 
+**Addendum to D12 (2026-10-22): saved boards, format 1** (Slice 5A; epic
+decisions 25 and 27–32). Slice 5 is split. 5A saves, opens, deletes and
+restores boards; 5B, a later PR, compares two of them. The format is fixed
+so that 5B needs no change to it.
+
+- **The file.** One file per save, written once and never overwritten:
+  `prose-minion/boards/<source-slug>/<timestamp>.board.json`. The slug holds
+  only `[a-z0-9-]`, and every path is checked for containment. Its shape:
+
+  ```jsonc
+  { "formatVersion": 1, "kind": "lightbox-board", "savedAt": "<ISO>",
+    "board": { "boardId", "rules", "sources": [ { …LightboxSource, "text" } ],
+               "paragraphs": [ { "source": 0, "index", "start", "end", … } ],
+               "ribbon", "measured", "readings" } }
+  ```
+
+  The board is the board on the wire: every tile kind with its host-derived
+  fields, every group with its withheld claims and blocks, frictions, quote
+  checks and stale marks, and every measured layer (the paragraph model with
+  sentence lengths, the ribbon, the numbers with the writer's average as
+  measured, `measured.hapax`, style flags with their paragraphs and ids, the
+  Sections layer, craft steering's breakdown). `boardVersion` becomes 1.
+  Webview preferences are not saved: the Opinion view showing, the filter,
+  the pin, the lens toggles.
+- **Sources are a list.** `sources` holds every source with its own text.
+  Paragraph numbers stay the board's, 1 to N, so no reading changes shape;
+  each paragraph names its source and its offsets into that source's text.
+  A source's paragraphs are the run of board paragraphs that name it. Every
+  board 5A writes has one source; one with more decodes, and this build
+  says it cannot open it yet.
+- **The text is saved,** so a reopened board shows paragraphs, wells,
+  quotes and Bring checks against what was measured, and 5B can compare
+  drafts. It is the writer's own text in the writer's own workspace. The
+  codec checks it against the board's content hash. Logs never carry it.
+- **Rule ids.** The board records which rules measured it, by stable ids
+  defined beside each rule: `paragraphs` (the blank-line splitter),
+  `sentences` (closing marks and speech tags, ADR 2026-10-21), `dialogue`
+  (double quotation marks), `beingVerbs` (contractions and the next-word
+  rule, decision 26) and `opinionBasis` (decision 25). A guard test pins
+  each id to its rule's output on a fixed corpus and fails when the output
+  changes and the id does not. A fresh board carries this build's ids; a
+  saved board keeps its own, so 5B can label a comparison across rules.
+- **The Opinion's basis is data** (decision 25). A citation's basis hashes
+  the cited item's canonical data (its key and kind, quotes with ¶
+  addresses, counts and figures, the reading's own words), never the
+  digest's wording. Rewording the digest leaves every Opinion current.
+- **The codec** (`LightboxBoardCodec`, pure) is separate from the Workshop
+  session codec, as transcript export is. Its keys are exact. Its decoders
+  are typed against the contracts, so a new tile kind or field does not
+  compile until the codec reads it. Invalid tiles and group notes are
+  dropped and counted. The measured layers, the paragraph model, a group's
+  own fields and its stale marks decode whole or the board is invalid: a
+  dropped stale mark would show a stale reading as current. Reasons are
+  host-owned, and an unknown key is counted, never named. There are no
+  migrations; a later format follows ADR 2026-07-30's release rule, with
+  `board-v1.json`, written by this build from public-domain *Alice*, as its
+  authentic fixture.
+- **The store** (`LightboxBoardStore`) follows `LexicalGravityLensRepository`
+  for availability (one folder saves; none, or several, is session-only,
+  said in the rail) and `DictionaryHistoryStore` for writes: one queue, a
+  staged temporary file, a synchronous commit point, then a rename that
+  never overwrites. A file it cannot read is never overwritten or deleted.
+- **When a board saves** (decision 27): when a run ends having landed a
+  group, and when a board with no readings is built for a source no saved
+  board of which holds that text. No pruning.
+- **Open is a snapshot** (decision 29). An opened board shows exactly as
+  saved, against its saved text, under its saved rules; nothing is measured
+  again. When the file's text differs now, a notice offers **Read the
+  current text**, the existing re-read, which carries the readings onto a
+  board built from the file, marked stale (D4). Bring from such a snapshot
+  is refused with a reason that points there.
+- **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
+  takes a ticket before its first await and adopts only under the newest.
+  It never replaces a board a run is reading. Restoring on mount takes a
+  ticket only when no source request has been made this session.
+- **Reload** (decision 30). A window reload, or reopening the tab after one,
+  reopens the last board the writer had on screen from the store. The
+  pointer is a workspace memento, the one new port (`LightboxBoardMemory`).
+  This amends the consequence below: in a single-folder workspace readings
+  come back after a reload; session-only mode keeps the old behaviour.
+
 ### D13. Boundaries
 
 - `packages/core` gains no `vscode` imports. The provider and commands are
@@ -662,7 +743,11 @@ on real chapters before it becomes a contract.
   The board's per-paragraph dialogue lane would disagree with the headline
   figure until that is fixed, so the fix is a prerequisite of Slice 2A.
 - **Readings are lost on a window reload until Slice 5.** That is the price
-  of reviewing the shape before fixing the format.
+  of reviewing the shape before fixing the format. *Amended 2026-10-22
+  (Slice 5A, D12 addendum):* in a single-folder workspace the last board on
+  screen comes back from `prose-minion/boards/` after a reload, readings
+  and all. With no folder, or several, boards are session-only and a reload
+  still loses them, as the rail says.
 
 ## Open questions
 
