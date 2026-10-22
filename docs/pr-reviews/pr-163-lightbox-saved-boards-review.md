@@ -161,3 +161,73 @@ Research probes and generated artifacts remain outside the report-only diff. No 
 The author-recorded decision-25 writer choice, decisions 27–31 coordinator defaults, decision 32 writer-data rule and earlier real-chapter checkpoint narrative are design context, not independently verified user acceptance. This review evaluates the proposed contract and does not choose the writer's answers about changed-file notice placement, saving Spark dismissals, or stopped/failed-run history. Those decisions, a real-chapter writer checkpoint, native checks and Slice 5 readiness remain separate even after code corrections.
 
 No private manuscript, paid/live provider call, user computer, formal GitHub review/comment, merge, deployment or extension publication was used.
+
+## Author response (2026-10-22)
+
+**F-01, F-02, F-03 and F-04: fixed. N-01 and N-02: fixed.** Three commits
+on top of your report's commit `a741f85`, then this response:
+- `9a116948` fixes the four P2 findings and N-01, with their tests;
+- `cfd0f5e1` fixes N-02;
+- `9415caee` records the corrections in the ADR's D12 addendum, the slice
+  plan, the agents guide, the epic and the size note, and re-renders the
+  visual evidence.
+
+Every new behavioural test failed first on an export of your reviewed
+head `bc1fdda`, and every new control passed there. Board ids stay
+persistent. The changed-file notice stays where it was. Nothing above
+this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | Deciding what is on screen is now separate from deciding whether to save. `LightboxBoardLibrary` hears every adoption (built, opened or restored) and, synchronously, from the adoption itself (so under the newest choice), calls `onScreen`. A board a file already holds moves the reload pointer to that file and writes nothing. A built board no file holds saves itself once, and the pointer follows the commit, or the newest file that holds its text. `saveMeasured` is gone; open and restore no longer move the pointer themselves | `LightboxBoardAdoptions.test.ts`: A, B, then unchanged A, then a fresh host over the same file system and memento restores A, with nothing more written; the same with A read first, restored with every group `ok` | `9a116948` |
+| F-02 | Medium / P2 | **Fixed** | `LightboxRetainedBoards` numbers every adoption (`adoption`, ascending per session); readings landing keep it; `LightboxService.adoptionOf(boardId)` reads it. **Press:** the snapshot captures it before the first await, and once the prompts load the handler refuses with "The board changed…" (and asks for a fresh estimate) when it moved. It sits beside the estimate key, not in it: a snapshot of the same board has the same id, text and figures, so the estimate shown stays good for a press made after the open. **Shelf:** `shelf()` captures it before its first await and names it; `LightboxBoardsHandler` checks `describesCurrent` with nothing awaited before the post. A push built across a newer adoption is dropped (that adoption pushes its own); a request's answer is built again, at most three times, then logged and left unanswered. `LIGHTBOX_BOARDS` carries `adoption`, and `useLightboxBoards` never takes a lower adoption's shelf for the same board id. Every adoption now pushes a shelf | `LightboxBoardAdoptions.test.ts`: your press sequence for a lens and for the Opinion (FIRST opened while READ's press prepares: no provider call, every group `not-run`, refused); your late-push sequence (FIRST's `changed` notice stands, no READ snapshot posted after it); a request answered across the open, rebuilt for FIRST. Controls: another source chosen (refused, as before); nothing adopted (the press starts, the push is posted); the open landed first (the press at the earlier estimate starts); another board on screen (the push names its own board). `useLightboxBoards.test.ts`: a lower adoption's push is not taken; the same adoption's save, a later adoption's push, and another board's push behave as before | `9a116948` |
+| F-03 | Medium / P2 | **Fixed** | A staged file is `.<timestamp>.board.json.tmp-<UUID>` (`randomUUID`; `mintStagingId` injects ids in tests), so no other writer stages under its name. The `FileSystem` port is unchanged: it has no exclusive create, and widening it for every adapter was not needed once the name is the writer's own. The final rename keeps `overwrite: false`. When it fails while the final name now exists and the staged file is still there, the store takes the next free name and runs the commit point again, three attempts in all; otherwise, or after the third, the save fails and its staged file is removed. A save reports only the file its own rename put in place | `LightboxBoardStoreHistory.test.ts`: two stores over one `MemoryFileSystem`, the same millisecond, each commit held until both have staged and chosen the same final name. Two UUID staging names; both saves succeed with different ids; each file decodes to its own writer's board; nothing staged is left. Guard: a name taken at every attempt fails the save and leaves the other writer's files | `9a116948` |
+| F-04 | Medium / P2 | **Fixed** | A source's folder is `<source-slug>-<source-hash>`: the slug as before, then the first eight hex digits of the SHA-256 of the source's key, so paths that slug alike never share a folder. `LightboxBoardFiles` (split from the store, which is now 349 lines) reads the folder whole: no cap, the key filter kept, summaries cached by size and modification time. The same-text check reads every file. The rail shows the newest twenty, then "Showing the newest 20 of N." and **Show K older**; the page always reaches the board on screen; the head counts every board | `LightboxBoardStoreHistory.test.ts`: 206 boards of one source listed whole, newest first, the oldest's text found (held, nothing written); colliding slugs with 205 of the neighbour's boards and an unreadable file in its folder: separate folders, each listing and count its own; control: another source's file copied into the folder is still not listed. `lightboxBoardsView.test.ts` and `LightboxBoardsPanel.test.tsx`: the page note, Show older, reaching the board on screen. Evidence: `history`, `history-older` | `9a116948` |
+| N-01 | Low / P3 · nonblocking | **Fixed** | `deleteBoard` forgets which board the held shelf answered for, so coming back to that board asks again; the late delete answer is still ignored as not pending | `useLightboxBoards.test.ts`: Delete A's row, to B, back to A before any answer: a fresh request for A, and its answer shows no deleted row | `9a116948` |
+| N-02 | Low / P3 · nonblocking | **Fixed** | `prepareLightboxTileHandoff` and `lightboxBringView` check the earlier rule first, as the standing does, so both Bring surfaces give decision 32's reason when both conditions apply. Every path still refuses | `LightboxOpinionEarlierRule.test.ts`: both marks give the rule's reason in the standing, the host and the webview; control: a text mark alone keeps its own reason | `cfd0f5e1` |
+
+### How each new test was checked against `bc1fdda`
+
+The seven test files ran on an export of `bc1fdda`, with this worktree's
+`node_modules` and ts-jest diagnostics off, so the new payload field and
+options compile away and each failure is behavioural. 15 failed and 25
+passed:
+- **F-01: both sequences failed.** The pointer named B's file
+  (`drafts-alice-2-md/…`), as you found.
+- **F-02: five failed.** The lens press made one more provider call (8,
+  not 7); the Opinion press changed FIRST's F group from `not-run`. The
+  late push was posted with READ's `same` snapshot after FIRST's
+  `changed` one; the request was answered with READ's snapshot. The
+  hook's case failed: it took the lower adoption's push.
+- **F-03: two failed.** Both stores staged at one path (one staging name,
+  not two). The guard failed too: `bc1fdda` failed the save at the first
+  taken name, which is safe, but did not try the next.
+- **F-04: four failed.** 200 of 206 listed; the colliding sources shared
+  `drafts-alice-1-md`; the view and panel had no page.
+- **N-01 and N-02: one each failed.**
+- **Controls, seven, passed:** the five in `LightboxBoardAdoptions`, the
+  copied-file listing, and N-02's text-mark reason.
+
+### Evidence
+
+The host states were rebuilt (file ids in the hashed folder, adoptions on
+the shelves; with both mapped back, the earlier states' messages,
+estimates included, match `bc1fdda`'s). Two states are new, `history` and
+`history-older`, at 1440, 1000 and 500 px. Rendered from `webview.js`
+`59b1f612…`: 27 captures, `errors.txt` empty, the 21 earlier captures
+byte-identical. Against `bc1fdda`'s bundle the harness writes 9 errors,
+all `history`.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **474 suites / 6,533 tests / 59 snapshots** passed |
+| Lint | 0 errors / 1,133 warnings, identical per file, rule and severity to `3e6a156` |
+| Typecheck | All three projects pass |
+| Build | `npm ci` into a real `node_modules`; `npm run build` with `verify:bundle` passes (the three existing size warnings). `webview.js` SHA-256 `59b1f612774f0d55fae820d1442e733670118dae445c9cb2320702f382150194`, `extension.js` `edf2ea482c5d9d6669dc4e8c4775be96865492b882f40d832d11771f74b41754`, the same on a second build |
+| `git diff --check` | Clean |
+
+No live or billable call was made. The fixtures are public-domain *Alice*.
