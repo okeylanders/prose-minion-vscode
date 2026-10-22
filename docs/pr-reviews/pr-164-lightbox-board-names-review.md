@@ -158,3 +158,107 @@ Only public-domain Alice text and synthetic names/files/models were used. No pri
 ## Recommendation
 
 Correct F-01 through F-04 and rerun their discriminating sequences with the listed controls, particularly recovery versus active ownership, a sequential two-window distinct-Spark update, and rename acknowledgment during an untouched reopened edit. Keep N-01/N-02 visible as nonblocking corrections or explicitly reconciled contracts. Preserve the #163 guards, exact-file naming semantics, format-1 fixtures and canonical citation stability while doing so.
+
+## Author response (2026-10-22)
+
+**F-01, F-02, F-03 and F-04: fixed. N-01 and N-02: fixed.** The 500 px
+clipping you noted is fixed as well. It is not new in this slice: the
+same button clipped at `3e5c3a1`. Four commits sit on top of your
+report's commit `815fc05`, then this response:
+- `32a45938` fixes F-01, F-02 and F-03, with their tests;
+- `3532f949` fixes F-04, N-01 and N-02, and the clipping;
+- `53664779` makes the evidence harness fail on a clipped button,
+  and re-renders the captures;
+- the commit that adds this response records the corrections in the
+  slice plan, the ADR's D12 addendum, the agents guide and the epic.
+
+Each sequence you gave is now a regression test. It fails on an export
+of your reviewed head `ada5717`, and each control you named passes there
+(details below). Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | **Liveness.** A claim's name now records when it was taken: `.<saved name>.claim-<epoch ms>-<UUID>` (new `LightboxBoardClaims`, built only by the store). A claim younger than the lease (`LIGHTBOX_BOARD_CLAIM_LEASE_MS`, 30 s) is live. No other window puts it back, removes it, or lists the board under it, and the file is `busy` for a read, a rewrite and a delete.<br>**Settling.** It happens when a listing finds claims, or when a read, rewrite or delete finds its file gone. With the saved name empty and no live claim, the newest abandoned claim goes back, never over anything. Beside a standing file, an abandoned claim is a committed rewrite's leftover: it is removed, never put back.<br>**Delete takes the claim lock too.** It claims the file as a rewrite does, removes every other claim of that name (young or old), then removes its own. A file another writer has claimed answers `busy` and is not deleted. A delete that cannot remove its claim puts the board back at once and reports `failed`.<br>**A stalled rewrite** checks its claim is still there before its commit point. A claim taken back after the lease therefore commits nothing.<br>**Residual race.** It needs a stall past the lease *and* another window's put-back and delete inside the stalled writer's final rename. It is recorded in the slice notes, not built against: rename and delete give no stronger lock | `LightboxBoardClaims.test.ts`:<br>• **Sequence A:** held at the final rename; the other window's listing does not steal the live claim; its delete is `busy`; the rewrite commits; one board stands, renamed<br>• **Sequence B:** claim clean-up made to fail; a fresh window deletes, both past the lease and at once; then no listing or read brings either version back<br>**Your controls:** clean-up then delete; an abandoned pre-commit claim recovered (by a listing, by a read, the newest of several); a failed commit puts the original back; a claim held past the lease and put back blocks the pending commit<br>**Added controls:** one put back while its bytes were checked is read again and committed; a live claim is never listed and is `busy`; an abandoned leftover beside its file is removed while a live one is left | `32a45938` |
+| F-02 | Medium / P2 | **Fixed** | `LightboxBoardStore.read` settles a missing file's claims before it answers:<br>• an abandoned claim is put back and read;<br>• a live one is `busy` (a new `LightboxBoardRead` kind, store only);<br>• `missing` now means neither file nor claim.<br>The restore clears the pointer only on `missing`, so `busy` keeps it, logs, and fails softly; a later session restores the board. Recovery happens in the store's read for that one file, under the same liveness rule, so it does not depend on a listing. The newer-source guard is unchanged: the ticket is taken before the read, and the adoption is checked after it | `LightboxBoardRestoreClaims.test.ts`:<br>• **Your sequence:** the pointed file moved under an abandoned claim; a fresh host restores it, keeps the pointer, and the file is back<br>• a live claim restores nothing and leaves the pointer and the claim; a session past the lease restores it<br>• a source chosen while the restore's read puts the board back keeps the screen<br>**Control:** neither file nor claim still clears the pointer (`LightboxSparkSaves.test.ts`) | `32a45938` |
+| F-03 | Medium / P2 | **Fixed** | `keepSparks(boardId)` became `keepSpark(boardId, tileId)`. At the rewrite's turn, the file takes *that* spark's mark as the board has it, through the Spark lane's own `setLightboxSparkDismissed` over the file's readings. A spark set aside takes the order after the file's highest, and no other spark in the file changes. `carryLightboxSparkMarks` is removed. Same-spark actions stay last-wins. The queued-save target and source isolation are unchanged | `LightboxSparkSaves.test.ts`:<br>• **Your sequence:** two hosts on one saved board; A sets spark 1 aside; B, not reopened, sets spark 2 aside; the file holds both, orders 1 and 2<br>**Your controls:**<br>• B opened after A's mark (both, 1 and 2);<br>• set aside then Undo in one host (existing);<br>• a spark set aside behind a held rename and a source switch marks the original board's file, which keeps the name<br>**Added:** B's Undo of A's spark brings it back (last-wins) | `32a45938` |
+| F-04 | Medium / P2 | **Fixed** | `LightboxBoardNameField` tracks whether the writer has typed. Until then it sends nothing, and the draft follows the `initial` prop (still selected), so an answer that lands while the field is open shows in it. Once the writer has typed, Enter and leaving send the edit when it differs from the name standing now. Enter/blur dedup, Escape and focus return are unchanged | `LightboxBoardsPanel.test.tsx`, for the head and a row:<br>• **Your sequence:** A to B with Enter; reopen while the shelf says A; the answer B lands; leave. One request, and the field showed B<br>• an edit typed before the answer is kept and sent once<br>**Control:** reopened after the answer, it shows B, and renaming back to A is sent once | `3532f949` |
+| N-01 | Low / P3 · nonblocking | **Fixed** (keep the draft) | Leaving with a name the rule refuses keeps the field open with the writer's words, sets `aria-invalid`, and shows the rule's reason, as Enter does. Escape then cancels and returns focus. The contract text already said this | `LightboxBoardsPanel.test.tsx`: a tab in the name, then leave: nothing sent, the field open with its words and the reason; Escape cancels | `3532f949` |
+| N-02 | Low / P3 · nonblocking | **Fixed** | `lightboxModelsNote` deduplicates the whole provider-less name, then cuts each for show | `lightboxBoardsView.test.ts`: two names sharing their first 31 characters plus two more read "and 2 more"; the same name from two providers is still one | `3532f949` |
+| 500 px clipping | (noted, not promoted) | **Fixed** (it predates this slice) | Before fixing, I checked `3e5c3a1`. Rendering the review's changed-board state against the `3e5c3a1` bundle at 500 px, "Read the rest" ends at x = 522 in a 500 px page, exactly as at `ada5717`. A press's button now wraps its cost under its label (`board.css`: `max-width: 100%`, wrapping, a little vertical padding inside the old minimum height). At 1000 and 1440 px nothing moves | The evidence harness now records each button that runs past the box that clips it, and fails on any. Against the `ada5717` bundle it writes 2 errors (`changed-board@500`, `changed-rail@500`); at this head it writes none | `3532f949`, `53664779` |
+
+### What changes in the PR body's claims
+
+- **The rewrite and its claim.** A claim's name carries the time it was
+  taken. A claim younger than 30 s is live and untouchable. Older ones are
+  settled: put back when the saved name is empty, removed beside a
+  standing file. A rewrite checks its claim before its commit point.
+- **Busy.** `busy` now also answers a read (Open, restore) and a delete
+  while another window holds the file. Open says "That saved board is
+  being changed in another window. Try again in a moment." A restore keeps
+  its pointer.
+- **Delete.** A delete claims the file first and removes every earlier
+  version a rewrite left beside it, so a deleted board never comes back.
+  A delete of a board left mid-rewrite (abandoned) deletes it whole.
+- **Sparks.** "Not for me" and Undo write only the spark acted on.
+- **A window closed mid-rewrite** hides that board for up to 30 s. A
+  reload in that time does not restore it, but keeps the pointer, so the
+  next session brings it back.
+
+### How each new test was checked against `ada5717`
+
+The new and changed test files ran on an export of `ada5717`, with this
+worktree's `node_modules`, ts-jest diagnostics off, a one-line stand-in for
+the lease constant, and a claim matcher that also accepts `ada5717`'s claim
+names. That way each failure is behavioural. 79 tests: 18 failed and 61
+passed.
+
+- **Fail there, as they should (desired behaviour):**
+  - **F-01:** sequence A (the live claim stolen, the delete reported, the
+    board back); sequence B and its young variant (the old bytes
+    restored); a live claim treated as abandoned (put back, listed, not
+    busy); an abandoned leftover beside its file not removed; a read that
+    does not recover; the newest of several claims; a delete of a board
+    left mid-rewrite (`busy` at `ada5717`); a claim put back while its
+    bytes were checked (its release logged a stuck claim that another
+    window had already put back).
+  - **F-02:** all three restore tests.
+  - **F-03:** the two-window sequence.
+  - **F-04:** the head and the row.
+  - **N-01:** the refused name on leaving.
+  - **N-02:** the model count.
+  - **Not a behaviour change:** the atomic-rewrite test also fails there,
+    because it pins the new claim name.
+- **Pass there (your controls, and mine):**
+  - **F-01:** an abandoned pre-commit claim recovered by a listing; a
+    rewrite that cleaned up, then a delete; a failed commit puts the
+    original back; a claim held past the lease and put back blocks the
+    pending commit; a claim name with no time is left alone.
+  - **F-02:** a file with neither name nor claim forgets the pointer.
+  - **F-03:** opened after the first mark; one spark's Undo last-wins; a
+    spark behind a rename and a source switch.
+  - **F-04:** an edit typed before the answer is kept; reopened after the
+    answer and renamed back.
+  - **Unchanged:** every other rewrite, rename, panel and view test.
+
+### Verification at this head
+
+After `npm ci` into a real `node_modules`, at `3532f949` (the code, unchanged since):
+- **`npx jest`:** 481 suites / 6,643 tests / 59 snapshots. At `ada5717`
+  it was 479 / 6,617 / 59; at `3e5c3a1`, 474 / 6,541 / 59.
+- **`npm run lint`:** 0 errors / 1,133 warnings, identical to `3e5c3a1`
+  per file, rule and severity.
+- **`npm run typecheck`:** passes.
+- **`npm run build` with `verify:bundle`, twice:** passes, with the same
+  hashes both times: `webview.js`
+  `66c1f405b6ff52a41f5780771482b3383f21bf84479c3d5a47c0f800b103cd35`,
+  `extension.js`
+  `b72fa49032476d85f838dc1f9002a1ceb082b1117730c2b8a23690797e7d0c39`.
+- **`git diff --check 815fc05 HEAD`:** clean. Against `3e5c3a1` it flags
+  only the six Markdown hard line breaks in your report's header, which
+  I left as written.
+- **Evidence:** 18 captures, `errors.txt` empty; the states, rebuilt, are
+  byte-identical.
+
+No live or billable call was made.

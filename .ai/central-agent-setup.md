@@ -90,7 +90,7 @@ packages/core/src/
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
-│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), and its rewrites in place under a claim (Slice 5A.1)
+│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164)
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
-- 479 suites / 6,617 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) with PR #164's corrections (claims live or abandoned by age, deletes that claim, restores that settle a claimed file, a spark's write scoped to its tile, the name field's own edits), on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
+- 481 suites / 6,643 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1310,8 +1310,19 @@ records, when it saves, or how a saved one comes back:
   by an atomic rename that never overwrites, then committed. Never rewrite
   a saved file another way: a plain overwrite can bring back a board
   another window deleted. A new in-place change joins `LightboxBoardEdits`,
-  finds its file at the rewrite's turn in the queue, and never writes a
-  file that does not read whole.
+  finds its file at the rewrite's turn in the queue, changes only what the
+  writer acted on (one spark's mark, not the board's every mark: PR #164
+  F-03), and never writes a file that does not read whole.
+- **Claims are live or abandoned by age (PR #164 F-01, F-02).**
+  `LightboxBoardClaims` names a claim with the time it was taken; younger
+  than `LIGHTBOX_BOARD_CLAIM_LEASE_MS` it is live and no other window
+  touches it. Abandoned claims are settled when a listing finds claims or
+  a read, rewrite or delete finds its file gone: put back when the saved
+  name is empty, removed (never put back) beside a standing file. A delete
+  claims the file too and retires every other claim of it, so a deleted
+  board never comes back. `missing` means neither file nor claim; a live
+  claim is `busy`, and a restore keeps its pointer. Never move, delete or
+  put back a claim except through `LightboxBoardClaims`.
 - **One notice, two places.** The changed-file notice above the board is
   `lightboxChangedFileNotice` over the rail's own shelf; never compute it
   another way.

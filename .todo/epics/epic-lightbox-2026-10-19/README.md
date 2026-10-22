@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) is built on `epic/lightbox-slice-5a1-board-names`, awaiting review. 5B (Compare) follows it.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review. 5B (Compare) follows it.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -91,7 +91,7 @@ carried into the Workshop.
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Merged (PR #160) |
 | 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Merged (PR #162, at `3e6a156`) |
 | 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Merged (PR #163, at `3e5c3a1`) |
-| 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | Built, awaiting review (`epic/lightbox-slice-5a1-board-names`) |
+| 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | PR #164: review corrections made, awaiting re-review (`epic/lightbox-slice-5a1-board-names`) |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1512,3 +1512,32 @@ lens, and adds its items to 4D's digest.
     evidence in `docs/pr-reviews/evidence/lightbox-slice-5a1-visual/`, 18
     captures, `errors.txt` empty, 51 errors against the base bundle. No
     live or billable call.
+  - **PR #164's review** (request changes: four P2, two P3), all six
+    fixed. Each of the review's sequences fails on `ada5717`, and each of
+    its controls passes there; see the
+    [author response](../../../docs/pr-reviews/pr-164-lightbox-board-names-review.md#author-response-2026-10-22).
+    - **F-01:** claims are live or abandoned by age. A claim's name records
+      when it was taken; younger than the 30-second lease, no other window
+      touches it, and the file is busy. Abandoned claims are put back when
+      the saved name is empty and removed beside a standing file. A delete
+      claims the file and retires every earlier version, so a delete is
+      never undone. A rewrite checks its claim before committing. The one
+      race left (a stall past the lease, with another window's put-back
+      and delete inside its last rename) is recorded in the slice notes.
+    - **F-02:** the store's read settles a gone file's claims; a restore
+      keeps its pointer while another window holds the file, and restores
+      a board left mid-rewrite.
+    - **F-03:** a spark's file write is that spark's alone (the order after
+      the file's highest), so two windows' marks on different sparks stand.
+    - **F-04:** the name field sends only an edit the writer made; an
+      answer that lands while it is open shows in it. **N-01:** a refused
+      name on leaving keeps the field open with its reason. **N-02:** the
+      model line counts whole names.
+    - **The 500 px clipping** the review noted predates this slice (it
+      clipped at `3e5c3a1`); a press's button now wraps its cost, and the
+      evidence harness fails on any clipped button.
+    - **Verification:** 481 suites / 6,643 tests / 59 snapshots; lint
+      identical per file and rule; typecheck and build with
+      `verify:bundle` pass, twice; `webview.js` `66c1f405…`,
+      `extension.js` `b72fa490…`; evidence re-rendered, 18 captures,
+      `errors.txt` empty, states byte-identical. No live or billable call.

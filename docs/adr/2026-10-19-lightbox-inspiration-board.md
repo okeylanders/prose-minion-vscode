@@ -738,9 +738,21 @@ it.
     takes the saved name, never over anything. The `FileSystem` port's
     `rename` allows `overwrite: true`, but a plain overwrite could bring a
     deleted board back; the claim cannot. The last rewrite to commit wins,
-    each reports only bytes it wrote, and a rewrite or delete that finds the
-    file claimed by another window says it is busy. A claim left by a window
-    that closed mid-rewrite is put back when the folder is next listed.
+    each reports only bytes it wrote, and a rewrite, delete or read that
+    finds the file claimed by another window says it is busy.
+  - *Claims and deletes (PR #164 F-01, F-02).* A claim's name records when
+    it was taken. Younger than a lease of 30 seconds, it is live and no
+    other window touches it; older, it was abandoned. A listing that finds
+    claims, and a read, rewrite or delete that finds its file gone, settle
+    them: an abandoned claim with its saved name empty goes back under it
+    (the newest, never over anything); one beside a standing file is a
+    committed rewrite's leftover and is removed, never put back. A rewrite
+    checks its claim is still there before its commit point. A delete
+    claims the file as a rewrite does, removes every other claim of that
+    name, young or old, then its own, so no earlier version comes back
+    after it. The one race left needs a writer stalled past the lease and
+    another window's put-back and delete inside its final rename; a file
+    system with only rename and delete offers no stronger lock.
   - *Complete listings (PR #163 F-04).* A source's folder is read whole:
     every board of the source is listed, newest first, and the same-text
     check reads them all. The rail shows the newest twenty and says how
@@ -752,8 +764,9 @@ it.
   board of which holds that text. No pruning. The writer confirmed that a
   stopped or partial run saves (decision 36, 2026-10-22). A spark set aside,
   or brought back, saves at once (decision 35): the file that holds the
-  board on screen takes the board's marks in place, and no new file is
-  written; a board no file holds yet takes them with its next save.
+  board on screen takes that spark's mark in place, and no other (PR #164
+  F-03), and no new file is written; a board no file holds yet takes its
+  marks with its next save.
 - **Open is a snapshot** (decision 29). An opened board shows exactly as
   saved, against its saved text, under its saved rules; nothing is measured
   again. When the file's text differs now, a notice at the head of the
@@ -780,7 +793,8 @@ it.
   that read it, from the groups' provider-reported `model`, shortened and
   once each; the section's head names the board on screen ("Unnamed board"
   otherwise) with Name or Rename. A name is edited in place: Enter saves,
-  Escape cancels, focus returns to the action.
+  Escape cancels, focus returns to the action; only an edit the writer made
+  is sent (PR #164 F-04).
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a
@@ -813,7 +827,10 @@ it.
   It follows every adoption (PR #163 F-01): coming back to a board a file
   already holds points at that file and writes nothing; a board no file
   holds yet points at the file its save commits, or the newest file
-  holding its text.
+  holding its text. A restore forgets the pointer only when neither its
+  file nor a claim on it is there; a board left under an abandoned claim
+  is put back and restored, and one another window holds now keeps the
+  pointer for a later session (Slice 5A.1; PR #164 F-02).
   This amends the consequence below: in a single-folder workspace readings
   come back after a reload; session-only mode keeps the old behaviour.
 

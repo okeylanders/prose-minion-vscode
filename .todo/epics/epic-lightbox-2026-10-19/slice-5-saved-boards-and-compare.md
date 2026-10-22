@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D12 and its addendum of 2026-10-22
 **Writer decisions:** 5, 14, 25, and 27–36 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) is built on `epic/lightbox-slice-5a1-board-names`, awaiting review; see [its section](#slice-5a1-board-names-and-the-writers-calls). **5B** (Compare) follows them and needs no format change.
+**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review; see [its section](#slice-5a1-board-names-and-the-writers-calls). **5B** (Compare) follows them and needs no format change.
 
 ## Before starting
 
@@ -412,9 +412,10 @@ joins it without a new format number.
    they appear and go together and obey the shelf's ordering guards.
 3. **A spark set aside saves at once (decision 35).** "Not for me", and
    its Undo, rewrite the file that holds the board on screen in place,
-   through the rename's rewrite: no new timestamped file, so no new row. A
-   board no file holds yet, or one kept for the session only, takes the
-   mark with its next save, as before.
+   through the rename's rewrite: no new timestamped file, so no new row.
+   Only the spark acted on changes in the file (PR #164 F-03). A board no
+   file holds yet, or one kept for the session only, takes the mark with
+   its next save, as before.
 4. **Stopped and partial runs keep saving (decision 36).** The writer
    confirmed decision 27's default: a run that ends with a group back
    saves, finished, stopped, or with a group failed. No code change.
@@ -459,22 +460,42 @@ joins it without a new format number.
   2. Apply the update to what was read, decode what would be written, and
      stage it under a hidden name private to this write (a random UUID).
   3. **Claim** the file: rename it, never over anything, to a hidden name
-     of its own. A rename is atomic, so once the claim holds no other
-     writer can delete or rewrite the file; a file another writer deleted
-     first cannot be claimed, so it stays deleted (`missing`).
+     of its own that records when it was taken,
+     `.<saved name>.claim-<epoch ms>-<UUID>` (`LightboxBoardClaims.ts`). A
+     rename is atomic, so once the claim holds no other writer can delete
+     or rewrite the file; a file another writer deleted first cannot be
+     claimed, so it stays deleted (`missing`).
   4. The claimed bytes must be the bytes read; if another writer rewrote
      the file in between, the claim is put back and the file read again
      (at most three times), so their change is kept.
-  5. The commit point, then the staged file takes the saved name, never
-     over anything; the claim is dropped. The file id and `savedAt` stay.
+  5. The claim must still be there (PR #164 F-01: one held past the lease
+     may have been put back by another window, and is not written over).
+     Then the commit point, then the staged file takes the saved name,
+     never over anything; the claim is dropped. The file id and `savedAt`
+     stay.
   - **Concurrency rule: the last rewrite to commit wins**, and each reports
-    only bytes it wrote. A rewrite (or a delete) that finds the file
-    claimed by another window says it is busy, and changes nothing; a
-    delete never reports deleting a board that is only mid-rewrite.
-  - **A claim left behind** (a window closed mid-rewrite) is put back
-    under its saved name when the folder is next listed, never over
-    anything. A window still mid-rewrite then finds its name taken and
-    fails, reporting nothing it did not write.
+    only bytes it wrote. A rewrite, a delete or a read that finds the file
+    under another window's live claim says it is busy, and changes
+    nothing; a delete never reports deleting a board that is only
+    mid-rewrite.
+  - **Claims are live or abandoned by age** (PR #164 F-01, F-02). A claim
+    younger than the lease, `LIGHTBOX_BOARD_CLAIM_LEASE_MS` (30 seconds),
+    is live: no other window puts it back, removes it, or lists the board
+    under it. An older one was abandoned (its window closed mid-write). A
+    listing that finds claims, and a read, rewrite or delete that finds its
+    file gone, settle them: with the saved name empty and no live claim,
+    the newest abandoned claim goes back under it, never over anything;
+    beside a standing file, an abandoned claim is a committed rewrite's
+    leftover (the bytes before it) and is removed, never put back.
+  - **A delete claims the file too** (PR #164 F-01), as a rewrite does, so
+    no rewrite claims it meanwhile; it then removes every other claim of
+    that saved name, young or old (a committed rewrite's leftover whose
+    clean-up failed), and last its own. No earlier version can come back
+    after a delete. A delete that cannot remove its claim puts the board
+    back at once and says it failed.
+  - **A read that finds its file gone** settles the claims first (PR #164
+    F-02): a board left under an abandoned claim is put back and read; one
+    under a live claim is `busy`; `missing` is neither file nor claim.
 - **`LightboxBoardEdits`** (built by the library, reached only through it)
   names boards and keeps spark marks. The file that holds the board on
   screen, and its name, are found when the rewrite's turn in the queue
@@ -489,12 +510,18 @@ joins it without a new format number.
   same adoption and observation guards as every shelf. Naming the board on
   screen also pushes the shelf. The shelf carries the board's `name` and
   each summary its `name` and `models`.
-- **Sparks:** `LightboxReadingHandler` asks the library to keep the marks
-  once a set-aside or Undo has changed the board;
-  `carryLightboxSparkMarks` copies the board's marks onto the sparks the
-  file holds, orders included. The file is found at the rewrite's turn, so
-  a spark set aside while a run's save is still being written marks the
-  file that save writes, even for a board no file held before it.
+- **Sparks:** `LightboxReadingHandler` asks the library to keep the one
+  spark's mark (`keepSpark(boardId, tileId)`) once a set-aside or Undo has
+  changed the board. At the rewrite's turn the file takes that spark's
+  mark as the board has it, through the Spark lane's own
+  `setLightboxSparkDismissed` over the file's readings: a spark set aside
+  takes the order after the file's highest, and no other spark in the
+  file changes (PR #164 F-03). So a second window, whose board never saw
+  the first window's mark on another spark, never takes it back; one
+  spark's set-aside and Undo stay last-wins. The file is found at the
+  rewrite's turn, so a spark set aside while a run's save is still being
+  written marks the file that save writes, even for a board no file held
+  before it.
 - **The message barrel** was split first, in its own commit:
   `messages/lightboxBarrel.ts` holds the Lightbox re-exports and its parts
   of the two routing unions; `index.ts` re-exports it (496 → 413 lines).
@@ -513,7 +540,18 @@ joins it without a new format number.
   `LightboxBoardNameField` edits in place, with the keyboard of the
   Workshop's session-browser rename: Enter saves, Escape cancels (and goes
   no further), each returning focus to the action that opened the field;
-  leaving the field saves. A name the rule refuses says why in the field.
+  leaving the field saves. A name the rule refuses says why in the field,
+  which stays open with the writer's words, on Enter and on leaving alike
+  (PR #164 N-01). Only the writer's own edit is sent: until the writer
+  types, the field follows the name the shelf has, so a rename's answer
+  that lands while a reopened field is open shows in it, and leaving an
+  untouched field sends nothing (PR #164 F-04).
+- `lightboxModelsNote` counts models by their whole name without the
+  provider, then cuts each for show, so two names that begin alike count
+  as two (PR #164 N-02).
+- A press's button on a narrow board wraps its cost under its label rather
+  than running past the card (`styles/lightbox/board.css`; the review's
+  500 px capture; it clipped at `3e5c3a1` too).
 - Styles in `styles/lightbox/boards.css`, on the Chromium 114 floor.
 
 ### Proof
@@ -528,8 +566,19 @@ joins it without a new format number.
   board, or one with a part left out; a delete in one store and in another
   window, before and during the claim; two windows renaming one file (one
   after the other, one reading before the other committed, one during the
-  other's claim); a claim left behind; a spark set aside writes no new file;
-  logs carry no name.
+  other's claim); a spark set aside writes no new file; logs carry no name.
+- **Claims** (`LightboxBoardClaims.test.ts`, PR #164 F-01 and F-02): an
+  abandoned claim put back by a listing and by a read, the newest of
+  several; a live claim never put back or listed, and busy for a read, a
+  rewrite and a delete; an abandoned leftover beside its file removed, a
+  live one left; the review's two sequences (a listing in another window
+  never steals a live claim, so its delete is busy and the rewrite
+  commits; a rewrite whose clean-up failed, then a delete in a fresh
+  window, young or past the lease, and nothing comes back); and the
+  controls (clean-up then delete; a board left mid-rewrite deleted whole; a
+  failed commit puts the original back; a claim held past the lease and
+  put back blocks the pending commit; one put back while its bytes were
+  checked is read again).
 - **Library and handler** (`LightboxBoardRenames.test.ts`,
   `LightboxSparkSaves.test.ts`): naming the board on screen, its later
   saves, the row that holds it, unnaming, a save queued before a rename, an
@@ -538,12 +587,23 @@ joins it without a new format number.
   malformed requests, and the rename's answer under both ordering guards;
   a spark set aside and its Undo with no new file and a reload; a
   session-only spark; a spark set aside while a run's save is held at its
-  commit; a restore whose file is gone.
+  commit; two windows setting different sparks aside, with the controls
+  (opened after the first's mark, one spark's Undo last-wins, a spark
+  behind a rename and a source switch) (PR #164 F-03); a restore whose
+  file is gone.
+- **Restore under a claim** (`LightboxBoardRestoreClaims.test.ts`, PR #164
+  F-02): an abandoned claim put back and restored, the pointer kept; a live
+  claim restores nothing and keeps the pointer and the claim, and a session
+  past the lease restores the board; a source chosen while the restore's
+  read puts the board back keeps the screen.
 - **Hook, view, panel and app** (`useLightboxBoards`, `lightboxBoardsView`,
   `LightboxBoardsPanel`, `LightboxAppSavedBoards`): name and model
   display, the head, the inline rename's keyboard flow, focus after a
   confirmed delete, and the notice above the board in step with the rail's
-  under both ordering guards.
+  under both ordering guards; a rename's answer while an untouched field
+  is open, in the head and in a row, and an edited one kept (PR #164
+  F-04); a refused name on leaving (N-01); two models whose names begin
+  alike (N-02).
 
 ### Implementation notes (2026-10-22)
 
@@ -573,7 +633,8 @@ What the writer may want to redirect:
   waits for the board's next save, which writes a new file, as 5A did.
 - **Busy.** Two windows on one workspace renaming the same board in the
   same few milliseconds: one commits, and the other says "That saved board
-  is being changed in another window. Try again in a moment."
+  is being changed in another window. Try again in a moment." A delete, an
+  Open and a restore say the same while the file is held.
 - **The changed-file notice** sits at the top of the board's column, above
   the file name and headline.
 - **Extras (5A tech debt), both done:** a confirmed delete keeps focus on
@@ -582,7 +643,40 @@ What the writer may want to redirect:
   whose file is gone forgets the reload pointer. The tech-debt note's
   suggestion of a spoken "Deleted the board saved …" was not taken.
 
-Gates at `028138a` (the code and its evidence; these notes follow it):
+### PR #164 review corrections (2026-10-22)
+
+The review (request changes: four P2, two P3) is
+[`pr-164-lightbox-board-names-review.md`](../../../docs/pr-reviews/pr-164-lightbox-board-names-review.md),
+with the author's response and ledger below it. Each correction is
+described in place above; what the writer may want to know:
+
+- **The lease is 30 seconds** (F-01, F-02). A window that closes mid-rewrite
+  leaves its board hidden under a claim until the claim is 30 seconds old;
+  then the next listing or read puts it back. A reload within those 30
+  seconds does not restore that board, keeps the reload pointer, and logs
+  that it is busy; the next session (or the rail, once the claim is old)
+  brings it back. Nothing is lost.
+- **The one race left** (F-01): a window stalled more than 30 seconds
+  between claiming a file and committing (a frozen extension host), while
+  another window lists the source (putting the board back), deletes it,
+  and all of that lands inside the stalled window's last file operation.
+  Then the stalled rename commits after the delete. The stalled window
+  checks its claim before it commits, so the delete would have to fall
+  inside that one rename. A file system with only rename and delete offers
+  no stronger lock.
+- **A delete claims the file**, so deleting a board another window is
+  renaming says busy rather than deleting it, and a delete removes the
+  earlier versions a rewrite left beside the file.
+- **A spark's file write is the one spark's** (F-03), with its order after
+  the file's highest: two windows' marks on different sparks both stand.
+- **The name field sends only an edit the writer made** (F-04), and keeps a
+  refused name open on leaving (N-01).
+- **The model line counts whole names** (N-02).
+- **The press's button** wraps its cost at 500 px (the reviewer's capture;
+  it clipped at `3e5c3a1` too). The evidence harness now fails on any
+  button that runs past the box that clips it.
+
+Gates before the review, at `028138a` (the code and its evidence):
 full `npx jest`, 479 suites / 6,617 tests / 59 snapshots (474 / 6,541 / 59
 at `3e5c3a1`); `npm run lint`, 0 errors and 1,133 warnings, identical per
 file, rule and severity to `3e5c3a1`; `npm run typecheck`; `npm ci` into a
@@ -601,9 +695,24 @@ slice's own early-return version.
 
 Visual evidence:
 [`lightbox-slice-5a1-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-5a1-visual/README.md),
-six host states at 1440, 1000 and 500 px, 18 captures, `errors.txt` empty,
-a second render byte identical; the harness writes 51 errors and exits 1
-against the `3e5c3a1` bundle.
+six host states at 1440, 1000 and 500 px, 18 captures, `errors.txt` empty;
+the harness writes 51 errors and exits 1 against the `3e5c3a1` bundle.
+
+Gates after PR #164's corrections, at `3532f949` (the code; the
+evidence and these notes follow it): full `npx jest`, 481 suites / 6,643
+tests / 59 snapshots (479 / 6,617 / 59 at `ada5717`); `npm run lint`, 0
+errors and 1,133 warnings, identical per file, rule and severity to
+`3e5c3a1`; `npm run typecheck`; `npm ci` into a real `node_modules`, then
+`npm run build` with `verify:bundle` twice, `webview.js` SHA-256
+`66c1f405…cd35` and `extension.js` `b72fa490…0c39` both times; the
+whitespace check clean from the review's commit. On an export of
+`ada5717` the review's sequences fail (F-01's two, the three restore
+tests, the two-window spark, the head's and the row's untouched field,
+the refused name on leaving, the model count) and her controls pass; the
+[author response](../../../docs/pr-reviews/pr-164-lightbox-board-names-review.md#author-response-2026-10-22)
+lists each. The evidence harness, now failing on a clipped button, writes
+no error at this head, 2 against `ada5717`'s bundle and 53 against
+`3e5c3a1`'s.
 
 ## Slice 5B: draft compare (a later PR)
 
