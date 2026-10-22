@@ -1029,6 +1029,8 @@ const LIGHTBOX_MODULES = [
   'shared/constants/lightboxOpinionBasis.ts',
   'shared/constants/lightboxSteering.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
+  // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
+  'infrastructure/lightbox/LightboxMeasureRules.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
   'infrastructure/lightbox/LightboxReadingWire.ts',

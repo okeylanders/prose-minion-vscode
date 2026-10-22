@@ -127,8 +127,16 @@ describe('LightboxService measured set (D5)', () => {
 
     expect(enrich).toHaveBeenCalledWith(stats);
     expect(board).toEqual(expect.objectContaining({
-      boardVersion: 0,
+      boardVersion: 1,
       boardId: 'board-1',
+      // The rules this build measures with, by id (Slice 5A).
+      rules: {
+        paragraphs: 'blank-line-2026-10-19',
+        sentences: 'closing-marks-speech-tags-2026-10-21',
+        dialogue: 'double-quotes-2026-10-19',
+        beingVerbs: 'contractions-next-word-2026-10-21',
+        opinionBasis: 'item-data-2026-10-22'
+      },
       // Groups A–E and G (craft steering, Slice 4F) read the chapter; F, the Opinion, reads the board (Slice 4D).
       readings: ['A', 'B', 'C', 'D', 'E', 'G', 'F'].map((group) => ({
         group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []

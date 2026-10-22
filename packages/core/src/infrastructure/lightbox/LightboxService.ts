@@ -89,6 +89,7 @@ import {
 import { checkLightboxSource, lightboxSourcePreview } from '@/infrastructure/lightbox/LightboxSourceChecks';
 import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 import { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
+import { currentLightboxMeasureRules } from '@/infrastructure/lightbox/LightboxMeasureRules';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -422,8 +423,9 @@ export class LightboxService {
     };
 
     const board: LightboxBoard = {
-      boardVersion: 0,
+      boardVersion: 1,
       boardId: predecessor?.boardId ?? this.mintBoardId(),
+      rules: currentLightboxMeasureRules(),
       source,
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
