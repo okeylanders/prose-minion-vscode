@@ -61,35 +61,22 @@ import { randomUUID } from 'node:crypto';
 import type {
   LightboxBoard,
   LightboxReadingGroup,
-  LightboxSource,
   LightboxSourceKind,
   LightboxSourceRefusal
 } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { LIGHTBOX_READING_GROUPS, emptyLightboxReadingGroup } from '@shared/constants/lightbox';
-import { countWords } from '@/utils/textUtils';
 import { ListenerSet } from '@/utils/ListenerSet';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
 import type { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import type { WordFrequencyService } from '@services/measurement/WordFrequencyService';
 import type { StandardsService } from '@services/resources/StandardsService';
-import {
-  buildLightboxRibbon,
-  lightboxContentHash,
-  measureLightboxParagraph,
-  splitLightboxParagraphs
-} from '@/infrastructure/lightbox/LightboxParagraphs';
+import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
 import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumberInstances';
-import {
-  LIGHTBOX_WORD_FREQUENCY_OPTIONS,
-  LightboxEnrichedStats,
-  buildLightboxMeasuredSet
-} from '@/infrastructure/lightbox/LightboxMeasures';
-import { checkLightboxSource, lightboxSourcePreview } from '@/infrastructure/lightbox/LightboxSourceChecks';
+import { checkLightboxSource } from '@/infrastructure/lightbox/LightboxSourceChecks';
 import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
-import { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
-import { currentLightboxMeasureRules } from '@/infrastructure/lightbox/LightboxMeasureRules';
+import type { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
+import { lightboxSourceKey } from '@/infrastructure/lightbox/LightboxSourceKey';
+import { assembleLightboxBoard, type LightboxBoardMeasurers } from '@/infrastructure/lightbox/LightboxBoardAssembly';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -190,16 +177,24 @@ export class LightboxService {
   private readonly mintBoardId: () => string;
   private readonly mintRefusalId: () => string;
   private readonly retainedBoards: number;
+  private readonly measurers: LightboxBoardMeasurers;
 
   constructor(
-    private readonly proseStatsService: Pick<ProseStatsService, 'analyze'>,
-    private readonly wordFrequencyService: Pick<WordFrequencyService, 'analyze'>,
-    private readonly styleFlagsService: Pick<StyleFlagsService, 'analyze'>,
-    private readonly standardsService: Pick<StandardsService, 'enrichWithStandards'>,
+    proseStatsService: Pick<ProseStatsService, 'analyze'>,
+    wordFrequencyService: Pick<WordFrequencyService, 'analyze'>,
+    styleFlagsService: Pick<StyleFlagsService, 'analyze'>,
+    standardsService: Pick<StandardsService, 'enrichWithStandards'>,
     options: LightboxServiceOptions = {},
     /** The writer's own average for the numbers tile; without it the tile says none is measured. */
-    private readonly writerBaseline?: Pick<LightboxWriterBaseline, 'measure'>
+    writerBaseline?: Pick<LightboxWriterBaseline, 'measure'>
   ) {
+    this.measurers = {
+      proseStats: proseStatsService,
+      wordFrequency: wordFrequencyService,
+      styleFlags: styleFlagsService,
+      standards: standardsService,
+      writerBaseline
+    };
     this.now = options.now ?? Date.now;
     this.mintBoardId = options.mintBoardId ?? randomUUID;
     this.mintRefusalId = options.mintRefusalId ?? randomUUID;
@@ -245,9 +240,12 @@ export class LightboxService {
     const contentHash = lightboxContentHash(input.text);
     const retained = this.entries.get(key);
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
-    const paragraphTexts = splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text);
 
-    const assembled = await this.assemble(input, contentHash, unchanged);
+    const assembled = await assembleLightboxBoard(this.measurers, input, contentHash, unchanged, {
+      capturedAt: this.now(),
+      mintBoardId: this.mintBoardId
+    });
+    const { paragraphTexts } = assembled;
     let board = assembled.board;
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
@@ -395,48 +393,6 @@ export class LightboxService {
     };
   }
 
-  /** Measure the text; an unchanged predecessor lends its id and readings. */
-  private async assemble(
-    input: LightboxSourceInput,
-    contentHash: string,
-    predecessor: LightboxBoard | undefined
-  ): Promise<{ board: LightboxBoard; passages: LightboxPassageIndex }> {
-    const paragraphs = splitLightboxParagraphs(input.text);
-    const metrics = paragraphs.map(measureLightboxParagraph);
-    const stats = this.proseStatsService.analyze({ text: input.text });
-    const enriched = (await this.standardsService.enrichWithStandards(stats)) as LightboxEnrichedStats;
-    const frequency = this.wordFrequencyService.analyze(input.text, LIGHTBOX_WORD_FREQUENCY_OPTIONS);
-    const flags = this.styleFlagsService.analyze(input.text);
-    const writer = await this.writerBaseline?.measure({ absolutePath: input.rereadPath, sourceUri: input.sourceUri });
-
-    const source: LightboxSource = {
-      kind: input.kind,
-      displayPath: input.displayPath,
-      sourceUri: input.sourceUri,
-      startLine: input.startLine,
-      endLine: input.endLine,
-      contentHash,
-      wordCount: countWords(input.text),
-      paragraphCount: paragraphs.length,
-      capturedAt: this.now(),
-      preview: lightboxSourcePreview(input.text)
-    };
-
-    const board: LightboxBoard = {
-      boardVersion: 1,
-      boardId: predecessor?.boardId ?? this.mintBoardId(),
-      rules: currentLightboxMeasureRules(),
-      source,
-      paragraphs: metrics,
-      ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
-      measured: buildLightboxMeasuredSet({
-        stats: enriched, frequency, flags, paragraphs, text: input.text, writer
-      }),
-      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
-    };
-    return { board, passages: LightboxPassageIndex.build({ text: input.text, paragraphs, frequency }) };
-  }
-
   private adopt(key: string, entry: BoardEntry): void {
     // Map order is recency: re-insert on every use, evict from the front. The
     // adopted entry is the newest, so eviction never takes the current board.
@@ -446,43 +402,5 @@ export class LightboxService {
     while (this.entries.size > this.retainedBoards) {
       this.entries.delete(this.entries.keys().next().value as string);
     }
-  }
-}
-
-/**
- * Which source a board belongs to: its kind, its document and, for a
- * selection, its lines. The document is its URI, VS Code's canonical
- * `Uri.toString()` from both the editor command and the picker (a re-read
- * reuses the board's), so two workspace roots that each hold `chapter.md`
- * never share a board. The display path, which is workspace-relative and can
- * repeat across roots, is only the fallback for a source with no URI.
- * Computable from a resolved input and from a board's own `source` alike.
- *
- * A project-picker source's URI is Node's `pathToFileURL`, which escapes
- * fewer characters than VS Code and keeps a Windows drive letter's case
- * (2026-10-20). So a `file:` URI is compared by its decoded path, with the
- * drive letter folded: one file is one board, whichever way it was chosen.
- */
-export function lightboxSourceKey(
-  source: Pick<LightboxSource, 'kind' | 'displayPath' | 'sourceUri' | 'startLine' | 'endLine'>
-): string {
-  const document = source.sourceUri ? lightboxDocumentKey(source.sourceUri) : source.displayPath;
-  return source.kind === 'selection'
-    ? `selection:${document}:${source.startLine ?? ''}-${source.endLine ?? ''}`
-    : `file:${document}`;
-}
-
-/** A `file:` URI by its decoded path (drive letter folded); any other URI as it is. */
-function lightboxDocumentKey(sourceUri: string): string {
-  if (!sourceUri.startsWith('file:')) {
-    return sourceUri;
-  }
-  try {
-    const url = new URL(sourceUri);
-    const decoded = decodeURIComponent(url.pathname)
-      .replace(/^\/([A-Za-z]):/, (_match, drive: string) => `/${drive.toLowerCase()}:`);
-    return `file://${url.host}${decoded}`;
-  } catch {
-    return sourceUri;
   }
 }

@@ -4,11 +4,8 @@
  * in-memory board kept per source.
  */
 
-import {
-  LightboxService,
-  LightboxSourceInput,
-  lightboxSourceKey
-} from '@/infrastructure/lightbox/LightboxService';
+import { LightboxService, LightboxSourceInput } from '@/infrastructure/lightbox/LightboxService';
+import { lightboxSourceKey } from '@/infrastructure/lightbox/LightboxSourceKey';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';

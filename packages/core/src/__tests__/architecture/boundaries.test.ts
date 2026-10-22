@@ -1035,6 +1035,9 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxMeasureRules.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
+  // Slice 5A: the service's board assembly and source key, moved out to give it room.
+  'infrastructure/lightbox/LightboxBoardAssembly.ts',
+  'infrastructure/lightbox/LightboxSourceKey.ts',
   'infrastructure/lightbox/LightboxReadingWire.ts',
   'infrastructure/lightbox/LightboxReadingCodec.ts',
   'infrastructure/lightbox/LightboxReadingFields.ts',
