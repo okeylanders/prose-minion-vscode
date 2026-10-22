@@ -33,6 +33,8 @@ import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumb
 import { settleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingState';
 import { buildLightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
+import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
+import { lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 
 /** Writer-facing: the press's board is gone, so F has nothing to weigh. */
 const BOARD_GONE = 'The board this press read is gone, so the Opinion was not read.';
@@ -71,7 +73,9 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
       (readings, current) => readings.map((group) => (group.group === outcome.group
         ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), lens)
         : group)),
-      { token, group: outcome.group }
+      { token, group: outcome.group },
+      // Group F read: its citations stand under this build's basis rule, and the board says so (Slice 5A).
+      lightboxGroupReadsBoard(outcome.group) && outcome.status === 'ok' ? { opinionBasis: LIGHTBOX_OPINION_BASIS_RULE_ID } : undefined
     );
     if (!board) {
       outputChannel.appendLine(`[LightboxReadingHandler] Dropped group ${outcome.group}: its board is gone`);

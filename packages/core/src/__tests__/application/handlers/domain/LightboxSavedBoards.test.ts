@@ -23,9 +23,11 @@ import type { LightboxBoard } from '@/shared/types/messages';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { LIGHTBOX_TILE_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxTileHandoff';
 import { LIGHTBOX_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxHandoff';
+import { LIGHTBOX_OPINION_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
 import { decodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import { LIGHTBOX_BOARD_POINTER_KEY } from '@/infrastructure/storage/LightboxBoardStore';
 import { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardLibrary';
+import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
 import { deferred } from './lightboxHandlerHarness';
 import { groupOf, ok, opinionReplyFor } from './lightboxReadingHarness';
 import {
@@ -220,6 +222,79 @@ describe('opening a saved board (epic decision 29)', () => {
       message: LIGHTBOX_BOARD_NOTICES.missing,
       suggestion: 'Choose another saved board, or read the chapter again.'
     }]);
+  });
+});
+
+describe('a board saved under an earlier citation rule (the writer-data rule)', () => {
+  /** A synthetic id: a basis rule this build does not have. */
+  const EARLIER = 'rendered-text-2026-10-21';
+  const REASON = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
+  const handOffResult = (tab: Awaited<ReturnType<typeof readChapter>>['tab']) =>
+    tab.posted.filter((message) => message.type === MessageType.LIGHTBOX_HAND_OFF_RESULT).at(-1)?.payload;
+
+  /** READ's file, its Opinion's basis rule rewritten to EARLIER: a file from a build whose rule was another. */
+  function rewriteBasis(host: ReturnType<typeof createLightboxBoardsHost>): void {
+    const file = path.posix.join(WORKSPACE, 'prose-minion', 'boards', READ);
+    const json = JSON.parse(new TextDecoder().decode(host.fileSystem.files.get(file)));
+    json.board.rules.opinionBasis = EARLIER;
+    host.fileSystem.files.set(file, new TextEncoder().encode(`${JSON.stringify(json, null, 2)}\n`));
+  }
+
+  it('control: a board saved under this build\'s rule opens with its Opinion standing, and brings it', async () => {
+    const { host, tab } = await readChapter();
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-1', fileId: READ });
+    const opened = host.service.currentBoard() as LightboxBoard;
+    const opinion = lightboxOpinionTile(opened);
+
+    expect(opened.rules.opinionBasis).toBe('item-data-2026-10-22');
+    expect(opinion && lightboxOpinionStanding(opinion, opened).stale).toBe(false);
+    await tab.route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'tile', boardId: 'board-1', tileId: opinion?.id });
+    // Past the standing check: the stand-in Opinion cites tiles, not their quotes, so it stops at its quotes.
+    expect(handOffResult(tab)).toMatchObject({ ok: false, message: LIGHTBOX_OPINION_HANDOFF_REFUSALS.quotesGone });
+  });
+
+  it('opens whole, its Opinion stale with the host\'s reason and its Bring refused; reading the Opinion again brings it current', async () => {
+    const { host, tab } = await readChapter();
+    const saved = savedBoard(host, READ);
+    rewriteBasis(host);
+
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-1', fileId: READ });
+    const opened = host.service.currentBoard() as LightboxBoard;
+    expect(tab.refusals()).toEqual([]);
+    expect(tab.boards().at(-1)).toEqual(opened);
+    expect(opened.rules.opinionBasis).toBe(EARLIER);
+    // Every tile of every kind, every layer, as saved.
+    expect({ ...opened, rules: saved.board.rules }).toEqual(saved.board);
+    const opinion = lightboxOpinionTile(opened);
+    expect(opinion && lightboxOpinionStanding(opinion, opened)).toMatchObject({ stale: true, changed: [], note: REASON });
+
+    await tab.route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'tile', boardId: 'board-1', tileId: opinion?.id });
+    expect(handOffResult(tab)).toMatchObject({ ok: false, message: REASON });
+    // Any other kind brings as it did.
+    const other = opened.readings.find((group) => group.group === 'A')?.tiles[0];
+    await tab.route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'tile', boardId: 'board-1', tileId: other?.id });
+    expect(handOffResult(tab)).toMatchObject({ ok: false, message: LIGHTBOX_HANDOFF_REFUSALS.noWorkshop });
+
+    // Re-reading the unchanged file keeps the readings, and the rule they were cited under.
+    await tab.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
+    await quiet();
+    expect(host.service.currentBoard()?.rules.opinionBasis).toBe(EARLIER);
+
+    // Reading the Opinion again cites under this build's rule: it stands, and the webview hears the rule.
+    await tab.route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [], requestId: 'estimate-opinion' });
+    const estimate = tab.posted.filter((message) => message.type === MessageType.LIGHTBOX_RUN_ESTIMATE)
+      .map((message) => message.payload).find((payload) => payload.requestId === 'estimate-opinion')?.estimate;
+    await tab.route(MessageType.LIGHTBOX_RUN, {
+      boardId: 'board-1', scope: { mode: 'lens', lens: 'opinion' }, estimateKey: estimate?.key, model: estimate?.model
+    });
+    await quiet();
+    const current = host.service.currentBoard() as LightboxBoard;
+    const reread = lightboxOpinionTile(current);
+    expect(current.rules.opinionBasis).toBe('item-data-2026-10-22');
+    expect(reread && lightboxOpinionStanding(reread, current).stale).toBe(false);
+    expect(tab.boards().at(-1)?.rules.opinionBasis).toBe('item-data-2026-10-22');
+    // And its save records the rule it was cited under.
+    expect(savedBoard(host, host.savedFiles().at(-1) as string).board.rules.opinionBasis).toBe('item-data-2026-10-22');
   });
 });
 

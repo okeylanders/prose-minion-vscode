@@ -117,6 +117,7 @@ describe('The Opinion\'s basis is data (decision 25)', () => {
       stale: false,
       readEarlier: false,
       reading: false,
+      earlierRule: false,
       changed: []
     });
   });

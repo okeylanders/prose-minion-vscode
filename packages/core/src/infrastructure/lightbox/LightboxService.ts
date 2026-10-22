@@ -288,6 +288,12 @@ export class LightboxService {
       };
       carried = true;
     }
+    // Readings taken from an earlier board keep the basis rule their Opinion was cited under (Slice 5A):
+    // one saved under another rule stays stale, with its reason, until the Opinion is read again.
+    const readFrom = carried || (unchanged && latest?.boardId === board.boardId) ? latest : unchanged;
+    if (readFrom) {
+      board = { ...board, rules: { ...board.rules, opinionBasis: readFrom.rules.opinionBasis } };
+    }
     this.retained.adopt(key, {
       board,
       text: input.text,
@@ -368,22 +374,29 @@ export class LightboxService {
    * the board is the current one. `settled` names the group a run's call
    * just settled, under that run's token. Returns the updated board, or
    * undefined when no retained board has that id any more (its text changed
-   * or it was evicted), in which case the update is dropped.
+   * or it was evicted), in which case the update is dropped. `rules` moves
+   * the rule ids the readings now stand under (group F citing under this
+   * build's basis rule, Slice 5A); a change that moves one is published as
+   * the whole board, which carries it.
    */
   updateReadings(
     boardId: string,
     /** Given the board as it stands, so a landing can be held to its current measurement (PR #155 F-01). */
     update: (readings: LightboxBoard['readings'], board: LightboxBoard) => LightboxBoard['readings'],
-    settled?: { token: string; group: LightboxReadingGroup['group'] }
+    settled?: { token: string; group: LightboxReadingGroup['group'] },
+    rules?: Partial<LightboxBoard['rules']>
   ): LightboxBoard | undefined {
     const entry = this.retained.byId(boardId);
     if (!entry) {
       return undefined;
     }
-    entry.board = { ...entry.board, readings: update(entry.board.readings, entry.board) };
+    const before = entry.board;
+    const ruled = { ...before.rules, ...rules };
+    const rulesMoved = (Object.keys(ruled) as Array<keyof typeof ruled>).some((rule) => ruled[rule] !== before.rules[rule]);
+    entry.board = { ...before, ...(rulesMoved ? { rules: ruled } : {}), readings: update(before.readings, before) };
     const board = entry.board;
     if (this.currentBoard()?.boardId === boardId) {
-      const group = settled ? board.readings.find((candidate) => candidate.group === settled.group) : undefined;
+      const group = settled && !rulesMoved ? board.readings.find((candidate) => candidate.group === settled.group) : undefined;
       this.outcomeListeners.emit({
         kind: 'readings',
         board,

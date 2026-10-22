@@ -276,11 +276,21 @@ describe('LightboxBoardCodec: what it refuses, in host words', () => {
       .toEqual({ reason: 'text', at: 'file.board.sources[0].text', formatVersion: undefined });
   });
 
-  it('reads a newer build\'s sentence rule id, keeping it, but refuses an Opinion basis it cannot judge', () => {
+  it('reads a newer build\'s sentence rule id, keeping it', () => {
     expect(boardOf(decodeEdited((file) => { file.board.rules.sentences = 'some-later-rule-2027-01-01'; })).rules.sentences)
       .toBe('some-later-rule-2027-01-01');
-    expect(refused(decodeEdited((file) => { file.board.rules.opinionBasis = 'rendered-text-2026-10-21'; })))
-      .toEqual({ reason: 'basis', at: 'file.board.rules.opinionBasis', formatVersion: undefined });
+  });
+
+  it('reads a board whose Opinion was cited under another basis rule whole, keeping the id: a saved board only ever loses standing', () => {
+    const decoded = decodeEdited((file) => { file.board.rules.opinionBasis = 'rendered-text-2026-10-21'; });
+    expect(decoded.kind === 'board' ? decoded.dropped : decoded).toBe(0);
+    const board = boardOf(decoded);
+    expect(board.rules.opinionBasis).toBe('rendered-text-2026-10-21');
+    // Every tile of every kind, every layer, exactly as saved.
+    expect({ ...board, rules: { ...board.rules, opinionBasis: BOARD.rules.opinionBasis } }).toEqual(BOARD);
+    // An id is still an id: one that is not well formed fails the board's shape.
+    expect(refused(decodeEdited((file) => { file.board.rules.opinionBasis = 'Rendered Text'; })))
+      .toEqual({ reason: 'shape', at: 'file.board.rules.opinionBasis', formatVersion: undefined });
   });
 
   it('words every reason as the host\'s', () => {
@@ -291,8 +301,7 @@ describe('LightboxBoardCodec: what it refuses, in host words', () => {
       format: 'It was saved in a board format this version does not read.',
       'unknown-field': 'It holds fields this version does not read.',
       shape: 'Its contents do not have a saved board\'s shape.',
-      text: 'Its saved text does not match the text its board was measured from.',
-      basis: 'Its Opinion was read under a citation basis this version cannot judge.'
+      text: 'Its saved text does not match the text its board was measured from.'
     });
     /* eslint-enable @typescript-eslint/naming-convention */
   });

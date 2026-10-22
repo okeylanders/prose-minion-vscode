@@ -20,10 +20,12 @@
  *   its source and its offsets into that source's text. A source's
  *   paragraphs are the run of board paragraphs that name it. Each source's
  *   text is checked against its content hash.
- * - **Rule ids.** `board.rules` names the rules that measured it. Any id is
- *   read (a board from a newer build keeps its ids for Slice 5B to label),
- *   except the Opinion's citation basis, which must be the one this build
- *   judges standing by (epic decision 25).
+ * - **Rule ids.** `board.rules` names the rules that measured it. Any
+ *   well-formed id is read and kept: a board from another build keeps its
+ *   ids, for Slice 5B to label. That includes the Opinion's citation basis:
+ *   an Opinion cited under another rule loads stale, with the host's reason
+ *   (`lightboxOpinionStanding`). A saved board only ever loses standing,
+ *   never the board (the writer-data rule, epic decision 32).
  * - **Exact keys; drops counted.** A key the codec does not read fails its
  *   object, counted, never named. A tile or a group note that fails is
  *   dropped and counted; the measured layers, the paragraph model, a group's
@@ -53,7 +55,6 @@ import type {
   TokenUsage
 } from '@messages';
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
-import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
 import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import {
   Decoder,
@@ -111,7 +112,7 @@ export interface LightboxBoardFile {
   board: LightboxSavedBoard;
 }
 
-export type LightboxBoardInvalidReason = 'not-json' | 'not-a-board' | 'format' | 'unknown-field' | 'shape' | 'text' | 'basis';
+export type LightboxBoardInvalidReason = 'not-json' | 'not-a-board' | 'format' | 'unknown-field' | 'shape' | 'text';
 
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the reasons' kebab-case words. */
 /** Host words for each reason a file is not read. */
@@ -121,8 +122,7 @@ export const LIGHTBOX_BOARD_INVALID_REASONS: Readonly<Record<LightboxBoardInvali
   format: 'It was saved in a board format this version does not read.',
   'unknown-field': 'It holds fields this version does not read.',
   shape: 'Its contents do not have a saved board\'s shape.',
-  text: 'Its saved text does not match the text its board was measured from.',
-  basis: 'Its Opinion was read under a citation basis this version cannot judge.'
+  text: 'Its saved text does not match the text its board was measured from.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -265,7 +265,7 @@ export function decodeLightboxBoardFile(json: string): LightboxBoardDecoded {
   return { kind: 'board', file, dropped: context.dropped.count, droppedAt: [...context.dropped.at] };
 }
 
-/** What the structure alone cannot say: the text, the offset table, the groups' order and the basis. */
+/** What the structure alone cannot say: the text, the offset table and the groups' order. */
 function integrityFault(board: LightboxSavedBoard): { reason: LightboxBoardInvalidReason; at: string } | undefined {
   if (board.sources.length === 0) {
     return { reason: 'shape', at: 'file.board.sources' };
@@ -293,9 +293,6 @@ function integrityFault(board: LightboxSavedBoard): { reason: LightboxBoardInval
   }
   if (board.readings.map((entry) => entry.group).join() !== LIGHTBOX_READING_GROUPS.join()) {
     return { reason: 'shape', at: 'file.board.readings' };
-  }
-  if (board.rules.opinionBasis !== LIGHTBOX_OPINION_BASIS_RULE_ID) {
-    return { reason: 'basis', at: 'file.board.rules.opinionBasis' };
   }
   return undefined;
 }

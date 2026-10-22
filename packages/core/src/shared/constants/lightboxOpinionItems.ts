@@ -94,10 +94,12 @@ const B = PROMPT_BUDGETS.lightbox;
 /**
  * What the items are read from: a board's readings and, for its measured
  * figures, its measured set (a carry passes the rebuilt board's; without
- * one there are no measured items to cite).
+ * one there are no measured items to cite). `rules` names the basis rule its
+ * Opinion's citations were made under (Slice 5A); without it, this build's.
  */
 export interface LightboxOpinionBoard {
   measured?: LightboxBoard['measured'];
+  rules?: Pick<LightboxBoard['rules'], 'opinionBasis'>;
   readings: readonly LightboxReadingGroup[];
 }
 

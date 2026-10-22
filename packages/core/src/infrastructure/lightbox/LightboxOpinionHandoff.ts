@@ -36,6 +36,7 @@ import {
   LIGHTBOX_OPINION_VIEW_LABELS,
   LIGHTBOX_OPINION_WEIGHT_LABELS,
   lightboxOpinionDefaultView,
+  LIGHTBOX_OPINION_EARLIER_RULE,
   lightboxOpinionStanding,
   lightboxOpinionView
 } from '@shared/constants/lightboxOpinion';
@@ -66,8 +67,10 @@ export function prepareLightboxOpinionHandoff(
   if (!view) {
     return { ok: false, reason: LIGHTBOX_OPINION_HANDOFF_REFUSALS.withheld };
   }
-  if (lightboxOpinionStanding(tile, board).stale) {
-    return { ok: false, reason: LIGHTBOX_OPINION_HANDOFF_REFUSALS.changed };
+  const standing = lightboxOpinionStanding(tile, board);
+  if (standing.stale) {
+    // Cited under another basis rule (Slice 5A): the standing's own reason, as the tile says it.
+    return { ok: false, reason: standing.earlierRule ? LIGHTBOX_OPINION_EARLIER_RULE : LIGHTBOX_OPINION_HANDOFF_REFUSALS.changed };
   }
   const cited = view.why.flatMap((point) => point.observations)
     .flatMap((id) => tile.observations.find((observation) => observation.id === id)?.cites ?? [])

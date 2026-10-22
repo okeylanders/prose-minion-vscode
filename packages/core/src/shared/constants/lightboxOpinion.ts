@@ -12,7 +12,12 @@
  * - a tile it cites is gone (re-read: new ids; withheld; a lens turned off
  *   and read again), stale, or being read again;
  * - an item it cites says something else now: a figure measured again under
- *   another preset or average, a section moved (its `basis` differs).
+ *   another preset or average, a section moved (its `basis` differs);
+ * - its citations were made under another basis rule than this build's
+ *   (`board.rules.opinionBasis`; Slice 5A). A board saved by a build with
+ *   another rule still opens whole: a saved board only ever loses standing,
+ *   never the board (the writer-data rule, epic decision 32). Its bases are
+ *   then not compared, since the two rules' bases never match.
  * An uncited change leaves it current. Nothing else on the board reads the
  * Opinion, so ignoring it changes nothing.
  */
@@ -26,6 +31,10 @@ import type {
 } from '@messages';
 import { LIGHTBOX_BOARD_GROUP } from '@shared/constants/lightbox';
 import { lightboxOpinionItemMap, type LightboxOpinionBoard, type LightboxOpinionItem } from '@shared/constants/lightboxOpinionItems';
+import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
+
+/** Host words for an Opinion cited under another basis rule: its standing note, and why Bring is refused. */
+export const LIGHTBOX_OPINION_EARLIER_RULE = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
 
 /** The tabs, in order. */
 export const LIGHTBOX_OPINION_VIEWS: readonly LightboxOpinionViewId[] = ['enthusiastic', 'neutral', 'blunt'];
@@ -86,6 +95,8 @@ export interface LightboxOpinionStanding {
   readEarlier: boolean;
   /** The Opinion is being read again now. */
   reading: boolean;
+  /** Its citations were made under another basis rule than this build's: stale, and its bases not compared. */
+  earlierRule: boolean;
   /** Observations whose cited items are gone, stale, being read again or changed, by id. */
   changed: string[];
   /** Host words: why it is stale, for the tile, the inspector and Bring. */
@@ -104,18 +115,22 @@ export function lightboxOpinionStanding(
   const group = board.readings.find((candidate) => candidate.group === LIGHTBOX_BOARD_GROUP);
   const readEarlier = group?.staleLenses?.some((mark) => mark.lens === 'opinion') ?? false;
   const reading = group?.status === 'running' && (group.pending?.includes('opinion') ?? false);
-  const changed = tile.observations
+  const earlierRule = board.rules !== undefined && board.rules.opinionBasis !== LIGHTBOX_OPINION_BASIS_RULE_ID;
+  // Under another rule every basis differs, so none is compared: the rule alone makes it stale.
+  const changed = earlierRule ? [] : tile.observations
     .filter((observation) => observation.cites.some((cite) => {
       const now = items.get(cite.item);
       return !now || !now.current || now.basis !== cite.basis;
     }))
     .map((observation) => observation.id);
-  const stale = readEarlier || changed.length > 0;
-  const note = readEarlier
-    ? 'Read against an earlier version of this chapter, and on the readings of that version. Re-read the Opinion to weigh the board as it stands.'
-    : changed.length > 0
-      ? `Something it cites changed since it was read (${changed.join(', ')}): a tile was read again or withheld, a lens went stale, ` +
-        'or a figure was measured again. Re-read the Opinion to weigh the board as it stands.'
-      : undefined;
-  return { stale, readEarlier, reading, changed, ...(note ? { note } : {}) };
+  const stale = earlierRule || readEarlier || changed.length > 0;
+  const note = earlierRule
+    ? LIGHTBOX_OPINION_EARLIER_RULE
+    : readEarlier
+      ? 'Read against an earlier version of this chapter, and on the readings of that version. Re-read the Opinion to weigh the board as it stands.'
+      : changed.length > 0
+        ? `Something it cites changed since it was read (${changed.join(', ')}): a tile was read again or withheld, a lens went stale, ` +
+          'or a figure was measured again. Re-read the Opinion to weigh the board as it stands.'
+        : undefined;
+  return { stale, readEarlier, reading, earlierRule, changed, ...(note ? { note } : {}) };
 }
