@@ -10,9 +10,16 @@
  *   does, and leaves focus where the writer put it.
  *
  * The name is checked by the host's own rule (`lightboxBoardName`) before it
- * is sent: a name with a tab or line break says why in the field, and stays
- * open on Enter. An unchanged name sends nothing; an empty one unnames the
- * board. The field holds at most the rule's characters.
+ * is sent: a name with a tab or line break says why in the field, which
+ * stays open with the writer's words in it, on Enter and on leaving alike
+ * (PR #164 N-01); Escape then cancels. An unchanged name sends nothing; an
+ * empty one unnames the board. The field holds at most the rule's
+ * characters.
+ *
+ * **Only the writer's own edit is sent** (PR #164 F-04). Until the writer
+ * types, the field follows the name as it stands (`initial`), so a rename's
+ * answer that lands while the field is open shows in it, and leaving an
+ * untouched field sends nothing, never the name it opened with.
  */
 import * as React from 'react';
 import {
@@ -37,6 +44,8 @@ export interface LightboxBoardNameFieldProps {
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxBoardNameField: React.FC<LightboxBoardNameFieldProps> = ({ label, initial, onSave, onClose }) => {
   const [draft, setDraft] = React.useState(initial);
+  // Whether the writer has typed in the field: only then is anything sent.
+  const [edited, setEdited] = React.useState(false);
   const [fault, setFault] = React.useState<string | null>(null);
   const input = React.useRef<HTMLInputElement | null>(null);
   // Set once the field has closed, so the blur its closing causes does nothing more.
@@ -48,8 +57,27 @@ export const LightboxBoardNameField: React.FC<LightboxBoardNameFieldProps> = ({ 
     input.current?.select();
   }, []);
 
-  /** Save the draft if it is a name and differs from the one standing; whether it could close. */
+  /** An untouched field follows the name as it stands. */
+  const followInitial = React.useCallback(() => {
+    if (!edited) {
+      setDraft(initial);
+    }
+  }, [edited, initial]);
+  React.useEffect(followInitial, [followInitial]);
+  /** Still selected once it has followed, so typing replaces the whole name. */
+  const keepUntouchedSelected = React.useCallback(() => {
+    const field = input.current;
+    if (!edited && field && field.ownerDocument.activeElement === field) {
+      field.select();
+    }
+  }, [edited]);
+  React.useLayoutEffect(keepUntouchedSelected, [draft, keepUntouchedSelected]);
+
+  /** Save the writer's edit if it is a name and differs from the one standing; whether the field may close. */
   const settle = (): boolean => {
+    if (!edited) {
+      return true;
+    }
     const check = checkLightboxBoardName(draft);
     if (check.kind === 'invalid') {
       setFault(LIGHTBOX_BOARD_NAME_FAULTS[check.fault]);
@@ -81,6 +109,7 @@ export const LightboxBoardNameField: React.FC<LightboxBoardNameFieldProps> = ({ 
         value={draft}
         onChange={(event) => {
           setDraft(event.target.value);
+          setEdited(true);
           setFault(null);
         }}
         onKeyDown={(event) => {
@@ -96,9 +125,8 @@ export const LightboxBoardNameField: React.FC<LightboxBoardNameFieldProps> = ({ 
           }
         }}
         onBlur={() => {
-          if (!closed.current) {
-            // Leaving saves a name; one the rule refuses is dropped, as Escape would.
-            settle();
+          // Leaving saves a name; one the rule refuses keeps the field open, with the writer's words and the reason.
+          if (!closed.current && settle()) {
             close('left');
           }
         }}

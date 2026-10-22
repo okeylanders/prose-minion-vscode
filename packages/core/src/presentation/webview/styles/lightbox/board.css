@@ -260,6 +260,14 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+/* On a narrow board a press's button wraps its cost under its label instead of running past the card (PR #164 review, 500 px). */
+[data-pm-surface="lightbox"] .pm-lb-run .pm-lb-button {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  padding-block: 6px;
+  white-space: normal;
+}
 [data-pm-surface="lightbox"] .pm-lb-run-note {
   font-family: var(--pm-mono);
   font-size: 11px;

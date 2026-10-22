@@ -171,9 +171,14 @@ export function lightboxChangedFileNotice(
   return snapshot?.readCurrentText ? snapshot : undefined;
 }
 
-/** The models that read a board, shortened and once each: "Read by model-v1", "… and model-b", "… and 2 more". */
+/**
+ * The models that read a board, once each and shortened: "Read by model-v1",
+ * "… and model-b", "… and 2 more". Each is counted by its whole name without
+ * the provider before it is cut for show, so two models whose names begin
+ * alike still count as two (PR #164 N-02).
+ */
 export function lightboxModelsNote(models: readonly string[] | undefined): string | undefined {
-  const short = [...new Set((models ?? []).map(shortModelName))];
+  const short = [...new Set((models ?? []).map(modelName))].map(shortModelName);
   if (short.length === 0) {
     return undefined;
   }
@@ -182,10 +187,14 @@ export function lightboxModelsNote(models: readonly string[] | undefined): strin
     : `Read by ${short[0]}, ${short[1]} and ${short.length - 2} more`;
 }
 
-/** A model id without its provider ("provider/model-v1" → "model-v1"), at most 32 characters. */
-function shortModelName(model: string): string {
-  const tail = model.slice(model.lastIndexOf('/') + 1) || model;
-  return tail.length > MODEL_CHARACTERS ? `${tail.slice(0, MODEL_CHARACTERS - 1)}…` : tail;
+/** A model id without its provider: "provider/model-v1" → "model-v1". */
+function modelName(model: string): string {
+  return model.slice(model.lastIndexOf('/') + 1) || model;
+}
+
+/** A model's name as the row shows it: at most 32 characters. */
+function shortModelName(name: string): string {
+  return name.length > MODEL_CHARACTERS ? `${name.slice(0, MODEL_CHARACTERS - 1)}…` : name;
 }
 
 function nameViewOf(shelf: LightboxBoardShelf): LightboxBoardNameView {

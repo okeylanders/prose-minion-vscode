@@ -16,6 +16,12 @@
  * opened it; leaving the field saves); and a confirmed delete keeps focus
  * on its row until the row goes, then moves it on (5A tech debt). Names
  * and model ids are made up.
+ *
+ * PR #164: only the writer's own edit is sent. A rename's answer that lands
+ * while a reopened, untouched field is open shows in the field, and leaving
+ * it sends nothing, in the head and in a row (F-04). A name the rule refuses
+ * on leaving keeps the field open with the writer's words and the reason,
+ * as Enter does; Escape then cancels (N-01).
  */
 
 import * as React from 'react';
@@ -269,6 +275,83 @@ describe('LightboxBoardsPanel', () => {
       expect(props.onRename).toHaveBeenCalledWith(OLDER, 'model A');
       expect(screen.queryByRole('textbox')).toBeNull();
       expect(document.activeElement).toBe(document.body);
+    });
+
+    describe('a rename\'s answer while the field is open (PR #164 F-04)', () => {
+      const named = (name: string, rowName: string = name): LightboxBoardShelf => ({
+        ...NAMED, name, boards: [{ ...NAMED.boards[0], name: rowName }, SHELF.boards[1]]
+      });
+
+      it.each([
+        ['the head', 'Rename the board on screen', null],
+        ['a row', 'Rename the board saved Oct 22, 2026, 3:10 PM', NEWER]
+      ])('in %s: an untouched field reopened before the answer follows it, and leaving sends nothing', (_where, action, fileId) => {
+        const { props, rerender } = panel({ shelf: named('model A') });
+        fireEvent.click(screen.getByRole('button', { name: action }));
+        fireEvent.change(field(), { target: { value: 'model B' } });
+        fireEvent.keyDown(field(), { key: 'Enter' });
+        expect(props.onRename).toHaveBeenCalledWith(fileId, 'model B');
+
+        // Reopened while the shelf still says model A; the writer types nothing.
+        fireEvent.click(screen.getByRole('button', { name: action }));
+        expect(field().value).toBe('model A');
+        // The rename's answer lands while the field is open.
+        rerender(<LightboxBoardsPanel {...props} shelf={named('model B')} />);
+        expect(field().value).toBe('model B');
+        fireEvent.blur(field());
+
+        expect(props.onRename).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('textbox')).toBeNull();
+      });
+
+      it.each([
+        ['the head', 'Rename the board on screen', null],
+        ['a row', 'Rename the board saved Oct 22, 2026, 3:10 PM', NEWER]
+      ])('in %s: the writer\'s own edit is kept through the answer, and sent', (_where, action, fileId) => {
+        const { props, rerender } = panel({ shelf: named('model A') });
+        fireEvent.click(screen.getByRole('button', { name: action }));
+        fireEvent.change(field(), { target: { value: 'model C' } });
+
+        rerender(<LightboxBoardsPanel {...props} shelf={named('model B')} />);
+        expect(field().value).toBe('model C');
+        fireEvent.keyDown(field(), { key: 'Enter' });
+
+        expect(props.onRename).toHaveBeenCalledTimes(1);
+        expect(props.onRename).toHaveBeenCalledWith(fileId, 'model C');
+      });
+
+      it('control: reopened after the answer, it shows the new name, and renaming back is sent, once', () => {
+        const { props, rerender } = panel({ shelf: named('model A') });
+        rerender(<LightboxBoardsPanel {...props} shelf={named('model B')} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Rename the board on screen' }));
+        expect(field().value).toBe('model B');
+
+        fireEvent.change(field(), { target: { value: 'model A' } });
+        fireEvent.keyDown(field(), { key: 'Enter' });
+        fireEvent.blur(screen.getByRole('button', { name: 'Rename the board on screen' }));
+
+        expect(props.onRename).toHaveBeenCalledTimes(1);
+        expect(props.onRename).toHaveBeenCalledWith(null, 'model A');
+      });
+    });
+
+    it('leaving the field with a name the rule refuses keeps it open, with the writer\'s words and the reason; Escape then cancels (PR #164 N-01)', () => {
+      const { props } = panel({ shelf: NAMED });
+      fireEvent.click(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 2:05 PM' }));
+      fireEvent.change(field(), { target: { value: 'model\tC' } });
+
+      fireEvent.blur(field());
+
+      expect(props.onRename).not.toHaveBeenCalled();
+      expect(field().value).toBe('model\tC');
+      expect(screen.getByRole('alert').textContent).toBe('A board\'s name is one line, with no tabs or line breaks.');
+      expect(field().getAttribute('aria-invalid')).toBe('true');
+
+      field().focus();
+      fireEvent.keyDown(field(), { key: 'Escape' });
+      expect(props.onRename).not.toHaveBeenCalled();
+      expect(screen.queryByRole('textbox')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Rename the board saved Oct 22, 2026, 2:05 PM' }));
     });
 
     it('says a session-only name lasts as long as the session', () => {

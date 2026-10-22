@@ -169,6 +169,13 @@ describe('names and models (Slice 5A.1)', () => {
     expect(lightboxModelsNote([`provider/${'m'.repeat(40)}`])).toBe(`Read by ${'m'.repeat(31)}…`);
   });
 
+  it('counts two models whose names begin alike as two, before cutting them for show (PR #164 N-02)', () => {
+    const alike = 'a-model-whose-name-runs-to-31-ch';
+    expect(lightboxModelsNote([`provider/${alike}-one`, `provider/${alike}-two`, 'provider/third-model', 'provider/fourth-model']))
+      .toBe(`Read by ${alike.slice(0, 31)}…, ${alike.slice(0, 31)}… and 2 more`);
+    expect(lightboxModelsNote([`provider/${alike}-one`, `mirror/${alike}-one`])).toBe(`Read by ${alike.slice(0, 31)}…`);
+  });
+
   it('names the board on screen in the head, or says it is unnamed, with Name or Rename', () => {
     expect(buildLightboxBoardsView(shelf({ boards: [saved({ onScreen: true })] }), true, UTC).board)
       .toEqual({ label: 'Unnamed board', named: false, name: '', action: 'Name' });
