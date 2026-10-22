@@ -1,3 +1,5 @@
+**Current independent disposition (second re-review, 2026-10-22): Approve on code quality at `2d4d354`.** All eight findings across the earlier rounds are resolved. See the [second independent re-review](#second-independent-re-review-2026-10-22). Earlier disposition statements below are historical and preserved verbatim; writer/native acceptance remains separate.
+
 # PR Review — Lightbox Saved Boards, Slice 5A
 
 **Latest independent disposition:** Request changes at correction head `f3808b4`. All six original findings are resolved; one new P2 freshness issue and one new nonblocking P3 paging issue remain. See the [correction re-review](#independent-re-review-of-the-corrections-2026-10-22). The initial review below is historical.
@@ -375,3 +377,47 @@ tests above do.
 | `git diff --check` | Clean |
 
 No live or billable call was made. The fixtures are public-domain *Alice*.
+
+## Second independent re-review (2026-10-22)
+
+**Verdict: Approve on code quality.** F-05 and N-03 are resolved at `2d4d35430444c576e24dd4fed9ede4cc304aa012`. The six original clearances remain valid, and this pass found no additional actionable defect. This is a technical review, not writer acceptance, a real-chapter checkpoint or permission to advance Slice 5B.
+
+**Scope:** independently read the current PR body, both author responses, source/tests and contract delta from report commit `2ec6d56db2a88e6c6883891a08ad853eb083cf52`; reviewed the corrections against unchanged base `3e6a1561cc60c084fa8493c8582ca829d5ca41fe`. All prior report and author-response text above is preserved. The implementation delta is the observation ordering and effective-visible-count pagination, plus tests, documentation and host-state evidence. The format-1 codec, canonical citation basis and measurement rule IDs are unchanged.
+
+### Independent resolution ledger
+
+| ID | Disposition | Evidence at this head |
+| --- | --- | --- |
+| F-05 · P2 | **Resolved** | The exact held-save-push → edit → Delete → release sequence now retains the newer `changed` shelf; the older push is not posted. A hook probe also refuses an older observation at the same adoption. Two independently held explicit requests completed in reverse order are rebuilt against the newer state, retain their own request IDs and receive ascending observations. Positive controls accept a genuinely newer same-adoption save, including a real file revert that legitimately clears the warning and adds a saved row. A disposed handler does not publish its late result; a remounted handler receives the current shelf. |
+| N-03 · P3 | **Resolved** | With 65 rows/current index 44, the first click goes **45 → 65**; with 206/current index 204, **205 → 206**, without the former inert clicks. Normal newest-current paging remains correct. Rerender controls cover a newly saved row shifting the deep current position, and an already-mounted page moving to a deep current row, expanding once, then retaining that explicit expansion. |
+| F-01, F-02, F-03, F-04 · P2 | **Still resolved** | Fresh external controls recheck the measured/read reload pointers; preparing Characters/Opinion presses and stale adoption responses; distinct two-store staging, forced final-name collision/retry and failure cleanup; complete >200-file history, same-text deduplication and source separation. |
+| N-01, N-02 · P3 | **Still resolved** | Fresh Delete/return/request-correlation control passes. Direct-Node old/future citation-rule controls retain the earlier-rule reason even with stale text on both Bring paths, while current-rule/text-only and unrelated-tile controls remain unchanged. |
+
+The F-05 fix takes its observation before any await in `LightboxBoardLibrary.ts:194–220`; `LightboxBoardsHandler.ts:129–172` rejects/rebuilds against the newest observation it has sent, without an await between the check and post. `useLightboxBoards.ts:66–73,113–141` orders adoption before observation. This does **not** blanket-reject equal-adoption saves or freeze a changed-file warning forever. The N-03 count comes from the rows actually shown in `lightboxBoardsView.ts:94–103`, consumed by `LightboxBoardsPanel.tsx:172–177`.
+
+### Fresh independent verification
+
+All runtime checks used the isolated cloud filesystem checkout of exact implementation head `2d4d354`, reused unchanged disk-backed dependencies and serialized execution. Only public-domain *Alice*, synthetic files and stub provider results were used.
+
+| Check | Result |
+| --- | --- |
+| Full repository Jest | **474 suites / 6,541 tests / 59 snapshots passed**, 436.22 s in this cloud Jest/VM execution context; one worker, 2 GiB Node heap, disk-backed cache. |
+| Independent external regressions and controls | **47 tests / 12 suites passed**, 22.33 s. The four previously failing desired-behavior assertions now pass; their expectations were not weakened. Mock messages were given explicit observation values for the new protocol. Five additional lifecycle/order/rerender controls also pass. |
+| Canonical basis / Opinion / Bring | Direct-Node production-module probes pass: rendered label wording and paragraph rendering cap do not change bases; canonical-data mutations do; old/future citation rules preserve the board and invalidate the Opinion. Both Bring paths agree, including all 78 non-Opinion fixture-tile controls. |
+| Saved format / passages | The 15 codec/salvage/round-trip controls and complete fixture tile/inspector/passage probes pass again. No migration or remeasurement is introduced. |
+| Typecheck | All three projects pass. |
+| Lint | **0 errors / 1,133 warnings**, identical per relative file, rule and severity to the first correction, which was independently matched to the base. |
+| Build / bundle verification | Pass; the three existing size warnings remain. |
+| Host evidence | Rebuilt production-host `states/boards.json` and log match the committed evidence exactly. |
+| Rebuilt-bundle JSDOM | **77 positive assertions**: the nine existing saved-board fixture scenes plus the formerly failing same-adoption warning/action and deep-current paging cases. No runtime errors. |
+| Diff hygiene | Correction delta and report-only patch pass `git diff --check`; no implementation files changed by this review. |
+
+Rebuilt `webview.js` SHA-256: `acfc8891e8225b5a8f96b4411d24fda3819c598e41b03610b15ca3c490321423`; `extension.js`: `2738d16b8c7dbf35a2728761536db431711fae71a01e2dcb2cf1b57831bb437c`. Both match the author's stated hashes. Implementation-head [pull-request CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39846961664) and [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39846955599) were independently confirmed successful.
+
+The 27 committed PNGs are byte-identical to those inspected at the first correction. They document the supplied ordinary states, not the F-05/N-03 fixes. Those corrections were independently exercised through host/hook/panel tests and the freshly rebuilt production bundle in JSDOM; no new native screenshot or native VS Code interaction is claimed. Jest timings are not direct-Node or native VS Code latency measurements.
+
+### Remaining boundaries
+
+The documented complete-history listing cost (one stat per file, unbounded summary cache) remains Low tech debt, not a newly demonstrated latency defect. Development-only slug folders are deliberately not discovered/migrated; a known old file ID remains readable/deletable, as the independent control confirms. No released-format migration or data-loss claim is inferred from that pre-release contract. Existing disclosed design tradeoffs remain separate from defects.
+
+Writer choices and the author's real-chapter/readiness assertions remain author claims. Native VS Code, actual screen-reader behavior, minimum-Chromium rendering and writer acceptance have not been independently verified. No private manuscript, live/billable model call, user computer, GitHub comment/formal review, merge, deployment or extension publication was used.
