@@ -1,6 +1,7 @@
 # Several Lightbox Modules Sit Just Under the 500-Line Limit
 
 **Date Identified**: 2026-10-21 (Lightbox Slice 4F)
+**Reviewed**: 2026-10-22 (Lightbox Slice 5A)
 **Status**: Identified
 **Priority**: Medium
 **Estimated Effort**: Small to Medium (one split per module, each behind its existing tests)
@@ -26,6 +27,29 @@ was already over 500 lines (607) before the slice; it is 625 now.
 
 Slice 5 (saved boards) will add to at least `LightboxService.ts` and
 `LightboxReadingTiles.ts`, and will cross the limit.
+
+**After Slice 5A (2026-10-22).** 5A moved the service's board assembly to
+`LightboxBoardAssembly.ts`, its source key to `LightboxSourceKey.ts` and its
+retained boards to `LightboxRetainedBoards.ts` before adding the saved-board
+surface, so `LightboxService.ts` went from 486 to 462 lines. It did not add
+to `LightboxReadingTiles.ts`. Its new modules, and the ones it touched, now
+stand at:
+
+| Module | Lines |
+|---|---|
+| `packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts` | 498 (unchanged) |
+| `packages/core/src/shared/types/messages/index.ts` | 496 (+4: the boards module's export, and the rail in both unions) |
+| `packages/core/src/infrastructure/storage/LightboxBoardStore.ts` | 490 (new) |
+| `packages/core/src/application/handlers/domain/LightboxHandler.ts` | 486 (unchanged) |
+| `packages/core/src/application/handlers/domain/LightboxReadingHandler.ts` | 483 (+18: the run's save) |
+| `packages/core/src/infrastructure/lightbox/LightboxReadingTiles.ts` | 478 |
+| `packages/core/src/presentation/webview/hooks/domain/useLightbox.ts` | 469 (unchanged) |
+| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 462 (was 486) |
+
+Slice 5B will add Compare's routes to `index.ts` and its file reads to the
+store: split the store's listing and summaries out first, and move the
+Lightbox unions out of the barrel's `index.ts` into the Lightbox message
+modules.
 
 ## Recommendation
 

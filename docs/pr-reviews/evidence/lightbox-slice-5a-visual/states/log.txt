@@ -1,0 +1,36 @@
+[LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
+[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json (44405 bytes).
+[LightboxReadingRunner] Run run-1-token started: groups A, B
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-token finished: A ok, B ok
+[LightboxReadingHandler] Run run-1-token finished: 2 groups, 2400 tokens, $0.0200
+[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json (82567 bytes).
+[LightboxReadingRunner] Run run-2-token started: groups C, D, E, G, F
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-2-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key a53101679a83
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest a53101679a83, the board it read: current
+[LightboxReadingRunner] Run run-2-token finished: C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-2-token finished: 5 groups, 6000 tokens, $0.0500
+[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-07-09-123Z.board.json (160090 bytes).
+[LightboxBoardLibrary] Opened drafts-alice-1-md/2026-10-22T14-05-09-123Z.board.json
+[LightboxBoardLibrary] Opened drafts-alice-1-md/2026-10-22T14-06-09-123Z.board.json
+[LightboxHandler] Board built for Drafts/alice-1.md: 519 words, 9 paragraphs; the text changed, so its readings came along marked stale
+[LightboxBoardStore] Saved drafts-alice-1-md/2026-10-22T14-08-09-123Z.board.json (85231 bytes).
+[LightboxHandler] Board built for Drafts/alice-1.md: 508 words, 8 paragraphs
+[LightboxReadingRunner] Run run-1-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 13 tiles, 0 blocks withheld, 2 claims withheld, 36 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 18 tiles, 0 blocks withheld, 0 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-token group F digest: 75 items, 71 readings, 0 left out, about 6,701 tokens, key 6107bb6e8cd1
+[LightboxReadingRunner] Group F read (opinion) against a digest of 75 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest 6107bb6e8cd1, the board it read: current
+[LightboxReadingRunner] Run run-1-token finished: A ok, B ok, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-1-token finished: 7 groups, 8400 tokens, $0.0700

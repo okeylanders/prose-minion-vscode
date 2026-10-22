@@ -82,6 +82,8 @@ export interface LightboxBoardsHostOptions {
   folders?: string[];
   /** The engine's reply; the worked examples' by default. */
   respond?: (request: InitialRunRequest) => Promise<ExecutionResult> | ExecutionResult;
+  /** When a board is measured; a fixed moment in 2023 by default. */
+  now?: () => number;
 }
 
 export interface LightboxBoardsTab {
@@ -115,7 +117,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     new WordFrequencyService({} as ToolOptionsProvider),
     new StyleFlagsService(),
     { enrichWithStandards: async (stats: object) => stats } as never,
-    { now: () => 1_700_000_000_000, mintBoardId: () => `board-${++boardIds}` }
+    { now: options.now ?? (() => 1_700_000_000_000), mintBoardId: () => `board-${++boardIds}` }
   );
   const runInitial = jest.fn(async (request: InitialRunRequest) =>
     (options.respond ?? ((call) => ok(groupOf(call), groupOf(call) === 'F' ? opinionReplyFor(call) : undefined)))(request)

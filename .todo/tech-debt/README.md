@@ -103,7 +103,10 @@ elsewhere.
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
 | Low | [The word-pattern figures miss a form wrapped in underscore emphasis](2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Lightbox Slice 4F; `_was_` counts nowhere, consistently) | Identified |
 | Low | [Craft steering's construction breakdown is a next-word heuristic](2026-10-21-lightbox-steering-construction-heuristics.md) (Lightbox Slice 4F) | Identified |
-| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; split before Slice 5 adds to them) | Identified |
+| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; reviewed after 5A, which made room in the service; split the store and the barrel before 5B) | Identified |
+| Low | [A spark set aside is saved only with the board's next save](2026-10-22-lightbox-spark-set-aside-saves-later.md) (Lightbox Slice 5A) | Identified |
+| Low | [A reopened board's passages are found by today's rules](2026-10-22-lightbox-reopened-passages-use-todays-rules.md) (Lightbox Slice 5A; matters once a rule id changes) | Identified |
+| Low | [The Boards rail drops focus after a confirmed delete](2026-10-22-lightbox-boards-rail-focus-after-delete.md) (Lightbox Slice 5A; and a missing restore file is retried) | Identified |
 | Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
 | Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
 | Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |

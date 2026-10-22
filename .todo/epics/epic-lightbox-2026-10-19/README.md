@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; `epic/lightbox` is at `3e6a156`. Slice 5 is split: 5A (saved boards) is in progress on `epic/lightbox-slice-5a-saved-boards`, and 5B (Compare) follows it.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; `epic/lightbox` is at `3e6a156`. Slice 5 is split: 5A (saved boards) is built on `epic/lightbox-slice-5a-saved-boards`, awaiting review, and 5B (Compare) follows it.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -86,7 +86,7 @@ carried into the Workshop.
 | 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Merged (PR #160) |
 | 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Merged (PR #162, at `3e6a156`) |
-| 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | In progress (`epic/lightbox-slice-5a-saved-boards`) |
+| 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Built, awaiting review (`epic/lightbox-slice-5a-saved-boards`) |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1394,3 +1394,37 @@ lens, and adds its items to 4D's digest.
     1,133 warnings; typecheck and build with `verify:bundle` pass;
     `webview.js` SHA-256 `20d3aed3…` and `extension.js` `6fffedac…`, the
     hashes PR #162 recorded.
+
+- **2026-10-22. Slice 5A (saved boards) is built** on
+  `epic/lightbox-slice-5a-saved-boards`, awaiting review. See the slice's
+  [implementation notes](slice-5-saved-boards-and-compare.md#implementation-notes-2026-10-22)
+  for what the writer may want to redirect.
+  - **The Opinion's basis is data** (decision 25): rewording the digest
+    moves no basis; each canonical field moves its own. The tech debt is
+    archived.
+  - **Rule ids** beside the paragraph, sentence, dialogue and being-verb
+    rules and the Opinion's basis, each pinned by a fingerprint guard; a
+    board names the rules that measured it (`boardVersion: 1`).
+  - **Format 1:** `LightboxBoardCodec`, typed against the contracts and
+    split by layer; `board-v1.json` from the every-kind *Alice* board,
+    written by its builder.
+  - **The store and the library:** one file per save in
+    `prose-minion/boards/`, atomic, never over a file it cannot read;
+    saves after a run that landed a group and on a source's first measured
+    board; open as a snapshot; the last board back after a reload; both
+    built only in `extension.ts`.
+  - **Ownership:** open and restore take the source ticket first and never
+    replace a board a run is reading; six witnesses with held promises.
+  - **The rail's Boards section**, with the changed-file note, Read the
+    current text, and an in-row delete confirm.
+  - **Verification**, after `npm ci` into a real `node_modules`:
+    471 suites / 6,505 tests / 59 snapshots; lint 0 errors / 1,133
+    warnings, identical per file and rule; typecheck and build with
+    `verify:bundle` pass; `webview.js` SHA-256 `b2d0afec…` (twice),
+    `extension.js` `f8df6063…`; visual evidence in
+    `docs/pr-reviews/evidence/lightbox-slice-5a-visual/`, 18 captures,
+    `errors.txt` empty, 108 errors against the base bundle. No live or
+    billable call.
+  - **Tech debt:** a spark set aside saves with the next save; a reopened
+    board's passages use today's rules; focus after a confirmed delete; the
+    size note reviewed.

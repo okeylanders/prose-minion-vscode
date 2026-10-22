@@ -683,10 +683,18 @@ so that 5B needs no change to it.
   board of which holds that text. No pruning.
 - **Open is a snapshot** (decision 29). An opened board shows exactly as
   saved, against its saved text, under its saved rules; nothing is measured
-  again. When the file's text differs now, a notice offers **Read the
-  current text**, the existing re-read, which carries the readings onto a
-  board built from the file, marked stale (D4). Bring from such a snapshot
-  is refused with a reason that points there.
+  again. When the file's text differs now, a notice at the head of the
+  rail's Boards section offers **Read the current text**, the existing
+  re-read, which carries the readings onto a board built from the file,
+  marked stale (D4). Bring from such a snapshot is refused with a reason
+  that points there.
+- **Who decides.** `LightboxBoardLibrary`, an application service built
+  once at the composition root over the service, the store and the runner,
+  decides when a board saves, opens and restores one, and lists and deletes
+  them. A fourth handler, `LightboxBoardsHandler`, owns the rail's three
+  routes (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
+  `LIGHTBOX_DELETE_BOARD`) and answers each with `LIGHTBOX_BOARDS` under its
+  request id; a committed save is pushed with `requestId: null`.
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a

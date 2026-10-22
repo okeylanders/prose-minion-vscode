@@ -42,6 +42,7 @@ packages/core/src/
 ├── platform/           # Ports the host must implement (LogSink, SecretStore, FileSystem, …)
 ├── application/        # Application layer (orchestration)
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
+│   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
 │       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
@@ -65,6 +66,7 @@ packages/core/src/
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
+│           ├── LightboxBoardsHandler.ts   # The rail's saved boards: shelf, open, delete, and each committed save pushed (Slice 5A)
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -87,8 +89,8 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys
-│   ├── context/ guides/ secrets/ standards/ storage/ text/
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
+│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer) and store (Slice 5A)
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
@@ -123,6 +125,7 @@ packages/core/src/
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
             ├── lightboxPassages.ts # The inspector's passages (Slice 4E): a paragraph's text or a term's sentences, by request id, board id and hash; refusals
+            ├── lightboxBoards.ts  # Saved boards (Slice 5A): the rail's shelf (availability, summaries, snapshot state), open, delete, by request id
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -192,9 +195,11 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
 │       │   ├── lightboxOpinion.ts      # The Opinion as drawn: view tabs, Why rows, observations and what changed, Bring block, inspector details (pure)
 │       │   ├── lightboxSteering.ts     # Craft steering as drawn: figure sections and construction shares, the `steering` item ref, inspector details (pure)
+│       │   ├── lightboxBoardsView.ts   # The rail's Boards section in words: dates, lenses, stale, cost, the snapshot note, session-only (pure; Slice 5A)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
+│       ├── useLightboxBoards.ts        # The rail's saved boards: the shelf of the board on screen by request id, Open, Delete; persists nothing (Slice 5A)
 │       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
@@ -811,8 +816,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-21, Lightbox Slice 4G (being-verb contractions, the next-word rule for 's, and dialogue as voice, with the PR #162 review fixes) merged with the sentence rule (PR #161), Slice 4F (PR #160), Slice 4E (PR #159) and PR #158's VS Code 1.82 floor):
-- 461 suites / 6,354 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) on `epic/lightbox` at `3e6a156`):
+- 471 suites / 6,505 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1230,6 +1235,58 @@ D10 (Passages, Slice 4E) when changing what the inspector's wells show:
   rule feeds every sentence figure, so a change to it moves measured
   figures: pin it with literal before/after figures on the *Alice*
   fixtures, and regenerate any worked example whose request states them.
+
+### Lightbox Saved Boards
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D12 and its addendum of 2026-10-22 (Slice 5A) when touching what a board
+records, when it saves, or how a saved one comes back:
+
+- **The format is a contract.** `LightboxBoardCodec` (format 1, pure, its
+  decoders split by layer) reads and writes the board whole. Its decoders
+  are typed against the contracts, so a new field or tile kind does not
+  compile until the codec reads it; give it a decoder and a round-trip
+  case in `LightboxBoardCodec.test.ts`. Keys are exact. Invalid tiles and
+  group notes are dropped and counted; the measured layers, the paragraph
+  model, a group's own fields and its stale marks decode whole or not at
+  all. Never add a migration for a development shape: a change that cannot
+  read `__tests__/fixtures/board-v1.json` is a new format, with a new
+  fixture and ADR 2026-07-30's release rule.
+- **Rule ids move with their rules.** A board records the ids of the rules
+  that measured it (`LightboxMeasureRules`). Change what a rule returns and
+  give it a new id beside the rule, then record its fingerprint as a new
+  entry in `measurementRuleIds.test.ts`; never edit a recorded one. The
+  Opinion's basis is fingerprinted over the fixture's board; a board whose
+  basis id is not this build's does not decode.
+- **The Opinion's basis is data.** A citation's basis hashes the cited
+  item's canonical data (`lightboxOpinionBasis`), never the digest's
+  words. A new item kind gives its canonical data there, with a case that
+  rewording keeps it and a changed field moves it.
+- **One store, one queue.** `LightboxBoardStore` is built only in
+  `extension.ts`. It writes a new file per save through its queue: staged,
+  a synchronous commit point, then a rename that never overwrites. It never
+  deletes or overwrites a file it cannot read. Availability is read live:
+  one folder saves; none, or several, is session-only.
+- **One library decides.** `LightboxBoardLibrary`, built only in
+  `extension.ts`, saves after a run that landed a group and on a source's
+  first measured board, opens and restores. Handlers call it; none
+  constructs it, and none writes a board.
+- **Open and restore are source choices.** Each takes the service's ticket
+  before its first await and adopts only under the newest (PR #148 F-01).
+  Neither replaces a board a run is reading: checked at once, and again
+  with nothing awaited at the adoption. A restore takes a ticket only when
+  no source was chosen this session. Witness each with held promises
+  (`LightboxBoardOwnership.test.ts`).
+- **A snapshot is exactly as saved.** Nothing is measured again; its
+  host-side parts are rebuilt from its own saved text. A changed file is
+  said in the rail, and Bring is refused with words that point to "Read the
+  current text", the existing re-read.
+- **The rail is correlated.** `useLightboxBoards` takes only the pending
+  request's answer, and a pushed save (`requestId: null`) only for the
+  board on screen; it persists nothing. File ids are the host's; the
+  webview never names a path.
+- **Logs never carry the writer's text,** nor do tests, fixtures or
+  evidence: use *Alice* or made-up names.
 
 ### Operational Tips
 

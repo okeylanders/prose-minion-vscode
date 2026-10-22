@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D12 and its addendum of 2026-10-22
 **Writer decisions:** 5, 14, 25, and 27–32 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) is in progress on `epic/lightbox-slice-5a-saved-boards`, from `epic/lightbox` at `3e6a156`. **5B** (Compare) follows it and needs no format change.
+**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) is built on `epic/lightbox-slice-5a-saved-boards`, from `epic/lightbox` at `3e6a156`, awaiting review; see [its implementation notes](#implementation-notes-2026-10-22). **5B** (Compare) follows it and needs no format change.
 
 ## Before starting
 
@@ -188,10 +188,12 @@ decision 32 records what the format holds.
     satisfied in the app by the workspace's memento;
   - logs carry ids, counts and reasons, never writer text;
   - built in `extension.ts`, carried in `CoreServices`.
-- **`infrastructure/lightbox/LightboxBoardLibrary.ts`**, built once in
-  `extension.ts`: saves (it hears adoptions first, so a measured board's
-  save is queued before any list is asked for), opens a snapshot, restores
-  on mount, lists for a board and deletes.
+- **`application/services/lightbox/LightboxBoardLibrary.ts`**, built once
+  in `extension.ts` and carried in `CoreServices`: saves (it hears
+  adoptions first, so a measured board's save is queued before any list is
+  asked for), opens a snapshot, restores on mount, lists for a board and
+  deletes. It orchestrates the service, the store and the runner, so it is
+  an application service, beside the Workshop's.
 - **`LightboxService`** keeps each board's text and where it came from
   (built, or opened from a file), and adopts a snapshot under a source
   ticket. Its assembly moves to its own module first, so it has room.
@@ -201,9 +203,13 @@ decision 32 records what the format holds.
   - `LIGHTBOX_REQUEST_BOARDS { requestId, boardId }` → `LIGHTBOX_BOARDS
     { requestId, boardId, shelf }`: the summaries of the source's saved
     boards, availability, unreadable files, and whether the board on
-    screen is a snapshot whose file changed;
-  - `LIGHTBOX_OPEN_BOARD { requestId, boardId, fileId }`;
-  - `LIGHTBOX_DELETE_BOARD { requestId, boardId, fileId }`.
+    screen is a snapshot whose file changed. `boardId: null` is a mount
+    with no board, which lets the host restore one;
+  - `LIGHTBOX_OPEN_BOARD { requestId, fileId }`, answered with the shelf of
+    the board then on screen;
+  - `LIGHTBOX_DELETE_BOARD { requestId, boardId, fileId }`;
+  - a committed save is pushed as `LIGHTBOX_BOARDS` with `requestId: null`,
+    which the webview takes only for the board on screen.
 
   Each answer echoes its request id and names the board it describes, and
   the webview takes only the answer it waits for, about the board on
@@ -225,8 +231,10 @@ decision 32 records what the format holds.
 
 - `useLightboxBoards` (transport; persists nothing): the shelf for the
   board on screen, by request id; open; delete with a confirm step.
-- `LightboxBoardsPanel` in the rail, and the changed-file notice above the
-  board with **Read the current text** (the existing re-read route).
+- `LightboxBoardsPanel` in the rail. Its head holds the changed-file
+  notice with **Read the current text** (the existing re-read route): the
+  notice says where the board came from, which is the rail's to say, and it
+  sits at the top of the rail at every width.
 - Styles in `styles/lightbox/boards.css`, plain CSS on the Chromium 114
   floor.
 
@@ -257,6 +265,53 @@ decision 32 records what the format holds.
 A board survives a window reload. The rail lists the source's saved boards,
 opens any of them as it was saved, says when the file has changed since,
 and deletes one after a confirm.
+
+### Implementation notes (2026-10-22)
+
+Eleven commits on `epic/lightbox-slice-5a-saved-boards`: the plan, the
+data basis (decision 25), the rule ids, the board naming its rules, the
+codec, the store, the service's room, the host's saving and opening, the
+rail, the regression fixture, and this evidence and these notes. What the
+writer may want to redirect, beyond decisions 27–31:
+
+- **When a save names the board on screen.** A committed save records the
+  file the board was last saved to, by board id; the rail marks that file
+  "On screen". A board opened from a file names it until a later save. A
+  saved board is adopted only through the store's queue, after every save
+  before it has committed, so the latest commit is the latest saved state.
+- **A run that ends with a group back saves,** finished or stopped. A
+  failed group counts: its note changed the readings. A run stopped before
+  any group came back saves nothing.
+- **A measured board saves once per text.** When a saved board of the
+  source already holds the text, nothing is written, and the reload
+  pointer moves to the newest such file while that board is on screen.
+- **A spark set aside is saved with the next save,** not by itself
+  ([tech debt](../../tech-debt/2026-10-22-lightbox-spark-set-aside-saves-later.md)).
+- **An opened board keeps its id.** It is the same board, by D12's
+  identity, so it replaces the board kept for its source, as a newer
+  source does.
+- **Open while a run reads.** Refused at once, with the rail's notice, when
+  a run reads the board on screen; checked again, with nothing awaited,
+  for the board it would replace. A press still preparing when a board
+  opens is refused by its own snapshot check, as for any newer source.
+- **Bring from a saved board whose file is not in this workspace** (moved,
+  or another folder open) is refused as unreadable: it cannot be checked.
+- **A saved board's basis rule must be this build's.** A file whose
+  `rules.opinionBasis` differs does not decode (`basis`): a later basis
+  rule is a new format, with a migration. The other rule ids may be any
+  well-formed id; 5B labels them.
+- **A file with several sources** decodes, and opening it is refused with a
+  reason.
+- **A restore that fails** (its file gone or unreadable) is logged; the
+  writer asked for nothing, so nothing is refused.
+- **Dates** show in the webview's own zone; tests and the evidence pin UTC.
+- **Deleting the file on screen** leaves the board on screen and clears the
+  reload pointer.
+
+Gates at the head: full `npx jest`, `npm run lint` (0 errors, 1,133
+warnings, identical per file and rule to the base), `npm run typecheck`,
+`npm run build` with `verify:bundle`, and `git diff --check`. Visual
+evidence: [`lightbox-slice-5a-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-5a-visual/README.md).
 
 ## Slice 5B: draft compare (a later PR)
 
