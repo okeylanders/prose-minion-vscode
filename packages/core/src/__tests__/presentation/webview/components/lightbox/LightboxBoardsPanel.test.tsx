@@ -5,7 +5,9 @@
  * board on screen marked, Open by file, Delete confirmed in the row (focus on
  * Keep, Escape keeps), "Read the current text" offered only when a board
  * opened from a file no longer matches it, and, past one page, how many are
- * shown and Show older (PR #163 F-04). Dates are pinned to UTC.
+ * shown and Show older (PR #163 F-04), which goes on from the rows shown
+ * when the page reached a board deep in the history (PR #163 N-03). Dates
+ * are pinned to UTC.
  */
 
 import * as React from 'react';
@@ -116,6 +118,26 @@ describe('LightboxBoardsPanel', () => {
     expect(rows()).toBe(23);
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByRole('button', { name: /older/ })).toBeNull();
+  });
+
+  it.each([
+    // [files, the board on screen's index, newest first, then the rows shown after each Show older]
+    [65, 44, [45, 65]],
+    [206, 204, [205, 206]]
+  ])('with %i boards and the one on screen at index %i, Show older shows more at every press (PR #163 N-03)', (count, current, steps) => {
+    const boards = Array.from({ length: count }, (_, index) => ({
+      ...SHELF.boards[1], fileId: `f${index}`, savedAt: Date.parse('2026-10-22T14:05:00.000Z') - index * 60_000, onScreen: index === current
+    }));
+    const { container } = panel({ shelf: { ...SHELF, boards } });
+    const rows = () => container.querySelectorAll('.pm-lb-saved-board').length;
+
+    expect(rows()).toBe(steps[0]);
+    for (const expected of steps.slice(1)) {
+      fireEvent.click(screen.getByRole('button', { name: /^Show \d+ older$/ }));
+      expect(rows()).toBe(expected);
+    }
+    expect(screen.queryByRole('button', { name: /older/ })).toBeNull();
+    expect(container.querySelector('[aria-current="true"]')?.textContent).toContain('Oct');
   });
 
   it('says boards are kept for the session only, with nothing to open', () => {

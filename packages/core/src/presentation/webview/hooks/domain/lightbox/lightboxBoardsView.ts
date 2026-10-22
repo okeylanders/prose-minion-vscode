@@ -47,6 +47,8 @@ export const LIGHTBOX_BOARDS_PAGE = 20;
 export interface LightboxBoardsPage {
   note: string;
   more: string;
+  /** How many rows "Show older" shows: a page more than are shown now, however the page was reached (PR #163 N-03). */
+  next: number;
 }
 
 export interface LightboxBoardsView {
@@ -95,7 +97,11 @@ export function buildLightboxBoardsView(
     status: shelf.availability.kind === 'session' ? 'this session' : `${total} saved`,
     rows,
     ...(rows.length < total ? {
-      page: { note: `Showing the newest ${rows.length} of ${total}.`, more: `Show ${Math.min(LIGHTBOX_BOARDS_PAGE, total - rows.length)} older` }
+      page: {
+        note: `Showing the newest ${rows.length} of ${total}.`,
+        more: `Show ${Math.min(LIGHTBOX_BOARDS_PAGE, total - rows.length)} older`,
+        next: Math.min(total, rows.length + LIGHTBOX_BOARDS_PAGE)
+      }
     } : {}),
     ...(shelf.notice ? { notice: shelf.notice } : {}),
     ...(shelf.snapshot ? { snapshot: snapshotOf(shelf.snapshot, when) } : {})

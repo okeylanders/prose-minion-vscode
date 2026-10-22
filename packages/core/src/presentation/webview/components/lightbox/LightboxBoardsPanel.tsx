@@ -9,7 +9,9 @@
  * file still holds its text and, when it does not, offers "Read the current
  * text". Where boards are kept, and why they are kept for the session only,
  * is said here too. The newest page of boards shows first; when there are
- * more, the panel says how many and offers "Show older" (PR #163 F-04).
+ * more, the panel says how many and offers "Show older" (PR #163 F-04),
+ * which shows a page more than are shown, even when the page was widened
+ * to reach the board on screen (PR #163 N-03).
  * The board's id keys the panel in the app, so a new board starts at one
  * page.
  *
@@ -170,7 +172,7 @@ export const LightboxBoardsPanel: React.FC<LightboxBoardsPanelProps> = ({
       {view.page && (
         <div className="pm-lb-boards-page">
           <p className="pm-lb-boards-note" role="status">{view.page.note}</p>
-          <button type="button" className="pm-lb-button" onClick={() => setShown((count) => count + LIGHTBOX_BOARDS_PAGE)}>
+          <button type="button" className="pm-lb-button" onClick={() => setShown(view.page?.next ?? LIGHTBOX_BOARDS_PAGE)}>
             {view.page.more}
           </button>
         </div>

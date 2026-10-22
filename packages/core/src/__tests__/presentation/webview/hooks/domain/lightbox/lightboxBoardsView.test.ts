@@ -97,11 +97,11 @@ describe('buildLightboxBoardsView', () => {
     expect(LIGHTBOX_BOARDS_PAGE).toBe(20);
     expect(first.status).toBe('43 saved');
     expect(first.rows.map((row) => row.fileId)).toEqual(many.slice(0, 20).map((board) => board.fileId));
-    expect(first.page).toEqual({ note: 'Showing the newest 20 of 43.', more: 'Show 20 older' });
+    expect(first.page).toEqual({ note: 'Showing the newest 20 of 43.', more: 'Show 20 older', next: 40 });
 
     const second = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 40 });
     expect(second.rows).toHaveLength(40);
-    expect(second.page).toEqual({ note: 'Showing the newest 40 of 43.', more: 'Show 3 older' });
+    expect(second.page).toEqual({ note: 'Showing the newest 40 of 43.', more: 'Show 3 older', next: 43 });
     const all = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 60 });
     expect(all.rows).toHaveLength(43);
     expect(all.page).toBeUndefined();
@@ -111,7 +111,8 @@ describe('buildLightboxBoardsView', () => {
     const reaching = buildLightboxBoardsView(shelf({ boards: older }), true, UTC);
     expect(reaching.rows).toHaveLength(31);
     expect(reaching.rows.at(-1)).toMatchObject({ fileId: 'f30', onScreen: true });
-    expect(reaching.page).toEqual({ note: 'Showing the newest 31 of 43.', more: 'Show 12 older' });
+    // Show older goes on from the rows shown, not from the first page (PR #163 N-03).
+    expect(reaching.page).toEqual({ note: 'Showing the newest 31 of 43.', more: 'Show 12 older', next: 43 });
 
     // One page or fewer: no note.
     expect(buildLightboxBoardsView(shelf({ boards: many.slice(0, 20) }), true, UTC).page).toBeUndefined();
