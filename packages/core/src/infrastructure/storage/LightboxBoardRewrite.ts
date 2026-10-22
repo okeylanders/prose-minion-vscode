@@ -3,7 +3,8 @@
  * addendum; epic decisions 33 and 35): a board named or renamed, or a spark
  * set aside, on the file that already holds the board. Split from
  * `LightboxBoardStore`, which owns the queue and calls this inside it; the
- * small file helpers here serve the store's new-file writes too.
+ * claim itself, and what becomes of claims left behind, are
+ * `LightboxBoardClaims`'.
  *
  * - **Only a whole board.** The file is read and checked first: it reads
  *   whole (a rename may replace a name that did not read, and nothing else
@@ -13,22 +14,25 @@
  *   as a new save stages (PR #163 F-03). What would be written is decoded
  *   first; a board that would not read back whole is not written.
  * - **Claimed, then committed.** The saved file is renamed, never over
- *   anything, to a hidden name private to this write. A rename is atomic,
- *   so once the claim holds no other writer (another window's store) can
- *   delete or rewrite the file; and a file another writer deleted first
- *   cannot be claimed, so a rewrite never brings a deleted board back. The
- *   claimed bytes must be the bytes that were read, or the claim is put back
- *   and the file read again (at most three times). The commit point runs,
- *   then the staged file takes the saved name, never over anything, and the
- *   claim is dropped.
+ *   anything, to a hidden name private to this write that records when it
+ *   was taken (`LightboxBoardClaims`). A rename is atomic, so once the claim
+ *   holds no other writer (another window's store) can delete or rewrite
+ *   the file; and a file another writer deleted first cannot be claimed, so
+ *   a rewrite never brings a deleted board back. The claimed bytes must be
+ *   the bytes that were read, or the claim is put back and the file read
+ *   again (at most three times). The claim must still be this write's (one
+ *   held past the lease may have been put back by another window), then the
+ *   commit point runs, the staged file takes the saved name, never over
+ *   anything, and the claim is dropped.
  * - **The last rewrite to commit wins,** and each reports only bytes it
  *   wrote. A rewrite that finds the file changed since it read it reads
  *   again; one that finds it claimed by another writer's rewrite says the
  *   board is busy (`busy`), and writes nothing.
  * - **A claim left behind** (a window closed mid-rewrite) is put back under
- *   its saved name when the folder is next listed. Putting it back never
- *   overwrites, and a writer still mid-rewrite then finds its saved name
- *   taken and fails, reporting nothing it did not write.
+ *   its saved name once it is older than the lease, when the folder is next
+ *   listed or the file next read; a claim left beside a committed rewrite
+ *   is removed (`LightboxBoardClaims`). A file found gone is settled first:
+ *   held by a live claim, it is busy.
  * - **Logs** carry file ids and reasons, never the writer's text or a name.
  */
 
@@ -39,7 +43,14 @@ import {
   writeLightboxBoardFile,
   type LightboxBoardFile
 } from '@/infrastructure/storage/LightboxBoardCodec';
-import { LIGHTBOX_BOARD_CLAIM, errorMessage, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
+import { errorMessage, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
+import {
+  boardFileExists,
+  deleteBoardFileQuietly,
+  freeBoardFileName,
+  type LightboxBoardClaimState,
+  type LightboxBoardClaims
+} from '@/infrastructure/storage/LightboxBoardClaims';
 
 const encoder = new TextEncoder();
 const LOG = '[LightboxBoardStore]';
@@ -54,7 +65,7 @@ export type LightboxBoardReplaceResult =
   | { kind: 'unchanged'; fileId: string }
   /** No file to rewrite: none was named, or it is gone (deleted here or by another writer). */
   | { kind: 'missing' }
-  /** Another writer (another window's store) is rewriting it now; nothing was written. */
+  /** Another writer (another window's store) is rewriting or deleting it now; nothing was written. */
   | { kind: 'busy' }
   /** The file does not read whole, or holds another board: left as it is. */
   | { kind: 'unreadable' }
@@ -83,6 +94,7 @@ export class LightboxBoardRewrites {
   constructor(
     private readonly fileSystem: FileSystem,
     private readonly files: LightboxBoardFiles,
+    private readonly claims: LightboxBoardClaims,
     private readonly log: LogSink,
     private readonly mintStagingId: () => string
   ) {}
@@ -104,26 +116,6 @@ export class LightboxBoardRewrites {
     return { kind: 'failed' };
   }
 
-  /**
-   * Claims a listing found with their saved names empty (`leftClaims`), left
-   * by a writer that stopped mid-rewrite: each board goes back under its
-   * saved name, never over anything.
-   */
-  async putBack(folder: string, claims: readonly string[]): Promise<void> {
-    for (const name of claims) {
-      const saved = LIGHTBOX_BOARD_CLAIM.exec(name)?.[1];
-      if (!saved) {
-        continue;
-      }
-      try {
-        await this.fileSystem.rename(path.join(folder, name), path.join(folder, saved), { overwrite: false });
-        this.log.appendLine(`${LOG} Put back ${saved}, left mid-rewrite.`);
-      } catch {
-        // Another writer put it back, or took the name: the claim stays for the next listing.
-      }
-    }
-  }
-
   /** One rewrite: read, stage, claim, commit. `again` when the file changed or moved under it. */
   private async once(
     target: LightboxBoardReplaceTarget,
@@ -134,7 +126,7 @@ export class LightboxBoardRewrites {
     const { fileId } = target;
     const { read, bytes } = await this.files.readWithBytes(fileId, filePath);
     if (read.kind === 'missing' || read.kind === 'unavailable') {
-      return (await boardFileClaimed(this.fileSystem, filePath)) ? { kind: 'busy' } : { kind: 'missing' };
+      return gone(await this.claims.settle(filePath));
     }
     // Only a whole board is rewritten: a part left out would be lost. A rename replaces a name that did not read.
     const whole = read.kind === 'board' && (read.dropped === 0 || (options.renames === true
@@ -156,7 +148,6 @@ export class LightboxBoardRewrites {
     const folder = path.dirname(filePath);
     const name = path.basename(filePath);
     const temporaryPath = path.join(folder, `.${name}.tmp-${this.mintStagingId()}`);
-    const claimPath = path.join(folder, `.${name}.claim-${this.mintStagingId()}`);
     try {
       await this.fileSystem.writeFile(temporaryPath, encoder.encode(json));
     } catch (error) {
@@ -164,15 +155,11 @@ export class LightboxBoardRewrites {
       await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
       return { kind: 'failed' };
     }
-    try {
-      // The claim: atomic, and never over anything. A file deleted since the read cannot be claimed, so it stays deleted.
-      await this.fileSystem.rename(filePath, claimPath, { overwrite: false });
-    } catch {
+    // The claim: atomic, and never over anything. A file deleted since the read cannot be claimed, so it stays deleted.
+    const claimPath = await this.claims.take(filePath, this.mintStagingId());
+    if (!claimPath) {
       await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-      if (await boardFileExists(this.fileSystem, filePath)) {
-        return 'again';
-      }
-      return (await boardFileClaimed(this.fileSystem, filePath)) ? { kind: 'busy' } : { kind: 'missing' };
+      return gone(await this.claims.settle(filePath));
     }
     let claimed: Uint8Array | undefined;
     try {
@@ -185,6 +172,13 @@ export class LightboxBoardRewrites {
       await this.release(claimPath, filePath, temporaryPath);
       return 'again';
     }
+    // Still this write's claim: one held past the lease may have been put back by another window, and is not written over.
+    if (!(await boardFileExists(this.fileSystem, claimPath))) {
+      await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
+      this.log.appendLine(`${LOG} ${fileId} was not rewritten: its claim was taken back while the rewrite waited.`);
+      return { kind: 'failed' };
+    }
+    // The commit point: nothing is awaited between it and the rename that commits.
     if (options.beforeCommit && !options.beforeCommit()) {
       await this.release(claimPath, filePath, temporaryPath);
       return { kind: 'withdrawn' };
@@ -197,6 +191,7 @@ export class LightboxBoardRewrites {
       return { kind: 'failed' };
     }
     this.files.forget(fileId);
+    // Should this fail, the claim is a leftover beside the rewritten file: removed once abandoned, or by a delete, never put back.
     await deleteBoardFileQuietly(this.fileSystem, claimPath);
     this.log.appendLine(`${LOG} Rewrote ${fileId} in place.`);
     return { kind: 'replaced', fileId };
@@ -219,47 +214,16 @@ export class LightboxBoardRewrites {
         // Taken, or the claim is gone: try the next.
       }
     }
-    this.log.appendLine(`${LOG} A claimed board could not be put back; it is kept as ${path.basename(claimPath)}.`);
-  }
-}
-
-/** Whether another writer holds a claim on the saved file at `filePath`: it is mid-rewrite, not gone. */
-export async function boardFileClaimed(fileSystem: FileSystem, filePath: string): Promise<boolean> {
-  const name = path.basename(filePath);
-  try {
-    return (await fileSystem.readDirectory(path.dirname(filePath)))
-      .some(([entry]) => LIGHTBOX_BOARD_CLAIM.exec(entry)?.[1] === name);
-  } catch {
-    return false;
-  }
-}
-
-export async function boardFileExists(fileSystem: FileSystem, filePath: string): Promise<boolean> {
-  try {
-    await fileSystem.stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** The timestamp's name, or the first numbered one free: a save never takes an existing file's name. */
-export async function freeBoardFileName(fileSystem: FileSystem, folder: string, stamp: string): Promise<string> {
-  for (let attempt = 1; ; attempt++) {
-    const name = attempt === 1 ? `${stamp}.board.json` : `${stamp}-${attempt}.board.json`;
-    if (!(await boardFileExists(fileSystem, path.join(folder, name)))) {
-      return name;
+    // A claim another window already put back (held past the lease) is not this write's to report.
+    if (await boardFileExists(this.fileSystem, claimPath)) {
+      this.log.appendLine(`${LOG} A claimed board could not be put back; it is kept as ${path.basename(claimPath)}.`);
     }
   }
 }
 
-/** Best effort: a leftover temporary or claim file is never read as a board. */
-export async function deleteBoardFileQuietly(fileSystem: FileSystem, filePath: string): Promise<void> {
-  try {
-    await fileSystem.delete(filePath);
-  } catch {
-    // The write may have failed before the file existed.
-  }
+/** A file found gone, once its claims are settled: put back (read it again), held by a live claim, or gone. */
+function gone(state: LightboxBoardClaimState): LightboxBoardReplaceResult | 'again' {
+  return state === 'present' ? 'again' : state === 'busy' ? { kind: 'busy' } : { kind: 'missing' };
 }
 
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {

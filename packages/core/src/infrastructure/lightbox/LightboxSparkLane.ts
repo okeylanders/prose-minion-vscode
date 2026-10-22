@@ -7,10 +7,11 @@
  * service keeps per source, so a hidden tab, a reloaded webview, or a switch
  * to another source and back all find it still set aside; and the mark is
  * saved with its board. From Slice 5A.1 (epic decision 35) it is saved at
- * once: the file that holds the board takes the board's marks in place
- * (`carryLightboxSparkMarks`), and a board no file holds yet takes them with
- * its next save. The webview keeps no dismissal state of its own: it asks,
- * and shows what the board says.
+ * once: the file that holds the board takes that spark's mark in place, by
+ * this same function over the file's readings (`LightboxBoardEdits`), and a
+ * board no file holds yet takes its marks with its next save. The webview
+ * keeps no dismissal state of its own: it asks, and shows what the board
+ * says.
  *
  * - The order is the board's own: one more than the highest order on it, so
  *   Undo can bring back the latest first, from any webview, after a reload.
@@ -79,32 +80,6 @@ export function setLightboxSparkDismissed(
     readings: readings.map((group) =>
       group.tiles.some((tile) => tile.id === tileId) ? { ...group, tiles: group.tiles.map(mark) } : group)
   };
-}
-
-/**
- * The board's set-aside marks carried onto `saved`, the readings of the file
- * that holds it (Slice 5A.1): each spark the file holds takes the mark the
- * same spark has on the board, its order included. A spark the file does not
- * hold is left for the board's next save. Undefined when nothing changes.
- */
-export function carryLightboxSparkMarks(
-  saved: readonly LightboxReadingGroup[],
-  board: readonly LightboxReadingGroup[]
-): LightboxReadingGroup[] | undefined {
-  const marks = new Map(board.flatMap((group) => group.tiles)
-    .flatMap((tile) => (tile.kind === 'spark' ? [[tile.id, tile.dismissedOrder] as const] : [])));
-  let changed = false;
-  const mark = (tile: LightboxReadingTile): LightboxReadingTile => {
-    if (tile.kind !== 'spark' || !marks.has(tile.id) || marks.get(tile.id) === tile.dismissedOrder) {
-      return tile;
-    }
-    changed = true;
-    const { dismissedOrder: _previous, ...rest } = tile;
-    const order = marks.get(tile.id);
-    return order === undefined ? rest : { ...rest, dismissedOrder: order };
-  };
-  const readings = saved.map((group) => ({ ...group, tiles: group.tiles.map(mark) }));
-  return changed ? readings : undefined;
 }
 
 function highestOrder(readings: readonly LightboxReadingGroup[]): number {

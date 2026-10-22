@@ -11,6 +11,12 @@
  * - The file is found when the rewrite's turn comes: a spark set aside while
  *   a run's save is still being written marks the file that save writes,
  *   even for a board no file held before it.
+ * - **Only the spark acted on changes in the file** (PR #164 F-03). Two
+ *   windows on one saved board, each setting a different spark aside, keep
+ *   both marks, in the order they were made, though the second window never
+ *   saw the first's; one spark's actions stay last-wins. A spark set aside
+ *   behind a rename, and a switch to another source, still marks the
+ *   original board's file.
  * - A restore whose file is gone forgets the reload pointer (5A tech debt),
  *   so the next session does not try it again.
  *
@@ -44,6 +50,12 @@ function boardIn(host: Host, fileId: string): LightboxBoard {
     throw new Error(`${fileId} does not read`);
   }
   return held.board;
+}
+
+/** The name a saved file holds, read from disk. */
+function nameIn(host: Host, fileId: string): string | undefined {
+  const decoded = decodeLightboxBoardFile(new TextDecoder().decode(host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', fileId))));
+  return decoded.kind === 'board' ? decoded.file.board.name : undefined;
 }
 
 async function readChapter(options: Parameters<typeof createLightboxBoardsHost>[0] = {}) {
@@ -148,6 +160,93 @@ describe('a spark set aside while a run\'s save is being written', () => {
     expect(written).toHaveLength(1);
     expect(host.service.savable('board-1')?.savedFileId).toBe(written[0]);
     expect(marks(boardIn(host, written[0]))[0]).toBe(1);
+  });
+});
+
+describe('two windows, two different sparks (PR #164 F-03)', () => {
+  /** A second window over the same files and memento, restoring the board the first has on screen. */
+  async function secondWindow(host: Host) {
+    const other = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
+    const tab = other.openTab();
+    await tab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    await tab.shelf(null);
+    const setAside = async (index: number, dismissed = true) => {
+      const tileId = sparksOf(other.service.currentBoard())[index].id;
+      await tab.route(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, { boardId: 'board-1', tileId, dismissed });
+      await quiet();
+    };
+    return { other, setAside };
+  }
+
+  it('keeps both marks when the second window set its spark aside without seeing the first\'s', async () => {
+    const { host, setAside } = await readChapter();
+    const holding = host.service.savable('board-1')?.savedFileId as string;
+    const second = await secondWindow(host);
+    expect(second.other.service.savable('board-1')?.savedFileId).toBe(holding);
+
+    await setAside(0);
+    // The second window still shows spark 1 as it was, and sets spark 2 aside.
+    expect(marks(second.other.service.currentBoard()).slice(0, 2)).toEqual([null, null]);
+    await second.setAside(1);
+
+    expect(marks(boardIn(host, holding)).slice(0, 2)).toEqual([1, 2]);
+    expect(host.savedFiles()).toHaveLength(2);
+  });
+
+  it('control: opened after the first window set its spark aside, the second keeps both marks too', async () => {
+    const { host, setAside } = await readChapter();
+    const holding = host.service.savable('board-1')?.savedFileId as string;
+    await setAside(0);
+    const second = await secondWindow(host);
+    expect(marks(second.other.service.currentBoard())[0]).toBe(1);
+
+    await second.setAside(1);
+
+    expect(marks(boardIn(host, holding)).slice(0, 2)).toEqual([1, 2]);
+  });
+
+  it('control: one spark\'s actions stay last-wins: the second window\'s Undo of the first\'s spark brings it back', async () => {
+    const { host, setAside } = await readChapter();
+    const holding = host.service.savable('board-1')?.savedFileId as string;
+    await setAside(0);
+    const second = await secondWindow(host);
+
+    await second.setAside(0, false);
+
+    expect(marks(boardIn(host, holding))[0]).toBeNull();
+  });
+
+  it('control: a spark set aside behind a rename, then a switch to another source, marks the original board\'s file', async () => {
+    const { host, tab } = await readChapter();
+    host.writeChapter('Drafts/alice-2.md', 'Alice opened the little door and looked along the passage into the loveliest garden you ever saw.');
+    const holding = host.service.savable('board-1')?.savedFileId as string;
+    // Hold the rename's rewrite at its commit, once its bytes are staged.
+    const gate = deferred<void>();
+    const reached = deferred<void>();
+    const rename = host.fileSystem.rename.bind(host.fileSystem);
+    const spy = jest.spyOn(host.fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      if (fromPath.includes('.tmp-')) {
+        spy.mockRestore();
+        reached.resolve();
+        await gate.promise;
+      }
+      return rename(fromPath, toPath, options);
+    });
+    const naming = tab.route(MessageType.LIGHTBOX_RENAME_BOARD, { requestId: 'rename-1', boardId: 'board-1', fileId: null, name: 'model A' });
+    await reached.promise;
+    const tileId = sparksOf(host.service.currentBoard())[0].id;
+    const setting = tab.route(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, { boardId: 'board-1', tileId, dismissed: true });
+    const switching = tab.choose('Drafts/alice-2.md');
+
+    gate.resolve();
+    await naming;
+    await setting;
+    await switching;
+    await quiet();
+
+    expect(host.service.currentBoard()?.source.displayPath).toBe('Drafts/alice-2.md');
+    expect(nameIn(host, holding)).toBe('model A');
+    expect(marks(boardIn(host, holding))[0]).toBe(1);
   });
 });
 

@@ -16,15 +16,18 @@
  *   board's name as it is then. So the last rename wins, and a save racing a
  *   rename never leaves the newest file without the name.
  * - **A spark set aside saves at once** (decision 35): the file that holds
- *   the board takes the board's set-aside marks in place, and no new file is
- *   written. A board no file holds yet, or one kept for the session only,
- *   takes them with its next save, as before.
+ *   the board takes that one spark's mark in place, and no new file is
+ *   written. Only the spark the writer acted on changes in the file, read
+ *   as it is at the rewrite's turn (PR #164 F-03): another window's board,
+ *   opened before this one set a different spark aside, never takes that
+ *   mark back. A board no file holds yet, or one kept for the session only,
+ *   takes its marks with its next save, as before.
  *
  * Logs carry file ids and outcomes, never the writer's text or a name.
  */
 
 import { LIGHTBOX_BOARD_NAME_FAULTS, checkLightboxBoardName } from '@shared/constants/lightboxBoardName';
-import { carryLightboxSparkMarks } from '@/infrastructure/lightbox/LightboxSparkLane';
+import { setLightboxSparkDismissed } from '@/infrastructure/lightbox/LightboxSparkLane';
 import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import { namedLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import type {
@@ -93,17 +96,25 @@ export class LightboxBoardEdits {
   }
 
   /**
-   * A spark on `boardId` was set aside or brought back: the file that holds
-   * the board takes its marks in place. That file is found at the rewrite's
-   * turn, so a save still queued (a run that just ended) is the file marked;
-   * with none, the board's next save carries the marks.
+   * The spark `tileId` on `boardId` was set aside or brought back: the file
+   * that holds the board takes that spark's mark, as the board has it at the
+   * rewrite's turn, and nothing else. A spark set aside takes the order after
+   * the file's own highest, so Undo in any window brings back the file's
+   * latest first. The file is found at the rewrite's turn, so a save still
+   * queued (a run that just ended) is the file marked; with none, the
+   * board's next save carries the marks.
    */
-  async keepSparks(boardId: string): Promise<void> {
+  async keepSpark(boardId: string, tileId: string): Promise<void> {
     const { service, store, outputChannel } = this.ports;
     const result = await store.replace(() => this.holding(boardId), (file) => {
-      const board = service.savable(boardId)?.board;
-      const readings = board && carryLightboxSparkMarks(file.board.readings, board.readings);
-      return readings ? { ...file, board: { ...file.board, readings } } : undefined;
+      const spark = service.savable(boardId)?.board.readings.flatMap((group) => group.tiles)
+        .find((tile) => tile.id === tileId && tile.kind === 'spark');
+      if (spark?.kind !== 'spark') {
+        // A run replaced it since: the board's next save holds what it has.
+        return undefined;
+      }
+      const marked = setLightboxSparkDismissed(file.board.readings, tileId, spark.dismissedOrder !== undefined);
+      return marked.ok && marked.changed ? { ...file, board: { ...file.board, readings: marked.readings } } : undefined;
     });
     if (result.kind === 'unreadable' || result.kind === 'busy' || result.kind === 'failed') {
       outputChannel.appendLine(`${LOG} A spark's mark waits for the board's next save: its file was ${result.kind}`);

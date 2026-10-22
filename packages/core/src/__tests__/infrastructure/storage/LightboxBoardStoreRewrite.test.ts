@@ -17,9 +17,11 @@
  *   that finds the file changed since it read it reads again (keeping the
  *   other writer's change), one that finds it claimed says busy, and each
  *   reports only bytes it wrote.
- * - **A claim left behind** by a window that closed mid-rewrite is put back
- *   when the folder is next listed.
  * - **A spark set aside** changes the file in place: no new file.
+ *
+ * What becomes of a claim, live, abandoned or left beside a committed
+ * rewrite, and why a delete is never undone, is `LightboxBoardClaims.test.ts`
+ * (PR #164 F-01, F-02).
  *
  * The board is the production service's measure of ¶1–¶8 of "Alice's
  * Adventures in Wonderland" (1865, public domain), with every reading kind.
@@ -27,21 +29,24 @@
  */
 import * as path from 'node:path';
 import type { LightboxBoard, LightboxReadingGroup } from '@messages';
-import type { LogSink } from '@/platform';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { createFakeWorkspace } from '@/__tests__/mocks/platform';
-import { LightboxBoardStore, type LightboxBoardSaveResult } from '@/infrastructure/storage/LightboxBoardStore';
-import {
-  decodeLightboxBoardFile,
-  namedLightboxBoardFile,
-  type LightboxBoardFile
-} from '@/infrastructure/storage/LightboxBoardCodec';
-import { carryLightboxSparkMarks, setLightboxSparkDismissed } from '@/infrastructure/lightbox/LightboxSparkLane';
+import { LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
+import { namedLightboxBoardFile, type LightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
+import { setLightboxSparkDismissed } from '@/infrastructure/lightbox/LightboxSparkLane';
 import { everyKindBoard } from '@/__tests__/infrastructure/lightbox/lightboxSavedBoardFixtures';
 import { deferred } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
+import {
+  SAVED_AT,
+  claimBy,
+  everyFile,
+  fileIdOf,
+  named,
+  pathOf,
+  readSaved as read,
+  storeHost as host
+} from '@/__tests__/infrastructure/storage/lightboxBoardStoreHost';
 
-const ROOT = '/workspace';
-const BOARDS = path.join(ROOT, 'prose-minion', 'boards');
 const NAME = '3.2.1 - after the cut - model B';
 
 let BOARD: LightboxBoard;
@@ -57,41 +62,10 @@ beforeAll(async () => {
   SPARK = spark.id;
 });
 
-function host(fileSystem = new MemoryFileSystem(), prefix = 's', lines: string[] = []) {
-  const workspace = createFakeWorkspace({ workspaceFolders: () => [{ path: ROOT, name: 'workspace' }] });
-  const log = { appendLine: (line: string) => { lines.push(line); }, show: jest.fn(), clear: jest.fn() } as unknown as LogSink;
-  let staged = 0;
-  const store = new LightboxBoardStore(fileSystem, workspace, log, {
-    now: () => new Date('2026-10-22T14:05:09.123Z'),
-    mintStagingId: () => `${prefix}${++staged}`
-  });
-  return { fileSystem, store, lines };
-}
-
-function fileIdOf(result: LightboxBoardSaveResult): string {
-  if (result.kind !== 'saved') {
-    throw new Error(`expected a save, got ${result.kind}`);
-  }
-  return result.fileId;
-}
-
-const pathOf = (fileId: string) => path.join(BOARDS, fileId);
-const everyFile = (fileSystem: MemoryFileSystem) => [...fileSystem.files.keys()].map((file) => path.relative(BOARDS, file)).sort();
-
-function read(fileSystem: MemoryFileSystem, fileId: string): LightboxBoardFile {
-  const decoded = decodeLightboxBoardFile(new TextDecoder().decode(fileSystem.files.get(pathOf(fileId))));
-  if (decoded.kind !== 'board') {
-    throw new Error(`${fileId} does not read`);
-  }
-  return decoded.file;
-}
-
-const named = (name: string | undefined) => (file: LightboxBoardFile) => namedLightboxBoardFile(file, name);
-/** The spark set aside on the board's readings, carried onto the file's. */
+/** The spark set aside on the file's readings, as the library's spark rewrite does. */
 const sparkSetAside = (file: LightboxBoardFile): LightboxBoardFile | undefined => {
-  const marked = setLightboxSparkDismissed(BOARD.readings, SPARK, true);
-  const readings = marked.ok ? carryLightboxSparkMarks(file.board.readings, marked.readings) : undefined;
-  return readings && { ...file, board: { ...file.board, readings } };
+  const marked = setLightboxSparkDismissed(file.board.readings, SPARK, true);
+  return marked.ok && marked.changed ? { ...file, board: { ...file.board, readings: marked.readings } } : undefined;
 };
 const sparkOf = (readings: readonly LightboxReadingGroup[]) =>
   readings.flatMap((group) => group.tiles).find((tile) => tile.id === SPARK);
@@ -115,9 +89,9 @@ describe('a rewrite in place is atomic', () => {
 
     expect(result).toEqual({ kind: 'replaced', fileId });
     // At the commit point the file is claimed under a name of its own, and the new bytes are staged beside it.
-    expect(atCommit.sort()).toEqual([`.${name}.claim-s3`, `.${name}.tmp-s2`]);
+    expect(atCommit.sort()).toEqual([`.${name}.claim-${SAVED_AT}-s3`, `.${name}.tmp-s2`]);
     expect(fileSystem.renameCalls.map((call) => [path.basename(call.fromPath), path.basename(call.toPath), call.overwrite])).toEqual([
-      [name, `.${name}.claim-s3`, false],
+      [name, `.${name}.claim-${SAVED_AT}-s3`, false],
       [`.${name}.tmp-s2`, name, false]
     ]);
     expect(everyFile(fileSystem)).toEqual([fileId]);
@@ -234,7 +208,7 @@ describe('a rename racing a delete never brings the board back', () => {
     const reached = deferred<void>();
     const rename = fileSystem.rename.bind(fileSystem);
     jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
-      if (toPath.includes('.claim-a')) {
+      if (claimBy('a')(toPath)) {
         reached.resolve();
         await gate.promise;
       }
@@ -260,7 +234,7 @@ describe('a rename racing a delete never brings the board back', () => {
     const reached = deferred<void>();
     const readFile = fileSystem.readFile.bind(fileSystem);
     jest.spyOn(fileSystem, 'readFile').mockImplementation(async (filePath) => {
-      if (filePath.includes('.claim-a')) {
+      if (claimBy('a')(filePath)) {
         reached.resolve();
         await gate.promise;
       }
@@ -333,7 +307,7 @@ describe('two windows renaming one file', () => {
     const reached = deferred<void>();
     const readFile = fileSystem.readFile.bind(fileSystem);
     jest.spyOn(fileSystem, 'readFile').mockImplementation(async (filePath) => {
-      if (filePath.includes('.claim-a')) {
+      if (claimBy('a')(filePath)) {
         reached.resolve();
         await gate.promise;
       }
@@ -348,30 +322,6 @@ describe('two windows renaming one file', () => {
     expect(await myRename).toEqual({ kind: 'replaced', fileId });
     expect(read(fileSystem, fileId).board.name).toBe('model A');
     expect(everyFile(fileSystem)).toEqual([fileId]);
-  });
-});
-
-describe('a claim left behind', () => {
-  it('is put back under its saved name when the folder is next listed', async () => {
-    const { fileSystem, store, lines } = host();
-    const fileId = fileIdOf(await store.save({ board: BOARD, text: TEXT, name: NAME }));
-    const name = path.basename(fileId);
-    const claim = path.join(path.dirname(pathOf(fileId)), `.${name}.claim-left`);
-    // A window closed between its claim and its commit.
-    await fileSystem.rename(pathOf(fileId), claim);
-    expect(await store.read(fileId)).toEqual({ kind: 'missing' });
-
-    expect((await store.list(BOARD.source)).entries.map((entry) => [entry.fileId, entry.name])).toEqual([[fileId, NAME]]);
-    expect(everyFile(fileSystem)).toEqual([fileId]);
-    expect(lines).toContain(`[LightboxBoardStore] Put back ${name}, left mid-rewrite.`);
-  });
-
-  it('control: a claim beside its standing saved file is not listed, and the file is', async () => {
-    const { fileSystem, store } = host();
-    const fileId = fileIdOf(await store.save({ board: BOARD, text: TEXT }));
-    fileSystem.files.set(path.join(path.dirname(pathOf(fileId)), `.${path.basename(fileId)}.claim-old`), new TextEncoder().encode('old'));
-
-    expect(await store.list(BOARD.source)).toEqual({ entries: [expect.objectContaining({ fileId })], unreadable: 0 });
   });
 });
 

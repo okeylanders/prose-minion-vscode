@@ -1122,6 +1122,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardFiles.ts',
   // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
   'infrastructure/storage/LightboxBoardRewrite.ts',
+  // PR #164 F-01, F-02: claims live or abandoned, settled, and a delete's leftovers retired.
+  'infrastructure/storage/LightboxBoardClaims.ts',
   // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
   'infrastructure/lightbox/LightboxRetainedBoards.ts',
   'application/services/lightbox/LightboxBoardLibrary.ts',
@@ -1939,6 +1941,8 @@ describe('architectural boundaries', () => {
     // Slice 5A.1: the library's edits and the store's rewrites are their owners' own.
     expect(constructions(/\bnew\s+LightboxBoardEdits\s*\(/)).toEqual(['application/services/lightbox/LightboxBoardLibrary.ts']);
     expect(constructions(/\bnew\s+LightboxBoardRewrites\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
+    // PR #164 F-01: one store's claims settle its folder; nothing else takes or puts back a claim.
+    expect(constructions(/\bnew\s+LightboxBoardClaims\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);

@@ -130,7 +130,7 @@ export class LightboxReadingHandler {
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     /** Saves a board once a run on it landed readings (Slice 5A), and a spark's mark at once (5A.1); without it nothing is saved. */
-    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'keepSparks' | 'saveAfterRun'>
+    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'keepSpark' | 'saveAfterRun'>
   ) {
     this.contextIntake = new LightboxContextIntake({
       lightboxService,
@@ -194,7 +194,7 @@ export class LightboxReadingHandler {
     if (result.changed) {
       this.lightboxService.updateReadings(request.boardId, () => result.readings);
       this.outputChannel.appendLine(`[LightboxReadingHandler] Spark ${request.dismissed ? 'set aside' : 'brought back'}`);
-      await this.boardSaver?.keepSparks(request.boardId);
+      await this.boardSaver?.keepSpark(request.boardId, request.tileId);
     }
   }
 

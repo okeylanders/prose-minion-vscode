@@ -87,6 +87,8 @@ export interface LightboxBoardsHostOptions {
   respond?: (request: InitialRunRequest) => Promise<ExecutionResult> | ExecutionResult;
   /** When a board is measured; a fixed moment in 2023 by default. */
   now?: () => number;
+  /** The store's claim clock (PR #164 F-01): the first save's moment by default, steady, so every claim taken here is live. */
+  claimNow?: () => number;
 }
 
 export interface LightboxBoardsTab {
@@ -142,7 +144,12 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     }
   );
   let saves = 0;
-  const store = new LightboxBoardStore(fileSystem, workspace, log, { memory, now: () => new Date(SAVED_AT(saves++)) });
+  const claimNow = options.claimNow ?? (() => SAVED_AT(0));
+  const store = new LightboxBoardStore(fileSystem, workspace, log, {
+    memory,
+    now: () => new Date(SAVED_AT(saves++)),
+    claimNow: () => new Date(claimNow())
+  });
 
   // File reads go to the memory file system; a read can be held, before or after its bytes are read, until the test releases it.
   const held = new Map<string, { gate: Deferred<void>; afterRead: boolean }>();

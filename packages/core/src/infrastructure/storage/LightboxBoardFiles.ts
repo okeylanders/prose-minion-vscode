@@ -23,6 +23,7 @@ import { FileType, type FileSystem, type LogSink } from '@/platform';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
+import { LIGHTBOX_BOARD_CLAIM } from '@/infrastructure/storage/LightboxBoardClaims';
 import {
   LIGHTBOX_BOARD_INVALID_REASONS,
   decodeLightboxBoardFile,
@@ -37,11 +38,6 @@ export const LIGHTBOX_BOARDS_DISPLAY_PATH = 'prose-minion/boards';
 /** A file id: a source's folder and a timestamped name, both the host's own. */
 export const LIGHTBOX_BOARD_FILE_ID = /^([a-z0-9]+(?:-[a-z0-9]+)*)\/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json)$/;
 const FILE_NAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json$/;
-/**
- * A file a rewrite in place holds while it writes (Slice 5A.1): the saved
- * file's own name, hidden, then the writer's private id. Never listed.
- */
-export const LIGHTBOX_BOARD_CLAIM = /^\.(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json)\.claim-[A-Za-z0-9-]+$/;
 
 /** Which source a saved board belongs to, portably: its kind, its workspace-relative path and, for a selection, its lines. */
 export type LightboxSavedSourceRef = Pick<LightboxSource, 'kind' | 'displayPath' | 'startLine' | 'endLine'>;
@@ -69,11 +65,12 @@ export interface LightboxBoardListing {
   /** Files in the source's folder that could not be read as boards; left as they are. */
   unreadable: number;
   /**
-   * Claims whose saved name stands empty (Slice 5A.1): a rewrite in place
-   * that stopped midway left its board under a hidden name. Present only
-   * when there are some; the store puts them back and lists again.
+   * The folder holds claims (Slice 5A.1): a rewrite or a delete holds a
+   * file now, or left one behind. Present only when it does; the store
+   * settles them (`LightboxBoardClaims`) and lists again when that changed
+   * anything.
    */
-  leftClaims?: string[];
+  claimed?: true;
 }
 
 export type LightboxBoardRead =
@@ -81,7 +78,9 @@ export type LightboxBoardRead =
   | { kind: 'missing' }
   /** `reason` is host words (`LIGHTBOX_BOARD_INVALID_REASONS`, or the store's own). */
   | { kind: 'unreadable'; reason: string }
-  | { kind: 'unavailable' };
+  | { kind: 'unavailable' }
+  /** The store's read only: a live claim holds the file, so another window is rewriting or deleting it now (PR #164 F-02). */
+  | { kind: 'busy' };
 
 interface CachedSummary {
   size: number;
@@ -182,10 +181,7 @@ export class LightboxBoardFiles {
       return { entries: [], unreadable: 0 };
     }
     const names = onDisk.map(([name]) => name).filter((name) => FILE_NAME.test(name));
-    const leftClaims = onDisk.map(([name]) => name).filter((name) => {
-      const saved = LIGHTBOX_BOARD_CLAIM.exec(name)?.[1];
-      return saved !== undefined && !names.includes(saved);
-    });
+    const claimed = onDisk.some(([name]) => LIGHTBOX_BOARD_CLAIM.test(name));
     const key = lightboxSavedSourceKey(source);
     const entries: LightboxSavedBoardEntry[] = [];
     let unreadable = 0;
@@ -198,7 +194,7 @@ export class LightboxBoardFiles {
       }
     }
     entries.sort((left, right) => right.savedAt - left.savedAt || (left.fileId < right.fileId ? 1 : -1));
-    return { entries, unreadable, ...(leftClaims.length > 0 ? { leftClaims } : {}) };
+    return { entries, unreadable, ...(claimed ? { claimed: true as const } : {}) };
   }
 
   /** A deleted file's summary is forgotten. */
@@ -218,7 +214,7 @@ export class LightboxBoardFiles {
       return cached.entry;
     }
     const read = await this.read(fileId, filePath);
-    if (read.kind === 'missing' || read.kind === 'unavailable') {
+    if (read.kind === 'missing' || read.kind === 'unavailable' || read.kind === 'busy') {
       return undefined;
     }
     const entry = read.kind === 'board' ? summarise(fileId, read.file) : 'unreadable';

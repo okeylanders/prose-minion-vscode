@@ -30,6 +30,12 @@
  *   rename to a name private to the write), so a rewrite never brings back
  *   a board another writer deleted, and the last rewrite to commit wins
  *   (`LightboxBoardRewrite`).
+ * - **Deletes claim too** (PR #164 F-01): a delete takes the file under a
+ *   claim of its own, removes every earlier version a rewrite left beside
+ *   it, then its own claim, so a deleted board never comes back. A file a
+ *   live claim holds is busy, for a delete, a read or a rewrite; a claim
+ *   abandoned mid-rewrite goes back under its saved name when a listing or
+ *   a read finds it (`LightboxBoardClaims`).
  * - **The reload pointer** is the one new port, `LightboxBoardMemory`: the
  *   workspace's memento in VS Code, holding the file id of the last board
  *   on screen and the folder it belongs to.
@@ -43,11 +49,13 @@ import type { FileSystem, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { decodeLightboxBoardFile, encodeLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import {
-  LightboxBoardRewrites,
-  boardFileClaimed,
+  LightboxBoardClaims,
   boardFileExists,
   deleteBoardFileQuietly,
-  freeBoardFileName,
+  freeBoardFileName
+} from '@/infrastructure/storage/LightboxBoardClaims';
+import {
+  LightboxBoardRewrites,
   type LightboxBoardReplaceOptions,
   type LightboxBoardReplaceResult,
   type LightboxBoardReplaceTarget,
@@ -114,7 +122,7 @@ export type LightboxBoardSaveResult =
 export type LightboxBoardDeleteResult =
   | { kind: 'deleted' }
   | { kind: 'missing' }
-  /** Another window's store is rewriting it in place (Slice 5A.1); nothing was deleted. */
+  /** Another window's store is rewriting or deleting it now (Slice 5A.1); nothing was deleted. */
   | { kind: 'busy' }
   | { kind: 'unreadable' }
   | { kind: 'unavailable' }
@@ -144,6 +152,8 @@ export interface LightboxBoardStoreOptions {
   maximumFileBytes?: number;
   /** The private part of a staged file's name; a random UUID by default. */
   mintStagingId?: () => string;
+  /** The clock claims are timed by (`LightboxBoardClaims`); `now` by default. A test whose `now` steps once per call gives claims a steady one. */
+  claimNow?: () => Date;
 }
 
 type Location =
@@ -153,6 +163,7 @@ type Location =
 export class LightboxBoardStore {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly files: LightboxBoardFiles;
+  private readonly claims: LightboxBoardClaims;
   private readonly rewrites: LightboxBoardRewrites;
   private readonly now: () => Date;
   private readonly mintStagingId: () => string;
@@ -167,7 +178,8 @@ export class LightboxBoardStore {
     this.now = options.now ?? (() => new Date());
     this.mintStagingId = options.mintStagingId ?? randomUUID;
     this.files = new LightboxBoardFiles(fileSystem, log, options.maximumFileBytes ?? 32 * 1024 * 1024);
-    this.rewrites = new LightboxBoardRewrites(fileSystem, this.files, log, this.mintStagingId);
+    this.claims = new LightboxBoardClaims(fileSystem, log, options.claimNow ?? this.now);
+    this.rewrites = new LightboxBoardRewrites(fileSystem, this.files, this.claims, log, this.mintStagingId);
   }
 
   /** Where boards are saved now, read live. */
@@ -185,18 +197,22 @@ export class LightboxBoardStore {
       if (location.kind === 'session') {
         return { entries: [], unreadable: 0 };
       }
-      const listing = await this.files.list(location.directory, source);
-      if (!listing.leftClaims) {
+      const { claimed, ...listing } = await this.files.list(location.directory, source);
+      // Claims beside the boards: a board left mid-rewrite goes back, a rewrite's leftover goes; the folder is read again.
+      if (!claimed || !(await this.claims.settleFolder(path.join(location.directory, lightboxBoardFolder(source))))) {
         return listing;
       }
-      // A rewrite in place stopped midway: its board goes back under its saved name, and the folder is read again.
-      await this.rewrites.putBack(path.join(location.directory, lightboxBoardFolder(source)), listing.leftClaims);
-      const { leftClaims: _putBack, ...again } = await this.files.list(location.directory, source);
+      const { claimed: _settled, ...again } = await this.files.list(location.directory, source);
       return again;
     });
   }
 
-  /** A saved board's file, decoded. */
+  /**
+   * A saved board's file, decoded. A file found gone is settled first
+   * (PR #164 F-02): a board left under an abandoned claim is put back and
+   * read; one a live claim holds is `busy`; `missing` is neither file nor
+   * claim.
+   */
   read(fileId: string): Promise<LightboxBoardRead> {
     return this.enqueue(async () => {
       const location = this.location();
@@ -207,7 +223,12 @@ export class LightboxBoardStore {
       if (!filePath) {
         return { kind: 'missing' };
       }
-      return this.files.read(fileId, filePath);
+      const read = await this.files.read(fileId, filePath);
+      if (read.kind !== 'missing') {
+        return read;
+      }
+      const state = await this.claims.settle(filePath);
+      return state === 'present' ? this.files.read(fileId, filePath) : state === 'busy' ? { kind: 'busy' } : read;
     });
   }
 
@@ -266,7 +287,12 @@ export class LightboxBoardStore {
     });
   }
 
-  /** Delete a saved board's file, if it reads as one; a file that does not is left as it is. */
+  /**
+   * Delete a saved board's file, if it reads as one; a file that does not is
+   * left as it is. The file is claimed first, as a rewrite claims it, and
+   * every earlier version a rewrite left beside it goes with it (PR #164
+   * F-01). A file another writer holds is `busy`.
+   */
   delete(fileId: string): Promise<LightboxBoardDeleteResult> {
     return this.enqueue(async () => {
       const location = this.location();
@@ -277,18 +303,32 @@ export class LightboxBoardStore {
       if (!filePath) {
         return { kind: 'missing' };
       }
-      const read = await this.files.read(fileId, filePath);
+      let read = await this.files.read(fileId, filePath);
       if (read.kind === 'missing') {
-        // Gone, or claimed by another window's rewrite: then it is not gone, and comes back.
-        return { kind: (await boardFileClaimed(this.fileSystem, filePath)) ? 'busy' : 'missing' };
+        // Gone, held by another window's rewrite (busy: it is not gone), or left mid-rewrite (put back, then deleted).
+        const state = await this.claims.settle(filePath);
+        if (state !== 'present') {
+          return { kind: state === 'busy' ? 'busy' : 'missing' };
+        }
+        read = await this.files.read(fileId, filePath);
       }
       if (read.kind !== 'board') {
-        return { kind: 'unreadable' };
+        return { kind: read.kind === 'missing' ? 'missing' : 'unreadable' };
       }
+      // Held under a claim of its own, so no other writer rewrites it meanwhile.
+      const claimPath = await this.claims.take(filePath, this.mintStagingId());
+      if (!claimPath) {
+        const state = await this.claims.settle(filePath);
+        return { kind: state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed' };
+      }
+      // Every earlier version a rewrite left beside it goes first, so none can come back after the delete.
+      await this.claims.retire(filePath, claimPath);
       try {
-        await this.fileSystem.delete(filePath);
+        await this.fileSystem.delete(claimPath);
       } catch (error) {
         this.log.appendLine(`${LOG} Could not delete ${fileId}: ${errorMessage(error)}`);
+        // Back under its saved name at once, rather than hidden under the claim until the lease runs out.
+        await this.fileSystem.rename(claimPath, filePath, { overwrite: false }).catch(() => undefined);
         return { kind: 'failed' };
       }
       this.files.forget(fileId);

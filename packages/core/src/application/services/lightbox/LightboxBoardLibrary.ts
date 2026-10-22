@@ -41,7 +41,9 @@
  *   board's name belongs to the board, and every save writes it; a rename,
  *   and a spark set aside, rewrite the file that holds the board in place
  *   (`LightboxBoardEdits`, which this library builds and answers for). A
- *   restore whose file is gone forgets the reload pointer.
+ *   restore whose file is gone forgets the reload pointer; one whose file
+ *   another window holds (busy) keeps it, and a board left mid-rewrite is
+ *   put back by the store's read and restored (PR #164 F-02).
  *
  * Logs carry file ids, counts and reasons; never the writer's text or a
  * board's name.
@@ -177,9 +179,9 @@ export class LightboxBoardLibrary {
     return this.edits.rename(request);
   }
 
-  /** A spark on `boardId` was set aside or brought back: its file takes the mark in place (Slice 5A.1; `LightboxBoardEdits`). */
-  keepSparks(boardId: string): Promise<void> {
-    return this.edits.keepSparks(boardId);
+  /** A spark on `boardId` was set aside or brought back: its file takes that spark's mark in place (Slice 5A.1; `LightboxBoardEdits`). */
+  keepSpark(boardId: string, tileId: string): Promise<void> {
+    return this.edits.keepSpark(boardId, tileId);
   }
 
   /** Delete a saved board's file; the board on screen, if it came from it, stays as it is. */
@@ -256,6 +258,7 @@ export class LightboxBoardLibrary {
     const ticket = this.ports.service.beginSourceRequest();
     const read = await this.ports.store.read(fileId);
     // A pointer to a file that is gone would be tried, and logged, every session: forget it (5A tech debt).
+    // `missing` is neither the file nor a claim on it; a file another window holds is `busy`, and the pointer stays.
     if (read.kind === 'missing' && this.ports.store.lastOnScreen() === fileId) {
       this.ports.store.rememberOnScreen(undefined);
     }
@@ -279,7 +282,8 @@ export class LightboxBoardLibrary {
     if (read.kind !== 'board') {
       return fail(read.kind === 'missing' ? LIGHTBOX_BOARD_NOTICES.missing
         : read.kind === 'unavailable' ? LIGHTBOX_BOARD_NOTICES.unavailable
-          : LIGHTBOX_BOARD_NOTICES.unreadable);
+          : read.kind === 'busy' ? LIGHTBOX_BOARD_NOTICES.busy
+            : LIGHTBOX_BOARD_NOTICES.unreadable);
     }
     const held = lightboxBoardOfFile(read.file);
     if (held.kind !== 'board') {
