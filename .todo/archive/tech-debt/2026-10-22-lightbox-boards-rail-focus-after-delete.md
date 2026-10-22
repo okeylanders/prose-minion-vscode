@@ -1,8 +1,8 @@
 # The Boards Rail Drops Focus After a Confirmed Delete
 
 **Date Identified**: 2026-10-22 (Lightbox Slice 5A)
-**Status**: Identified
-**Priority**: Low
+**Status**: Resolved in Lightbox Slice 5A.1, 2026-10-22 (`epic/lightbox-slice-5a1-board-names`), both completion criteria. A confirmed delete keeps focus on its row's Delete until the host's answer removes the row, then moves it to the next row's Delete, or to the head's Name or Rename when no row is below; a refused delete leaves it on the row (`LightboxBoardsPanel.test.tsx`). A restore that finds its file missing clears the reload pointer, so the next session does not try it again (`LightboxSparkSaves.test.ts`). Not taken: a spoken "Deleted the board saved …" in a live region; the row going, and focus moving, say it
+**Priority**: Was Low; resolved
 **Estimated Effort**: Small
 
 ## Problem

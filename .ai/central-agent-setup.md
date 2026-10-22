@@ -42,7 +42,7 @@ packages/core/src/
 ├── platform/           # Ports the host must implement (LogSink, SecretStore, FileSystem, …)
 ├── application/        # Application layer (orchestration)
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
-│   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A)
+│   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
 │       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
@@ -66,7 +66,7 @@ packages/core/src/
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
-│           ├── LightboxBoardsHandler.ts   # The rail's saved boards: shelf, open, delete, and each committed save pushed (Slice 5A)
+│           ├── LightboxBoardsHandler.ts   # The rail's saved boards: shelf, open, delete, rename (5A.1), and each committed save pushed (Slice 5A)
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -90,7 +90,7 @@ packages/core/src/
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
-│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163)
+│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), and its rewrites in place under a claim (Slice 5A.1)
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
@@ -126,7 +126,7 @@ packages/core/src/
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
             ├── lightboxPassages.ts # The inspector's passages (Slice 4E): a paragraph's text or a term's sentences, by request id, board id and hash; refusals
-            ├── lightboxBoards.ts  # Saved boards (Slice 5A): the rail's shelf (availability, summaries, snapshot state), open, delete, by request id
+            ├── lightboxBoards.ts  # Saved boards (Slice 5A): the rail's shelf (availability, summaries, snapshot state; 5A.1: names and models), open, delete, rename, by request id
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -196,11 +196,11 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
 │       │   ├── lightboxOpinion.ts      # The Opinion as drawn: view tabs, Why rows, observations and what changed, Bring block, inspector details (pure)
 │       │   ├── lightboxSteering.ts     # Craft steering as drawn: figure sections and construction shares, the `steering` item ref, inspector details (pure)
-│       │   ├── lightboxBoardsView.ts   # The rail's Boards section in words: dates, lenses, stale, cost, the snapshot note, session-only (pure; Slice 5A)
+│       │   ├── lightboxBoardsView.ts   # The rail's Boards section in words: dates, lenses, stale, cost, the snapshot note, session-only (pure; Slice 5A); names, models, the head, the notice above the board (5A.1)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
-│       ├── useLightboxBoards.ts        # The rail's saved boards: the shelf of the board on screen by request id, Open, Delete; persists nothing (Slice 5A)
+│       ├── useLightboxBoards.ts        # The rail's saved boards: the shelf of the board on screen by request id, Open, Delete, Rename (5A.1); persists nothing (Slice 5A)
 │       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) with PR #163's corrections and its re-review's, on `epic/lightbox` at `3e6a156`):
-- 474 suites / 6,541 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
+- 479 suites / 6,617 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1300,6 +1300,21 @@ records, when it saves, or how a saved one comes back:
   never takes one. A new kind of rail change must start a new
   observation (a push or an answer), or the rail will not hear it. Every adoption moves the reload
   pointer (`LightboxBoardAdoptions.test.ts`).
+- **Names and rewrites in place (Slice 5A.1).** A board's name is
+  optional writer text (`lightboxBoardName`: trimmed, one line, at most
+  120 characters), saved as `board.name` in format 1; never log it or
+  persist it in the webview. It belongs to the board: the retained board
+  keeps it and every save writes it. A rename, and a spark set aside,
+  rewrite the file that holds the board through `LightboxBoardStore.replace`
+  (`LightboxBoardRewrite`): checked, staged privately, the file *claimed*
+  by an atomic rename that never overwrites, then committed. Never rewrite
+  a saved file another way: a plain overwrite can bring back a board
+  another window deleted. A new in-place change joins `LightboxBoardEdits`,
+  finds its file at the rewrite's turn in the queue, and never writes a
+  file that does not read whole.
+- **One notice, two places.** The changed-file notice above the board is
+  `lightboxChangedFileNotice` over the rail's own shelf; never compute it
+  another way.
 - **A snapshot is exactly as saved.** Nothing is measured again; its
   host-side parts are rebuilt from its own saved text. A changed file is
   said in the rail, and Bring is refused with words that point to "Read the
