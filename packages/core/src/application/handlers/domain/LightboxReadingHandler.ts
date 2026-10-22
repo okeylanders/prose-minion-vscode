@@ -46,7 +46,8 @@
  *   estimate are the run's and the request's own answers.
  * - **The Spark lane (Slice 4).** "Not for me" and its Undo mark the board's
  *   own spark (`LightboxSparkLane`), and the board is published like any
- *   other change to its readings.
+ *   other change to its readings. The file that holds the board takes the
+ *   mark at once, in place (Slice 5A.1, epic decision 35).
  * - **Context files** come by the system picker or the project picker (by
  *   catalog key), through `LightboxContextIntake` under the shelf's rules.
  * - **Saved after a run (Slice 5A, epic decision 27).** A run that ends,
@@ -128,8 +129,8 @@ export class LightboxReadingHandler {
     projectFilePorts: LightboxProjectFilePorts,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    /** Saves a board once a run on it landed readings (Slice 5A); without it nothing is saved. */
-    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'saveAfterRun'>
+    /** Saves a board once a run on it landed readings (Slice 5A), and a spark's mark at once (5A.1); without it nothing is saved. */
+    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'keepSparks' | 'saveAfterRun'>
   ) {
     this.contextIntake = new LightboxContextIntake({
       lightboxService,
@@ -193,6 +194,7 @@ export class LightboxReadingHandler {
     if (result.changed) {
       this.lightboxService.updateReadings(request.boardId, () => result.readings);
       this.outputChannel.appendLine(`[LightboxReadingHandler] Spark ${request.dismissed ? 'set aside' : 'brought back'}`);
+      await this.boardSaver?.keepSparks(request.boardId);
     }
   }
 

@@ -23,6 +23,13 @@
  * - **Never a file it cannot read.** Every save is a new file, and a file
  *   that does not decode is never deleted or overwritten; listings count it.
  *   A board that would not read back whole is not written.
+ * - **Rewrites in place (Slice 5A.1)**: a board named, or a spark set
+ *   aside, on the file that already holds the board (`replace`), through
+ *   the same queue. Only a file that reads whole and holds the board
+ *   expected is rewritten. It is claimed before it is replaced (an atomic
+ *   rename to a name private to the write), so a rewrite never brings back
+ *   a board another writer deleted, and the last rewrite to commit wins
+ *   (`LightboxBoardRewrite`).
  * - **The reload pointer** is the one new port, `LightboxBoardMemory`: the
  *   workspace's memento in VS Code, holding the file id of the last board
  *   on screen and the folder it belongs to.
@@ -35,6 +42,17 @@ import type { LightboxBoard, LightboxBoardsAvailability } from '@messages';
 import type { FileSystem, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { decodeLightboxBoardFile, encodeLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
+import {
+  LightboxBoardRewrites,
+  boardFileClaimed,
+  boardFileExists,
+  deleteBoardFileQuietly,
+  freeBoardFileName,
+  type LightboxBoardReplaceOptions,
+  type LightboxBoardReplaceResult,
+  type LightboxBoardReplaceTarget,
+  type LightboxBoardUpdate
+} from '@/infrastructure/storage/LightboxBoardRewrite';
 import {
   LIGHTBOX_BOARDS_DISPLAY_PATH,
   LIGHTBOX_BOARD_FILE_ID,
@@ -60,6 +78,12 @@ export type {
   LightboxSavedBoardEntry,
   LightboxSavedSourceRef
 } from '@/infrastructure/storage/LightboxBoardFiles';
+export type {
+  LightboxBoardReplaceOptions,
+  LightboxBoardReplaceResult,
+  LightboxBoardReplaceTarget,
+  LightboxBoardUpdate
+} from '@/infrastructure/storage/LightboxBoardRewrite';
 
 const encoder = new TextEncoder();
 const LOG = '[LightboxBoardStore]';
@@ -87,12 +111,21 @@ export type LightboxBoardSaveResult =
   | { kind: 'session' }
   | { kind: 'failed' };
 
-export type LightboxBoardDeleteResult = { kind: 'deleted' } | { kind: 'missing' } | { kind: 'unreadable' } | { kind: 'unavailable' } | { kind: 'failed' };
+export type LightboxBoardDeleteResult =
+  | { kind: 'deleted' }
+  | { kind: 'missing' }
+  /** Another window's store is rewriting it in place (Slice 5A.1); nothing was deleted. */
+  | { kind: 'busy' }
+  | { kind: 'unreadable' }
+  | { kind: 'unavailable' }
+  | { kind: 'failed' };
 
 export interface LightboxBoardSaveInput {
   board: LightboxBoard;
   /** The text the board was measured from. */
   text: string;
+  /** The writer's name for the board (Slice 5A.1). */
+  name?: string;
 }
 
 export interface LightboxBoardSaveOptions {
@@ -120,6 +153,7 @@ type Location =
 export class LightboxBoardStore {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly files: LightboxBoardFiles;
+  private readonly rewrites: LightboxBoardRewrites;
   private readonly now: () => Date;
   private readonly mintStagingId: () => string;
   private lastSaveFailed = false;
@@ -133,6 +167,7 @@ export class LightboxBoardStore {
     this.now = options.now ?? (() => new Date());
     this.mintStagingId = options.mintStagingId ?? randomUUID;
     this.files = new LightboxBoardFiles(fileSystem, log, options.maximumFileBytes ?? 32 * 1024 * 1024);
+    this.rewrites = new LightboxBoardRewrites(fileSystem, this.files, log, this.mintStagingId);
   }
 
   /** Where boards are saved now, read live. */
@@ -147,7 +182,17 @@ export class LightboxBoardStore {
   list(source: LightboxSavedSourceRef): Promise<LightboxBoardListing> {
     return this.enqueue(async () => {
       const location = this.location();
-      return location.kind === 'session' ? { entries: [], unreadable: 0 } : this.files.list(location.directory, source);
+      if (location.kind === 'session') {
+        return { entries: [], unreadable: 0 };
+      }
+      const listing = await this.files.list(location.directory, source);
+      if (!listing.leftClaims) {
+        return listing;
+      }
+      // A rewrite in place stopped midway: its board goes back under its saved name, and the folder is read again.
+      await this.rewrites.putBack(path.join(location.directory, lightboxBoardFolder(source)), listing.leftClaims);
+      const { leftClaims: _putBack, ...again } = await this.files.list(location.directory, source);
+      return again;
     });
   }
 
@@ -184,13 +229,40 @@ export class LightboxBoardStore {
         }
       }
       const savedAt = this.now();
-      const json = encodeLightboxBoardFile({ board: input.board, text: input.text, savedAt });
+      const json = encodeLightboxBoardFile({ board: input.board, text: input.text, savedAt, name: input.name });
       const check = decodeLightboxBoardFile(json);
       if (check.kind !== 'board' || check.dropped > 0) {
         this.log.appendLine(`${LOG} A board would not read back whole (${check.kind === 'invalid' ? `${check.reason} at ${check.at ?? 'the file'}` : `${check.dropped} parts dropped`}); it was not saved.`);
         return { kind: 'failed' };
       }
       return this.writeNew(location, folder, savedAt, encoder.encode(json), options);
+    });
+  }
+
+  /**
+   * Rewrite a saved board's file in place (Slice 5A.1): `update` gets the
+   * file as it reads now and returns it changed, or undefined to leave it.
+   * `target` is resolved when the rewrite's turn in the queue comes, so a
+   * save queued before it has committed and named its file first. Only a
+   * file that reads whole and holds `target.boardId` is rewritten, and
+   * never one another writer deleted (`LightboxBoardRewrite`).
+   */
+  replace(
+    target: LightboxBoardReplaceTarget | (() => LightboxBoardReplaceTarget | undefined),
+    update: LightboxBoardUpdate,
+    options: LightboxBoardReplaceOptions = {}
+  ): Promise<LightboxBoardReplaceResult> {
+    return this.enqueue(async () => {
+      const location = this.location();
+      if (location.kind === 'session') {
+        return { kind: 'session' };
+      }
+      const named = typeof target === 'function' ? target() : target;
+      const filePath = named && lightboxBoardFilePath(location.directory, named.fileId);
+      if (!named || !filePath) {
+        return { kind: 'missing' };
+      }
+      return this.rewrites.rewrite(named, filePath, update, options);
     });
   }
 
@@ -206,8 +278,12 @@ export class LightboxBoardStore {
         return { kind: 'missing' };
       }
       const read = await this.files.read(fileId, filePath);
+      if (read.kind === 'missing') {
+        // Gone, or claimed by another window's rewrite: then it is not gone, and comes back.
+        return { kind: (await boardFileClaimed(this.fileSystem, filePath)) ? 'busy' : 'missing' };
+      }
       if (read.kind !== 'board') {
-        return { kind: read.kind === 'missing' ? 'missing' : 'unreadable' };
+        return { kind: 'unreadable' };
       }
       try {
         await this.fileSystem.delete(filePath);
@@ -282,18 +358,18 @@ export class LightboxBoardStore {
       return this.failWrite(temporaryPath, error);
     }
     for (let attempt = 1; ; attempt++) {
-      const name = await this.freeName(folder, savedAt);
+      const name = await freeBoardFileName(this.fileSystem, folder, savedAt.toISOString().replace(/[:.]/g, '-'));
       const finalPath = path.join(folder, name);
       // The commit point: nothing is awaited between it and the rename that commits.
       if (options.beforeCommit && !options.beforeCommit()) {
-        await this.deleteQuietly(temporaryPath);
+        await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
         return { kind: 'withdrawn' };
       }
       try {
         await this.fileSystem.rename(temporaryPath, finalPath, { overwrite: false });
       } catch (error) {
         // Another writer took the name between the look and the rename: take the next one; this save's bytes are still staged.
-        if (attempt < COMMIT_ATTEMPTS && await this.exists(finalPath) && await this.exists(temporaryPath)) {
+        if (attempt < COMMIT_ATTEMPTS && await boardFileExists(this.fileSystem, finalPath) && await boardFileExists(this.fileSystem, temporaryPath)) {
           continue;
         }
         return this.failWrite(temporaryPath, error);
@@ -309,41 +385,10 @@ export class LightboxBoardStore {
     }
   }
 
-  private async exists(filePath: string): Promise<boolean> {
-    try {
-      await this.fileSystem.stat(filePath);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /** The timestamp's name, or the first numbered one free: a save never takes an existing file's name. */
-  private async freeName(folder: string, savedAt: Date): Promise<string> {
-    const stamp = savedAt.toISOString().replace(/[:.]/g, '-');
-    for (let attempt = 1; ; attempt++) {
-      const name = attempt === 1 ? `${stamp}.board.json` : `${stamp}-${attempt}.board.json`;
-      try {
-        await this.fileSystem.stat(path.join(folder, name));
-      } catch {
-        return name;
-      }
-    }
-  }
-
   private async failWrite(temporaryPath: string, error: unknown): Promise<LightboxBoardSaveResult> {
     this.lastSaveFailed = true;
     this.log.appendLine(`${LOG} Could not save a board; it stays for this session: ${errorMessage(error)}`);
-    await this.deleteQuietly(temporaryPath);
+    await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
     return { kind: 'failed' };
-  }
-
-  /** Best effort: a leftover temporary file is never read as a board. */
-  private async deleteQuietly(filePath: string): Promise<void> {
-    try {
-      await this.fileSystem.delete(filePath);
-    } catch {
-      // The write may have failed before the file existed.
-    }
   }
 }

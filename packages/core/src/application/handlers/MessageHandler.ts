@@ -374,12 +374,12 @@ export class MessageHandler {
       { catalog: workshopContextIntakeService, workspace: this.platform.workspace },
       this.postMessage.bind(this),
       outputChannel,
-      // Slice 5A: a run that landed readings saves its board.
+      // Slice 5A: a run that landed readings saves its board; 5A.1: a spark set aside saves at once.
       lightboxBoardLibrary
     );
     // The inspector's passages (Slice 4E): the text a pinned paragraph or counted item stands in, by board id.
     this.lightboxPassageHandler = new LightboxPassageHandler(lightboxService, this.postMessage.bind(this), outputChannel);
-    // Saved boards (Slice 5A): the rail's shelf, open and delete, over the composition root's library.
+    // Saved boards (Slice 5A): the rail's shelf, open, delete and (5A.1) rename, over the composition root's library.
     this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.postMessage.bind(this), outputChannel);
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.

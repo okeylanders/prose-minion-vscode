@@ -3,7 +3,9 @@
  * source, the latest adopted current, least recently adopted first out.
  * Host-private: the text and the paragraph texts beside each board are never
  * posted. Moved out of the service (Slice 5A) as saved boards added to what
- * an entry holds.
+ * an entry holds. A board's name (Slice 5A.1) is kept beside it here, as the
+ * writer gave it: it belongs to the board's id, so a re-read of unchanged
+ * text keeps it, and every save of the board writes it.
  */
 
 import type { LightboxBoard } from '@messages';
@@ -37,6 +39,8 @@ export interface LightboxRetainedBoard {
   origin: LightboxBoardOrigin;
   /** The saved file that holds it: the one it was opened from, or last saved to (Slice 5A). */
   savedFileId?: string;
+  /** The writer's name for the board (Slice 5A.1). Writer text: never logged. */
+  name?: string;
   /**
    * This adoption's generation, ascending per session (PR #163 F-02). A
    * board keeps its id across saves and snapshots, so several adoptions can
@@ -56,6 +60,8 @@ export interface LightboxSavedAdoption {
   dropped: number;
   /** Where its file is now, for "Read the current text" and Bring's check; none for a selection. */
   rereadPath?: string;
+  /** The name its file holds (Slice 5A.1). */
+  name?: string;
 }
 
 /** A retained board as a save writes it, and where it came from. Host-private. */
@@ -65,6 +71,7 @@ export interface LightboxSavableBoard {
   origin: LightboxBoardOrigin;
   savedFileId?: string;
   rereadPath?: string;
+  name?: string;
   /** It is the board on screen. */
   current: boolean;
 }
@@ -104,8 +111,19 @@ export class LightboxRetainedBoards {
       origin: entry.origin,
       savedFileId: entry.savedFileId,
       rereadPath: entry.rereadPath,
+      ...(entry.name !== undefined ? { name: entry.name } : {}),
       current: this.current() === entry
     };
+  }
+
+  /** Name the board kept under `boardId`, or unname it (`undefined`). False when no board has that id. */
+  nameBoard(boardId: string, name: string | undefined): boolean {
+    const entry = this.byId(boardId);
+    if (!entry) {
+      return false;
+    }
+    entry.name = name;
+    return true;
   }
 
   /**

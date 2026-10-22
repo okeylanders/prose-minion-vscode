@@ -37,6 +37,11 @@ export const LIGHTBOX_BOARDS_DISPLAY_PATH = 'prose-minion/boards';
 /** A file id: a source's folder and a timestamped name, both the host's own. */
 export const LIGHTBOX_BOARD_FILE_ID = /^([a-z0-9]+(?:-[a-z0-9]+)*)\/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json)$/;
 const FILE_NAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json$/;
+/**
+ * A file a rewrite in place holds while it writes (Slice 5A.1): the saved
+ * file's own name, hidden, then the writer's private id. Never listed.
+ */
+export const LIGHTBOX_BOARD_CLAIM = /^\.(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json)\.claim-[A-Za-z0-9-]+$/;
 
 /** Which source a saved board belongs to, portably: its kind, its workspace-relative path and, for a selection, its lines. */
 export type LightboxSavedSourceRef = Pick<LightboxSource, 'kind' | 'displayPath' | 'startLine' | 'endLine'>;
@@ -44,6 +49,8 @@ export type LightboxSavedSourceRef = Pick<LightboxSource, 'kind' | 'displayPath'
 /** One readable file of a source's folder, summarised. */
 export interface LightboxSavedBoardEntry {
   fileId: string;
+  /** The writer's name for the board (Slice 5A.1). Writer text: never logged. */
+  name?: string;
   savedAt: number;
   /** `lightboxSavedSourceKey` of the board's first source. */
   sourceKey: string;
@@ -52,6 +59,8 @@ export interface LightboxSavedBoardEntry {
   lenses: LightboxLensId[];
   staleLenses: LightboxLensId[];
   costUsd?: number;
+  /** The models its groups' calls reported, once each, in group order; empty for a board no model read. */
+  models: string[];
 }
 
 export interface LightboxBoardListing {
@@ -59,6 +68,12 @@ export interface LightboxBoardListing {
   entries: LightboxSavedBoardEntry[];
   /** Files in the source's folder that could not be read as boards; left as they are. */
   unreadable: number;
+  /**
+   * Claims whose saved name stands empty (Slice 5A.1): a rewrite in place
+   * that stopped midway left its board under a hidden name. Present only
+   * when there are some; the store puts them back and lists again.
+   */
+  leftClaims?: string[];
 }
 
 export type LightboxBoardRead =
@@ -118,20 +133,29 @@ export class LightboxBoardFiles {
 
   /** A saved board's file, decoded. */
   async read(fileId: string, filePath: string): Promise<LightboxBoardRead> {
+    return (await this.readWithBytes(fileId, filePath)).read;
+  }
+
+  /** A saved board's file, decoded, with the bytes it was decoded from (a rewrite in place compares them). */
+  async readWithBytes(fileId: string, filePath: string): Promise<{ read: LightboxBoardRead; bytes?: Uint8Array }> {
     let bytes: Uint8Array;
     try {
       const stat = await this.fileSystem.stat(filePath);
       if (stat.size > this.maximumFileBytes) {
-        return { kind: 'unreadable', reason: 'It is larger than a saved board can be.' };
+        return { read: { kind: 'unreadable', reason: 'It is larger than a saved board can be.' } };
       }
       bytes = await this.fileSystem.readFile(filePath);
     } catch (error) {
       if (isMissingFileSystemPathError(error)) {
-        return { kind: 'missing' };
+        return { read: { kind: 'missing' } };
       }
       this.log.appendLine(`${LOG} Could not read ${fileId}: ${errorMessage(error)}`);
-      return { kind: 'unreadable', reason: 'It could not be read.' };
+      return { read: { kind: 'unreadable', reason: 'It could not be read.' } };
     }
+    return { read: this.decode(fileId, bytes), bytes };
+  }
+
+  private decode(fileId: string, bytes: Uint8Array): LightboxBoardRead {
     const decoded = decodeLightboxBoardFile(decoder.decode(bytes));
     if (decoded.kind === 'invalid') {
       this.log.appendLine(`${LOG} ${fileId} is not read: ${decoded.reason}${decoded.at ? ` at ${decoded.at}` : ''}` +
@@ -148,17 +172,20 @@ export class LightboxBoardFiles {
   async list(directory: string, source: LightboxSavedSourceRef): Promise<LightboxBoardListing> {
     const folderName = lightboxBoardFolder(source);
     const folder = path.join(directory, folderName);
-    let names: string[];
+    let onDisk: Array<[string, FileType]>;
     try {
-      names = (await this.fileSystem.readDirectory(folder))
-        .filter(([name, type]) => type === FileType.File && FILE_NAME.test(name))
-        .map(([name]) => name);
+      onDisk = (await this.fileSystem.readDirectory(folder)).filter(([, type]) => type === FileType.File);
     } catch (error) {
       if (!isMissingFileSystemPathError(error)) {
         this.log.appendLine(`${LOG} Could not list ${LIGHTBOX_BOARDS_DISPLAY_PATH}/${folderName}: ${errorMessage(error)}`);
       }
       return { entries: [], unreadable: 0 };
     }
+    const names = onDisk.map(([name]) => name).filter((name) => FILE_NAME.test(name));
+    const leftClaims = onDisk.map(([name]) => name).filter((name) => {
+      const saved = LIGHTBOX_BOARD_CLAIM.exec(name)?.[1];
+      return saved !== undefined && !names.includes(saved);
+    });
     const key = lightboxSavedSourceKey(source);
     const entries: LightboxSavedBoardEntry[] = [];
     let unreadable = 0;
@@ -171,7 +198,7 @@ export class LightboxBoardFiles {
       }
     }
     entries.sort((left, right) => right.savedAt - left.savedAt || (left.fileId < right.fileId ? 1 : -1));
-    return { entries, unreadable };
+    return { entries, unreadable, ...(leftClaims.length > 0 ? { leftClaims } : {}) };
   }
 
   /** A deleted file's summary is forgotten. */
@@ -200,7 +227,7 @@ export class LightboxBoardFiles {
   }
 }
 
-/** A saved board as the rail lists it: when, its words, the lenses read (and which are stale), and its cost. */
+/** A saved board as the rail lists it: its name, when, its words, the lenses read (and which are stale), its cost and its models. */
 function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardEntry {
   const { board } = file;
   const source = board.sources[0];
@@ -211,6 +238,7 @@ function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardE
   const costs = board.readings.flatMap((group) => (group.usage?.costUsd !== undefined ? [group.usage.costUsd] : []));
   return {
     fileId,
+    ...(board.name !== undefined ? { name: board.name } : {}),
     savedAt: Date.parse(file.savedAt),
     sourceKey: lightboxSavedSourceKey(source),
     contentHash: source.contentHash,
@@ -218,7 +246,9 @@ function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardE
     lenses,
     staleLenses: lenses.filter((lens) => stale.has(lens)),
     // Summed to the micro-dollar: the rail shows an approximate cost.
-    ...(costs.length > 0 ? { costUsd: Math.round(costs.reduce((sum, cost) => sum + cost, 0) * 1e6) / 1e6 } : {})
+    ...(costs.length > 0 ? { costUsd: Math.round(costs.reduce((sum, cost) => sum + cost, 0) * 1e6) / 1e6 } : {}),
+    // The provider-reported model of each group that has one, once each.
+    models: [...new Set(board.readings.flatMap((group) => (group.model ? [group.model] : [])))]
   };
 }
 

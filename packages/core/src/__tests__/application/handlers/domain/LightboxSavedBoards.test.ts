@@ -100,7 +100,7 @@ describe('saving (epic decision 27)', () => {
 
     expect(host.savedFiles()).toEqual([FIRST, READ]);
     expect((await tab.shelf('board-1')).shelf.boards).toEqual([
-      { fileId: READ, savedAt: SAVED_AT(1), wordCount: 508, lenses: EVERY_LENS, staleLenses: [], costUsd: 0.07, onScreen: true },
+      { fileId: READ, savedAt: SAVED_AT(1), wordCount: 508, lenses: EVERY_LENS, staleLenses: [], costUsd: 0.07, models: ['provider/model-v1'], onScreen: true },
       { fileId: FIRST, savedAt: SAVED_AT(0), wordCount: 508, lenses: [], staleLenses: [], onScreen: false }
     ]);
     // The file holds exactly the board on screen, and its text.

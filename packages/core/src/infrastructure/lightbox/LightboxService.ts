@@ -51,9 +51,9 @@
  *   left out), so the board's numbers are fixed with the board.
  * - **Saved boards (Slice 5A).** A board opened from its file, or restored
  *   after a reload, is adopted by `adoptSaved` under a source ticket, exactly
- *   as saved. `LightboxBoardLibrary` decides when a board is saved and
- *   records the file that holds it (`markSaved`); this service never touches
- *   the disk.
+ *   as saved, with its name (Slice 5A.1). `LightboxBoardLibrary` decides when
+ *   a board is saved and records the file that holds it (`markSaved`) and
+ *   its name (`nameBoard`); this service never touches the disk.
  *
  * The source text never leaves this service except as the board's short
  * preview and, from Slice 4E, the passages the inspector asks for by board
@@ -300,9 +300,10 @@ export class LightboxService {
       rereadPath: input.rereadPath ?? retained?.rereadPath,
       paragraphTexts,
       passages: assembled.passages,
-      // Built now, under this build's rules. Unchanged text is still the board its file holds (Slice 5A).
+      // Built now, under this build's rules. Unchanged text is still the board its file holds (Slice 5A), and keeps its name (5A.1).
       origin: { kind: 'built' },
-      savedFileId: unchanged ? retained?.savedFileId : undefined
+      savedFileId: unchanged ? retained?.savedFileId : undefined,
+      name: unchanged ? retained?.name : undefined
     });
     // The newest request produced a board, so no refusal stands beside it.
     this.standingRefusal = null;
@@ -432,14 +433,15 @@ export class LightboxService {
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
-    const { board, text, fileId, savedAt, dropped, rereadPath } = saved;
+    const { board, text, fileId, savedAt, dropped, rereadPath, name } = saved;
     this.retained.adopt(lightboxSourceKey(board.source), {
       board,
       text,
       rereadPath,
       ...savedLightboxBoardParts(this.measurers.wordFrequency, board, text),
       origin: { kind: 'saved', fileId, savedAt, dropped },
-      savedFileId: fileId
+      savedFileId: fileId,
+      name
     });
     this.standingRefusal = null;
     this.outcomeListeners.emit({ kind: 'board', board, refusal: null });
@@ -480,5 +482,10 @@ export class LightboxService {
   /** A saved file was deleted: no retained board is held in it any more. */
   forgetSaved(fileId: string): void {
     this.retained.forgetSaved(fileId);
+  }
+
+  /** Name the board kept under `boardId`, or unname it (Slice 5A.1). False when none is kept. */
+  nameBoard(boardId: string, name: string | undefined): boolean {
+    return this.retained.nameBoard(boardId, name);
   }
 }
