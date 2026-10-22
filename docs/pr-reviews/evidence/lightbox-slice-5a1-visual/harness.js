@@ -288,6 +288,15 @@ const facts = () => {
     notice: clean(panel?.querySelector('.pm-lb-boards-notice')?.textContent),
     setAside: clean(document.querySelector('.pm-lb-spark-set-aside')?.textContent),
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    // A button whose right edge runs past the box that clips it (PR #164 review: the press's cost at 500 px).
+    clippedButtons: [...document.querySelectorAll('button')].filter((button) => {
+      const box = button.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) { return false; }
+      let clip = button.parentElement;
+      while (clip && clip !== document.body && getComputedStyle(clip).overflowX === 'visible') { clip = clip.parentElement; }
+      const right = clip && clip !== document.body ? clip.getBoundingClientRect().right : window.innerWidth;
+      return box.right > right + 0.5;
+    }).map((button) => clean(button.textContent)),
     posted: window.__pmPosted
       .filter((m) => ['lightbox_request_boards', 'lightbox_open_board', 'lightbox_rename_board', 'lightbox_refresh_source'].includes(m.type))
       .map((m) => `${m.type} ${JSON.stringify(m.payload)}`),
@@ -321,6 +330,7 @@ const faults = (seen, expect) => {
   if (!seen.posted.some((line) => line.startsWith('lightbox_request_boards '))) { out.push('never asked for its shelf'); }
   if (seen.notice) { out.push(`a notice: "${seen.notice}"`); }
   if (seen.horizontalOverflow) { out.push('horizontal overflow'); }
+  if (seen.clippedButtons.length > 0) { out.push(`clipped buttons: ${JSON.stringify(seen.clippedButtons)}`); }
   if (seen.savedStateNamesAFile) { out.push('a saved webview state names a board file'); }
   if (seen.savedStateHoldsAName) { out.push('a saved webview state holds a board\'s name'); }
   return out;

@@ -25,7 +25,7 @@ which is unchanged.
 | `states/boards.json` | The host's messages and answers for each state: the board a mount gets, the shelf the rail's mount request gets, each board's shelf, the estimate, and the host's answer to the Open in `changed` (the opened board, then its shelf) |
 | `states/log.txt` | Every line the host logged while the states were made |
 | `harness.js` | Renders a built `webview.js` as the Lightbox behind a stubbed VS Code API, replays each state's messages, answers the tab's own requests with the host's recorded answers (echoing each request's id), acts as the writer would, takes each screenshot once two consecutive frames match, and writes `facts.json` and `errors.txt`. It exits 1 when any state is wrong |
-| `facts.json` | What each state's page showed, read from the DOM: the Boards section's head (the board's name, its action and note), its rows as text, each row's model tooltip, which row is on screen, the rail's snapshot note, the notice above the board and whether it is first in the board's column, the name field (its label, value and focus), the Spark lane's set-aside line, the rail's requests, horizontal overflow, and whether any saved webview state named a board file or held a board's name |
+| `facts.json` | What each state's page showed, read from the DOM: the Boards section's head (the board's name, its action and note), its rows as text, each row's model tooltip, which row is on screen, the rail's snapshot note, the notice above the board and whether it is first in the board's column, the name field (its label, value and focus), the Spark lane's set-aside line, the rail's requests, horizontal overflow, every button that runs past the box that clips it (PR #164's review), and whether any saved webview state named a board file or held a board's name |
 | `errors.txt` | Every page error, console error, and failed expectation, one per line. It is empty for this run |
 | `tools/build-boards.test.ts` | How `states/` was made |
 
@@ -114,34 +114,54 @@ saved at 14:05:09.123Z and one minute apart after that.
 ## Results
 
 From the committed `facts.json`, rendered from the bundle a clean
-`npm run build` writes at this branch's code (`webview.js` SHA-256
-`427e81f8e4de8786eafca652702bbf378e8ea86c0109e30f7f2a38d30256ffaa`).
+`npm run build` writes at this branch's code after PR #164's corrections
+(`webview.js` SHA-256
+`66c1f405b6ff52a41f5780771482b3383f21bf84479c3d5a47c0f800b103cd35`).
+The states in `states/` were built again from the corrected host and are
+byte-identical to the ones committed before the review.
 
 | State | What the page shows (the same at 1440, 1000 and 500 px) |
 |---|---|
 | `named` | "3 saved"; head "3.2.1 - after the cut - model B" with Rename; rows named, with "Read by model-v1 and model-b" and "Read by model-v1"; the measured row unnamed with no model line |
 | `rename-open` | The 2:06 PM row's field, focused, labelled for its board, holding the typed name; no rename posted |
-| `changed-board` | The amber notice first in the board's column, with Read the current text; the rail's note in the same words |
+| `changed-board` | The amber notice first in the board's column, with Read the current text; the rail's note in the same words; at 500 px, "Read the rest" with its cost wrapped under it, inside the card |
 | `changed-rail` | The same, at the rail: 2:06 PM On screen; head "3.2.1 - before the cut - model A" |
 | `spark` | "1 spark set aside. Undo Brings back “The empty jar”."; still "3 saved"; the quiet note of a restored board; its name in the head |
 | `session-named` | "this session"; head named, "A name lasts as long as this session, as the board does."; no rows |
 
 Across all 18 captures:
 - no horizontal overflow;
+- no button runs past the box that clips it;
 - no saved webview state named a board file or held a board's name (8 to
   10 states saved per capture);
 - no page error;
 - `errors.txt` is empty.
 
-A second render gave all 18 PNGs byte-identical.
+**PR #164's review** noted that "Read the rest" and its cost ran past the
+board's card in the 500 px `changed-board` capture. The new clipping check
+found the same button clipped at `3e5c3a1`, so this slice did not cause
+it. The press's button now wraps its cost under its label. Against this
+review's head (`ada5717`, `webview.js` `427e81f8…ffaa`), the harness
+writes 2 errors (`changed-board@500` and `changed-rail@500`: that button
+clipped) and exits 1.
+
+Two captures changed with that fix: `changed-board` and `spark` at 500 px.
+A second and a third render at this head gave the same pages. One or two
+PNGs differed by a few pixels from render to render: a card's edge in
+`rename-open` at 1000 px, a button's tint in `changed-rail` at 1440 px.
+These are hover and scrollbar tints the screenshot catches mid-fade; the
+DOM facts and `errors.txt` agreed in every render.
 
 **The harness fails rather than skips.** Against the base bundle
 (`epic/lightbox` at `3e5c3a1`, built from an export of that commit whose
-`node_modules` is a link to this worktree's; `71fc8bdb…04c2`), it wrote 51
-errors and exited 1: the head was missing in all six states, every row
-read as unnamed with no model line in the five with rows, the rename field
-could not be opened (`rename-open`), and there was no notice above the
-board (`changed-board`, `changed-rail`).
+`node_modules` is a link to this worktree's; `71fc8bdb…04c2`), it wrote 53
+errors and exited 1 with the clipping check (51 before it):
+- the head was missing in all six states;
+- every row read as unnamed with no model line, in the five states with
+  rows;
+- the rename field could not be opened (`rename-open`);
+- there was no notice above the board (`changed-board`, `changed-rail`);
+- "Read the rest" was clipped at 500 px.
 
 **Bundle provenance.** `npm ci` into the worktree's own `node_modules`, a
 real directory, not a symlink: webpack's production module ids come from
