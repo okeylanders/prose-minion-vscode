@@ -1022,6 +1022,8 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxPassages.ts',
   // Slice 5A: the rail's saved boards, their shelf and its requests.
   'shared/types/messages/lightboxBoards.ts',
+  // Slice 5A.1: the Lightbox message domain's own barrel, re-exported by `messages/index.ts`.
+  'shared/types/messages/lightboxBarrel.ts',
   'shared/constants/lightboxPassages.ts',
   'shared/constants/lightbox.ts',
   'shared/constants/lightboxPlot.ts',

@@ -109,6 +109,7 @@ packages/core/src/
             ├── publishing.ts     # Publishing standards
             ├── accountBalance.ts # OpenRouter account balance
             ├── configuredResources.ts # The configured-resource catalog shapes the shared project picker browses (Workshop and Lightbox)
+            ├── lightboxBarrel.ts # The Lightbox domain's own barrel (every lightbox*.ts below) and its parts of the routing unions; index.ts re-exports it (Slice 5A.1)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, lenses and the estimate's shapes
             ├── lightboxRuns.ts   # Lightbox run messages: scope, phases, progress, set lenses, estimate answer, run, cancel, group result
