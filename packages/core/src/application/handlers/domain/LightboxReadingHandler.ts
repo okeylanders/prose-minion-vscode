@@ -47,6 +47,9 @@
  *   other change to its readings.
  * - **Context files** come by the system picker or the project picker (by
  *   catalog key), through `LightboxContextIntake` under the shelf's rules.
+ * - **Saved after a run (Slice 5A, epic decision 27).** A run that ends,
+ *   finished or stopped, with at least one group landed hands its board to
+ *   the composition root's saver, which writes it as it stands.
  *
  * Logs name groups, lenses, counts, paths and reasons, never text.
  */
@@ -91,6 +94,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
 import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
 import { lightboxOpinionPort, lightboxPressRun } from '@handlers/domain/LightboxPressRun';
+import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 
 const SOURCE = 'extension.lightbox';
 const STOPPED = 'Stopped before this group came back.';
@@ -121,7 +125,9 @@ export class LightboxReadingHandler {
     shell: LightboxContextPicker,
     projectFilePorts: LightboxProjectFilePorts,
     private readonly postMessage: MessageTransport,
-    private readonly outputChannel: LogSink
+    private readonly outputChannel: LogSink,
+    /** Saves a board once a run on it landed readings (Slice 5A); without it nothing is saved. */
+    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'saveAfterRun'>
   ) {
     this.contextIntake = new LightboxContextIntake({
       lightboxService,
@@ -276,7 +282,10 @@ export class LightboxReadingHandler {
       lens,
       press,
       postProgress: (progress) => this.postProgress(progress),
-      onFinished: (token) => this.ownRuns.delete(token),
+      onFinished: (token, landed) => {
+        this.ownRuns.delete(token);
+        this.saveAfterRun(boardId, landed);
+      },
       outputChannel: this.outputChannel
     });
     const start = this.runner.startReserved(reservation, press.source, preparedCalls, pressRun.listener, {
@@ -353,16 +362,25 @@ export class LightboxReadingHandler {
       return;
     }
     const board = this.lightboxService.updateReadings(run.boardId, (readings) => stopLightboxGroups(readings, run.groups, message));
+    const groupsBack = board?.readings.filter((group) => run.groups.includes(group.group) && group.status !== 'cancelled').length ?? 0;
     this.postProgress({
       boardId: run.boardId,
       token: run.token,
       phase: 'cancelled',
       groups: run.groups,
-      groupsBack: board?.readings.filter((group) => run.groups.includes(group.group) && group.status !== 'cancelled').length ?? 0,
+      groupsBack,
       outputCharacters: 0,
       message,
       ...lensField(run.lens)
     });
+    this.saveAfterRun(run.boardId, groupsBack);
+  }
+
+  /** A run that landed readings saves its board as it stands (Slice 5A); one that landed none changes nothing. */
+  private saveAfterRun(boardId: string, landed: number): void {
+    if (landed > 0 && this.boardSaver) {
+      void this.boardSaver.saveAfterRun(boardId);
+    }
   }
 
   /** Answer an estimate request, unless a newer one arrives while this one is priced. */

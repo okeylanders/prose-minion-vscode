@@ -991,7 +991,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1114,6 +1114,10 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardCodec.ts',
   // Slice 5A: the files on disk, their availability, writes and the reload pointer.
   'infrastructure/storage/LightboxBoardStore.ts',
+  // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
+  'infrastructure/lightbox/LightboxRetainedBoards.ts',
+  'application/services/lightbox/LightboxBoardLibrary.ts',
+  'application/handlers/domain/LightboxBoardsHandler.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',
@@ -1248,6 +1252,11 @@ const LIGHTBOX_ROUTE_OWNERS = [
     // Slice 4E: the text a pinned paragraph or counted item stands in
     owner: 'application/handlers/domain/LightboxPassageHandler.ts',
     messageTypes: ['LIGHTBOX_REQUEST_PASSAGE']
+  },
+  {
+    // Slice 5A: the rail's saved boards
+    owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
@@ -1261,7 +1270,8 @@ const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
   'LIGHTBOX_WORKSHOP_TRAY',
   'LIGHTBOX_PROJECT_CATALOG',
   'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS',
-  'LIGHTBOX_PASSAGE'
+  'LIGHTBOX_PASSAGE',
+  'LIGHTBOX_BOARDS'
 ] as const;
 /**
  * The project picker the Workshop's context selector and the Lightbox share
@@ -1279,6 +1289,7 @@ const SHARED_PROJECT_PICKER_MODULES = [
 ] as const;
 const LIGHTBOX_FEATURE_DIRECTORIES = [
   'infrastructure/lightbox',
+  'application/services/lightbox',
   'presentation/webview/hooks/domain/lightbox',
   'presentation/webview/components/lightbox'
 ] as const;
@@ -1905,9 +1916,12 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
     // Slice 5A: one store owns the boards folder's queue and the reload pointer.
     expect(constructions(/\bnew\s+LightboxBoardStore\s*\(/)).toEqual([]);
+    // Slice 5A: one library hears every board and restores once per session.
+    expect(constructions(/\bnew\s+LightboxBoardLibrary\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxBoardsHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {

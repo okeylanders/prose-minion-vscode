@@ -8,9 +8,15 @@
  * a board: an opened board arrives as `LIGHTBOX_BOARD`, as any board does.
  *
  * - **Correlation (the 4E passage pattern).** Every request carries a
- *   webview-minted `requestId` and the board on screen; the answer echoes
- *   the id and names the board its shelf describes, and the webview takes
- *   only the answer it is still waiting for, about the board on screen.
+ *   webview-minted `requestId`; the answer echoes the id and names the board
+ *   its shelf describes, and the webview takes only the answer it is still
+ *   waiting for and shows a shelf only beside the board it describes. A
+ *   committed save is pushed with `requestId: null`, and taken only while
+ *   its board is on screen.
+ * - **Restore on mount (epic decision 30).** A request that names no board
+ *   (the webview has none yet) lets the host reopen the last board on screen,
+ *   once per session and only while no source has been chosen; the board
+ *   arrives as `LIGHTBOX_BOARD`, and the answer describes it.
  * - **Files by the host's id.** A saved board is named by its `fileId`,
  *   which the host minted when it listed the file. The webview never names a
  *   path, and the host checks an id against its own folder before it reads or
@@ -25,6 +31,7 @@
  * ids and costs.
  */
 
+import { MessageEnvelope, MessageType } from './base';
 import type { LightboxLensId } from './lightboxReadings';
 
 /**
@@ -87,14 +94,13 @@ export interface LightboxBoardShelf {
 /** The rail asks for the saved boards of the board on screen's source. */
 export interface LightboxRequestBoardsPayload {
   requestId: string;
-  boardId: string;
+  /** The board on screen; `null` when the webview has none yet (a mount). */
+  boardId: string | null;
 }
 
-/** Open a saved board, replacing the board on screen. */
+/** Open a saved board, replacing the board on screen. The answer describes the board then on screen. */
 export interface LightboxOpenBoardPayload {
   requestId: string;
-  /** The board on screen when the writer pressed Open. */
-  boardId: string;
   fileId: string;
 }
 
@@ -106,12 +112,32 @@ export interface LightboxDeleteBoardPayload {
 }
 
 /**
- * The shelf, answering one request by its id. `boardId` names the board the
- * shelf describes: the one asked about, or, after an open, the board then on
- * screen; `null` when there is none.
+ * The shelf, answering one request by its id, or pushed after a save
+ * (`requestId: null`). `boardId` names the board the shelf describes: the
+ * one asked about, or, after an open, the board then on screen; `null` when
+ * there is none.
  */
 export interface LightboxBoardsPayload {
-  requestId: string;
+  requestId: string | null;
   boardId: string | null;
   shelf: LightboxBoardShelf;
 }
+
+export interface LightboxRequestBoardsMessage extends MessageEnvelope<LightboxRequestBoardsPayload> {
+  type: MessageType.LIGHTBOX_REQUEST_BOARDS;
+}
+
+export interface LightboxOpenBoardMessage extends MessageEnvelope<LightboxOpenBoardPayload> {
+  type: MessageType.LIGHTBOX_OPEN_BOARD;
+}
+
+export interface LightboxDeleteBoardMessage extends MessageEnvelope<LightboxDeleteBoardPayload> {
+  type: MessageType.LIGHTBOX_DELETE_BOARD;
+}
+
+export interface LightboxBoardsMessage extends MessageEnvelope<LightboxBoardsPayload> {
+  type: MessageType.LIGHTBOX_BOARDS;
+}
+
+/** The rail's three requests, for the barrel's inbound union. */
+export type LightboxBoardsRequestMessage = LightboxRequestBoardsMessage | LightboxOpenBoardMessage | LightboxDeleteBoardMessage;

@@ -197,6 +197,8 @@ export { LightboxService, type LightboxSourceTicket } from '@/infrastructure/lig
 export { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 export { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 export { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
+export { LightboxBoardStore, type LightboxBoardMemory } from '@/infrastructure/storage/LightboxBoardStore';
+export { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 export {
   AccountBalanceService,
   OpenRouterAccountClient

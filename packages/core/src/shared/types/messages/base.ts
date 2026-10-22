@@ -255,7 +255,12 @@ export enum MessageType {
   LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context',
   // Slice 4E: the text a pinned paragraph or counted item stands in, by request id
   LIGHTBOX_REQUEST_PASSAGE = 'lightbox_request_passage',
-  LIGHTBOX_PASSAGE = 'lightbox_passage'
+  LIGHTBOX_PASSAGE = 'lightbox_passage',
+  // Saved boards (Slice 5A, ADR 2026-10-19 D12 addendum): the rail's shelf, open and delete
+  LIGHTBOX_REQUEST_BOARDS = 'lightbox_request_boards',
+  LIGHTBOX_BOARDS = 'lightbox_boards',
+  LIGHTBOX_OPEN_BOARD = 'lightbox_open_board',
+  LIGHTBOX_DELETE_BOARD = 'lightbox_delete_board'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

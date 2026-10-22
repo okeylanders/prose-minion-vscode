@@ -49,6 +49,11 @@
  * - **The writer's own average (Slice 4B).** Measured with the board, by
  *   `LightboxWriterBaseline` over the writer's other chapters (this source
  *   left out), so the board's numbers are fixed with the board.
+ * - **Saved boards (Slice 5A).** A board opened from its file, or restored
+ *   after a reload, is adopted by `adoptSaved` under a source ticket, exactly
+ *   as saved. `LightboxBoardLibrary` decides when a board is saved and
+ *   records the file that holds it (`markSaved`); this service never touches
+ *   the disk.
  *
  * The source text never leaves this service except as the board's short
  * preview and, from Slice 4E, the passages the inspector asks for by board
@@ -76,7 +81,22 @@ import { checkLightboxSource } from '@/infrastructure/lightbox/LightboxSourceChe
 import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 import type { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
 import { lightboxSourceKey } from '@/infrastructure/lightbox/LightboxSourceKey';
-import { assembleLightboxBoard, type LightboxBoardMeasurers } from '@/infrastructure/lightbox/LightboxBoardAssembly';
+import {
+  assembleLightboxBoard,
+  savedLightboxBoardParts,
+  type LightboxBoardMeasurers
+} from '@/infrastructure/lightbox/LightboxBoardAssembly';
+import {
+  LightboxRetainedBoards,
+  type LightboxSavableBoard,
+  type LightboxSavedAdoption
+} from '@/infrastructure/lightbox/LightboxRetainedBoards';
+
+export type {
+  LightboxBoardOrigin,
+  LightboxSavableBoard,
+  LightboxSavedAdoption
+} from '@/infrastructure/lightbox/LightboxRetainedBoards';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -148,15 +168,6 @@ export interface LightboxServiceOptions {
 
 const DEFAULT_RETAINED_BOARDS = 12;
 
-interface BoardEntry {
-  board: LightboxBoard;
-  rereadPath?: string;
-  /** Host-private: the paragraph texts the board was measured from (index 0 is ¶1). */
-  paragraphTexts: string[];
-  /** Host-private: the text it was measured from, for the inspector's passages (Slice 4E). */
-  passages: LightboxPassageIndex;
-}
-
 /** A retained board with the text a reading run reads. Host-private. */
 export interface LightboxReadingSourceText {
   board: LightboxBoard;
@@ -164,8 +175,7 @@ export interface LightboxReadingSourceText {
 }
 
 export class LightboxService {
-  private readonly entries = new Map<string, BoardEntry>();
-  private currentKey?: string;
+  private readonly retained: LightboxRetainedBoards;
   /** The writer's latest source request; only it may adopt or refuse. */
   private currentTicket?: LightboxSourceTicket;
   private ticketCount = 0;
@@ -176,7 +186,6 @@ export class LightboxService {
   private readonly now: () => number;
   private readonly mintBoardId: () => string;
   private readonly mintRefusalId: () => string;
-  private readonly retainedBoards: number;
   private readonly measurers: LightboxBoardMeasurers;
 
   constructor(
@@ -198,7 +207,7 @@ export class LightboxService {
     this.now = options.now ?? Date.now;
     this.mintBoardId = options.mintBoardId ?? randomUUID;
     this.mintRefusalId = options.mintRefusalId ?? randomUUID;
-    this.retainedBoards = Math.max(1, options.retainedBoards ?? DEFAULT_RETAINED_BOARDS);
+    this.retained = new LightboxRetainedBoards(Math.max(1, options.retainedBoards ?? DEFAULT_RETAINED_BOARDS));
   }
 
   /**
@@ -216,6 +225,11 @@ export class LightboxService {
   /** Whether `ticket` is still the writer's latest source request. */
   isCurrentRequest(ticket: LightboxSourceTicket): boolean {
     return ticket === this.currentTicket;
+  }
+
+  /** Whether any source request was made this session: a restore on mount yields to every one (Slice 5A). */
+  hasSourceRequests(): boolean {
+    return this.ticketCount > 0;
   }
 
   /**
@@ -238,7 +252,7 @@ export class LightboxService {
 
     const key = lightboxSourceKey(input);
     const contentHash = lightboxContentHash(input.text);
-    const retained = this.entries.get(key);
+    const retained = this.retained.bySource(key);
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
 
     const assembled = await assembleLightboxBoard(this.measurers, input, contentHash, unchanged, {
@@ -252,7 +266,7 @@ export class LightboxService {
     }
     // A reading group may have landed on the retained board while this one
     // was measured; work from the latest readings, not the ones captured before.
-    const latest = this.entries.get(key)?.board;
+    const latest = this.retained.bySource(key)?.board;
     let carried = false;
     if (unchanged && latest?.boardId === board.boardId) {
       // Same text, measured again: a number usage stays only while its figure stands out the same way (PR #155 F-01).
@@ -274,7 +288,16 @@ export class LightboxService {
       };
       carried = true;
     }
-    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath, paragraphTexts, passages: assembled.passages });
+    this.retained.adopt(key, {
+      board,
+      text: input.text,
+      rereadPath: input.rereadPath ?? retained?.rereadPath,
+      paragraphTexts,
+      passages: assembled.passages,
+      // Built now, under this build's rules. Unchanged text is still the board its file holds (Slice 5A).
+      origin: { kind: 'built' },
+      savedFileId: unchanged ? retained?.savedFileId : undefined
+    });
     // The newest request produced a board, so no refusal stands beside it.
     this.standingRefusal = null;
     this.outcomeListeners.emit({ kind: 'board', board, refusal: this.standingRefusal });
@@ -325,18 +348,18 @@ export class LightboxService {
   }
 
   currentBoard(): LightboxBoard | undefined {
-    return this.currentKey ? this.entries.get(this.currentKey)?.board : undefined;
+    return this.retained.current()?.board;
   }
 
   /** A retained board and its paragraph texts, by board id (Slice 2B readings). */
   readingSource(boardId: string): LightboxReadingSourceText | undefined {
-    const entry = this.entryOf(boardId);
+    const entry = this.retained.byId(boardId);
     return entry ? { board: entry.board, paragraphTexts: entry.paragraphTexts } : undefined;
   }
 
   /** A retained board and the text it was measured from, by board id (Slice 4E passages). */
   passageSource(boardId: string): { board: LightboxBoard; passages: LightboxPassageIndex } | undefined {
-    const entry = this.entryOf(boardId);
+    const entry = this.retained.byId(boardId);
     return entry ? { board: entry.board, passages: entry.passages } : undefined;
   }
 
@@ -353,7 +376,7 @@ export class LightboxService {
     update: (readings: LightboxBoard['readings'], board: LightboxBoard) => LightboxBoard['readings'],
     settled?: { token: string; group: LightboxReadingGroup['group'] }
   ): LightboxBoard | undefined {
-    const entry = this.entryOf(boardId);
+    const entry = this.retained.byId(boardId);
     if (!entry) {
       return undefined;
     }
@@ -371,18 +394,9 @@ export class LightboxService {
     return board;
   }
 
-  private entryOf(boardId: string): BoardEntry | undefined {
-    for (const entry of this.entries.values()) {
-      if (entry.board.boardId === boardId) {
-        return entry;
-      }
-    }
-    return undefined;
-  }
-
   /** The current source's re-read target, when it is a file. */
   currentRereadTarget(): LightboxRereadTarget | undefined {
-    const entry = this.currentKey ? this.entries.get(this.currentKey) : undefined;
+    const entry = this.retained.current();
     if (!entry || entry.board.source.kind !== 'file' || !entry.rereadPath) {
       return undefined;
     }
@@ -393,14 +407,56 @@ export class LightboxService {
     };
   }
 
-  private adopt(key: string, entry: BoardEntry): void {
-    // Map order is recency: re-insert on every use, evict from the front. The
-    // adopted entry is the newest, so eviction never takes the current board.
-    this.entries.delete(key);
-    this.entries.set(key, entry);
-    this.currentKey = key;
-    while (this.entries.size > this.retainedBoards) {
-      this.entries.delete(this.entries.keys().next().value as string);
+  /**
+   * Make a saved board current under `ticket`, exactly as saved: its
+   * figures, readings and rules stay as the file holds them, and its
+   * host-side parts are rebuilt from its own saved text (Slice 5A, epic
+   * decision 29). It replaces the board kept for its source, as any newer
+   * source does. Synchronous, so nothing lands between the check and the
+   * adoption.
+   */
+  adoptSaved(saved: LightboxSavedAdoption, ticket: LightboxSourceTicket): Extract<LightboxBoardResult, { kind: 'board' | 'superseded' }> {
+    if (!this.isCurrentRequest(ticket)) {
+      return { kind: 'superseded' };
     }
+    const { board, text, fileId, savedAt, dropped, rereadPath } = saved;
+    this.retained.adopt(lightboxSourceKey(board.source), {
+      board,
+      text,
+      rereadPath,
+      ...savedLightboxBoardParts(this.measurers.wordFrequency, board, text),
+      origin: { kind: 'saved', fileId, savedAt, dropped },
+      savedFileId: fileId
+    });
+    this.standingRefusal = null;
+    this.outcomeListeners.emit({ kind: 'board', board, refusal: null });
+    return { kind: 'board', board, reused: false, carried: false };
+  }
+
+  /** A retained board as a save writes it, by id, and where it came from. Host-private. */
+  savable(boardId: string): LightboxSavableBoard | undefined {
+    const entry = this.retained.byId(boardId);
+    return entry && this.retained.savable(entry);
+  }
+
+  /** The board on screen as a save writes it. Host-private. */
+  currentSavable(): LightboxSavableBoard | undefined {
+    const entry = this.retained.current();
+    return entry && this.retained.savable(entry);
+  }
+
+  /** The retained board a board of `source` would replace, if any. */
+  retainedForSource(source: LightboxBoard['source']): LightboxBoard | undefined {
+    return this.retained.bySource(lightboxSourceKey(source))?.board;
+  }
+
+  /** Record the file the board kept under `boardId` was last saved to. */
+  markSaved(boardId: string, fileId: string): boolean {
+    return this.retained.markSaved(boardId, fileId);
+  }
+
+  /** A saved file was deleted: no retained board is held in it any more. */
+  forgetSaved(fileId: string): void {
+    this.retained.forgetSaved(fileId);
   }
 }

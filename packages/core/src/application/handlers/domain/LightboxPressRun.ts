@@ -44,8 +44,8 @@ export interface LightboxPressRunInputs {
   lens: LightboxLensId | undefined;
   press: LightboxPressSnapshot;
   postProgress: (progress: LightboxRunProgress) => void;
-  /** The run finished: its owner forgets it. */
-  onFinished: (token: string) => void;
+  /** The run finished, with `landed` groups written onto its board: its owner forgets it (and saves the board). */
+  onFinished: (token: string, landed: number) => void;
   outputChannel: LogSink;
 }
 
@@ -108,7 +108,7 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
       if (!started) {
         return;
       }
-      inputs.onFinished(started.token);
+      inputs.onFinished(started.token, groupsBack);
       const cost = summary.usage?.costUsd;
       outputChannel.appendLine(
         `[LightboxReadingHandler] Run ${started.token} finished: ${summary.outcomes.length} groups, ` +

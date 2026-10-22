@@ -99,7 +99,9 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
   phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
   steeringNoInstance: 'None of its quotes still holds an instance of the figure it reads, as the chapter has it, so it was not brought.',
-  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
+  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.',
+  /** A saved board opened over a file that has changed since (Slice 5A, epic decision 29). */
+  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then read the lens again before bringing it.'
 } as const;
 
 /** Why the Workshop did not stage a tile, in the writer's words. */

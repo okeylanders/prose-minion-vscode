@@ -8,7 +8,9 @@
  * **Handoffs.** `LIGHTBOX_HAND_OFF` names an item on the board the webview
  * shows, by id only. Every check runs against the host's current board and
  * text: the board is still the one on screen; for a file, the file on disk
- * still has the board's hash (read before anything leaves); then the pure
+ * still has the board's hash (read before anything leaves; a saved board
+ * opened over a changed file is refused in words that point to "Read the
+ * current text", Slice 5A); then the pure
  * preparation for the kind resolves the item, refuses a stale, withheld or
  * re-reading one, re-checks its quotes and bounds what leaves
  * (`LightboxHandoff` for a borrowed field, `LightboxTileHandoff` for a
@@ -89,12 +91,14 @@ const WORDS = {
     busy: LIGHTBOX_HANDOFF_REFUSALS.busy,
     boardChanged: LIGHTBOX_HANDOFF_REFUSALS.boardChanged,
     fileChanged: LIGHTBOX_HANDOFF_REFUSALS.fileChanged,
+    snapshotChanged: LIGHTBOX_HANDOFF_REFUSALS.snapshotChanged,
     workshop: LIGHTBOX_WORKSHOP_REFUSALS
   },
   tile: {
     busy: LIGHTBOX_TILE_HANDOFF_REFUSALS.busy,
     boardChanged: LIGHTBOX_TILE_HANDOFF_REFUSALS.boardChanged,
     fileChanged: LIGHTBOX_TILE_HANDOFF_REFUSALS.fileChanged,
+    snapshotChanged: LIGHTBOX_TILE_HANDOFF_REFUSALS.snapshotChanged,
     workshop: LIGHTBOX_TILE_WORKSHOP_REFUSALS
   }
 } as const;
@@ -194,6 +198,12 @@ export class LightboxHandoffRoute {
     }
     // A file may have changed on disk since it was boarded: check before anything leaves (D4).
     const target = lightboxService.currentRereadTarget();
+    const snapshot = lightboxService.currentSavable()?.origin.kind === 'saved';
+    if (!target && snapshot && lightboxService.currentBoard()?.source.kind === 'file') {
+      // A saved board whose file is not in this workspace cannot be checked (Slice 5A).
+      refuse(LIGHTBOX_HANDOFF_REFUSALS.fileUnreadable);
+      return;
+    }
     if (target) {
       let current: string;
       try {
@@ -214,7 +224,7 @@ export class LightboxHandoffRoute {
         return;
       }
       if (lightboxContentHash(current) !== board.source.contentHash) {
-        refuse(words.fileChanged);
+        refuse(snapshot ? words.snapshotChanged : words.fileChanged);
         return;
       }
     }
