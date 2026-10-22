@@ -255,6 +255,9 @@ export function decodeLightboxBoardFile(json: string): LightboxBoardDecoded {
     }
     throw error;
   }
+  if (!Number.isFinite(Date.parse(file.savedAt))) {
+    return { kind: 'invalid', reason: 'shape', at: 'file.savedAt' };
+  }
   const fault = integrityFault(file.board);
   if (fault) {
     return { kind: 'invalid', ...fault };

@@ -266,6 +266,11 @@ describe('LightboxBoardCodec: what it refuses, in host words', () => {
     }
   });
 
+  it('refuses a file whose save time is not a time', () => {
+    expect(refused(decodeEdited((file) => { file.savedAt = 'yesterday'; })))
+      .toEqual({ reason: 'shape', at: 'file.savedAt', formatVersion: undefined });
+  });
+
   it('refuses text that is not the text the board was measured from', () => {
     expect(refused(decodeEdited((file) => { file.board.sources[0].text = `${file.board.sources[0].text} More.`; })))
       .toEqual({ reason: 'text', at: 'file.board.sources[0].text', formatVersion: undefined });

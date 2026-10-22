@@ -991,7 +991,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore)\b`
 );
 
 /**
@@ -1020,6 +1020,8 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxProjectFiles.ts',
   // Slice 4E: the inspector's passages, their contract and bounds.
   'shared/types/messages/lightboxPassages.ts',
+  // Slice 5A: the rail's saved boards, their shelf and its requests.
+  'shared/types/messages/lightboxBoards.ts',
   'shared/constants/lightboxPassages.ts',
   'shared/constants/lightbox.ts',
   'shared/constants/lightboxPlot.ts',
@@ -1107,6 +1109,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardMeasuredCodec.ts',
   'infrastructure/storage/LightboxBoardTileCodec.ts',
   'infrastructure/storage/LightboxBoardCodec.ts',
+  // Slice 5A: the files on disk, their availability, writes and the reload pointer.
+  'infrastructure/storage/LightboxBoardStore.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',
@@ -1896,6 +1900,8 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
     // Slice 4B: the writer's baseline holds one cache; only the composition root builds it.
     expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
+    // Slice 5A: one store owns the boards folder's queue and the reload pointer.
+    expect(constructions(/\bnew\s+LightboxBoardStore\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);

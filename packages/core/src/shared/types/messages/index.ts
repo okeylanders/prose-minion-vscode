@@ -47,6 +47,7 @@ export * from './lightboxSections';
 export * from './lightboxOpinion';
 export * from './lightboxSteering';
 export * from './lightboxPassages';
+export * from './lightboxBoards';
 
 // Union types for message routing
 import {
