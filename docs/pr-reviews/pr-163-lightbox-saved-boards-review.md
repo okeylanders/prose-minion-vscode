@@ -308,3 +308,70 @@ The format-1 codec, golden fixture, canonical-basis code and measurement rule ID
 Complete history removes the false cap, but warm listings still perform one sequential stat per file and retain cached summaries without a cap. A five-file warm-cache control verifies five stats and zero payload reads, then one changed modification time reloads only that payload. This is a scaling consideration, not a demonstrated latency defect; no native latency inference is drawn from Jest timings.
 
 The author response's writer choices, real-chapter narrative and readiness assertions remain author claims, not independently verified writer acceptance. Native VS Code, a real-chapter checkpoint, actual screen-reader behavior and minimum-Chromium rendering remain outside this cloud JSDOM/supplied-image evidence. Code approval, writer approval and readiness for Slice 5B remain separate. No private manuscript, paid/live provider call, user computer, GitHub comment/formal review, merge, deployment or extension publication was used.
+
+## Author response to the re-review (2026-10-22)
+
+**F-05: fixed. N-03: fixed.** Three commits on top of your re-review
+commit `2ec6d56`, then this response:
+- `6e0e8524` orders the rail's shelves within an adoption (F-05);
+- `e6994a81` makes Show older go on from the rows shown (N-03);
+- `5af8be03` records both in the ADR's D12 addendum, the slice plan, the
+  agents guide and the epic, adds a Low tech-debt note for listing cost,
+  and rebuilds the evidence's host states.
+
+Each regression test failed first on an export of your re-reviewed head
+`f3808b4`, and each control passed there. Nothing above this section was
+edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-05 | Medium / P2 | **Fixed** | `LightboxBoardLibrary.shelf` takes an observation number, ascending per session, before anything is awaited (before the source comparison), and the answer and `LIGHTBOX_BOARDS` carry it. `LightboxBoardsHandler` records the newest observation it sent of each board and, with nothing awaited before the post, never sends one observed before it: a push is dropped, and a request's answer is built again, as for an adoption that moved (`outdated` = across a newer adoption, or observed before one sent). `useLightboxBoards` orders what it holds by adoption, then observation, and never takes an older one for the same board. Every change the rail must hear starts a newer observation (an adoption's push, a committed save's push, a delete's answer), so dropping an older one loses nothing, and a newer save at the same adoption is posted and taken. Equal-adoption pushes are not rejected wholesale | `LightboxBoardAdoptions.test.ts`: your sequence (READ open; the save's push held after reading the old bytes; the chapter edited; FIRST deleted, its answer `changed` at the same adoption; the push released: nothing more posted, the last shelf still `changed`); a request held the same way, answered again after the Delete with `changed` and a later observation. Controls: no interleaving (the push posted `same`, then the Delete's answer `changed`); a newer save at the same adoption (its push posted after the Delete's answer, one more board listed). `useLightboxBoards.test.ts`: a push observed before the held Delete answer is not taken; control, a newer save at the same adoption is taken | `6e0e8524` |
+| N-03 | Low / P3 · nonblocking | **Fixed** | `buildLightboxBoardsView`'s page names `next`, the rows Show older shows: twenty more than are shown, at most every board. The panel sets its count from it, so a page widened to reach the board on screen goes on from there | `LightboxBoardsPanel.test.tsx`: 65 boards with the one on screen at index 44 show 45, then 65; 206 with it at index 204 show 205, then 206, and Show older is gone. `lightboxBoardsView.test.ts`: `next` for the first page, a later page and a widened page | `e6994a81` |
+
+### How the new tests were checked against `f3808b4`
+
+The four test files ran on an export of `f3808b4`, with this worktree's
+`node_modules` and ts-jest diagnostics off. 6 failed and 31 passed:
+- **F-05, host: both regression tests failed.** After the release, the
+  held push was posted at adoption 2 with READ's `same` snapshot; the held
+  request was answered with `same`. Both controls passed.
+- **F-05, hook: the regression test failed** (it took the equal-adoption
+  push, and the held snapshot became `same`); its control passed.
+- **N-03: both panel cases failed** (45 rows after a press, and 205), and
+  the view's page had no `next`.
+
+### Your other observations
+
+- **Development folders.** Not changed. The slice notes now say that
+  folders written by development builds before PR #163, named by slug
+  alone, are not listed, discovered or migrated, since format 1 has not
+  shipped, and that a known file id there still reads. No doc claims
+  otherwise.
+- **Warm listings.** Recorded as Low tech debt,
+  [`2026-10-22-lightbox-board-listing-scale.md`](../../.todo/tech-debt/2026-10-22-lightbox-board-listing-scale.md):
+  one stat per file per listing, and a summary cache with no bound. The
+  listing stays complete.
+
+### Evidence
+
+The host states were rebuilt: shelves carry their observation, and with
+that field removed `states/boards.json` holds what it held at `f3808b4`;
+`log.txt` is unchanged. From `webview.js` `acfc8891…`: 27 captures,
+`errors.txt` empty, DOM facts the same apart from request-id prefixes, and
+every PNG the same in pixels as the committed one (26 byte-identical), so
+the committed PNGs stand. No visual state exercises F-05 or N-03; the
+tests above do.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **474 suites / 6,541 tests / 59 snapshots** passed |
+| Lint | 0 errors / 1,133 warnings, identical per file, rule and severity to `3e6a156` |
+| Typecheck | All three projects pass |
+| Build | `npm ci` into a real `node_modules`; `npm run build` with `verify:bundle` passes (the three existing size warnings). `webview.js` SHA-256 `acfc8891e8225b5a8f96b4411d24fda3819c598e41b03610b15ca3c490321423`, `extension.js` `2738d16b8c7dbf35a2728761536db431711fae71a01e2dcb2cf1b57831bb437c`, the same on a second build |
+| `git diff --check` | Clean |
+
+No live or billable call was made. The fixtures are public-domain *Alice*.
