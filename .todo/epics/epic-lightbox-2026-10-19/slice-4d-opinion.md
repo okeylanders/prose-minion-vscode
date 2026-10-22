@@ -312,7 +312,7 @@ observation and every view, not only Blunt (a deviation, stricter):
   compares digest keys by prefix.
 - **The basis** hashes the item's digest wording; Slice 5 must decide what
   a saved basis means
-  ([tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)).
+  ([tech debt](../../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)).
 
 ### Bring to Workshop
 

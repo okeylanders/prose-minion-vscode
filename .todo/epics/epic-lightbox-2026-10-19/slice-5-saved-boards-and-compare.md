@@ -53,7 +53,7 @@ decision 32 records what the format holds.
      under (`rules.opinionBasis`).
    - The standing rules are unchanged: an Opinion is stale when a cited
      item is gone, not current, or says something else.
-   - The [tech debt](../../tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)
+   - The [tech debt](../../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)
      closes with it.
 2. **Save (decision 27).** A board saves itself:
    - when a reading run ends having landed a group: finished, or stopped

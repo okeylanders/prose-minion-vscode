@@ -1025,6 +1025,8 @@ const LIGHTBOX_MODULES = [
   'shared/constants/lightboxPlot.ts',
   'shared/constants/lightboxOpinion.ts',
   'shared/constants/lightboxOpinionItems.ts',
+  // Slice 5A: the Opinion's citation basis, the cited item's canonical data (epic decision 25).
+  'shared/constants/lightboxOpinionBasis.ts',
   'shared/constants/lightboxSteering.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
