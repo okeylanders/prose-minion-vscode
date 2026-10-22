@@ -33,6 +33,8 @@ import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumb
 import { settleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingState';
 import { buildLightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
+import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
+import { lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 
 /** Writer-facing: the press's board is gone, so F has nothing to weigh. */
 const BOARD_GONE = 'The board this press read is gone, so the Opinion was not read.';
@@ -44,8 +46,8 @@ export interface LightboxPressRunInputs {
   lens: LightboxLensId | undefined;
   press: LightboxPressSnapshot;
   postProgress: (progress: LightboxRunProgress) => void;
-  /** The run finished: its owner forgets it. */
-  onFinished: (token: string) => void;
+  /** The run finished, with `landed` groups written onto its board: its owner forgets it (and saves the board). */
+  onFinished: (token: string, landed: number) => void;
   outputChannel: LogSink;
 }
 
@@ -71,7 +73,9 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
       (readings, current) => readings.map((group) => (group.group === outcome.group
         ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), lens)
         : group)),
-      { token, group: outcome.group }
+      { token, group: outcome.group },
+      // Group F read: its citations stand under this build's basis rule, and the board says so (Slice 5A).
+      lightboxGroupReadsBoard(outcome.group) && outcome.status === 'ok' ? { opinionBasis: LIGHTBOX_OPINION_BASIS_RULE_ID } : undefined
     );
     if (!board) {
       outputChannel.appendLine(`[LightboxReadingHandler] Dropped group ${outcome.group}: its board is gone`);
@@ -108,7 +112,7 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
       if (!started) {
         return;
       }
-      inputs.onFinished(started.token);
+      inputs.onFinished(started.token, groupsBack);
       const cost = summary.usage?.costUsd;
       outputChannel.appendLine(
         `[LightboxReadingHandler] Run ${started.token} finished: ${summary.outcomes.length} groups, ` +

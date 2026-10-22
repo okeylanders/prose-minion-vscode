@@ -25,6 +25,7 @@ import {
   LIGHTBOX_OPINION_VIEW_LABELS,
   LIGHTBOX_OPINION_WEIGHT_LABELS,
   lightboxOpinionDefaultView,
+  LIGHTBOX_OPINION_EARLIER_RULE,
   lightboxOpinionStanding,
   lightboxOpinionView,
   type LightboxOpinionStanding
@@ -115,7 +116,9 @@ export function lightboxOpinionTileView(
       text: observation.text,
       cites: observation.cites.map((cite) => {
         const now = items.get(cite.item);
-        return { label: cite.label, ...(cite.quote ? { quote: cite.quote } : {}), changed: !now || !now.current || now.basis !== cite.basis };
+        // Under another basis rule the bases are not compared (Slice 5A): the standing's note says why it is stale.
+        const changed = !standing.earlierRule && (!now || !now.current || now.basis !== cite.basis);
+        return { label: cite.label, ...(cite.quote ? { quote: cite.quote } : {}), changed };
       }),
       changed: standing.changed.includes(observation.id),
       weighed: weighed.has(observation.id)
@@ -150,8 +153,11 @@ export function lightboxOpinionBringBlock(
   if (!view) {
     return 'This view was withheld, so there is nothing of it to bring.';
   }
-  if (lightboxOpinionStanding(tile, board).stale) {
-    return 'Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.';
+  const standing = lightboxOpinionStanding(tile, board);
+  if (standing.stale) {
+    return standing.earlierRule
+      ? LIGHTBOX_OPINION_EARLIER_RULE
+      : 'Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.';
   }
   const quotes = view.why.flatMap((point) => point.observations)
     .flatMap((id) => tile.observations.find((observation) => observation.id === id)?.cites ?? [])

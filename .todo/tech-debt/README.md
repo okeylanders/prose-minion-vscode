@@ -100,11 +100,13 @@ elsewhere.
 | Low | [The configured catalog lists only one of two same-named files across workspace folders](2026-10-20-context-catalog-cross-root-collapse.md) (older than PR #154; found in its F-02 review) | Identified |
 | Low | [A maximal group D response can exceed the per-group response cap](2026-10-20-lightbox-group-d-response-ceiling.md) (Lightbox Slice 4B) | Identified |
 | Low | [A maximal group E response can exceed the per-group response cap](2026-10-20-lightbox-group-e-response-ceiling.md) (Lightbox Slice 4C; artifacts is the long block) | Identified |
-| Medium | [The Opinion's citation basis hashes the digest's wording](2026-10-21-lightbox-opinion-basis-is-rendered-text.md) (Lightbox Slice 4D; the writer chose a data basis, epic decision 25) | Decided (Slice 5's first step) |
 | Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
 | Low | [The word-pattern figures miss a form wrapped in underscore emphasis](2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Lightbox Slice 4F; `_was_` counts nowhere, consistently) | Identified |
 | Low | [Craft steering's construction breakdown is a next-word heuristic](2026-10-21-lightbox-steering-construction-heuristics.md) (Lightbox Slice 4F) | Identified |
-| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; split before Slice 5 adds to them) | Identified |
+| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; reviewed after 5A, which made room in the service; split the store and the barrel before 5B) | Identified |
+| Low | [A spark set aside is saved only with the board's next save](2026-10-22-lightbox-spark-set-aside-saves-later.md) (Lightbox Slice 5A) | Identified |
+| Low | [A reopened board's passages are found by today's rules](2026-10-22-lightbox-reopened-passages-use-todays-rules.md) (Lightbox Slice 5A; matters once a rule id changes) | Identified |
+| Low | [The Boards rail drops focus after a confirmed delete](2026-10-22-lightbox-boards-rail-focus-after-delete.md) (Lightbox Slice 5A; and a missing restore file is retried) | Identified |
 | Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
 | Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
 | Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
@@ -120,6 +122,8 @@ elsewhere.
   focused concern and narrow the parent document.
 
 ## Recently resolved
+
+- [The Opinion's citation basis hashes the digest's wording](../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md): a citation's basis now hashes the cited item's canonical data, and every board records the basis rule's id (epic decision 25; Lightbox Slice 5A, 2026-10-22).
 
 - [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end, and a lower-case speech tag continues its speech's sentence ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
 

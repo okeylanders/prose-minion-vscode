@@ -77,6 +77,7 @@ import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/l
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxPlotAnchorRefusal, lightboxPlotPoints, lightboxPlotTravelOrder } from '@/infrastructure/lightbox/LightboxPlotHandoff';
 import { prepareLightboxOpinionHandoff } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
+import { LIGHTBOX_OPINION_EARLIER_RULE, lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
 import { lightboxSteeringPoints, lightboxSteeringQuoteAgain } from '@/infrastructure/lightbox/LightboxSteeringHandoff';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
@@ -99,7 +100,9 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
   phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
   steeringNoInstance: 'None of its quotes still holds an instance of the figure it reads, as the chapter has it, so it was not brought.',
-  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
+  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.',
+  /** A saved board opened over a file that has changed since (Slice 5A, epic decision 29). */
+  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then read the lens again before bringing it.'
 } as const;
 
 /** Why the Workshop did not stage a tile, in the writer's words. */
@@ -130,6 +133,10 @@ export function prepareLightboxTileHandoff(
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.notOnBoard);
   }
   const { group, tile } = located;
+  // An Opinion cited under another basis rule says so first, as its standing does (decision 32; PR #163 N-02).
+  if (tile.kind === 'opinion' && lightboxOpinionStanding(tile, board).earlierRule) {
+    return refuse(LIGHTBOX_OPINION_EARLIER_RULE);
+  }
   if (group.staleLenses?.some((mark) => mark.lens === tile.lens)) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.stale);
   }

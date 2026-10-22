@@ -1,0 +1,162 @@
+/* ============================================================
+   Prose Minion — the Lightbox rail's saved boards (Slice 5A; ADR 2026-10-19
+   D12 addendum): the list newest first, the board on screen marked, the
+   in-row delete confirmation, and the note on a board opened from a file.
+   The card is the frame's .pm-ws-block; buttons and chips are rail.css's and
+   board.css's. Every feature here holds on the Chromium 114 floor.
+   ============================================================ */
+
+[data-pm-surface="lightbox"] .pm-lb-boards-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board.is-on-screen {
+  border-color: var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-text {
+  flex: 1 1 140px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-when {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-meta {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-actions,
+[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm span {
+  margin-right: auto;
+}
+[data-pm-surface="lightbox"] .pm-lb-saved-board .pm-lb-button {
+  min-height: 28px;
+  padding: 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-button.is-danger {
+  border-color: color-mix(in srgb, var(--pm-red) 55%, var(--pm-border));
+  color: var(--pm-red);
+}
+[data-pm-surface="lightbox"] .pm-lb-button.is-danger:not(:disabled):hover {
+  border-color: var(--pm-red);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: none;
+  display: grid;
+  place-items: center;
+  color: var(--pm-muted);
+  cursor: pointer;
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-icon-button:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-icon-button:focus-visible,
+[data-pm-surface="lightbox"] .pm-lb-saved-board .pm-lb-button:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 1px;
+}
+
+/* ---------- A board opened from a file ---------- */
+[data-pm-surface="lightbox"] .pm-lb-snapshot {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 10px 0 0;
+  padding: 10px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot.is-warn {
+  border-color: color-mix(in srgb, var(--pm-amber) 50%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, var(--pm-surface));
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot.is-warn > svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body p {
+  margin: 0 0 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body .pm-lb-button {
+  margin-top: 4px;
+}
+
+[data-pm-surface="lightbox"] .pm-lb-boards-note,
+[data-pm-surface="lightbox"] .pm-lb-boards-empty {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-dim);
+}
+/* PR #163 F-04: how many of the source's boards are shown, and Show older. */
+[data-pm-surface="lightbox"] .pm-lb-boards-page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-page .pm-lb-boards-note {
+  margin: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-notice {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-amber);
+}

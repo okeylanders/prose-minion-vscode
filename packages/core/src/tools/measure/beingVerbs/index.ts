@@ -127,6 +127,15 @@ const MODIFIER = /^(?:JJ[RS]?|VBN)$/;
 const IS_AFTER = /^(?:VBG|RB[RS]?|IN|TO|DT|PRP\$)$/;
 const NOUN = /^NNP?S?$/;
 
+/**
+ * The id of the rule above (whole forms, contractions, negated and elided
+ * forms, and the next-word rule for `'s`; epic decision 26). A saved
+ * Lightbox board records which rule counted its being verbs (ADR 2026-10-19
+ * D12 addendum). A change to what `findBeingVerbs` returns is a new rule with
+ * a new id; `measurementRuleIds.test.ts` pins this one to its output.
+ */
+export const BEING_VERBS_RULE_ID = 'contractions-next-word-2026-10-21';
+
 /** Every counted form in `text`, in order, by the word-frequency tool's tagger. */
 export function findBeingVerbs(text: string): BeingVerbMatch[] {
   return findBeingVerbsWith(text, tagTextTokens);

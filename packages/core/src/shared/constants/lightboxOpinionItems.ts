@@ -26,12 +26,15 @@
  * writer's other chapters are "the other chapters", so nothing the digest
  * says addresses the writer.
  *
- * **Content identity.** `basis` hashes everything an item's lines and
- * quotes say. A tile read again gets new ids; one carried onto changed text
- * is stale; a figure measured again under a new preset or average says
+ * **Content identity.** `basis` hashes the item's canonical data, never the
+ * digest's wording (epic decision 25, `lightboxOpinionBasis`): its key and
+ * kind, its words, its quotes with their ¶ addresses, its counts and its
+ * figures. A tile read again gets new ids; one carried onto changed text is
+ * stale; a figure measured again under a new preset or average says
  * something else; a section that moved has another range. Any of these
  * changes what the Opinion read, and a citation records the basis it read.
- * `current` is false while the item's lens is stale or being read again.
+ * Rewording a line here moves no basis. `current` is false while the item's
+ * lens is stale or being read again.
  *
  * **Numeric authority** is narrower than identity (PR #157 F-01): `figures`
  * are the numbers the item shows as evidence (its label, lines, quotes and
@@ -71,6 +74,15 @@ import {
   lightboxMovementNumeral
 } from '@shared/constants/lightboxPlot';
 import {
+  lightboxOpinionBasis,
+  lightboxOpinionHeadlineData,
+  lightboxOpinionSectionData,
+  lightboxOpinionStandoutData,
+  lightboxOpinionSteeringData,
+  lightboxOpinionTileData,
+  type LightboxOpinionDatum
+} from '@shared/constants/lightboxOpinionBasis';
+import {
   LIGHTBOX_STEERING_STANCE_LABELS,
   LIGHTBOX_STEERING_VOICE_DIGEST,
   lightboxSteeringCountLines,
@@ -82,10 +94,12 @@ const B = PROMPT_BUDGETS.lightbox;
 /**
  * What the items are read from: a board's readings and, for its measured
  * figures, its measured set (a carry passes the rebuilt board's; without
- * one there are no measured items to cite).
+ * one there are no measured items to cite). `rules` names the basis rule its
+ * Opinion's citations were made under (Slice 5A); without it, this build's.
  */
 export interface LightboxOpinionBoard {
   measured?: LightboxBoard['measured'];
+  rules?: Pick<LightboxBoard['rules'], 'opinionBasis'>;
   readings: readonly LightboxReadingGroup[];
 }
 
@@ -103,7 +117,7 @@ export interface LightboxOpinionItem {
   paragraphs: number[];
   /** False while its lens is stale or being read again; measured items are always current. */
   current: boolean;
-  /** Its content identity (`lightboxOpinionHash` of everything it says). */
+  /** Its content identity: the basis of its canonical data (`lightboxOpinionBasis`), never of its wording. */
   basis: string;
   /**
    * Every number its label, lines and quotes (with their paragraph addresses)
@@ -137,24 +151,6 @@ export function lightboxOpinionFigures(text: string): string[] {
   return (text.match(/\d+(?:,\d{3})*(?:\.\d+)?/g) ?? []).map((figure) => figure.replace(/,/g, ''));
 }
 
-/**
- * A short, deterministic content hash (53 bits, as hex), the same in the
- * extension host and the webview. An identity check, not a secret: it says
- * whether an item still says what it said.
- */
-export function lightboxOpinionHash(text: string): string {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  for (let index = 0; index < text.length; index++) {
-    const code = text.charCodeAt(index);
-    h1 = Math.imul(h1 ^ code, 2654435761);
-    h2 = Math.imul(h2 ^ code, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
-}
-
 // ---------------------------------------------------------------------------
 // Measured figures
 // ---------------------------------------------------------------------------
@@ -171,17 +167,18 @@ function measuredItems(board: LightboxOpinionBoard): LightboxOpinionItem[] {
         `${headline.paragraphCount.toLocaleString('en-US')} paragraphs`,
       `${headline.averageWordsPerSentence} words per sentence · dialogue ${headline.dialoguePercentage} per 100 words · ` +
         `pacing: ${headline.pacing}`
-    ], [], [], true)
+    ], [], [], true, lightboxOpinionHeadlineData(headline))
   ];
   for (const row of measured.numbers.rows) {
     if (row.standout) {
-      items.push(item(`standout:${row.stat}`, 'measured', `Measured · The numbers: ${row.label}`, standoutLines(row), [], [...row.paragraphs], true));
+      items.push(item(`standout:${row.stat}`, 'measured', `Measured · The numbers: ${row.label}`, standoutLines(row), [], [...row.paragraphs], true,
+        lightboxOpinionStandoutData(row)));
     }
   }
   // Craft steering's counts, every figure, written as evidence on purpose: what they show becomes citable (Slice 4F).
   for (const figure of measured.steering.figures) {
     items.push(item(`steering:${figure.stat}`, 'measured', `Measured · Craft steering: ${LIGHTBOX_NUMBER_STAT_LABELS[figure.stat]}`,
-      lightboxSteeringCountLines(figure), [], [...figure.paragraphs], true));
+      lightboxSteeringCountLines(figure), [], [...figure.paragraphs], true, lightboxOpinionSteeringData(figure)));
   }
   const sections = measured.sections;
   sections.sections.forEach((section, index) => {
@@ -195,7 +192,8 @@ function measuredItems(board: LightboxOpinionBoard): LightboxOpinionItem[] {
       [`¶${section.from}–¶${section.to}, ${opened}`],
       [],
       range(section.from, section.to),
-      true
+      true,
+      lightboxOpinionSectionData(section, index + 1, sections.sections.length, sections.signal)
     ));
   });
   return items;
@@ -241,7 +239,7 @@ function readingItems(group: LightboxReadingGroup, board: LightboxOpinionBoard):
       const label = `${lightboxLensLabel(tile.lens)} · ${LIGHTBOX_TILE_KIND_LABELS[tile.kind]}: ${tile.title}`;
       const claim = tile.claim.trim().length > 0 && tile.claim !== tile.title ? [`claim: ${tile.claim}`] : [];
       return item(tile.id, 'tile', label, [...claim, ...kindLines(tile, board), ...countedLines(tile)],
-        tile.evidence.slice(0, B.opinionQuotesPerItem), [...tile.paragraphs], !stale && !reading);
+        tile.evidence.slice(0, B.opinionQuotesPerItem), [...tile.paragraphs], !stale && !reading, lightboxOpinionTileData(tile, board));
     });
 }
 
@@ -388,14 +386,15 @@ function item(
   lines: readonly ItemLine[],
   quotes: LightboxVerifiedQuote[],
   paragraphs: number[],
-  current: boolean
+  current: boolean,
+  /** Its canonical data: what its lines show, as values (epic decision 25). */
+  data: LightboxOpinionDatum
 ): LightboxOpinionItem {
   const shown = lines.map((line) => (typeof line === 'string' ? line : line.shown));
   const shaped: Omit<LightboxOpinionItem, 'basis' | 'figures'> = { key, kind, label, lines: shown, quotes, paragraphs, current };
-  // Identity is everything the digest block says; numeric authority is only what the item shows (PR #157 F-01).
-  const text = lightboxOpinionItemText({ ...shaped, basis: '', figures: new Set() });
+  // Identity is the item's data, never its wording (decision 25); numeric authority is only what it shows (PR #157 F-01).
   const evidence = lines.map((line) => (typeof line === 'string' ? line : line.evidence));
-  return { ...shaped, basis: lightboxOpinionHash(text), figures: new Set(lightboxOpinionFigures(evidenceText(label, evidence, quotes))) };
+  return { ...shaped, basis: lightboxOpinionBasis(data), figures: new Set(lightboxOpinionFigures(evidenceText(label, evidence, quotes))) };
 }
 
 /**

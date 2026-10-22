@@ -4,10 +4,11 @@
  * The renderer sees only a `LightboxBoard`: a closed, ordered JSON document
  * the host builds from one source (a file or an editor selection). Slice 2A
  * fills its counted half (`paragraphs`, `ribbon`, `measured`) with no model
- * call; `readings` holds the three reading groups (Slice 2B,
+ * call; `readings` holds the reading groups (Slice 2B,
  * `lightboxReadings.ts`), which run only on the writer's press.
- * `boardVersion` stays 0 while boards are ephemeral (D12): nothing here is a
- * file format yet.
+ * `boardVersion` is 1 from Slice 5A (D12 addendum, 2026-10-22): the board on
+ * the wire is the board a saved file holds (`LightboxBoardCodec`, format 1),
+ * with `rules` naming the rules that measured it.
  *
  * Every count on the board is host-computed. The register a tile is drawn in
  * (measured, read, counted-read) is derived from its kind by
@@ -230,11 +231,33 @@ export interface LightboxMeasuredSet {
 // The board
 // ---------------------------------------------------------------------------
 
+/**
+ * The ids of the rules that measured a board (D12 addendum, 2026-10-22): a
+ * fresh board carries this build's, a saved board keeps its own, so a
+ * comparison across boards can say when a rule, not the text, moved a
+ * figure (Slice 5B). Each id is defined beside its rule and pinned to its
+ * output by `measurementRuleIds.test.ts`.
+ */
+export interface LightboxMeasureRules {
+  /** The blank-line paragraph splitter (`LIGHTBOX_PARAGRAPH_RULE_ID`). */
+  paragraphs: string;
+  /** The sentence rule, closing marks and speech tags (`PROSE_SENTENCE_RULE_ID`, ADR 2026-10-21). */
+  sentences: string;
+  /** The dialogue matcher, double quotation marks (`DIALOGUE_SPANS_RULE_ID`). */
+  dialogue: string;
+  /** The being-verbs detector, contractions included (`BEING_VERBS_RULE_ID`, epic decision 26). */
+  beingVerbs: string;
+  /** The Opinion's citation basis, the cited item's data (`LIGHTBOX_OPINION_BASIS_RULE_ID`, epic decision 25). */
+  opinionBasis: string;
+}
+
 export interface LightboxBoard {
-  /** Draft until Slice 5 (D12). */
-  boardVersion: 0;
+  /** 1 from Slice 5A: the board a saved file holds (D12 addendum). */
+  boardVersion: 1;
   /** Host-minted. A rebuild of unchanged text keeps its id. */
   boardId: string;
+  /** The rules that measured it: this build's for a board built now, a saved board's own. */
+  rules: LightboxMeasureRules;
   source: LightboxSource;
   paragraphs: LightboxParagraphMetric[];
   ribbon: LightboxRibbonColumn[];

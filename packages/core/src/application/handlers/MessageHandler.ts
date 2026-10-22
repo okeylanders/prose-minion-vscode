@@ -54,6 +54,7 @@ import { LightboxHandler } from './domain/LightboxHandler';
 import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
 import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
 import { LightboxPassageHandler } from './domain/LightboxPassageHandler';
+import { LightboxBoardsHandler } from './domain/LightboxBoardsHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -86,6 +87,7 @@ export class MessageHandler {
   private readonly lightboxHandler: LightboxHandler;
   private readonly lightboxReadingHandler: LightboxReadingHandler;
   private readonly lightboxPassageHandler: LightboxPassageHandler;
+  private readonly lightboxBoardsHandler: LightboxBoardsHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -200,7 +202,8 @@ export class MessageHandler {
       workshopStandingDirectiveService,
       lightboxService,
       lightboxReadingRunner,
-      lightboxContextShelf
+      lightboxContextShelf,
+      lightboxBoardLibrary
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -370,10 +373,14 @@ export class MessageHandler {
       // Context from the project picker: the same catalog, inside the open folders.
       { catalog: workshopContextIntakeService, workspace: this.platform.workspace },
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      // Slice 5A: a run that landed readings saves its board.
+      lightboxBoardLibrary
     );
     // The inspector's passages (Slice 4E): the text a pinned paragraph or counted item stands in, by board id.
     this.lightboxPassageHandler = new LightboxPassageHandler(lightboxService, this.postMessage.bind(this), outputChannel);
+    // Saved boards (Slice 5A): the rail's shelf, open and delete, over the composition root's library.
+    this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.postMessage.bind(this), outputChannel);
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -407,6 +414,7 @@ export class MessageHandler {
     this.lightboxHandler.registerRoutes(this.router);
     this.lightboxReadingHandler.registerRoutes(this.router);
     this.lightboxPassageHandler.registerRoutes(this.router);
+    this.lightboxBoardsHandler.registerRoutes(this.router);
     this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
       this.resultCache.error = undefined;
     });
@@ -942,6 +950,7 @@ export class MessageHandler {
     // posts a board; the shared service keeps serving the replacement panel.
     try {
       this.lightboxHandler.dispose();
+      this.lightboxBoardsHandler.dispose();
     } catch {
       // noop
     }

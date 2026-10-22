@@ -991,7 +991,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1020,15 +1020,24 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxProjectFiles.ts',
   // Slice 4E: the inspector's passages, their contract and bounds.
   'shared/types/messages/lightboxPassages.ts',
+  // Slice 5A: the rail's saved boards, their shelf and its requests.
+  'shared/types/messages/lightboxBoards.ts',
   'shared/constants/lightboxPassages.ts',
   'shared/constants/lightbox.ts',
   'shared/constants/lightboxPlot.ts',
   'shared/constants/lightboxOpinion.ts',
   'shared/constants/lightboxOpinionItems.ts',
+  // Slice 5A: the Opinion's citation basis, the cited item's canonical data (epic decision 25).
+  'shared/constants/lightboxOpinionBasis.ts',
   'shared/constants/lightboxSteering.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
+  // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
+  'infrastructure/lightbox/LightboxMeasureRules.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
+  // Slice 5A: the service's board assembly and source key, moved out to give it room.
+  'infrastructure/lightbox/LightboxBoardAssembly.ts',
+  'infrastructure/lightbox/LightboxSourceKey.ts',
   'infrastructure/lightbox/LightboxReadingWire.ts',
   'infrastructure/lightbox/LightboxReadingCodec.ts',
   'infrastructure/lightbox/LightboxReadingFields.ts',
@@ -1098,6 +1107,19 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxInstances.ts',
   'infrastructure/lightbox/LightboxPassageIndex.ts',
   'infrastructure/lightbox/LightboxPassages.ts',
+  // Slice 5A: the saved board's format 1, its decoders by layer.
+  'infrastructure/storage/LightboxBoardSchema.ts',
+  'infrastructure/storage/LightboxBoardMeasuredCodec.ts',
+  'infrastructure/storage/LightboxBoardTileCodec.ts',
+  'infrastructure/storage/LightboxBoardCodec.ts',
+  // Slice 5A: the files on disk, their availability, writes and the reload pointer.
+  'infrastructure/storage/LightboxBoardStore.ts',
+  // PR #163 F-04: one source's folder read whole, and each file's summary.
+  'infrastructure/storage/LightboxBoardFiles.ts',
+  // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
+  'infrastructure/lightbox/LightboxRetainedBoards.ts',
+  'application/services/lightbox/LightboxBoardLibrary.ts',
+  'application/handlers/domain/LightboxBoardsHandler.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
   'application/handlers/domain/LightboxContextIntake.ts',
@@ -1111,6 +1133,9 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/useLightboxProjectFiles.ts',
   // Slice 4E: the inspector's passages (transport), counted terms and the wells as drawn (pure).
   'presentation/webview/hooks/domain/useLightboxPassages.ts',
+  // Slice 5A: the rail's saved boards (transport) and their words (pure).
+  'presentation/webview/hooks/domain/useLightboxBoards.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
@@ -1130,6 +1155,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
@@ -1188,6 +1214,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
@@ -1232,6 +1259,11 @@ const LIGHTBOX_ROUTE_OWNERS = [
     // Slice 4E: the text a pinned paragraph or counted item stands in
     owner: 'application/handlers/domain/LightboxPassageHandler.ts',
     messageTypes: ['LIGHTBOX_REQUEST_PASSAGE']
+  },
+  {
+    // Slice 5A: the rail's saved boards
+    owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
@@ -1245,7 +1277,8 @@ const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
   'LIGHTBOX_WORKSHOP_TRAY',
   'LIGHTBOX_PROJECT_CATALOG',
   'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS',
-  'LIGHTBOX_PASSAGE'
+  'LIGHTBOX_PASSAGE',
+  'LIGHTBOX_BOARDS'
 ] as const;
 /**
  * The project picker the Workshop's context selector and the Lightbox share
@@ -1263,6 +1296,7 @@ const SHARED_PROJECT_PICKER_MODULES = [
 ] as const;
 const LIGHTBOX_FEATURE_DIRECTORIES = [
   'infrastructure/lightbox',
+  'application/services/lightbox',
   'presentation/webview/hooks/domain/lightbox',
   'presentation/webview/components/lightbox'
 ] as const;
@@ -1887,9 +1921,14 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
     // Slice 4B: the writer's baseline holds one cache; only the composition root builds it.
     expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
+    // Slice 5A: one store owns the boards folder's queue and the reload pointer.
+    expect(constructions(/\bnew\s+LightboxBoardStore\s*\(/)).toEqual([]);
+    // Slice 5A: one library hears every board and restores once per session.
+    expect(constructions(/\bnew\s+LightboxBoardLibrary\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxBoardsHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {

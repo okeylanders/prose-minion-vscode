@@ -64,6 +64,8 @@ import {
   LightboxReadingRunner,
   LightboxContextShelf,
   LightboxWriterBaseline,
+  LightboxBoardStore,
+  LightboxBoardLibrary,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -377,6 +379,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push({ dispose: () => lightboxReadingRunner.dispose() });
   const lightboxContextShelf = new LightboxContextShelf();
+  // Saved boards (Slice 5A, ADR 2026-10-19 D12 addendum): prose-minion/boards
+  // in the workspace's one folder, the reload pointer in its workspace state.
+  const lightboxBoardStore = new LightboxBoardStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel,
+    { memory: context.workspaceState }
+  );
+  const lightboxBoardLibrary = new LightboxBoardLibrary({
+    service: lightboxService,
+    store: lightboxBoardStore,
+    runs: lightboxReadingRunner,
+    textSourceResolver,
+    workspace: platform.workspace,
+    outputChannel
+  });
+  context.subscriptions.push({ dispose: () => lightboxBoardLibrary.dispose() });
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -411,7 +430,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopStandingDirectiveService,
     lightboxService,
     lightboxReadingRunner,
-    lightboxContextShelf
+    lightboxContextShelf,
+    lightboxBoardStore,
+    lightboxBoardLibrary
   };
 
   // Migrate API key from settings to SecretStorage if needed

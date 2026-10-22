@@ -5,6 +5,7 @@
  */
 import type { LightboxBoard, LightboxCountedTerm, LightboxParagraphMetric } from '@messages';
 import { buildLightboxRibbon } from '@/infrastructure/lightbox/LightboxParagraphs';
+import { currentLightboxMeasureRules } from '@/infrastructure/lightbox/LightboxMeasureRules';
 import { emptyLightboxReadingGroup, LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
 
 const term = (name: string, paragraphs: number[], count = paragraphs.length): LightboxCountedTerm => ({
@@ -35,8 +36,9 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
   });
   const totalWords = paragraphs.reduce((sum, paragraph) => sum + paragraph.words, 0);
   return {
-    boardVersion: 0,
+    boardVersion: 1,
     boardId: `board-${paragraphCount}`,
+    rules: currentLightboxMeasureRules(),
     source: {
       kind: 'file',
       displayPath: 'Drafts/alice-1.md',

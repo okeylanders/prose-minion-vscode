@@ -49,6 +49,8 @@ import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolve
 import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import type { LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
+import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 import type { PlatformDisposable } from '@/platform';
 
 /**
@@ -160,4 +162,8 @@ export interface CoreServices {
   lightboxReadingRunner: LightboxReadingRunner;
   /** Lightbox context files: inform readings, never evidence (ADR 2026-10-19 D9). */
   lightboxContextShelf: LightboxContextShelf;
+  /** Saved Lightbox boards on disk: one queue for the boards folder and the reload pointer (Slice 5A). */
+  lightboxBoardStore: LightboxBoardStore;
+  /** When boards are saved, opened and restored, over the service, the store and the runner (Slice 5A). */
+  lightboxBoardLibrary: LightboxBoardLibrary;
 }

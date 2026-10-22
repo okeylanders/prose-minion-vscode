@@ -191,7 +191,7 @@ The renderer sees only a `LightboxBoard`, defined in a new message module
 
 ```ts
 interface LightboxBoard {
-  boardVersion: 0;                    // draft until Slice 5 (see D12)
+  boardVersion: 0;                    // draft until Slice 5 (see D12); 1 from Slice 5A
   boardId: string;                    // host-minted
   source: LightboxSource;             // displayPath, sourceUri?, contentHash,
                                       // wordCount, paragraphCount, capturedAt
@@ -607,7 +607,8 @@ on real chapters before it becomes a contract.
   (filter, selected tile, lens toggles), never the board.
   `boardVersion` stays `0`.
 - **Slice 5.** Boards save to `prose-minion/boards/` as
-  `<source-slug>/<timestamp>.board.json`, with `formatVersion: 1` and a codec
+  `<source-slug>-<source-hash>/<timestamp>.board.json` (the folder name as
+  amended by the addendum below, PR #163 F-04), with `formatVersion: 1` and a codec
   of their own. Like transcript export, they are not part of the Workshop
   session codec. Availability follows `LexicalGravityLensRepository`: no
   folder or several folders means session-only, stated in the UI. The Boards
@@ -615,6 +616,151 @@ on real chapters before it becomes a contract.
   the same source and shows measured deltas, paragraph-aligned tension, and
   the fields and motifs that appeared or vanished. When the paragraph count
   changed, the comparison is labeled approximate.
+
+**Addendum to D12 (2026-10-22): saved boards, format 1** (Slice 5A; epic
+decisions 25 and 27–32). Slice 5 is split. 5A saves, opens, deletes and
+restores boards; 5B, a later PR, compares two of them. The format is fixed
+so that 5B needs no change to it.
+
+- **The file.** One file per save, written once and never overwritten:
+  `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`.
+  The slug is the source's path in `[a-z0-9-]` only, for the writer to
+  read; the hash is the first eight hex digits of the SHA-256 of the
+  source's portable key (`file:<path>`, or `selection:<path>:<lines>`), so
+  two sources whose paths slug alike never share a folder (PR #163 F-04).
+  Every path is checked for containment. Its shape:
+
+  ```jsonc
+  { "formatVersion": 1, "kind": "lightbox-board", "savedAt": "<ISO>",
+    "board": { "boardId", "rules", "sources": [ { …LightboxSource, "text" } ],
+               "paragraphs": [ { "source": 0, "index", "start", "end", … } ],
+               "ribbon", "measured", "readings" } }
+  ```
+
+  The board is the board on the wire: every tile kind with its host-derived
+  fields, every group with its withheld claims and blocks, frictions, quote
+  checks and stale marks, and every measured layer (the paragraph model with
+  sentence lengths, the ribbon, the numbers with the writer's average as
+  measured, `measured.hapax`, style flags with their paragraphs and ids, the
+  Sections layer, craft steering's breakdown). `boardVersion` becomes 1.
+  Webview preferences are not saved: the Opinion view showing, the filter,
+  the pin, the lens toggles.
+- **Sources are a list.** `sources` holds every source with its own text.
+  Paragraph numbers stay the board's, 1 to N, so no reading changes shape;
+  each paragraph names its source and its offsets into that source's text.
+  A source's paragraphs are the run of board paragraphs that name it. Every
+  board 5A writes has one source; one with more decodes, and this build
+  says it cannot open it yet.
+- **The text is saved,** so a reopened board shows paragraphs, wells,
+  quotes and Bring checks against what was measured, and 5B can compare
+  drafts. It is the writer's own text in the writer's own workspace. The
+  codec checks it against the board's content hash. Logs never carry it.
+- **Rule ids.** The board records which rules measured it, by stable ids
+  defined beside each rule: `paragraphs` (the blank-line splitter),
+  `sentences` (closing marks and speech tags, ADR 2026-10-21), `dialogue`
+  (double quotation marks), `beingVerbs` (contractions and the next-word
+  rule, decision 26) and `opinionBasis` (decision 25). A guard test pins
+  each id to its rule's output on a fixed corpus and fails when the output
+  changes and the id does not. A fresh board carries this build's ids; a
+  saved board keeps its own, so 5B can label a comparison across rules.
+- **The Opinion's basis is data** (decision 25). A citation's basis hashes
+  the cited item's canonical data (its key and kind, quotes with ¶
+  addresses, counts and figures, the reading's own words), never the
+  digest's wording. Rewording the digest leaves every Opinion current.
+- **A saved board only ever loses standing, never the board** (the
+  writer-data rule, decision 32, 2026-10-22). Saved boards are the writer's
+  data, and no change to an internal rule may make one unopenable. A file
+  whose Opinion was cited under another basis rule (`rules.opinionBasis`)
+  decodes and opens whole, as long as the id is well formed. Its Opinion is
+  stale with the host's reason, "Saved under an earlier citation rule; read
+  the Opinion again to bring it current.", its cited bases are not
+  compared, and its Bring is refused with the same reason. Every other kind
+  behaves as on any board. The board keeps that id while its readings are
+  kept; reading the Opinion again cites it under this build's rule, and the
+  board records that.
+- **The codec** (`LightboxBoardCodec`, pure) is separate from the Workshop
+  session codec, as transcript export is. Its keys are exact. Its decoders
+  are typed against the contracts, so a new tile kind or field does not
+  compile until the codec reads it. Invalid tiles and group notes are
+  dropped and counted. The measured layers, the paragraph model, a group's
+  own fields and its stale marks decode whole or the board is invalid: a
+  dropped stale mark would show a stale reading as current. Any well-formed
+  rule id is read and kept. Reasons are host-owned, and an unknown key is
+  counted, never named. There are no
+  migrations; a later format follows ADR 2026-07-30's release rule, with
+  `board-v1.json`, written by this build from public-domain *Alice*, as its
+  authentic fixture.
+- **The store** (`LightboxBoardStore`) follows `LexicalGravityLensRepository`
+  for availability (one folder saves; none, or several, is session-only,
+  said in the rail) and `DictionaryHistoryStore` for writes: one queue, a
+  staged temporary file, a synchronous commit point, then a rename that
+  never overwrites. A file it cannot read is never overwritten or deleted.
+  - *Private staging (PR #163 F-03).* The queue is one store's; another
+    window on the same workspace has its own. Each write stages under a
+    name with a random UUID in it, so no other writer writes over its
+    bytes. A final name another writer took between the look and the
+    rename is never reported as this save: the store takes the next free
+    name and runs the commit point again, at most three times, then fails
+    the save.
+  - *Complete listings (PR #163 F-04).* A source's folder is read whole:
+    every board of the source is listed, newest first, and the same-text
+    check reads them all. The rail shows the newest twenty and says how
+    many there are ("Showing the newest 20 of 23", **Show older**). Each
+    file's summary is cached by its size and modification time, so a
+    listing decodes only the files that changed.
+- **When a board saves** (decision 27): when a run ends having landed a
+  group, and when a board with no readings is built for a source no saved
+  board of which holds that text. No pruning.
+- **Open is a snapshot** (decision 29). An opened board shows exactly as
+  saved, against its saved text, under its saved rules; nothing is measured
+  again. When the file's text differs now, a notice at the head of the
+  rail's Boards section offers **Read the current text**, the existing
+  re-read, which carries the readings onto a board built from the file,
+  marked stale (D4). Bring from such a snapshot is refused with a reason
+  that points there.
+- **Who decides.** `LightboxBoardLibrary`, an application service built
+  once at the composition root over the service, the store and the runner,
+  decides when a board saves, opens and restores one, and lists and deletes
+  them. A fourth handler, `LightboxBoardsHandler`, owns the rail's three
+  routes (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
+  `LIGHTBOX_DELETE_BOARD`) and answers each with `LIGHTBOX_BOARDS` under its
+  request id; each adoption and each committed save is pushed with
+  `requestId: null`. A shelf names the adoption it was built for.
+- **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
+  takes a ticket before its first await and adopts only under the newest.
+  It never replaces a board a run is reading. Restoring on mount takes a
+  ticket only when no source request has been made this session.
+  - *Adoptions (PR #163 F-02).* A board keeps its id across saves and
+    snapshots, so an id does not say which snapshot is on screen. The
+    service numbers every adoption (built, opened or restored; readings
+    landing keep it). Work that awaits captures the adoption first and
+    checks it after: a press captures it with its snapshot and checks it
+    once its prompts load, so a press still preparing when another snapshot
+    of its board is opened is refused with nothing sent (the estimate key
+    leaves it out: a snapshot of the same board has the same text and
+    figures, so the estimate shown stays good for a press made after the
+    open); a shelf built across a newer adoption is never posted (a
+    push is dropped, a request's answer is built again); the webview never
+    takes an earlier adoption's shelf over a later one's for the same
+    board.
+  - *Observations (PR #163 F-05).* Readings, saves and deletes keep the
+    adoption, so shelves are also ordered within one: each takes an
+    observation number, in order, before its first await. A handler never
+    sends a webview a shelf of a board observed before one it already sent
+    of that board (a push is dropped, a request's answer is built again),
+    and the webview never takes one observed before the one it holds.
+    Every change the rail must hear starts a newer observation (an
+    adoption's push, a committed save's push, a delete's answer), so a
+    dropped shelf has nothing newer to say.
+- **Reload** (decision 30). A window reload, or reopening the tab after one,
+  reopens the last board the writer had on screen from the store. The
+  pointer is a workspace memento, the one new port (`LightboxBoardMemory`).
+  It follows every adoption (PR #163 F-01): coming back to a board a file
+  already holds points at that file and writes nothing; a board no file
+  holds yet points at the file its save commits, or the newest file
+  holding its text.
+  This amends the consequence below: in a single-folder workspace readings
+  come back after a reload; session-only mode keeps the old behaviour.
 
 ### D13. Boundaries
 
@@ -662,7 +808,11 @@ on real chapters before it becomes a contract.
   The board's per-paragraph dialogue lane would disagree with the headline
   figure until that is fixed, so the fix is a prerequisite of Slice 2A.
 - **Readings are lost on a window reload until Slice 5.** That is the price
-  of reviewing the shape before fixing the format.
+  of reviewing the shape before fixing the format. *Amended 2026-10-22
+  (Slice 5A, D12 addendum):* in a single-folder workspace the last board on
+  screen comes back from `prose-minion/boards/` after a reload, readings
+  and all. With no folder, or several, boards are session-only and a reload
+  still loses them, as the rail says.
 
 ## Open questions
 
