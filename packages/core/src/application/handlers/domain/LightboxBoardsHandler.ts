@@ -17,9 +17,11 @@
  * Every answer is `LIGHTBOX_BOARDS`, echoing its request's id. From this
  * webview's first board message on, each adoption and each committed save
  * is pushed with `requestId: null`. A shelf built across a newer adoption of
- * its board (a snapshot keeps the board's id) is never posted: a push is
- * dropped, since the newer adoption pushes its own, and an answer is built
- * again (PR #163 F-02). A request with no id is ignored, as the passage
+ * its board (a snapshot keeps the board's id, PR #163 F-02), or observed
+ * before a shelf of its board this webview was already sent (readings,
+ * saves and deletes keep the adoption, PR #163 F-05), is never posted: a
+ * push is dropped, since whatever made it outdated sent its own, and an
+ * answer is built again. A request with no id is ignored, as the passage
  * handler's are. Logs carry file ids and counts, never text.
  */
 
@@ -42,12 +44,15 @@ const LOG = '[LightboxBoardsHandler]';
 const FILE_ID_CHARACTERS = 160;
 
 export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'describesCurrent' | 'open' | 'remove' | 'restore' | 'shelf'>;
-/** An answer is built again at most this many times while its board keeps being adopted anew. */
+type ShelfAnswer = Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
+/** An answer is built again at most this many times while its board keeps changing. */
 const ANSWER_ATTEMPTS = 3;
 
 export class LightboxBoardsHandler {
   private unsubscribe?: () => void;
   private disposed = false;
+  /** The newest observation of each board this webview was sent (PR #163 F-05). */
+  private readonly sent = new Map<string | null, number>();
 
   constructor(
     private readonly library: LightboxBoardLibraryPort,
@@ -123,7 +128,7 @@ export class LightboxBoardsHandler {
   /** The shelf of `boardId` (the board on screen for `null`), under `requestId` (`null`: a push). */
   private async answer(requestId: string | null, boardId: string | null, notice?: string): Promise<void> {
     for (let attempt = 1; attempt <= ANSWER_ATTEMPTS; attempt++) {
-      let answer: Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
+      let answer: ShelfAnswer;
       try {
         answer = await this.library.shelf(boardId);
       } catch (error) {
@@ -134,7 +139,7 @@ export class LightboxBoardsHandler {
         return;
       }
       // Checked with nothing awaited before the post: an outdated shelf never leaves as current.
-      if (!this.library.describesCurrent(answer)) {
+      if (this.outdated(answer)) {
         if (requestId === null) {
           return;
         }
@@ -151,13 +156,20 @@ export class LightboxBoardsHandler {
           requestId,
           boardId: answer.boardId,
           adoption: answer.adoption,
+          observation: answer.observation,
           shelf: notice ? { ...answer.shelf, notice } : answer.shelf
         },
         timestamp: Date.now()
       };
+      this.sent.set(answer.boardId, answer.observation);
       void this.postMessage(reply);
       return;
     }
+  }
+
+  /** Built across a newer adoption of its board, or observed before a shelf of its board this webview already has. */
+  private outdated(answer: ShelfAnswer): boolean {
+    return !this.library.describesCurrent(answer) || (this.sent.get(answer.boardId) ?? 0) > answer.observation;
   }
 }
 

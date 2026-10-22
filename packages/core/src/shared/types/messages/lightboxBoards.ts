@@ -118,12 +118,16 @@ export interface LightboxDeleteBoardPayload {
  * screen; `null` when there is none. `adoption` is that board's adoption
  * generation, ascending per session (PR #163 F-02): a board keeps its id
  * across saved snapshots, so the webview never takes a shelf of an earlier
- * adoption over the one it holds for the same board.
+ * adoption over the one it holds for the same board. `observation` orders
+ * shelves within an adoption (PR #163 F-05): ascending per session, taken
+ * when the host began the shelf, so the webview never takes one observed
+ * before the one it holds for the same board.
  */
 export interface LightboxBoardsPayload {
   requestId: string | null;
   boardId: string | null;
   adoption: number | null;
+  observation: number;
   shelf: LightboxBoardShelf;
 }
 

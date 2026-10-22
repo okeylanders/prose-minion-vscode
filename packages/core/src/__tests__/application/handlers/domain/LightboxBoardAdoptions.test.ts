@@ -1,5 +1,5 @@
 /**
- * The board on screen, adoption by adoption (PR #163 F-01 and F-02).
+ * The board on screen, adoption by adoption (PR #163 F-01, F-02 and F-05).
  *
  * - **The reload pointer follows every adoption (F-01).** Coming back to a
  *   source whose board a file already holds moves the pointer to that file,
@@ -14,6 +14,11 @@
  *   snapshot is never posted as current: a push is dropped, and a request's
  *   answer is built again. Controls: a different board, and nothing adopted
  *   meanwhile.
+ * - **Within one adoption, shelves are ordered (F-05).** Readings, saves and
+ *   deletes keep the adoption, so each shelf names when it was observed. A
+ *   save's push observed before a Delete's answer is never posted after
+ *   it, and a request observed before it is answered again. Controls: no
+ *   interleaving, and a newer save at the same adoption, both posted.
  *
  * Real handlers, service, runner, store and library
  * (`lightboxBoardsHarness`); only file reads, a press's preparation and the
@@ -206,17 +211,17 @@ describe('a press still preparing yields to a newer adoption (PR #163 F-02)', ()
   });
 });
 
-describe('a shelf built for an earlier snapshot is never posted as current (PR #163 F-02)', () => {
-  /** READ open and pressed again; the save that press lands pushes a shelf held once it has read the chapter as it was. */
-  async function heldPush() {
-    const { host, tab, first, read } = await readChapter();
-    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });
-    const compare = host.holdRead(CHAPTER_PATH, { afterRead: true });
-    await tab.press('characters');
-    await quiet();
-    return { host, tab, first, read, compare };
-  }
+/** READ open and pressed again; the save that press lands pushes a shelf held once it has read the chapter as it was. */
+async function heldPush() {
+  const { host, tab, first, read } = await readChapter();
+  await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });
+  const compare = host.holdRead(CHAPTER_PATH, { afterRead: true });
+  await tab.press('characters');
+  await quiet();
+  return { host, tab, first, read, compare };
+}
 
+describe('a shelf built for an earlier snapshot is never posted as current (PR #163 F-02)', () => {
   it('keeps the newer snapshot\'s changed-file notice: the late shelf is dropped', async () => {
     const { host, tab, first, read, compare } = await heldPush();
     host.writeChapter(CHAPTER_PATH, CHANGED);
@@ -273,5 +278,76 @@ describe('a shelf built for an earlier snapshot is never posted as current (PR #
     expect(late).toHaveLength(1);
     expect(late[0]).toMatchObject({ requestId: null, boardId: 'board-1', shelf: { snapshot: { fileId: read, file: 'same' } } });
     expect(host.service.currentBoard()?.boardId).toBe('board-2');
+  });
+});
+
+describe('within one adoption, a shelf observed before one already sent is never posted (PR #163 F-05)', () => {
+  /** Change the chapter on disk, then delete FIRST from the rail: its answer sees the change. */
+  async function editThenDelete(tab: Tab, host: Host, first: string) {
+    host.writeChapter(CHAPTER_PATH, CHANGED);
+    await tab.route(MessageType.LIGHTBOX_DELETE_BOARD, { requestId: 'delete-first', boardId: 'board-1', fileId: first });
+    await quiet();
+    const deleted = tab.shelves().find((answer) => answer.requestId === 'delete-first');
+    expect(deleted?.shelf.snapshot).toMatchObject({ file: 'changed' });
+    expect(deleted?.shelf.boards.map((board) => board.fileId)).not.toContain(first);
+    return deleted;
+  }
+
+  it('keeps the Delete\'s changed-file answer: the save\'s push, observed before it, is dropped', async () => {
+    const { host, tab, first, read, compare } = await heldPush();
+    const deleted = await editThenDelete(tab, host, first);
+    // Readings, the save and the Delete kept the adoption: only the order of observation tells the two shelves apart.
+    expect(deleted?.adoption).toBe(host.service.adoptionOf('board-1'));
+    const before = tab.shelves().length;
+
+    compare.release();
+    await quiet();
+
+    expect(tab.shelves().slice(before)).toEqual([]);
+    expect(tab.shelves().at(-1)?.shelf.snapshot).toMatchObject({ fileId: read, file: 'changed' });
+  });
+
+  it('answers a request observed before the Delete\'s answer with a shelf observed again', async () => {
+    const { host, tab, first, read } = await readChapter();
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });
+    const compare = host.holdRead(CHAPTER_PATH, { afterRead: true });
+    const asking = tab.shelf('board-1', 'ask-1');
+    await quiet();
+    const deleted = await editThenDelete(tab, host, first);
+
+    compare.release();
+    const answer = await asking;
+
+    expect(answer).toMatchObject({ requestId: 'ask-1', boardId: 'board-1', shelf: { snapshot: { fileId: read, file: 'changed' } } });
+    expect(answer.observation).toBeGreaterThan(deleted?.observation ?? Infinity);
+    expect(tab.shelves().at(-1)?.requestId).toBe('ask-1');
+  });
+
+  it('control, no interleaving: the save\'s push is posted, then the Delete\'s answer', async () => {
+    const { host, tab, first, read, compare } = await heldPush();
+    const before = tab.shelves().length;
+    compare.release();
+    await quiet();
+    await editThenDelete(tab, host, first);
+
+    expect(tab.shelves().slice(before).map((answer) => [answer.requestId, answer.shelf.snapshot?.file])).toEqual([
+      [null, 'same'], ['delete-first', 'changed']
+    ]);
+    expect(tab.shelves().at(-1)?.shelf.snapshot).toMatchObject({ fileId: read, file: 'changed' });
+  });
+
+  it('control, a newer save at the same adoption: its push is posted after the Delete\'s answer', async () => {
+    const { host, tab, first, compare } = await heldPush();
+    compare.release();
+    await quiet();
+    const deleted = await editThenDelete(tab, host, first);
+    const saved = host.savedFiles();
+
+    await tab.press('characters');
+    await quiet();
+
+    const newer = tab.shelves().at(-1);
+    expect(newer).toMatchObject({ requestId: null, boardId: 'board-1', adoption: deleted?.adoption, shelf: { snapshot: { file: 'changed' } } });
+    expect(newer?.shelf.boards).toHaveLength(saved.length + 1);
   });
 });

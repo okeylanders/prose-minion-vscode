@@ -15,7 +15,9 @@
  * adoption or a save (`requestId: null`) is taken only for the board on
  * screen. A shelf is shown only beside the board it describes, and a board
  * keeps its id across saved snapshots, so a shelf of an earlier adoption is
- * never taken over a later one's for the same board (PR #163 F-02). A Delete
+ * never taken over a later one's for the same board (PR #163 F-02), nor,
+ * within one adoption, a shelf the host observed before the one held
+ * (PR #163 F-05). A Delete
  * forgets which board the held shelf answered for, so coming back to that
  * board asks again (PR #163 N-01).
  *
@@ -57,7 +59,18 @@ const NO_PERSISTENCE: LightboxBoardsPersistence = {};
 interface ShelfAnswer {
   boardId: string | null;
   adoption: number | null;
+  observation: number;
   shelf: LightboxBoardShelf;
+}
+
+/** Whether `next` was observed before `held`, the shelf held for the same board: an earlier adoption, or earlier within one. */
+function observedBefore(next: ShelfAnswer, held: ShelfAnswer | null): boolean {
+  if (!held || held.boardId !== next.boardId) {
+    return false;
+  }
+  const heldAdoption = held.adoption ?? -1;
+  const nextAdoption = next.adoption ?? -1;
+  return nextAdoption < heldAdoption || (nextAdoption === heldAdoption && next.observation < held.observation);
 }
 
 export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightboxBoardsReturn {
@@ -96,10 +109,9 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     requestShelfForBoard();
   }, [requestShelfForBoard]);
 
-  /** Hold a shelf, unless the one held is a later adoption's of the same board. */
+  /** Hold a shelf, unless the one held for the same board was observed after it. */
   const take = React.useCallback((next: ShelfAnswer): void => {
-    const current = held.current;
-    if (current && current.boardId === next.boardId && (current.adoption ?? -1) > (next.adoption ?? -1)) {
+    if (observedBefore(next, held.current)) {
       return;
     }
     held.current = next;
@@ -112,7 +124,9 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     if (!payload?.shelf) {
       return;
     }
-    const next: ShelfAnswer = { boardId: payload.boardId, adoption: payload.adoption ?? null, shelf: payload.shelf };
+    const next: ShelfAnswer = {
+      boardId: payload.boardId, adoption: payload.adoption ?? null, observation: payload.observation ?? 0, shelf: payload.shelf
+    };
     if (payload.requestId === null) {
       if (payload.boardId !== null && payload.boardId === onScreen.current) {
         take(next);

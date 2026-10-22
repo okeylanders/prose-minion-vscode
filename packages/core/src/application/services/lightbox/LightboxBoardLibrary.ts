@@ -30,7 +30,12 @@
  *   awaited, so answers leave in the store's order. A shelf names the
  *   adoption it was built for (PR #163 F-02): a board keeps its id across
  *   snapshots, so a shelf built across a newer snapshot's adoption is
- *   outdated (`describesCurrent`) and never posted as current.
+ *   outdated (`describesCurrent`) and never posted as current. Readings,
+ *   saves and deletes keep the adoption, so a shelf also names its
+ *   observation (PR #163 F-05): a number taken, in order, before anything
+ *   is awaited. Every change the rail must hear (an adoption, a committed
+ *   save, a delete's answer) starts a new observation, so a shelf observed
+ *   before one already sent has nothing newer to say.
  *
  * Logs carry file ids, counts and reasons; never the writer's text.
  */
@@ -97,10 +102,12 @@ export interface LightboxBoardAction {
   notice?: string;
 }
 
-/** The rail's shelf, naming the board it describes (`null`: none) and that board's adoption. */
+/** The rail's shelf, naming the board it describes (`null`: none), that board's adoption, and when it was observed. */
 export interface LightboxBoardShelfAnswer {
   boardId: string | null;
   adoption: number | null;
+  /** Ascending per session, taken when the shelf began, before its first await (PR #163 F-05). */
+  observation: number;
   shelf: LightboxBoardShelf;
 }
 
@@ -108,6 +115,7 @@ export class LightboxBoardLibrary {
   private readonly shelfListeners: ListenerSet<[]>;
   private readonly unsubscribe: () => void;
   private restoring?: Promise<void>;
+  private observations = 0;
 
   constructor(private readonly ports: LightboxBoardLibraryPorts) {
     this.shelfListeners = new ListenerSet<[]>(`${LOG} Shelf listener`, ports.outputChannel);
@@ -186,8 +194,10 @@ export class LightboxBoardLibrary {
   async shelf(boardId: string | null): Promise<LightboxBoardShelfAnswer> {
     const { service, store } = this.ports;
     const savable = (boardId ? service.savable(boardId) : undefined) ?? service.currentSavable();
+    // This shelf's place among the others, taken before anything is awaited (PR #163 F-05).
+    const observation = ++this.observations;
     if (!savable) {
-      return { boardId: null, adoption: null, shelf: { availability: store.availability(), boards: [], unreadable: 0 } };
+      return { boardId: null, adoption: null, observation, shelf: { availability: store.availability(), boards: [], unreadable: 0 } };
     }
     // Captured before the first await, and checked by `describesCurrent` before the shelf leaves.
     const adoption = service.adoptionOf(savable.board.boardId) ?? null;
@@ -207,6 +217,7 @@ export class LightboxBoardLibrary {
     return {
       boardId: savable.board.boardId,
       adoption,
+      observation,
       shelf: {
         availability: store.availability(),
         boards,
