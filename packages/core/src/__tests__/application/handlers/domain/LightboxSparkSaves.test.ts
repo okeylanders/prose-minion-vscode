@@ -85,9 +85,11 @@ describe('a spark set aside saves at once (epic decision 35)', () => {
     const { host, tab, setAside } = await readChapter();
     const holding = host.service.savable('board-1')?.savedFileId as string;
     await setAside(0);
+    expect(marks(boardIn(host, holding))[0]).toBe(1);
     await setAside(0, false);
 
     expect(marks(boardIn(host, holding))[0]).toBeNull();
+    expect(host.savedFiles()).toHaveLength(2);
     expect((await tab.shelf('board-1')).shelf.boards).toHaveLength(2);
   });
 
