@@ -125,13 +125,24 @@ saved at 14:05:09.123Z and one minute apart after that.
 
 From the committed `facts.json`, rendered from the bundle a clean
 `npm run build` writes at this branch's head (`webview.js` SHA-256
-`59b1f612774f0d55fae820d1442e733670118dae445c9cb2320702f382150194`).
+`acfc8891e8225b5a8f96b4411d24fda3819c598e41b03610b15ca3c490321423`).
 
-**Re-rendered for PR #163's corrections (2026-10-22).** The host states
-were rebuilt: file ids now name the source's hashed folder, and each shelf
-names its board's adoption. With those two mapped back, the five earlier
-states' messages, estimates included, are identical to the ones built at
-`bc1fdda`. At this head the 21 earlier captures are byte-identical to the
+**Re-rendered for the re-review's F-05 and N-03 (2026-10-22).** Each shelf
+now also names its observation; with that removed, `states/boards.json`
+holds exactly what it held at `f3808b4`, and `log.txt` is unchanged. From
+`webview.js` `acfc8891…`: 27 captures, `errors.txt` empty, DOM facts the
+same apart from request-id prefixes, and every PNG the same in pixels as
+the committed one (26 byte-identical, one differing in encoded bytes
+only), so the committed PNGs stand. No state here exercises F-05 or N-03:
+their tests do (`LightboxBoardAdoptions`, `useLightboxBoards`,
+`LightboxBoardsPanel`).
+
+**Re-rendered for PR #163's corrections (2026-10-22),** at `f3808b4`, from
+`webview.js` `59b1f612…`. The host states were rebuilt: file ids now name
+the source's hashed folder, and each shelf names its board's adoption.
+With those two mapped back, the five earlier states' messages, estimates
+included, are identical to the ones built at `bc1fdda`. At that head the
+21 earlier captures are byte-identical to the
 ones rendered from `c7e47504…`, and their DOM facts are the same apart
 from the webview's random request-id prefixes and the folder names in the
 rail's Open requests. A second render gave the same pixels in all 27 (two

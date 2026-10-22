@@ -1455,3 +1455,18 @@ lens, and adds its items to 4D's digest.
       `webview.js` `59b1f612…`, `extension.js` `edf2ea48…`; evidence 27
       captures, `errors.txt` empty, 9 errors against `bc1fdda`'s bundle (all
       `history`).
+  - **PR #163's re-review** (request changes: all six resolved, one new P2
+    and one P3), both fixed, each with a regression test that fails on
+    `f3808b4`:
+    - **F-05:** a shelf names its observation, taken before its first
+      await; a handler never sends, and the webview never takes, a shelf
+      observed before one of the same board it already has. A newer save
+      at the same adoption is still taken.
+    - **N-03:** Show older goes on from the rows shown, so a page widened to
+      reach a restored board deep in the history grows at every press.
+    - **Not changed:** slug-only development folders are not discovered or
+      migrated (format 1 has not shipped); listing cost is Low tech debt.
+    - **Verification:** 474 suites / 6,541 tests / 59
+      snapshots; lint identical per file and rule; typecheck and build pass;
+      `webview.js` `acfc8891…`, `extension.js` `2738d16b…`;
+      evidence states rebuilt, 27 captures, `errors.txt` empty.

@@ -816,8 +816,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) with PR #163's corrections, on `epic/lightbox` at `3e6a156`):
-- 474 suites / 6,533 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A (saved boards: the Opinion's data basis, rule ids, the format-1 codec and fixture, the store, saving, opening, restoring, and the rail) with PR #163's corrections and its re-review's, on `epic/lightbox` at `3e6a156`):
+- 474 suites / 6,541 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1293,7 +1293,11 @@ records, when it saves, or how a saved one comes back:
   Work that awaits captures `LightboxService.adoptionOf` before and checks
   it after (a press's snapshot holds it beside its estimate key, and the
   press checks both once its prompts load; a shelf names it, and
-  `describesCurrent` gates its post). Every adoption moves the reload
+  `describesCurrent` gates its post). Within one adoption a shelf names its
+  `observation`, taken before its first await: a handler never sends a
+  shelf observed before one it sent of the same board, and the webview
+  never takes one. A new kind of rail change must start a new
+  observation (a push or an answer), or the rail will not hear it. Every adoption moves the reload
   pointer (`LightboxBoardAdoptions.test.ts`).
 - **A snapshot is exactly as saved.** Nothing is measured again; its
   host-side parts are rebuilt from its own saved text. A changed file is
@@ -1301,8 +1305,8 @@ records, when it saves, or how a saved one comes back:
   current text", the existing re-read.
 - **The rail is correlated.** `useLightboxBoards` takes only the pending
   request's answer, and a push (`requestId: null`) only for the board on
-  screen, never an earlier adoption's over a later one's; a Delete makes
-  it ask again on return; it persists nothing. File ids are the host's; the
+  screen, never an earlier adoption's or observation's over a later one;
+  a Delete makes it ask again on return; it persists nothing. File ids are the host's; the
   webview never names a path.
 - **Logs never carry the writer's text,** nor do tests, fixtures or
   evidence: use *Alice* or made-up names.

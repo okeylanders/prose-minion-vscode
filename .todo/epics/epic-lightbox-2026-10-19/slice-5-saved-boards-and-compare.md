@@ -240,7 +240,13 @@ decision 32 records what the format holds.
   - every shelf names its board's `adoption` (PR #163 F-02): a board keeps
     its id across snapshots, so the host never posts a shelf built across a
     newer adoption, and the webview never takes an earlier adoption's shelf
-    over a later one's.
+    over a later one's;
+  - and its `observation` (PR #163 F-05): readings, saves and deletes keep
+    the adoption, so a shelf is numbered, in order, before its first await.
+    A handler never sends a shelf of a board observed before one it already
+    sent of it (a request's answer is built again), and the webview never
+    takes one observed before the one it holds. A newer save's push is
+    a newer observation, so it is always taken.
 
   Each answer echoes its request id and names the board it describes, and
   the webview takes only the answer it waits for, about the board on
@@ -357,9 +363,15 @@ the writer may want to redirect, beyond decisions 27–31:
 - **Deleting the file on screen** leaves the board on screen and clears the
   reload pointer.
 - **The rail's page is twenty** (PR #163 F-04): enough for a chapter's
-  drafts without a long scroll. Show older adds twenty at a time; the page
-  always reaches the board on screen. The writer may prefer another size,
-  or a search.
+  drafts without a long scroll. Show older adds twenty to the rows shown,
+  however they were reached (PR #163 N-03); the page always reaches the
+  board on screen. The writer may prefer another size, or a search.
+- **Folders written before PR #163** by development builds were named by
+  slug alone. They are not listed: format 1 has not shipped, so nothing is
+  discovered or migrated from them; a known file id there still reads.
+- **Listing cost.** A warm listing still stats every file of the source,
+  and summaries are cached without a bound
+  ([tech debt](../../tech-debt/2026-10-22-lightbox-board-listing-scale.md)).
 
 Gates at the head: full `npx jest`, `npm run lint` (0 errors, 1,133
 warnings, identical per file and rule to the base), `npm run typecheck`,

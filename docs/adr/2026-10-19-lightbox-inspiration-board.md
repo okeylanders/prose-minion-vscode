@@ -743,6 +743,15 @@ so that 5B needs no change to it.
     push is dropped, a request's answer is built again); the webview never
     takes an earlier adoption's shelf over a later one's for the same
     board.
+  - *Observations (PR #163 F-05).* Readings, saves and deletes keep the
+    adoption, so shelves are also ordered within one: each takes an
+    observation number, in order, before its first await. A handler never
+    sends a webview a shelf of a board observed before one it already sent
+    of that board (a push is dropped, a request's answer is built again),
+    and the webview never takes one observed before the one it holds.
+    Every change the rail must hear starts a newer observation (an
+    adoption's push, a committed save's push, a delete's answer), so a
+    dropped shelf has nothing newer to say.
 - **Reload** (decision 30). A window reload, or reopening the tab after one,
   reopens the last board the writer had on screen from the store. The
   pointer is a workspace memento, the one new port (`LightboxBoardMemory`).
