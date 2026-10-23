@@ -1,3 +1,5 @@
+**Current independent disposition (second correction re-review, 2026-10-23): Approve with a nonblocking follow-up at `263450c7`.** All six original findings are resolved. N-03 records a narrow equal-time claim recovery risk after multiple filesystem failures; it is not a blocking finding. See the [latest independent re-review](#independent-second-correction-re-review-2026-10-23). Earlier dispositions, reviews and both author responses below are historical and preserved verbatim. Native/writer acceptance remains separate.
+
 **Current independent disposition (correction re-review, 2026-10-23): Request changes at `17e4cd7`.** F-03, F-04, N-01 and N-02 are resolved. F-01 and F-02 remain open on narrower retirement-error and recovery/read-classification paths. See the [independent correction re-review](#independent-re-review-of-the-corrections-2026-10-23). The initial review and author response below are historical and preserved verbatim; writer/native acceptance remains separate.
 
 # PR Review — Lightbox Board Names and Immediate Spark Saves, Slice 5A.1
@@ -426,3 +428,66 @@ After `npm ci` into a real `node_modules`, at `bad728eb`:
   evidence is unchanged.
 
 No live or billable call was made.
+
+## Independent second correction re-review (2026-10-23)
+
+**Disposition: Approve with a nonblocking follow-up.** The original four P2 findings and two P3 notes are now resolved at `263450c7b09b97b753a8b085ad5c81caf8022bae`. One new, narrowly bounded P3 robustness note, N-03 below, remains. This is technical approval of this slice, not a no-findings report, a formal GitHub review, a merge instruction, writer acceptance, native VS Code verification, the real-chapter checkpoint or approval for Slice 5B.
+
+**Reviewed delta:** `4e2b18b2c39827b249d6b81c8bd1642f8c1007c5..263450c7b09b97b753a8b085ad5c81caf8022bae`, two commits, 11 files, +544 / −54. The base remains `3e5c3a1bc1b864bc0de208fb290f1374a819c363`. I read the latest author response and the amended contracts/decisions, inspected the complete delta, and replayed the preserved independent witnesses rather than relying on the author's regression claims. The earlier reviews and both author responses remain verbatim below the latest-disposition preface.
+
+### Resolution ledger
+
+| ID | Final disposition | Independent verification |
+| --- | --- | --- |
+| F-01 | **Resolved** | Both prior retirement-error witnesses now return `failed`, preserve the latest named board and remain correct after the lease. The initial live-claim, interrupted-write, successful-retirement and own-claim failure controls also pass. A new second-scan failure probe verifies complete latest bytes are restored, followed by a successful Delete when the fault clears. |
+| F-02 | **Resolved** | All three prior failures now pass unchanged: store-level reread after a real second store takes a live claim, the same interleaving through actual host restore, and claim-folder scan failure preserving the reload pointer. Abandoned recovery, live busy, later-session recovery, genuine absence and newer-source ownership controls remain green. |
+| F-03 | **Remains resolved** | Different windows' distinct Spark actions and Undo preserve the other Spark's persisted mark; queued save, rename and source-change controls still pass. |
+| F-04 | **Remains resolved** | Untouched reopened rename follows the acknowledgment without submitting an old name; genuine edits, Enter/Escape and intentional reversion controls still pass. |
+| N-01 | **Remains resolved** | Refused blur retains the draft, validation reason and accessible invalid state; correction and Escape remain usable. |
+| N-02 | **Remains resolved** | Full model identity is deduplicated before shortening, with colliding shortened labels still counted separately and provider aliases still deduplicated. |
+| N-03 | **Open, Low / P3, nonblocking** | Equal-time claim ordering can lose newer metadata only under the additional failure conjunction described below. |
+
+The storage correction now distinguishes an unreadable directory from established absence. `LightboxBoardClaims.retire` verifies a second directory scan before Delete may commit; failure rolls its own claim back and reports failure. `LightboxBoardStore.settledRead` classifies **every** missing read, up to three attempts; unknown discovery becomes `unreadable` for reads and `failed` for Delete, while the rewrite maps unknown to `failed`. The reload pointer is retained on busy and unreadable results.
+
+Additional independent positive controls cover: exact-byte recovery when both retirement and immediate rollback fail but the latest claim has a genuinely later timestamp; a predecessor removed by another actor before retirement attempts it; unknown discovery causing no mutation for rewrite/Delete/read; and two versus three successive movements yielding a board versus bounded `busy`, followed by a healthy read. These are fault-injected production-store tests, not native filesystem timing measurements.
+
+### N-03 — Equal-millisecond claims can recover older metadata after failed rollback
+
+**Severity: Low / P3, nonblocking.** Location: [`LightboxBoardClaims.ts:151–166`](https://github.com/okeylanders/prose-minion-vscode/blob/263450c7b09b97b753a8b085ad5c81caf8022bae/packages/core/src/infrastructure/storage/LightboxBoardClaims.ts#L151-L166), reached after the failed-retirement rollback in [`LightboxBoardStore.ts:326–329`](https://github.com/okeylanders/prose-minion-vscode/blob/263450c7b09b97b753a8b085ad5c81caf8022bae/packages/core/src/infrastructure/storage/LightboxBoardStore.ts#L326-L329).
+
+**Controlled sequence:**
+
+1. A real store commits an in-place rename from `Original` to `Renamed`, but removal of its predecessor claim fails and continues failing through retirement.
+2. A second store tries Delete, takes its own claim containing the latest bytes, cannot retire the predecessor, and correctly answers `failed`. Inject an additional failure of the rename that would put its latest claim back.
+3. Give those two claims the **same millisecond timestamp** and IDs for which the older claim sorts later lexically. This is an injected tied clock, not clock reversal and not a native reproduction of the timing.
+4. Clear the filesystem faults, advance past the lease, and read through a fresh store. Recovery selects the older claim by the arbitrary lexical tie-break: the name is `Original`, the recovered bytes are not the latest bytes, and the newer claim has been removed.
+
+**Impact and limits:** the demonstrated loss is a saved name; the same in-place metadata shape could affect newer Spark marks. It is **not manuscript loss**, and it is **not resurrection after a successful Delete**: Delete reported failure. It requires persistent predecessor-removal failure, a further rollback failure, equal claim timestamps and the unfavorable ID order. Ordinary user-separated actions generally do not share a millisecond; no frequency or native latency is inferred from the injected clock. The genuinely newer-timestamp rollback/recovery control passes. This narrower conjunction does not reopen the corrected F-01/F-02 blocking paths.
+
+**Follow-up:** do not treat UUID lexical order as evidence of recency when timestamps tie. Preserve ambiguity rather than deleting the unselected equal-time version, or record ordering evidence sufficient to identify the latest version. This can be addressed separately from this slice's technical approval.
+
+### Fresh verification at the exact second correction head
+
+| Check | Result |
+| --- | --- |
+| Full repository Jest | **482 suites / 6,653 tests / 59 snapshots passed**, 346.370 seconds |
+| Preserved independent probes | **99 / 99 passed unchanged**, 18 suites, 22.670 seconds; includes all five prior failures and 47 prior #163 guards |
+| Added failure/termination probes | **6 passed / 1 failed**, 16.529 seconds; the single failure is the explicitly nonblocking N-03 tied-clock witness |
+| Typecheck | **Passed** |
+| Lint | **0 errors / 1,133 warnings**; identical per relative file, rule and severity to the prior reviewed heads |
+| Production build, including `verify:bundle` | **Passed** |
+| Canonical-basis / earlier-rule controls | **Passed**; names do not change measurement or canonical Opinion standing |
+| Regenerated host evidence | **Passed**; board states and log byte-identical to the committed evidence |
+| Exact rebuilt production webview in JSDOM | **131 positive assertions passed**, including retained name/edit/model and privacy controls |
+| Whitespace / review hygiene | Implementation delta clean; only the report is changed by the review |
+
+Rebuilt SHA-256 values:
+
+- `webview.js`: `66c1f405b6ff52a41f5780771482b3383f21bf84479c3d5a47c0f800b103cd35` (unchanged from the previous correction).
+- `extension.js`: `e9c04557447d102d91c7e2b7f85f54c75c6d61cfcfe2bd04dbf184900f59dd13`.
+
+All heavy jobs were serialized in the cloud workspace. The unchanged lockfile and workspace dependency link were reverified. The original format-1 fixture, malformed-name salvage, queued targets, adoption/observation freshness, deep paging, earlier-rule Bring precedence and canonical Opinion controls retain their independent coverage. Only public-domain Alice, synthetic metadata/files and stub responses were used; no private manuscript or live/paid model call.
+
+No new UI or CSS implementation changed in this delta. The rebuilt-bundle DOM run and regenerated host states are fresh; the previously inspected supplied captures are not represented as new native screenshots. The disclosed lease, soft busy/unreadable restore without automatic retry, undated-claim policy and expired-lease/final-rename limitation remain bounded as before. Author-attributed writer decisions and the native/writer checkpoints remain separate.
+
+**Recommendation:** this slice is technically approved with N-03 recorded as a nonblocking follow-up. Retain all six resolved findings' regressions and the new error-classification controls.
