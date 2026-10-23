@@ -618,13 +618,16 @@ on real chapters before it becomes a contract.
   changed, the comparison is labeled approximate.
 
 **Addendum to D12 (2026-10-22): saved boards, format 1** (Slice 5A; epic
-decisions 25 and 27–32; amended for Slice 5A.1, decisions 33–36, where
-marked). Slice 5 is split. 5A saves, opens, deletes and restores boards;
-5A.1 names them and builds the writer's other calls on 5A; 5B, a later PR,
-compares two of them. The format is fixed so that 5B needs no change to
-it.
+decisions 25 and 27–32; amended for Slice 5A.1, decisions 33–36, and for
+Slice 5A.2, decision 41 (2026-10-23), where marked). Slice 5 is split. 5A
+saves, opens, deletes and restores boards; 5A.1 names them and builds the
+writer's other calls on 5A; 5A.2 keeps one file per board and moves the
+boards into the Workshop's design language; 5B, a later PR, compares two
+of them. The format is fixed so that 5B needs no change to it.
 
-- **The file.** One file per save, written once and never overwritten:
+- **The file.** One file per save, written once and never overwritten
+  (5A; *from Slice 5A.2, one file per board, rewritten in place by the
+  board's later saves: see below*):
   `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`.
   The slug is the source's path in `[a-z0-9-]` only, for the writer to
   read; the hash is the first eight hex digits of the SHA-256 of the
@@ -667,6 +670,30 @@ it.
     unnamed; naming any other saved file changes only that file; open and
     restore bring the file's name back. Session-only, the name is the
     in-memory board's.
+- **One file per board (Slice 5A.2, decision 41).** The writer asked for
+  the Workshop's design language without a `current.json`: a board's
+  first save writes its file and names it by default,
+  `<source file name> - <M/D/YYYY h:mm AM/PM>` in the extension host's
+  local time ("Chapter 6 - 10/23/2026 9:08 AM"; a selection adds its
+  lines), within the name rule. Its later saves (a run that landed
+  readings, a spark set aside, a rename) rewrite that file in place
+  through the rewrite below. "Read the current text" builds a new board,
+  so it writes a new file with a new dated name. A file saved before names
+  is listed under the default its source and saved time give and is not
+  rewritten for it; opened, the board takes that name, and its next save
+  writes it.
+  - *Revisions.* A read names the bytes it decoded by their SHA-256, and a
+    committed write reports its own; the retained board keeps the
+    revision of the file it holds. A save in place rewrites only at that
+    revision. A file another window changed since, or holds under a live
+    claim, one with a part left out on reading, one that is gone, or a
+    rewrite that fails is left exactly as it is, and the board saves to a
+    new file in the same queue turn and follows it (the reload pointer,
+    the row on screen). Two windows on one board can so leave two files;
+    no save is lost and nothing is overwritten. A save the commit point
+    declines writes nothing.
+  - *A rename or spark mark of a file follows it* only when the board knew
+    that file, so renaming an older file never moves the board to it.
 - **Sources are a list.** `sources` holds every source with its own text.
   Paragraph numbers stay the board's, 1 to N, so no reading changes shape;
   each paragraph names its source and its offsets into that source's text.
@@ -766,8 +793,10 @@ it.
     listing decodes only the files that changed.
 - **When a board saves** (decision 27): when a run ends having landed a
   group, and when a board with no readings is built for a source no saved
-  board of which holds that text. No pruning. The writer confirmed that a
-  stopped or partial run saves (decision 36, 2026-10-22). A spark set aside,
+  board of which holds that text. From Slice 5A.2 the first save writes the
+  board's file and the rest rewrite it (decision 41, above). No pruning.
+  The writer confirmed that a stopped or partial run saves (decision 36,
+  2026-10-22). A spark set aside,
   or brought back, saves at once (decision 35): the file that holds the
   board on screen takes that spark's mark in place, and no other (PR #164
   F-03), and no new file is written; a board no file holds yet takes its
@@ -783,11 +812,14 @@ it.
   from such a snapshot is refused with a reason that points there.
 - **Who decides.** `LightboxBoardLibrary`, an application service built
   once at the composition root over the service, the store and the runner,
-  decides when a board saves, opens and restores one, and lists and deletes
-  them. A fourth handler, `LightboxBoardsHandler`, owns the rail's four
-  routes (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
-  `LIGHTBOX_DELETE_BOARD`, and from Slice 5A.1 `LIGHTBOX_RENAME_BOARD`) and
-  answers each with `LIGHTBOX_BOARDS` under its request id; each adoption,
+  decides when a board saves (through `LightboxBoardSaves` from Slice
+  5A.2), opens and restores one, and lists and deletes them. A fourth
+  handler, `LightboxBoardsHandler`, owns the saved boards' routes
+  (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
+  `LIGHTBOX_DELETE_BOARD`, from Slice 5A.1 `LIGHTBOX_RENAME_BOARD`, and
+  from Slice 5A.2 `LIGHTBOX_OPEN_BOARD_FILE`, which shows the host's
+  file picker) and answers each with `LIGHTBOX_BOARDS` under its request
+  id; each adoption,
   each committed save and each name given to the board on screen is pushed
   with `requestId: null`. A shelf names the adoption it was built for.
   The library's `LightboxBoardEdits` names boards and keeps spark marks,
@@ -799,7 +831,30 @@ it.
   once each; the section's head names the board on screen ("Unnamed board"
   otherwise) with Name or Rename. A name is edited in place: Enter saves,
   Escape cancels, focus returns to the action; only an edit the writer made
-  is sent (PR #164 F-04).
+  is sent (PR #164 F-04). *Replaced in Slice 5A.2 (decision 41) by the
+  Boards menu and browser, below.*
+- **The Boards menu and browser (Slice 5A.2, decision 41).** The rail's
+  Boards section is gone: a side panel grows with every chapter analyzed.
+  The Workshop's sessions menu and session browser became the full tabs'
+  shared `SavedItemsMenu` and `SavedItemBrowserModal` (their CSS moved to
+  `styles/fulltab/`, scoped to the frame at the same specificity; the
+  Workshop's markup and computed styles are unchanged). The Lightbox's
+  header carries a Boards menu (Rename board…, Board another chapter…, Open
+  prior board…, the five newest boards of every chapter, Browse all
+  boards…), and the browser lists **every chapter's** boards (name,
+  chapter, saved time, lenses, cost, models, On screen), searched by name
+  and chapter path and grouped by date or by chapter, with inline rename
+  by the one name rule and delete with a confirm. The shelf lists every
+  folder of the boards folder, summaries only, counting a folder it cannot
+  read; opening another chapter's board is a source choice under the same
+  ticket, adoption and observation guards. **"Open a board file…"** opens
+  any `*.board.json` through the host's picker: one of the store's own by
+  its id; any other decoded and opened as a snapshot no file of the store
+  holds, never written, whose next save writes a new file in the store,
+  keeping its board id and name; a malformed one is refused as a source,
+  in the host's words. The changed-file notice stays above the board.
+  **Compare (5B)** reads two boards, and with one file per board two text
+  versions of a chapter are two boards.
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a

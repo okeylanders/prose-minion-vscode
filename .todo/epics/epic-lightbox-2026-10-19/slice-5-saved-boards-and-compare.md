@@ -2,8 +2,8 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D12 and its addendum of 2026-10-22
-**Writer decisions:** 5, 14, 25, and 27–36 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review; see [its section](#slice-5a1-board-names-and-the-writers-calls). **5B** (Compare) follows them and needs no format change.
+**Writer decisions:** 5, 14, 25, 27–36 and 41 in the [epic table](README.md#writer-decisions-2026-10-19)
+**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) merged (PR #164, `epic/lightbox` at `a57a5cd`); see [its section](#slice-5a1-board-names-and-the-writers-calls). **5A.2** (saved boards in the Workshop's design language, decision 41: one file per board, the Boards menu and a shared browser of every chapter's boards, "Open a board file…") is built on `epic/lightbox-boards-browser`; see [its section](#slice-5a2-saved-boards-in-the-workshops-design-language). **5B** (Compare) follows them and needs no format change.
 
 ## Before starting
 
@@ -734,9 +734,306 @@ check clean. The re-review's five witnesses fail on `17e4cd7` and her
 controls pass there. The host states, rebuilt, are byte-identical, so the
 evidence stands as rendered.
 
+## Slice 5A.2: saved boards in the Workshop's design language
+
+**Branch:** `epic/lightbox-boards-browser`, from `epic/lightbox` at
+`a57a5cd` (5A.1 merged, PR #164). **Writer decision:** 41 in the
+[epic table](README.md#writer-decisions-2026-10-19), which amends decision
+27 (one file per board, not per save) and replaces decision 31's rail.
+
+The writer, on 5A.1's Boards panel (2026-10-23):
+
+> I'm not sure I like this style of opening and saving. We should match the
+> user experience in workshop so we speak the same design language across
+> tabs. BUT, we don't need a current.json like in workshop that complicates
+> the programming. We can just create the date named file (include
+> filename) like 'Chapter 6 - 10/23/2026 9:08 AM' it continues auto saving
+> like we do now and the user can rename in the modal or drop down like we
+> do on workshop. The problem with the side panel is that there will end up
+> being a lot of files analyzed and it'll be a poor experience. Try to
+> re-use the open file widget if possible. We can keep all project
+> locations visible with the manual file selector button as well.
+
+Asked how, the writer chose: a Workshop-style **Boards menu** in the header
+(Open prior board…, the recent boards, Rename, Browse all…); the Workshop's
+**session browser made shared** for Browse (search, group by date or by
+chapter, rename, delete, open, across every chapter); an **"Open a board
+file…"** button in that browser for the system picker; and **no Boards side
+panel**.
+
+### Decisions
+
+1. **One file per board.** A board's first save writes its file, named by
+   default (2, below). Its later saves (a run that landed readings, a spark
+   set aside, a rename) rewrite that file in place, atomically, through the
+   5A.1 rewrite (claims, the 30-second lease, the commit point, never over
+   an unreadable file). **"Read the current text"** builds a new board (a
+   new id, as any changed text does), so it writes a new file with a new
+   dated name. No `current.json`.
+2. **A default name at the first save:** `<source file name without its
+   extension> - <M/D/YYYY h:mm AM/PM>`, in the local time of the extension
+   host: "Chapter 6 - 10/23/2026 9:08 AM". A selection adds its lines
+   ("alice-1 · lines 4–30"). The name is written into the file, so it is
+   the board's name like any other: Rename changes it. A file saved before
+   names (5A) shows the default its source and saved time give, and is not
+   rewritten to say so; opened, the board takes that name, and its next
+   save writes it.
+3. **When the file cannot be rewritten in place, the board saves to a new
+   file** and follows it (the reload pointer, the row on screen), and the
+   file stays exactly as it was. That is when: another window changed it
+   since this window last read or wrote it (its revision, below, differs);
+   another window holds it under a live claim; a part of it was left out on
+   reading (never written over, as 5A.1's spark marks); it is gone; or the
+   rewrite failed. All in the same queue turn. A save the commit point
+   declines (the board is no longer the one on screen) writes nothing
+   anywhere, as before.
+4. **Every chapter.** The shelf lists the saved boards of every source in
+   the boards folder, newest first, summaries only, with each one's source.
+   Opening one of another chapter is a source choice like any other, under
+   5A's ticket, adoption and observation guards.
+5. **"Open a board file…"** opens any `*.board.json` through the system
+   picker. One of the store's own opens by its id, as Open does. Any other
+   is decoded and opened as a snapshot no file of the store holds: nothing
+   ever writes it, and its next save writes a new file in the store,
+   keeping its board id and name.
+6. **The Boards menu and the browser** (the webview, below) replace the
+   rail's Boards section. The changed-file notice and Read the current text
+   stay above the board (decision 34). Session-only, the menu and the
+   browser say boards last for the session.
+7. **Compare (5B)** reads two saved boards. With one file per board, two
+   text versions of a chapter are two boards: the board before "Read the
+   current text" and the one after.
+
+### Host
+
+- **The default name** (`shared/constants/lightboxBoardName.ts`, beside the
+  name rule): `lightboxBoardSourceLabel(source)` (the file's name without
+  its last extension, from either separator; a selection's lines; a
+  control character becomes a space; "Untitled" when nothing is left) and
+  `lightboxDefaultBoardName(source, savedAt, timeZone?)`, from
+  `Intl.DateTimeFormat` parts, with plain spaces, the label cut with "…" so
+  the whole fits the 120-character rule. The library takes the zone as an
+  option (`LightboxBoardLibrary(ports, { timeZone })`); the composition
+  root passes none, so it is the extension host's. Tests pin UTC.
+- **Revisions.** A read names the bytes it decoded by their SHA-256
+  (`LightboxBoardFiles`, `lightboxBoardRevision`), and the rewrite takes the
+  revision it expects: a file whose bytes differ is `changed`, and is not
+  rewritten. A committed write reports its revision (`onCommitted`), and the
+  retained board keeps it (`LightboxRetainedBoards.savedRevision`) with the
+  file it saved to. A rewrite of a tile or a name follows the file only
+  when the board knew that file (`markSaved`'s `from`), so a rename of an
+  older file never moves the board.
+- **Saving** (`application/services/lightbox/LightboxBoardSaves.ts`, new,
+  built by the library): `saveAfterRun` and `onScreen` capture the board,
+  and the store's `save` takes it as a function, read at its turn in the
+  queue, with `inPlace` (the file the board holds, its revision, and how to
+  write the board as it now stands into that file) and `defaultName`. The
+  store (`LightboxBoardStore.save`) rewrites in place when it can, and
+  otherwise writes a new file (`LightboxBoardNewFile.ts`, new), logging
+  `<file id> could not be saved in place (<why>); the board is saved to a
+  new file.` Its contracts moved to `LightboxBoardStoreContracts.ts` to keep
+  the store under 500 lines. The save result keeps its shapes
+  (`saved`, `replaced`, `withdrawn`, `failed`, `refused`).
+- **Every chapter's listing** (`LightboxBoardStore.listAll`,
+  `LightboxBoardFiles.listAll`): every folder in the boards folder whose
+  name is a slug and hash (`[a-z0-9-]`), each read as a source's listing is
+  (claims settled; the summary cache by size and modification time). A
+  folder named by slug alone (before PR #163) is not listed, nor a file
+  moved into another source's folder. A folder that cannot be read is
+  counted (`unreadableFolders`) and the rest are listed; the boards folder
+  itself unreadable counts one; not there yet, it is empty. Two chapters
+  whose paths slug alike keep their own folders and rows.
+- **Opening a picked file** (`LightboxBoardStore.locate`, `readOutside`;
+  `LightboxBoardLibrary.openFile`): `locate` turns a path inside the store
+  into its file id, and nothing else. `openFile` refuses at once while a
+  run reads the board on screen, takes its source ticket before it reads,
+  and adopts the read as a snapshot with no file (`snapshot.outside: true`,
+  no `fileId`). A malformed file is refused as a source, in the host's
+  words, and the board on screen stays. Another workspace's board whose
+  chapter is not here opens as saved, and its file state is `unreadable`
+  ("Its chapter could not be read to compare it with this board, so Bring
+  is held back."); a board whose chapter is gone opens the same way.
+  Logs never name the picked path.
+- **Routes.** `LIGHTBOX_OPEN_BOARD_FILE` (`{ requestId }`), answered with
+  `LIGHTBOX_BOARDS` for the board then on screen; the picker comes from
+  `ShellService.pickFile`, passed in by `MessageHandler`, titled "Open a
+  saved Lightbox board (*.board.json)" and filtered to `.json` (or all
+  files). Dismissed,
+  it changes nothing. `LIGHTBOX_DELETE_BOARD` and `LIGHTBOX_RENAME_BOARD`
+  take `boardId: null` (the browser works with no board on screen).
+- **Contracts.** A saved-board summary always carries a `name` (the file's,
+  or the default) and its `source`; a snapshot's `fileId` is optional, with
+  `outside` when it came from outside the store; the shelf may count
+  `unreadableFolders`.
+
+### Webview
+
+- **Shared with the Workshop, not copied.** The Workshop's sessions menu is
+  now the full tabs' `components/fulltab/SavedItemsMenu.tsx` (with `Item`,
+  `Recent`, `Heading`, `Rule`, `Empty`); its session browser is
+  `SavedItemBrowserModal.tsx`, with `SavedItemRow.tsx` and the date buckets
+  in `utils/savedItemGroups.ts`. The Workshop composes its own items, rows,
+  current room, excerpt grouping, Duplicate and Reveal on top. Three opt-ins
+  only the Lightbox takes: `renameRule` (the one name rule, with its words
+  under the field), `sendOnlyEdits` (PR #164 F-04) and `returnFocus` (Enter
+  and Escape return focus to Rename; Delete moves it to Keep; a confirmed
+  delete moves it to the next row's Delete, or to the search field).
+- **The CSS moved verbatim** from `styles/workshop/shell.css` into
+  `styles/fulltab/savedItems.css` (the menu and the Save-session sheet's
+  frame) and `styles/fulltab/savedBrowser.css` (the browser), in order,
+  scoped to `[data-pm-frame="fulltab"]` at the Workshop stamp's
+  specificity, as `modal.css` was. Rules only the Workshop uses (the
+  degraded-memory banner, the confirm dialog, the save sheet's manifest,
+  export) stay in `workshop/shell.css`.
+- **Mirrored, not shared: the name sheet.** `LightboxBoardNameModal` uses
+  the Save-session sheet's frame and classes, but the Workshop's sheet is a
+  checkpoint save with a manifest and "Save as new"; a board's name needs
+  one field.
+- **The Boards menu** (`LightboxBoardsMenu`), in the header between the
+  Workshop tray and the status, where the Workshop puts its sessions menu:
+  the trigger names the board on screen (its name, or its file's name before
+  a first save) and says "Saved", "Not saved yet", "Save failed" or "This
+  session only". Board: Rename board…, Board another chapter… (the project
+  picker), Open prior board…; Recent: the five newest boards of every
+  chapter, each with its chapter and when, the one on screen disabled;
+  Browse all boards…. Session-only, its head says why.
+- **The browser** (`LightboxBoardBrowserModal`): each row's name, chapter,
+  saved time, lenses read and stale, approximate cost, models, and "On
+  screen"; search over names and chapter paths; Date (Today, This week,
+  Earlier, the Workshop's buckets) or Chapter (each chapter once, in the
+  order of its newest board); Open; inline Rename; Delete with a confirm;
+  and in its footer, the folder and "Open a board file…", which closes the
+  browser as the project picker's "Explore project folders…" does before
+  VS Code's dialog. A row's line wraps between its parts at narrow widths,
+  so it still names the chapter.
+- **State** (`useLightboxBoardsSurface`, a presentation controller): which
+  of the menu, the browser and the name sheet is open, and the browser's
+  search. Opening the browser asks for the shelf again
+  (`useLightboxBoards.refresh`). Escape closes the open menu before it lets
+  go of a pinned item.
+- **The notice above the board** (`lightboxSnapshotNotice`, from the shelf,
+  through the same guards) keeps decision 34's changed-file notice and Read
+  the current text, and also says when the chapter could not be compared,
+  when parts were left out, and when the file came from outside the boards
+  folder ("Its next save writes it there, as a file of its own.").
+- **Gone:** `LightboxBoardsPanel`, `LightboxBoardNameField` and their tests.
+- **At 520 px and under** the frame's header wraps its actions to the left;
+  the Lightbox's Boards menu hangs from the actions block at the gutter, so
+  it stays on screen (`styles/lightbox/boards.css`). The Workshop's menu is
+  unchanged.
+
+### Proof
+
+New tests:
+- **Host:** `LightboxBoardsBrowser.test.ts` (one file per board through the
+  real handlers, the default name in a pinned zone, Read the current text,
+  the fallback when another window changed the file, every chapter, opening
+  another chapter under the guards, delete and rename with no board on
+  screen, files saved before names, and "Open a board file…": the store's
+  own, outside, malformed, another workspace's, dismissed, refused while
+  reading, no request id); `LightboxBoardStoreInPlace.test.ts` (in place,
+  the new file, each fallback, the commit point declining, the board read
+  at its turn); `LightboxBoardStoreChapters.test.ts` (listing every chapter,
+  a slug collision, an unreadable folder, the boards folder unreadable or
+  absent, claims per folder, old folders, session-only, `locate`,
+  `readOutside`); `lightboxDefaultBoardName.test.ts` (the writer's example,
+  zones, midnight and noon, selections, separators, control characters,
+  the limit).
+- **Webview:** `SavedItemsMenu.test.tsx` and `SavedItemBrowserModal.test.tsx`
+  (each opt-in, and the Workshop's behaviour without them);
+  `LightboxBoardsMenu.test.tsx`, `LightboxBoardBrowserModal.test.tsx` and
+  `LightboxBoardNameModal.test.tsx` (recent boards, rename from the menu's
+  sheet and from a row, delete with a confirm, focus, keyboard, search,
+  both groupings, session-only, "Open a board file…").
+- **The Workshop's own tests run unchanged.** A markup tool (in the
+  evidence's `tools/`) rendered the Workshop's menu and browser in fifteen
+  states at the base and at the head: identical, focus included.
+
+Tests whose premise changed, rewritten (5A and 5A.1 behaviour they no
+longer describe: one file per save, the rail, unnamed rows):
+`LightboxBoardOwnership`, `LightboxBoardAdoptions`, `LightboxSavedBoards`,
+`LightboxBoardRenames` and `LightboxSparkSaves` (host; each kept its
+sequence and guard, with the files it expects now one per board, and an
+earlier snapshot made by `keepEarlierSave` where a test needs two files of
+one board); `lightboxBoardsView.test.ts`, `useLightboxBoards.test.ts`
+(fixtures: every row has a name and a source) and
+`LightboxAppSavedBoards.test.tsx` (the menu and browser instead of the
+rail). `LightboxBoardsPanel.test.tsx` went with the panel.
+
+**Against `a57a5cd`** (this slice's 17 new and rewritten suites, with the
+boards harness and the memory file system, copied onto an export of the
+base): with ts-jest's type checks, none loads; each names a module, route
+or field the base lacks. With type checks off, and the harness given the
+base handler's signature, 11 suites load and 94 of their 128 tests fail:
+one file per board, the default names, every chapter's listing, the
+fallback to a new file, "Open a board file…", every row named and carrying
+its source, and the app's menu and browser. The 34 that pass are controls
+and what 5A and 5A.1 already guaranteed (opening another chapter's board
+under its ticket, the refusal while a run reads, session-only, the hook's
+correlation, the notice above the board, the spark's controls). The view
+suite and the five new component suites cannot load there: their modules
+and exports are new.
+
+Visual evidence:
+[`lightbox-slice-5a2-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-5a2-visual/README.md):
+ten host states at 1440, 1000 and 500 px, 30 captures, `errors.txt` empty
+(183 errors and exit 1 against `a57a5cd`'s bundle); and the Workshop's
+menu and browser with the base's bundle and this branch's, five states at
+three widths, markup, computed styles and boxes identical,
+`workshop-errors.txt` empty. Rendering it caught four things, fixed: the
+Boards menu running off the window at 500 px, a row glyph's icon pinned
+to its corner, a row's chapter cut to one letter at 500 px, and a 0.015 px
+shift in the Workshop's browser heading (two text nodes where it had one).
+
+Gates at this slice's code (`webview.js` as rendered in the evidence):
+full `npx jest`, 490 suites / 6,720 tests / 59 snapshots (482 / 6,653 / 59
+at `a57a5cd`); `npm run lint`, 0 errors and 1,133 warnings, identical per
+file, rule and severity to `a57a5cd`; `npm run typecheck`; `npm ci` into a
+real `node_modules`, then `npm run build` with `verify:bundle` twice,
+`webview.js` SHA-256 `be9b6a9c…6aaa` and `extension.js` `10d4dd8d…c2b4`
+both times; `git diff --check` clean. No live or billable call.
+
+### Implementation notes (2026-10-23)
+
+What the writer may want to redirect:
+
+- **The time in a default name is the extension host's local time.** In a
+  remote window (SSH, a container, Codespaces) that is the remote
+  machine's zone, which may not be the writer's.
+- **Boarding unchanged text again.** In the same session, choosing the
+  chapter again continues the board already on screen, and its file. In a
+  new session, the chapter's board starts again: no file is written while
+  it is only measured (a saved board already holds that text, decision
+  27), and its first reading writes a new file with a new dated name.
+- **A board's saved time moves with each save**, since a later save
+  rewrites the file; its name keeps the time of its first save. The rows
+  sort by saved time, so a board read again today sits under Today.
+- **Two windows on one board.** When another window holds or has changed
+  the file, this window's save goes to a new file: two files for one board
+  rather than one save lost. Rename either.
+- **A file with a part left out is never rewritten**, so its board's next
+  save writes a new file and the hand-edited one stays as it is.
+- **An empty name.** The menu's sheet and the browser refuse an empty name
+  ("A board needs a name."), since every board now has one. The host's
+  rename route still takes an empty name as 5A.1 did, unnaming the file,
+  which then shows its default.
+- **The shared browser's opt-ins** (`renameRule`, `sendOnlyEdits`,
+  `returnFocus`) are the Lightbox's; the Workshop could take them later
+  without a change to the shared component.
+- **The listing reads every chapter's folder** each time the shelf is
+  asked for (every adoption, save and delete, and as the browser opens).
+  Summaries are cached by size and modification time, so a warm listing
+  stats each file once
+  ([listing-scale tech debt](../../tech-debt/2026-10-22-lightbox-board-listing-scale.md)).
+- **"Open a board file…" closes the browser** before the host's picker
+  shows, as the project picker does. A dismissed picker leaves the board as
+  it was, with the browser closed.
+
 ## Slice 5B: draft compare (a later PR)
 
-Unchanged from the original plan, now reading format 1 as it is.
+Unchanged from the original plan, now reading format 1 as it is. From
+Slice 5A.2 a board is one file (decision 41), so the two drafts Compare
+reads are two boards: one from before "Read the current text", one after.
 **Compare** picks an earlier board of the same source and shows:
 
 - measured deltas on the stat tiles;

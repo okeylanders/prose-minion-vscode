@@ -1,7 +1,7 @@
 # Several Lightbox Modules Sit Just Under the 500-Line Limit
 
 **Date Identified**: 2026-10-21 (Lightbox Slice 4F)
-**Reviewed**: 2026-10-22 (Lightbox Slice 5A, its PR #163 corrections, and Slice 5A.1)
+**Reviewed**: 2026-10-22 (Lightbox Slice 5A, its PR #163 corrections, and Slice 5A.1); 2026-10-23 (Slice 5A.2)
 **Status**: Identified
 **Priority**: Medium
 **Estimated Effort**: Small to Medium (one split per module, each behind its existing tests)
@@ -82,6 +82,25 @@ unions moved to `messages/lightboxBarrel.ts` (105 lines), and `index.ts` is
 Before 5B adds to the service or the reading handler, move the service's
 rebuild-and-carry step out (the recommendation below), and the reading
 handler's Spark lane and context routes.
+
+**After Slice 5A.2 (2026-10-23).** One file per board added the save in
+place and its fallback to the store, and every chapter's listing and the
+picked file's read to its files. The store's contracts moved to
+`LightboxBoardStoreContracts.ts` (90) and a new file's write to
+`LightboxBoardNewFile.ts`, and the library's saving to
+`LightboxBoardSaves.ts`; the service's import lines were compacted. Now:
+
+| Module | Lines |
+|---|---|
+| `packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts` | 498 (unchanged) |
+| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 490 (+the saved revision, `boardOfFile`) |
+| `packages/core/src/infrastructure/storage/LightboxBoardStore.ts` | 489 (was 394: in-place saves, `listAll`, `locate`, `readOutside`) |
+| `packages/core/src/application/handlers/domain/LightboxReadingHandler.ts` | 488 (unchanged) |
+| `packages/core/src/application/handlers/domain/LightboxHandler.ts` | 486 (unchanged) |
+
+Before 5B adds Compare's reads to the store, move its listings
+(`listAll`, `locate`, `readOutside` and the claim settling they share)
+into `LightboxBoardFiles.ts` or a module of their own.
 
 ## Recommendation
 

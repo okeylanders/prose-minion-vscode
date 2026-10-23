@@ -1,6 +1,7 @@
 # A Saved-Board Listing Stats Every File, and Its Summary Cache Has No Bound
 
 **Date Identified**: 2026-10-22 (Lightbox Slice 5A, PR #163 re-review)
+**Reviewed**: 2026-10-23 (Lightbox Slice 5A.2: every chapter is listed)
 **Status**: Identified
 **Priority**: Low
 **Estimated Effort**: Small to Medium
@@ -25,6 +26,14 @@ This is a scaling consideration, not a measured latency defect: Jest
 timings in the cloud workspace say nothing about native VS Code, and a
 chapter's history is usually tens of files.
 
+**After Slice 5A.2 (2026-10-23).** The shelf now lists **every chapter's**
+boards (`LightboxBoardFiles.listAll`), for the Boards menu and browser, so
+each listing reads every chapter folder and stats every board file in the
+boards folder, not one source's. Two things offset it: one file per board
+(decision 41) means a chapter's history grows by boards, not by saves, and
+the summary cache serves every folder. The webview asks for the shelf on
+every adoption, save and delete, and again as the browser opens.
+
 ## Recommendation
 
 When a history reaches hundreds of files, or a writer reports a slow rail:
@@ -37,7 +46,7 @@ When a history reaches hundreds of files, or a writer reports a slow rail:
 
 ## Related Files
 
-- `packages/core/src/infrastructure/storage/LightboxBoardFiles.ts` (`list`, `summaryOf`)
+- `packages/core/src/infrastructure/storage/LightboxBoardFiles.ts` (`list`, `listAll`, `summaryOf`)
 - `packages/core/src/infrastructure/storage/LightboxBoardStore.ts`
 
 ## Completion Criteria
