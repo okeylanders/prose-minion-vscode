@@ -172,7 +172,7 @@ describe('LightboxReadingRunner', () => {
     expect(byGroup.C.status).toBe('ok');
     expect(byGroup.B).toMatchObject({
       status: 'failed',
-      error: 'OpenRouter is rate limiting requests. Read the rest in about 30 seconds.',
+      error: 'OpenRouter is rate limiting requests. Try again in about 30 seconds.',
       tiles: []
     });
     expect(logged()).toContain('Group B call failed: rate-limited');
@@ -186,13 +186,13 @@ describe('LightboxReadingRunner', () => {
 
     it.each([
       ['an unclassified provider rejection', new OpenRouterApiError(echoed, 400, 'invalid_request'),
-        'The provider refused the call (HTTP 400). Read the rest to try again.', 'provider-rejected (HTTP 400)'],
+        'The provider refused the call (HTTP 400). Press Finish or Analyze to try again.', 'provider-rejected (HTTP 400)'],
       ['an unavailable provider, with its details', new AgentRunUnavailableError('provider-unavailable', echoed),
-        'The model\'s provider is unavailable right now. Read the rest to try again.', 'provider-unavailable'],
+        'The model\'s provider is unavailable right now. Press Finish or Analyze to try again.', 'provider-unavailable'],
       ['a plain error', new Error(echoed),
-        'The call failed before a reading came back. Read the rest to try again.', 'unexpected (Error)'],
+        'The call failed before a reading came back. Press Finish or Analyze to try again.', 'unexpected (Error)'],
       ['a thrown string', echoed,
-        'The call failed before a reading came back. Read the rest to try again.', 'unexpected']
+        'The call failed before a reading came back. Press Finish or Analyze to try again.', 'unexpected']
     ])('%s: a host category, never the provider text', async (_label, thrown, error, category) => {
       const { start, outcomes, logged } = setup((request) => {
         if (groupOf(request) === 'A') {
@@ -224,7 +224,7 @@ describe('LightboxReadingRunner', () => {
       expect(a?.error).toBe(
         'The reading came back unusable (The group A response has 1 field the format does not define). ' +
           'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt. ' +
-          'Read the rest to try again.'
+          'Press Finish or Analyze to try again.'
       );
       expect(logged()).toContain('Group A rejected: The group A response has 1 field the format does not define');
       for (const surface of [logged(), JSON.stringify(outcomes)]) {
@@ -414,7 +414,7 @@ describe('LightboxReadingRunner', () => {
     const keyless = setup(() => ok('A'), { engine: false });
     expect(await keyless.start(['A'])).toEqual({
       started: false,
-      message: 'Add an OpenRouter API key in Settings to read the chapter.'
+      message: 'Add an OpenRouter API key in Settings to run AI analyses.'
     });
     expect(keyless.runInitial).not.toHaveBeenCalled();
   });
@@ -483,7 +483,7 @@ describe('LightboxReadingRunner', () => {
       expect(runner.holds(held.reservation)).toBe(false);
       expect(runner.reserve('board-1', ['A']).reserved).toBe(true);
       expect(setup(() => ok('A'), { engine: false }).runner.reserve('board-1', ['A']))
-        .toEqual({ reserved: false, message: 'Add an OpenRouter API key in Settings to read the chapter.' });
+        .toEqual({ reserved: false, message: 'Add an OpenRouter API key in Settings to run AI analyses.' });
     });
   });
 

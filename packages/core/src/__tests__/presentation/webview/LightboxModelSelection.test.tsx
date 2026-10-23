@@ -215,7 +215,7 @@ async function createHost() {
   };
 }
 
-const press = () => screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
+const press = () => screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
 const lensCost = () => screen.getByLabelText('Lenses').querySelector('.pm-lb-meta')?.textContent;
 const openPicker = () => fireEvent.click(screen.getByRole('button', { name: /^Browse assistant model options/ }));
 const pick = (label: string) => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: new RegExp(label) }));

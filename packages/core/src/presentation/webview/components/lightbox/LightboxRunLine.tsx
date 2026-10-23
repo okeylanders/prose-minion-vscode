@@ -1,11 +1,13 @@
 /**
- * LightboxRunLine — the Read button and what it says (ADR 2026-10-19 D6, D8).
- * Props-only: the view model is `buildLightboxRunLine`.
+ * LightboxRunLine — the run line's button and what it says (ADR 2026-10-19
+ * D6, D8). Props-only: the view model is `buildLightboxRunLine`.
  *
- * Before a press: the call count and estimated cost, the book-sized warning,
- * and, when a call would not fit, the button disabled with the reason. While
- * reading: the groups back and Stop. After: quotes checked and withheld, and
- * the next press.
+ * Before any run: "Run AI analyses", the call count and estimated cost, the
+ * book-sized warning, and, when a call would not fit, the button disabled
+ * with the reason. While analyzing: the calls back and Stop. After: quotes
+ * checked and withheld, and "Finish" or "Re-analyze" with its cost. The
+ * button keeps the primary (orange) style and the sparkle in every state
+ * (Slice 4I, the writer's request).
  */
 import * as React from 'react';
 import type { LightboxRunScope } from '@messages';
@@ -40,15 +42,16 @@ export const LightboxRunLine: React.FC<LightboxRunLineProps> = ({ view, onRun, o
       {action && (
         <button
           type="button"
-          className={action.label === 'Read the chapter' ? 'pm-lb-primary' : 'pm-lb-button'}
+          className="pm-lb-primary pm-lb-run-press"
           disabled={action.disabled}
           aria-describedby={described}
           title={action.reason ?? (action.cost || undefined)}
           onClick={() => onRun(action.scope)}
         >
-          <Icon name={action.label === 'Read the chapter' ? 'sparkle' : 'refresh'} size={13} />
+          <Icon name="sparkle" size={13} />
           {action.label}
-          {action.label !== 'Read the chapter' && <span className="pm-lb-run-cost">{action.cost}</span>}
+          {/* Before any run the note beside it states the cost; after one, the button carries it. */}
+          {action.label !== 'Run AI analyses' && action.cost && <span className="pm-lb-run-cost">{action.cost}</span>}
         </button>
       )}
       {action?.reason && <p className="pm-lb-run-reason" id="pm-lb-run-reason">{action.reason}</p>}

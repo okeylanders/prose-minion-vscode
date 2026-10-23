@@ -68,7 +68,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
   const lastRequest = () => sent(MessageType.LIGHTBOX_SET_LENSES).at(-1);
   const answer = (request: { payload: { requestId?: string } } | undefined, estimate: object | null, extra: object = {}) =>
     fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { requestId: request?.payload.requestId, estimate, ...extra });
-  const press = () => screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
+  const press = () => screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
   const lensCost = () => screen.getByLabelText('Lenses').querySelector('.pm-lb-meta')?.textContent;
   const started = (board: LightboxBoard, token: string) => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: readingAll(board), refusal: null });
@@ -186,7 +186,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
     const stop = screen.getByRole('button', { name: 'Stop' }) as HTMLButtonElement;
     expect(stop.disabled).toBe(false);
-    expect(screen.getByText('Reading… 0 of 3 lens groups back')).not.toBeNull();
+    expect(screen.getByText('Analyzing… 0 of 3 calls back')).not.toBeNull();
     fireEvent.click(stop);
     expect(sent(MessageType.LIGHTBOX_CANCEL_RUN).at(-1)?.payload).toEqual({ boardId: B.boardId, token: 'run-B' });
   });
@@ -228,7 +228,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
     fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, { boardId: A.boardId, token: 'run-1', phase: 'streaming', groups, groupsBack: 1, outputCharacters: 3_000 });
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /Read the rest/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Finish/ }));
     started(A, 'run-2');
     fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, { boardId: A.boardId, token: 'run-1', phase: 'finished', groups, groupsBack: 3, outputCharacters: 3_000 });
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));

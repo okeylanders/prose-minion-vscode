@@ -334,6 +334,24 @@ export function lightboxGroupLenses(group: LightboxReadingGroupId): LightboxLens
   return LIGHTBOX_LENSES.filter((lens) => lens.group === group).map((lens) => lens.id);
 }
 
+/** Whether a value names a reading group: a model call, A–G (counting, Measure, is no group). */
+export function isLightboxReadingGroupId(value: unknown): value is LightboxReadingGroupId {
+  return typeof value === 'string' && (LIGHTBOX_READING_GROUPS as readonly string[]).includes(value);
+}
+
+/**
+ * What one call reads when it is run on its own (Slice 4I): its lenses that
+ * are on, in rail order, with `lens` (the widget pressed) even when it is
+ * off. Its other lenses that are off stay out. Empty when nothing is on.
+ */
+export function lightboxGroupCallLenses(
+  group: LightboxReadingGroupId,
+  lensesOff: readonly LightboxLensId[],
+  lens?: LightboxLensId
+): LightboxLensId[] {
+  return lightboxGroupLenses(group).filter((candidate) => candidate === lens || !lensesOff.includes(candidate));
+}
+
 /** A group before any call. */
 export function emptyLightboxReadingGroup(group: LightboxReadingGroupId): LightboxReadingGroup {
   return { group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: [] };
@@ -356,7 +374,7 @@ const LIGHTBOX_READ_TOGETHER: Readonly<Partial<Record<LightboxLensId, readonly L
   summary: ['template']
 };
 
-/** What "Re-read this tile" reads for `lens`: the lens, with any lens read together with it that is on, in rail order. */
+/** What "Re-analyze this tile" reads for `lens`: the lens, with any lens read together with it that is on, in rail order. */
 export function lightboxRereadLenses(lens: LightboxLensId, lensesOff: readonly LightboxLensId[]): LightboxLensId[] {
   if (lensesOff.includes(lens)) {
     return [];
@@ -368,10 +386,11 @@ export function lightboxRereadLenses(lens: LightboxLensId, lensesOff: readonly L
 /**
  * The calls a press makes (D6). A lens that is off is left out of its group,
  * and a group with no lens on is not called. `rest` skips the groups whose
- * readings already landed; `lens` re-reads one lens that is on, with the
- * lenses read together with it (`lightboxRereadLenses`). Group F, the
- * Opinion, is always the last call: the runner starts it only once the
- * others have settled (Slice 4D).
+ * readings already landed; `group` makes one call, its lenses that are on
+ * and the lens named (`lightboxGroupCallLenses`, Slice 4I); `lens` re-reads
+ * one lens that is on, with the lenses read together with it
+ * (`lightboxRereadLenses`). Group F, the Opinion, is always the last call:
+ * the runner starts it only once the others have settled (Slice 4D).
  */
 export function lightboxPlannedCalls(
   lensesOff: readonly LightboxLensId[],
@@ -381,6 +400,10 @@ export function lightboxPlannedCalls(
   if (scope.mode === 'lens') {
     const lenses = lightboxRereadLenses(scope.lens, lensesOff);
     return lenses.length === 0 ? [] : [{ group: lightboxLensGroup(scope.lens), lenses }];
+  }
+  if (scope.mode === 'group') {
+    const lenses = lightboxGroupCallLenses(scope.group, lensesOff, scope.lens);
+    return lenses.length === 0 ? [] : [{ group: scope.group, lenses }];
   }
   return LIGHTBOX_READING_GROUPS.flatMap((group) => {
     const lenses = lightboxGroupLenses(group).filter((lens) => !lensesOff.includes(lens));

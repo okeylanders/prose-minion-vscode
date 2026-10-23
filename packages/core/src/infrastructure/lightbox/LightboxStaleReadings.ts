@@ -108,7 +108,7 @@ export interface LightboxCarryContext {
 
 /** Writer-facing: a group that was mid-run when the text changed. */
 export const LIGHTBOX_CHANGED_WHILE_READING =
-  'The chapter changed while this group was being read, so that reading was set aside. Read the rest to read the new text.';
+  'The chapter changed while this group was being read, so that reading was set aside. Press Finish or Analyze to read the new text.';
 
 
 interface CarryTools {

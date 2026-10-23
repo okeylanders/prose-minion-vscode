@@ -1,17 +1,19 @@
 /**
- * The run line: what the Read button says and does (ADR 2026-10-19 D6, D8).
+ * The run line: what its button says and does (ADR 2026-10-19 D6, D8).
  * Pure: no React, no transport.
  *
- * Before any press it states the call count and the estimated cost, warns
+ * Before any run it states the call count and the estimated cost, warns
  * when the text is book-sized, and is disabled with the reason when a call
  * would not fit the model's window. While a run is in flight it counts the
- * groups back and offers Stop. Afterwards it counts the quotes checked and
- * withheld, and offers the next press: "Read the rest" when a group stopped
- * or failed, "Re-read" when everything landed, and says how many lenses are
- * stale after the text changed (D4). Every figure comes from the host's
- * estimate and board. The Opinion (Slice 4D) is priced "up to" its
- * digest's bound, and the cost note says so; while it is the one group
- * still out, the line says it is weighing the board.
+ * calls back and offers Stop. Afterwards it counts the quotes checked and
+ * withheld, and offers the next run. The writer's words (Slice 4I, epic
+ * decision 41): "Run AI analyses" before any, "Finish" when a call with a
+ * lens on is not back yet (stopped, failed, or never run), and "Re-analyze"
+ * when every one landed; all three keep the primary style. It says how many
+ * lenses are stale after the text changed (D4). Every figure comes from the
+ * host's estimate and board. The Opinion (Slice 4D) is priced "up to" its
+ * digest's bound, and the cost note says so; while it is the one call out,
+ * the line says it is weighing the board.
  *
  * Everything is the board's own (PR #149 F-03): an estimate for another
  * board is no estimate ("Estimating the cost…", nothing to press), and Stop
@@ -34,8 +36,16 @@ import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/do
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
 
+/** Why no other press can start while a run is in flight or starting (Slice 4I: every Analyze and Run says it too). */
+export const LIGHTBOX_RUN_BUSY = 'An analysis is running. Stop it, or wait for it to finish.';
+/** Why nothing can be pressed without an API key. */
+export const LIGHTBOX_RUN_NO_KEY = 'Add an OpenRouter API key in Settings to run AI analyses.';
+
+/** The run line's three presses (Slice 4I): every call, the calls not back yet, every call again. */
+export type LightboxRunLineLabel = 'Run AI analyses' | 'Finish' | 'Re-analyze';
+
 export interface LightboxRunLineAction {
-  label: 'Read the chapter' | 'Read the rest' | 'Re-read';
+  label: LightboxRunLineLabel;
   scope: LightboxRunScope;
   /** "3 calls · est. $0.04". */
   cost: string;
@@ -91,7 +101,7 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
   return `${count} · ${cost}${unknown}${bound}`;
 }
 
-/** What a tile's "Re-read" would cost. */
+/** What a tile's "Re-analyze this tile" would cost. */
 export function lightboxRereadNote(
   estimate: LightboxRunEstimate | null | undefined,
   lens: LightboxLensId,
@@ -120,25 +130,25 @@ export interface LightboxRereadInput {
 export function lightboxRereadAvailability(input: LightboxRereadInput): { note?: string; reason?: string } {
   const { estimate, lens } = input;
   if (input.providerPaused) {
-    return { reason: 'Add an OpenRouter API key in Settings to read.' };
+    return { reason: LIGHTBOX_RUN_NO_KEY };
   }
   if (input.running) {
-    return { reason: 'A reading is running. Stop it, or wait for it to finish.' };
+    return { reason: LIGHTBOX_RUN_BUSY };
   }
   if (input.lensesOff.includes(lens)) {
-    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-read this tile.` };
+    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-analyze this tile.` };
   }
   if (estimate === undefined) {
     return { reason: 'Estimating the cost…' };
   }
   const call = rereadCall(estimate, lens, input.lensesOff);
   if (!call) {
-    return { reason: 'This tile cannot be re-read until the board is estimated.' };
+    return { reason: 'This tile cannot be re-analyzed until the board is estimated.' };
   }
   if (call.fit === 'too-large') {
     const window = (estimate?.contextLength ?? 0).toLocaleString('en-US');
     return {
-      reason: `Re-reading this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
+      reason: `Re-analyzing this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
         `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
         `${estimate?.model ?? 'the assistant model'}'s ${window}-token window allows.`
     };
@@ -173,13 +183,13 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   if (running.length > 0 || input.awaitingStart) {
     const groups = activeRun?.groups.length ? activeRun.groups : running.map((group) => group.group);
     const back = groups.length - running.length;
-    // The Opinion runs last, once the others are back (Slice 4D).
-    const weighing = running.length === 1 && running[0].group === LIGHTBOX_BOARD_GROUP && groups.length > 1;
+    // The Opinion runs last, once the others are back (Slice 4D), or alone, on the board as it stands (Slice 4I).
+    const weighing = running.length === 1 && running[0].group === LIGHTBOX_BOARD_GROUP;
     return {
       status: 'running',
       note: running.length === 0
         ? 'Starting…'
-        : `${weighing ? 'Weighing the board for the Opinion…' : 'Reading…'} ${back} of ${pluralize(groups.length, 'lens group')} back`,
+        : `${weighing ? 'Weighing the board for the Opinion…' : 'Analyzing…'} ${back} of ${pluralize(groups.length, 'call')} back`,
       ...(activeRun && running.length > 0 ? { stopToken: activeRun.token } : {})
     };
   }
@@ -189,7 +199,7 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
     return {
       status: 'estimating',
       note: 'Estimating the cost…',
-      action: { label: 'Read the chapter', scope: { mode: 'all' }, cost: '', disabled: true },
+      action: { label: 'Run AI analyses', scope: { mode: 'all' }, cost: '', disabled: true },
       ...(notice ? { notice } : {})
     };
   }
@@ -209,7 +219,7 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   const action = (label: LightboxRunLineAction['label'], scope: LightboxRunScope, calls: readonly LightboxCallEstimate[]): LightboxRunLineAction => {
     const tooLarge = calls.some((call) => call.fit === 'too-large');
     const reason = providerPaused
-      ? 'Add an OpenRouter API key in Settings to read the chapter.'
+      ? LIGHTBOX_RUN_NO_KEY
       : tooLarge
         ? estimate?.reason ?? 'A call is too large for the model\'s window.'
         : undefined;
@@ -221,7 +231,7 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
       status: 'idle',
       note: lightboxCallsNote(planned),
       ...(warning ? { warning } : {}),
-      action: action('Read the chapter', { mode: 'all' }, planned),
+      action: action('Run AI analyses', { mode: 'all' }, planned),
       ...(notice ? { notice } : {})
     };
   }
@@ -248,7 +258,7 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
       status: stopped ? 'stopped' : 'done',
       note,
       ...(warning ? { warning } : {}),
-      action: action('Read the rest', { mode: 'rest' }, rest),
+      action: action('Finish', { mode: 'rest' }, rest),
       ...(notice ? { notice } : {})
     };
   }
@@ -256,7 +266,7 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
     status: 'done',
     note,
     ...(warning ? { warning } : {}),
-    action: action('Re-read', { mode: 'all' }, planned),
+    action: action('Re-analyze', { mode: 'all' }, planned),
     ...(notice ? { notice } : {})
   };
 }

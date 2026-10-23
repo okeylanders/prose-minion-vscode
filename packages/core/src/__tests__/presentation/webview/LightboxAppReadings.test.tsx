@@ -86,7 +86,7 @@ describe('LightboxApp readings', () => {
 
     const lenses = screen.getByLabelText('Lenses');
     expect(within(lenses).getByText('3 calls · est. $0.04')).not.toBeNull();
-    const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
+    const read = screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(false);
     fireEvent.click(read);
     // The press names the estimate it was shown (PR #149 F-02).
@@ -100,11 +100,14 @@ describe('LightboxApp readings', () => {
     fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, {
       boardId: 'board-8', token: 'run-1', phase: 'started', groups: ['A', 'B', 'C'], groupsBack: 0, outputCharacters: 0
     });
-    expect(screen.getByText('Reading… 0 of 3 lens groups back')).not.toBeNull();
-    expect(within(screen.getByLabelText('Motifs · where they recur')).getByText('Reading…')).not.toBeNull();
+    expect(screen.getByText('Analyzing… 0 of 3 calls back')).not.toBeNull();
+    const motifs = screen.getByLabelText('Motifs · where they recur');
+    // The shimmer and the widget's own control both say its call is in flight (Slice 4I).
+    expect(motifs.querySelector('.pm-lb-skeleton-note')?.textContent).toBe('Analyzing…');
+    expect(within(motifs).getByRole('button', { name: /^Analyzing…, call A:/ }).getAttribute('aria-disabled')).toBe('true');
 
     fromHost(MessageType.LIGHTBOX_GROUP_RESULT, { boardId: 'board-8', token: 'run-1', group: readGroup('A') });
-    expect(screen.getByText('Reading… 1 of 3 lens groups back')).not.toBeNull();
+    expect(screen.getByText('Analyzing… 1 of 3 calls back')).not.toBeNull();
     expect(screen.getByText('Going down')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
@@ -129,7 +132,7 @@ describe('LightboxApp readings', () => {
     expect(within(genre).getByText('0.12')).not.toBeNull();
     expect(within(genre).getByText('Reader promise so far')).not.toBeNull();
     expect(screen.getByText(/\d+ quotes checked · 1 withheld · 3 calls/)).not.toBeNull();
-    expect(screen.getByRole('button', { name: /^Re-read\s*3 calls/ })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /^Re-analyze\s*3 calls/ })).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
     const inspector = screen.getByLabelText('Inspector');
@@ -139,7 +142,11 @@ describe('LightboxApp readings', () => {
     expect(within(inspector).getByText('Where this reading strains')).not.toBeNull();
     expect(within(inspector).getByText('1 call · est. $0.01')).not.toBeNull();
 
-    fireEvent.click(within(inspector).getByRole('button', { name: 'Re-read this tile' }));
+    // One verb for every AI run (epic decision 48): the tile's own re-run says "Re-analyze", not "Re-read".
+    expect(within(inspector).queryByRole('button', { name: /^Re-read/ })).toBeNull();
+    // "Re-read file" keeps its words: it reads the chapter file again, not the model.
+    expect(screen.getByRole('button', { name: 'Re-read file' })).not.toBeNull();
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Re-analyze this tile' }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { scope: { mode: 'lens', lens: 'motif' } } });
   });
 
@@ -185,7 +192,7 @@ describe('LightboxApp readings', () => {
     confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     estimateFromHost(makeEstimate());
-    fireEvent.click(screen.getByRole('button', { name: /Read the chapter/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Run AI analyses/ }));
     const asked = vscode.postMessage.mock.calls.filter(([message]) => message.type === MessageType.LIGHTBOX_SET_LENSES).length;
     fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, {
       boardId: 'board-8', phase: 'refused', groups: [], groupsBack: 0, outputCharacters: 0, reestimate: true,
@@ -202,19 +209,19 @@ describe('LightboxApp readings', () => {
     estimateFromHost(makeEstimate());
     fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
     const inspector = screen.getByLabelText('Inspector');
-    const reread = () => within(inspector).getByRole('button', { name: 'Re-read this tile' }) as HTMLButtonElement;
+    const reread = () => within(inspector).getByRole('button', { name: 'Re-analyze this tile' }) as HTMLButtonElement;
     expect(reread().disabled).toBe(false);
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
     expect(reread().disabled).toBe(true);
-    expect(within(inspector).getByText('The Theme & motif lens is off. Turn it on in the rail to re-read this tile.')).not.toBeNull();
+    expect(within(inspector).getByText('The Theme & motif lens is off. Turn it on in the rail to re-analyze this tile.')).not.toBeNull();
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
     const tight = makeEstimate();
     tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
     estimateFromHost(tight);
     expect(reread().disabled).toBe(true);
-    expect(within(inspector).getByText(/^Re-reading this tile would send about 40,000 tokens/)).not.toBeNull();
+    expect(within(inspector).getByText(/^Re-analyzing this tile would send about 40,000 tokens/)).not.toBeNull();
   });
 
   it('disables the press with the reason when a call is too large', () => {
@@ -224,7 +231,7 @@ describe('LightboxApp readings', () => {
     const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens and reserve 12,000 for the reply.' });
     estimate.groups[0].fit = 'too-large';
     estimateFromHost(estimate);
-    const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
+    const read = screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(true);
     expect(read.getAttribute('aria-describedby')).toBe('pm-lb-run-reason');
     expect(document.getElementById('pm-lb-run-reason')?.textContent).toContain('90,000 tokens');

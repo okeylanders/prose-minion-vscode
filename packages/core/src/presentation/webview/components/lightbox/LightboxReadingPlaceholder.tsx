@@ -1,9 +1,10 @@
 /**
  * LightboxReadingPlaceholder — where a reading will land (ADR 2026-10-19 D6).
  *
- * Skeleton lines in place of a lens's reading: still before the first press
- * ("Not read yet"), shimmering while the call that reads it is in flight.
- * It never shows an estimate; the run line owns the cost.
+ * Skeleton lines in place of a lens's reading: still before its call has
+ * run ("Not analyzed yet."), shimmering while the call that reads it is in
+ * flight ("Analyzing…"; Slice 4I). It never shows an estimate: the run line
+ * and the widget's Analyze own the cost.
  */
 import * as React from 'react';
 
@@ -18,6 +19,6 @@ export const LightboxReadingPlaceholder: React.FC<LightboxReadingPlaceholderProp
     <span className="pm-lb-skeleton-line is-95" aria-hidden="true" />
     <span className="pm-lb-skeleton-line is-80" aria-hidden="true" />
     <span className="pm-lb-skeleton-line is-60" aria-hidden="true" />
-    <p className="pm-lb-skeleton-note">{live ? 'Reading…' : 'Not read yet. Runs with the next press.'}</p>
+    <p className="pm-lb-skeleton-note">{live ? 'Analyzing…' : 'Not analyzed yet.'}</p>
   </div>
 );

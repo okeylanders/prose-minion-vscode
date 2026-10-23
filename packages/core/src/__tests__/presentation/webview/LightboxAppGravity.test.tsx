@@ -80,7 +80,9 @@ describe('LightboxApp: lexical gravity and palette', () => {
     estimateFromHost(makeEstimate());
 
     const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
-    expect(within(tile).getByText('counted · read')).not.toBeNull();
+    // A counted-read tile keeps its "counted" chip beside its call's Analyze (Slice 4I).
+    expect(within(tile).getByText('counted')).not.toBeNull();
+    expect(within(tile).getByRole('button', { name: /^Re-analyze, call A:/ })).not.toBeNull();
     const orbit = within(tile).getByRole('group', { name: 'Borrowed fields by claimed pull' });
     const bodies = within(orbit).getAllByRole('button');
     expect(bodies.map((body) => body.getAttribute('aria-label'))).toEqual([
@@ -134,7 +136,8 @@ describe('LightboxApp: lexical gravity and palette', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board: readBoard(), refusal: null });
     const palette = screen.getByLabelText('Palette');
-    expect(within(palette).getByText('counted · read')).not.toBeNull();
+    expect(within(palette).getByText('counted')).not.toBeNull();
+    expect(within(palette).getByRole('button', { name: /^Re-analyze, call A:/ })).not.toBeNull();
     const cluster = within(palette).getByRole('button', { name: /The way down/ });
     expect(cluster.textContent).toContain('down×9');
     expect(within(palette).getByText('Colors the text names')).not.toBeNull();

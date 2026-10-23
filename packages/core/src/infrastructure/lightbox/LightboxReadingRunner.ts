@@ -114,7 +114,7 @@ interface ActiveRunState {
 }
 
 const ALREADY_READING = 'This board is already being read. Stop that run first.';
-const NO_API_KEY = 'Add an OpenRouter API key in Settings to read the chapter.';
+const NO_API_KEY = 'Add an OpenRouter API key in Settings to run AI analyses.';
 const NOTHING_TO_READ = 'Every lens is off, so there is nothing to read.';
 
 export class LightboxReadingRunner {
@@ -479,7 +479,7 @@ export class LightboxReadingRunner {
       // Not stopped by the writer, so the call's own timeout aborted it.
       const minutes = Math.round(this.timeoutMilliseconds / 60_000);
       this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} timed out`);
-      return failedLightboxGroup(call, `The call took longer than ${minutes} minutes and was stopped. Read the rest to try again.`, result);
+      return failedLightboxGroup(call, `The call took longer than ${minutes} minutes and was stopped. Press Finish or Analyze to try again.`, result);
     }
     return read(result);
   }

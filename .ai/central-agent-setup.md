@@ -63,6 +63,7 @@ packages/core/src/
 │           ├── LightboxHandoffRoute.ts    # Its handoffs to the Workshop (Build as a lens, Bring to Workshop) and the Workshop tray
 │           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files, spark set-aside
 │           ├── LightboxPressRun.ts        # A press's run listener and landing, and group F's digest port by board id (Slice 4D)
+│           ├── LightboxPressScope.ts      # What a press asks to read, checked: the scope (a call by group, at most its own lens; Slice 4I), the calls it makes, F's nothing-to-weigh refusal, what an estimate prices
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
@@ -112,7 +113,7 @@ packages/core/src/
             ├── lightboxBarrel.ts # The Lightbox domain's own barrel (every lightbox*.ts below) and its parts of the routing unions; index.ts re-exports it (Slice 5A.1)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, lenses and the estimate's shapes
-            ├── lightboxRuns.ts   # Lightbox run messages: scope, phases, progress, set lenses, estimate answer, run, cancel, group result
+            ├── lightboxRuns.ts   # Lightbox run messages: scope (all, rest, one call by group, one lens), phases, progress, set lenses, estimate answer, run, cancel, group result
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
             ├── lightboxCraftTiles.ts # Group D tiles: tier mix, signature, familiar phrase, air-lock, echo, endings, handoff, number usage
@@ -186,7 +187,8 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxTerms.ts        # Counted terms as items: top word, part of speech, phrase, hapax word, style flag (pure; Slice 4E)
 │       │   ├── lightboxPassages.ts     # The inspector's wells as drawn: what a pin asks for, waiting, changed text, bounds, refusals (pure; Slice 4E)
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
-│       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
+│       │   ├── lightboxRunLine.ts      # The run line's press (Run AI analyses, Finish, Re-analyze), its cost and reason (pure)
+│       │   ├── lightboxCallControls.ts # Each call's own run: a widget's Analyze / Re-analyze / Analyzing…, a call's Run / Rerun in the Lenses panel, their prices, names and reasons (pure; Slice 4I)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
 │       │   ├── lightboxGravity.ts      # Orbit placements, pull/drift/degree wording (pure)
 │       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request; handoff state matching (pure)
@@ -817,8 +819,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`, with PR #165's corrections and its re-review's):
-- 491 suites / 6,829 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4I (run controls: "Run AI analyses", a call run on its own by group, every AI-read widget's Analyze, each call's Run in the Lenses panel) with PR #166's review corrections and the writer's decisions 47 and 48, on `epic/lightbox-run-controls`, with `epic/lightbox` at `08b0d22` (PR #165 merged) merged in):
+- 495 suites / 6,905 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1223,6 +1225,51 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   (its `GRACEFUL` list). The visual evidence harness measures the column
   edges and each label block beside its track, including in states that
   simulate the floor.
+
+### Lightbox Run Controls
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D6 and its addendum of 2026-10-23 (Slice 4I; epic decisions 41–45) when
+adding a way to start a reading:
+
+- **Four scopes, one planner.** A press sends `all` (Run AI analyses,
+  Re-analyze), `rest` (Finish), `group` (one call: a widget's Analyze with
+  its lens, a call's Run without) or `lens` (a tile's Re-read). The webview
+  names a group and at most one lens, never a list of lenses; the host
+  resolves what a call reads (`lightboxGroupCallLenses`: its lenses that
+  are on, plus the lens named) through `lightboxPlannedCalls`, and checks
+  the scope in `LightboxPressScope` before anything is reserved. A new way
+  to run joins that union and that check, never a second planner.
+- **A call run on its own replaces its group**, cleared first, as a full
+  run does; only `lens`, and the Opinion's call on its own, keep their
+  reading until the new one lands (`lightboxPressKeptLens`; decision 47).
+  A failure or Stop leaves the kept reading as it was, and the Opinion's
+  frame shows it as the earlier one (`LightboxReadingFrame`'s `keep`).
+- **One verb for an AI run** (decision 48): "Analyze", "Re-analyze",
+  "Re-analyze this tile". "Re-read" is only for reading the chapter file
+  again ("Re-read file").
+- **The Opinion alone reads the board.** `lightboxOpinionNothingToWeigh`
+  (over `lightboxOpinionItems`) is the one rule the host's refusal and the
+  webview's disabled Analyze share; F's own check at its digest stays the
+  last word.
+- **One run at a time, every control says so.** Every control comes from
+  `lightboxCallControls`, over the run line's own board, estimate and
+  running state, and presses through `useLightbox.run`, with the estimate
+  key and model it was shown. A control that cannot run stays focusable
+  (`aria-disabled`, its reason as its description), and its accessible name
+  starts with its visible label, then names the call, its lenses and its
+  price ("Run A, call A: … · ≈ $0.07"; PR #166 N-01).
+- **A price is approximate, never a cap** (PR #166 F-01): "≈ $…" or
+  "< $0.01" for every call, the Opinion's too; its name and tooltip add
+  "input at digest limit" (`LIGHTBOX_DIGEST_INPUT_NOTE`). Never word an
+  estimate as "up to" or "at most".
+- **A widget's control replaces its bare "read" badge** (`LightboxTileFrame`'s
+  `action`; a counted-read tile keeps "counted"). A new reading frame gets
+  it for free from `LightboxCallControlsProvider`; a reading drawn outside a
+  frame (the headline, the tension line, the Spark lane) draws
+  `LightboxAnalyzeButton` for its lens itself, and keeps it mounted, in
+  the same place, while its call reads it, so a focused control keeps the
+  focus through its own rerun (the headline's row; PR #166 N-02).
 
 ### Lightbox Passages
 

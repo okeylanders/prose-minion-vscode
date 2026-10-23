@@ -13,8 +13,16 @@
  *   cites (a tile's label and the quote it holds, or a measured figure);
  *   hovering one lights its cited items' paragraphs, a click pins it;
  * - its standing: stale when anything it cites changed since it was read
- *   (`lightboxOpinionStanding`), with a re-read control priced by the
- *   host's estimate, "up to" the digest's bound;
+ *   (`lightboxOpinionStanding`);
+ * - its earlier reading kept while it is analyzed again (epic decision 47):
+ *   the old Opinion stays in view, said to be the earlier one, until the new
+ *   one lands; after a failed or stopped call it stays, standing and all,
+ *   with the reason;
+ * - its Analyze in the header (Slice 4I, epic decision 44): group F alone,
+ *   on the board as it stands, priced "≈" like every call, its name adding
+ *   that its input is counted at the digest limit (PR #166 F-01), and
+ *   disabled with the Opinion's own reason while nothing on the board is
+ *   read and current. It replaces the tile's own "Re-read the Opinion";
  * - "Bring this view to Workshop", when the host would carry it.
  * Ignoring it changes nothing: no other tile reads it.
  */
@@ -32,13 +40,11 @@ import { Icon } from '@components/shared/Icon';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxReadingFrame } from '@components/lightbox/LightboxReadingFrame';
 
-/** What the board lets the Opinion do: choose a view, re-read it, bring the view on show. */
+/** What the board lets the Opinion do: choose a view, bring the view on show. Its Analyze is the frame's (Slice 4I). */
 export interface LightboxOpinionActions {
   /** The view the writer chose on this board, if any. */
   chosen?: LightboxOpinionViewId;
   onChoose: (view: LightboxOpinionViewId) => void;
-  /** "Re-read the Opinion": its cost or why it cannot run now. */
-  reread: { note?: string; reason?: string; onReread: () => void };
   bring?: {
     view: (tile: LightboxOpinionTile, view: LightboxOpinionViewId) => LightboxBringView;
     onBring: (tileId: string, view: LightboxOpinionViewId) => void;
@@ -46,7 +52,12 @@ export interface LightboxOpinionActions {
   };
 }
 
-const WAITING = 'Runs last: it waits for the other readings of this press to land, then weighs the checked board.';
+const WAITING = 'Runs last: it waits for the other readings of this run to land, then weighs the checked board.';
+/** What the frame says beside the earlier Opinion while a new one is weighed, and before a failure's reason (decision 47). */
+export const LIGHTBOX_OPINION_KEEP = {
+  reading: 'Analyzing… This is the earlier Opinion until the new one lands.',
+  kept: 'The new Opinion did not land, so the earlier one stays.'
+} as const;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, actions }) => {
@@ -62,6 +73,7 @@ export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, acti
       span={6}
       title="Opinion"
       frameClass="pm-lb-opinion"
+      keep={LIGHTBOX_OPINION_KEEP}
       chip={<span className="pm-lb-op-chip">{LIGHTBOX_OPINION_CHIP}</span>}
       // Its staleness is its standing (below): a cited item changing makes it stale too, not only the text.
       view={{ ...lens, stale: false }}
@@ -74,7 +86,7 @@ export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, acti
           {lens.friction && <> <b>Where it strains:</b> {lens.friction}</>}
         </>
       }
-      after={opinion && <LightboxOpinionControls model={model} opinion={opinion} />}
+      after={opinion?.bring && model && <LightboxOpinionControls model={model} opinion={opinion} />}
     >
       {model && <LightboxOpinionBody model={model} bind={bind} onChoose={opinion?.onChoose} />}
     </LightboxReadingFrame>
@@ -167,11 +179,11 @@ const LightboxOpinionBody: React.FC<{
 );
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-const LightboxOpinionControls: React.FC<{ model?: LightboxOpinionTileView; opinion: LightboxOpinionActions }> = ({ model, opinion }) => {
-  const bring = model && opinion.bring ? opinion.bring.view(model.tile, model.shown) : undefined;
+const LightboxOpinionControls: React.FC<{ model: LightboxOpinionTileView; opinion: LightboxOpinionActions }> = ({ model, opinion }) => {
+  const bring = opinion.bring ? opinion.bring.view(model.tile, model.shown) : undefined;
   return (
     <div className="pm-lb-op-actions">
-      {model && bring && opinion.bring && (
+      {bring && opinion.bring && (
         <span className={`pm-lb-op-action pm-lb-bring is-${bring.state}`}>
           <button
             type="button"
@@ -189,18 +201,6 @@ const LightboxOpinionControls: React.FC<{ model?: LightboxOpinionTileView; opini
           )}
         </span>
       )}
-      <span className="pm-lb-op-action">
-        <button
-          type="button"
-          className="pm-lb-button is-ghost"
-          disabled={opinion.reread.reason !== undefined}
-          title={opinion.reread.reason ?? opinion.reread.note}
-          onClick={opinion.reread.onReread}
-        >
-          Re-read the Opinion
-        </button>
-        <span className="pm-lb-run-note">{opinion.reread.reason ?? opinion.reread.note ?? '1 call'}</span>
-      </span>
     </div>
   );
 };

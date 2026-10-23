@@ -159,6 +159,12 @@
 [data-pm-surface="lightbox"] .pm-lb-reading-notice.is-failed {
   color: var(--pm-amber);
 }
+/* The earlier Opinion kept while a new one is weighed (decision 47): the spinner beside the words. */
+[data-pm-surface="lightbox"] .pm-lb-reading-notice.is-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 [data-pm-surface="lightbox"] .pm-lb-withheld-block {
   font-size: 12px;
   line-height: 1.5;

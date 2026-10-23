@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). 5B (Compare) follows it. **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) is built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd` (PR #164 merged).
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). 5B (Compare) follows it. **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) is built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd` (PR #164 merged). **4I** (run controls: "Run AI analyses", a widget's Analyze, each call's Run; decisions 41–45) is built on `epic/lightbox-run-controls`, stacked on 4H with its review corrections merged in; PR #166 is open, and its review's three findings (F-01, N-01, N-02) are corrected.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -77,6 +77,13 @@ carried into the Workshop.
 | 38 | The output ceiling (2026-10-23) | **12,000 output tokens a group** (was 8,000), and the whole response the prompt asks for **48,000 characters** (was 32,000), keeping the ratio, for every group, F and G included. The fit check reserves 12,000 for the reply. The estimate's price is unchanged: it prices what a reply typically runs to, not the ceiling (Slice 4H) |
 | 39 | Repair before rejecting (2026-10-23) | A group's JSON that `JSON.parse` refuses is first given a **deterministic, structure-only repair**, no model call: stray closing brackets after the root (the writer's real case, group E closing with `}}}`), trailing commas, a code fence, missing closing brackets when the reply stopped with its frame closed, and curly quotation marks used as a string's delimiters, only where safe. **The content guard:** both texts are tokenized and their strings and other scalars must be identical, or the repair is refused and the reply rejected and saved as before. A reply with no closing sentinel whose JSON is complete is accepted. Each repair is logged by its kind, never with text. **The writer's addendum:** the repair is a **reusable, feature-agnostic parser** (`@parsers/ModelJsonRepair`), wired into the Lightbox only for now; the four Workshop widget call sites adopt it later ([tech debt](../../tech-debt/2026-10-23-widget-model-json-repair-adoption.md)). A small model asked to repair syntax ("Tier 2") is a follow-up, built only if the logs show rejections this pass cannot read (Slice 4H) |
 | 40 | A reply cut off at the output ceiling (2026-10-23) | **Salvaged, no longer failed.** The blocks it finished are read; the block it was cut inside is withheld with the host's reason ("The reply reached the output ceiling before this block finished.") and where the paid reply was saved; lenses it never reached are reported as any missing lens is. The repair may only close brackets, and the cut block is dropped, never trusted. The paid body is still saved for recovery, with its group's own contract (Slice 4H) |
+| 41 | The run vocabulary (2026-10-23) | **The writer: "Can we change the wording of 'Read The Chapter' > 'Run AI Analyses' and keep the orange blaring color when it switches to 're-analyze' or 'finish'"**. The run line says **Run AI analyses** before any run, **Finish** while a call with a lens on is not back (stopped, failed or never run) and **Re-analyze** once every one landed, each in the primary (orange) style with the sparkle and its cost; "Analyzing… 2 of 7 calls back" while one runs. A widget says **Analyze**, **Re-analyze** or **Analyzing…**; a call in the Lenses panel **Run A** or **Rerun A** (the writer's word there). A placeholder says "Not analyzed yet." and its shimmer "Analyzing…". Copy that named the old buttons names the new ones ("Press Finish or Analyze to try again"); "reading" stays where it means the register, a reading versus a count (Slice 4I) |
+| 42 | One call, run on its own (2026-10-23) | A run scope of its own, `{ mode: 'group', group, lens? }`: **the host resolves what it reads**, the call's lenses that are on plus the lens named even when it is off; the webview never names a list of lenses. A lens of another call, a group that is no model call (Measure) or an unknown mode is refused before anything is reserved. **A re-run replaces the call**, cleared first, as a full run does (the Opinion keeps its old one until the new one lands: decision 47); the per-lens re-read is unchanged. Group G alone needs nothing read first. Each call's price is the estimate's own entry for its group. The press, adoption and observation guards and one run at a time hold (ADR D6 addendum, 2026-10-23; Slice 4I) |
+| 43 | A widget's Analyze (2026-10-23) | **The writer: "On the individual widgets switch to 'Analyze' and make it a button that kicks off the call(s) associated with that widget… make the widget allow for a re-run of that call."** Every AI-read widget's header carries a button that runs **its call**: the call's checked lenses plus the widget's own lens even if unchecked (the writer's call); unchecked lenses in the call stay skipped. It replaces the bare "READ" badge; a "COUNTED · READ" widget keeps a "COUNTED" chip beside it; a measured one has none. Disabled with its reason while another run is going; focusable, its accessible name starting with its visible label, then the call, its lenses and its price ("Analyze, call B: Characters, Voice, Subtext · ≈ $0.04"; PR #166 N-01), its cost small beside the label (Slice 4I) |
+| 44 | The Opinion's Analyze (2026-10-23) | **The writer's call: it runs only the Opinion call (F) over whatever is on the board now.** While nothing on the board is read and current, the button is disabled and says so in the Opinion's existing words, and the host refuses the same press with them; priced "≈" like every call, an approximate total and never a cap, its name and tooltip adding "input at digest limit" (PR #166 F-01). It replaces the tile's own "Re-read the Opinion" (Slice 4I) |
+| 45 | The Lenses panel's Run buttons (2026-10-23) | **The writer: "The lenses 'Call A,B' should be buttons that can Run, ReRun that call."** One button per call, in a small header above the call's lenses ("CALL A … Run A ≈ $0.07"), not one per lens; **Run A** before the call holds a reading, **Rerun A** after; it reads the call's checked lenses. Tooltip and accessible name: "Run A, call A: Headline, Theme & motif, … · ≈ $0.07", the visible label first (Slice 4I; PR #166 N-01) |
+| 47 | The Opinion keeps its reading until a new one lands (2026-10-23) | **The writer: keep the old Opinion until the new one lands.** When the Opinion's call runs on its own (its Analyze or Re-analyze, Run F or Rerun F), the old Opinion is not cleared when it starts: it stays in view, said to be the earlier one ("Analyzing… This is the earlier Opinion until the new one lands."), until the new one replaces it whole. If the call fails or is stopped, the old Opinion stays exactly as it was, standing and stale marks included, with the reason beside it, and the board saved after a failure still holds it. The host takes the per-lens re-read's path (`lightboxPressKeptLens`). Only the Opinion: every other call run on its own is still cleared first, and a run of several calls still clears the Opinion with the rest (Slice 4I; PR #166) |
+| 48 | One verb for an AI run (2026-10-23) | **The writer: rename "Re-read this tile" to "Re-analyze this tile".** The inspector's button, its disabled reasons and the copy that sends the writer to it say "re-analyze", so the verb for an AI run is the same everywhere. "Re-read file" keeps its words: it reads the chapter file, not the model (Slice 4I; PR #166) |
 
 ## Slices
 
@@ -97,6 +104,7 @@ carried into the Workshop.
 | 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Merged (PR #163, at `3e5c3a1`) |
 | 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | Merged (PR #164, at `a57a5cd`) |
 | 4H | [Reading tolerance](slice-4h-reading-tolerance.md) | Asks raised and overruns shown, not withheld (one safety ceiling; Bring clips at the Workshop's bounds); a 12,000-token output ceiling; a structure-only JSON repair with a content guard, in a shared parser; a reply cut off at the ceiling salvaged; the recovery file names its group's own contract (decisions 37–40) | Built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`; PR to come |
+| 4I | [Run controls](slice-4i-run-controls.md) | The run line's "Run AI analyses", "Finish" and "Re-analyze", all orange; a `group` run scope the host resolves (a call's checked lenses plus the widget's own); every AI-read widget's Analyze / Re-analyze / Analyzing…; the Opinion's Analyze, disabled with its own reason until a call has landed; one Run / Rerun per call in the Lenses panel (decisions 41–45) | Built on `epic/lightbox-run-controls`, stacked on 4H (`epic/lightbox-reading-tolerance` at `bdec17f` merged in); PR #166 open, its review's F-01, N-01 and N-02 corrected, and the writer's decisions 47 and 48 added |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1616,3 +1624,74 @@ lens, and adds its items to 4D's digest.
     491 suites / 6,829 tests / 59 snapshots under Node 22 and Node 18.20.8,
     all passing; lint identical; typecheck and both builds pass;
     `webview.js` `405f6cd1…` (unchanged), `extension.js` `1da47dcf…`.
+- **2026-10-23. Slice 4I (run controls) is built** on
+  `epic/lightbox-run-controls`, stacked on 4H (from
+  `epic/lightbox-reading-tolerance` at `4dcdb2b`, with its PR #165
+  corrections and its re-review's merged in, at `467950d` and `bdec17f`),
+  awaiting its PR. The writer asked,
+  after using the board on real chapters, for "Run AI Analyses" that stays
+  orange as "Finish" and "Re-analyze", an Analyze on every widget that runs
+  and reruns its call, and the Lenses panel's "call A" as a button. See the
+  [slice notes](slice-4i-run-controls.md), with every copy change and what
+  the writer may want to redirect.
+  - **The run vocabulary (decision 41):** the run line's three presses, all
+    orange with the sparkle; Analyze / Re-analyze / Analyzing… on widgets;
+    Run / Rerun on calls; "Not analyzed yet."; the words that named the
+    old buttons name the new ones.
+  - **One call, run on its own (decision 42):** a `group` run scope the
+    host resolves (the call's lenses that are on, plus the widget's own),
+    checked in `LightboxPressScope` before anything is reserved; a re-run
+    replaces the call, cleared first; G needs nothing read first; the
+    estimate's `groups` prices each call; every press guard holds.
+  - **A widget's Analyze (decision 43):** in place of the bare "read" badge
+    on every AI-read widget (COUNTED kept beside it on a counted-read one),
+    from one pure view model (`lightboxCallControls`) through a provider
+    around the board; focusable while disabled, its reason described.
+  - **The Opinion's Analyze (decision 44):** F alone, disabled with the
+    Opinion's own reason while nothing is read and current, the rule shared
+    with the host's refusal; it replaces "Re-read the Opinion".
+  - **One Run per call in the Lenses panel (decision 45):** a small header
+    per call.
+  - **Verification**, after `npm ci` into a real `node_modules`: 494
+    suites / 6,886 tests / 59 snapshots (491 / 6,829 / 59 at `bdec17f`;
+    488 / 6,737 / 59 at `d255b8e`), the same under Node 22 and Node
+    18.20.8; lint 0 errors / 1,133 warnings, identical per file, rule and
+    severity to `d255b8e`; typecheck and build with `verify:bundle` pass,
+    twice; `webview.js` `478dbd9b…`, `extension.js` `0b1af8b7…`, the same
+    both times; visual evidence in
+    `docs/pr-reviews/evidence/lightbox-slice-4i-visual/`, 27 captures,
+    `errors.txt` empty, 186 errors against the base bundle. 23 of the 24
+    new and changed suites fail on `d255b8e`. No live or billable call.
+  - **PR #166's review corrections (2026-10-23).** Astra's review asked
+    for one correction and two follow-ups; all three are made. **F-01:** the
+    Opinion's "up to $0.05" priced its input at the digest's bound but its
+    output at the typical reply, so it was no cap; it now reads "≈ $0.05",
+    like every call's, on its Analyze and Run F, its name and tooltip
+    adding "input at digest limit". **N-01:** every call button's name
+    starts with its visible label ("Run A, call A: …"). **N-02:** the
+    headline's Re-analyze stays mounted, as "Analyzing…", while call A reads
+    it, so its focus holds through the start, the landing, a failure and a
+    stop. The evidence gains four host moments (the headline rerun, landed
+    and failed) and the headline-rerun captures. `epic/lightbox` (PR #165
+    merged, `08b0d22`) is merged in.
+  - **The writer's answers (decisions 47 and 48), in the same PR.** The
+    Opinion run on its own keeps its old reading until the new one lands:
+    shown as the earlier one while it is weighed, replaced when it lands,
+    kept as it was, with the reason, after a failure or a Stop, and held by
+    the board saved after a failure. The inspector's "Re-read this tile" is
+    **Re-analyze this tile**, and the copy that sends the writer to it says
+    "re-analyze". The evidence gains two host moments (the Opinion's
+    Analyze held, then failed) and their captures.
+  - **Verification** on the head with the writer's decisions, after
+    `npm ci` into a real `node_modules`: 495 suites / 6,905 tests / 59
+    snapshots, the same under Node 22 and Node 18.20.8; lint 0 errors /
+    1,133 warnings, identical per file, rule and severity to `d255b8e`;
+    typecheck and build with `verify:bundle` pass, twice; `webview.js`
+    `4297b760…`, `extension.js` `ad1aaf12…`, the same both times.
+    Evidence: 45 captures, `errors.txt` empty; 303 errors against the
+    reviewed head's bundle (F-01 39, N-01 210, N-02 42, decision 47 12)
+    and 207 against the base. Five of the six decision-47 host tests
+    fail with the press back on clear-first. No live or billable call.
+    See the
+    [author response](../../../docs/pr-reviews/pr-166-lightbox-run-controls-review.md).
+    33 of the new and changed tests fail on the reviewed head's source.

@@ -29,15 +29,13 @@ import {
 } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import type { LightboxGroupReplyPorts } from '@/infrastructure/lightbox/LightboxGroupReply';
 import { readLightboxOpinionReply } from '@/infrastructure/lightbox/LightboxOpinionReply';
+import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@shared/constants/lightboxOpinion';
 import {
   buildLightboxOpinionTaskSection,
   buildLightboxOpinionUserMessage,
   type LightboxOpinionDigest
 } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 
-/** Writer-facing: F found nothing current to weigh, so nothing was sent. */
-export const LIGHTBOX_OPINION_NOTHING_TO_WEIGH =
-  'Nothing on the board is read and current, so the Opinion has nothing to weigh. Read the chapter, then the Opinion.';
 const NO_BOARD = 'The board this press read is gone, so the Opinion was not read.';
 
 /** F as prepared with its press: its task alone, with the digest's bound reserved. */

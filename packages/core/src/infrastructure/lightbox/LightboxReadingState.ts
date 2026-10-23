@@ -8,7 +8,10 @@
  *   place: only the lenses its call reads are `pending` (the lens, with any
  *   read together with it: Slice 4C's template and summary), and only their
  *   tiles, withheld blocks and withheld claims are replaced when it lands.
- *   If the re-read fails or is stopped, the earlier readings stay.
+ *   If the re-read fails or is stopped, the earlier readings stay. The
+ *   Opinion's call run on its own takes this path too (its one lens,
+ *   `lightboxPressKeptLens`; epic decision 47), so the old Opinion stays,
+ *   standing and stale marks and all, until a new one lands.
  * - Stopping a run marks its still-running groups `cancelled`; groups that
  *   already landed keep what they hold.
  * - Usage accumulates per group, so a group's usage is what its readings on

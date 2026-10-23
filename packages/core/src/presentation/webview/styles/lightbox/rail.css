@@ -221,3 +221,34 @@
   line-height: 1.5;
   color: var(--pm-amber);
 }
+
+/* ---------- Each call's header in the Lenses panel, with its Run (Slice 4I, epic decision 45) ---------- */
+/* A lens row holds its visually hidden call name. */
+[data-pm-surface="lightbox"] .pm-lb-lens-call .pm-lb-lens-row {
+  position: relative;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-call + .pm-lb-lens-call,
+[data-pm-surface="lightbox"] .pm-lb-lens-row.is-fixed + .pm-lb-lens-call {
+  border-top: 1px solid var(--pm-border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-name {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-head .pm-lb-call {
+  align-items: flex-start;
+}
