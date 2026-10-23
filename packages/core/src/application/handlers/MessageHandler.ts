@@ -380,7 +380,8 @@ export class MessageHandler {
     // The inspector's passages (Slice 4E): the text a pinned paragraph or counted item stands in, by board id.
     this.lightboxPassageHandler = new LightboxPassageHandler(lightboxService, this.postMessage.bind(this), outputChannel);
     // Saved boards (Slice 5A): the rail's shelf, open, delete and (5A.1) rename, over the composition root's library.
-    this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.postMessage.bind(this), outputChannel);
+    // 5A.2: the Boards menu and browser across chapters, and "Open a board file…" through the shell's picker.
+    this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.platform.shell, this.postMessage.bind(this), outputChannel);
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(

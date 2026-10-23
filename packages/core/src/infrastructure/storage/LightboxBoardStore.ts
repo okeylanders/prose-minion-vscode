@@ -36,6 +36,20 @@
  *   live claim holds is busy, for a delete, a read or a rewrite; a claim
  *   abandoned mid-rewrite goes back under its saved name when a listing or
  *   a read finds it (`LightboxBoardClaims`).
+ * - **One file per board (Slice 5A.2, epic decision 41).** A save names the
+ *   file that holds its board (`inPlace`), found at the save's turn, and
+ *   the revision its window last read or wrote: that file is rewritten in
+ *   place, through the same claim. A board no file holds is saved to a new
+ *   file. When the file cannot be rewritten (gone, held by another window,
+ *   a part of it left out, changed by another window since, or a write
+ *   that failed), the board is saved to a new file in the same turn, and
+ *   the file is left as it is: no reading is lost, and nothing unreadable
+ *   is overwritten. A new file names an unnamed board (`defaultName`).
+ * - **Every chapter (Slice 5A.2).** `listAll` lists every source's saved
+ *   boards for the boards browser, with each folder's claims settled as a
+ *   source's listing settles them. A board file the writer picks is
+ *   `locate`d: one of the store's own is read by its id; one anywhere else
+ *   is read (`readOutside`) and never written.
  * - **The reload pointer** is the one new port, `LightboxBoardMemory`: the
  *   workspace's memento in VS Code, holding the file id of the last board
  *   on screen and the folder it belongs to.
@@ -44,16 +58,24 @@
 
 import { randomUUID } from 'node:crypto';
 import * as path from 'node:path';
-import type { LightboxBoard, LightboxBoardsAvailability } from '@messages';
+import type { LightboxBoardsAvailability } from '@messages';
 import type { FileSystem, LogSink, Workspace } from '@/platform';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
-import { decodeLightboxBoardFile, encodeLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import {
-  LightboxBoardClaims,
-  boardFileExists,
-  deleteBoardFileQuietly,
-  freeBoardFileName
-} from '@/infrastructure/storage/LightboxBoardClaims';
+  decodeLightboxBoardFile,
+  encodeLightboxBoardFile,
+  type LightboxBoardFile
+} from '@/infrastructure/storage/LightboxBoardCodec';
+import { LightboxBoardClaims } from '@/infrastructure/storage/LightboxBoardClaims';
+import { writeNewLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardNewFile';
+import {
+  LIGHTBOX_BOARD_POINTER_KEY,
+  type LightboxBoardDeleteResult,
+  type LightboxBoardSaveInput,
+  type LightboxBoardSaveOptions,
+  type LightboxBoardSaveResult,
+  type LightboxBoardStoreOptions
+} from '@/infrastructure/storage/LightboxBoardStoreContracts';
 import {
   LightboxBoardRewrites,
   type LightboxBoardReplaceOptions,
@@ -68,7 +90,9 @@ import {
   errorMessage,
   lightboxBoardFilePath,
   lightboxBoardFolder,
+  lightboxBoardRevision,
   lightboxSavedSourceKey,
+  type LightboxBoardLibraryListing,
   type LightboxBoardListing,
   type LightboxBoardRead,
   type LightboxSavedSourceRef
@@ -81,6 +105,7 @@ export {
   lightboxSavedSourceKey
 } from '@/infrastructure/storage/LightboxBoardFiles';
 export type {
+  LightboxBoardLibraryListing,
   LightboxBoardListing,
   LightboxBoardRead,
   LightboxSavedBoardEntry,
@@ -93,70 +118,21 @@ export type {
   LightboxBoardUpdate
 } from '@/infrastructure/storage/LightboxBoardRewrite';
 
+export {
+  LIGHTBOX_BOARD_POINTER_KEY,
+  type LightboxBoardCommitted,
+  type LightboxBoardDeleteResult,
+  type LightboxBoardMemory,
+  type LightboxBoardSaveInput,
+  type LightboxBoardSaveOptions,
+  type LightboxBoardSaveResult,
+  type LightboxBoardStoreOptions
+} from '@/infrastructure/storage/LightboxBoardStoreContracts';
+
 const encoder = new TextEncoder();
 const LOG = '[LightboxBoardStore]';
-/** A commit that finds its final name taken tries the next free one, this many times at most. */
-const COMMIT_ATTEMPTS = 3;
 /** A read that finds its file gone, then put back, then gone again, reads it this many times at most. */
 const READ_ATTEMPTS = 3;
-
-/** The reload pointer's key in the workspace memento. */
-export const LIGHTBOX_BOARD_POINTER_KEY = 'proseMinion.lightbox.lastBoardOnScreen';
-
-/**
- * The reload pointer's port: a key-value memento scoped to the workspace
- * (`context.workspaceState` in VS Code). Structurally a `vscode.Memento`.
- */
-export interface LightboxBoardMemory {
-  get<T>(key: string): T | undefined;
-  update(key: string, value: unknown): PromiseLike<void>;
-}
-
-export type LightboxBoardSaveResult =
-  | { kind: 'saved'; fileId: string }
-  /** `onlyIfNewText`: a saved board of this source already holds this text; the newest such. */
-  | { kind: 'held'; fileId: string }
-  /** The commit point declined it; nothing was written. */
-  | { kind: 'withdrawn' }
-  | { kind: 'session' }
-  | { kind: 'failed' };
-
-export type LightboxBoardDeleteResult =
-  | { kind: 'deleted' }
-  | { kind: 'missing' }
-  /** Another window's store is rewriting or deleting it now (Slice 5A.1); nothing was deleted. */
-  | { kind: 'busy' }
-  | { kind: 'unreadable' }
-  | { kind: 'unavailable' }
-  | { kind: 'failed' };
-
-export interface LightboxBoardSaveInput {
-  board: LightboxBoard;
-  /** The text the board was measured from. */
-  text: string;
-  /** The writer's name for the board (Slice 5A.1). */
-  name?: string;
-}
-
-export interface LightboxBoardSaveOptions {
-  /** Save only when no saved board of the source holds this text (a source's first measured board). */
-  onlyIfNewText?: boolean;
-  /** The commit point: called synchronously after staging, immediately before each rename. `false` withdraws the save. */
-  beforeCommit?: () => boolean;
-  /** Called synchronously once the file stands, before the store's next operation. */
-  onCommitted?: (fileId: string) => void;
-}
-
-export interface LightboxBoardStoreOptions {
-  memory?: LightboxBoardMemory;
-  now?: () => Date;
-  /** A file larger than this is not read (counted unreadable). */
-  maximumFileBytes?: number;
-  /** The private part of a staged file's name; a random UUID by default. */
-  mintStagingId?: () => string;
-  /** The clock claims are timed by (`LightboxBoardClaims`); `now` by default. A test whose `now` steps once per call gives claims a steady one. */
-  claimNow?: () => Date;
-}
 
 type Location =
   | { kind: 'project'; root: string; directory: string }
@@ -210,6 +186,45 @@ export class LightboxBoardStore {
   }
 
   /**
+   * Every chapter's saved boards, newest first (Slice 5A.2): every source's
+   * folder read whole, with its claims settled as a source's listing
+   * settles them; a folder that cannot be read is counted.
+   */
+  listAll(): Promise<LightboxBoardLibraryListing> {
+    return this.enqueue(async () => {
+      const location = this.location();
+      if (location.kind === 'session') {
+        return { entries: [], unreadable: 0, unreadableFolders: 0 };
+      }
+      const { claimedFolders, ...listing } = await this.files.listAll(location.directory);
+      let settled = false;
+      for (const folder of claimedFolders) {
+        settled = (await this.claims.settleFolder(path.join(location.directory, folder))) || settled;
+      }
+      if (!settled) {
+        return listing;
+      }
+      const { claimedFolders: _again, ...again } = await this.files.listAll(location.directory);
+      return again;
+    });
+  }
+
+  /** The store's id for a board file the writer picked (Slice 5A.2); undefined for a file that is not one of the store's own. */
+  locate(filePath: string): string | undefined {
+    const location = this.location();
+    if (location.kind === 'session' || !isPathWithinRoot(location.directory, filePath)) {
+      return undefined;
+    }
+    const fileId = path.relative(location.directory, filePath).split(path.sep).join('/');
+    return lightboxBoardFilePath(location.directory, fileId) === path.resolve(filePath) ? fileId : undefined;
+  }
+
+  /** A board file the writer picked outside the store's own (Slice 5A.2), decoded; never written. */
+  readOutside(filePath: string): Promise<LightboxBoardRead> {
+    return this.enqueue(() => this.files.readOutside(filePath));
+  }
+
+  /**
    * A saved board's file, decoded. Every `missing` is classified first
    * (PR #164 F-02, and its re-review): a board left under an abandoned claim
    * is put back and read again; one a live claim holds, or one that keeps
@@ -231,31 +246,63 @@ export class LightboxBoardStore {
     });
   }
 
-  /** Write a new file holding the board: staged, then committed by a rename that never overwrites. */
-  save(input: LightboxBoardSaveInput, options: LightboxBoardSaveOptions = {}): Promise<LightboxBoardSaveResult> {
+  /**
+   * Save a board: in place, through `inPlace`, when a file holds it and can
+   * be rewritten (Slice 5A.2); otherwise a new file, staged, then committed
+   * by a rename that never overwrites. `input` may be read at the save's
+   * turn, as the board then stands.
+   */
+  save(
+    input: LightboxBoardSaveInput | (() => LightboxBoardSaveInput | undefined),
+    options: LightboxBoardSaveOptions = {}
+  ): Promise<LightboxBoardSaveResult> {
     return this.enqueue(async () => {
       const location = this.location();
       if (location.kind === 'session') {
         return { kind: 'session' };
       }
-      const folder = lightboxBoardFolder(input.board.source);
+      // One clock reading per save, taken when first needed: a save held back by `onlyIfNewText` reads none.
+      let at: Date | undefined;
+      const savedAt = () => (at ??= this.now());
+      const target = options.inPlace?.holding();
+      const filePath = target && lightboxBoardFilePath(location.directory, target.fileId);
+      if (options.inPlace && target && filePath) {
+        const { update } = options.inPlace;
+        let written: LightboxBoardFile | undefined;
+        const result = await this.rewrites.rewrite(target, filePath, (file) => (written = update(file, savedAt())), {
+          beforeCommit: options.beforeCommit,
+          onCommitted: ({ fileId, revision }) => options.onCommitted?.(fileId, { revision, ...(written?.board.name !== undefined ? { name: written.board.name } : {}) })
+        });
+        if (result.kind === 'replaced' || result.kind === 'unchanged') {
+          return { kind: 'replaced', fileId: result.fileId };
+        }
+        if (result.kind === 'withdrawn') {
+          return result;
+        }
+        // Never lost, never over what cannot be read: the board goes to a new file, and its file stays as it is.
+        this.log.appendLine(`${LOG} ${target.fileId} could not be saved in place (${result.kind}); the board is saved to a new file.`);
+      }
+      const saving = typeof input === 'function' ? input() : input;
+      if (!saving) {
+        return { kind: 'withdrawn' };
+      }
       if (options.onlyIfNewText) {
         // The source's whole history, never a page of it: the newest file holding this text.
-        const key = lightboxSavedSourceKey(input.board.source);
-        const same = (await this.files.list(location.directory, input.board.source)).entries
-          .find((entry) => entry.sourceKey === key && entry.contentHash === input.board.source.contentHash);
+        const key = lightboxSavedSourceKey(saving.board.source);
+        const same = (await this.files.list(location.directory, saving.board.source)).entries
+          .find((entry) => entry.sourceKey === key && entry.contentHash === saving.board.source.contentHash);
         if (same) {
           return { kind: 'held', fileId: same.fileId };
         }
       }
-      const savedAt = this.now();
-      const json = encodeLightboxBoardFile({ board: input.board, text: input.text, savedAt, name: input.name });
+      const name = saving.name ?? options.defaultName?.(savedAt());
+      const json = encodeLightboxBoardFile({ board: saving.board, text: saving.text, savedAt: savedAt(), name });
       const check = decodeLightboxBoardFile(json);
       if (check.kind !== 'board' || check.dropped > 0) {
         this.log.appendLine(`${LOG} A board would not read back whole (${check.kind === 'invalid' ? `${check.reason} at ${check.at ?? 'the file'}` : `${check.dropped} parts dropped`}); it was not saved.`);
         return { kind: 'failed' };
       }
-      return this.writeNew(location, folder, savedAt, encoder.encode(json), options);
+      return this.writeNew(location, lightboxBoardFolder(saving.board.source), savedAt(), encoder.encode(json), name, options);
     });
   }
 
@@ -409,53 +456,34 @@ export class LightboxBoardStore {
     folderName: string,
     savedAt: Date,
     bytes: Uint8Array,
+    name: string | undefined,
     options: LightboxBoardSaveOptions
   ): Promise<LightboxBoardSaveResult> {
-    const folder = path.join(location.directory, folderName);
-    // Private to this write: another store on this workspace never stages under the same name.
-    const temporaryPath = path.join(folder, `.${savedAt.toISOString().replace(/[:.]/g, '-')}.board.json.tmp-${this.mintStagingId()}`);
-    if (!isPathWithinRoot(location.directory, temporaryPath)) {
-      this.log.appendLine(`${LOG} Refused to write outside ${LIGHTBOX_BOARDS_DISPLAY_PATH}.`);
-      return { kind: 'failed' };
-    }
-    try {
-      await this.fileSystem.createDirectory(folder);
-      await this.fileSystem.writeFile(temporaryPath, bytes);
-    } catch (error) {
-      return this.failWrite(temporaryPath, error);
-    }
-    for (let attempt = 1; ; attempt++) {
-      const name = await freeBoardFileName(this.fileSystem, folder, savedAt.toISOString().replace(/[:.]/g, '-'));
-      const finalPath = path.join(folder, name);
-      // The commit point: nothing is awaited between it and the rename that commits.
-      if (options.beforeCommit && !options.beforeCommit()) {
-        await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-        return { kind: 'withdrawn' };
-      }
-      try {
-        await this.fileSystem.rename(temporaryPath, finalPath, { overwrite: false });
-      } catch (error) {
-        // Another writer took the name between the look and the rename: take the next one; this save's bytes are still staged.
-        if (attempt < COMMIT_ATTEMPTS && await boardFileExists(this.fileSystem, finalPath) && await boardFileExists(this.fileSystem, temporaryPath)) {
-          continue;
+    const result = await writeNewLightboxBoardFile(this.fileSystem, this.log, this.mintStagingId, {
+      directory: location.directory,
+      folderName,
+      savedAt,
+      bytes,
+      beforeCommit: options.beforeCommit,
+      onCommitted: (fileId) => {
+        if (this.lastSaveFailed) {
+          this.log.appendLine(`${LOG} Boards are saved again after an earlier failure.`);
         }
-        return this.failWrite(temporaryPath, error);
+        this.lastSaveFailed = false;
+        this.log.appendLine(`${LOG} Saved ${fileId} (${bytes.byteLength} bytes).`);
+        options.onCommitted?.(fileId, { revision: lightboxBoardRevision(bytes), ...(name !== undefined ? { name } : {}) });
       }
-      const fileId = `${folderName}/${name}`;
-      if (this.lastSaveFailed) {
-        this.log.appendLine(`${LOG} Boards are saved again after an earlier failure.`);
-      }
-      this.lastSaveFailed = false;
-      this.log.appendLine(`${LOG} Saved ${fileId} (${bytes.byteLength} bytes).`);
-      options.onCommitted?.(fileId);
-      return { kind: 'saved', fileId };
+    });
+    switch (result.kind) {
+      case 'saved':
+      case 'withdrawn':
+        return result;
+      case 'refused':
+        return { kind: 'failed' };
+      case 'failed':
+        this.lastSaveFailed = true;
+        this.log.appendLine(`${LOG} Could not save a board; it stays for this session: ${errorMessage(result.error)}`);
+        return { kind: 'failed' };
     }
-  }
-
-  private async failWrite(temporaryPath: string, error: unknown): Promise<LightboxBoardSaveResult> {
-    this.lastSaveFailed = true;
-    this.log.appendLine(`${LOG} Could not save a board; it stays for this session: ${errorMessage(error)}`);
-    await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
-    return { kind: 'failed' };
   }
 }

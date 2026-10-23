@@ -19,7 +19,8 @@ export type LightboxBoardOrigin =
   | { kind: 'built' }
   | {
       kind: 'saved';
-      fileId: string;
+      /** The store's file it was opened from; absent for a file opened from outside the store (Slice 5A.2). */
+      fileId?: string;
       /** Epoch ms when the file was written. */
       savedAt: number;
       /** Parts the codec could not read and left out. */
@@ -39,6 +40,12 @@ export interface LightboxRetainedBoard {
   origin: LightboxBoardOrigin;
   /** The saved file that holds it: the one it was opened from, or last saved to (Slice 5A). */
   savedFileId?: string;
+  /**
+   * The bytes of that file as this window last read or wrote them, by
+   * SHA-256 (Slice 5A.2): a save rewrites the file in place only while it
+   * still holds them, so no other window's change is written over.
+   */
+  savedRevision?: string;
   /** The writer's name for the board (Slice 5A.1). Writer text: never logged. */
   name?: string;
   /**
@@ -55,7 +62,10 @@ export interface LightboxSavedAdoption {
   board: LightboxBoard;
   /** The text its file holds, which it was measured from. */
   text: string;
-  fileId: string;
+  /** The store's file; absent for a board file opened from outside the store, which no file of the store holds yet (Slice 5A.2). */
+  fileId?: string;
+  /** The bytes read, by SHA-256 (Slice 5A.2). */
+  revision?: string;
   savedAt: number;
   dropped: number;
   /** Where its file is now, for "Read the current text" and Bring's check; none for a selection. */
@@ -70,10 +80,21 @@ export interface LightboxSavableBoard {
   text: string;
   origin: LightboxBoardOrigin;
   savedFileId?: string;
+  savedRevision?: string;
   rereadPath?: string;
   name?: string;
   /** It is the board on screen. */
   current: boolean;
+}
+
+/** What a committed write of a board's file left there (Slice 5A.2; `markSaved`). */
+export interface LightboxSavedWrite {
+  /** The bytes written, by SHA-256. */
+  revision?: string;
+  /** The name it was saved under: the board takes it when it has none. */
+  name?: string;
+  /** A rewrite of one tile or the name: the board follows it only when the file held `from`, the revision it knew. */
+  from?: string;
 }
 
 export class LightboxRetainedBoards {
@@ -110,6 +131,7 @@ export class LightboxRetainedBoards {
       text: entry.text,
       origin: entry.origin,
       savedFileId: entry.savedFileId,
+      savedRevision: entry.savedRevision,
       rereadPath: entry.rereadPath,
       ...(entry.name !== undefined ? { name: entry.name } : {}),
       current: this.current() === entry
@@ -132,13 +154,27 @@ export class LightboxRetainedBoards {
    * is adopted only through the store's queue, after every save before it
    * has committed; so the latest commit names the latest saved state.
    */
-  markSaved(boardId: string, fileId: string): boolean {
+  markSaved(boardId: string, fileId: string, write: LightboxSavedWrite = {}): boolean {
     const entry = this.byId(boardId);
     if (!entry) {
       return false;
     }
+    if (write.from !== undefined) {
+      // A rewrite of one spark or the name (Slice 5A.2): known only when this board knew the file it rewrote.
+      if (entry.savedFileId === fileId && entry.savedRevision === write.from) {
+        entry.savedRevision = write.revision;
+      }
+      return true;
+    }
     entry.savedFileId = fileId;
+    entry.savedRevision = write.revision;
+    entry.name ??= write.name;
     return true;
+  }
+
+  /** The id of the retained board a saved file holds, if any (Slice 5A.2). */
+  boardOfFile(fileId: string): string | undefined {
+    return [...this.entries.values()].find((entry) => entry.savedFileId === fileId)?.board.boardId;
   }
 
   /** A saved file was deleted: no retained board is held in it any more. */
@@ -146,6 +182,7 @@ export class LightboxRetainedBoards {
     for (const entry of this.entries.values()) {
       if (entry.savedFileId === fileId) {
         entry.savedFileId = undefined;
+        entry.savedRevision = undefined;
       }
     }
   }

@@ -262,7 +262,9 @@ export enum MessageType {
   LIGHTBOX_OPEN_BOARD = 'lightbox_open_board',
   LIGHTBOX_DELETE_BOARD = 'lightbox_delete_board',
   // Slice 5A.1: name a saved board, or the board on screen; answered with LIGHTBOX_BOARDS
-  LIGHTBOX_RENAME_BOARD = 'lightbox_rename_board'
+  LIGHTBOX_RENAME_BOARD = 'lightbox_rename_board',
+  // Slice 5A.2: open a board file the writer picks with the system picker; answered with LIGHTBOX_BOARDS
+  LIGHTBOX_OPEN_BOARD_FILE = 'lightbox_open_board_file'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

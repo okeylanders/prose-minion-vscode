@@ -13,6 +13,17 @@
  *   it is listed, newest first, and every file that does not read as a board
  *   is counted. A summary is read once per file size and modification time.
  *   Nothing is hidden by a cap; the rail pages what it shows, and says so.
+ * - **Every chapter (Slice 5A.2).** `listAll` reads every source's folder
+ *   under `prose-minion/boards/`, for the boards browser: each folder's
+ *   boards of its own source (a file moved into another source's folder is
+ *   not listed, as a source's own listing does not list it), a folder that
+ *   cannot be read counted, never taken for an empty one.
+ * - **Outside the store (Slice 5A.2).** `readOutside` reads a board file the
+ *   writer picked anywhere, by its path, and decodes it; nothing here ever
+ *   writes it.
+ * - **Revisions (Slice 5A.2).** A read names the bytes it decoded by their
+ *   SHA-256 (`revision`), so a save in place rewrites only a file still as
+ *   the window last read or wrote it.
  * - **Logs** carry file ids, counts and reasons, never the writer's text.
  */
 
@@ -38,6 +49,8 @@ export const LIGHTBOX_BOARDS_DISPLAY_PATH = 'prose-minion/boards';
 /** A file id: a source's folder and a timestamped name, both the host's own. */
 export const LIGHTBOX_BOARD_FILE_ID = /^([a-z0-9]+(?:-[a-z0-9]+)*)\/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json)$/;
 const FILE_NAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?:-\d+)?\.board\.json$/;
+/** A source's folder: its slug, then its hash (the file id's first part). */
+const FOLDER_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Which source a saved board belongs to, portably: its kind, its workspace-relative path and, for a selection, its lines. */
 export type LightboxSavedSourceRef = Pick<LightboxSource, 'kind' | 'displayPath' | 'startLine' | 'endLine'>;
@@ -48,6 +61,8 @@ export interface LightboxSavedBoardEntry {
   /** The writer's name for the board (Slice 5A.1). Writer text: never logged. */
   name?: string;
   savedAt: number;
+  /** The board's first source: its kind, its workspace-relative path and, for a selection, its lines (Slice 5A.2). */
+  source: LightboxSavedSourceRef;
   /** `lightboxSavedSourceKey` of the board's first source. */
   sourceKey: string;
   contentHash: string;
@@ -73,8 +88,19 @@ export interface LightboxBoardListing {
   claimed?: true;
 }
 
+/** Every chapter's saved boards (Slice 5A.2), and what could not be read. */
+export interface LightboxBoardLibraryListing {
+  /** Every saved board of every source, newest first. */
+  entries: LightboxSavedBoardEntry[];
+  /** Files that could not be read as boards; left as they are. */
+  unreadable: number;
+  /** Source folders that could not be read at all; never taken for empty ones. */
+  unreadableFolders: number;
+}
+
 export type LightboxBoardRead =
-  | { kind: 'board'; fileId: string; file: LightboxBoardFile; dropped: number; droppedAt: string[] }
+  /** `revision`: the SHA-256 of the bytes decoded (Slice 5A.2). */
+  | { kind: 'board'; fileId: string; file: LightboxBoardFile; dropped: number; droppedAt: string[]; revision: string }
   | { kind: 'missing' }
   /** `reason` is host words (`LIGHTBOX_BOARD_INVALID_REASONS`, or the store's own). */
   | { kind: 'unreadable'; reason: string }
@@ -154,6 +180,15 @@ export class LightboxBoardFiles {
     return { read: this.decode(fileId, bytes), bytes };
   }
 
+  /**
+   * A board file the writer picked, anywhere (Slice 5A.2): read by its path
+   * and decoded, never written. Its log names no path: a path is the
+   * writer's own.
+   */
+  async readOutside(filePath: string): Promise<LightboxBoardRead> {
+    return (await this.readWithBytes('a board file outside the boards folder', filePath)).read;
+  }
+
   private decode(fileId: string, bytes: Uint8Array): LightboxBoardRead {
     const decoded = decodeLightboxBoardFile(decoder.decode(bytes));
     if (decoded.kind === 'invalid') {
@@ -164,36 +199,87 @@ export class LightboxBoardFiles {
     if (decoded.dropped > 0) {
       this.log.appendLine(`${LOG} ${fileId}: ${decoded.dropped} parts could not be read and were left out (${decoded.droppedAt.join(', ')}).`);
     }
-    return { kind: 'board', fileId, file: decoded.file, dropped: decoded.dropped, droppedAt: decoded.droppedAt };
+    return { kind: 'board', fileId, file: decoded.file, dropped: decoded.dropped, droppedAt: decoded.droppedAt, revision: lightboxBoardRevision(bytes) };
   }
 
   /** Every readable board of `source` in its folder, newest first, and how many files there could not be read. */
   async list(directory: string, source: LightboxSavedSourceRef): Promise<LightboxBoardListing> {
-    const folderName = lightboxBoardFolder(source);
+    const key = lightboxSavedSourceKey(source);
+    const folder = await this.readFolder(directory, lightboxBoardFolder(source), (entry) => entry.sourceKey === key);
+    return folder === 'unreadable' ? { entries: [], unreadable: 0 } : folder;
+  }
+
+  /**
+   * Every source's folder (Slice 5A.2): each folder's boards of its own
+   * source, newest first across them all, and the folders holding claims,
+   * for the store to settle.
+   */
+  async listAll(directory: string): Promise<LightboxBoardLibraryListing & { claimedFolders: string[] }> {
+    let folders: string[];
+    try {
+      folders = (await this.fileSystem.readDirectory(directory))
+        .filter(([name, type]) => type === FileType.Directory && FOLDER_NAME.test(name)).map(([name]) => name).sort();
+    } catch (error) {
+      if (isMissingFileSystemPathError(error)) {
+        return { entries: [], unreadable: 0, unreadableFolders: 0, claimedFolders: [] };
+      }
+      this.log.appendLine(`${LOG} Could not list ${LIGHTBOX_BOARDS_DISPLAY_PATH}: ${errorMessage(error)}`);
+      return { entries: [], unreadable: 0, unreadableFolders: 1, claimedFolders: [] };
+    }
+    const listing = { entries: [] as LightboxSavedBoardEntry[], unreadable: 0, unreadableFolders: 0, claimedFolders: [] as string[] };
+    for (const name of folders) {
+      const folder = await this.listFolder(directory, name);
+      if (folder === 'unreadable') {
+        listing.unreadableFolders += 1;
+        continue;
+      }
+      listing.entries.push(...folder.entries);
+      listing.unreadable += folder.unreadable;
+      if (folder.claimed) {
+        listing.claimedFolders.push(name);
+      }
+    }
+    listing.entries.sort(newestFirst);
+    return listing;
+  }
+
+  /** One source folder's boards of its own source, by the folder's name (Slice 5A.2); `unreadable` when the folder could not be read. */
+  listFolder(directory: string, folderName: string): Promise<LightboxBoardListing | 'unreadable'> {
+    return this.readFolder(directory, folderName, (entry) => lightboxBoardFolder(entry.source) === folderName);
+  }
+
+  private async readFolder(
+    directory: string,
+    folderName: string,
+    keep: (entry: LightboxSavedBoardEntry) => boolean
+  ): Promise<LightboxBoardListing | 'unreadable'> {
     const folder = path.join(directory, folderName);
+    if (!isPathWithinRoot(directory, folder)) {
+      return 'unreadable';
+    }
     let onDisk: Array<[string, FileType]>;
     try {
       onDisk = (await this.fileSystem.readDirectory(folder)).filter(([, type]) => type === FileType.File);
     } catch (error) {
-      if (!isMissingFileSystemPathError(error)) {
-        this.log.appendLine(`${LOG} Could not list ${LIGHTBOX_BOARDS_DISPLAY_PATH}/${folderName}: ${errorMessage(error)}`);
+      if (isMissingFileSystemPathError(error)) {
+        return { entries: [], unreadable: 0 };
       }
-      return { entries: [], unreadable: 0 };
+      this.log.appendLine(`${LOG} Could not list ${LIGHTBOX_BOARDS_DISPLAY_PATH}/${folderName}: ${errorMessage(error)}`);
+      return 'unreadable';
     }
     const names = onDisk.map(([name]) => name).filter((name) => FILE_NAME.test(name));
     const claimed = onDisk.some(([name]) => LIGHTBOX_BOARD_CLAIM.test(name));
-    const key = lightboxSavedSourceKey(source);
     const entries: LightboxSavedBoardEntry[] = [];
     let unreadable = 0;
     for (const name of names.sort().reverse()) {
       const summary = await this.summaryOf(`${folderName}/${name}`, path.join(folder, name));
       if (summary === 'unreadable') {
         unreadable += 1;
-      } else if (summary?.sourceKey === key) {
+      } else if (summary && keep(summary)) {
         entries.push(summary);
       }
     }
-    entries.sort((left, right) => right.savedAt - left.savedAt || (left.fileId < right.fileId ? 1 : -1));
+    entries.sort(newestFirst);
     return { entries, unreadable, ...(claimed ? { claimed: true as const } : {}) };
   }
 
@@ -223,7 +309,17 @@ export class LightboxBoardFiles {
   }
 }
 
-/** A saved board as the rail lists it: its name, when, its words, the lenses read (and which are stale), its cost and its models. */
+/** Newest first; files saved in the same millisecond by name, the later first. */
+function newestFirst(left: LightboxSavedBoardEntry, right: LightboxSavedBoardEntry): number {
+  return right.savedAt - left.savedAt || (left.fileId < right.fileId ? 1 : -1);
+}
+
+/** The bytes a read decoded, or a write wrote, by their SHA-256 (Slice 5A.2). */
+export function lightboxBoardRevision(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+/** A saved board as the rail lists it: its name, when, its source, its words, the lenses read (and which are stale), its cost and its models. */
 function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardEntry {
   const { board } = file;
   const source = board.sources[0];
@@ -236,6 +332,12 @@ function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardE
     fileId,
     ...(board.name !== undefined ? { name: board.name } : {}),
     savedAt: Date.parse(file.savedAt),
+    source: {
+      kind: source.kind,
+      displayPath: source.displayPath,
+      ...(source.startLine !== undefined ? { startLine: source.startLine } : {}),
+      ...(source.endLine !== undefined ? { endLine: source.endLine } : {})
+    },
     sourceKey: lightboxSavedSourceKey(source),
     contentHash: source.contentHash,
     wordCount: board.sources.reduce((sum, entry) => sum + entry.wordCount, 0),

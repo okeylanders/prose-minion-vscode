@@ -6,16 +6,26 @@
  * one LightboxService, LightboxBoardStore and reading runner. Handlers call
  * it; it constructs nothing.
  *
- * - **Saves (decision 27).** A run that landed readings saves its board as
- *   it stands (`saveAfterRun`). A board measured from new text saves itself
- *   once, unless a saved board of its source already holds that text. Every
- *   save is a new file and nothing is pruned. A committed save records the
- *   file that holds the board (`markSaved`).
+ * - **Saves (decision 27; one file per board from Slice 5A.2, decision
+ *   41).** A run that landed readings saves its board as it stands
+ *   (`saveAfterRun`), rewriting the file that holds it in place. A board
+ *   measured from new text saves itself once, to a new file named by
+ *   default, unless a saved board of its source already holds that text.
+ *   Nothing is pruned. `LightboxBoardSaves`, built here, decides.
  * - **The board on screen (PR #163 F-01).** Every adoption (built, opened or
  *   restored) is the board on screen, so the reload pointer follows it at
  *   once: to the file that already holds it, without writing a duplicate,
  *   or, for a board no file holds yet, to the file its save commits or the
  *   newest one holding its text. Each adoption is pushed to the rail.
+ * - **Every chapter (Slice 5A.2).** The shelf lists the saved boards of
+ *   every source, newest first, for the Boards menu and browser; each row
+ *   carries its source and its name, the file's own or, for a file saved
+ *   before names, the default its source and its time give. Opening one of
+ *   another chapter is a source choice like any other. A board file the
+ *   writer picks with the system picker (`openFile`) opens by its id when it
+ *   is one of the store's own, and otherwise as a snapshot no file of the
+ *   store holds: never written, and its next save writes a new file in the
+ *   store, keeping its board's id and name.
  * - **Open is a snapshot (decision 29).** The board exactly as saved, under
  *   a source ticket taken before anything is awaited: a newer source wins
  *   over it, and it wins over an older one (PR #148 F-01). It is refused at
@@ -60,6 +70,7 @@ import type {
 } from '@messages';
 import type { LogSink, Workspace } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
+import { lightboxDefaultBoardName } from '@shared/constants/lightboxBoardName';
 import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import type { LightboxSavableBoard, LightboxService, LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
@@ -69,6 +80,7 @@ import { lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec
 import type { LightboxBoardRead, LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
 import { LIGHTBOX_BOARD_NOTICES, type LightboxBoardAction } from '@/application/services/lightbox/LightboxBoardNotices';
 import { LightboxBoardEdits, type LightboxBoardRename } from '@/application/services/lightbox/LightboxBoardEdits';
+import { LightboxBoardSaves } from '@/application/services/lightbox/LightboxBoardSaves';
 
 export { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardNotices';
 export type { LightboxBoardAction } from '@/application/services/lightbox/LightboxBoardNotices';
@@ -85,6 +97,7 @@ export interface LightboxBoardLibraryPorts {
     | 'adoptionOf'
     | 'adoptSaved'
     | 'beginSourceRequest'
+    | 'boardOfFile'
     | 'currentBoard'
     | 'currentSavable'
     | 'forgetSaved'
@@ -96,11 +109,19 @@ export interface LightboxBoardLibraryPorts {
     | 'retainedForSource'
     | 'savable'
   >;
-  store: Pick<LightboxBoardStore, 'availability' | 'delete' | 'lastOnScreen' | 'list' | 'read' | 'rememberOnScreen' | 'replace' | 'save'>;
+  store: Pick<
+    LightboxBoardStore,
+    'availability' | 'delete' | 'lastOnScreen' | 'listAll' | 'locate' | 'read' | 'readOutside' | 'rememberOnScreen' | 'replace' | 'save'
+  >;
   runs: Pick<LightboxReadingRunner, 'activeRun'>;
   textSourceResolver: Pick<TextSourceResolver, 'resolve'>;
   workspace: Pick<Workspace, 'workspaceFolders'>;
   outputChannel: LogSink;
+}
+
+export interface LightboxBoardLibraryOptions {
+  /** The zone a default name's time is told in; the host's own when absent (tests pin one). */
+  timeZone?: string;
 }
 
 /** The rail's shelf, naming the board it describes (`null`: none), that board's adoption, and when it was observed. */
@@ -115,17 +136,20 @@ export interface LightboxBoardShelfAnswer {
 export class LightboxBoardLibrary {
   private readonly shelfListeners: ListenerSet<[]>;
   private readonly edits: LightboxBoardEdits;
+  private readonly saves: LightboxBoardSaves;
   private readonly unsubscribe: () => void;
   private restoring?: Promise<void>;
   private observations = 0;
 
-  constructor(private readonly ports: LightboxBoardLibraryPorts) {
+  constructor(private readonly ports: LightboxBoardLibraryPorts, private readonly options: LightboxBoardLibraryOptions = {}) {
     this.shelfListeners = new ListenerSet<[]>(`${LOG} Shelf listener`, ports.outputChannel);
-    this.edits = new LightboxBoardEdits({ ...ports, announce: () => this.shelfListeners.emit() });
+    const announce = () => this.shelfListeners.emit();
+    this.edits = new LightboxBoardEdits({ ...ports, announce });
+    this.saves = new LightboxBoardSaves({ ...ports, announce, timeZone: options.timeZone });
     // Every adoption is the board on screen: the pointer follows it, and the rail hears it.
     this.unsubscribe = ports.service.addOutcomeListener((change) => {
       if (change.kind === 'board') {
-        this.onScreen(change.board);
+        this.saves.onScreen(change.board);
         this.shelfListeners.emit();
       }
     });
@@ -141,14 +165,9 @@ export class LightboxBoardLibrary {
     return this.shelfListeners.add(listener);
   }
 
-  /** A run on `boardId` ended having landed readings: save the board as it stands now. */
-  async saveAfterRun(boardId: string): Promise<void> {
-    const savable = this.ports.service.savable(boardId);
-    if (!savable) {
-      this.ports.outputChannel.appendLine(`${LOG} Nothing saved after a run: its board is gone`);
-      return;
-    }
-    await this.save(savable, false);
+  /** A run on `boardId` ended having landed readings: save the board as it stands now, in its own file (decision 41). */
+  saveAfterRun(boardId: string): Promise<void> {
+    return this.saves.saveAfterRun(boardId);
   }
 
   /**
@@ -173,6 +192,28 @@ export class LightboxBoardLibrary {
     const ticket = service.beginSourceRequest();
     const read = await this.ports.store.read(fileId);
     return this.adopt(ticket, fileId, read, 'open');
+  }
+
+  /**
+   * Open a board file the writer picked with the system picker (Slice
+   * 5A.2): one of the store's own opens by its id, as Open does; any other
+   * is read where it is, never written, and adopted as a snapshot no file of
+   * the store holds, so its next save writes a new file in the store.
+   */
+  async openFile(filePath: string): Promise<LightboxBoardAction> {
+    const fileId = this.ports.store.locate(filePath);
+    if (fileId) {
+      return this.open(fileId);
+    }
+    const { service } = this.ports;
+    if (this.reading(service.currentBoard())) {
+      this.ports.outputChannel.appendLine(`${LOG} Open of a board file refused: a run is reading the board on screen`);
+      return { notice: LIGHTBOX_BOARD_NOTICES.reading };
+    }
+    // The writer's choice is concrete once the picker returns: the ticket comes before the read.
+    const ticket = service.beginSourceRequest();
+    const read = await this.ports.store.readOutside(filePath);
+    return this.adopt(ticket, undefined, read, 'open');
   }
 
   /** Name a board, rename it, or unname it (Slice 5A.1; `LightboxBoardEdits`). */
@@ -211,29 +252,27 @@ export class LightboxBoardLibrary {
     const savable = (boardId ? service.savable(boardId) : undefined) ?? service.currentSavable();
     // This shelf's place among the others, taken before anything is awaited (PR #163 F-05).
     const observation = ++this.observations;
-    if (!savable) {
-      return { boardId: null, adoption: null, observation, shelf: { availability: store.availability(), boards: [], unreadable: 0 } };
-    }
     // Captured before the first await, and checked by `describesCurrent` before the shelf leaves.
-    const adoption = service.adoptionOf(savable.board.boardId) ?? null;
-    const snapshot = await this.snapshotState(savable);
-    // The listing is the last thing awaited: answers leave in the store's order.
-    const listing = await store.list(savable.board.source);
-    const latest = service.savable(savable.board.boardId);
+    const adoption = savable ? service.adoptionOf(savable.board.boardId) ?? null : null;
+    const snapshot = savable && await this.snapshotState(savable);
+    // The listing is the last thing awaited: answers leave in the store's order. Every chapter's (Slice 5A.2).
+    const listing = await store.listAll();
+    const latest = savable && service.savable(savable.board.boardId);
     const boards = listing.entries.map((entry): LightboxSavedBoardSummary => ({
       fileId: entry.fileId,
-      ...(entry.name !== undefined ? { name: entry.name } : {}),
+      name: entry.name ?? lightboxDefaultBoardName(entry.source, entry.savedAt, this.options.timeZone),
       savedAt: entry.savedAt,
+      source: entry.source,
       wordCount: entry.wordCount,
       lenses: entry.lenses,
       staleLenses: entry.staleLenses,
       ...(entry.costUsd !== undefined ? { costUsd: entry.costUsd } : {}),
       ...(entry.models.length > 0 ? { models: entry.models } : {}),
-      onScreen: entry.fileId === latest?.savedFileId
+      onScreen: latest?.savedFileId !== undefined && entry.fileId === latest.savedFileId
     }));
     const name = latest?.name;
     return {
-      boardId: savable.board.boardId,
+      boardId: savable?.board.boardId ?? null,
       adoption,
       observation,
       shelf: {
@@ -241,6 +280,7 @@ export class LightboxBoardLibrary {
         ...(name !== undefined ? { name } : {}),
         boards,
         unreadable: listing.unreadable,
+        ...(listing.unreadableFolders > 0 ? { unreadableFolders: listing.unreadableFolders } : {}),
         ...(snapshot ? { snapshot } : {})
       }
     };
@@ -267,15 +307,20 @@ export class LightboxBoardLibrary {
     await this.adopt(ticket, fileId, read, 'restore');
   }
 
-  /** Adopt a read file under `ticket`, with nothing awaited between the last check and the adoption. */
-  private adopt(ticket: LightboxSourceTicket, fileId: string, read: LightboxBoardRead, mode: 'open' | 'restore'): LightboxBoardAction {
+  /**
+   * Adopt a read file under `ticket`, with nothing awaited between the last
+   * check and the adoption. `fileId` is the store's file; none for a board
+   * file opened from outside the store (Slice 5A.2).
+   */
+  private adopt(ticket: LightboxSourceTicket, fileId: string | undefined, read: LightboxBoardRead, mode: 'open' | 'restore'): LightboxBoardAction {
     const { service, outputChannel } = this.ports;
+    const what = fileId ?? 'a board file outside the boards folder';
     if (!service.isCurrentRequest(ticket)) {
-      outputChannel.appendLine(`${LOG} Dropped the ${mode} of ${fileId}: a newer source was chosen`);
+      outputChannel.appendLine(`${LOG} Dropped the ${mode} of ${what}: a newer source was chosen`);
       return {};
     }
     const fail = (message: string): LightboxBoardAction => {
-      outputChannel.appendLine(`${LOG} Could not ${mode} ${fileId}: ${message}`);
+      outputChannel.appendLine(`${LOG} Could not ${mode} ${what}: ${message}`);
       if (mode === 'open') {
         service.refuseSource(ticket, { reason: 'unreadable', message, suggestion: OPEN_SUGGESTION });
       }
@@ -293,24 +338,26 @@ export class LightboxBoardLibrary {
     }
     // A run that began while the file was read keeps its board.
     if (this.reading(service.currentBoard()) || this.reading(service.retainedForSource(held.board.source))) {
-      outputChannel.appendLine(`${LOG} The ${mode} of ${fileId} was refused: a run is reading the board it would replace`);
+      outputChannel.appendLine(`${LOG} The ${mode} of ${what} was refused: a run is reading the board it would replace`);
       return { notice: LIGHTBOX_BOARD_NOTICES.reading };
     }
+    const savedAt = Date.parse(read.file.savedAt);
     const adopted = service.adoptSaved({
       board: held.board,
       text: held.text,
-      fileId,
-      savedAt: Date.parse(read.file.savedAt),
+      ...(fileId !== undefined ? { fileId, revision: read.revision } : {}),
+      savedAt,
       dropped: read.dropped,
       rereadPath: this.rereadPathOf(held.board),
-      ...(held.name !== undefined ? { name: held.name } : {})
+      // The name its file shows: its own, or, for a file saved before names, the default its source and time give (Slice 5A.2).
+      name: held.name ?? lightboxDefaultBoardName(held.board.source, savedAt, this.options.timeZone)
     }, ticket);
     if (adopted.kind === 'superseded') {
       return {};
     }
     // The adoption moved the reload pointer to this file (`onScreen`).
     outputChannel.appendLine(
-      `${LOG} ${mode === 'open' ? 'Opened' : 'Restored'} ${fileId}` +
+      `${LOG} ${mode === 'open' ? 'Opened' : 'Restored'} ${what}` +
         (read.dropped > 0 ? `; ${read.dropped} unreadable parts were left out` : '')
     );
     return {};
@@ -318,56 +365,6 @@ export class LightboxBoardLibrary {
 
   private reading(board: LightboxBoard | undefined): boolean {
     return board !== undefined && this.ports.runs.activeRun(board.boardId) !== undefined;
-  }
-
-  /**
-   * A board adopted is on screen (PR #163 F-01). A file already holds it:
-   * the reload pointer moves there, and nothing is written. A board measured
-   * from text no saved board of its source holds saves itself, once; the
-   * pointer follows that save, or the newest file holding its text.
-   * Synchronous, from the adoption itself, so it is the newest choice's.
-   */
-  private onScreen(board: LightboxBoard): void {
-    const savable = this.ports.service.savable(board.boardId);
-    if (!savable) {
-      return;
-    }
-    if (savable.savedFileId) {
-      this.pointAt(board, savable.savedFileId);
-    } else if (savable.origin.kind === 'built') {
-      void this.save(savable, true);
-    }
-  }
-
-  private async save(savable: LightboxSavableBoard, onlyIfNewText: boolean): Promise<void> {
-    const { service, store, outputChannel } = this.ports;
-    const { board, text } = savable;
-    let result: Awaited<ReturnType<LightboxBoardLibraryPorts['store']['save']>>;
-    try {
-      result = await store.save({ board, text, ...(savable.name !== undefined ? { name: savable.name } : {}) }, {
-        onlyIfNewText,
-        onCommitted: (fileId) => {
-          service.markSaved(board.boardId, fileId);
-          this.pointAt(board, fileId);
-          this.shelfListeners.emit();
-        }
-      });
-    } catch (error) {
-      outputChannel.appendLine(`${LOG} A board could not be saved: ${error instanceof Error ? error.message : String(error)}`);
-      return;
-    }
-    if (result.kind === 'held') {
-      // A saved board already holds this text: a reload reopens that one while this board is on screen.
-      this.pointAt(board, result.fileId);
-    } else if (result.kind === 'failed') {
-      this.shelfListeners.emit();
-    }
-  }
-
-  private pointAt(board: LightboxBoard, fileId: string): void {
-    if (this.ports.service.currentBoard()?.boardId === board.boardId) {
-      this.ports.store.rememberOnScreen(fileId);
-    }
   }
 
   /** Whether a snapshot's file still holds the text it was read from; undefined for a board built now. */
@@ -388,7 +385,12 @@ export class LightboxBoardLibrary {
         }
       }
     }
-    return { fileId: origin.fileId, savedAt: origin.savedAt, file, dropped: origin.dropped };
+    return {
+      ...(origin.fileId !== undefined ? { fileId: origin.fileId } : { outside: true as const }),
+      savedAt: origin.savedAt,
+      file,
+      dropped: origin.dropped
+    };
   }
 
   /** Where a saved file source is now: its workspace-relative path under the one open folder. */

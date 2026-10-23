@@ -89,6 +89,8 @@ export interface LightboxBoardsHostOptions {
   now?: () => number;
   /** The store's claim clock (PR #164 F-01): the first save's moment by default, steady, so every claim taken here is live. */
   claimNow?: () => number;
+  /** The zone default names are told in (Slice 5A.2); UTC by default, so names are the same on every machine. */
+  timeZone?: string;
 }
 
 export interface LightboxBoardsTab {
@@ -114,6 +116,8 @@ export interface LightboxBoardsTab {
 
 export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}) {
   const fileSystem = options.fileSystem ?? new MemoryFileSystem();
+  // The boards browser lists every chapter's folder (Slice 5A.2).
+  fileSystem.listsFolders = true;
   const memory = options.memory ?? boardMemory();
   const folders = options.folders ?? [WORKSPACE];
   const workspace = createFakeWorkspace({ workspaceFolders: () => folders.map((folder) => ({ path: folder, name: path.basename(folder) })) });
@@ -167,7 +171,17 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     return { text, relativePaths: [displayPath], displayPath };
   });
   const resolver = { resolve } as unknown as TextSourceResolver;
-  const library = new LightboxBoardLibrary({ service, store, runs: runner, textSourceResolver: resolver, workspace, outputChannel: log });
+  const library = new LightboxBoardLibrary(
+    { service, store, runs: runner, textSourceResolver: resolver, workspace, outputChannel: log },
+    { timeZone: options.timeZone ?? 'UTC' }
+  );
+  // "Open a board file…" (Slice 5A.2): what the system picker returns next; dismissed (undefined) by default.
+  const picker = { next: undefined as string | undefined };
+  const pickFile = jest.fn(async () => {
+    const picked = picker.next;
+    picker.next = undefined;
+    return picked === undefined ? undefined : { fsPath: picked, uri: `file://${picked}` };
+  });
 
   /** Put a chapter in the workspace (or change it on disk); returns its absolute path. */
   const writeChapter = (relativePath: string, text: string): string => {
@@ -217,7 +231,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     const shelf = new LightboxContextShelf();
     const boards = new LightboxHandler(service, resolver, { pickFile: jest.fn() }, projectPorts, post, log);
     const readings = new LightboxReadingHandler(service, runner, shelf, resolver, { pickFile: jest.fn() }, projectPorts, post, log, library);
-    const saved = new LightboxBoardsHandler(library, post, log);
+    const saved = new LightboxBoardsHandler(library, { pickFile }, post, log);
     const router = new MessageRouter();
     boards.registerRoutes(router);
     readings.registerRoutes(router);
@@ -277,6 +291,26 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     .map((file) => path.posix.relative(path.posix.join(WORKSPACE, 'prose-minion', 'boards'), file))
     .sort();
 
+  /**
+   * An earlier save of a board in a file of its own (Slice 5A.2): a copy of
+   * `fileId`'s bytes, named a minute before it, as 5A's one file per save
+   * left them, or as a save that could not be made in place leaves one. A
+   * board's later saves rewrite its own file, so a test that needs two
+   * snapshots of one board makes the earlier one this way. Returns its id.
+   */
+  const keepEarlierSave = (fileId: string): string => {
+    const boards = path.posix.join(WORKSPACE, 'prose-minion', 'boards');
+    const [folder, name] = fileId.split('/');
+    const iso = name.replace(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z.*$/, '$1T$2:$3:$4.$5Z');
+    const copy = `${folder}/${new Date(Date.parse(iso) - 60_000).toISOString().replace(/[:.]/g, '-')}.board.json`;
+    const bytes = fileSystem.files.get(path.posix.join(boards, fileId));
+    if (!bytes) {
+      throw new Error(`${fileId} is not saved`);
+    }
+    fileSystem.files.set(path.posix.join(boards, copy), bytes);
+    return copy;
+  };
+
   return {
     fileSystem,
     memory,
@@ -285,6 +319,8 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     runInitial,
     store,
     library,
+    picker,
+    pickFile,
     resolve,
     lines,
     logged: () => lines.join('\n'),
@@ -293,6 +329,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     holdPrepare,
     holdBoardRead,
     openTab,
-    savedFiles
+    savedFiles,
+    keepEarlierSave
   };
 }

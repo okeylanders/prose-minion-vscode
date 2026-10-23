@@ -16,6 +16,10 @@
  * - `LIGHTBOX_RENAME_BOARD` (Slice 5A.1) names a saved file in place, or the
  *   board on screen and the file that holds it; the name is the writer's
  *   words, so it is never logged.
+ * - `LIGHTBOX_OPEN_BOARD_FILE` (Slice 5A.2) shows the system picker for a
+ *   board file and opens the one the writer picks; dismissing it changes
+ *   nothing. A delete or a rename from the browser may come with no board
+ *   on screen (`boardId: null`).
  *
  * Every answer is `LIGHTBOX_BOARDS`, echoing its request's id. From this
  * webview's first board message on, each adoption and each committed save
@@ -28,10 +32,11 @@
  * handler's are. Logs carry file ids and counts, never text.
  */
 
-import type { LogSink } from '@/platform';
+import type { LogSink, ShellService } from '@/platform';
 import {
   LightboxBoardsMessage,
   LightboxDeleteBoardMessage,
+  LightboxOpenBoardFileMessage,
   LightboxOpenBoardMessage,
   LightboxRenameBoardMessage,
   LightboxRequestBoardsMessage,
@@ -47,7 +52,12 @@ const LOG = '[LightboxBoardsHandler]';
 /** A file id is a slug folder and a timestamped name; anything longer is not one of the host's. */
 const FILE_ID_CHARACTERS = 160;
 
-export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'describesCurrent' | 'open' | 'remove' | 'rename' | 'restore' | 'shelf'>;
+export type LightboxBoardLibraryPort = Pick<
+  LightboxBoardLibrary,
+  'addShelfListener' | 'describesCurrent' | 'open' | 'openFile' | 'remove' | 'rename' | 'restore' | 'shelf'
+>;
+/** The host's file picker, for "Open a board file…" (Slice 5A.2). */
+export type LightboxBoardFilePicker = Pick<ShellService, 'pickFile'>;
 type ShelfAnswer = Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
 /** An answer is built again at most this many times while its board keeps changing. */
 const ANSWER_ATTEMPTS = 3;
@@ -60,6 +70,7 @@ export class LightboxBoardsHandler {
 
   constructor(
     private readonly library: LightboxBoardLibraryPort,
+    private readonly picker: LightboxBoardFilePicker,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink
   ) {}
@@ -69,6 +80,7 @@ export class LightboxBoardsHandler {
     router.register(MessageType.LIGHTBOX_OPEN_BOARD, this.handleOpenBoard.bind(this));
     router.register(MessageType.LIGHTBOX_DELETE_BOARD, this.handleDeleteBoard.bind(this));
     router.register(MessageType.LIGHTBOX_RENAME_BOARD, this.handleRenameBoard.bind(this));
+    router.register(MessageType.LIGHTBOX_OPEN_BOARD_FILE, this.handleOpenBoardFile.bind(this));
   }
 
   /** Stop hearing saves; a disposed handler posts nothing more. */
@@ -106,12 +118,35 @@ export class LightboxBoardsHandler {
     await this.answer(requestId, null, notice);
   }
 
+  /**
+   * "Open a board file…" (Slice 5A.2): the host's picker is the input. The
+   * source request begins when the picker returns a file, not when it opens:
+   * dismissing it changes nothing, and is answered with the shelf as it is.
+   */
+  async handleOpenBoardFile(message: LightboxOpenBoardFileMessage): Promise<void> {
+    const payload = message.payload as Partial<LightboxOpenBoardFileMessage['payload']> | undefined;
+    const requestId = boundedName(payload?.requestId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
+    if (!requestId) {
+      this.outputChannel.appendLine(`${LOG} An open of a board file without its request id was ignored.`);
+      return;
+    }
+    this.subscribe();
+    const picked = await this.picker.pickFile({
+      title: 'Open a saved Lightbox board (*.board.json)',
+      openLabel: 'Open board',
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- dialog filter keys are display names.
+      filters: { 'Lightbox boards': ['json'], 'All files': ['*'] }
+    });
+    const { notice } = picked ? await this.library.openFile(picked.fsPath) : {};
+    await this.answer(requestId, null, notice);
+  }
+
   async handleDeleteBoard(message: LightboxDeleteBoardMessage): Promise<void> {
     const payload = message.payload as Partial<LightboxDeleteBoardMessage['payload']> | undefined;
     const requestId = boundedName(payload?.requestId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
-    const boardId = boundedName(payload?.boardId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
+    const boardId = payload?.boardId === null ? null : boundedName(payload?.boardId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
     const fileId = boundedName(payload?.fileId, FILE_ID_CHARACTERS);
-    if (!requestId || !boardId || !fileId) {
+    if (!requestId || boardId === undefined || !fileId) {
       this.outputChannel.appendLine(`${LOG} A delete without its request id, board or file was ignored.`);
       return;
     }
@@ -123,9 +158,9 @@ export class LightboxBoardsHandler {
   async handleRenameBoard(message: LightboxRenameBoardMessage): Promise<void> {
     const payload = message.payload as Partial<LightboxRenameBoardMessage['payload']> | undefined;
     const requestId = boundedName(payload?.requestId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
-    const boardId = boundedName(payload?.boardId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
+    const boardId = payload?.boardId === null ? null : boundedName(payload?.boardId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
     const fileId = payload?.fileId === null ? null : boundedName(payload?.fileId, FILE_ID_CHARACTERS);
-    if (!requestId || !boardId || fileId === undefined || typeof payload?.name !== 'string') {
+    if (!requestId || boardId === undefined || fileId === undefined || typeof payload?.name !== 'string') {
       this.outputChannel.appendLine(`${LOG} A rename without its request id, board, file or name was ignored.`);
       return;
     }

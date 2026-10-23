@@ -1118,6 +1118,9 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardCodec.ts',
   // Slice 5A: the files on disk, their availability, writes and the reload pointer.
   'infrastructure/storage/LightboxBoardStore.ts',
+  // Slice 5A.2: the store's contracts, and a new file's write, split from it.
+  'infrastructure/storage/LightboxBoardStoreContracts.ts',
+  'infrastructure/storage/LightboxBoardNewFile.ts',
   // PR #163 F-04: one source's folder read whole, and each file's summary.
   'infrastructure/storage/LightboxBoardFiles.ts',
   // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
@@ -1130,6 +1133,8 @@ const LIGHTBOX_MODULES = [
   // Slice 5A.1: names and spark marks in place, and the rail's notices.
   'application/services/lightbox/LightboxBoardEdits.ts',
   'application/services/lightbox/LightboxBoardNotices.ts',
+  // Slice 5A.2: one file per board, the save in place and its fallback.
+  'application/services/lightbox/LightboxBoardSaves.ts',
   'application/handlers/domain/LightboxBoardsHandler.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
@@ -1276,7 +1281,7 @@ const LIGHTBOX_ROUTE_OWNERS = [
   {
     // Slice 5A: the rail's saved boards
     owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
-    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD']
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD', 'LIGHTBOX_OPEN_BOARD_FILE']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
