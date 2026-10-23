@@ -418,3 +418,64 @@ On the code as pushed, after `npm ci` into the worktree's own
 byte for byte. The webview bundle the captures were rendered from is the
 same. The fix changes no state the builder makes: none of its saves wait
 behind a later run. The one new suite is `LightboxOwedBoard.test.ts`.
+
+## Second correction re-review (2026-10-23)
+
+**Reviewer:** Astra
+
+**Reviewed implementation:** `828b9d028c7ecd35db9a1d4bf0ee2a53d4bdc8b2`, after the report at `851b800df15e662ff57bfe0e81477776c256bad1`.
+
+**Actual base / merge-base:** `fcf86ff8077a9e4e58895860ce78366a64522c39` (`epic/lightbox`, including merged PR #166).
+
+**Disposition: F-01 is closed. F-02, F-03 and N-01 through N-04 remain closed. No open PR #167 finding was established on this head.** This is technical clearance of the reviewed integration, not a formal GitHub approval, native/writer acceptance, or approval of future Slice 5B work.
+
+The new delta is eight files: one production save module, two test files, and five documentation/report files. The original report, the first correction/integration appendix, and both author responses remain intact. The author’s new response was read as a claim to verify, not substituted for independent evidence.
+
+### F-01 — closed with the original timing witness and broader sequencing controls
+
+`LightboxBoardSaves.owedBoard` (`packages/core/src/application/services/lightbox/LightboxBoardSaves.ts:157–191`) now always keeps the captured run’s readings and rules. It overlays only the same adoption’s current file/revision/name and the set-aside marks of Spark IDs present in both snapshots. It no longer mistakes a later settled-but-cancelled board for the completed snapshot it owes. Same-adoption checks, queued revision ownership, fallback-new-file behavior, and commit/reload-pointer guards are unchanged.
+
+The exact prior reviewer sequence was rerun through the real handlers, library, codec and store, using a held ordinary file read and stub provider replies:
+
+1. Save the measured board, hold a read in the store queue, then finish Characters B with three tiles so its save queues behind that read.
+2. Run whole-call B again, which intentionally clears B on screen, and hold its reply.
+3. Stop with `groupsBack: 0` either **before** releasing the queue or **after** it is released.
+4. Inspect actual file bytes, the On screen summary, save status and a fresh host’s restored board.
+
+On preserved `14c371869` (the production code under the prior report head), the **before-release case still fails**: cancelled B with zero tiles is saved and restored. Its release-before-Stop counterpart passes. This fresh negative control was **1 pass / 1 expected failure**, 6.741 s, with no harness failure. On `828b9d0`, **both orders pass**: the one file and fresh reload hold completed B with three tiles, the row lists Characters, and `lastSaveFailed` is false. The late cancelled reply does not replace it.
+
+The independent persistence pass was **18/18 tests in five suites**, 12.084 s. All eleven earlier probes were copied unchanged. Seven additional controls cover a different call stopped on either side of the queue, later same-call success and failure, a partially landed all-call run followed by Stop, the documented later-C-save boundary, and deeply frozen payload/rule/Spark snapshots. Commit-level observations distinguish the first captured B write from subsequent writes: B `ok`/3 first, then the later run’s own B `ok`/7 or `failed`/0, or its partial-result snapshot. This is not merely an assertion against the final file.
+
+Retained controls also pass for queued rename, Spark set-aside and Undo, revision continuity, two saves following conflict fallback, old Opinion retention after failed re-analysis (including changed-text stale Opinion), failed-save recovery, outside snapshot copying, and reload ownership. The overlay neither mutates the captured/current payload nor imports later rules.
+
+**Policy boundary, not hidden acceptance:** whole-call clearing on screen remains decision 42. A zero-result Stop does not earn a save, so the earlier completed B remains on disk after its owed save. A later run that actually lands can legitimately save the then-current board, including that cleared B; the independent later-C and partial-result controls confirm this. The broader proposal to retain every old call until a replacement lands is not implemented here. Decision 47’s separate Opinion retention remains verified. No claim is made that this patch changes those writer-facing policies.
+
+### Fresh gates and retained integration checks
+
+All checks below ran serially in the isolated cloud workspace on Node 24.19.0 / npm 11.9.0, with public-domain *Alice* or synthetic fixtures and stub providers. The lockfile is unchanged; reused dependencies were checked against it and workspace package links point at this checkout.
+
+| Check | Result |
+| --- | --- |
+| Full repository Jest | **505 suites / 7,009 tests / 59 snapshots pass**, 393.957 s |
+| Typecheck | **Pass** |
+| Lint | **0 errors / 1,133 warnings**, identical to integrated #166 by relative file/rule/severity |
+| Production build, including `verify:bundle` | **Pass**, the same three existing webpack size warnings |
+| Independent owed-save/persistence controls | **18/18 pass**; old-head timing negative remains discriminating |
+| Retained #166 run/Opinion host controls and price wording | **20/20 + 1/1 pass**, 6.692 s + 2.455 s |
+| Retained #163/#164 ownership/recovery controls | **38/38 in five suites pass**, 14.049 s |
+| Fresh host evidence builders | **Both pass**; board and run-control state JSON and logs are byte-identical to the prior independently regenerated merged-head output |
+| Workshop base/head markup and focus parity | **15/15 states identical**; 11 tests pass at each source tree |
+| Retained picker/source/listing/privacy controls | **48/48 in three suites pass**, 8.022 s |
+| Retained board UI/host contracts | **16/16 in three suites pass**, 14.458 s |
+| Exact rebuilt production-bundle DOM | **395 retained #166 checks + 195 correction checks pass**; **6/6 board scenarios pass after focus settlement**, with the initial timing result disclosed below |
+| Exact implementation-head configured CI | **Both events success**: [PR run 40033228429](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40033228429), [push run 40033221660](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40033221660) |
+
+**DOM timing observation:** the unchanged six-scenario board runner first passed 5/6, failing its fixed-40-ms Search-focus assertion while focus was still on Close. The original red output was preserved. One bounded unchanged-runner comparison reproduced the same failure on both the new and prior production bundles, whose bundle and host-fixture hashes are identical. A separate runner changed only that check to await the actual Search-focus condition, bounded at two seconds and checked again next event-loop turn; all 6/6 scenarios then passed on both bundles, without runtime errors. Each reached Search after one polling turn (13 ms in this JSDOM harness). This establishes a harness synchronization limitation, not a new correction regression or a native latency measurement. Other search/group/rename/delete/cancel assertions were retained, not removed.
+
+Rebuilt SHA-256 values match the author’s evidence: webview `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15` (unchanged); extension `d3c51bdbc4e90ee8984eeaad66b556eb2a9299e40cb25014f15e80f4ef48d9e8`.
+
+The actual base is still an ancestor; the clean three-way merge tree equals this head tree (`93aad8926a2a03923bd3ab926773d3b5b96e1f30`). The Workshop baseline checkout remains source-equivalent to that actual base. Both authentic format-1 fixtures are byte-identical. No webview production or shared message contract changed in this correction. The save module is 203 lines, with no new `any` or host dependency; the delta passes `git diff --check`.
+
+The earlier environment and acceptance limits still apply. JSDOM checks establish DOM/state/transport/focus behavior, not native browser geometry, real keyboard defaults or screen-reader acceptance; the webview’s byte-identical build does not constitute a new native visual test. No denied browser route was retried. No private manuscript, live/billable provider, implementation change, formal review, merge, deployment or extension publication occurred. Timings describe the stated cloud contexts, not native UI latency. Existing #164 tied-clock recovery debt remains separate, unchanged and nonblocking for this review.
+
+**Next step:** no further correction is requested for the findings in this report on `828b9d0`. Any later implementation or integration change needs its own review; the writer’s native/real-chapter acceptance remains theirs.
