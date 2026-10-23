@@ -22,6 +22,8 @@ export interface LightboxBoardsMenuProps {
   view: LightboxBoardsMenuView;
   /** A board is being opened, or a run reads the board on screen: opening another waits. */
   openDisabled: boolean;
+  /** A board is being opened: the board on screen is about to change, so it is not renamed (PR #167 F-02). */
+  renameDisabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onRename: () => void;
   onBoardAnotherChapter: () => void;
@@ -34,6 +36,7 @@ export const LightboxBoardsMenu: React.FC<LightboxBoardsMenuProps> = ({
   open,
   view,
   openDisabled,
+  renameDisabled = false,
   onOpenChange,
   onRename,
   onBoardAnotherChapter,
@@ -54,8 +57,8 @@ export const LightboxBoardsMenu: React.FC<LightboxBoardsMenuProps> = ({
     {view.availability && <SavedItemsMenu.Empty>{view.availability}</SavedItemsMenu.Empty>}
     <SavedItemsMenu.Item
       icon="pen"
-      disabled={!view.canRename}
-      title={view.canRename ? 'Name the board on screen' : 'Board a chapter first'}
+      disabled={!view.canRename || renameDisabled}
+      title={!view.canRename ? 'Board a chapter first' : renameDisabled ? 'A board is opening' : 'Name the board on screen'}
       onSelect={onRename}
     >
       Rename board…

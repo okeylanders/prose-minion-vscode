@@ -186,6 +186,32 @@ describe('LightboxBoardBrowserModal', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete alice-1 - 10/20/2026 8:00 AM' }));
   });
 
+  it('keeps focus in the dialog when the last board is deleted: on Close, since search has nothing to search (PR #167 N-04)', () => {
+    const only = { ...SHELF, boards: [SHELF.boards[1]] };
+    const { rerender } = render(<Harness shelf={only} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete 3.2.1 - after the cut - model B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete 3.2.1 - after the cut - model B' }));
+    act(() => {
+      rerender(<Harness shelf={{ ...only, boards: [] }} />);
+    });
+
+    expect((screen.getByRole('searchbox') as HTMLInputElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close saved boards' }));
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true);
+  });
+
+  it('control: deleting the last row that matches a search moves focus to the search field, which is still enabled', () => {
+    const { rerender } = render(<Harness />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'after the cut' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete 3.2.1 - after the cut - model B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete 3.2.1 - after the cut - model B' }));
+    act(() => {
+      rerender(<Harness shelf={{ ...SHELF, boards: SHELF.boards.filter((row) => row.fileId !== 'f/b') }} />);
+    });
+
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+  });
+
   it('says boards last only for the session, session-only, and still offers a board file', () => {
     render(<Harness shelf={{ availability: { kind: 'session', reason: 'multi-root' }, boards: [], unreadable: 0 }} />);
     expect(screen.getByRole('status').textContent).toContain('Boards are kept for this session only: several folders are open.');

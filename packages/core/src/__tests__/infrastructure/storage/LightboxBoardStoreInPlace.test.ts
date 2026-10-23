@@ -206,3 +206,54 @@ describe('the board a save writes is read at its turn', () => {
     expect(path.dirname(pathOf(fileId))).toContain('drafts-alice-1-md-');
   });
 });
+
+describe('the store\'s save status (PR #167 F-01, N-01)', () => {
+  const failed = (store: { availability: () => unknown }) =>
+    (store.availability() as { kind: string; lastSaveFailed?: boolean }).lastSaveFailed;
+
+  it('a save whose writes fail says so; a later save in place clears it before the caller hears the commit', async () => {
+    const window = await firstSave();
+    const before = bytesOf(window.fileSystem, window.fileId);
+    // Every staged write fails: the rewrite's, then the new file's it falls back to.
+    const writes = jest.spyOn(window.fileSystem, 'writeFile').mockRejectedValue(new Error('EIO: i/o error'));
+    window.clock.at = LATER;
+    expect(await window.store.save({ board: BOARD, text: TEXT, name: NAME }, inPlace(window.fileId, window.revision).options))
+      .toEqual({ kind: 'failed' });
+    expect(failed(window.store)).toBe(true);
+    expect(bytesOf(window.fileSystem, window.fileId)).toEqual(before);
+    writes.mockRestore();
+
+    let heard: boolean | undefined;
+    const { options } = inPlace(window.fileId, window.revision);
+    const result = await window.store.save({ board: BOARD, text: TEXT, name: NAME }, {
+      ...options,
+      onCommitted: (fileId, committed) => {
+        heard = failed(window.store);
+        options.onCommitted?.(fileId, committed);
+      }
+    });
+
+    expect(result).toEqual({ kind: 'replaced', fileId: window.fileId });
+    expect(heard).toBe(false);
+    expect(failed(window.store)).toBe(false);
+    expect(window.lines).toContain('[LightboxBoardStore] Boards are saved again after an earlier failure.');
+  });
+
+  it('a board that would not read back whole (a reading in flight) is not written, and the save says it failed', async () => {
+    const { fileSystem, store } = host(new MemoryFileSystem(), 'a');
+    const running: LightboxBoard = {
+      ...MEASURED,
+      readings: MEASURED.readings.map((group, index) => (index === 0 ? { ...group, status: 'running', pending: group.lenses } : group))
+    };
+
+    expect(await store.save({ board: running, text: TEXT })).toEqual({ kind: 'failed' });
+
+    expect(failed(store)).toBe(true);
+    expect(everyFile(fileSystem)).toEqual([]);
+  });
+
+  it('control: a first save that commits says nothing failed', async () => {
+    const window = await firstSave();
+    expect(failed(window.store)).toBe(false);
+  });
+});

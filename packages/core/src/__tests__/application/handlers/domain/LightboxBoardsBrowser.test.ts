@@ -38,6 +38,7 @@ import { MessageType, type LightboxBoard, type LightboxBoardsPayload } from '@/s
 import { decodeLightboxBoardFile, encodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardLibrary';
 import { LIGHTBOX_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxHandoff';
+import { lightboxSnapshotNotice } from '@hooks/domain/lightbox/lightboxBoardsView';
 import { deferred } from './lightboxHandlerHarness';
 import { groupOf, ok, opinionReplyFor } from './lightboxReadingHarness';
 import { CHAPTER, CHAPTER_PATH, SAVED_AT, WORKSPACE, createLightboxBoardsHost, quiet } from './lightboxBoardsHarness';
@@ -362,7 +363,12 @@ describe('"Open a board file…"', () => {
     expect(saved).toHaveLength(1);
     expect(fileOf(host, saved[0]).board).toMatchObject({ boardId: 'board-from-afar', name: NAME });
     expect(host.fileSystem.files.get(outside)).toEqual(bytes);
-    expect((await tab.shelf('board-from-afar')).shelf.boards.find((row) => row.onScreen)?.fileId).toBe(saved[0]);
+    const after = (await tab.shelf('board-from-afar')).shelf;
+    expect(after.boards.find((row) => row.onScreen)?.fileId).toBe(saved[0]);
+    // Where it came from is kept; it no longer promises a first save it has made (PR #167 N-02).
+    expect(after.snapshot).toMatchObject({ outside: true });
+    expect(lightboxSnapshotNotice(after, { timeZone: 'UTC' })?.opened)
+      .toBe('Opened from a board file outside the boards folder, saved Oct 20, 2026, 8:00 AM. It is saved in the boards folder now, as a file of its own; the file it came from is as it was.');
   });
 
   it('refuses a malformed file as a source, in host words, and keeps the board on screen', async () => {

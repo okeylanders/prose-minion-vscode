@@ -62,6 +62,7 @@ import { LightboxContextList } from '@components/lightbox/LightboxContextList';
 import { LightboxBoardsMenu } from '@components/lightbox/LightboxBoardsMenu';
 import { LightboxBoardBrowserModal } from '@components/lightbox/LightboxBoardBrowserModal';
 import { LightboxBoardNameModal } from '@components/lightbox/LightboxBoardNameModal';
+import { LightboxBoardsOutcome } from '@components/lightbox/LightboxBoardsOutcome';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
@@ -275,6 +276,23 @@ export const LightboxApp: React.FC = () => {
     openBoard(fileId);
     closeBrowser();
   }, [closeBrowser, openBoard]);
+  // The name sheet names the board it was opened for, and closes when another comes on screen (PR #167 F-02).
+  const { renameTarget, closeRename, openRename } = boardsSurface;
+  const boardOnScreen = board?.boardId ?? null;
+  const { adoption: shelfAdoption } = savedBoards;
+  const openRenameForBoardOnScreen = React.useCallback(() => {
+    if (boardOnScreen !== null) {
+      openRename({ boardId: boardOnScreen, adoption: shelfAdoption });
+    }
+  }, [boardOnScreen, openRename, shelfAdoption]);
+  const closeRenameWhenBoardChanges = React.useCallback(() => {
+    const replaced = renameTarget !== null && (boardOnScreen !== renameTarget.boardId
+      || (renameTarget.adoption !== null && shelfAdoption !== null && shelfAdoption !== renameTarget.adoption));
+    if (replaced) {
+      closeRename();
+    }
+  }, [boardOnScreen, closeRename, renameTarget, shelfAdoption]);
+  React.useEffect(closeRenameWhenBoardChanges, [closeRenameWhenBoardChanges]);
   // The host's picker takes over, as "Explore project folders…" closes the project picker before VS Code's dialog.
   const openSavedBoardFile = React.useCallback(() => {
     openBoardFile();
@@ -301,8 +319,9 @@ export const LightboxApp: React.FC = () => {
             open={boardsSurface.menuOpen}
             view={boardsMenu}
             openDisabled={reading || savedBoards.opening !== null || savedBoards.openingFile}
+            renameDisabled={savedBoards.opening !== null || savedBoards.openingFile}
             onOpenChange={boardsSurface.setMenuOpen}
-            onRename={boardsSurface.openRename}
+            onRename={openRenameForBoardOnScreen}
             onBoardAnotherChapter={chooseFromProject}
             onBrowse={boardsSurface.openBrowser}
             onOpenBoard={openSavedBoard}
@@ -315,12 +334,15 @@ export const LightboxApp: React.FC = () => {
         </>
       }
       banners={
-        chrome.providerPaused && (
-          <ProviderPausedBanner
-            availabilityNote="The counted board works without one."
-            onAddApiKey={chrome.openAssistantSettings}
-          />
-        )
+        <>
+          {chrome.providerPaused && (
+            <ProviderPausedBanner
+              availabilityNote="The counted board works without one."
+              onAddApiKey={chrome.openAssistantSettings}
+            />
+          )}
+          <LightboxBoardsOutcome text={savedBoards.outcome} onDismiss={savedBoards.dismissOutcome} />
+        </>
       }
       rail={{
         label: 'Board rail',
@@ -416,11 +438,11 @@ export const LightboxApp: React.FC = () => {
         onClose={boardsSurface.closeBrowser}
       />
       <LightboxBoardNameModal
-        open={boardsSurface.renameOpen && board !== null}
+        open={renameTarget !== null && board !== null}
         name={savedShelf?.name ?? ''}
         fileId={onScreenFile}
         sessionOnly={savedShelf?.availability.kind === 'session'}
-        onRename={(name) => savedBoards.renameBoard(null, name)}
+        onRename={(name) => savedBoards.renameBoard(null, name, renameTarget ?? undefined)}
         onClose={boardsSurface.closeRename}
       />
     </FullTabShell>

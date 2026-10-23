@@ -54,10 +54,12 @@ export interface LightboxBoardRename {
   fileId: string | null;
   /** The writer's words; empty unnames it. */
   name: string;
+  /** The adoption the name sheet was opened for (PR #167 F-02); a board on screen since is not named. */
+  adoption?: number | null;
 }
 
 export interface LightboxBoardEditPorts {
-  service: Pick<LightboxService, 'boardOfFile' | 'markSaved' | 'nameBoard' | 'savable'>;
+  service: Pick<LightboxService, 'adoptionOf' | 'boardOfFile' | 'markSaved' | 'nameBoard' | 'savable'>;
   store: Pick<LightboxBoardStore, 'replace'>;
   outputChannel: LogSink;
   /** The rail hears a change to the board on screen (the library's shelf push). */
@@ -78,6 +80,12 @@ export class LightboxBoardEdits {
       return { notice: LIGHTBOX_BOARD_NAME_FAULTS[check.fault] };
     }
     const name = check.kind === 'named' ? check.name : undefined;
+    // A draft typed for one adoption of the board on screen is never given to another (PR #167 F-02).
+    if (request.fileId === null && typeof request.adoption === 'number'
+      && (request.boardId === null || service.adoptionOf(request.boardId) !== request.adoption)) {
+      outputChannel.appendLine(`${LOG} A name for the board on screen was not given: another board is on screen now`);
+      return { notice: LIGHTBOX_BOARD_NOTICES.boardChanged };
+    }
     // The board the name is for: the one a named file holds here (Slice 5A.2), or the board on screen.
     const boardId = request.fileId !== null ? service.boardOfFile(request.fileId) : request.boardId;
     if (request.fileId !== null && boardId === undefined) {

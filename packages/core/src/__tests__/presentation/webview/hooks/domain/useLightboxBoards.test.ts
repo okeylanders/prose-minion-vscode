@@ -301,4 +301,44 @@ describe('useLightboxBoards', () => {
       expect(result.current.shelf).toEqual(shelfOf(3));
     });
   });
+
+  describe('outcomes and the name sheet\'s board (PR #167 F-02, F-03)', () => {
+    const KEPT = 'The board on screen is named, but the file it was saved to could not be changed. The output log says why.';
+
+    it('takes a rename\'s notice as the outcome though a newer request took the shelf over; a plain shelf answer keeps it; Dismiss puts it away', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(1))));
+      act(() => result.current.renameBoard(null, 'model E'));
+      const renamed = sent()[1].payload.requestId;
+      act(() => result.current.refresh());
+      // The rename's answer is no longer the pending one, but says how the rename went.
+      act(() => result.current.handleBoards(reply(renamed, 'board-6', { ...shelfOf(1), notice: KEPT })));
+      expect(result.current.outcome).toBe(KEPT);
+      act(() => result.current.handleBoards(reply(sent()[2].payload.requestId, 'board-6', shelfOf(1))));
+      expect(result.current.outcome).toBe(KEPT);
+      act(() => result.current.dismissOutcome());
+      expect(result.current.outcome).toBeNull();
+    });
+
+    it('the next open, delete or rename answer with nothing to say replaces it', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.deleteBoard(FILE));
+      act(() => result.current.handleBoards(reply(sent()[1].payload.requestId, 'board-6', { ...shelfOf(1), notice: 'That saved board could not be deleted. The output log says why.' })));
+      expect(result.current.outcome).toBe('That saved board could not be deleted. The output log says why.');
+      act(() => result.current.openBoard(FILE));
+      act(() => result.current.handleBoards(reply(sent()[2].payload.requestId, 'board-6', shelfOf(1))));
+      expect(result.current.outcome).toBeNull();
+    });
+
+    it('names the board and adoption the sheet was opened for, which the held shelf reports', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(1), 4)));
+      expect(result.current.adoption).toBe(4);
+      act(() => result.current.renameBoard(null, 'model F', { boardId: 'board-6', adoption: 4 }));
+      expect(sent()[1].payload).toEqual({ requestId: expect.any(String), boardId: 'board-6', fileId: null, name: 'model F', adoption: 4 });
+      // A file's rename carries no adoption: the file names its board.
+      act(() => result.current.renameBoard(FILE, 'model G', { boardId: 'board-6', adoption: 4 }));
+      expect(sent()[2].payload).toEqual({ requestId: expect.any(String), boardId: 'board-6', fileId: FILE, name: 'model G' });
+    });
+  });
 });

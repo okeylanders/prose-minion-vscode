@@ -15,6 +15,13 @@
  *   an earlier adoption, or observed earlier within one, changes nothing. Its
  *   "Read the current text" is the source's re-read.
  * - **Escape** closes the open menu without letting go of the pinned item.
+ * - **The name sheet is bound to its board** (PR #167 F-02): it closes when
+ *   another board, or another adoption of the same one, comes on screen, and
+ *   Rename waits while a board is opening.
+ * - **Outcomes outlive the sheet** (PR #167 F-03): a rename whose file could
+ *   not be changed, or an open refused while a run reads, is said under the
+ *   header until dismissed, and the menu says "Name not saved", not "Saved";
+ *   a source that could not be opened stays on the board's own alert.
  * - No board's name reaches the webview's saved state.
  *
  * The board is a synthetic one (`makeBoard`); names and paths are made up.
@@ -114,7 +121,8 @@ describe('LightboxApp: saved boards (Slices 5A.1 and 5A.2)', () => {
     fireEvent.change(field, { target: { value: 'model C' } });
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    expect(sentOf(MessageType.LIGHTBOX_RENAME_BOARD).at(-1)?.payload).toEqual({ requestId: expect.any(String), boardId: 'board-6', fileId: null, name: 'model C' });
+    // The board and adoption the sheet was opened for (PR #167 F-02).
+    expect(sentOf(MessageType.LIGHTBOX_RENAME_BOARD).at(-1)?.payload).toEqual({ requestId: expect.any(String), boardId: 'board-6', fileId: null, name: 'model C', adoption: 1 });
     expect(screen.queryByRole('dialog', { name: 'Rename board' })).toBeNull();
     const saved = JSON.stringify(vscode.setState.mock.calls);
     expect(saved).not.toContain(NAME);
@@ -208,5 +216,119 @@ describe('LightboxApp: saved boards (Slices 5A.1 and 5A.2)', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(item.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  describe('the name sheet names the board it was opened for (PR #167 F-02)', () => {
+    const openSheet = () => {
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Rename board…' }));
+      return within(screen.getByRole('dialog', { name: 'Rename board' })).getByRole('textbox', { name: 'Board name' });
+    };
+
+    it('closes, sending nothing, when another board comes on screen while a draft is typed; reopened, it starts from that board\'s name', () => {
+      push(shelfWith('same', { name: NAME }), 1, 1);
+      fireEvent.change(openSheet(), { target: { value: 'a name meant for board 6' } });
+
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(7), refusal: null });
+      fromHost(MessageType.LIGHTBOX_BOARDS, { requestId: null, boardId: 'board-7', adoption: 2, observation: 2, shelf: shelfWith('same', { name: 'Chapter 6 - first pass' }) });
+
+      expect(screen.queryByRole('dialog', { name: 'Rename board' })).toBeNull();
+      expect(sentOf(MessageType.LIGHTBOX_RENAME_BOARD)).toHaveLength(0);
+      expect((openSheet() as HTMLInputElement).value).toBe('Chapter 6 - first pass');
+    });
+
+    it('closes when a newer adoption of the same board comes on screen (a snapshot keeps the id)', () => {
+      push(shelfWith('same', { name: NAME }), 1, 1);
+      fireEvent.change(openSheet(), { target: { value: 'a name meant for the first adoption' } });
+
+      push(shelfWith('changed', { name: NAME }), 2, 2);
+
+      expect(screen.queryByRole('dialog', { name: 'Rename board' })).toBeNull();
+      expect(sentOf(MessageType.LIGHTBOX_RENAME_BOARD)).toHaveLength(0);
+    });
+
+    it('holds Rename back while a board is opening', () => {
+      push(shelfWith('same', { name: NAME }), 1, 1);
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Chapter 6 - first pass/ }));
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+
+      const rename = screen.getByRole('menuitem', { name: 'Rename board…' }) as HTMLButtonElement;
+      expect(rename.disabled).toBe(true);
+      expect(rename.title).toBe('A board is opening');
+    });
+
+    it('control: the same board, its shelf pushed again at the same adoption, keeps the sheet and its draft, and renames it', () => {
+      push(shelfWith('same', { name: NAME }), 1, 1);
+      fireEvent.change(openSheet(), { target: { value: 'model D' } });
+      push(shelfWith('same', { name: NAME }), 1, 2);
+
+      const field = within(screen.getByRole('dialog', { name: 'Rename board' })).getByRole('textbox', { name: 'Board name' });
+      expect((field as HTMLInputElement).value).toBe('model D');
+      fireEvent.keyDown(field, { key: 'Enter' });
+      expect(sentOf(MessageType.LIGHTBOX_RENAME_BOARD).at(-1)?.payload).toEqual({ requestId: expect.any(String), boardId: 'board-6', fileId: null, name: 'model D', adoption: 1 });
+    });
+  });
+
+  describe('what an open, a delete or a rename left to say outlives the sheet (PR #167 F-03)', () => {
+    const KEPT = 'The board on screen is named, but the file it was saved to could not be changed. The output log says why.';
+    const outcome = () => document.querySelector('.pm-lb-boards-outcome');
+    const status = () => screen.getByTitle('Board commands and recent saved boards').closest('.pm-ws-sessions-menu-wrap')?.querySelector('[role="status"]')?.textContent;
+
+    it('says a rename whose file could not be changed under the header, and the menu says the name is not saved', () => {
+      push(shelfWith('same'), 1, 1);
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Rename board…' }));
+      const field = within(screen.getByRole('dialog', { name: 'Rename board' })).getByRole('textbox', { name: 'Board name' });
+      fireEvent.change(field, { target: { value: 'model E' } });
+      fireEvent.keyDown(field, { key: 'Enter' });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      const { requestId } = sentOf(MessageType.LIGHTBOX_RENAME_BOARD)[0].payload as { requestId: string };
+
+      // The host kept the name in memory; the file still holds the old one.
+      fromHost(MessageType.LIGHTBOX_BOARDS, { requestId, boardId: 'board-6', adoption: 1, observation: 2, shelf: shelfWith('same', { name: 'model E', notice: KEPT }) });
+
+      expect(outcome()?.getAttribute('role')).toBe('alert');
+      expect(outcome()?.textContent).toBe(`Saved boards ${KEPT}Dismiss`);
+      expect(status()).toBe('Name not saved');
+      fireEvent.click(within(outcome() as HTMLElement).getByRole('button', { name: 'Dismiss' }));
+      expect(outcome()).toBeNull();
+      // Dismissed, the menu still tells the truth.
+      expect(status()).toBe('Name not saved');
+    });
+
+    it('says an open refused while a run reads the board on screen; the next answer with nothing to say puts it away', () => {
+      push(shelfWith('same'), 1, 1);
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Chapter 6 - first pass/ }));
+      const opened = sentOf(MessageType.LIGHTBOX_OPEN_BOARD)[0].payload as { requestId: string };
+      const reading = 'A run is reading this board. Stop it, or let it finish, before opening a saved board.';
+      fromHost(MessageType.LIGHTBOX_BOARDS, { requestId: opened.requestId, boardId: 'board-6', adoption: 1, observation: 2, shelf: shelfWith('same', { notice: reading }) });
+      expect(outcome()?.textContent).toContain(reading);
+
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: /^Chapter 6 - first pass/ }));
+      const again = sentOf(MessageType.LIGHTBOX_OPEN_BOARD)[1].payload as { requestId: string };
+      fromHost(MessageType.LIGHTBOX_BOARDS, { requestId: again.requestId, boardId: 'board-6', adoption: 1, observation: 3, shelf: shelfWith('same') });
+      expect(outcome()).toBeNull();
+    });
+
+    it('control: a source that could not be opened stays on the board\'s own alert, and a rename that saved says Saved', () => {
+      push(shelfWith('same'), 1, 1);
+      fromHost(MessageType.LIGHTBOX_SOURCE_REFUSED, { refusal: { id: 'refusal-1', reason: 'unreadable', message: 'That saved board could not be read, so it was left as it is.' } });
+      expect(outcome()).toBeNull();
+
+      fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Rename board…' }));
+      const field = within(screen.getByRole('dialog', { name: 'Rename board' })).getByRole('textbox', { name: 'Board name' });
+      fireEvent.change(field, { target: { value: 'model F' } });
+      fireEvent.keyDown(field, { key: 'Enter' });
+      const { requestId } = sentOf(MessageType.LIGHTBOX_RENAME_BOARD)[0].payload as { requestId: string };
+      const saved = shelfWith('same', { name: 'model F' });
+      saved.boards[0] = { ...saved.boards[0], name: 'model F' };
+      fromHost(MessageType.LIGHTBOX_BOARDS, { requestId, boardId: 'board-6', adoption: 1, observation: 2, shelf: saved });
+      expect(outcome()).toBeNull();
+      expect(status()).toBe('Saved');
+    });
   });
 });

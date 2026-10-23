@@ -160,7 +160,7 @@ export function SavedItemBrowserModal<T>({
       pendingFocus.current = gone.next && keys.includes(gone.next) ? { kind: 'delete', key: gone.next } : { kind: 'search' };
     }
     const target = pendingFocus.current;
-    const element = target?.kind === 'search' ? searchRef.current : target && buttons.current.get(`${target.kind}:${target.key}`);
+    const element = target?.kind === 'search' ? searchOrClose(searchRef.current, closeLabel) : target && buttons.current.get(`${target.kind}:${target.key}`);
     if (element) {
       pendingFocus.current = null;
       element.focus();
@@ -387,4 +387,17 @@ export function SavedItemBrowserModal<T>({
       </div>
     </WorkshopModalShell>
   );
+}
+
+/**
+ * Where focus goes when the last row it could go to has gone (PR #167 N-04):
+ * the search field, or, when it is disabled (no rows left to search), the
+ * dialog's close button, so focus never falls out of the open dialog.
+ */
+function searchOrClose(search: HTMLInputElement | null, closeLabel: string): HTMLElement | null {
+  if (!search || !search.disabled) {
+    return search;
+  }
+  const dialog = search.closest('[role="dialog"]');
+  return [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.getAttribute('aria-label') === closeLabel) ?? null;
 }

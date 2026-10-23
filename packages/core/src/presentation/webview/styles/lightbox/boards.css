@@ -4,8 +4,9 @@
    From Slice 5A.2 the boards live in the header's Boards menu, the browser
    and the name sheet, which are the full tabs' shared saved-item surfaces:
    their rules are the frame's (styles/fulltab/savedItems.css). Here are only
-   the Lightbox's own parts: a row's glyph, chapter and model line, the name
-   sheet's width and refusal, and the note above a board opened from a file
+   the Lightbox's own parts: a row's glyph, chapter and model line, the
+   outcome strip under the header (PR #167 F-03), the name sheet's width and
+   refusal, and the note above a board opened from a file
    (decision 34; the rail it was copied from is gone). Every feature here
    holds on the Chromium 114 floor.
    ============================================================ */
@@ -52,6 +53,49 @@
     left: 0;
     right: auto;
   }
+}
+
+/* ---------- What an open, delete or rename left to say (PR #167 F-03) ----------
+   A strip under the header, in the frame's banner shape (the provider-paused
+   banner's), so it outlives the name sheet or the browser that asked. */
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome > svg {
+  flex: none;
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome > span {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome strong {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-amber) 13%, var(--pm-surface-2));
+  color: var(--pm-text);
+  font: 600 11px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button:hover,
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button:focus-visible {
+  border-color: var(--pm-amber);
+  outline: 0;
+  background: color-mix(in srgb, var(--pm-amber) 20%, var(--pm-surface-2));
 }
 
 /* ---------- Rename board… ---------- */

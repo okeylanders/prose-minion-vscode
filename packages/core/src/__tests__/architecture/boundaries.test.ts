@@ -1122,9 +1122,10 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardCodec.ts',
   // Slice 5A: the files on disk, their availability, writes and the reload pointer.
   'infrastructure/storage/LightboxBoardStore.ts',
-  // Slice 5A.2: the store's contracts, and a new file's write, split from it.
+  // Slice 5A.2: the store's contracts, a new file's write, and a save's path (PR #167), split from it.
   'infrastructure/storage/LightboxBoardStoreContracts.ts',
   'infrastructure/storage/LightboxBoardNewFile.ts',
+  'infrastructure/storage/LightboxBoardSaving.ts',
   // PR #163 F-04: one source's folder read whole, and each file's summary.
   'infrastructure/storage/LightboxBoardFiles.ts',
   // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
@@ -1179,6 +1180,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   // Slice 5A.2: the header's Boards menu, the saved-board browser and the name sheet (the rail's panel is gone).
   'presentation/webview/components/lightbox/LightboxBoardsMenu.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardsOutcome.tsx',
   'presentation/webview/components/lightbox/LightboxBoardBrowserModal.tsx',
   'presentation/webview/components/lightbox/LightboxBoardNameModal.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',

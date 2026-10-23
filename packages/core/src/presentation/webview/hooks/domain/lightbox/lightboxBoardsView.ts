@@ -8,7 +8,9 @@
  *
  * - **The menu's trigger** names the board on screen (its name, or, before
  *   its first save, its chapter's file name) and says whether it is saved:
- *   "Saved", "Not saved yet", "Save failed", or "This session only".
+ *   "Saved", "Not saved yet", "Save failed", "Name not saved" (its name is
+ *   not the one its file holds: a rename whose file could not be changed,
+ *   PR #167 F-03), or "This session only".
  * - **Rows** are every chapter's saved boards, newest first, as the host
  *   lists them: the name, the chapter, when it was saved, the lenses read,
  *   any stale, an approximate cost, the models that read it
@@ -20,7 +22,8 @@
  * - **The notice above the board** (decision 34): a snapshot whose file
  *   changed, with "Read the current text"; also one whose file could not be
  *   compared, one with parts left out, and one opened from outside the
- *   boards folder, which its next save copies in.
+ *   boards folder, which its next save copies in, and which, once saved
+ *   here, says so (PR #167 N-02).
  */
 
 import type { LightboxBoardShelf, LightboxSavedBoardSource, LightboxSavedBoardSummary, LightboxSnapshotState } from '@messages';
@@ -211,7 +214,9 @@ export function lightboxSnapshotNotice(
   shelf: LightboxBoardShelf | null,
   options: LightboxBoardsViewOptions = {}
 ): LightboxSnapshotView | undefined {
-  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone));
+  // A board opened from outside that has saved here since has a file of its own, on screen (PR #167 N-02).
+  const savedHere = shelf?.boards.some((board) => board.onScreen) ?? false;
+  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone), savedHere);
   return snapshot && (snapshot.tone === 'warn' || snapshot.dropped || shelf?.snapshot?.outside) ? snapshot : undefined;
 }
 
@@ -259,7 +264,12 @@ function saveStatus(shelf: LightboxBoardShelf): LightboxBoardsMenuView['status']
   if (shelf.availability.lastSaveFailed) {
     return { state: 'error', text: 'Save failed' };
   }
-  return shelf.boards.some((board) => board.onScreen) ? { state: 'saved', text: 'Saved' } : { state: 'session', text: 'Not saved yet' };
+  const own = shelf.boards.find((board) => board.onScreen);
+  if (!own) {
+    return { state: 'session', text: 'Not saved yet' };
+  }
+  // The board's name is not the one its file holds: the rename reached the board, not the file (PR #167 F-03).
+  return shelf.name !== undefined && own.name !== shelf.name ? { state: 'error', text: 'Name not saved' } : { state: 'saved', text: 'Saved' };
 }
 
 /** A model id without its provider: "provider/model-v1" → "model-v1". */
@@ -291,10 +301,13 @@ function rowOf(board: LightboxSavedBoardSummary, when: Intl.DateTimeFormat): Lig
   };
 }
 
-function snapshotOf(snapshot: LightboxSnapshotState, when: Intl.DateTimeFormat): LightboxSnapshotView {
-  const opened = snapshot.outside
-    ? `Opened from a board file outside the boards folder, saved ${when.format(snapshot.savedAt)}. Its next save writes it there, as a file of its own.`
-    : `Opened from the board saved ${when.format(snapshot.savedAt)}.`;
+function snapshotOf(snapshot: LightboxSnapshotState, when: Intl.DateTimeFormat, savedHere: boolean): LightboxSnapshotView {
+  const outside = `Opened from a board file outside the boards folder, saved ${when.format(snapshot.savedAt)}.`;
+  const opened = !snapshot.outside
+    ? `Opened from the board saved ${when.format(snapshot.savedAt)}.`
+    : savedHere
+      ? `${outside} It is saved in the boards folder now, as a file of its own; the file it came from is as it was.`
+      : `${outside} Its next save writes it there, as a file of its own.`;
   const dropped = snapshot.dropped === 0 ? {}
     : { dropped: snapshot.dropped === 1 ? '1 part of it could not be read and was left out.' : `${snapshot.dropped} parts of it could not be read and were left out.` };
   switch (snapshot.file) {

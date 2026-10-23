@@ -1,6 +1,6 @@
 /**
  * The saved boards in words (Slice 5A; Slice 5A.1; Slice 5A.2, epic decision
- * 41): the Boards menu's trigger and status, its five newest boards of every
+ * 46): the Boards menu's trigger and status, its five newest boards of every
  * chapter, and where boards are kept; the browser's rows (name, chapter,
  * when, lenses, stale, cost, models, on screen), its notes, its search over
  * names and chapter paths, and its groups by date and by chapter; and the
@@ -145,6 +145,13 @@ describe('the Boards menu', () => {
     expect(view.availability).toBeUndefined();
   });
 
+  it('says the name is not saved when the board\'s name is not the one its file holds (PR #167 F-03)', () => {
+    const view = buildLightboxBoardsMenu(shelf({ name: NAME, boards: [saved({ onScreen: true })] }), CHAPTER, UTC);
+    expect(view).toMatchObject({ label: NAME, status: { state: 'error', text: 'Name not saved' } });
+    expect(buildLightboxBoardsMenu(shelf({ name: NAME, boards: [saved({ onScreen: true, name: NAME })] }), CHAPTER, UTC).status)
+      .toEqual({ state: 'saved', text: 'Saved' });
+  });
+
   it('names a board no file holds yet by its chapter\'s file name, not saved yet', () => {
     expect(buildLightboxBoardsMenu(shelf({ boards: [saved({})] }), CHAPTER, UTC)).toMatchObject({
       label: 'alice-1', status: { state: 'session', text: 'Not saved yet' }
@@ -231,9 +238,21 @@ describe('the note above a board opened from a file (decision 34; Slice 5A.2)', 
     });
     expect(of({ dropped: 1 })).toMatchObject({ tone: 'quiet', dropped: '1 part of it could not be read and was left out.' });
     expect(of({ dropped: 3 })?.dropped).toBe('3 parts of it could not be read and were left out.');
-    expect(of({ fileId: undefined, outside: true })).toMatchObject({
+    // Opened from outside, and no file of the store holds it yet.
+    expect(lightboxSnapshotNotice(shelf({ boards: [saved({})], snapshot: { ...snapshot, file: 'same', fileId: undefined, outside: true } }), UTC)).toMatchObject({
       tone: 'quiet',
       opened: 'Opened from a board file outside the boards folder, saved Oct 21, 2026, 9:00 AM. Its next save writes it there, as a file of its own.'
+    });
+  });
+
+  it('says a board opened from outside is saved here once a file of its own is on screen, and keeps where it came from (PR #167 N-02)', () => {
+    const view = lightboxSnapshotNotice(shelf({
+      boards: [saved({ onScreen: true })],
+      snapshot: { ...snapshot, fileId: undefined, outside: true, file: 'same' }
+    }), UTC);
+    expect(view).toMatchObject({
+      tone: 'quiet',
+      opened: 'Opened from a board file outside the boards folder, saved Oct 21, 2026, 9:00 AM. It is saved in the boards folder now, as a file of its own; the file it came from is as it was.'
     });
   });
 

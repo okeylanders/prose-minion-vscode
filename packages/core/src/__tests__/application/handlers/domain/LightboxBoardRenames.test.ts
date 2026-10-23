@@ -307,3 +307,86 @@ describe('the route', () => {
     expect(tab.shelves().at(-1)?.shelf.name).toBe(NAME);
   });
 });
+
+describe('a name sheet\'s draft names the board it was opened for (PR #167 F-02)', () => {
+  const OTHER_PATH = 'Drafts/alice-2.md';
+
+  /** Board-1 (alice-1) read and on screen, and board-2 (alice-2) saved in a file of its own; returns board-2's file. */
+  async function twoBoards() {
+    const chapter = await readChapter();
+    const { host, tab, read } = chapter;
+    host.writeChapter(OTHER_PATH, CHAPTER.split('\n\n').slice(0, 4).join('\n\n'));
+    await tab.choose(OTHER_PATH);
+    await quiet();
+    const other = added(host, [chapter.first, read]);
+    await tab.choose(CHAPTER_PATH);
+    await quiet();
+    expect(host.service.currentBoard()?.boardId).toBe('board-1');
+    return { ...chapter, other };
+  }
+
+  it('opening board-2 with its read held, a draft typed for board-1 and sent after board-2 came on screen names board-1, never board-2\'s file', async () => {
+    const { host, tab, read, other } = await twoBoards();
+    const adoption = host.service.adoptionOf('board-1');
+    const otherName = nameIn(host, other);
+    const held = host.holdBoardRead();
+    const opening = tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-2', fileId: other });
+    await quiet();
+    held.release();
+    await opening;
+    await quiet();
+    expect(host.service.currentBoard()?.boardId).toBe('board-2');
+
+    await tab.route(MessageType.LIGHTBOX_RENAME_BOARD, { requestId: 'late', boardId: 'board-1', fileId: null, name: NAME, adoption });
+    await quiet();
+
+    expect(nameIn(host, other)).toBe(otherName);
+    expect(nameIn(host, read)).toBe(NAME);
+    expect(host.service.savable('board-2')?.name).toBe(otherName);
+  });
+
+  it('refuses a draft typed for an earlier adoption of the board now on screen (a snapshot keeps the id), and renames nothing', async () => {
+    const { host, tab, first, read } = await readChapter();
+    const adoption = host.service.adoptionOf('board-1') as number;
+    // An earlier snapshot of board-1 comes on screen: the same id, a newer adoption.
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-first', fileId: first });
+    await quiet();
+    expect(host.service.adoptionOf('board-1')).toBeGreaterThan(adoption);
+
+    await tab.route(MessageType.LIGHTBOX_RENAME_BOARD, { requestId: 'stale', boardId: 'board-1', fileId: null, name: NAME, adoption });
+    await quiet();
+
+    expect(tab.shelves().find((payload) => payload.requestId === 'stale')?.shelf.notice).toBe(LIGHTBOX_BOARD_NOTICES.boardChanged);
+    expect([nameIn(host, first), nameIn(host, read)]).toEqual([DEFAULT, DEFAULT]);
+    expect(host.service.savable('board-1')?.name).toBe(DEFAULT);
+    expect(host.logged()).not.toContain(NAME);
+  });
+
+  it('control: a draft sent at the adoption on screen names it, and its file', async () => {
+    const { host, tab, read } = await readChapter();
+    await tab.route(MessageType.LIGHTBOX_RENAME_BOARD, { requestId: 'now', boardId: 'board-1', fileId: null, name: NAME, adoption: host.service.adoptionOf('board-1') });
+    await quiet();
+    expect(tab.shelves().find((payload) => payload.requestId === 'now')?.shelf.notice).toBeUndefined();
+    expect(nameIn(host, read)).toBe(NAME);
+  });
+});
+
+describe('a rename whose file cannot be changed says so (PR #167 F-03)', () => {
+  it('a staging write that fails leaves the file as it was, keeps the name in memory, and the shelf says both, with no source refusal', async () => {
+    const { host, tab, read } = await readChapter();
+    const before = host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', read));
+    // Only the rewrite's staged write fails.
+    const writes = jest.spyOn(host.fileSystem, 'writeFile').mockImplementation(async (filePath: string) => {
+      throw new Error(`EIO: i/o error, write '${filePath}'`);
+    });
+    const answer = await rename(tab, null, NAME);
+    writes.mockRestore();
+
+    expect(answer.shelf.notice).toBe(LIGHTBOX_BOARD_NOTICES.nameKeptFailed);
+    expect(answer.shelf.name).toBe(NAME);
+    // The file still holds the name it had: the menu says the name is not saved, not Saved.
+    expect(answer.shelf.boards.find((row) => row.onScreen)).toMatchObject({ fileId: read, name: DEFAULT });
+    expect(host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', read))).toEqual(before);
+    expect(tab.refusals()).toEqual([]);
+  });
+});

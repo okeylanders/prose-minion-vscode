@@ -161,8 +161,12 @@ export class LightboxBoardFiles {
     return (await this.readWithBytes(fileId, filePath)).read;
   }
 
-  /** A saved board's file, decoded, with the bytes it was decoded from (a rewrite in place compares them). */
-  async readWithBytes(fileId: string, filePath: string): Promise<{ read: LightboxBoardRead; bytes?: Uint8Array }> {
+  /**
+   * A saved board's file, decoded, with the bytes it was decoded from (a
+   * rewrite in place compares them). `outside`: a file the writer picked,
+   * whose error is logged by its code alone (PR #167 N-03).
+   */
+  async readWithBytes(fileId: string, filePath: string, outside = false): Promise<{ read: LightboxBoardRead; bytes?: Uint8Array }> {
     let bytes: Uint8Array;
     try {
       const stat = await this.fileSystem.stat(filePath);
@@ -174,7 +178,8 @@ export class LightboxBoardFiles {
       if (isMissingFileSystemPathError(error)) {
         return { read: { kind: 'missing' } };
       }
-      this.log.appendLine(`${LOG} Could not read ${fileId}: ${errorMessage(error)}`);
+      // A file system's message can name the path; a picked file's is the writer's own, so only its code is logged.
+      this.log.appendLine(`${LOG} Could not read ${fileId}: ${outside ? `(${errorCode(error)})` : errorMessage(error)}`);
       return { read: { kind: 'unreadable', reason: 'It could not be read.' } };
     }
     return { read: this.decode(fileId, bytes), bytes };
@@ -186,7 +191,7 @@ export class LightboxBoardFiles {
    * writer's own.
    */
   async readOutside(filePath: string): Promise<LightboxBoardRead> {
-    return (await this.readWithBytes('a board file outside the boards folder', filePath)).read;
+    return (await this.readWithBytes('a board file outside the boards folder', filePath, true)).read;
   }
 
   private decode(fileId: string, bytes: Uint8Array): LightboxBoardRead {
@@ -352,4 +357,10 @@ function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardE
 
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** A file system error's code (EACCES, NoPermissions), never its message, which can carry the path (PR #167 N-03). */
+export function errorCode(error: unknown): string {
+  const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined;
+  return typeof code === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(code) ? code : 'no error code';
 }

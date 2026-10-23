@@ -166,13 +166,17 @@ export interface LightboxOpenBoardFilePayload {
  * `LIGHTBOX_BOARD_NAME_CHARACTERS`; empty unnames the board. From the
  * browser (Slice 5A.2) a file may be named with no board on screen
  * (`boardId: null`), and a file another board kept here holds names that
- * board too.
+ * board too. `adoption` (PR #167 F-02) is the adoption of the board on
+ * screen the name sheet was opened for: with `fileId: null`, the host names
+ * the board only while that adoption is still on screen, so a draft typed
+ * for one board is never given to another.
  */
 export interface LightboxRenameBoardPayload {
   requestId: string;
   boardId: string | null;
   fileId: string | null;
   name: string;
+  adoption?: number | null;
 }
 
 /**

@@ -165,7 +165,9 @@ export class LightboxBoardsHandler {
       return;
     }
     this.subscribe();
-    const { notice } = await this.library.rename({ boardId, fileId, name: payload.name });
+    // The adoption the name sheet was opened for (PR #167 F-02): a whole number, or none.
+    const adoption = typeof payload.adoption === 'number' && Number.isSafeInteger(payload.adoption) ? payload.adoption : undefined;
+    const { notice } = await this.library.rename({ boardId, fileId, name: payload.name, ...(adoption !== undefined ? { adoption } : {}) });
     await this.answer(requestId, boardId, notice);
   }
 

@@ -12,6 +12,8 @@
  * The board is the production service's measure of ¶1–¶8 of "Alice's
  * Adventures in Wonderland" (1865, public domain).
  */
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import type { LightboxBoard } from '@messages';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
@@ -31,7 +33,7 @@ import {
   pathOf,
   storeHost as host
 } from '@/__tests__/infrastructure/storage/lightboxBoardStoreHost';
-import type { LogSink } from '@/platform';
+import { FileType, type FileSystem, type LogSink } from '@/platform';
 
 let BOARD: LightboxBoard;
 let TEXT: string;
@@ -181,5 +183,35 @@ describe('a board file the writer picks', () => {
     expect(await store.readOutside('/elsewhere/broken.board.json')).toMatchObject({ kind: 'unreadable' });
     expect(await store.readOutside('/elsewhere/gone.board.json')).toEqual({ kind: 'missing' });
     expect([...fileSystem.files.keys()]).toEqual(['/elsewhere/broken.board.json']);
+  });
+
+  it('logs a picked file\'s read error by its code, never the message that names its path (PR #167 N-03)', async () => {
+    // A real file system's error: Node names the path in the message ("ENOTDIR: not a directory, stat '<path>'").
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lightbox-n03-'));
+    try {
+      const plain = path.join(directory, 'Chapter 6 notes.txt');
+      await fs.writeFile(plain, 'not a folder');
+      const picked = path.join(plain, 'Chapter 6 - draft.board.json');
+      const real = {
+        stat: async (filePath: string) => {
+          const stat = await fs.stat(filePath);
+          return { type: FileType.File, ctime: stat.ctimeMs, mtime: stat.mtimeMs, size: stat.size };
+        },
+        readFile: async (filePath: string) => new Uint8Array(await fs.readFile(filePath))
+      } as unknown as FileSystem;
+      const thrown = await real.stat(picked).catch((error: unknown) => error as NodeJS.ErrnoException);
+      expect(thrown).toMatchObject({ code: 'ENOTDIR' });
+      expect(String((thrown as Error).message)).toContain(picked);
+      const lines: string[] = [];
+      const log = { appendLine: (line: string) => { lines.push(line); }, show: jest.fn(), clear: jest.fn() } as unknown as LogSink;
+      const store = new LightboxBoardStore(real, createFakeWorkspace({ workspaceFolders: () => [{ path: ROOT, name: 'workspace' }] }), log);
+
+      expect(await store.readOutside(picked)).toMatchObject({ kind: 'unreadable' });
+
+      expect(lines).toEqual(['[LightboxBoardStore] Could not read a board file outside the boards folder: (ENOTDIR)']);
+      expect(lines.join('\n')).not.toContain(directory);
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
   });
 });

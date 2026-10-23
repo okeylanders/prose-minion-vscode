@@ -20,6 +20,13 @@
  *   default name ("Chapter 6 - 10/23/2026 9:08 AM") when its first file is
  *   written. A save in place writes the board's name; a board with none
  *   keeps the name its file shows.
+ * - **The board a save is owed (PR #167 F-01).** A save waits its turn in
+ *   the store's queue, and another run may start meanwhile. At its turn it
+ *   writes the board as it then stands only when that is still the same
+ *   adoption and settled (no reading in flight); otherwise it writes the
+ *   settled board it was captured with when its run ended, under the name
+ *   and file the board has now. A reading that landed is never dropped for
+ *   a run that has not, and a reading in flight is never written.
  * - **The board on screen (PR #163 F-01).** Every adoption moves the reload
  *   pointer at once: to the file that already holds the board, writing
  *   nothing, or, for a board no file holds yet, to the file its save
@@ -39,7 +46,7 @@ import type { LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardS
 const LOG = '[LightboxBoardLibrary]';
 
 export interface LightboxBoardSavePorts {
-  service: Pick<LightboxService, 'currentBoard' | 'markSaved' | 'savable'>;
+  service: Pick<LightboxService, 'adoptionOf' | 'currentBoard' | 'markSaved' | 'savable'>;
   store: Pick<LightboxBoardStore, 'rememberOnScreen' | 'save'>;
   outputChannel: LogSink;
   /** The rail hears a committed save, or a failed one (the library's shelf push). */
@@ -83,32 +90,38 @@ export class LightboxBoardSaves {
   private async save(captured: LightboxSavableBoard, onlyIfNewText: boolean): Promise<void> {
     const { service, store, outputChannel, timeZone } = this.ports;
     const { boardId } = captured.board;
-    // The board as it stands at the save's turn: a later save of it has its later readings.
-    const latest = () => service.savable(boardId) ?? captured;
+    // The adoption this save is owed to (PR #163 F-02): a snapshot opened since keeps the id, not the board.
+    const adoption = service.adoptionOf(boardId);
+    const ours = () => service.adoptionOf(boardId) === adoption;
+    const atTurn = () => owedBoard(captured, ours() ? service.savable(boardId) : undefined);
     let result: Awaited<ReturnType<LightboxBoardSavePorts['store']['save']>>;
     try {
       result = await store.save(() => {
-        const { board, text, name } = latest();
+        const { board, text, name } = atTurn();
         return { board, text, ...(name !== undefined ? { name } : {}) };
       }, {
         onlyIfNewText,
         // The file that holds the board, found at this save's turn, at the revision this window knows (decision 46).
         inPlace: {
           holding: () => {
-            const { savedFileId, savedRevision } = latest();
+            const { savedFileId, savedRevision } = atTurn();
             return savedFileId ? { fileId: savedFileId, boardId, revision: savedRevision ?? '' } : undefined;
           },
-          update: (file, savedAt) => savedInPlace(file, latest(), savedAt, timeZone)
+          update: (file, savedAt) => savedInPlace(file, atTurn(), savedAt, timeZone)
         },
         defaultName: (savedAt) => lightboxDefaultBoardName(captured.board.source, savedAt, timeZone),
         onCommitted: (fileId, committed) => {
-          service.markSaved(boardId, fileId, committed);
-          this.pointAt(captured.board, fileId);
+          // A board replaced since by a snapshot of the same id does not take this file as its own.
+          if (ours()) {
+            service.markSaved(boardId, fileId, committed);
+            this.pointAt(captured.board, fileId);
+          }
           this.ports.announce();
         }
       });
     } catch (error) {
       outputChannel.appendLine(`${LOG} A board could not be saved: ${error instanceof Error ? error.message : String(error)}`);
+      this.ports.announce();
       return;
     }
     if (result.kind === 'held') {
@@ -124,6 +137,35 @@ export class LightboxBoardSaves {
       this.ports.store.rememberOnScreen(fileId);
     }
   }
+}
+
+/**
+ * What a save owed `captured` writes at its turn (PR #167 F-01): `now`, the
+ * same adoption as it stands then, when no reading of it is in flight;
+ * otherwise the settled board captured when its run ended, with the name
+ * and the file `now` has (a rename or a save queued before this one moved
+ * them). With no `now` (the board is gone, or replaced by a snapshot of the
+ * same id), the captured board as it was.
+ */
+export function owedBoard(captured: LightboxSavableBoard, now: LightboxSavableBoard | undefined): LightboxSavableBoard {
+  if (!now) {
+    return captured;
+  }
+  if (lightboxBoardSettled(now.board)) {
+    return now;
+  }
+  const { name: _name, savedFileId: _file, savedRevision: _revision, ...settled } = captured;
+  return {
+    ...settled,
+    ...(now.savedFileId !== undefined ? { savedFileId: now.savedFileId } : {}),
+    ...(now.savedRevision !== undefined ? { savedRevision: now.savedRevision } : {}),
+    ...(now.name !== undefined ? { name: now.name } : {})
+  };
+}
+
+/** No reading of the board is in flight: every group has ended, so the board may be saved as it is. */
+export function lightboxBoardSettled(board: LightboxBoard): boolean {
+  return board.readings.every((group) => group.status !== 'running' && group.pending === undefined);
 }
 
 /**

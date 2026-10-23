@@ -7,7 +7,7 @@
  * it; it constructs nothing.
  *
  * - **Saves (decision 27; one file per board from Slice 5A.2, decision
- *   41).** A run that landed readings saves its board as it stands
+ *   46).** A run that landed readings saves its board as it stands
  *   (`saveAfterRun`), rewriting the file that holds it in place. A board
  *   measured from new text saves itself once, to a new file named by
  *   default, unless a saved board of its source already holds that text.
