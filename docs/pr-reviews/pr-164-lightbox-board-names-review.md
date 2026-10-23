@@ -356,3 +356,73 @@ All heavy jobs were serialized. Dependencies and the lockfile are unchanged; the
 The disclosed 30-second lease, soft busy restore without automatic retry, legacy undated-claim policy and residual expired-lease/final-rename race are recorded limitations, not silently claimed solved and not the basis of these two remaining findings. Author-attributed writer decisions, native use, the real-chapter checkpoint and Slice 5B remain separate from technical review.
 
 **Recommendation:** fix the two remaining error/ownership classification gaps, retain the now-passing original sequences and all #163 guards, then rerun the five discriminating assertions and full required gates. No new UI finding is raised in this round.
+
+## Author response to the re-review (2026-10-23)
+
+**F-01 and F-02: fixed on the narrower paths.** One commit, `bad728eb`,
+sits on top of your re-review's commit `4e2b18b`, followed by the commit
+that adds this response. Your five witnesses are regression tests now.
+Each fails on an export of `17e4cd7`, and each control you named passes
+there. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | **`retire` returns a verdict.** It removes every other claim of the saved name, then reads the folder again. It is true only when both reads succeeded and no other claim is left.<br>**A directory read error is unknown, never empty.** `entriesOf` gives `[]` only for a folder that is not there (`isMissingFileSystemPathError`); any other error is `undefined`.<br>**On a false verdict,** the delete renames its own claim back to the saved name, so the latest board stands exactly as it was. It answers `failed`, which the rail words as "That saved board could not be deleted. The output log says why." The writer can try again. If even that put-back fails, the claim is the newest one, and it comes back once the lease runs out. The own-claim rollback is unchanged | `LightboxBoardClaimFailures.test.ts`:<br>• **Your sequence A:** a leftover that will not go through both clean-ups; the delete fails, the renamed bytes stand, and past the lease a listing and a read give "Renamed"<br>• **Your sequence B:** the folder unreadable on the delete's first look while it holds the file; the delete fails, and past the lease the board is still "Renamed"<br>• **Added:** the folder unreadable on the delete's second look<br>**Your controls:**<br>• a successful retirement stays deleted past the lease (`LightboxBoardClaims.test.ts`);<br>• the delete's own claim failing gives `failed`, with the latest bytes back<br>**Added control:** once the leftover goes, the same delete succeeds and nothing comes back | `bad728eb` |
+| F-02 | Medium / P2 | **Fixed** | **Every `missing` is classified.** `LightboxBoardStore.settledRead` reads the file and settles its claims on every `missing`, at most three times:<br>• put back: read it again;<br>• a live claim: `busy`;<br>• an unreadable folder (`unknown`): `unreadable`, "Its folder could not be read.";<br>• still moving after three rounds: `busy`.<br>`missing` is returned only when the folder was read and neither the file nor a claim is there. Delete classifies the same way; an unknown folder makes it fail.<br>**Restore** clears the pointer only on `missing`, so `busy` and `unreadable` keep it and fail softly. There is no retry when the lease ends. The newer-source guard is unchanged (ticket before the read, adoption checked after) | `LightboxBoardClaimFailures.test.ts`:<br>• **Your store sequence:** the board put back, then another store's rewrite takes a live claim before the reread; `busy`, then the rewrite commits<br>• **Your error case:** an unreadable folder gives `unreadable`, and the claim is left; a healthy read recovers it<br>`LightboxBoardRestoreClaims.test.ts`:<br>• **Your host sequence:** the restore holds after its put-back; another host's store claims the file; nothing is restored, the pointer and the log say busy; the rewrite then commits and the pointer stays<br>• **Your failed scan:** pointer and claim kept; a later session restores the board<br>**Your controls pass there:** an ordinary abandoned-claim restore, explicit-list recovery, a live claim keeping the pointer, a fresh session after expiry, a truly absent file clearing the pointer, and the newer-source guard<br>**Added control:** a folder that is not there at all reads as `missing` | `bad728eb` |
+
+### What changes in the PR body's claims
+
+- **Delete** now answers `failed` (the board stands, unchanged) whenever it
+  cannot show that no earlier version is left. That covers a leftover
+  that would not go, and a folder it could not read while it held the
+  file. Before, it answered `deleted`.
+- **Read, Open and restore** answer `missing` only after the folder has
+  been read and shows neither file nor claim. A board claimed again
+  between the put-back and the reread is `busy`, and a folder that cannot
+  be read is `unreadable`; neither clears the reload pointer.
+- **A rewrite** that finds its file gone and its folder unreadable
+  answers `failed`, not `missing`.
+
+### How each new test was checked against `17e4cd7`
+
+The two new and changed test files ran on an export of `17e4cd7`, with
+this worktree's `node_modules` and ts-jest diagnostics off: 13 tests, 8
+failed and 5 passed.
+- **Fail there, as they should:**
+  - **F-01:** a leftover that will not go; the folder unreadable on the
+    delete's first look and on its second. My added control "once the
+    leftover goes, the same delete succeeds" fails too, because its first
+    step expects the stuck delete to fail.
+  - **F-02:** the store's reread; the store's unreadable folder; the
+    host's reread; the host's failed scan.
+- **Pass there:**
+  - the delete's own claim failing;
+  - a folder that is not there;
+  - the three earlier restore tests (abandoned, live, newer source).
+- **Your other controls** (successful retirement past the lease,
+  explicit-list recovery, a truly absent file clearing the pointer) are
+  earlier tests, unchanged, and pass at both heads.
+
+### Verification at this head
+
+After `npm ci` into a real `node_modules`, at `bad728eb`:
+- **`npx jest`:** 482 suites / 6,653 tests / 59 snapshots. At `17e4cd7`
+  it was 481 / 6,643 / 59.
+- **`npm run lint`:** 0 errors / 1,133 warnings, identical to `3e5c3a1`
+  per file, rule and severity.
+- **`npm run typecheck`:** passes.
+- **`npm run build` with `verify:bundle`, twice:** passes, with the same
+  hashes both times.
+  - `webview.js`
+    `66c1f405b6ff52a41f5780771482b3383f21bf84479c3d5a47c0f800b103cd35`,
+    unchanged from `17e4cd7`.
+  - `extension.js`
+    `e9c04557447d102d91c7e2b7f85f54c75c6d61cfcfe2bd04dbf184900f59dd13`.
+- **The whitespace check:** clean from `815fc05`.
+- **Evidence:** the host states were rebuilt and are byte-identical, and
+  the webview bundle is the one the captures were rendered from, so the
+  evidence is unchanged.
+
+No live or billable call was made.

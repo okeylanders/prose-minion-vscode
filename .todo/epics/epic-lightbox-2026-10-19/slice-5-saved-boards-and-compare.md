@@ -490,12 +490,17 @@ joins it without a new format number.
   - **A delete claims the file too** (PR #164 F-01), as a rewrite does, so
     no rewrite claims it meanwhile; it then removes every other claim of
     that saved name, young or old (a committed rewrite's leftover whose
-    clean-up failed), and last its own. No earlier version can come back
-    after a delete. A delete that cannot remove its claim puts the board
-    back at once and says it failed.
-  - **A read that finds its file gone** settles the claims first (PR #164
-    F-02): a board left under an abandoned claim is put back and read; one
-    under a live claim is `busy`; `missing` is neither file nor claim.
+    clean-up failed), looks at the folder again, and only when none is
+    left removes its own (the re-review). A leftover that would not go, or
+    a folder it could not read, puts the board back as it was, and the
+    delete says it failed; one that cannot remove its own claim does the
+    same. No earlier version can come back after a delete.
+  - **A read classifies every `missing`** (PR #164 F-02 and its
+    re-review): it settles the claims, puts back and reads again, three
+    times at most. A live claim, or a file that keeps moving, is `busy`; a
+    folder that cannot be read is `unreadable`; `missing` is the folder
+    read and neither file nor claim there. A folder read error is never
+    taken for an empty folder; only a folder that is not there is.
 - **`LightboxBoardEdits`** (built by the library, reached only through it)
   names boards and keeps spark marks. The file that holds the board on
   screen, and its name, are found when the rewrite's turn in the queue
@@ -666,7 +671,13 @@ described in place above; what the writer may want to know:
   no stronger lock.
 - **A delete claims the file**, so deleting a board another window is
   renaming says busy rather than deleting it, and a delete removes the
-  earlier versions a rewrite left beside the file.
+  earlier versions a rewrite left beside the file. When it cannot show
+  none is left (a leftover that would not go, a folder it could not read),
+  it leaves the board as it was and says "That saved board could not be
+  deleted. The output log says why." (the re-review, 2026-10-23).
+- **A restore forgets its pointer only when the board is shown gone**: a
+  board claimed again between being put back and read is busy, and a
+  folder that cannot be read keeps the pointer (the re-review).
 - **A spark's file write is the one spark's** (F-03), with its order after
   the file's highest: two windows' marks on different sparks both stand.
 - **The name field sends only an edit the writer made** (F-04), and keeps a
@@ -713,6 +724,15 @@ the refused name on leaving, the model count) and her controls pass; the
 lists each. The evidence harness, now failing on a clipped button, writes
 no error at this head, 2 against `ada5717`'s bundle and 53 against
 `3e5c3a1`'s.
+
+Gates after the re-review's corrections, at `bad728eb`: full `npx jest`,
+482 suites / 6,653 tests / 59 snapshots (481 / 6,643 / 59 at `17e4cd7`);
+lint identical per file, rule and severity to `3e5c3a1`; typecheck; two
+builds with `verify:bundle` after `npm ci`, `webview.js` `66c1f405…cd35`
+(unchanged) and `extension.js` `e9c04557…dd13` both times; the whitespace
+check clean. The re-review's five witnesses fail on `17e4cd7` and her
+controls pass there. The host states, rebuilt, are byte-identical, so the
+evidence stands as rendered.
 
 ## Slice 5B: draft compare (a later PR)
 

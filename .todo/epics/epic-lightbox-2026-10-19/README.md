@@ -1541,3 +1541,21 @@ lens, and adds its items to 4D's digest.
       `verify:bundle` pass, twice; `webview.js` `66c1f405…`,
       `extension.js` `b72fa490…`; evidence re-rendered, 18 captures,
       `errors.txt` empty, states byte-identical. No live or billable call.
+  - **PR #164's re-review** (2026-10-23: F-03, F-04, N-01 and N-02
+    resolved; F-01 and F-02 open on narrower paths), both fixed in
+    `bad728eb`. Each of the five witnesses fails on `17e4cd7`, and the
+    controls pass there.
+    - **F-01:** a delete is acknowledged only once a second look at the
+      folder finds no earlier version left. A leftover that would not go,
+      or a folder it could not read, puts the board back as it was and
+      the delete says it failed. A folder read error is never an empty
+      folder.
+    - **F-02:** every `missing` a read returns is classified. A board put
+      back and claimed again before the reread is busy, an unreadable
+      folder is unreadable, and a restore forgets its pointer only on
+      established absence.
+    - **Verification:** 482 suites / 6,653 tests / 59 snapshots; lint
+      identical per file and rule; typecheck and build with
+      `verify:bundle` pass, twice; `webview.js` `66c1f405…` (unchanged),
+      `extension.js` `e9c04557…`; the evidence states, rebuilt, are
+      byte-identical. No live or billable call.

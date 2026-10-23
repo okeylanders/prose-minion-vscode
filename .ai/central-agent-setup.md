@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) with PR #164's corrections (claims live or abandoned by age, deletes that claim, restores that settle a claimed file, a spark's write scoped to its tile, the name field's own edits), on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
-- 481 suites / 6,643 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) with PR #164's corrections (claims live or abandoned by age, deletes that claim, restores that settle a claimed file, a spark's write scoped to its tile, the name field's own edits) and its re-review's (deletes acknowledged only once retired, every missing read classified), on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
+- 482 suites / 6,653 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1319,10 +1319,14 @@ records, when it saves, or how a saved one comes back:
   touches it. Abandoned claims are settled when a listing finds claims or
   a read, rewrite or delete finds its file gone: put back when the saved
   name is empty, removed (never put back) beside a standing file. A delete
-  claims the file too and retires every other claim of it, so a deleted
-  board never comes back. `missing` means neither file nor claim; a live
-  claim is `busy`, and a restore keeps its pointer. Never move, delete or
-  put back a claim except through `LightboxBoardClaims`.
+  claims the file too and retires every other claim of it, and is
+  acknowledged only when a second look finds none left; otherwise it puts
+  the board back and fails, so a deleted board never comes back. A folder
+  read error is `unknown`, never an empty folder. `missing` means the
+  folder was read and neither file nor claim is there (every `missing` a
+  read returns is classified); a live claim is `busy`, and a restore keeps
+  its pointer on anything but `missing`. Never move, delete or put back a
+  claim except through `LightboxBoardClaims`.
 - **One notice, two places.** The changed-file notice above the board is
   `lightboxChangedFileNotice` over the rail's own shelf; never compute it
   another way.

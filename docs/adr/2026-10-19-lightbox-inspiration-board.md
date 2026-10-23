@@ -749,8 +749,13 @@ it.
     committed rewrite's leftover and is removed, never put back. A rewrite
     checks its claim is still there before its commit point. A delete
     claims the file as a rewrite does, removes every other claim of that
-    name, young or old, then its own, so no earlier version comes back
-    after it. The one race left needs a writer stalled past the lease and
+    name, young or old, and looks again; only when none is left does it
+    remove its own, so no earlier version comes back after it. Otherwise
+    it puts the board back as it was and fails (PR #164 re-review). A
+    folder that cannot be read is never taken for an empty one: a read
+    reports it `unreadable`, and `missing` means the folder was read and
+    neither file nor claim was there; a read classifies every `missing`,
+    and a board claimed again before it is read is `busy`. The one race left needs a writer stalled past the lease and
     another window's put-back and delete inside its final rename; a file
     system with only rename and delete offers no stronger lock.
   - *Complete listings (PR #163 F-04).* A source's folder is read whole:
