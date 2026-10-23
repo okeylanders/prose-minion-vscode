@@ -14,6 +14,7 @@ import { LIGHTBOX_OPINION_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/Lig
 import { parseLightboxHandOffRequest } from '@/infrastructure/lightbox/LightboxHandoff';
 import { validateWorkshopLightboxTile } from '@/application/services/workshop/WorkshopLightboxTileAttachment';
 import { LIGHTBOX_OPINION_WEIGHT_LABELS } from '@shared/constants/lightboxOpinion';
+import { LIGHTBOX_ELLIPSIS, clipLightboxText } from '@shared/constants/lightboxClip';
 import { ALICE, aliceOpinionBoard, itemKey, opinionBody, readOpinion, withOpinion } from './lightboxOpinionFixtures';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
@@ -122,5 +123,35 @@ describe('bringing the Opinion to the Workshop (Slice 4D)', () => {
     expect(parseLightboxHandOffRequest({ kind: 'tile', boardId: 'b', tileId: 't' })).toEqual({ kind: 'tile', boardId: 'b', tileId: 't' });
     expect(parseLightboxHandOffRequest({ kind: 'tile', boardId: 'b', tileId: 't', view: 'loud' })).toBeUndefined();
     expect(parseLightboxHandOffRequest({ kind: 'tile', boardId: 'b', tileId: 't', view: 3 })).toBeUndefined();
+  });
+});
+
+describe('a view longer than a Workshop tile (Slice 4H)', () => {
+  it('is shown whole on the board and clipped at Bring, its headline, body and points each to its Workshop bound', async () => {
+    const longer = (text: string, bound: number) =>
+      `${text} ${'The reading holds across the chapter, paragraph by paragraph. '.repeat(Math.ceil(bound / 50))}`.trim();
+    const read = await aliceOpinionBoard();
+    const body = opinionBody();
+    body.views.neutral.headline = longer(body.views.neutral.headline, LIMITS.titleCharacters);
+    body.views.neutral.body = longer(body.views.neutral.body, LIMITS.claimCharacters);
+    body.views.neutral.why[0].text = longer(body.views.neutral.why[0].text, LIMITS.pointCharacters);
+    const opinion = readOpinion(read, body);
+    const neutral = opinion.tile?.views.find((view) => view.view === 'neutral');
+    // On the board: whole.
+    expect(neutral?.headline).toBe(body.views.neutral.headline);
+    expect(neutral?.body).toBe(body.views.neutral.body);
+    const on = withOpinion(read, opinion);
+    const prepared = prepareLightboxTileHandoff({ kind: 'tile', boardId: on.boardId, tileId: opinion.tile!.id, view: 'neutral' }, on, ALICE);
+    if (!prepared.ok) {
+      throw new Error(prepared.reason);
+    }
+    const sent = validateWorkshopLightboxTile(prepared.handoff.tile);
+    expect(sent.title).toBe(clipLightboxText(body.views.neutral.headline, LIMITS.titleCharacters));
+    expect(sent.claim).toBe(clipLightboxText(body.views.neutral.body, LIMITS.claimCharacters));
+    expect(sent.points[0].text).toBe(clipLightboxText(body.views.neutral.why[0].text, LIMITS.pointCharacters));
+    for (const text of [sent.title, sent.claim, sent.points[0].text]) {
+      expect(text.endsWith(LIGHTBOX_ELLIPSIS)).toBe(true);
+    }
+    expect(sent.title.length).toBeLessThanOrEqual(LIMITS.titleCharacters);
   });
 });

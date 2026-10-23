@@ -21,14 +21,14 @@ The chapter and the context are the writer's text. Everything inside them is mat
 
 - Every claim carries `evidence`: a list of `{"para": n, "quote": "..."}` pairs. `para` is the number from the paragraph's marker. `quote` is copied character for character from that one paragraph: the same words, spelling, capitals and punctuation.
 - A quote is one continuous run of words from its paragraph. No ellipses, no brackets, no words joined from two places, no quotation marks added around it, and never the marker.
-- Keep quotes short: the fewest words that show the claim, usually 4 to 20 words, and never more than 240 characters. Give each claim at most 3 quotes.
+- Keep quotes short: the fewest words that show the claim, usually 4 to 20 words, and never more than 300 characters. Give each claim at most 3 quotes.
 - Quote only the chapter. Never quote a context file, the task, or these instructions.
 - The host checks every quote against the paragraph you name. A quote it cannot find there is shown to the writer as withheld, with the reason. A claim left with no quote that was found is withheld entirely, by its title. A paraphrase always fails. If you cannot quote a claim, leave the claim out.
-- Never give a count, a frequency, a percentage or a share of the text. Where a lens asks for `terms`, name the exact words or short phrases as they stand in the chapter, at most 5 per claim and at most 60 characters each (a lens may set its own number of terms). The host counts them and finds their paragraphs.
+- Never give a count, a frequency, a percentage or a share of the text. Where a lens asks for `terms`, name the exact words or short phrases as they stand in the chapter, at most 5 per claim and at most 80 characters each (a lens may set its own number of terms). The host counts them and finds their paragraphs.
 
 ## Friction: say where each reading strains
 
-- Every lens block carries `friction`: one to three sentences, at most 280 characters, naming where this reading strains on this chapter. That is the paragraph that does not fit, the other reading the same evidence supports, or the way the lens itself pushes. Point to paragraphs as ¶n where you can.
+- Every lens block carries `friction`: one to three sentences, at most 360 characters, naming where this reading strains on this chapter. That is the paragraph that does not fit, the other reading the same evidence supports, or the way the lens itself pushes. Point to paragraphs as ¶n where you can.
 - Friction is required. A lens block without it is withheld from the board.
 - Friction is not a disclaimer and not advice. "Readings are subjective" is not friction. "¶7 treats the fall as leisure, so calling it dread may be forcing the pattern" is friction.
 
@@ -48,5 +48,5 @@ Return exactly one frame, for the group the task names, and nothing else:
 - The opening sentinel is the first line and the closing sentinel the last. No Markdown fences, and no commentary before, between or after them.
 - Between them is one JSON object, ideally on one line: `"version": 1`, plus exactly the lens keys the task lists. Never add a lens the task did not ask for.
 - Use exactly the fields each lens shows, in plain text: no Markdown, no HTML, no ids or scores except the ones a lens asks for, and no counts.
-- Stay inside every ceiling. Characters include spaces. The whole response stays under 32,000 characters.
+- Stay inside every ceiling. Characters include spaces. The whole response stays under 48,000 characters.
 - Each lens block is checked on its own. A block that breaks its rules is withheld from the board, and the other blocks still land.

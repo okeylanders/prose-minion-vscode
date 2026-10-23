@@ -5,7 +5,7 @@ What is building in the chapter and whether it resolves: the questions a reader 
 {"threads":[{"question":"...","planted":{"para":4,"quote":"..."},"escalations":[{"para":6,"quote":"..."}],"resolution":null,"dormant":false}],"friction":"..."}
 
 - `threads`: 0–6 threads, in the order they are planted.
-- `question`: one line of at most 120 characters: the question a reader carries, or the event that is coming, in plain words.
+- `question`: one line of at most 160 characters: the question a reader carries, or the event that is coming, in plain words.
 - `planted`: one quote, `{"para": n, "quote": "..."}`, where the thread is first raised.
 - `escalations`: 0–3 quotes where it builds.
 - `resolution`: one quote where it resolves, or `null` while it is still open at the chapter's end.

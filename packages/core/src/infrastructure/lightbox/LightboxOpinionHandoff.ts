@@ -13,12 +13,13 @@
  *   one whose cited items changed since it was read is refused, as a stale
  *   tile is;
  * - the view's headline is the item's title and its body the claim; its
- *   first three Why points travel as points, each its weight and its text;
- *   the codec's ceilings match the Workshop's, so all of it travels whole;
+ *   first three Why points travel as points, each its weight and its text.
+ *   Their asks run past the Workshop's bounds (Slice 4H), so each is
+ *   clipped to its Workshop bound with an ellipsis, never withheld;
  * - its quotes are the ones its Why points' observations cite, in that
  *   order, each found again in the current chapter as any tile's are, and
- *   bounded like any tile's (a quote too long to travel is dropped, never
- *   cut). A view whose observations cite no quote still in the chapter is
+ *   bounded like any tile's (the first four, each clipped to a Workshop
+ *   quote). A view whose observations cite no quote still in the chapter is
  *   refused: a Workshop tile always carries one;
  * - never the other views, the observations' words, the digest or the
  *   board.
@@ -41,6 +42,7 @@ import {
   lightboxOpinionView
 } from '@shared/constants/lightboxOpinion';
 import { lightboxLensLabel } from '@shared/constants/lightbox';
+import { clipLightboxText } from '@shared/constants/lightboxClip';
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
@@ -82,7 +84,7 @@ export function prepareLightboxOpinionHandoff(
       quotes.push({ paragraph: verdict.paragraph, text: verdict.text });
     }
   }
-  const bounded = quotes.filter((quote) => quote.text.length <= LIMITS.quoteCharacters).slice(0, LIMITS.quotes);
+  const bounded = quotes.slice(0, LIMITS.quotes).map((quote) => ({ ...quote, text: clipLightboxText(quote.text, LIMITS.quoteCharacters) }));
   if (bounded.length === 0) {
     return { ok: false, reason: LIGHTBOX_OPINION_HANDOFF_REFUSALS.quotesGone };
   }
@@ -95,11 +97,11 @@ export function prepareLightboxOpinionHandoff(
       tileId: tile.id.slice(0, LIMITS.idCharacters),
       kindLabel: `Opinion · ${label} view`.slice(0, LIMITS.labelCharacters),
       lensLabel: lightboxLensLabel(tile.lens).slice(0, LIMITS.labelCharacters),
-      title: view.headline.slice(0, LIMITS.titleCharacters).trim(),
-      claim: view.body.slice(0, LIMITS.claimCharacters).trim(),
+      title: clipLightboxText(view.headline, LIMITS.titleCharacters),
+      claim: clipLightboxText(view.body, LIMITS.claimCharacters),
       points: view.why.slice(0, LIMITS.points).map((point) => ({
         label: LIGHTBOX_OPINION_WEIGHT_LABELS[point.weight].slice(0, LIMITS.pointLabelCharacters),
-        text: point.text.slice(0, LIMITS.pointCharacters).trim()
+        text: clipLightboxText(point.text, LIMITS.pointCharacters)
       })),
       quotes: bounded,
       sourceLabel: board.source.displayPath.slice(0, LIMITS.sourceLabelCharacters)

@@ -9,7 +9,7 @@
  * - the sentence-length standout's instance check;
  * - handoff adjacency;
  * - the borrowed-field collision witness.
- * The synopsis bound is pinned in `LightboxPlotReadings.test.ts`.
+ * A synopsis's sentences are an ask since Slice 4H, so no gate counts them.
  *
  * Expectations are literal. Comments give what the closing-marks rule alone
  * gave ("marks:") and, where it differs, the original rule ("base:").

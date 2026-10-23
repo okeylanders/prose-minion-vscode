@@ -1,10 +1,21 @@
 # Lightbox: one home for the reading codec's field decoders
 
 **Date Identified**: 2026-10-19 (Lightbox Slice 3)
-**Reviewed**: 2026-10-19
-**Status**: Identified
+**Reviewed**: 2026-10-23
+**Status**: Resolved (Lightbox Slice 4H, 2026-10-23)
 **Priority**: Low
 **Estimated Effort**: Small (move helpers, re-point imports, no behavior change)
+
+## Resolution
+
+Slice 4H made `LightboxReadingFields.ts` the one home of the field
+decoders: `text`, `terms`, `evidence`, `singleQuote`, `listAt`,
+`strictObject`, `paragraphNumber`, `claimedFraction`, `decodeItems`,
+`oneOf` and the field count. `LightboxReadingCodec.ts` lost its private
+copies, and the plot and craft codecs lost theirs (`singleQuote`,
+`oneOf`). Every codec reads a field through the one rule, which is what
+let the slice change it once: a length or a count is an ask, and one
+safety ceiling clips a runaway field. The reasons stay host-owned.
 
 ## Problem
 

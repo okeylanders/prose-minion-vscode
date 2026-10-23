@@ -79,13 +79,13 @@ describe('prompt budgets', () => {
       sourceWords: 50_000,
       chapterWords: 12_000,
       ribbonColumns: 96,
-      groupOutputTokens: 8_000,
-      groupResponseCharacters: 32_000,
-      quoteCharacters: 240,
-      claimCharacters: 320,
-      frictionCharacters: 280,
-      labelCharacters: 60,
-      noteCharacters: 120,
+      groupOutputTokens: 12_000,
+      groupResponseCharacters: 48_000,
+      quoteCharacters: 300,
+      claimCharacters: 400,
+      frictionCharacters: 360,
+      labelCharacters: 80,
+      noteCharacters: 160,
       quotesPerClaim: 3,
       termsPerClaim: 5,
       motifs: 4,
@@ -106,7 +106,7 @@ describe('prompt budgets', () => {
       subtextPairs: 4,
       subtextContextQuotes: 2,
       sparks: 4,
-      sparkCharacters: 240,
+      sparkCharacters: 300,
       stockBeats: 40,
       signaturePhrases: 4,
       familiarPhrases: 6,
@@ -121,31 +121,36 @@ describe('prompt budgets', () => {
       artifactSteps: 5,
       movements: 8,
       synopsisQuotes: 3,
-      synopsisSentences: 4,
-      // Slice 4D: the Opinion's digest bound (priced "up to" it) and its ceilings, which fit a Workshop tile.
+      synopsisSentences: 5,
+      // Slice 4D: the Opinion's digest bound (priced "up to" it); Slice 4H: its asks, which Bring clips to a Workshop tile.
       opinionDigestTokens: 9_000,
       opinionQuotesPerItem: 3,
       opinionParagraphsPerLine: 12,
       opinionSections: 24,
       opinionObservations: 6,
       opinionCitesPerObservation: 3,
-      opinionObservationCharacters: 200,
-      opinionHeadlineCharacters: 120,
-      opinionBodyCharacters: 320,
+      opinionObservationCharacters: 260,
+      opinionHeadlineCharacters: 160,
+      opinionBodyCharacters: 400,
       opinionWhyPoints: 4,
-      opinionWhyCharacters: 120,
+      opinionWhyCharacters: 160,
       steeringNotes: 4,
-      steeringWhyCharacters: 160,
-      steeringNudgeCharacters: 120,
+      steeringWhyCharacters: 200,
+      steeringNudgeCharacters: 160,
       steeringExampleBeforeWords: 8,
       steeringExampleAfterWords: 6,
-      steeringExampleCharacters: 56
+      steeringExampleCharacters: 72,
+      // Slice 4H: the one safety ceiling, never stated in a prompt.
+      safetyMultiple: 8
     });
     // One usage reading per figure the numbers lens reads at most (Slice 4B; three since Slice 4F gave craft steering the others).
     expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(LIGHTBOX_NUMBERS_READ_STATS.length);
-    // A brought steering note travels whole: its nudge and its example (both sides and the arrow) each fit one Workshop point (Slice 4F).
-    expect(PROMPT_BUDGETS.lightbox.steeringNudgeCharacters).toBeLessThanOrEqual(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
-    expect(2 * PROMPT_BUDGETS.lightbox.steeringExampleCharacters + ' → '.length).toBeLessThanOrEqual(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    // Slice 4H: asks rose past the Workshop's own bounds, which stay as they are: Bring clips at that surface
+    // (`clipLightboxText`), so a nudge or an example (both sides and the arrow) can run past one Workshop point.
+    expect(PROMPT_BUDGETS.lightbox.steeringNudgeCharacters).toBeGreaterThan(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    expect(2 * PROMPT_BUDGETS.lightbox.steeringExampleCharacters + ' → '.length).toBeGreaterThan(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    // The output ceiling and the whole response it asks for keep their ratio: four characters a token.
+    expect(PROMPT_BUDGETS.lightbox.groupResponseCharacters).toBe(4 * PROMPT_BUDGETS.lightbox.groupOutputTokens);
     // A synopsis's quotes stay within a claim's quotes, and engagement gives one entry per movement (Slice 4C).
     expect(PROMPT_BUDGETS.lightbox.synopsisQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
     // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.

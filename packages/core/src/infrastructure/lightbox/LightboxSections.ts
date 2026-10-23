@@ -155,7 +155,9 @@ function headingOf(lines: readonly string[]): { label: string; level: number } |
 }
 
 function linesOf(text: string): string[] {
-  return text.split('\n').map((line) => line.replace(/\s+$/, ''));
+  // `trimEnd` removes exactly what `/\s+$/` did, read from the end: the pattern was tried from every start in a long
+  // run of spaces inside a line, work that grew with the square of the run (PR #165 F-05).
+  return text.split('\n').map((line) => line.trimEnd());
 }
 
 /**

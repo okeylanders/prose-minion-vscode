@@ -31,6 +31,7 @@ import {
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { isLightboxOpinionView } from '@shared/constants/lightboxOpinion';
+import { clipLightboxText } from '@shared/constants/lightboxClip';
 
 /** Slice 3's handoff: a borrowed field, as a Build lens seed. */
 export const LIGHTBOX_SEED_HAND_OFF_KIND = 'lexical-gravity-seed' satisfies LightboxHandOffPayload['kind'];
@@ -168,8 +169,9 @@ function seedOf(tile: LightboxGravityFieldTile, board: LightboxBoard, paragraphT
     .map(({ term, count }) => ({ term, count }));
   return {
     origin: 'lightbox',
-    field: tile.title.slice(0, limits.fieldCharacters),
-    metaphor: tile.metaphor.slice(0, limits.metaphorCharacters),
+    // The Build lens seed's own bounds: a longer field or metaphor is clipped there with an ellipsis (Slice 4H).
+    field: clipLightboxText(tile.title, limits.fieldCharacters),
+    metaphor: clipLightboxText(tile.metaphor, limits.metaphorCharacters),
     terms,
     sourceLabel: board.source.displayPath.slice(0, limits.sourceLabelCharacters)
   };

@@ -16,7 +16,7 @@ The digest holds the writer's words and the board's readings. Everything inside 
 `observations`: 2–6 observations about the chapter, each one sentence the three views can all weigh.
 
 - `id`: `O1` to `O6`, each used once.
-- `text`: one sentence, at most 200 characters, in plain words about the work.
+- `text`: one sentence, at most 260 characters, in plain words about the work.
 - `cites`: 1–3 board items the observation stands on, by their keys exactly as the digest shows them in square brackets:
   - a reading: `{"tile": "lbt-…"}`, or one of its quotes: `{"tile": "lbt-…", "quote": 0}` (the number after `q`);
   - a measured figure: `{"measured": "headline"}`, `{"measured": "standout:sentence-length"}`, `{"measured": "section:2"}`.
@@ -32,9 +32,9 @@ The digest holds the writer's words and the board's readings. Everything inside 
 
 Each view has:
 
-- `headline`: one sentence, at most 120 characters;
-- `body`: a short paragraph, at most 320 characters;
-- `why`: 1–4 points. Each has a `weight`, `strength`, `even` or `concern`; a `text` of at most 120 characters; and `observations`: the 1–3 observation ids it weighs.
+- `headline`: one sentence, at most 160 characters;
+- `body`: a short paragraph, at most 400 characters;
+- `why`: 1–4 points. Each has a `weight`, `strength`, `even` or `concern`; a `text` of at most 160 characters; and `observations`: the 1–3 observation ids it weighs.
 
 A view may weigh only the observations above. A view whose points cite an observation that is not drawn is withheld whole. The three views share every fact and differ only in temperament: Enthusiastic leans on the strengths, Blunt on the costs, and Neutral gives each its weight. None of them adds a fact the observations do not hold.
 
@@ -49,7 +49,7 @@ Code checks each of these, part by part. A part that breaks one is withheld, by 
 
 ## Friction: say where this Opinion strains
 
-`friction`: one to three sentences, at most 280 characters: where this Opinion strains on this board. That is the reading it leaned on that strains itself, what the board did not hold and so could not be weighed, or the temperament that fits the evidence worst. It is required: an Opinion without it is withheld.
+`friction`: one to three sentences, at most 360 characters: where this Opinion strains on this board. That is the reading it leaned on that strains itself, what the board did not hold and so could not be weighed, or the temperament that fits the evidence worst. It is required: an Opinion without it is withheld.
 
 ## The frame
 
@@ -62,4 +62,4 @@ Return exactly one frame and nothing else:
 - The opening sentinel is the first line and the closing sentinel the last. No Markdown fences, and no commentary before, between or after them.
 - Between them is one JSON object, ideally on one line: `"version": 1` and exactly the key `"opinion"`.
 - Use exactly the fields shown, in plain text: no Markdown, no HTML, no field the format does not define, and no counts or scores.
-- Stay inside every ceiling. Characters include spaces. The whole response stays under 32,000 characters.
+- Stay inside every ceiling. Characters include spaces. The whole response stays under 48,000 characters.

@@ -238,9 +238,47 @@ describe('LightboxReadingRunner', () => {
     });
   });
 
-  it('fails a group cut off at the output ceiling, and quarantines the paid body', async () => {
+  it('keeps what a reply cut off at the output ceiling finished, withholds the block it was cut inside, and saves the paid body (Slice 4H)', async () => {
+    // Example C cut inside its lineage block: the genre block finished, the spark block was never reached.
+    const whole = examples.C.response;
+    const cut = whole.slice(0, whole.indexOf('"lineage"') + 200);
+    const { start, outcomes, capture, present, logged } = setup((request) =>
+      groupOf(request) === 'C' ? ok('C', { finishReason: 'length', rawContent: cut }) : ok(groupOf(request))
+    );
+    const started = await start();
+    if (started.started) {
+      await started.done;
+    }
+    const c = outcomes.find((outcome) => outcome.group === 'C');
+    expect(c?.status).toBe('ok');
+    expect(c?.tiles.filter((tile) => tile.lens === 'genre').length).toBeGreaterThan(0);
+    expect(c?.tiles.some((tile) => tile.lens === 'lineage' || tile.lens === 'spark')).toBe(false);
+    expect(c?.withheldBlocks).toEqual([
+      {
+        kind: 'lineage',
+        lens: 'lineage',
+        reason: 'The reply reached the output ceiling before this block finished. ' +
+          'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt.'
+      },
+      { kind: 'spark', lens: 'spark', reason: 'The reading returned no spark block.' }
+    ]);
+    // Still saved, with the group's own contract; no warning, since the reply was read.
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'lightbox-readings',
+      rawResponse: cut,
+      finishReason: 'length',
+      contract: expect.objectContaining({ protocol: expect.stringContaining('(genre, lineage, spark)') })
+    }));
+    expect(present).not.toHaveBeenCalled();
+    expect(logged()).toContain('[LightboxReadingRunner] Group C reached the output ceiling: 1 blocks finished, cut inside lineage');
+    expect(logged()).toContain('[LightboxReadingRunner] Group C repaired: missing-closing-sentinel');
+    expect(logged()).toContain('[LightboxReadingRunner] Group C repaired: missing-closing-bracket');
+    expect(logged()).not.toContain(cut.slice(-60));
+  });
+
+  it('fails a reply cut off at the output ceiling that cannot be salvaged, and quarantines the paid body', async () => {
     const { start, outcomes, capture, present } = setup((request) =>
-      groupOf(request) === 'C' ? ok('C', { finishReason: 'length', rawContent: '===LIGHTBOX_GROUP_C_V1===\n{"version":1,"genre":{' }) : ok(groupOf(request))
+      groupOf(request) === 'C' ? ok('C', { finishReason: 'length', rawContent: '===LIGHTBOX_GROUP_C_V1===\nHere is what the chapter' }) : ok(groupOf(request))
     );
     const started = await start();
     if (started.started) {
@@ -248,12 +286,12 @@ describe('LightboxReadingRunner', () => {
     }
     const c = outcomes.find((outcome) => outcome.group === 'C');
     expect(c?.status).toBe('failed');
-    expect(c?.error).toContain('8,000-token output ceiling');
+    expect(c?.error).toContain('12,000-token output ceiling, and what came back could not be read');
     expect(c?.error).toContain('Complete response saved for recovery at /workspace/prose-minion/recovery/');
     expect(capture).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lightbox-readings',
-      rawResponse: '===LIGHTBOX_GROUP_C_V1===\n{"version":1,"genre":{',
-      finishReason: 'length'
+      finishReason: 'length',
+      rejection: expect.stringContaining('A salvage was refused: text that is not JSON at character 0.')
     }));
     expect(present).toHaveBeenCalledTimes(1);
   });

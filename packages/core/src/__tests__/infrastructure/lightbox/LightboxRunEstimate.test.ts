@@ -78,7 +78,8 @@ describe('estimateLightboxRun', () => {
     expect(estimate.largestFittingWords).toBeGreaterThan(5_000);
     expect(estimate.largestFittingWords).toBeLessThan(25_000);
     expect(estimate.largestFittingWords! % 100).toBe(0);
-    expect(estimate.reason).toMatch(/^Group A would send about [\d,]+ tokens and reserve 8,000 for the reply, more than provider\/small's 32,000-token window allows\./);
+    // The reservation is the output ceiling (12,000 since Slice 4H), as the engine's preflight reserves it.
+    expect(estimate.reason).toMatch(/^Group A would send about [\d,]+ tokens and reserve 12,000 for the reply, more than provider\/small's 32,000-token window allows\./);
     expect(estimate.reason).toContain(`about ${estimate.largestFittingWords!.toLocaleString('en-US')} words of chapter would fit`);
 
     // The largest size it names does fit.

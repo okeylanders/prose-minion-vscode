@@ -36,6 +36,7 @@ import {
 } from '@shared/constants/lightbox';
 import { findLightboxTile, lightboxTilesOfKind, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxPressureCounts } from '@shared/constants/lightboxPlot';
+import { LIGHTBOX_OPINION_OBSERVATION_ID } from '@shared/constants/lightboxOpinion';
 import { lightboxIsSetAside } from '@hooks/domain/lightbox/lightboxSparks';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
 import { lightboxObservationItem } from '@hooks/domain/lightbox/lightboxOpinion';
@@ -168,7 +169,7 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
     case 'observation': {
       const tileId = text('tileId');
       const observation = text('observation');
-      return tileId && observation && /^O[1-6]$/.test(observation) ? { kind: 'observation', tileId, observation } : null;
+      return tileId && observation && LIGHTBOX_OPINION_OBSERVATION_ID.test(observation) ? { kind: 'observation', tileId, observation } : null;
     }
     case 'steering':
       return parseLightboxSteeringRef(record);

@@ -3,12 +3,25 @@
  * D6, D7). Pure: no host, no I/O.
  *
  * A group's response is one sentinel-framed JSON object. The frame and the
- * root are all-or-nothing: a missing or repeated sentinel, invalid JSON, a
- * wrong version or an unknown key fails the whole group, which the runner
- * quarantines. Below the root, validation is per lens block: a block that
- * breaks its rules (a missing `friction` included) is withheld by lens while
- * its siblings survive, and an item that breaks its rules inside a valid
- * block (one motif, one character, one neighbor) is withheld by its title.
+ * root are all-or-nothing: a frame that cannot be read even after its
+ * structural repairs (`LightboxReadingFrame`), a wrong version or an unknown
+ * key fails the whole group, which the runner quarantines. Below the root,
+ * validation is per lens block: a block that breaks its rules (a missing
+ * `friction` included) is withheld by lens while its siblings survive, and
+ * an item that breaks its rules inside a valid block (one motif, one
+ * character, one neighbor) is withheld by its title.
+ *
+ * **Asks, not gates (Slice 4H, epic decision 37).** Lengths and counts a
+ * prompt states are asks: a field or a list that runs past one is read and
+ * shown (`LightboxReadingFields`). What withholds is a real fault: a missing
+ * or mistyped field, a value outside its vocabulary, fewer items than a
+ * stated minimum, or a structural rule (one tension score per ribbon
+ * column).
+ *
+ * **A reply cut off at the output ceiling** (epic decision 40) is read for
+ * the blocks it finished; the one it was cut inside is withheld with
+ * `LIGHTBOX_CUT_OFF_REASON`, and lenses it never reached are reported as
+ * any missing lens is.
  *
  * The decoded result is still the model's word. Quotes are checked, terms are
  * counted and ids are minted afterwards (`LightboxReadingTiles`); nothing
@@ -22,9 +35,10 @@
  * `diagnostic`, which the runner hands to the recovery store with the body.
  */
 
-import type { LightboxLensId, LightboxReadingGroupId } from '@messages';
+import type { LightboxLensId } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
+  LIGHTBOX_CUT_OFF_REASON,
   LIGHTBOX_LENS_KEYS,
   LIGHTBOX_MINIMUM_GENRE_NEIGHBORS,
   LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS,
@@ -33,25 +47,34 @@ import {
   LIGHTBOX_TENSION_TOP_SCORE,
   LIGHTBOX_VOICE_TRAITS,
   LightboxGroupFrameError,
-  lightboxGroupSentinels,
   type LightboxDecodedBlock,
   type LightboxDecodedCharacter,
   type LightboxDecodedGroup,
   type LightboxDecodedMotif,
   type LightboxDecodedNeighbor,
   type LightboxGroupDecodeContext,
-  type LightboxMalformedItem,
-  type LightboxWirePeak,
-  type LightboxWireQuote
+  type LightboxWirePeak
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import {
   boundedArrayAt,
-  boundedStringAt,
-  exactObject,
   numberAt,
   objectAt,
-  shapeError
+  shapeError,
+  stringAt
 } from '@/application/services/workshop/persistedValidation';
+import {
+  countLightboxClips,
+  decodeItems,
+  evidence,
+  lightboxFieldCount,
+  listAt,
+  paragraphNumber,
+  strictObject,
+  terms,
+  prose,
+  text
+} from '@/infrastructure/lightbox/LightboxReadingFields';
+import { readLightboxFrame } from '@/infrastructure/lightbox/LightboxReadingFrame';
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
 import { decodeNumbersBlock, decodeRhythmBlock, decodeStockBlock } from '@/infrastructure/lightbox/LightboxCraftCodec';
@@ -70,18 +93,19 @@ const DIAGNOSTIC_FIELD_NAMES = 10;
 const DIAGNOSTIC_NAME_CHARACTERS = 120;
 
 // ---------------------------------------------------------------------------
-// The frame and the root
+// The root
 // ---------------------------------------------------------------------------
 
 export function decodeLightboxGroup(content: string, context: LightboxGroupDecodeContext): LightboxDecodedGroup {
-  const root = parseFrame(content, context.group);
+  const frame = readLightboxFrame(content, context.group, context.end ?? 'stop');
+  const root = frame.root;
   const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
   const unknown = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key));
   if (unknown.length > 0) {
     // Field names are the model's: the reason counts them, and only the recovery diagnostic names them.
     const named = unknown.slice(0, DIAGNOSTIC_FIELD_NAMES).map((key) => JSON.stringify(key.slice(0, DIAGNOSTIC_NAME_CHARACTERS)));
     throw new LightboxGroupFrameError(
-      `The group ${context.group} response has ${fieldCount(unknown.length)} the format does not define`,
+      `The group ${context.group} response has ${lightboxFieldCount(unknown.length)} the format does not define`,
       `Undefined root fields: ${named.join(', ')}${unknown.length > named.length ? `, and ${unknown.length - named.length} more` : ''}`
     );
   }
@@ -91,12 +115,22 @@ export function decodeLightboxGroup(content: string, context: LightboxGroupDecod
     );
   }
 
+  const { value, clipped } = countLightboxClips(() => decodeBlocks(root, context, frame.cutOff?.cutKey));
+  return { ...value, report: { repairs: frame.repairs, clipped, cutOff: frame.cutOff !== undefined } };
+}
+
+function decodeBlocks(
+  root: Record<string, unknown>,
+  context: LightboxGroupDecodeContext,
+  cutKey: string | undefined
+): Omit<LightboxDecodedGroup, 'report'> {
   const blocks: LightboxDecodedBlock[] = [];
   const withheld: LightboxDecodedGroup['withheld'] = [];
   for (const lens of context.lenses) {
     const key = LIGHTBOX_LENS_KEYS[lens];
     if (!Object.prototype.hasOwnProperty.call(root, key)) {
-      withheld.push({ lens, reason: `The reading returned no ${key} block.` });
+      // The block the reply was cut inside is never trusted; a lens it never reached is missing.
+      withheld.push({ lens, reason: key === cutKey ? LIGHTBOX_CUT_OFF_REASON : `The reading returned no ${key} block.` });
       continue;
     }
     try {
@@ -109,48 +143,6 @@ export function decodeLightboxGroup(content: string, context: LightboxGroupDecod
     (lens) => !context.lenses.includes(lens) && Object.prototype.hasOwnProperty.call(root, LIGHTBOX_LENS_KEYS[lens])
   );
   return { blocks, withheld, ignored };
-}
-
-function parseFrame(content: string, group: LightboxReadingGroupId): Record<string, unknown> {
-  if (content.length > B.groupResponseCharacters) {
-    throw new LightboxGroupFrameError(
-      `The group ${group} response exceeds ${B.groupResponseCharacters.toLocaleString('en-US')} characters`
-    );
-  }
-  const { start, end } = lightboxGroupSentinels(group);
-  const normalized = content.replace(/\r\n?/g, '\n').trim();
-  for (const marker of [start, end]) {
-    if (normalized.split(marker).length !== 2) {
-      throw new LightboxGroupFrameError(`The group ${group} response must contain exactly one ${marker}`);
-    }
-  }
-  const lines = normalized.split('\n');
-  if (lines[0].trim() !== start) {
-    throw new LightboxGroupFrameError(`The group ${group} opening sentinel must be the first line`);
-  }
-  if (lines[lines.length - 1].trim() !== end) {
-    throw new LightboxGroupFrameError(`The group ${group} closing sentinel must be the final line`);
-  }
-  const jsonText = lines.slice(1, -1).join('\n').trim();
-  if (jsonText.length === 0) {
-    throw new LightboxGroupFrameError(`The group ${group} response JSON is empty`);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch (error) {
-    // The parser's message can echo a slice of the response, which may quote
-    // the chapter; reasons are logged, so keep only the position.
-    const position = /position (\d+)/.exec(error instanceof Error ? error.message : '')?.[1];
-    throw new LightboxGroupFrameError(
-      `The group ${group} response JSON is invalid${position ? ` (at character ${position})` : ''}`
-    );
-  }
-  try {
-    return objectAt(parsed, `group ${group}`);
-  } catch (error) {
-    throw new LightboxGroupFrameError(error instanceof Error ? error.message : String(error));
-  }
 }
 
 function blockReason(key: string, error: unknown): string {
@@ -174,7 +166,7 @@ function decodeBlock(
       const block = strictObject(value, path, ['sentence', 'terms', 'evidence', 'friction']);
       return {
         lens,
-        sentence: text(block.sentence, `${path}.sentence`, B.noteCharacters),
+        sentence: prose(block.sentence, `${path}.sentence`, B.noteCharacters),
         terms: terms(block.terms, `${path}.terms`),
         evidence: evidence(block.evidence, `${path}.evidence`, 1),
         friction
@@ -182,7 +174,7 @@ function decodeBlock(
     }
     case 'motif': {
       const block = strictObject(value, path, ['items', 'friction']);
-      const { items, malformed } = decodeItems(block.items, `${path}.items`, B.motifs, 'motif', decodeMotif);
+      const { items, malformed } = decodeItems(block.items, `${path}.items`, 'motif', decodeMotif);
       return { lens, items, malformed, friction };
     }
     case 'tension': {
@@ -190,16 +182,14 @@ function decodeBlock(
       return {
         lens,
         scores: scores(block.scores, `${path}.scores`, context.columnCount),
-        claim: text(block.claim, `${path}.claim`, B.claimCharacters),
+        claim: prose(block.claim, `${path}.claim`, B.claimCharacters),
         peaks: peaks(block.peaks, `${path}.peaks`),
         friction
       };
     }
     case 'characters': {
       const block = strictObject(value, path, ['items', 'friction']);
-      const { items, malformed } = decodeItems(
-        block.items, `${path}.items`, B.characters, 'character', decodeCharacter
-      );
+      const { items, malformed } = decodeItems(block.items, `${path}.items`, 'character', decodeCharacter);
       return { lens, items, malformed, friction };
     }
     case 'voice': {
@@ -207,8 +197,8 @@ function decodeBlock(
       const block = strictObject(value, path, [...keys, 'claim', 'evidence', 'friction']);
       return {
         lens,
-        traits: keys.map((key) => ({ key, value: text(block[key], `${path}.${key}`, B.noteCharacters) })),
-        claim: text(block.claim, `${path}.claim`, B.claimCharacters),
+        traits: keys.map((key) => ({ key, value: prose(block[key], `${path}.${key}`, B.noteCharacters) })),
+        claim: prose(block.claim, `${path}.claim`, B.claimCharacters),
         evidence: evidence(block.evidence, `${path}.evidence`, 1),
         friction
       };
@@ -253,13 +243,13 @@ function requireFriction(value: unknown, path: string): string {
   if (typeof friction !== 'string' || friction.trim().length === 0) {
     throw new Error(`The ${path} block names no friction; every lens must say where it strains.`);
   }
-  return text(friction, `${path}.friction`, B.frictionCharacters);
+  return prose(friction, `${path}.friction`, B.frictionCharacters);
 }
 
 function decodeGenre(value: unknown, path: string, friction: string): LightboxDecodedBlock {
   const block = strictObject(value, path, ['neighbors', 'promise', 'friction']);
   const { items, malformed } = decodeItems(
-    block.neighbors, `${path}.neighbors`, B.genreNeighbors, 'neighbor', decodeNeighbor, LIGHTBOX_MINIMUM_GENRE_NEIGHBORS
+    block.neighbors, `${path}.neighbors`, 'neighbor', decodeNeighbor, LIGHTBOX_MINIMUM_GENRE_NEIGHBORS
   );
   if (items.length < LIGHTBOX_MINIMUM_GENRE_NEIGHBORS) {
     throw new Error(`The ${path} block kept fewer than ${LIGHTBOX_MINIMUM_GENRE_NEIGHBORS} well-formed neighbors.`);
@@ -276,7 +266,7 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
     neighbors: items,
     malformed,
     promise: {
-      text: text(promise.text, `${path}.promise.text`, B.noteCharacters),
+      text: prose(promise.text, `${path}.promise.text`, B.noteCharacters),
       evidence: evidence(promise.evidence, `${path}.promise.evidence`, 1)
     },
     friction
@@ -287,37 +277,12 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
 // Items: each decoded on its own, withheld by title when it breaks its rules
 // ---------------------------------------------------------------------------
 
-function decodeItems<T>(
-  value: unknown,
-  path: string,
-  maximum: number,
-  noun: string,
-  decode: (item: Record<string, unknown>, itemPath: string) => T,
-  minimum = 0
-): { items: T[]; malformed: LightboxMalformedItem[] } {
-  boundedArrayAt(value, path, minimum, maximum, `${noun}s`);
-  const items: T[] = [];
-  const malformed: LightboxMalformedItem[] = [];
-  value.forEach((item, index) => {
-    const itemPath = `${path}[${index}]`;
-    try {
-      items.push(decode(objectAt(item, itemPath), itemPath));
-    } catch (error) {
-      malformed.push({
-        title: itemTitle(item, `${capitalize(noun)} ${index + 1}`),
-        reason: `It broke the format: ${error instanceof Error ? error.message : String(error)}`
-      });
-    }
-  });
-  return { items, malformed };
-}
-
 function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecodedMotif {
   const motif = strictObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
   return {
-    title: text(motif.title, `${path}.title`, B.labelCharacters),
-    gist: text(motif.gist, `${path}.gist`, B.noteCharacters),
-    claim: text(motif.claim, `${path}.claim`, B.claimCharacters),
+    title: text(motif.title, `${path}.title`),
+    gist: prose(motif.gist, `${path}.gist`, B.noteCharacters),
+    claim: prose(motif.claim, `${path}.claim`, B.claimCharacters),
     terms: terms(motif.terms, `${path}.terms`),
     evidence: evidence(motif.evidence, `${path}.evidence`, LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS)
   };
@@ -327,15 +292,15 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
   const character = strictObject(item, path, [
     'name', 'aliases', 'archetype', 'energy', 'wants', 'hides', 'claim', 'evidence'
   ]);
-  boundedArrayAt(character.aliases, `${path}.aliases`, 0, 3, 'aliases');
+  listAt(character.aliases, `${path}.aliases`, 0, 'aliases');
   return {
-    name: text(character.name, `${path}.name`, B.labelCharacters),
-    aliases: character.aliases.map((alias, index) => text(alias, `${path}.aliases[${index}]`, B.labelCharacters)),
-    archetype: text(character.archetype, `${path}.archetype`, B.labelCharacters),
-    energy: text(character.energy, `${path}.energy`, B.noteCharacters),
-    wants: text(character.wants, `${path}.wants`, B.noteCharacters),
-    hides: text(character.hides, `${path}.hides`, B.noteCharacters),
-    claim: text(character.claim, `${path}.claim`, B.claimCharacters),
+    name: text(character.name, `${path}.name`),
+    aliases: character.aliases.map((alias, index) => text(alias, `${path}.aliases[${index}]`)),
+    archetype: text(character.archetype, `${path}.archetype`),
+    energy: prose(character.energy, `${path}.energy`, B.noteCharacters),
+    wants: prose(character.wants, `${path}.wants`, B.noteCharacters),
+    hides: prose(character.hides, `${path}.hides`, B.noteCharacters),
+    claim: prose(character.claim, `${path}.claim`, B.claimCharacters),
     evidence: evidence(character.evidence, `${path}.evidence`, 1)
   };
 }
@@ -344,8 +309,8 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
  * A near miss (affinity at or below `LIGHTBOX_NEAR_MISS_AFFINITY`, as drawn:
  * rounded to two decimals) must say what matches and what does not, so a
  * blank `nearMiss` withholds it (PR #149 F-06). A closer neighbor has no near
- * miss to explain: its `nearMiss` must still be a bounded string, but is not
- * a withholding rule; whatever it holds is not kept, since the tile draws a
+ * miss to explain: its `nearMiss` must still be a string, but is not a
+ * withholding rule; whatever it holds is not kept, since the tile draws a
  * near miss only for a low-affinity neighbor.
  */
 function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDecodedNeighbor {
@@ -356,95 +321,37 @@ function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDe
     shapeError(`${path}.affinity`, 'a number from 0 to 1');
   }
   const affinity = Math.round(claimed * 100) / 100;
-  boundedStringAt(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters);
+  stringAt(neighbor.nearMiss, `${path}.nearMiss`);
   const nearMiss = affinity <= LIGHTBOX_NEAR_MISS_AFFINITY
-    ? text(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
+    ? prose(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
     : '';
   return {
-    genre: text(neighbor.genre, `${path}.genre`, B.labelCharacters),
+    genre: text(neighbor.genre, `${path}.genre`),
     affinity,
-    claim: text(neighbor.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(neighbor.claim, `${path}.claim`, B.claimCharacters),
     nearMiss,
     evidence: evidence(neighbor.evidence, `${path}.evidence`, 1)
   };
-}
-
-function itemTitle(item: unknown, fallback: string): string {
-  if (item && typeof item === 'object' && !Array.isArray(item)) {
-    const record = item as Record<string, unknown>;
-    for (const key of ['title', 'name', 'genre']) {
-      const value = record[key];
-      if (typeof value === 'string' && value.trim().length > 0) {
-        return value.trim().slice(0, B.labelCharacters);
-      }
-    }
-  }
-  return fallback;
 }
 
 // ---------------------------------------------------------------------------
 // Fields
 // ---------------------------------------------------------------------------
 
-/**
- * `exactObject`, except that fields the format does not define are counted,
- * never named: a field name is the model's, and this reason reaches the board.
- */
-function strictObject(value: unknown, path: string, keys: readonly string[]): Record<string, unknown> {
-  const object = objectAt(value, path);
-  const undefinedFields = Object.keys(object).filter((key) => !keys.includes(key)).length;
-  if (undefinedFields > 0) {
-    throw new Error(`${path} has ${fieldCount(undefinedFields)} the format does not define.`);
-  }
-  return exactObject(object, path, keys);
-}
-
-function fieldCount(count: number): string {
-  return `${count} field${count === 1 ? '' : 's'}`;
-}
-
-/** A nonblank string within its ceiling, trimmed. */
-function text(value: unknown, path: string, maximum: number): string {
-  boundedStringAt(value, path, maximum, false);
-  return (value as string).trim();
-}
-
-function terms(value: unknown, path: string): string[] {
-  boundedArrayAt(value, path, 1, B.termsPerClaim, 'terms');
-  return value.map((term, index) => text(term, `${path}[${index}]`, B.labelCharacters));
-}
-
-function evidence(value: unknown, path: string, minimum: number): LightboxWireQuote[] {
-  boundedArrayAt(value, path, minimum, B.quotesPerClaim, 'quotes');
-  return value.map((item, index) => quote(item, `${path}[${index}]`));
-}
-
-function quote(value: unknown, path: string): LightboxWireQuote {
-  const pair = strictObject(value, path, ['para', 'quote']);
-  return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`, B.quoteCharacters) };
-}
-
 function peaks(value: unknown, path: string): LightboxWirePeak[] {
-  boundedArrayAt(value, path, 1, B.tensionPeaks, 'peaks');
+  listAt(value, path, 1, 'peaks');
   return value.map((item, index) => {
     const itemPath = `${path}[${index}]`;
     const peak = strictObject(item, itemPath, ['para', 'quote', 'note']);
     return {
       para: paragraphNumber(peak.para, `${itemPath}.para`),
-      quote: text(peak.quote, `${itemPath}.quote`, B.quoteCharacters),
-      note: text(peak.note, `${itemPath}.note`, B.noteCharacters)
+      quote: text(peak.quote, `${itemPath}.quote`),
+      note: prose(peak.note, `${itemPath}.note`, B.noteCharacters)
     };
   });
 }
 
-/** Whether the paragraph was declared is the verifier's question, not the codec's. */
-function paragraphNumber(value: unknown, path: string): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 1) {
-    shapeError(path, 'a paragraph number (a whole number from 1)');
-  }
-  return value as number;
-}
-
+/** One score per ribbon column: a structural rule, so its count is checked exactly. */
 function scores(value: unknown, path: string, columnCount: number): number[] {
   boundedArrayAt(value, path, columnCount, columnCount, 'scores, one per ribbon column');
   return value.map((score, index) => {
@@ -453,8 +360,4 @@ function scores(value: unknown, path: string, columnCount: number): number[] {
     }
     return score as number;
   });
-}
-
-function capitalize(word: string): string {
-  return word.charAt(0).toUpperCase() + word.slice(1);
 }

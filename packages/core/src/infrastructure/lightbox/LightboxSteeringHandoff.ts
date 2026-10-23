@@ -20,17 +20,25 @@
  *   example labelled "One way it could go", as `before → after`. The example
  *   travels only while its `before` still lies in the note's re-checked
  *   quote holding the instance in narration, taking in no word a character
- *   speaks (PR #162 F-02), and the pair as the chapter has it keeps the
- *   example's bounds (`anchorLightboxSteeringExample`), so it always fits
- *   its point whole: nothing is ever clipped (PR #160 F-02). When it does
- *   not, the item says the example was withheld and why, in host words. It
- *   is a point, never a quote: the Workshop never sees it as the chapter's
- *   text.
+ *   speaks (PR #162 F-02), and the pair as the chapter has it still shows
+ *   a change (`anchorLightboxSteeringExample`, PR #160 F-02). When it does
+ *   not, the item says the example was withheld and why, in host words.
+ *   Its length is an ask (Slice 4H): a pair longer than one Workshop point
+ *   travels clipped, each part keeping its start and an ellipsis, so both
+ *   sides of the arrow show. It is a point, never a quote: the Workshop
+ *   never sees it as the chapter's text.
  * The why is the item's claim. Nothing else of the board travels.
  */
 
-import type { LightboxBoard, LightboxReadingTile, WorkshopLightboxTilePoint } from '@messages';
+import {
+  WORKSHOP_LIGHTBOX_TILE_LIMITS,
+  type LightboxBoard,
+  type LightboxReadingTile,
+  type LightboxSteeringExample,
+  type WorkshopLightboxTilePoint
+} from '@messages';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
+import { clipLightboxText } from '@shared/constants/lightboxClip';
 import {
   LIGHTBOX_STEERING_EXAMPLE_LABEL,
   LIGHTBOX_STEERING_STANCE_LABELS,
@@ -52,9 +60,7 @@ export const LIGHTBOX_STEERING_EXAMPLE_BRING_REASONS: Readonly<Record<LightboxSt
   unanchored: 'Not brought: its first part no longer stands whole in the note\'s quote, holding the instance.',
   voice: 'Not brought: its first part holds an instance only in dialogue, the character\'s voice.',
   speech: 'Not brought: its first part takes in words a character speaks, the character\'s voice.',
-  long: 'Not brought: its first part, as the chapter has it, runs past the words or characters an example may have.',
-  same: 'Not brought: as the chapter has it, its first part reads as its second.',
-  fit: 'Not brought: as the chapter has it, the pair does not fit one Workshop point.'
+  same: 'Not brought: as the chapter has it, its first part reads as its second.'
 };
 /** The point's label when a note's example did not travel. */
 export const LIGHTBOX_STEERING_EXAMPLE_WITHHELD_LABEL = 'Example withheld';
@@ -107,7 +113,23 @@ export function lightboxSteeringPoints(
     ...(voice === 'dialogue' && held.voice ? [point(LIGHTBOX_STEERING_VOICE_LABEL, held.voice)] : []),
     ...(held.nudge ? [point('Nudge', held.nudge)] : []),
     ...(anchored === undefined ? [] : 'example' in anchored
-      ? [point(LIGHTBOX_STEERING_EXAMPLE_LABEL, lightboxSteeringExampleText(anchored.example))]
+      ? [point(LIGHTBOX_STEERING_EXAMPLE_LABEL, lightboxSteeringExamplePoint(anchored.example))]
       : [point(LIGHTBOX_STEERING_EXAMPLE_WITHHELD_LABEL, LIGHTBOX_STEERING_EXAMPLE_BRING_REASONS[anchored.fault])])
   ];
+}
+
+/**
+ * The example as one Workshop point: whole when it fits; otherwise each part
+ * clipped with an ellipsis, the first to half the room and the second to
+ * what is left, so both sides of the arrow travel (Slice 4H).
+ */
+export function lightboxSteeringExamplePoint(example: LightboxSteeringExample): string {
+  const room = WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters;
+  const whole = lightboxSteeringExampleText(example);
+  if (whole.length <= room) {
+    return whole;
+  }
+  const sides = room - lightboxSteeringExampleText({ before: '', after: '' }).length;
+  const before = clipLightboxText(example.before, Math.floor(sides / 2));
+  return lightboxSteeringExampleText({ before, after: clipLightboxText(example.after, sides - before.length) });
 }

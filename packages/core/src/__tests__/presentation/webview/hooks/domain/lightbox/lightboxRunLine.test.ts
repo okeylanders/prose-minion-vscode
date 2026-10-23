@@ -168,7 +168,7 @@ describe('the run line', () => {
     const tight = makeEstimate();
     tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
     expect(lightboxRereadAvailability({ ...base, estimate: tight })).toEqual({
-      reason: 'Re-reading this tile would send about 40,000 tokens and reserve 8,000 for the reply, ' +
+      reason: 'Re-reading this tile would send about 40,000 tokens and reserve 12,000 for the reply, ' +
         'more than provider/model-v1\'s 200,000-token window allows.'
     });
     expect(lightboxRereadAvailability({ ...base, running: true }).reason).toMatch(/^A reading is running/);

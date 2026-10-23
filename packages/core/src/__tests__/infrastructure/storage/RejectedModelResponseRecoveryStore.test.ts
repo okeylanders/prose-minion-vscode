@@ -67,6 +67,29 @@ const flushPresentation = (): Promise<void> =>
   new Promise((resolve) => setImmediate(resolve));
 
 describe('RejectedModelResponseRecoveryStore', () => {
+  it('records the contract a capture names for its own request, or the tool\'s default (Lightbox Slice 4H)', async () => {
+    const { fileSystem, files } = statefulFileSystem();
+    const workspace = createFakeWorkspace({ workspaceFolders: () => [{ path: '/novel', name: 'novel' }] });
+    const store = new RejectedModelResponseRecoveryStore(fileSystem, workspace, '/extension/recovery', undefined, () => new Date('2026-10-23T09:00:00.000Z'));
+    const groupE = {
+      id: 'lightbox-reading-group-v1',
+      intendedContentType: 'application/json' as const,
+      protocol: 'First-line ===LIGHTBOX_GROUP_E_V1===, then JSON {version: 1, one block per requested lens (template, pressure, artifacts, ' +
+        'summary), each with friction}, then final-line ===END_LIGHTBOX_GROUP_E_V1===.'
+    };
+    const named = await store.capture({ toolName: 'lightbox-readings', requestSummary: 'Lightbox group E', rawResponse: '{}', rejection: 'x', contract: groupE });
+    const plain = await store.capture({ toolName: 'lightbox-readings', requestSummary: 'Lightbox group E', rawResponse: '{}', rejection: 'x' });
+    const contractOf = (metadataPath: string | undefined) => JSON.parse(decoder.decode(files.get(metadataPath!))).contract;
+    expect(contractOf(named?.metadataPath)).toEqual(groupE);
+    expect(contractOf(plain?.metadataPath)).toEqual({
+      id: 'lightbox-reading-group-v1',
+      intendedContentType: 'application/json',
+      protocol: expect.stringContaining('===LIGHTBOX_GROUP_<group>_V1===')
+    });
+    // The default no longer names group A's lenses for every group.
+    expect(contractOf(plain?.metadataPath).protocol).not.toContain('headline');
+  });
+
   it('saves the untouched response in the open project, ignores recovery files, and supports explicit presentation', async () => {
     const { fileSystem, files, rename } = statefulFileSystem();
     const openFileInEditor = jest.fn().mockResolvedValue(undefined);

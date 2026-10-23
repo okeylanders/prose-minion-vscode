@@ -95,14 +95,31 @@ describe('group G codec', () => {
     ]);
   });
 
-  it('withholds the whole block past three figures, and a figure past four notes', () => {
-    const { decoded } = read(body([figure('being-verbs'), figure('adverbs'), figure('intensifiers'), figure('adverbs')]));
-    expect(decoded.blocks).toEqual([]);
-    expect(decoded.withheld.map((block) => block.reason)).toEqual([expect.stringContaining('an array of at most 3 figures')]);
-    const fiveNotes = Array.from({ length: 5 }, () => note(7, QUOTES.adverbs, 'earns', 'The adverb is the joke’s hinge.'));
-    expect(withheld(body([figure('adverbs', fiveNotes)]))).toEqual([
-      ['steering-reading', 'Adverbs (-ly)', 'It broke the format: steering.figures[0].notes must be an array of at most 4 notes']
+  it('reads a fourth figure as the repeat it is, withheld by its label alone, and every note past the four asked (Slice 4H)', () => {
+    const { decoded, assembled } = read(body([figure('being-verbs'), figure('adverbs'), figure('intensifiers'), figure('adverbs')]));
+    // The block stands: a figure is one of three, so the fourth can only repeat one, and only the repeat is withheld.
+    expect(decoded.withheld).toEqual([]);
+    expect(assembled.withheldClaims.map((claim) => [claim.title, claim.reason])).toEqual([
+      ['Adverbs (-ly)', 'Another reading in this block already reads that figure.']
     ]);
+    expect(assembled.tiles.filter((tile) => tile.kind === 'steering-reading')).toHaveLength(3);
+    // Five notes where four are asked: all five are read and drawn.
+    const fiveNotes = Array.from({ length: 5 }, () => note(7, QUOTES.adverbs, 'earns', 'The adverb is the joke’s hinge.'));
+    const five = read(body([figure('adverbs', fiveNotes)]));
+    expect(five.assembled.withheldClaims).toEqual([]);
+    expect(notesOf(five.assembled.tiles).map((tile) => tile.title)).toEqual([
+      'Adverbs (-ly) · note I', 'Adverbs (-ly) · note II', 'Adverbs (-ly) · note III', 'Adverbs (-ly) · note IV', 'Adverbs (-ly) · note V'
+    ]);
+  });
+
+  it('shows a claim, a why and a nudge longer than asked, whole (Slice 4H)', () => {
+    const claim = 'The -ly words gather at the fall and just before it, carrying speed and manner where the verbs stay plain. '.repeat(5).trim();
+    const why = 'Slowly answers deep in the either-or, and the sentence turns on it, so the adverb is the hinge of the joke here. '.repeat(3).trim();
+    expect(claim.length).toBeGreaterThan(400);
+    expect(why.length).toBeGreaterThan(200);
+    const { assembled } = read(body([figure('adverbs', [note(7, QUOTES.adverbs, 'earns', why)], claim)]));
+    expect(assembled.withheldClaims).toEqual([]);
+    expect(assembled.tiles.map((tile) => tile.claim)).toEqual([claim, why]);
   });
 
   it('withholds a claim that breaks a text rule as the reading alone, and keeps its notes', () => {
@@ -255,12 +272,6 @@ describe('the one example', () => {
     ['a field the format does not define', { before: 'it was too dark', after: 'the dark swallowed it', why: 'shorter' }, 'Its example broke the format, so it is not shown.'],
     ['a bare string', 'the dark swallowed everything', 'Its example broke the format, so it is not shown.'],
     ['a blank part', { before: 'it was too dark', after: '  ' }, 'Its example broke the format, so it is not shown.'],
-    ['a first part of nine words', { before: 'it was too dark to see anything at all', after: 'the dark swallowed it' },
-      'Its example\'s first part runs past 8 words or 56 characters: an example is a phrase, never a passage.'],
-    ['a second part of seven words', { before: 'it was too dark', after: 'the dark came up and swallowed it' },
-      'Its example\'s second part runs past 6 words or 56 characters: an example is a phrase, never a passage.'],
-    ['a second part of fifty-seven characters', { before: 'it was too dark', after: 'incomprehensibilities overwhelmingly counterrevolutionary' },
-      'Its example\'s second part runs past 6 words or 56 characters: an example is a phrase, never a passage.'],
     ['no change', { before: 'it was too dark', after: 'It  was too DARK' }, 'Its example shows no change: its second part is its first again.'],
     ['quotation marks', { before: 'it was too dark', after: 'the “dark” swallowed it' },
       'Its example was withheld. It holds quotation marks: craft steering quotes the chapter only in a note\'s checked quote, and never offers words as yours.'],
@@ -270,6 +281,28 @@ describe('the one example', () => {
       'Its example was withheld. It states a figure: the counts are the board\'s, shown beside the reading.']
   ])('withholds the example alone for %s, and keeps the note', (_case, example, reason) => {
     expect(exampleOf(example)).toEqual({ example: undefined, withheld: reason });
+  });
+
+  it.each([
+    ['a second part of nine words', 'the dark came up all at once and swallowed it'],
+    ['a second part of eighty characters', 'incomprehensibilities overwhelmingly counterrevolutionary internationalisations'],
+    ['a second part past eight times its ask, whole', 'darkness '.repeat(70).trim()]
+  ])('shows an example with %s: its length is an ask (Slice 4H)', (_case, after) => {
+    const shown = exampleOf({ before: 'it was too dark', after });
+    expect(shown.withheld).toBeUndefined();
+    expect(shown.example?.before).toBe('it was too dark');
+    // Whole however long (PR #165 F-01): both parts are checked as written, fresh, on carry and at Bring, so the codec
+    // never clips them; Bring clips the pair to one Workshop point after its checks.
+    expect(shown.example?.after).toBe(after);
+  });
+
+  it('shows a first part longer than asked when it stands whole in the note\'s checked quote', () => {
+    const quote = 'it was too dark to see anything; then she looked at the sides of the well, and noticed';
+    const before = quote;
+    expect(before.split(' ').length).toBeGreaterThan(8);
+    expect(before.length).toBeGreaterThan(72);
+    expect(exampleOf({ before, after: 'the dark swallowed the shelves' }, 'leans', quote))
+      .toEqual({ example: { before, after: 'the dark swallowed the shelves' }, withheld: undefined });
   });
 
   it('holds a second part to its words but not to the opener check: it is a phrase, not an order', () => {

@@ -29,6 +29,7 @@ import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReading
 import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import { LightboxBoardStore, type LightboxBoardMemory } from '@/infrastructure/storage/LightboxBoardStore';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import type { RejectedModelResponseRecovery } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
@@ -95,6 +96,8 @@ export interface LightboxBoardsHostOptions {
   savedAt?: () => number;
   /** Board ids; `board-1`, `board-2`, … per host by default (a story across reloads shares one counter). */
   mintBoardId?: () => string;
+  /** Where a paid reply the runner could not use, or salvaged, is saved (Slice 4H evidence); one that saves nothing by default. */
+  recovery?: RejectedModelResponseRecovery;
 }
 
 export interface LightboxBoardsTab {
@@ -143,7 +146,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
   const runner = new LightboxReadingRunner(
     { getEngine: () => ({ runInitial }), getResolvedModel: () => 'provider/model-v1' },
     { loadPrompts: async (files: string[]) => `SYSTEM ${files.join(' + ')}` },
-    { capture: jest.fn(async () => undefined) },
+    options.recovery ?? { capture: jest.fn(async () => undefined) },
     { present: jest.fn(async () => undefined) },
     log,
     {
