@@ -495,7 +495,6 @@
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--pm-amber);
-  text-align: right;
 }
 [data-pm-surface="lightbox"] .pm-lb-visually-hidden {
   position: absolute;

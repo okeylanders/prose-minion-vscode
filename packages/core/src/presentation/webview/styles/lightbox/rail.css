@@ -248,6 +248,3 @@
 [data-pm-surface="lightbox"] .pm-lb-call-head .pm-lb-call {
   align-items: flex-start;
 }
-[data-pm-surface="lightbox"] .pm-lb-call-head .pm-lb-call-reason {
-  text-align: left;
-}
