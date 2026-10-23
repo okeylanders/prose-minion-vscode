@@ -19,6 +19,9 @@ import { createRoot } from 'react-dom/client';
 import './styles/fulltab/tokens.css';
 import './styles/fulltab/shell.css';
 import './styles/fulltab/modal.css';
+// The saved-item menu, name sheet and browser the Workshop and the Lightbox share (Lightbox Slice 5A.2).
+import './styles/fulltab/savedItems.css';
+import './styles/fulltab/savedBrowser.css';
 import { App } from './App';
 import { WorkshopApp } from './WorkshopApp';
 import { LightboxApp } from './LightboxApp';

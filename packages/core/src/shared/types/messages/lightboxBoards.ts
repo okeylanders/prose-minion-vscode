@@ -1,6 +1,7 @@
 /**
  * Lightbox saved boards (ADR 2026-10-19 D12 and its addendum of 2026-10-22;
- * Slice 5A; epic decisions 27–32; Slice 5A.1, decisions 33–36).
+ * Slice 5A; epic decisions 27–32; Slice 5A.1, decisions 33–36; Slice 5A.2,
+ * decision 46).
  *
  * A board saves itself to `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`
  * in format 1 (`LightboxBoardCodec`), and the rail's Boards section lists the
@@ -30,6 +31,11 @@
  *   name for it. `LIGHTBOX_RENAME_BOARD` names a saved file in place, or the
  *   board on screen, and is answered with the shelf like every other
  *   request.
+ * - **The Boards menu and browser (Slice 5A.2).** The shelf lists the saved
+ *   boards of every chapter, each with its source and its name (a board
+ *   unnamed in its file shows the default its source and save time give).
+ *   `LIGHTBOX_OPEN_BOARD_FILE` opens a board file the writer picks with the
+ *   system picker; the host never writes one outside its boards folder.
  *
  * Nothing here carries the source's text. A board's name is the writer's
  * own words, so it is treated as that text is: the shelf carries it to the
@@ -37,6 +43,7 @@
  */
 
 import { MessageEnvelope, MessageType } from './base';
+import type { LightboxSourceKind } from './lightbox';
 import type { LightboxLensId } from './lightboxReadings';
 
 /**
@@ -50,14 +57,28 @@ export type LightboxBoardsAvailability =
   | { kind: 'project'; displayPath: string; lastSaveFailed: boolean }
   | { kind: 'session'; reason: 'no-workspace' | 'multi-root' };
 
-/** One saved board of the open source, as the rail lists it. */
+/** The chapter a saved board was measured from (Slice 5A.2): its kind, its workspace-relative path and, for a selection, its lines. */
+export interface LightboxSavedBoardSource {
+  kind: LightboxSourceKind;
+  displayPath: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+/** One saved board, of any chapter, as the Boards menu and browser list it. */
 export interface LightboxSavedBoardSummary {
   /** The host's name for the file. Opaque: the webview hands it back, never a path. */
   fileId: string;
-  /** The writer's name for the board it holds (Slice 5A.1); absent when it is unnamed. */
-  name?: string;
-  /** Epoch ms when it was saved. */
+  /**
+   * The board's name (Slice 5A.1): the writer's, or the default it was given
+   * when first saved; a file saved before names shows the default its
+   * source and save time give, without being rewritten (Slice 5A.2).
+   */
+  name: string;
+  /** Epoch ms when it was last saved. */
   savedAt: number;
+  /** The chapter it was measured from (Slice 5A.2). */
+  source: LightboxSavedBoardSource;
   wordCount: number;
   /** The lenses it holds readings of, in rail order; empty for a board saved before any reading. */
   lenses: LightboxLensId[];
@@ -83,22 +104,27 @@ export type LightboxSnapshotFile = 'same' | 'changed' | 'unreadable' | 'none';
 
 /** The board on screen when it was opened from a saved file, or restored from one after a reload. */
 export interface LightboxSnapshotState {
-  fileId: string;
+  /** The store's file; absent for a board file opened from outside the boards folder (Slice 5A.2). */
+  fileId?: string;
+  /** Opened from a file outside the boards folder: no file of the store holds it until its next save (Slice 5A.2). */
+  outside?: true;
   savedAt: number;
   file: LightboxSnapshotFile;
   /** Parts the codec could not read and left out (tiles and group notes), counted; 0 for a whole board. */
   dropped: number;
 }
 
-/** The rail's Boards section for one board's source. */
+/** The saved boards, for the board on screen (Slice 5A; every chapter's from Slice 5A.2). */
 export interface LightboxBoardShelf {
   availability: LightboxBoardsAvailability;
-  /** The name of the board the shelf describes, the board on screen (Slice 5A.1); absent when it is unnamed. */
+  /** The name of the board the shelf describes, the board on screen (Slice 5A.1); absent when it is unnamed and no file holds it yet. */
   name?: string;
-  /** Newest first. */
+  /** Every chapter's saved boards, newest first (Slice 5A.2). */
   boards: LightboxSavedBoardSummary[];
-  /** Files in the source's folder that could not be read as boards; left as they are. */
+  /** Files in the boards folder that could not be read as boards; left as they are. */
   unreadable: number;
+  /** Chapter folders that could not be read at all (Slice 5A.2); absent when none. */
+  unreadableFolders?: number;
   /** Set when the board on screen is a saved board, opened or restored. */
   snapshot?: LightboxSnapshotState;
   /** Why an open or a delete did not happen, in host words. */
@@ -118,11 +144,16 @@ export interface LightboxOpenBoardPayload {
   fileId: string;
 }
 
-/** Delete a saved board's file, after the rail's confirm step. */
+/** Delete a saved board's file, after the browser's confirm step. `boardId` is the board on screen; `null` when there is none (Slice 5A.2). */
 export interface LightboxDeleteBoardPayload {
   requestId: string;
-  boardId: string;
+  boardId: string | null;
   fileId: string;
+}
+
+/** Open a board file the writer picks with the system picker (Slice 5A.2). The answer describes the board then on screen. */
+export interface LightboxOpenBoardFilePayload {
+  requestId: string;
 }
 
 /**
@@ -132,13 +163,20 @@ export interface LightboxDeleteBoardPayload {
  * one does. Naming the file that holds the board on screen names that board
  * too, so its later saves carry the name; naming any other file changes only
  * that file. `name` is the writer's words: trimmed, one line, at most
- * `LIGHTBOX_BOARD_NAME_CHARACTERS`; empty unnames the board.
+ * `LIGHTBOX_BOARD_NAME_CHARACTERS`; empty unnames the board. From the
+ * browser (Slice 5A.2) a file may be named with no board on screen
+ * (`boardId: null`), and a file another board kept here holds names that
+ * board too. `adoption` (PR #167 F-02) is the adoption of the board on
+ * screen the name sheet was opened for: with `fileId: null`, the host names
+ * the board only while that adoption is still on screen, so a draft typed
+ * for one board is never given to another.
  */
 export interface LightboxRenameBoardPayload {
   requestId: string;
-  boardId: string;
+  boardId: string | null;
   fileId: string | null;
   name: string;
+  adoption?: number | null;
 }
 
 /**
@@ -177,13 +215,18 @@ export interface LightboxRenameBoardMessage extends MessageEnvelope<LightboxRena
   type: MessageType.LIGHTBOX_RENAME_BOARD;
 }
 
+export interface LightboxOpenBoardFileMessage extends MessageEnvelope<LightboxOpenBoardFilePayload> {
+  type: MessageType.LIGHTBOX_OPEN_BOARD_FILE;
+}
+
 export interface LightboxBoardsMessage extends MessageEnvelope<LightboxBoardsPayload> {
   type: MessageType.LIGHTBOX_BOARDS;
 }
 
-/** The rail's four requests, for the barrel's inbound union. */
+/** The Boards menu's and browser's five requests, for the barrel's inbound union. */
 export type LightboxBoardsRequestMessage =
   | LightboxRequestBoardsMessage
   | LightboxOpenBoardMessage
+  | LightboxOpenBoardFileMessage
   | LightboxDeleteBoardMessage
   | LightboxRenameBoardMessage;

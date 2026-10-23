@@ -14,6 +14,10 @@
  *
  * A name is writer text, treated as source text is: never in a log, and
  * never in the webview's saved state.
+ *
+ * Slice 5A.2 (epic decision 46): a board the writer has not named takes a
+ * default name when it is first saved, from its source and the time
+ * (`lightboxDefaultBoardName`), and the writer can rename it.
  */
 
 /** The longest name a board may have: room for a chapter version, a note and a model's nickname. */
@@ -55,4 +59,50 @@ export function checkLightboxBoardName(value: string): LightboxBoardNameCheck {
 export function isSavedLightboxBoardName(value: string): boolean {
   const check = checkLightboxBoardName(value);
   return check.kind === 'named' && check.name === value;
+}
+
+/** What a board's default name says of its source: a file or a selection, by its workspace-relative path. */
+export interface LightboxBoardNameSource {
+  kind: 'file' | 'selection';
+  displayPath: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+/**
+ * The source as a default name calls it (Slice 5A.2): the file's name
+ * without its folder or extension ("Drafts/Chapter 6.md" is "Chapter 6");
+ * a selection adds its lines as the source panel shows them ("Chapter 6 ·
+ * lines 12–40"). One line, whatever the path holds.
+ */
+export function lightboxBoardSourceLabel(source: LightboxBoardNameSource): string {
+  const file = source.displayPath.split(/[\\/]/).filter(Boolean).at(-1) ?? '';
+  const base = (file.replace(/\.[^.]+$/, '') || file).replace(/[\p{Cc}\u2028\u2029]+/gu, ' ').replace(/\s+/g, ' ').trim() || 'Untitled';
+  if (source.kind !== 'selection' || source.startLine === undefined) {
+    return base;
+  }
+  return source.endLine !== undefined && source.endLine !== source.startLine
+    ? `${base} · lines ${source.startLine}–${source.endLine}`
+    : `${base} · line ${source.startLine}`;
+}
+
+/**
+ * A board's name when it is first saved and the writer has not named it
+ * (Slice 5A.2, epic decision 46): "<source> - <M/D/YYYY h:mm AM/PM>", as
+ * "Chapter 6 - 10/23/2026 9:08 AM", in `timeZone` (the host's own when
+ * absent; tests pin one). A saved name by the rule above: one line, and the
+ * source's part cut, with an ellipsis, so the whole stays within
+ * `LIGHTBOX_BOARD_NAME_CHARACTERS`. A file saved before names existed shows
+ * this from its own `savedAt`, and is not rewritten for it.
+ */
+export function lightboxDefaultBoardName(source: LightboxBoardNameSource, savedAt: number | Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
+    ...(timeZone ? { timeZone } : {})
+  }).formatToParts(new Date(savedAt));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? '';
+  const when = ` - ${part('month')}/${part('day')}/${part('year')} ${part('hour')}:${part('minute')} ${part('dayPeriod').toUpperCase()}`;
+  const label = lightboxBoardSourceLabel(source);
+  const room = LIGHTBOX_BOARD_NAME_CHARACTERS - when.length;
+  return `${label.length > room ? `${label.slice(0, room - 1).trimEnd()}…` : label}${when}`;
 }

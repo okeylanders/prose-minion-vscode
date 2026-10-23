@@ -4,11 +4,15 @@
  * This is deliberately a menu, not a shortcut to the full browser: New and
  * Save stay one click away, recent named checkpoints stay glanceable, and the
  * larger search/grouping surface opens only when the writer asks for it.
+ *
+ * Its chrome and behaviour are the full tabs' shared `SavedItemsMenu`
+ * (Lightbox Slice 5A.2), which the Lightbox's Boards menu uses too; the
+ * items here are the Workshop's own.
  */
 
 import * as React from 'react';
 import { WorkshopSessionSummary } from '@messages';
-import { Icon } from '@components/shared/Icon';
+import { SavedItemsMenu } from '@components/fulltab/SavedItemsMenu';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { relativeSessionTime } from '@utils/relativeSessionTime';
 
@@ -37,6 +41,12 @@ interface WorkshopSessionsMenuProps {
   onOpenSession: (session: WorkshopSessionSummary) => void;
 }
 
+const SAVE_STATUS_TEXT: Readonly<Record<'saving' | 'saved' | 'error', string>> = {
+  saving: 'Saving…',
+  saved: 'Saved',
+  error: 'Save failed'
+};
+
 export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   open,
   activeSessionTitle,
@@ -54,184 +64,74 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   onBrowseSessions,
   onOpenSession
 }) => {
-  const rootRef = React.useRef<HTMLDivElement>(null);
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const firstItemRef = React.useRef<HTMLButtonElement>(null);
   const recent = sessions.slice(0, 3);
-
-  React.useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
-    const focusTimer = window.setTimeout(() => firstItemRef.current?.focus(), 0);
-    const closeOutside = (event: MouseEvent) => {
-      if (
-        event.target instanceof Node &&
-        rootRef.current &&
-        !rootRef.current.contains(event.target)
-      ) {
-        onOpenChange(false);
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onOpenChange(false);
-      }
-    };
-    document.addEventListener('mousedown', closeOutside);
-    window.addEventListener('keydown', closeOnEscape);
-    return () => {
-      window.clearTimeout(focusTimer);
-      document.removeEventListener('mousedown', closeOutside);
-      window.removeEventListener('keydown', closeOnEscape);
-      triggerRef.current?.focus();
-    };
-  }, [onOpenChange, open]);
-
-  const invoke = React.useCallback((action: () => void) => {
-    onOpenChange(false);
-    action();
-  }, [onOpenChange]);
+  const state = saveStatus ?? 'saved';
 
   return (
-    <div className="pm-ws-sessions-menu-wrap" ref={rootRef}>
-      <button
-        ref={triggerRef}
-        className="pm-ws-reset pm-ws-sessions-trigger"
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="pm-ws-sessions-menu"
-        onClick={() => onOpenChange(!open)}
-        title="Session commands and recent Workshop rooms"
+    <SavedItemsMenu
+      open={open}
+      label={activeSessionTitle ?? 'Sessions'}
+      status={{ state, text: SAVE_STATUS_TEXT[state] }}
+      menuId="pm-ws-sessions-menu"
+      menuLabel="Workshop session commands"
+      triggerTitle="Session commands and recent Workshop rooms"
+      onOpenChange={onOpenChange}
+    >
+      <SavedItemsMenu.Heading>Session</SavedItemsMenu.Heading>
+      <SavedItemsMenu.Item icon="refresh" disabled={newSessionDisabled} kbd="⌘⇧N" onSelect={onNewSession}>
+        New session
+      </SavedItemsMenu.Item>
+      {/* Sits directly under New session, because the difference between
+          them is exactly one thing: whether the working set survives. The
+          subtitle names that difference rather than making the writer
+          discover it. */}
+      <SavedItemsMenu.Item
+        icon="x"
+        danger
+        disabled={newSessionDisabled}
+        title={hasWorkingSet
+          ? 'Start over with no excerpt and no context attachments'
+          : 'Nothing is attached — this behaves like a new session'}
+        onSelect={onFullResetSession}
       >
-        <Icon name="cards" size={14} />
-        <span className="pm-ws-sessions-trigger-label">
-          {activeSessionTitle ?? 'Sessions'}
-        </span>
-        <Icon name="chevDown" size={13} />
-      </button>
-      <span
-        className={`pm-ws-named-save-state pm-ws-named-save-state-${saveStatus ?? 'saved'}`}
-        role="status"
-        aria-live="polite"
+        New session: full reset
+        <small>also clears the excerpt and context</small>
+      </SavedItemsMenu.Item>
+      <SavedItemsMenu.Item icon="save" disabled={disabled} kbd="⌘S" onSelect={onSaveSession}>
+        Save session…
+      </SavedItemsMenu.Item>
+      <SavedItemsMenu.Item
+        icon="share"
+        disabled={exportDisabled}
+        title={exportDisabled
+          ? 'Nothing to export yet — the transcript starts with your first message'
+          : 'Save this conversation as Markdown, JSON, or styled HTML'}
+        onSelect={onExportSession}
       >
-        <span />
-        {saveStatus === 'saving'
-          ? 'Saving…'
-          : saveStatus === 'error'
-            ? 'Save failed'
-            : 'Saved'}
-      </span>
-      {open && (
-        <div
-          id="pm-ws-sessions-menu"
-          className="pm-ws-sessions-menu"
-          role="menu"
-          aria-label="Workshop session commands"
-        >
-          <div className="pm-ws-sessions-menu-heading">Session</div>
-          <button
-            ref={firstItemRef}
-            className="pm-ws-sessions-menu-item"
-            type="button"
-            role="menuitem"
-            disabled={newSessionDisabled}
-            onClick={() => invoke(onNewSession)}
-          >
-            <Icon name="refresh" size={15} />
-            <span>New session</span>
-            <kbd>⌘⇧N</kbd>
-          </button>
-          {/* Sits directly under New session, because the difference between
-              them is exactly one thing: whether the working set survives. The
-              subtitle names that difference rather than making the writer
-              discover it. */}
-          <button
-            className="pm-ws-sessions-menu-item pm-ws-sessions-menu-item-danger"
-            type="button"
-            role="menuitem"
-            disabled={newSessionDisabled}
-            title={hasWorkingSet
-              ? 'Start over with no excerpt and no context attachments'
-              : 'Nothing is attached — this behaves like a new session'}
-            onClick={() => invoke(onFullResetSession)}
-          >
-            <Icon name="x" size={15} />
-            <span>
-              New session: full reset
-              <small>also clears the excerpt and context</small>
-            </span>
-          </button>
-          <button
-            className="pm-ws-sessions-menu-item"
-            type="button"
-            role="menuitem"
-            disabled={disabled}
-            onClick={() => invoke(onSaveSession)}
-          >
-            <Icon name="save" size={15} />
-            <span>Save session…</span>
-            <kbd>⌘S</kbd>
-          </button>
-          <button
-            className="pm-ws-sessions-menu-item"
-            type="button"
-            role="menuitem"
-            disabled={exportDisabled}
-            title={exportDisabled
-              ? 'Nothing to export yet — the transcript starts with your first message'
-              : 'Save this conversation as Markdown, JSON, or styled HTML'}
-            onClick={() => invoke(onExportSession)}
-          >
-            <Icon name="share" size={15} />
-            <span>Export…</span>
-          </button>
-          <div className="pm-ws-sessions-menu-rule" />
-          <button
-            className="pm-ws-sessions-menu-item"
-            type="button"
-            role="menuitem"
-            onClick={() => invoke(onBrowseSessions)}
-          >
-            <Icon name="cards" size={15} />
-            <span>Open prior session…</span>
-          </button>
+        Export…
+      </SavedItemsMenu.Item>
+      <SavedItemsMenu.Rule />
+      <SavedItemsMenu.Item icon="cards" onSelect={onBrowseSessions}>
+        Open prior session…
+      </SavedItemsMenu.Item>
 
-          <div className="pm-ws-sessions-menu-heading pm-ws-sessions-menu-recent-heading">
-            Recent
-          </div>
-          {recent.length > 0 ? recent.map((session) => (
-            <button
-              key={session.sessionId}
-              className="pm-ws-sessions-menu-recent"
-              type="button"
-              role="menuitem"
-              disabled={disabled}
-              onClick={() => invoke(() => onOpenSession(session))}
-            >
-              <strong>{session.title}</strong>
-              <span>
-                {workshopPersonaLabel(session.hostPersonaId)} ·{' '}
-                {relativeSessionTime(session.updatedAt)}
-              </span>
-            </button>
-          )) : (
-            <div className="pm-ws-sessions-menu-empty">No named sessions yet.</div>
-          )}
-
-          <div className="pm-ws-sessions-menu-rule" />
-          <button
-            className="pm-ws-sessions-menu-item"
-            type="button"
-            role="menuitem"
-            onClick={() => invoke(onBrowseSessions)}
-          >
-            <Icon name="search" size={15} />
-            <span>Browse all sessions…</span>
-          </button>
-        </div>
+      <SavedItemsMenu.Heading recent>Recent</SavedItemsMenu.Heading>
+      {recent.length > 0 ? recent.map((session) => (
+        <SavedItemsMenu.Recent
+          key={session.sessionId}
+          title={session.title}
+          meta={<>{workshopPersonaLabel(session.hostPersonaId)} ·{' '}{relativeSessionTime(session.updatedAt)}</>}
+          disabled={disabled}
+          onSelect={() => onOpenSession(session)}
+        />
+      )) : (
+        <SavedItemsMenu.Empty>No named sessions yet.</SavedItemsMenu.Empty>
       )}
-    </div>
+
+      <SavedItemsMenu.Rule />
+      <SavedItemsMenu.Item icon="search" onSelect={onBrowseSessions}>
+        Browse all sessions…
+      </SavedItemsMenu.Item>
+    </SavedItemsMenu>
   );
 };

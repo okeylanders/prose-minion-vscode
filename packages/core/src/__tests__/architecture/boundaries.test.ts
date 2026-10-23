@@ -1122,6 +1122,10 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardCodec.ts',
   // Slice 5A: the files on disk, their availability, writes and the reload pointer.
   'infrastructure/storage/LightboxBoardStore.ts',
+  // Slice 5A.2: the store's contracts, a new file's write, and a save's path (PR #167), split from it.
+  'infrastructure/storage/LightboxBoardStoreContracts.ts',
+  'infrastructure/storage/LightboxBoardNewFile.ts',
+  'infrastructure/storage/LightboxBoardSaving.ts',
   // PR #163 F-04: one source's folder read whole, and each file's summary.
   'infrastructure/storage/LightboxBoardFiles.ts',
   // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
@@ -1134,6 +1138,8 @@ const LIGHTBOX_MODULES = [
   // Slice 5A.1: names and spark marks in place, and the rail's notices.
   'application/services/lightbox/LightboxBoardEdits.ts',
   'application/services/lightbox/LightboxBoardNotices.ts',
+  // Slice 5A.2: one file per board, the save in place and its fallback.
+  'application/services/lightbox/LightboxBoardSaves.ts',
   'application/handlers/domain/LightboxBoardsHandler.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
@@ -1173,11 +1179,15 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  // Slice 5A.2: which of the saved boards' surfaces is open.
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   'presentation/webview/components/lightbox/LightboxCallButton.tsx',
-  'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
-  // Slice 5A.1: naming a board in place, in the rail.
-  'presentation/webview/components/lightbox/LightboxBoardNameField.tsx',
+  // Slice 5A.2: the header's Boards menu, the saved-board browser and the name sheet (the rail's panel is gone).
+  'presentation/webview/components/lightbox/LightboxBoardsMenu.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardsOutcome.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardBrowserModal.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardNameModal.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
@@ -1241,7 +1251,8 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
-  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts'
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts'
 ] as const;
 /**
  * Complete Lightbox route ledger (2026-10-20). Every `LIGHTBOX_*` message type
@@ -1286,7 +1297,7 @@ const LIGHTBOX_ROUTE_OWNERS = [
   {
     // Slice 5A: the rail's saved boards
     owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
-    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD']
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD', 'LIGHTBOX_OPEN_BOARD_FILE']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [

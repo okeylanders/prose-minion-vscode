@@ -22,6 +22,12 @@
  *   opened before this one set a different spark aside, never takes that
  *   mark back. A board no file holds yet, or one kept for the session only,
  *   takes its marks with its next save, as before.
+ * - **The board follows its own file (Slice 5A.2).** A rename or a spark's
+ *   mark on the file that holds a board keeps that board's record of the
+ *   file's revision current, when the board knew the file it rewrote, so
+ *   its next save can still rewrite the file in place. Naming a saved file
+ *   from the browser names whichever board this window keeps in it, on
+ *   screen or not.
  *
  * Logs carry file ids and outcomes, never the writer's text or a name.
  */
@@ -42,16 +48,18 @@ const LOG = '[LightboxBoardLibrary]';
 
 /** A rename as the rail asks for it (`LightboxRenameBoardPayload` without its request id). */
 export interface LightboxBoardRename {
-  /** The board on screen. */
-  boardId: string;
+  /** The board on screen; `null` when there is none (a rename from the browser, Slice 5A.2). */
+  boardId: string | null;
   /** The saved file to rename; `null` names the board on screen. */
   fileId: string | null;
   /** The writer's words; empty unnames it. */
   name: string;
+  /** The adoption the name sheet was opened for (PR #167 F-02); a board on screen since is not named. */
+  adoption?: number | null;
 }
 
 export interface LightboxBoardEditPorts {
-  service: Pick<LightboxService, 'nameBoard' | 'savable'>;
+  service: Pick<LightboxService, 'adoptionOf' | 'boardOfFile' | 'markSaved' | 'nameBoard' | 'savable'>;
   store: Pick<LightboxBoardStore, 'replace'>;
   outputChannel: LogSink;
   /** The rail hears a change to the board on screen (the library's shelf push). */
@@ -72,27 +80,35 @@ export class LightboxBoardEdits {
       return { notice: LIGHTBOX_BOARD_NAME_FAULTS[check.fault] };
     }
     const name = check.kind === 'named' ? check.name : undefined;
-    const held = service.savable(request.boardId);
-    if (request.fileId !== null && held?.savedFileId !== request.fileId) {
-      // A file that does not hold the board on screen: that file alone.
+    // A draft typed for one adoption of the board on screen is never given to another (PR #167 F-02).
+    if (request.fileId === null && typeof request.adoption === 'number'
+      && (request.boardId === null || service.adoptionOf(request.boardId) !== request.adoption)) {
+      outputChannel.appendLine(`${LOG} A name for the board on screen was not given: another board is on screen now`);
+      return { notice: LIGHTBOX_BOARD_NOTICES.boardChanged };
+    }
+    // The board the name is for: the one a named file holds here (Slice 5A.2), or the board on screen.
+    const boardId = request.fileId !== null ? service.boardOfFile(request.fileId) : request.boardId;
+    if (request.fileId !== null && boardId === undefined) {
+      // A file that holds no board kept here: that file alone.
       const result = await store.replace({ fileId: request.fileId }, (file) =>
         (file.board.name === name ? undefined : namedLightboxBoardFile(file, name)), { renames: true });
       outputChannel.appendLine(`${LOG} Rename of ${request.fileId}: ${result.kind}`);
       return renameNotice(result, false);
     }
-    if (!held || !service.nameBoard(request.boardId, name)) {
+    const onScreen = request.fileId === null || boardId === request.boardId;
+    if (!boardId || !service.savable(boardId) || !service.nameBoard(boardId, name)) {
       return { notice: LIGHTBOX_BOARD_NOTICES.boardGone };
     }
-    const written = store.replace(() => this.holding(request.boardId), (file) => {
+    const written = store.replace(() => this.holding(boardId), (file) => {
       // The board's name at the rewrite's turn; a board no longer kept changes nothing.
-      const board = service.savable(request.boardId);
+      const board = service.savable(boardId);
       return !board || file.board.name === board.name ? undefined : namedLightboxBoardFile(file, board.name);
-    }, { renames: true });
+    }, { renames: true, onCommitted: this.follow(boardId) });
     // Queued before the rail hears it, so the shelf it builds lists the file as rewritten.
     this.ports.announce();
     const result = await written;
-    outputChannel.appendLine(`${LOG} Named the board on screen; its file: ${result.kind}`);
-    return renameNotice(result, true);
+    outputChannel.appendLine(`${LOG} Named ${onScreen ? 'the board on screen' : 'a board kept here'}; its file: ${result.kind}`);
+    return renameNotice(result, onScreen);
   }
 
   /**
@@ -115,10 +131,22 @@ export class LightboxBoardEdits {
       }
       const marked = setLightboxSparkDismissed(file.board.readings, tileId, spark.dismissedOrder !== undefined);
       return marked.ok && marked.changed ? { ...file, board: { ...file.board, readings: marked.readings } } : undefined;
-    });
+    }, { onCommitted: this.follow(boardId) });
     if (result.kind === 'unreadable' || result.kind === 'busy' || result.kind === 'failed') {
       outputChannel.appendLine(`${LOG} A spark's mark waits for the board's next save: its file was ${result.kind}`);
     }
+  }
+
+  /**
+   * A rewrite of the file that holds `boardId` committed: the board knows the
+   * bytes written when it knew the bytes rewritten (Slice 5A.2), so its next
+   * save still rewrites the file in place; otherwise another window's change
+   * is in the file, and that save writes a new one.
+   */
+  private follow(boardId: string): (committed: { fileId: string; from: string; revision: string }) => void {
+    return ({ fileId, from, revision }) => {
+      this.ports.service.markSaved(boardId, fileId, { from, revision });
+    };
   }
 
   /** The file that holds the board kept under `boardId`, now, and that it must hold that board. */
@@ -143,6 +171,7 @@ function renameNotice(result: LightboxBoardReplaceResult, onScreen: boolean): Li
     case 'busy':
       return { notice: onScreen ? LIGHTBOX_BOARD_NOTICES.nameKeptFailed : LIGHTBOX_BOARD_NOTICES.busy };
     case 'unreadable':
+    case 'changed':
       return { notice: onScreen ? LIGHTBOX_BOARD_NOTICES.nameKeptUnreadable : LIGHTBOX_BOARD_NOTICES.unreadable };
     case 'failed':
       return { notice: onScreen ? LIGHTBOX_BOARD_NOTICES.nameKeptFailed : LIGHTBOX_BOARD_NOTICES.renameFailed };

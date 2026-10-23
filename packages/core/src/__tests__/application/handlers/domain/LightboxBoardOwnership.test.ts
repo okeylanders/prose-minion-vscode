@@ -7,6 +7,10 @@
  * was read. An open made while a save is being written reads after that save
  * commits, so the board it opens keeps its own file.
  *
+ * Slice 5A.2 (epic decision 46): a board's later saves rewrite its own file,
+ * so the earlier snapshot these tests open is a copy kept beside it
+ * (`keepEarlierSave`), as 5A's one file per save left them.
+ *
  * Real handlers, service, runner, store and library
  * (`lightboxBoardsHarness`); only file reads, the store's file read and
  * write, and the engine's replies are held open, to order events exactly.
@@ -32,8 +36,10 @@ import {
   type LightboxBoardsHostOptions
 } from './lightboxBoardsHarness';
 
-const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
-const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json';
+/** An earlier save of the board, measured only, in a file of its own (`keepEarlierSave`). */
+const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-04-09-123Z.board.json';
+/** The board's own file: its first save, rewritten in place by its read (Slice 5A.2). */
+const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
 const OTHER_PATH = 'Drafts/alice-2.md';
 const OTHER = 'Alice opened the little door and looked along the passage into the loveliest garden you ever saw.';
 
@@ -49,7 +55,7 @@ function heldReplies(): { respond: NonNullable<LightboxBoardsHostOptions['respon
   };
 }
 
-/** A host with alice-1 boarded and read (FIRST and READ saved), and alice-2 in the workspace. */
+/** A host with alice-1 boarded (READ saved, and FIRST beside it), and alice-2 in the workspace. */
 async function readChapter(options: LightboxBoardsHostOptions = {}) {
   const host = createLightboxBoardsHost(options);
   host.writeChapter(CHAPTER_PATH, CHAPTER);
@@ -59,6 +65,7 @@ async function readChapter(options: LightboxBoardsHostOptions = {}) {
   await tab.shelf(null);
   await tab.choose(CHAPTER_PATH);
   await quiet();
+  expect(host.keepEarlierSave(READ)).toBe(FIRST);
   return { host, tab };
 }
 

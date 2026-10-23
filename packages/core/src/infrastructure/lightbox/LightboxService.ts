@@ -86,17 +86,9 @@ import {
   savedLightboxBoardParts,
   type LightboxBoardMeasurers
 } from '@/infrastructure/lightbox/LightboxBoardAssembly';
-import {
-  LightboxRetainedBoards,
-  type LightboxSavableBoard,
-  type LightboxSavedAdoption
-} from '@/infrastructure/lightbox/LightboxRetainedBoards';
+import { LightboxRetainedBoards, type LightboxSavableBoard, type LightboxSavedAdoption, type LightboxSavedWrite } from '@/infrastructure/lightbox/LightboxRetainedBoards';
 
-export type {
-  LightboxBoardOrigin,
-  LightboxSavableBoard,
-  LightboxSavedAdoption
-} from '@/infrastructure/lightbox/LightboxRetainedBoards';
+export type { LightboxBoardOrigin, LightboxSavableBoard, LightboxSavedAdoption, LightboxSavedWrite } from '@/infrastructure/lightbox/LightboxRetainedBoards';
 
 /** A source the handler has resolved to text. */
 export interface LightboxSourceInput {
@@ -303,6 +295,7 @@ export class LightboxService {
       // Built now, under this build's rules. Unchanged text is still the board its file holds (Slice 5A), and keeps its name (5A.1).
       origin: { kind: 'built' },
       savedFileId: unchanged ? retained?.savedFileId : undefined,
+      savedRevision: unchanged ? retained?.savedRevision : undefined,
       name: unchanged ? retained?.name : undefined
     });
     // The newest request produced a board, so no refusal stands beside it.
@@ -433,7 +426,7 @@ export class LightboxService {
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
-    const { board, text, fileId, savedAt, dropped, rereadPath, name } = saved;
+    const { board, text, fileId, revision, savedAt, dropped, rereadPath, name } = saved;
     this.retained.adopt(lightboxSourceKey(board.source), {
       board,
       text,
@@ -441,6 +434,7 @@ export class LightboxService {
       ...savedLightboxBoardParts(this.measurers.wordFrequency, board, text),
       origin: { kind: 'saved', fileId, savedAt, dropped },
       savedFileId: fileId,
+      savedRevision: revision,
       name
     });
     this.standingRefusal = null;
@@ -474,9 +468,14 @@ export class LightboxService {
     return this.retained.bySource(lightboxSourceKey(source))?.board;
   }
 
-  /** Record the file the board kept under `boardId` was last saved to. */
-  markSaved(boardId: string, fileId: string): boolean {
-    return this.retained.markSaved(boardId, fileId);
+  /** Record the file the board kept under `boardId` was last saved to, or (`write.from`) a rewrite of it (Slice 5A.2). */
+  markSaved(boardId: string, fileId: string, write?: LightboxSavedWrite): boolean {
+    return this.retained.markSaved(boardId, fileId, write);
+  }
+
+  /** The id of the retained board a saved file holds, if any (Slice 5A.2). */
+  boardOfFile(fileId: string): string | undefined {
+    return this.retained.boardOfFile(fileId);
   }
 
   /** A saved file was deleted: no retained board is held in it any more. */

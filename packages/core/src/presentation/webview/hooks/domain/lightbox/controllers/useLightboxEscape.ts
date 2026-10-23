@@ -6,7 +6,8 @@
  * but it follows the overlay stack: while any overlay is open (a sheet on
  * the shared stack, `isAnyOverlayOpen()`, or any modal dialog, such as the
  * header's model browser) Escape belongs to the overlay on top, and the pin
- * stays. A key another handler already claimed (`defaultPrevented`) is left
+ * stays; so too while a menu is open (the header's Boards menu, Slice 5A.2),
+ * which Escape closes. A key another handler already claimed (`defaultPrevented`) is left
  * alone too.
  *
  * A presentation controller: the pin is `useLightbox`'s, cleared through the
@@ -33,7 +34,7 @@ const NO_PERSISTENCE: LightboxEscapePersistence = {};
 
 /** Whether an overlay or a modal dialog is open, so Escape is its to take. */
 export function lightboxEscapeBelongsElsewhere(event: Pick<KeyboardEvent, 'defaultPrevented'>): boolean {
-  return event.defaultPrevented || isAnyOverlayOpen() || document.querySelector('[aria-modal="true"]') !== null;
+  return event.defaultPrevented || isAnyOverlayOpen() || document.querySelector('[aria-modal="true"], [role="menu"]') !== null;
 }
 
 export function useLightboxEscape({ pinned, onClear }: UseLightboxEscapeArgs): UseLightboxEscapeReturn {

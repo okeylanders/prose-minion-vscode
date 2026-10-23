@@ -20,6 +20,11 @@
  *   it, and a request observed before it is answered again. Controls: no
  *   interleaving, and a newer save at the same adoption, both posted.
  *
+ * Slice 5A.2 (epic decision 46): a board's later saves rewrite its own
+ * file, so the earlier snapshot of the same board these tests open is a
+ * copy kept beside it (`keepEarlierSave`), as 5A's one file per save left
+ * them, and a press on a snapshot saves into the file it was opened from.
+ *
  * Real handlers, service, runner, store and library
  * (`lightboxBoardsHarness`); only file reads, a press's preparation and the
  * engine's replies are stand-ins, held open to order events exactly. File
@@ -72,15 +77,20 @@ async function mounted() {
   return { host, tab };
 }
 
-/** Board the chapter, then read it: FIRST (measured) and READ (every lens) saved, board-1 on screen as read. */
+/**
+ * Board the chapter, then read it: READ (the board's own file, rewritten in
+ * place by the read) and FIRST (an earlier save of the same board, measured
+ * only, kept beside it), board-1 on screen as read.
+ */
 async function readChapter() {
   const { host, tab } = await mounted();
   await tab.choose(CHAPTER_PATH);
   await quiet();
-  const first = added(host, []);
+  const read = added(host, []);
+  const first = host.keepEarlierSave(read);
   await tab.read();
   await quiet();
-  const read = added(host, [first]);
+  expect(host.savedFiles()).toEqual([first, read]);
   return { host, tab, first, read };
 }
 
@@ -232,7 +242,7 @@ describe('a press still preparing yields to a newer adoption (PR #163 F-02)', ()
     expect(progress(tab).at(-1)).toMatchObject({ phase: 'refused', message: BOARD_CHANGED });
   });
 
-  it('control, nothing adopted meanwhile: starts, reads its lens and saves', async () => {
+  it('control, nothing adopted meanwhile: starts, reads its lens and saves, into the file it was opened from', async () => {
     const { host, tab, first, read } = await readChapter();
     await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-first', fileId: first });
     const calls = host.runInitial.mock.calls.length;
@@ -247,8 +257,9 @@ describe('a press still preparing yields to a newer adoption (PR #163 F-02)', ()
 
     expect(host.runInitial.mock.calls.length).toBe(calls + 1);
     expect(host.service.currentBoard()?.readings.find((group) => group.group === 'B')?.status).toBe('ok');
-    expect(host.savedFiles()).toHaveLength(3);
-    expect(host.savedFiles()).toEqual(expect.arrayContaining([first, read]));
+    // One file per board (Slice 5A.2): the snapshot's file takes the reading in place.
+    expect(host.savedFiles()).toEqual([first, read]);
+    expect((await tab.shelf('board-1')).shelf.boards.find((board) => board.onScreen)?.fileId).toBe(first);
   });
 });
 
@@ -377,7 +388,7 @@ describe('within one adoption, a shelf observed before one already sent is never
     expect(tab.shelves().at(-1)?.shelf.snapshot).toMatchObject({ fileId: read, file: 'changed' });
   });
 
-  it('control, a newer save at the same adoption: its push is posted after the Delete\'s answer', async () => {
+  it('control, a newer save at the same adoption, in place: its push is posted after the Delete\'s answer', async () => {
     const { host, tab, first, compare } = await heldPush();
     compare.release();
     await quiet();
@@ -389,6 +400,8 @@ describe('within one adoption, a shelf observed before one already sent is never
 
     const newer = tab.shelves().at(-1);
     expect(newer).toMatchObject({ requestId: null, boardId: 'board-1', adoption: deleted?.adoption, shelf: { snapshot: { file: 'changed' } } });
-    expect(newer?.shelf.boards).toHaveLength(saved.length + 1);
+    // The save rewrote the board's own file (Slice 5A.2): no new row.
+    expect(newer?.shelf.boards).toHaveLength(saved.length);
+    expect(newer?.observation).toBeGreaterThan(deleted?.observation ?? Infinity);
   });
 });

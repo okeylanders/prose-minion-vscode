@@ -42,7 +42,7 @@ packages/core/src/
 ├── platform/           # Ports the host must implement (LogSink, SecretStore, FileSystem, …)
 ├── application/        # Application layer (orchestration)
 │   ├── services/       # Cross-domain application services (e.g. StandardsComparisonService)
-│   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1)
+│   │   └── lightbox/LightboxBoardLibrary.ts # When Lightbox boards save, open as snapshots, restore after a reload, list and delete (Slice 5A); names and spark marks in place through LightboxBoardEdits (Slice 5A.1); every chapter's boards, a picked board file opened, and saves through LightboxBoardSaves: one file per board, named by date, rewritten in place (Slice 5A.2)
 │   └── handlers/       # Message routing and domain handlers
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
 │       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
@@ -67,7 +67,7 @@ packages/core/src/
 │           ├── LightboxProjectFiles.ts    # The shared project picker's catalog, search and key → workspace file (text only, contained)
 │           ├── LightboxContextIntake.ts   # Context files by the system picker or the project picker, under the shelf's rules
 │           ├── LightboxPassageHandler.ts  # The inspector's passages: a pinned paragraph's text, a counted item's sentences, by board id and hash (Slice 4E)
-│           ├── LightboxBoardsHandler.ts   # The rail's saved boards: shelf, open, delete, rename (5A.1), and each committed save pushed (Slice 5A)
+│           ├── LightboxBoardsHandler.ts   # The saved boards' routes: shelf, open, delete, rename (5A.1), open a board file through the host's picker (5A.2), and each committed save pushed (Slice 5A)
 │           └── workshop/                  # Room owner + 12 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -91,7 +91,7 @@ packages/core/src/
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing)
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
-│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164)
+│   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
 ├── tools/            # Assist + Measure tools (assist/ measure/ shared/ utility/)
@@ -127,7 +127,7 @@ packages/core/src/
             ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF (a field or a tile, by id), its result, and the Workshop tray
             ├── lightboxProjectFiles.ts # The project picker's catalog (rows with opaque file keys) and search, correlated by request id; a source or context by catalog key
             ├── lightboxPassages.ts # The inspector's passages (Slice 4E): a paragraph's text or a term's sentences, by request id, board id and hash; refusals
-            ├── lightboxBoards.ts  # Saved boards (Slice 5A): the rail's shelf (availability, summaries, snapshot state; 5A.1: names and models), open, delete, rename, by request id
+            ├── lightboxBoards.ts  # Saved boards (Slice 5A): the shelf (availability, summaries, snapshot state; 5A.1: names and models; 5A.2: every chapter's rows, each with its source and name), open, delete, rename, open a board file (5A.2), by request id
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -198,11 +198,11 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxPlot.ts         # Group E as drawn: Sections note and bands, movement/pressure/engagement lanes, thread tracks, inspector details (pure)
 │       │   ├── lightboxOpinion.ts      # The Opinion as drawn: view tabs, Why rows, observations and what changed, Bring block, inspector details (pure)
 │       │   ├── lightboxSteering.ts     # Craft steering as drawn: figure sections and construction shares, the `steering` item ref, inspector details (pure)
-│       │   ├── lightboxBoardsView.ts   # The rail's Boards section in words: dates, lenses, stale, cost, the snapshot note, session-only (pure; Slice 5A); names, models, the head, the notice above the board (5A.1)
-│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board)
+│       │   ├── lightboxBoardsView.ts   # The saved boards in words: the Boards menu (trigger, save status, recent), the browser's rows (name, chapter, when, lenses, stale, cost, models), search, by date or chapter, the notice above the board (pure; Slices 5A–5A.2)
+│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board), useLightboxBoardsSurface (which saved-board surface is open, and the browser's search; Slice 5A.2)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
-│       ├── useLightboxBoards.ts        # The rail's saved boards: the shelf of the board on screen by request id, Open, Delete, Rename (5A.1); persists nothing (Slice 5A)
+│       ├── useLightboxBoards.ts        # The saved boards: the shelf of the board on screen by request id, Open, Delete, Rename (5A.1), Open a board file and refresh (5A.2), and the outcome an open, delete or rename left to say (PR #167); persists nothing (Slice 5A)
 │       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
@@ -250,6 +250,22 @@ Patterns and conventions:
     `WorkshopApp.contextSelectorParity`, recorded against the original modal.
     A change to the shared picker that alters the Workshop fails them; update
     them only with a deliberate Workshop change.
+- Shared saved-item menu and browser (Lightbox Slice 5A.2): the Workshop's
+  sessions menu and session browser are the full tabs'
+  `components/fulltab/SavedItemsMenu` (`Item`, `Recent`, `Heading`, `Rule`,
+  `Empty`) and `SavedItemBrowserModal` with `SavedItemRow`, and date buckets
+  in `utils/savedItemGroups`. `WorkshopSessionsMenu` /
+  `WorkshopSessionBrowserModal` and the Lightbox's `LightboxBoardsMenu` /
+  `LightboxBoardBrowserModal` compose them with their own items, rows,
+  groupings and copy.
+  - They post nothing; each tab keeps its own routes.
+  - Their rules are the frame's, in `styles/fulltab/savedItems.css` and
+    `savedBrowser.css`, moved verbatim from the Workshop's sheet.
+  - The opt-ins `renameRule`, `sendOnlyEdits` and `returnFocus` are the
+    Lightbox's; without them the Workshop's markup and behavior are as they
+    were (its tests run unchanged). A change to the shared components must
+    keep the Workshop's markup identical unless the Workshop changes
+    deliberately.
   - `boundaries.test.ts` pins its imports.
   - The Lightbox's routes add two rules the Workshop's do not have (PR #154).
     Each catalog and search request carries a webview-minted `requestId`
@@ -819,8 +835,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 4I (run controls: "Run AI analyses", a call run on its own by group, every AI-read widget's Analyze, each call's Run in the Lenses panel) with PR #166's review corrections and the writer's decisions 47 and 48, on `epic/lightbox-run-controls`, with `epic/lightbox` at `08b0d22` (PR #165 merged) merged in):
-- 495 suites / 6,905 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review and re-review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
+- 505 suites / 7,009 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1390,6 +1406,24 @@ records, when it saves, or how a saved one comes back:
   finds its file at the rewrite's turn in the queue, changes only what the
   writer acted on (one spark's mark, not the board's every mark: PR #164
   F-03), and never writes a file that does not read whole.
+- **A save writes the board it was owed (PR #167 F-01).** A save waits
+  its turn in the store's queue, and another run may start in the
+  meantime, clear a group (decision 42) and be stopped with nothing back.
+  At its turn, `owedBoard` writes the readings and rules its own run
+  settled, exactly as captured, never a later state of them. It takes
+  from the board as it stands only the file, revision and name, and each
+  spark's set-aside mark. A later run that lands gets its own save. Never
+  save a board with a group `running` or a lens `pending`: the codec
+  refuses it. The store's save status clears on any commit before the
+  commit is announced (N-01).
+- **A mutation's outcome is shown where it outlives its sheet (PR #167
+  F-02, F-03).** The name sheet is opened for a board and its adoption,
+  and closes when either changes. A rename of the board on screen carries
+  that adoption, and the host refuses one for an earlier adoption. The
+  host's notice from an open, delete or rename answer goes to the
+  outcome banner under the header (`LightboxBoardsOutcome`), never only
+  to a sheet or the browser. A refused source stays on the board's source
+  alert.
 - **Claims are live or abandoned by age (PR #164 F-01, F-02).**
   `LightboxBoardClaims` names a claim with the time it was taken; younger
   than `LIGHTBOX_BOARD_CLAIM_LEASE_MS` it is live and no other window

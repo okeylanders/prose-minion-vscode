@@ -88,10 +88,14 @@ const held = (group: LightboxReadingGroup | undefined) => ({
   staleLenses: group?.staleLenses
 });
 
+/** A saved file's bytes, as text. */
+function fileBytes(host: Host, fileId: string): string {
+  return new TextDecoder().decode(host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', fileId)));
+}
+
 /** The board a saved file holds. */
 function savedBoard(host: Host, fileId: string): LightboxBoard {
-  const bytes = host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', fileId));
-  const decoded = decodeLightboxBoardFile(new TextDecoder().decode(bytes));
+  const decoded = decodeLightboxBoardFile(fileBytes(host, fileId));
   if (decoded.kind !== 'board') {
     throw new Error(`${fileId} does not read as a board`);
   }
@@ -145,6 +149,8 @@ describe('the Opinion run on its own keeps the old one until the new one lands (
       const before = groupOn(host, 'F');
       const standing = lightboxOpinionStanding(lightboxOpinionTile(board)!, board);
       const saved = host.savedFiles();
+      expect(saved).toHaveLength(1);
+      const bytesBefore = fileBytes(host, saved[0]);
       engine.failF = true;
 
       await tab.run(scope);
@@ -159,15 +165,16 @@ describe('the Opinion run on its own keeps the old one until the new one lands (
       expect(progress(tab).at(-1)).toMatchObject({ phase: 'finished', groups: ['F'] });
 
       // The board saved after the failed call still holds the old Opinion, and a reload restores it.
-      const added = host.savedFiles().filter((file) => !saved.includes(file));
-      expect(added).toHaveLength(1);
+      // One file per board (decision 46): the save rewrites the board's own file in place.
+      expect(host.savedFiles()).toEqual(saved);
+      expect(fileBytes(host, saved[0])).not.toEqual(bytesBefore);
       // The shelf that save pushes is observed after the ones before it, and lists the save as holding the Opinion.
       const shelves = tab.shelves();
       expect(shelves.at(-1)?.observation).toBeGreaterThan(shelves.at(-2)?.observation ?? -1);
-      expect(shelves.at(-1)?.shelf.boards[0]).toMatchObject({ fileId: added[0] });
+      expect(shelves.at(-1)?.shelf.boards[0]).toMatchObject({ fileId: saved[0] });
       expect(shelves.at(-1)?.shelf.boards[0].lenses).toContain('opinion');
       expect(shelves.at(-1)?.shelf.boards[0].staleLenses).toContain('opinion');
-      const file = savedBoard(host, added[0]).readings.find((group) => group.group === 'F');
+      const file = savedBoard(host, saved[0]).readings.find((group) => group.group === 'F');
       expect(file).toMatchObject({ status: 'failed', error: UNEXPECTED });
       expect(file?.tiles).toEqual(before?.tiles);
       const next = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
@@ -182,6 +189,7 @@ describe('the Opinion run on its own keeps the old one until the new one lands (
     const { host, tab, engine } = await readBoard();
     const before = groupOn(host, 'F');
     const saved = host.savedFiles();
+    const bytesBefore = fileBytes(host, saved.at(-1) as string);
     engine.holdF = deferred<void>();
     await tab.run(RUN_F);
     await quiet();
@@ -197,6 +205,8 @@ describe('the Opinion run on its own keeps the old one until the new one lands (
     expect(held(after)).toEqual(held(before));
     expect(progress(tab).at(-1)).toMatchObject({ phase: 'cancelled', groups: ['F'] });
     expect(host.savedFiles()).toEqual(saved);
+    // Nothing is saved: the board's one file (decision 46) is byte for byte as it was.
+    expect(fileBytes(host, saved.at(-1) as string)).toBe(bytesBefore);
     // The last save still holds the Opinion that was on the board.
     expect(savedBoard(host, saved.at(-1) as string).readings.find((group) => group.group === 'F')?.tiles).toEqual(before?.tiles);
   });

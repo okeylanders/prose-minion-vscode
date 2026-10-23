@@ -105,8 +105,9 @@ describe('a spark set aside saves at once (epic decision 35)', () => {
     await setAside(0, false);
 
     expect(marks(boardIn(host, holding))[0]).toBeNull();
-    expect(host.savedFiles()).toHaveLength(2);
-    expect((await tab.shelf('board-1')).shelf.boards).toHaveLength(2);
+    // One file per board (Slice 5A.2): the board's first save, rewritten in place by its read and by each mark.
+    expect(host.savedFiles()).toEqual([holding]);
+    expect((await tab.shelf('board-1')).shelf.boards).toHaveLength(1);
   });
 
   it('a board no file holds keeps the mark in memory for its next save, as before', async () => {
@@ -190,7 +191,8 @@ describe('two windows, two different sparks (PR #164 F-03)', () => {
     await second.setAside(1);
 
     expect(marks(boardIn(host, holding)).slice(0, 2)).toEqual([1, 2]);
-    expect(host.savedFiles()).toHaveLength(2);
+    // One file per board (Slice 5A.2): both windows' marks are in the board's one file.
+    expect(host.savedFiles()).toEqual([holding]);
   });
 
   it('control: opened after the first window set its spark aside, the second keeps both marks too', async () => {

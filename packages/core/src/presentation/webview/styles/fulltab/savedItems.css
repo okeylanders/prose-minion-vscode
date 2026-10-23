@@ -1,0 +1,354 @@
+/* ============================================================
+   Prose Minion — the full tabs' saved-item menu, name sheet and browser
+   (Lightbox Slice 5A.2; ADR 2026-10-19 D12 addendum)
+
+   The Workshop's session menu (SavedItemsMenu) and its Save-session sheet's
+   frame (head, field, path note, footer, buttons), which the Lightbox's
+   Boards menu and name sheet render too; the session browser's own rules
+   follow in savedBrowser.css. Moved verbatim from
+   styles/workshop/shell.css, in the order they had there, with the scope
+   changed from the Workshop's surface stamp to [data-pm-frame="fulltab"]
+   (the same specificity), as modal.css was for the project picker. Rules
+   only the Workshop's sheets use stay there: the degraded-memory banner,
+   the confirm dialog, the save sheet's manifest and the export sheet. The
+   Workshop's cascade is pinned by the before-and-after evidence in
+   docs/pr-reviews/evidence/lightbox-slice-5a2-visual/ (every element of its
+   sessions menu and browser has the same computed style). Rules after the
+   move are this slice's own.
+   ============================================================ */
+
+/* Session menu, focused Save sheet, and full browser (Sprint 10 design).
+   Persistence semantics follow the T3 ADR; visual hierarchy follows the
+   approved pm-sessions prototype. */
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-trigger-label {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--pm-dim);
+  font: 10px var(--pm-mono);
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pm-green);
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state-saving {
+  color: var(--pm-muted);
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state-saving > span {
+  background: var(--pm-amber);
+  animation: pm-ws-ticker-pulse 1s ease-in-out infinite;
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state-error {
+  color: var(--pm-red);
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state-error > span {
+  background: var(--pm-red);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-frame="fulltab"] .pm-ws-named-save-state-saving > span {
+    animation: none;
+  }
+}
+@media (max-width: 520px) {
+  [data-pm-frame="fulltab"] .pm-ws-sessions-trigger-label {
+    max-width: 120px;
+  }
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-trigger[aria-expanded="true"] {
+  border-color: var(--pm-accent-lo);
+  background: var(--pm-accent-soft);
+  color: var(--pm-text);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(330px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
+  box-shadow: 0 22px 65px rgba(0, 0, 0, 0.58);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-heading {
+  padding: 5px 9px 6px;
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent-heading {
+  margin-top: 4px;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item,
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent {
+  width: 100%;
+  border: 0;
+  border-radius: var(--pm-r-button);
+  background: transparent;
+  color: var(--pm-text-2);
+  text-align: left;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 9px;
+  font: 500 12.5px var(--pm-sans);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item kbd {
+  color: var(--pm-faint);
+  font: 10px var(--pm-mono);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent strong {
+  overflow: hidden;
+  color: var(--pm-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent span {
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item:not(:disabled):hover,
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item:not(:disabled):focus-visible,
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent:not(:disabled):hover,
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent:not(:disabled):focus-visible {
+  outline: 0;
+  background: var(--pm-surface-3);
+  color: var(--pm-text);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-item:disabled,
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-recent:disabled {
+  opacity: 0.42;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-rule {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--pm-border);
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-menu-empty {
+  padding: 8px 9px 10px;
+  color: var(--pm-faint);
+  font-size: 11px;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-unavailable,
+[data-pm-frame="fulltab"] .pm-ws-sessions-truncated {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 20px 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: var(--pm-r-tile);
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-unavailable,
+[data-pm-frame="fulltab"] .pm-ws-sessions-truncated {
+  margin: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-modal,
+[data-pm-frame="fulltab"] .pm-ws-session-browser-modal {
+  padding: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-modal {
+  width: min(860px, 100%);
+  overflow-y: auto;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-browser-modal {
+  width: min(1180px, calc(100vw - 48px));
+  height: min(850px, calc(100vh - 48px));
+  max-height: none;
+  overflow: hidden;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px 18px;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-head h2 {
+  margin: 7px 0 6px;
+  color: var(--pm-text);
+  font-size: 24px;
+  line-height: 1.15;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-head p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-body {
+  padding: 8px 36px 10px;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-field {
+  display: grid;
+  gap: 8px;
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-field input,
+[data-pm-frame="fulltab"] .pm-ws-session-row-title input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  font: 600 16px var(--pm-sans);
+  padding: 12px 14px;
+  text-transform: none;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-field input:focus {
+  outline: 1px solid var(--pm-accent);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 3px var(--pm-accent-soft);
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-path {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  margin: 9px 2px 0;
+  color: var(--pm-faint);
+  font: 10.5px var(--pm-mono);
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-path span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-save-session-identity-note {
+  margin: 5px 2px 18px;
+  color: var(--pm-faint);
+  font-size: 10.5px;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-foot > span {
+  min-width: 0;
+  flex: 1;
+  color: var(--pm-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-sheet-foot strong {
+  color: var(--pm-muted);
+}
+[data-pm-frame="fulltab"] .pm-ws-session-primary,
+[data-pm-frame="fulltab"] .pm-ws-session-secondary,
+[data-pm-frame="fulltab"] .pm-ws-session-quiet,
+[data-pm-frame="fulltab"] .pm-ws-session-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border-radius: var(--pm-r-button);
+  font: 600 11.5px var(--pm-sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-primary {
+  padding: 7px 13px;
+  border: 1px solid var(--pm-accent-lo);
+  background: var(--pm-accent);
+  color: #fff;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-primary-large,
+[data-pm-frame="fulltab"] .pm-ws-session-secondary {
+  min-height: 38px;
+  padding: 8px 16px;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-secondary,
+[data-pm-frame="fulltab"] .pm-ws-session-quiet,
+[data-pm-frame="fulltab"] .pm-ws-session-icon {
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+}
+[data-pm-frame="fulltab"] .pm-ws-session-quiet {
+  min-height: 29px;
+  padding: 5px 8px;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-icon {
+  width: 31px;
+  min-height: 31px;
+  padding: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-primary:disabled,
+[data-pm-frame="fulltab"] .pm-ws-session-secondary:disabled,
+[data-pm-frame="fulltab"] .pm-ws-session-quiet:disabled,
+[data-pm-frame="fulltab"] .pm-ws-session-icon:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+[data-pm-frame="fulltab"] .pm-ws-session-delete:not(:disabled) {
+  color: var(--pm-red, #d66);
+}
+[data-pm-frame="fulltab"] .pm-ws-session-delete-confirm:not(:disabled) {
+  color: var(--pm-green);
+}
+
+/* Lightbox Slice 5A.2: the trigger's look without the Workshop's own
+   `.pm-ws-reset` (the Workshop's sheet still sets the same declarations on
+   it), and a muted dot for "Not saved yet" and "This session only". */
+[data-pm-frame="fulltab"] .pm-ws-sessions-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px solid var(--pm-border);
+  color: var(--pm-muted);
+  border-radius: var(--pm-r-input);
+  padding: 9px 11px;
+  font-size: 12.5px;
+  font-family: var(--pm-sans);
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-sessions-trigger:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-frame="fulltab"] .pm-ws-named-save-state-session > span {
+  background: var(--pm-faint);
+}

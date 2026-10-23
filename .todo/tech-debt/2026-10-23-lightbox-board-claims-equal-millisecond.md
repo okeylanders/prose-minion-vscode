@@ -33,6 +33,12 @@ newer spark mark), never the manuscript, and never a board after a Delete
 that succeeded. It needs persistent predecessor-removal failure, a further
 rollback failure, a tied clock and an unfavourable id order.
 
+**After Slice 5A.2 (2026-10-23).** One file per board (epic decision 46)
+makes every later save of a board an in-place rewrite under a claim, so
+the same path could also bring back a board's earlier readings, not only
+its name or a spark mark. The preconditions are unchanged, and the
+manuscript is still never at risk.
+
 ## Recommendation
 
 Do not treat a UUID's lexical order as evidence of recency when two claims'

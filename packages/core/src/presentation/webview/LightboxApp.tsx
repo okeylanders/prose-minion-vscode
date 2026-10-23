@@ -29,11 +29,15 @@
  * paragraph's text and a pinned counted term's sentences, asked of the host
  * by board id and hash, and never persisted.
  *
- * The rail's saved boards (Slice 5A) are `useLightboxBoards`'s: the shelf of
- * the board on screen, Open, Delete and (Slice 5A.1) Rename. An opened board
- * arrives as any board does; "Read the current text" is the source's own
- * re-read. The changed-file notice above the board is the rail's, from the
- * same shelf (`lightboxChangedFileNotice`), so the two come and go together.
+ * The saved boards (Slice 5A) are `useLightboxBoards`'s: the shelf of the
+ * board on screen, Open, Delete and (Slice 5A.1) Rename. From Slice 5A.2
+ * they live in the header's Boards menu, where the Workshop keeps its
+ * sessions menu, and the browser and name sheet it opens
+ * (`useLightboxBoardsSurface`): every chapter's boards, "Open a board
+ * file…", and the menu's "Board another chapter…", the project picker. An
+ * opened board arrives as any board does; "Read the current text" is the
+ * source's own re-read, from the notice above the board
+ * (`lightboxSnapshotNotice`), whose shelf orders it.
  *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
@@ -61,7 +65,10 @@ import { Icon } from '@components/shared/Icon';
 import { LightboxSourcePanel } from '@components/lightbox/LightboxSourcePanel';
 import { LightboxLensesPanel } from '@components/lightbox/LightboxLensesPanel';
 import { LightboxContextList } from '@components/lightbox/LightboxContextList';
-import { LightboxBoardsPanel } from '@components/lightbox/LightboxBoardsPanel';
+import { LightboxBoardsMenu } from '@components/lightbox/LightboxBoardsMenu';
+import { LightboxBoardBrowserModal } from '@components/lightbox/LightboxBoardBrowserModal';
+import { LightboxBoardNameModal } from '@components/lightbox/LightboxBoardNameModal';
+import { LightboxBoardsOutcome } from '@components/lightbox/LightboxBoardsOutcome';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
@@ -78,6 +85,7 @@ import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightbox
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { useLightboxEscape } from '@hooks/domain/lightbox/controllers/useLightboxEscape';
 import { useLightboxOpinionView } from '@hooks/domain/lightbox/controllers/useLightboxOpinionView';
+import { useLightboxBoardsSurface } from '@hooks/domain/lightbox/controllers/useLightboxBoardsSurface';
 import {
   buildLightboxRunLine,
   lightboxCallsNote,
@@ -86,7 +94,11 @@ import {
 import { lightboxCallControls } from '@hooks/domain/lightbox/lightboxCallControls';
 import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import { lightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
-import { lightboxChangedFileNotice } from '@hooks/domain/lightbox/lightboxBoardsView';
+import {
+  buildLightboxBoardsBrowser,
+  buildLightboxBoardsMenu,
+  lightboxSnapshotNotice
+} from '@hooks/domain/lightbox/lightboxBoardsView';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import { usePersistence } from '@hooks/usePersistence';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -103,8 +115,9 @@ export const LightboxApp: React.FC = () => {
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   // The pin's text: a paragraph whole, or a counted term's sentences, from the host (Slice 4E).
   const passages = useLightboxPassages({ board, selected: lightbox.selected });
-  // The rail's saved boards (Slice 5A): the shelf of the board on screen, Open and Delete.
+  // The saved boards (Slice 5A; every chapter's, in the header's Boards menu, from 5A.2).
   const savedBoards = useLightboxBoards({ board });
+  const boardsSurface = useLightboxBoardsSurface({ onBrowse: savedBoards.refresh });
   // Enter pins (every item is a button); Escape lets go, once every overlay has had its turn.
   const escape = useLightboxEscape({ pinned: lightbox.selected !== null, onClear: inspector.clear });
   // The Opinion's view the writer chose on this board: a webview preference only (Slice 4D).
@@ -229,6 +242,7 @@ export const LightboxApp: React.FC = () => {
     ...inspector.persistedState,
     ...passages.persistedState,
     ...savedBoards.persistedState,
+    ...boardsSurface.persistedState,
     ...escape.persistedState,
     ...opinionView.persistedState,
     ...chrome.persistedState
@@ -253,12 +267,45 @@ export const LightboxApp: React.FC = () => {
   const chooseFromProject = React.useCallback(() => openProjectPicker('source'), [openProjectPicker]);
   const addContextFromProject = React.useCallback(() => openProjectPicker('context'), [openProjectPicker]);
 
-  // The rail's changed-file notice, shown above the board too: one shelf, so the two agree (Slice 5A.1).
+  // The note above a board opened from a file, from the shelf, under its ordering guards (Slice 5A.1; 5A.2).
   const { shelf: savedShelf } = savedBoards;
   const changedFile = React.useMemo(() => {
-    const view = lightboxChangedFileNotice(savedShelf);
+    const view = lightboxSnapshotNotice(savedShelf);
     return view && { view, rereading: lightbox.rereading, onReadCurrentText: lightbox.refreshSource };
   }, [lightbox.refreshSource, lightbox.rereading, savedShelf]);
+  // The Boards menu and browser (Slice 5A.2): every chapter's saved boards.
+  const boardsMenu = React.useMemo(() => buildLightboxBoardsMenu(savedShelf, board?.source ?? null), [board?.source, savedShelf]);
+  const boardsBrowser = React.useMemo(() => buildLightboxBoardsBrowser(savedShelf), [savedShelf]);
+  const reading = running || lightbox.activeRun !== null;
+  const onScreenFile = savedShelf?.boards.find((row) => row.onScreen)?.fileId;
+  const { closeBrowser } = boardsSurface;
+  const { openBoard, openBoardFile } = savedBoards;
+  const openSavedBoard = React.useCallback((fileId: string) => {
+    openBoard(fileId);
+    closeBrowser();
+  }, [closeBrowser, openBoard]);
+  // The name sheet names the board it was opened for, and closes when another comes on screen (PR #167 F-02).
+  const { renameTarget, closeRename, openRename } = boardsSurface;
+  const boardOnScreen = board?.boardId ?? null;
+  const { adoption: shelfAdoption } = savedBoards;
+  const openRenameForBoardOnScreen = React.useCallback(() => {
+    if (boardOnScreen !== null) {
+      openRename({ boardId: boardOnScreen, adoption: shelfAdoption });
+    }
+  }, [boardOnScreen, openRename, shelfAdoption]);
+  const closeRenameWhenBoardChanges = React.useCallback(() => {
+    const replaced = renameTarget !== null && (boardOnScreen !== renameTarget.boardId
+      || (renameTarget.adoption !== null && shelfAdoption !== null && shelfAdoption !== renameTarget.adoption));
+    if (replaced) {
+      closeRename();
+    }
+  }, [boardOnScreen, closeRename, renameTarget, shelfAdoption]);
+  React.useEffect(closeRenameWhenBoardChanges, [closeRenameWhenBoardChanges]);
+  // The host's picker takes over, as "Explore project folders…" closes the project picker before VS Code's dialog.
+  const openSavedBoardFile = React.useCallback(() => {
+    openBoardFile();
+    closeBrowser();
+  }, [closeBrowser, openBoardFile]);
 
   const source = board?.source ?? null;
   const subtitle = source ? (
@@ -276,6 +323,17 @@ export const LightboxApp: React.FC = () => {
       headerActions={
         <>
           <LightboxWorkshopTray tiles={tray} onOpenWorkshop={openWorkshop} />
+          <LightboxBoardsMenu
+            open={boardsSurface.menuOpen}
+            view={boardsMenu}
+            openDisabled={reading || savedBoards.opening !== null || savedBoards.openingFile}
+            renameDisabled={savedBoards.opening !== null || savedBoards.openingFile}
+            onOpenChange={boardsSurface.setMenuOpen}
+            onRename={openRenameForBoardOnScreen}
+            onBoardAnotherChapter={chooseFromProject}
+            onBrowse={boardsSurface.openBrowser}
+            onOpenBoard={openSavedBoard}
+          />
           <FullTabHeaderStatus
             models={chrome.modelsSettings}
             tokens={chrome.tokenTracking}
@@ -284,12 +342,15 @@ export const LightboxApp: React.FC = () => {
         </>
       }
       banners={
-        chrome.providerPaused && (
-          <ProviderPausedBanner
-            availabilityNote="The counted board works without one."
-            onAddApiKey={chrome.openAssistantSettings}
-          />
-        )
+        <>
+          {chrome.providerPaused && (
+            <ProviderPausedBanner
+              availabilityNote="The counted board works without one."
+              onAddApiKey={chrome.openAssistantSettings}
+            />
+          )}
+          <LightboxBoardsOutcome text={savedBoards.outcome} onDismiss={savedBoards.dismissOutcome} />
+        </>
       }
       rail={{
         label: 'Board rail',
@@ -301,17 +362,6 @@ export const LightboxApp: React.FC = () => {
               rereading={lightbox.rereading}
               onChooseFromProject={chooseFromProject}
               onRefresh={lightbox.refreshSource}
-            />
-            <LightboxBoardsPanel
-              key={board?.boardId ?? 'none'}
-              shelf={savedBoards.shelf}
-              hasBoard={board !== null}
-              opening={savedBoards.opening}
-              rereading={lightbox.rereading}
-              onOpen={savedBoards.openBoard}
-              onDelete={savedBoards.deleteBoard}
-              onRename={savedBoards.renameBoard}
-              onReadCurrentText={lightbox.refreshSource}
             />
             <LightboxContextList
               context={lightbox.context}
@@ -383,6 +433,28 @@ export const LightboxApp: React.FC = () => {
         onAddContext={projectFiles.addContext}
         onExploreContext={lightbox.addContextFile}
         onClose={projectFiles.close}
+      />
+      <LightboxBoardBrowserModal
+        open={boardsSurface.browserOpen}
+        view={boardsBrowser}
+        query={boardsSurface.query}
+        opening={savedBoards.opening}
+        openingFile={savedBoards.openingFile}
+        reading={reading}
+        onQueryChange={boardsSurface.setQuery}
+        onOpen={openSavedBoard}
+        onOpenFile={openSavedBoardFile}
+        onRename={savedBoards.renameBoard}
+        onDelete={savedBoards.deleteBoard}
+        onClose={boardsSurface.closeBrowser}
+      />
+      <LightboxBoardNameModal
+        open={renameTarget !== null && board !== null}
+        name={savedShelf?.name ?? ''}
+        fileId={onScreenFile}
+        sessionOnly={savedShelf?.availability.kind === 'session'}
+        onRename={(name) => savedBoards.renameBoard(null, name, renameTarget ?? undefined)}
+        onClose={boardsSurface.closeRename}
       />
     </FullTabShell>
   );

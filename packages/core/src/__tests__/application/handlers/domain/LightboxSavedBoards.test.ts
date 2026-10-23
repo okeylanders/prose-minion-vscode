@@ -10,6 +10,12 @@
  * memory file system, so a test changes the chapter on disk by writing it.
  * The chapter is ¶1–¶8 of "Alice's Adventures in Wonderland" (1865, public
  * domain). No provider is called.
+ *
+ * Slice 5A.2 (epic decision 46): one file per board. A board's first save
+ * writes its file, named by default; its later saves rewrite that file in
+ * place. The earlier snapshot of the same board the open tests use is a
+ * copy kept beside it (`keepEarlierSave`), as 5A's one file per save left
+ * them. Every row names its board and its chapter.
  */
 jest.mock('p-limit', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- jest's ES-module interop flag.
@@ -39,9 +45,15 @@ import {
   quiet
 } from './lightboxBoardsHarness';
 
-const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
-const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json';
+/** An earlier save of the board, measured only, in a file of its own (`keepEarlierSave`). */
+const FIRST = 'drafts-alice-1-md-9b099095/2026-10-22T14-04-09-123Z.board.json';
+/** The board's own file: its first save, measured, rewritten in place by each later save (Slice 5A.2). */
+const READ = 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json';
+/** "Read the current text": a new board, so a new file. */
 const THIRD = 'drafts-alice-1-md-9b099095/2026-10-22T14-07-09-123Z.board.json';
+/** The name the board's first save gave it (Slice 5A.2): the chapter's file name and the time, in UTC here. */
+const NAME = 'alice-1 - 10/22/2026 2:05 PM';
+const SOURCE = { kind: 'file', displayPath: CHAPTER_PATH } as const;
 const EVERY_LENS = LIGHTBOX_LENSES.map((lens) => lens.id);
 const PROJECT = { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false } as const;
 /** The chapter as the writer changed it on disk: one closing line more. */
@@ -61,8 +73,8 @@ function savedBoard(host: ReturnType<typeof createLightboxBoardsHost>, fileId: s
   return { board: held.board, text: held.text };
 }
 
-/** A host with the chapter boarded and read: FIRST (measured) and READ (every lens) saved. */
-async function readChapter() {
+/** A host with the chapter boarded and read: READ saved (measured, then every lens, in place), and FIRST, an earlier save, beside it. */
+async function readChapter(options: { earlier?: boolean } = {}) {
   const host = createLightboxBoardsHost();
   host.writeChapter(CHAPTER_PATH, CHAPTER);
   const tab = host.openTab();
@@ -71,6 +83,9 @@ async function readChapter() {
   await tab.shelf(null);
   await tab.choose(CHAPTER_PATH);
   await quiet();
+  if (options.earlier ?? true) {
+    expect(host.keepEarlierSave(READ)).toBe(FIRST);
+  }
   await tab.read();
   await quiet();
   return { host, tab };
@@ -86,28 +101,28 @@ describe('saving (epic decision 27)', () => {
     await tab.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
     await quiet();
 
-    expect(host.savedFiles()).toEqual([FIRST]);
+    expect(host.savedFiles()).toEqual([READ]);
     expect((await tab.shelf('board-1')).shelf).toEqual({
       availability: PROJECT,
-      boards: [{ fileId: FIRST, savedAt: SAVED_AT(0), wordCount: 508, lenses: [], staleLenses: [], onScreen: true }],
+      name: NAME,
+      boards: [{ fileId: READ, name: NAME, savedAt: SAVED_AT(0), source: SOURCE, wordCount: 508, lenses: [], staleLenses: [], onScreen: true }],
       unreadable: 0
     });
-    expect(savedBoard(host, FIRST)).toEqual({ board: host.service.currentBoard(), text: CHAPTER });
+    expect(savedBoard(host, READ)).toEqual({ board: host.service.currentBoard(), text: CHAPTER });
   });
 
-  it('saves the board as it stands after a run that landed readings: a new file, newest first, with the lenses and the cost', async () => {
-    const { host, tab } = await readChapter();
+  it('saves the board as it stands after a run that landed readings: its own file, rewritten in place, with the lenses and the cost (decision 46)', async () => {
+    const { host, tab } = await readChapter({ earlier: false });
 
-    expect(host.savedFiles()).toEqual([FIRST, READ]);
+    expect(host.savedFiles()).toEqual([READ]);
     expect((await tab.shelf('board-1')).shelf.boards).toEqual([
-      { fileId: READ, savedAt: SAVED_AT(1), wordCount: 508, lenses: EVERY_LENS, staleLenses: [], costUsd: 0.07, models: ['provider/model-v1'], onScreen: true },
-      { fileId: FIRST, savedAt: SAVED_AT(0), wordCount: 508, lenses: [], staleLenses: [], onScreen: false }
+      { fileId: READ, name: NAME, savedAt: SAVED_AT(1), source: SOURCE, wordCount: 508, lenses: EVERY_LENS, staleLenses: [], costUsd: 0.07, models: ['provider/model-v1'], onScreen: true }
     ]);
-    // The file holds exactly the board on screen, and its text.
+    // The file holds exactly the board on screen, and its text, under the name its first save gave it.
     expect(savedBoard(host, READ)).toEqual({ board: host.service.currentBoard(), text: CHAPTER });
     // The board's adoption, and each committed save, is pushed to the rail, unasked.
     expect(tab.shelves().filter((answer) => answer.requestId === null).map((answer) => answer.shelf.boards.map((board) => board.fileId)))
-      .toEqual([[FIRST], [FIRST], [READ, FIRST]]);
+      .toEqual([[READ], [READ], [READ]]);
     // A reload reopens the board on screen.
     expect(host.memory.values.get(LIGHTBOX_BOARD_POINTER_KEY)).toEqual({ root: WORKSPACE, fileId: READ });
   });
@@ -129,7 +144,9 @@ describe('saving (epic decision 27)', () => {
     reply.resolve();
     await quiet();
 
-    expect(host.savedFiles()).toEqual([FIRST]);
+    // Saves are in place now (Slice 5A.2): the board's one file still holds it measured only, as first saved.
+    expect(host.savedFiles()).toEqual([READ]);
+    expect(savedBoard(host, READ).board.readings.every((group) => group.status === 'not-run')).toBe(true);
   });
 
   it('keeps boards for the session only with no folder open, or several, and the rail says why', async () => {

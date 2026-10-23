@@ -324,8 +324,13 @@ function integrityFault(board: LightboxSavedBoard): { reason: LightboxBoardInval
  * JSON with two-space indentation and a closing newline.
  */
 export function encodeLightboxBoardFile(input: { board: LightboxBoard; text: string; savedAt: Date; name?: string }): string {
+  return writeLightboxBoardFile(lightboxBoardFileOf(input));
+}
+
+/** The file format 1 writes for a board and its text, before it is written (a save in place builds on it, Slice 5A.2). */
+export function lightboxBoardFileOf(input: { board: LightboxBoard; text: string; savedAt: Date; name?: string }): LightboxBoardFile {
   const { board, text: sourceText } = input;
-  return writeLightboxBoardFile(namedLightboxBoardFile({
+  return namedLightboxBoardFile({
     formatVersion: LIGHTBOX_BOARD_FORMAT_VERSION,
     kind: LIGHTBOX_BOARD_FILE_KIND,
     savedAt: input.savedAt.toISOString(),
@@ -338,7 +343,7 @@ export function encodeLightboxBoardFile(input: { board: LightboxBoard; text: str
       measured: board.measured,
       readings: board.readings
     }
-  }, input.name));
+  }, input.name);
 }
 
 /** A saved file as format 1 writes it, read or changed (a board renamed in place, Slice 5A.1). */

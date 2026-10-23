@@ -33,6 +33,12 @@
  *   listed or the file next read; a claim left beside a committed rewrite
  *   is removed (`LightboxBoardClaims`). A file found gone is settled first:
  *   held by a live claim, it is busy.
+ * - **A save in place (Slice 5A.2, epic decision 46)** names the revision
+ *   it expects (the bytes its window last read or wrote): a file found at
+ *   another one (another window changed it since) is `changed`, and is left
+ *   as it is; the store then saves the board to a new file, so neither
+ *   window's work is lost. Every rewrite reports the revision it read and
+ *   the one it wrote, at its commit (`onCommitted`).
  * - **Logs** carry file ids and reasons, never the writer's text or a name.
  */
 
@@ -43,7 +49,7 @@ import {
   writeLightboxBoardFile,
   type LightboxBoardFile
 } from '@/infrastructure/storage/LightboxBoardCodec';
-import { errorMessage, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
+import { errorMessage, lightboxBoardRevision, type LightboxBoardFiles } from '@/infrastructure/storage/LightboxBoardFiles';
 import {
   boardFileExists,
   deleteBoardFileQuietly,
@@ -71,6 +77,8 @@ export type LightboxBoardReplaceResult =
   | { kind: 'unreadable' }
   /** The commit point declined it; the file is as it was. */
   | { kind: 'withdrawn' }
+  /** The file is not at the revision the target expected (Slice 5A.2): another writer changed it since; left as it is. */
+  | { kind: 'changed' }
   | { kind: 'session' }
   | { kind: 'failed' };
 
@@ -78,6 +86,8 @@ export type LightboxBoardReplaceResult =
 export interface LightboxBoardReplaceTarget {
   fileId: string;
   boardId?: string;
+  /** The bytes the file must still hold, by `lightboxBoardRevision` (a save in place, Slice 5A.2); any when absent. */
+  revision?: string;
 }
 
 export interface LightboxBoardReplaceOptions {
@@ -85,6 +95,12 @@ export interface LightboxBoardReplaceOptions {
   renames?: boolean;
   /** The commit point, as for a save: synchronous, immediately before the rewrite takes the saved name. */
   beforeCommit?: () => boolean;
+  /**
+   * Called synchronously once the rewrite stands, before the store's next
+   * operation (Slice 5A.2), with the revision it read (`from`) and the one
+   * it wrote (`revision`).
+   */
+  onCommitted?: (committed: { fileId: string; from: string; revision: string }) => void;
 }
 
 /** The changed file, or undefined to leave it as it is. */
@@ -135,6 +151,10 @@ export class LightboxBoardRewrites {
       this.log.appendLine(`${LOG} ${fileId} was not rewritten: it does not read whole, or holds another board.`);
       return { kind: 'unreadable' };
     }
+    if (target.revision !== undefined && read.revision !== target.revision) {
+      this.log.appendLine(`${LOG} ${fileId} was not rewritten: another writer changed it since this window read it.`);
+      return { kind: 'changed' };
+    }
     const next = update(read.file);
     if (!next) {
       return { kind: 'unchanged', fileId };
@@ -148,8 +168,9 @@ export class LightboxBoardRewrites {
     const folder = path.dirname(filePath);
     const name = path.basename(filePath);
     const temporaryPath = path.join(folder, `.${name}.tmp-${this.mintStagingId()}`);
+    const written = encoder.encode(json);
     try {
-      await this.fileSystem.writeFile(temporaryPath, encoder.encode(json));
+      await this.fileSystem.writeFile(temporaryPath, written);
     } catch (error) {
       this.log.appendLine(`${LOG} Could not stage a rewrite of ${fileId}: ${errorMessage(error)}`);
       await deleteBoardFileQuietly(this.fileSystem, temporaryPath);
@@ -191,6 +212,8 @@ export class LightboxBoardRewrites {
       return { kind: 'failed' };
     }
     this.files.forget(fileId);
+    const committed = { fileId, from: read.revision, revision: lightboxBoardRevision(written) };
+    options.onCommitted?.(committed);
     // Should this fail, the claim is a leftover beside the rewritten file: removed once abandoned, or by a delete, never put back.
     await deleteBoardFileQuietly(this.fileSystem, claimPath);
     this.log.appendLine(`${LOG} Rewrote ${fileId} in place.`);

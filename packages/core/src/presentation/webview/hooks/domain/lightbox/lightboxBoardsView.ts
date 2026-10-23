@@ -1,33 +1,45 @@
 /**
- * The rail's Boards section as the writer reads it (Slice 5A; epic decision
- * 31): each saved board's date and time, the lenses it holds, any stale, its
- * approximate cost and whether it is the board on screen; where boards are
- * kept; and, for a board opened from a file, whether that file still holds
- * its text. Pure: the host's shelf in, words out, so every sentence is tested
- * without a webview. Nothing here carries the source's text.
+ * The saved boards as the writer reads them (Slice 5A; Slice 5A.1; Slice
+ * 5A.2, epic decision 46): the Boards menu in the header, Workshop-style,
+ * and the browser it opens. Pure: the host's shelf in, words out, so every
+ * sentence is tested without a webview. Nothing here carries the source's
+ * text; a board's name is the writer's words, held only as the shelf holds
+ * it.
  *
- * Slice 5A.1 (epic decisions 33 and 34): a named board shows its name first,
- * with its date and time under it; every row names the models that read it,
- * shortened (`lightboxModelsNote`); the section's head names the board on
- * screen, or says it is unnamed; and the changed-file notice the rail shows
- * is the one the board shows above itself (`lightboxChangedFileNotice`),
- * from the same shelf. A name is the writer's words, held only as the host's
- * shelf holds it.
- *
- * The host lists every saved board of the source. The rail shows the newest
- * page of them and says so when there are more: "Showing the newest 20 of
- * 23", and a button that shows older ones (PR #163 F-04). The page always
- * reaches the board on screen. The head counts them all.
+ * - **The menu's trigger** names the board on screen (its name, or, before
+ *   its first save, its chapter's file name) and says whether it is saved:
+ *   "Saved", "Not saved yet", "Save failed", "Name not saved" (its name is
+ *   not the one its file holds: a rename whose file could not be changed,
+ *   PR #167 F-03), or "This session only".
+ * - **Rows** are every chapter's saved boards, newest first, as the host
+ *   lists them: the name, the chapter, when it was saved, the lenses read,
+ *   any stale, an approximate cost, the models that read it
+ *   (`lightboxModelsNote`), and which one is on screen. The menu shows the
+ *   newest five.
+ * - **The browser** groups them by date (Today, This week, Earlier, as the
+ *   Workshop's sessions do) or by chapter, and searches names and chapter
+ *   paths.
+ * - **The notice above the board** (decision 34): a snapshot whose file
+ *   changed, with "Read the current text"; also one whose file could not be
+ *   compared, one with parts left out, and one opened from outside the
+ *   boards folder, which its next save copies in, and which, once saved
+ *   here, says so (PR #167 N-02).
  */
 
-import type { LightboxBoardShelf, LightboxSavedBoardSummary, LightboxSnapshotState } from '@messages';
+import type { LightboxBoardShelf, LightboxSavedBoardSource, LightboxSavedBoardSummary, LightboxSnapshotState } from '@messages';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
+import { lightboxBoardSourceLabel } from '@shared/constants/lightboxBoardName';
+import { groupSavedItemsByDate, type SavedItemGroup } from '@utils/savedItemGroups';
 
-export interface LightboxSavedBoardRow {
+export interface LightboxBoardRow {
   fileId: string;
-  /** The writer's name for the board, its first line when it has one (Slice 5A.1). */
-  name?: string;
-  /** The date and time it was saved, as the rail shows it: the first line, or the second under a name. */
+  name: string;
+  /** The chapter it was measured from: its workspace-relative path, and a selection's lines. */
+  chapter: string;
+  /** The chapter, for grouping: two selections of one file are two chapters. */
+  chapterKey: string;
+  savedAt: number;
+  /** When it was saved, as the browser shows it. */
   when: string;
   /** The same moment for `<time dateTime>`. */
   dateTime: string;
@@ -44,17 +56,30 @@ export interface LightboxSavedBoardRow {
   onScreen: boolean;
 }
 
-/** The section's head: the board on screen's name, or that it has none, and what naming it does (Slice 5A.1). */
-export interface LightboxBoardNameView {
-  /** Its name, or "Unnamed board". */
+export type LightboxBoardsSaveState = 'saved' | 'saving' | 'error' | 'session';
+
+/** The Boards menu: its trigger, its notes, and the newest boards. */
+export interface LightboxBoardsMenuView {
+  /** The trigger's words: the board on screen's name, its chapter's file name before its first save, or "Boards". */
   label: string;
-  named: boolean;
-  /** The name as it stands, for the field to start from; empty when unnamed. */
-  name: string;
-  /** "Name" or "Rename". */
-  action: 'Name' | 'Rename';
-  /** When the name lives only as long as the session, or waits for the board's next save. */
-  note?: string;
+  /** Whether the board on screen is saved; absent until the host has answered for it, or with no board. */
+  status?: { state: LightboxBoardsSaveState; text: string };
+  /** The newest boards, of every chapter. */
+  recent: LightboxBoardRow[];
+  /** Where boards are kept, when that is not simply the project. */
+  availability?: string;
+  /** Whether a board is on screen to rename. */
+  canRename: boolean;
+}
+
+/** The browser: every row, the notes above them, and the caption below. */
+export interface LightboxBoardsBrowserView {
+  rows: LightboxBoardRow[];
+  notes: Array<{ text: string; tone: 'quiet' | 'warn' | 'alert' }>;
+  /** Boards are saved (one folder open): rename, delete and the file picker's store apply. */
+  saving: boolean;
+  empty: string;
+  caption: string;
 }
 
 export interface LightboxSnapshotView {
@@ -67,108 +92,132 @@ export interface LightboxSnapshotView {
   dropped?: string;
 }
 
-/** How many rows the rail shows at first, and how many more each "Show older" adds. */
-export const LIGHTBOX_BOARDS_PAGE = 20;
-
-/** When the shelf holds more boards than are shown: how many are, and the button that shows older ones. */
-export interface LightboxBoardsPage {
-  note: string;
-  more: string;
-  /** How many rows "Show older" shows: a page more than are shown now, however the page was reached (PR #163 N-03). */
-  next: number;
-}
-
-export interface LightboxBoardsView {
-  /** The head's chip: how many are saved, or that boards are kept for the session only. */
-  status: string;
-  /** Where boards are kept, when that is not simply the project. */
-  availability?: string;
-  /** The newest boards, as many as are shown. */
-  rows: LightboxSavedBoardRow[];
-  /** Present only when older boards are not shown. */
-  page?: LightboxBoardsPage;
-  empty?: string;
-  unreadable?: string;
-  notice?: string;
-  snapshot?: LightboxSnapshotView;
-  caption?: string;
-  /** Present once the host has answered for the board on screen. */
-  board?: LightboxBoardNameView;
-}
-
 export interface LightboxBoardsViewOptions {
   /** The zone dates are shown in; the webview's own by default (tests pin one). */
   timeZone?: string;
-  /** How many of the newest boards are shown; one page by default. */
-  shown?: number;
 }
+
+/** How many boards the menu shows, as the Workshop's menu shows its recent rooms. */
+export const LIGHTBOX_RECENT_BOARDS = 5;
 
 const EVERY_LENS = LIGHTBOX_LENSES.length;
 /** A shortened model name is at most this long. */
 const MODEL_CHARACTERS = 32;
 
-/** The Boards section for the board on screen (`hasBoard`), from the host's shelf for it (`null` until it answers). */
-export function buildLightboxBoardsView(
+/** The board on screen's chapter, as a default name would call it: the trigger's words before a first save. */
+export type LightboxBoardsOnScreen = LightboxSavedBoardSource | null;
+
+/** The Boards menu for the board on screen (`onScreen`, its source; `null`: none), from the host's shelf (`null` until it answers). */
+export function buildLightboxBoardsMenu(
   shelf: LightboxBoardShelf | null,
-  hasBoard: boolean,
+  onScreen: LightboxBoardsOnScreen,
   options: LightboxBoardsViewOptions = {}
-): LightboxBoardsView {
-  if (!hasBoard) {
-    return { status: 'none', rows: [], empty: 'Board a chapter, and the boards saved from it show here.' };
-  }
-  if (!shelf) {
-    return { status: '…', rows: [], empty: 'Looking for saved boards…' };
-  }
-  const when = whenFormat(options.timeZone);
-  const total = shelf.boards.length;
-  // The newest page, and always as far as the board on screen.
-  const shown = Math.max(options.shown ?? LIGHTBOX_BOARDS_PAGE, shelf.boards.findIndex((board) => board.onScreen) + 1);
-  const rows = shelf.boards.slice(0, shown).map((board) => rowOf(board, when));
-  const view: LightboxBoardsView = {
-    status: shelf.availability.kind === 'session' ? 'this session' : `${total} saved`,
-    board: nameViewOf(shelf),
-    rows,
-    ...(rows.length < total ? {
-      page: {
-        note: `Showing the newest ${rows.length} of ${total}.`,
-        more: `Show ${Math.min(LIGHTBOX_BOARDS_PAGE, total - rows.length)} older`,
-        next: Math.min(total, rows.length + LIGHTBOX_BOARDS_PAGE)
-      }
-    } : {}),
-    ...(shelf.notice ? { notice: shelf.notice } : {}),
-    ...(shelf.snapshot ? { snapshot: snapshotOf(shelf.snapshot, when) } : {})
+): LightboxBoardsMenuView {
+  const rows = shelf ? lightboxBoardRows(shelf, options) : [];
+  const view: LightboxBoardsMenuView = {
+    label: shelf?.name ?? (onScreen ? lightboxBoardSourceLabel(onScreen) : 'Boards'),
+    recent: rows.slice(0, LIGHTBOX_RECENT_BOARDS),
+    canRename: onScreen !== null && shelf !== null,
+    ...(shelf ? availabilityNote(shelf) : {})
   };
-  if (shelf.availability.kind === 'session') {
-    const why = shelf.availability.reason === 'no-workspace' ? 'no folder is open' : 'several folders are open';
-    return { ...view, availability: `Boards are kept for this session only: ${why}. Open one folder to save them.` };
+  if (shelf && onScreen) {
+    view.status = saveStatus(shelf);
   }
-  if (shelf.availability.lastSaveFailed) {
-    view.availability = 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.';
-  }
-  if (total === 0) {
-    view.empty = 'No saved boards of this source yet. A board saves itself when it is first measured, and after each reading.';
-  }
-  if (shelf.unreadable > 0) {
-    view.unreadable = shelf.unreadable === 1
-      ? '1 file here could not be read as a board. It was left as it is.'
-      : `${shelf.unreadable} files here could not be read as boards. They were left as they are.`;
-  }
-  view.caption = `Saved in ${shelf.availability.displayPath}, one file per save. Nothing is deleted unless you delete it.`;
   return view;
 }
 
+/** The browser's rows and notes, from the host's shelf (`null` until it answers). */
+export function buildLightboxBoardsBrowser(shelf: LightboxBoardShelf | null, options: LightboxBoardsViewOptions = {}): LightboxBoardsBrowserView {
+  if (!shelf) {
+    return { rows: [], notes: [], saving: false, empty: 'Looking for saved boards…', caption: '' };
+  }
+  const notes: LightboxBoardsBrowserView['notes'] = [];
+  const { availability } = availabilityNote(shelf);
+  if (availability) {
+    notes.push({ text: availability, tone: 'warn' });
+  }
+  if (shelf.notice) {
+    notes.push({ text: shelf.notice, tone: 'alert' });
+  }
+  if (shelf.unreadable > 0) {
+    notes.push({
+      tone: 'quiet',
+      text: shelf.unreadable === 1
+        ? '1 file in the boards folder could not be read as a board. It was left as it is.'
+        : `${shelf.unreadable} files in the boards folder could not be read as boards. They were left as they are.`
+    });
+  }
+  if ((shelf.unreadableFolders ?? 0) > 0) {
+    notes.push({
+      tone: 'warn',
+      text: shelf.unreadableFolders === 1
+        ? '1 chapter\'s folder could not be read, so its boards are not listed. The output log says why.'
+        : `${shelf.unreadableFolders} chapters' folders could not be read, so their boards are not listed. The output log says why.`
+    });
+  }
+  const saving = shelf.availability.kind === 'project';
+  return {
+    rows: lightboxBoardRows(shelf, options),
+    notes,
+    saving,
+    empty: saving
+      ? 'No saved boards yet. A board saves itself when it is first measured, and again after each reading, in a file of its own.'
+      : 'Boards are kept for this session only, so there are none to open here.',
+    caption: saving
+      ? `Saved in ${shelf.availability.kind === 'project' ? shelf.availability.displayPath : ''}, one file per board. "Read the current text" starts a new one. Nothing is deleted unless you delete it.`
+      : 'Open one folder, and boards save themselves there.'
+  };
+}
+
+/** Every saved board as a row, newest first, as the host listed them. */
+export function lightboxBoardRows(shelf: LightboxBoardShelf, options: LightboxBoardsViewOptions = {}): LightboxBoardRow[] {
+  const when = whenFormat(options.timeZone);
+  return shelf.boards.map((board) => rowOf(board, when));
+}
+
+/** The browser's rows matching `query`, by name or chapter path, ignoring case; every row for an empty query. */
+export function searchLightboxBoardRows(rows: readonly LightboxBoardRow[], query: string): LightboxBoardRow[] {
+  const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return [...rows];
+  }
+  return rows.filter((row) => {
+    const text = `${row.name}\n${row.chapter}`.toLocaleLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
+
+/** Rows by date: Today, This week, Earlier (the Workshop's buckets), newest first within each. */
+export function lightboxBoardsByDate(rows: readonly LightboxBoardRow[], now: Date = new Date()): Array<SavedItemGroup<LightboxBoardRow>> {
+  return groupSavedItemsByDate(rows, (row) => row.savedAt, now);
+}
+
+/** Rows by chapter: each chapter once, in the order of its newest board. */
+export function lightboxBoardsByChapter(rows: readonly LightboxBoardRow[]): Array<SavedItemGroup<LightboxBoardRow>> {
+  const groups = new Map<string, SavedItemGroup<LightboxBoardRow>>();
+  for (const row of rows) {
+    const group = groups.get(row.chapterKey) ?? { key: `chapter:${row.chapterKey}`, label: row.chapter, items: [] };
+    group.items.push(row);
+    groups.set(row.chapterKey, group);
+  }
+  return [...groups.values()];
+}
+
 /**
- * The changed-file notice the board shows above itself (Slice 5A.1, epic
- * decision 34): exactly the rail's snapshot note, from the same shelf, and
- * only while it offers "Read the current text". So the two appear and go
- * together, and the board's notice obeys every ordering guard the shelf does.
+ * The note above the board (Slice 5A.1, epic decision 34; widened in Slice
+ * 5A.2 as the rail went): a snapshot whose file has changed, offering "Read
+ * the current text"; one whose file could not be compared; one with parts
+ * left out; one opened from a file outside the boards folder. A snapshot of
+ * an unchanged file, or a selection, says nothing.
  */
-export function lightboxChangedFileNotice(
+export function lightboxSnapshotNotice(
   shelf: LightboxBoardShelf | null,
-  options: Pick<LightboxBoardsViewOptions, 'timeZone'> = {}
+  options: LightboxBoardsViewOptions = {}
 ): LightboxSnapshotView | undefined {
-  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone));
-  return snapshot?.readCurrentText ? snapshot : undefined;
+  // A board opened from outside that has saved here since has a file of its own, on screen (PR #167 N-02).
+  const savedHere = shelf?.boards.some((board) => board.onScreen) ?? false;
+  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone), savedHere);
+  return snapshot && (snapshot.tone === 'warn' || snapshot.dropped || shelf?.snapshot?.outside) ? snapshot : undefined;
 }
 
 /**
@@ -187,6 +236,42 @@ export function lightboxModelsNote(models: readonly string[] | undefined): strin
     : `Read by ${short[0]}, ${short[1]} and ${short.length - 2} more`;
 }
 
+/** A chapter as a row names it: its path, and a selection's lines. */
+export function lightboxBoardChapter(source: LightboxSavedBoardSource): string {
+  if (source.kind !== 'selection' || source.startLine === undefined) {
+    return source.displayPath;
+  }
+  return source.endLine !== undefined && source.endLine !== source.startLine
+    ? `${source.displayPath} · lines ${source.startLine}–${source.endLine}`
+    : `${source.displayPath} · line ${source.startLine}`;
+}
+
+function availabilityNote(shelf: LightboxBoardShelf): { availability?: string } {
+  if (shelf.availability.kind === 'session') {
+    const why = shelf.availability.reason === 'no-workspace' ? 'no folder is open' : 'several folders are open';
+    return { availability: `Boards are kept for this session only: ${why}. Open one folder to save them.` };
+  }
+  if (shelf.availability.lastSaveFailed) {
+    return { availability: 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.' };
+  }
+  return {};
+}
+
+function saveStatus(shelf: LightboxBoardShelf): LightboxBoardsMenuView['status'] {
+  if (shelf.availability.kind === 'session') {
+    return { state: 'session', text: 'This session only' };
+  }
+  if (shelf.availability.lastSaveFailed) {
+    return { state: 'error', text: 'Save failed' };
+  }
+  const own = shelf.boards.find((board) => board.onScreen);
+  if (!own) {
+    return { state: 'session', text: 'Not saved yet' };
+  }
+  // The board's name is not the one its file holds: the rename reached the board, not the file (PR #167 F-03).
+  return shelf.name !== undefined && own.name !== shelf.name ? { state: 'error', text: 'Name not saved' } : { state: 'saved', text: 'Saved' };
+}
+
 /** A model id without its provider: "provider/model-v1" → "model-v1". */
 function modelName(model: string): string {
   return model.slice(model.lastIndexOf('/') + 1) || model;
@@ -197,27 +282,15 @@ function shortModelName(name: string): string {
   return name.length > MODEL_CHARACTERS ? `${name.slice(0, MODEL_CHARACTERS - 1)}…` : name;
 }
 
-function nameViewOf(shelf: LightboxBoardShelf): LightboxBoardNameView {
-  const named = shelf.name !== undefined;
-  const view: LightboxBoardNameView = {
-    label: shelf.name ?? 'Unnamed board',
-    named,
-    name: shelf.name ?? '',
-    action: named ? 'Rename' : 'Name'
-  };
-  if (shelf.availability.kind === 'session') {
-    view.note = 'A name lasts as long as this session, as the board does.';
-  } else if (named && !shelf.boards.some((board) => board.onScreen)) {
-    view.note = 'Not in a saved file yet: the name is saved with this board\'s next save.';
-  }
-  return view;
-}
-
-function rowOf(board: LightboxSavedBoardSummary, when: Intl.DateTimeFormat): LightboxSavedBoardRow {
+function rowOf(board: LightboxSavedBoardSummary, when: Intl.DateTimeFormat): LightboxBoardRow {
   const models = lightboxModelsNote(board.models);
+  const { kind, displayPath, startLine, endLine } = board.source;
   return {
     fileId: board.fileId,
-    ...(board.name !== undefined ? { name: board.name } : {}),
+    name: board.name,
+    chapter: lightboxBoardChapter(board.source),
+    chapterKey: `${kind}:${displayPath}:${startLine ?? ''}-${endLine ?? ''}`,
+    savedAt: board.savedAt,
     when: when.format(board.savedAt),
     dateTime: new Date(board.savedAt).toISOString(),
     lenses: lensesNote(board.lenses.length),
@@ -228,8 +301,13 @@ function rowOf(board: LightboxSavedBoardSummary, when: Intl.DateTimeFormat): Lig
   };
 }
 
-function snapshotOf(snapshot: LightboxSnapshotState, when: Intl.DateTimeFormat): LightboxSnapshotView {
-  const opened = `Opened from the board saved ${when.format(snapshot.savedAt)}.`;
+function snapshotOf(snapshot: LightboxSnapshotState, when: Intl.DateTimeFormat, savedHere: boolean): LightboxSnapshotView {
+  const outside = `Opened from a board file outside the boards folder, saved ${when.format(snapshot.savedAt)}.`;
+  const opened = !snapshot.outside
+    ? `Opened from the board saved ${when.format(snapshot.savedAt)}.`
+    : savedHere
+      ? `${outside} It is saved in the boards folder now, as a file of its own; the file it came from is as it was.`
+      : `${outside} Its next save writes it there, as a file of its own.`;
   const dropped = snapshot.dropped === 0 ? {}
     : { dropped: snapshot.dropped === 1 ? '1 part of it could not be read and was left out.' : `${snapshot.dropped} parts of it could not be read and were left out.` };
   switch (snapshot.file) {
@@ -244,7 +322,7 @@ function snapshotOf(snapshot: LightboxSnapshotState, when: Intl.DateTimeFormat):
         ...dropped
       };
     case 'unreadable':
-      return { tone: 'warn', opened, file: 'The file could not be read to compare it with this board.', readCurrentText: false, ...dropped };
+      return { tone: 'warn', opened, file: 'Its chapter could not be read to compare it with this board, so Bring is held back.', readCurrentText: false, ...dropped };
     case 'none':
       return { tone: 'quiet', opened, file: 'It was a selection, so there is no file to compare.', readCurrentText: false, ...dropped };
   }
