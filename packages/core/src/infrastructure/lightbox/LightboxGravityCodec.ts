@@ -4,7 +4,9 @@
  * block's friction is known; a throw here withholds the whole block, and an
  * item that breaks its own rules is withheld by its title.
  *
- * Rules enforced here, not only asked for in the prompt:
+ * Counts and lengths the prompt states are asks (Slice 4H): more fields,
+ * terms, collisions or swatches than asked are read and shown. Rules
+ * enforced here, not only asked for in the prompt:
  * - a gravity block must carry its `literal` set-aside list, with at least
  *   one entry: the board always shows what it decided is literal, not
  *   borrowed;
@@ -20,13 +22,15 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { LightboxGravityDegree } from '@messages';
-import { shapeError } from '@/application/services/workshop/persistedValidation';
+import { boundedArrayAt, shapeError } from '@/application/services/workshop/persistedValidation';
 import {
   claimedFraction,
   decodeItems,
   evidence,
+  listAt,
   strictObject,
   terms,
+  prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import type {
@@ -47,13 +51,13 @@ const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 export function decodeGravityBlock(value: unknown, path: string, friction: string): LightboxDecodedGravityBlock {
   const block = strictObject(value, path, ['fields', 'collisions', 'literal', 'friction']);
-  const decodedFields = decodeItems(block.fields, `${path}.fields`, B.gravityFields, 'field', decodeField);
+  const decodedFields = decodeItems(block.fields, `${path}.fields`, 'field', decodeField);
   const fields = unique(decodedFields.items, decodedFields.malformed, (field) => field.name, 'field');
 
   const drawn = new Set(fields.map((field) => nameKey(field.name)));
-  const collisions = decodeItems(block.collisions, `${path}.collisions`, B.gravityCollisions, 'collision',
+  const collisions = decodeItems(block.collisions, `${path}.collisions`, 'collision',
     (item, itemPath) => decodeCollision(item, itemPath, drawn));
-  const decodedLiterals = decodeItems(block.literal, `${path}.literal`, B.gravityLiterals, 'set-aside', (item, itemPath) => {
+  const decodedLiterals = decodeItems(block.literal, `${path}.literal`, 'set-aside', (item, itemPath) => {
     const literal = decodeLiteral(item, itemPath);
     if (drawn.has(nameKey(literal.name))) {
       throw new Error('It is drawn as a borrowed field, so it cannot also be set aside as literal.');
@@ -73,8 +77,8 @@ export function decodeGravityBlock(value: unknown, path: string, friction: strin
 
 export function decodePaletteBlock(value: unknown, path: string, friction: string): LightboxDecodedPaletteBlock {
   const block = strictObject(value, path, ['clusters', 'swatches', 'friction']);
-  const clusters = decodeItems(block.clusters, `${path}.clusters`, B.paletteClusters, 'cluster', decodeCluster);
-  const swatches = decodeItems(block.swatches, `${path}.swatches`, B.swatches, 'swatch', decodeSwatch);
+  const clusters = decodeItems(block.clusters, `${path}.clusters`, 'cluster', decodeCluster);
+  const swatches = decodeItems(block.swatches, `${path}.swatches`, 'swatch', decodeSwatch);
   return {
     lens: 'palette',
     clusters: clusters.items,
@@ -88,23 +92,21 @@ function decodeField(item: Record<string, unknown>, path: string): LightboxDecod
   const field = strictObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
   const termList = decodeTermList(field.terms, `${path}.terms`);
   return {
-    name: text(field.name, `${path}.name`, B.labelCharacters),
-    metaphor: text(field.metaphor, `${path}.metaphor`, B.noteCharacters),
+    name: text(field.name, `${path}.name`),
+    metaphor: prose(field.metaphor, `${path}.metaphor`, B.noteCharacters),
     pull: claimedFraction(field.pull, `${path}.pull`),
-    claim: text(field.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(field.claim, `${path}.claim`, B.claimCharacters),
     terms: termList,
     evidence: evidence(field.evidence, `${path}.evidence`, 1)
   };
 }
 
 function decodeTermList(value: unknown, path: string): LightboxDecodedGravityTerm[] {
-  if (!Array.isArray(value) || value.length < 1 || value.length > B.gravityTerms) {
-    shapeError(path, `an array of 1–${B.gravityTerms} terms`);
-  }
+  listAt(value, path, 1, 'terms');
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
     const term = strictObject(entry, itemPath, ['term', 'degree']);
-    return { term: text(term.term, `${itemPath}.term`, B.labelCharacters), degree: degreeAt(term.degree, `${itemPath}.degree`) };
+    return { term: text(term.term, `${itemPath}.term`), degree: degreeAt(term.degree, `${itemPath}.degree`) };
   });
 }
 
@@ -117,7 +119,9 @@ function degreeAt(value: unknown, path: string): LightboxGravityDegree {
 
 function decodeCollision(item: Record<string, unknown>, path: string, drawn: ReadonlySet<string>): LightboxDecodedCollision {
   const collision = strictObject(item, path, ['fields', 'claim', 'evidence']);
-  const names = terms(collision.fields, `${path}.fields`, 2, 2);
+  // Two fields meet: a structural rule, so the count is exact.
+  boundedArrayAt(collision.fields, `${path}.fields`, 2, 2, 'terms');
+  const names = terms(collision.fields, `${path}.fields`, 2);
   if (nameKey(names[0]) === nameKey(names[1])) {
     shapeError(`${path}.fields`, 'two different fields');
   }
@@ -128,7 +132,7 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
   }
   return {
     fields: [names[0], names[1]],
-    claim: text(collision.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(collision.claim, `${path}.claim`, B.claimCharacters),
     evidence: evidence(collision.evidence, `${path}.evidence`, 1)
   };
 }
@@ -136,8 +140,8 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
 function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDecodedLiteral {
   const literal = strictObject(item, path, ['name', 'reason', 'terms', 'evidence']);
   return {
-    name: text(literal.name, `${path}.name`, B.labelCharacters),
-    reason: text(literal.reason, `${path}.reason`, B.noteCharacters),
+    name: text(literal.name, `${path}.name`),
+    reason: prose(literal.reason, `${path}.reason`, B.noteCharacters),
     terms: terms(literal.terms, `${path}.terms`),
     evidence: evidence(literal.evidence, `${path}.evidence`, 1)
   };
@@ -146,9 +150,9 @@ function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDec
 function decodeCluster(item: Record<string, unknown>, path: string): LightboxDecodedCluster {
   const cluster = strictObject(item, path, ['name', 'claim', 'words', 'evidence']);
   return {
-    name: text(cluster.name, `${path}.name`, B.labelCharacters),
-    claim: text(cluster.claim, `${path}.claim`, B.claimCharacters),
-    words: terms(cluster.words, `${path}.words`, 2, B.clusterWords),
+    name: text(cluster.name, `${path}.name`),
+    claim: prose(cluster.claim, `${path}.claim`, B.claimCharacters),
+    words: terms(cluster.words, `${path}.words`, 2),
     evidence: evidence(cluster.evidence, `${path}.evidence`, 1)
   };
 }
@@ -160,10 +164,10 @@ function decodeSwatch(item: Record<string, unknown>, path: string): LightboxDeco
     shapeError(`${path}.hex`, 'a color as #RRGGBB');
   }
   return {
-    name: text(swatch.name, `${path}.name`, B.labelCharacters),
-    words: terms(swatch.words, `${path}.words`, 1, B.swatchWords),
+    name: text(swatch.name, `${path}.name`),
+    words: terms(swatch.words, `${path}.words`, 1),
     hex: (hex as string).toUpperCase(),
-    note: text(swatch.note, `${path}.note`, B.noteCharacters),
+    note: prose(swatch.note, `${path}.note`, B.noteCharacters),
     evidence: evidence(swatch.evidence, `${path}.evidence`, 1)
   };
 }

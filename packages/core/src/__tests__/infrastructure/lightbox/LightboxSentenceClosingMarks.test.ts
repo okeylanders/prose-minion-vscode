@@ -3,8 +3,9 @@
  * stay with the sentence it closes (ADR 2026-10-21, sentence closing marks):
  * the paragraph metrics and the rhythm lane, the sentence summary, the
  * writer-baseline counts, the sentence-length standout's instance check,
- * handoff adjacency, the borrowed-field collision witness, the synopsis
- * bound, and the inspector's sentences well over the passage index.
+ * handoff adjacency, the borrowed-field collision witness, and the
+ * inspector's sentences well over the passage index. (A synopsis's
+ * sentences are an ask since Slice 4H, so no gate counts them.)
  *
  * Expectations are literal; each comment says what the former rule gave.
  * A sentence that goes on after its marks starts with a capital here, so

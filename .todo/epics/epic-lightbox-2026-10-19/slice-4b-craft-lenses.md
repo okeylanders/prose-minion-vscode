@@ -372,7 +372,7 @@ What landed, and where it differs from the plan above:
   once inside the writer's own average; being verbs do not count
   contractions; a pattern rarer than usual is shown, never read. A maximal
   group D response can exceed the per-group response cap
-  ([tech debt](../../tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md)).
+  ([tech debt](../../archive/tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md)).
 
 **Verification.** `npm run typecheck`; full `npx jest`, 407 suites / 5,693
 tests / 59 snapshots (from 397 / 5,597 / 59 at `eca952a`); `npm run lint`

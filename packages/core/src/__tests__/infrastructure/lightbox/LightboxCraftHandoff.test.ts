@@ -10,6 +10,7 @@
  */
 import type { LightboxBoard, LightboxHandoffTile, LightboxReadingGroup, LightboxReadingTile } from '@messages';
 import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
+import { LIGHTBOX_ELLIPSIS, clipLightboxText } from '@shared/constants/lightboxClip';
 import {
   LIGHTBOX_TILE_HANDOFF_REFUSALS,
   prepareLightboxTileHandoff
@@ -137,7 +138,7 @@ describe('bringing a group D reading to the Workshop', () => {
       expect(bring(board, handoff(), changed)).toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete });
     });
 
-    it('refuses, never cutting it, when a sentence as the chapter has it outgrows a Workshop quote', () => {
+    it('brings both sentences, the longer clipped to a Workshop quote, when one as the chapter has it outgrows it (Slice 4H)', () => {
       // A hard-wrapped, indented line is found folded, and the chapter's span is longer than the quote.
       const words = 'and so the Rabbit went on muttering to himself about the time and the Duchess and the gloves';
       const longLine = `${words} ${words}`;
@@ -157,7 +158,17 @@ describe('bringing a group D reading to the Workshop', () => {
         ...board,
         readings: board.readings.map((group) => (group.group === 'D' ? { ...group, tiles: [tile] } : group))
       };
-      expect(bring(withTile, tile, paragraphs)).toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete });
+      const brought = bring(withTile, tile, paragraphs);
+      if (!brought.ok) {
+        throw new Error(brought.reason);
+      }
+      // Never halved: both roles travel, in order; the long one is the chapter's start of it and an ellipsis.
+      const quotes = validateWorkshopLightboxTile(brought.handoff.tile).quotes;
+      expect(quotes.map((quote) => quote.paragraph)).toEqual([2, 2]);
+      expect(quotes[0].text).toBe('He sighed');
+      expect(quotes[1].text).toBe(clipLightboxText(found.found ? found.text : '', LIMITS.quoteCharacters));
+      expect(quotes[1].text.endsWith(LIGHTBOX_ELLIPSIS)).toBe(true);
+      expect(paragraphs[1].includes(quotes[1].text.replace(LIGHTBOX_ELLIPSIS, ''))).toBe(true);
     });
   });
 

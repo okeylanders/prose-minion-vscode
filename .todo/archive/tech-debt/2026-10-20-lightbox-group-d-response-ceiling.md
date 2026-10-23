@@ -1,9 +1,22 @@
 # A Maximal Group D Response Can Exceed the Per-Group Response Cap
 
 **Date Identified**: 2026-10-20 (Lightbox Slice 4B)
-**Status**: Identified
+**Reviewed**: 2026-10-23
+**Status**: Resolved: superseded by Lightbox Slice 4H (2026-10-23)
 **Priority**: Low
 **Estimated Effort**: Small (measure, then lower bounds or split the group)
+
+## Resolution
+
+Slice 4H removed the failure this item describes. The whole response's
+length is now an ask the prompt states (48,000 characters), not a gate:
+a longer reply is read, and only one past the safety ceiling (eight
+times the ask, 384,000 characters) is refused. The output ceiling rose
+to 12,000 tokens, and a reply cut off there keeps the blocks it
+finished, withholding only the block it was cut inside, its paid body
+still saved for recovery (epic decisions 38 and 40). Measuring the
+group's typical output stays with the live pass (Slice 6,
+[live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)).
 
 ## Problem
 
@@ -46,7 +59,7 @@ output tokens. Then either:
 - `packages/core/src/infrastructure/lightbox/LightboxRunEstimate.ts`
   (`LIGHTBOX_TYPICAL_OUTPUT_TOKENS`, guesses for group D)
 - `packages/core/resources/system-prompts/lightbox/50-stock-signature.md`
-- [Slice 4B](../epics/epic-lightbox-2026-10-19/slice-4b-craft-lenses.md)
+- [Slice 4B](../../epics/epic-lightbox-2026-10-19/slice-4b-craft-lenses.md)
 
 ## Completion Criteria
 

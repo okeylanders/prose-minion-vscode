@@ -221,7 +221,7 @@ describe('LightboxApp readings', () => {
     render(<LightboxApp />);
     confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
-    const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens and reserve 8,000 for the reply.' });
+    const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens and reserve 12,000 for the reply.' });
     estimate.groups[0].fit = 'too-large';
     estimateFromHost(estimate);
     const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;

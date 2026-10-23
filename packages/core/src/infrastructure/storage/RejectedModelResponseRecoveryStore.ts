@@ -30,6 +30,8 @@ export interface RejectedModelResponse {
   providerResponseId?: string;
   finishReason?: string;
   usage?: TokenUsage;
+  /** The request's own contract, when narrower than the tool's default (`RECOVERABLE_WIDGET_RESPONSE_CONTRACTS`). */
+  contract?: RejectedModelResponseContract;
 }
 
 export interface RejectedModelResponseRecoveryReceipt {
@@ -55,6 +57,8 @@ export interface RejectedWidgetResponseInput {
   rawResponse: string;
   rejection: string;
   result: Pick<ExecutionResult, 'modelId' | 'providerResponseId' | 'finishReason' | 'usage'>;
+  /** The request's own contract, when narrower than the tool's default. */
+  contract?: RejectedModelResponseContract;
 }
 
 interface RejectedModelResponseEnvelopeV1 {
@@ -152,7 +156,7 @@ export class RejectedModelResponseRecoveryStore implements RejectedModelResponse
       responseFile: path.basename(filePath),
       responseContentType: 'text/plain',
       responseCharacters: response.rawResponse.length,
-      contract: RECOVERABLE_WIDGET_RESPONSE_CONTRACTS[response.toolName]
+      contract: response.contract ?? RECOVERABLE_WIDGET_RESPONSE_CONTRACTS[response.toolName]
     };
 
     await this.writeAtomically(filePath, this.encoder.encode(response.rawResponse), response);
@@ -333,7 +337,8 @@ export async function persistRejectedWidgetResponse(
     modelId: input.result.modelId,
     providerResponseId: input.result.providerResponseId,
     finishReason: input.result.finishReason,
-    usage: input.result.usage
+    usage: input.result.usage,
+    ...(input.contract ? { contract: input.contract } : {})
   });
   if (receipt) {
     void presenter.present(receipt);

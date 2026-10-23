@@ -8,6 +8,7 @@ import { LightboxGroupFrameError, type LightboxDecodedGroup } from '@/infrastruc
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 
 const exampleA = readWorkedExample('A');
@@ -35,7 +36,7 @@ describe('LightboxReadingCodec', () => {
   describe('the frame fails the whole group', () => {
     it.each([
       ['no opening sentinel', (text: string) => text.replace('===LIGHTBOX_GROUP_A_V1===\n', '')],
-      ['no closing sentinel', (text: string) => text.replace('\n===END_LIGHTBOX_GROUP_A_V1===', '')],
+      ['no closing sentinel, and JSON that does not close', (text: string) => text.replace(/\}\n===END_LIGHTBOX_GROUP_A_V1===$/, '')],
       ['a repeated opening sentinel', (text: string) => `===LIGHTBOX_GROUP_A_V1===\n${text}`],
       ['a duplicated closing sentinel', (text: string) => `${text}\n===END_LIGHTBOX_GROUP_A_V1===`],
       ['commentary before the frame', (text: string) => `Here are the readings:\n${text}`],
@@ -78,9 +79,22 @@ describe('LightboxReadingCodec', () => {
       expect(`${blockReason} ${itemReason}`).not.toContain('Synthetic');
     });
 
-    it('refuses a response over the character ceiling', () => {
-      const huge = frame('A', { version: 1, headline: { padding: 'x'.repeat(40_000) } });
-      expect(() => decodeLightboxGroup(huge, contextA)).toThrow(/exceeds 32,000 characters/);
+    it('reads a response past the characters it asks for, and refuses one only past the safety ceiling (Slice 4H)', () => {
+      const asked = PROMPT_BUDGETS.lightbox.groupResponseCharacters;
+      const long = body(exampleA);
+      long.headline.friction = `${long.headline.friction} ${'The fall reads two ways. '.repeat(Math.ceil(asked / 20))}`;
+      const text = frame('A', long);
+      expect(text.length).toBeGreaterThan(asked);
+      expect(decodeLightboxGroup(text, contextA).blocks).toHaveLength(contextA.lenses.length);
+      const ceiling = asked * PROMPT_BUDGETS.lightbox.safetyMultiple;
+      const huge = frame('A', { version: 1, headline: { padding: 'x'.repeat(ceiling) } });
+      expect(() => decodeLightboxGroup(huge, contextA)).toThrow(/runs past 384,000 characters/);
+    });
+
+    it('accepts a reply with no closing sentinel whose JSON is complete as it stands, as a repair (Slice 4H)', () => {
+      const decoded = decodeLightboxGroup(exampleA.response.replace('\n===END_LIGHTBOX_GROUP_A_V1===', ''), contextA);
+      expect(decoded.blocks).toHaveLength(contextA.lenses.length);
+      expect(decoded.report).toEqual({ repairs: ['missing-closing-sentinel'], clipped: 0, cutOff: false });
     });
 
     it('accepts CRLF line endings and surrounding whitespace', () => {
@@ -203,7 +217,7 @@ describe('LightboxReadingCodec', () => {
   describe('per item', () => {
     it('withholds one malformed motif by its title while the other motifs land', () => {
       const broken = body(exampleA);
-      broken.motifs.items[1].claim = 'x'.repeat(400);
+      broken.motifs.items[1].claim = 400;
       const decoded = decodeLightboxGroup(frame('A', broken), contextA);
       const motifs = decoded.blocks.find((block) => block.lens === 'motif');
       expect(motifs && motifs.lens === 'motif' ? motifs.items.map((item) => item.title) : [])
@@ -213,7 +227,7 @@ describe('LightboxReadingCodec', () => {
         kind: 'motif',
         lens: 'motif',
         title: 'Pictures and conversations',
-        reason: expect.stringContaining('at most 320 characters'),
+        reason: 'It broke the format: motifs.items[1].claim must be string',
         quotes: []
       }]);
     });

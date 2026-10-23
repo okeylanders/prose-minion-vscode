@@ -144,7 +144,7 @@ differs from the plan above, or the plan left a choice open:
   `LightboxReadingCodec.ts` gains only their two cases, so the 2B codec's
   review fixes merge cleanly. The field decoders they share were copied into
   `LightboxReadingFields.ts` for now
-  ([tech debt](../../tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md)).
+  ([tech debt](../../archive/tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md)).
 - Enforced in code, not only asked for: a gravity block needs at least one
   literal set-aside (else the block is withheld); a degree other than 1, 2
   or 3 withholds its field; field names are unique; a set-aside never shares

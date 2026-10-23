@@ -13,11 +13,8 @@
  *   only quotes found again travel, as the chapter has them; a tile none of
  *   whose quotes is found, or a said/meant pair whose said line is gone, is
  *   refused;
- * - a said/meant pair travels with its said line first or not at all: the
- *   line is checked after every bound, so a line the verifier found longer
- *   than a Workshop quote (a hard-wrapped speech grows by its indentation)
- *   refuses the pair rather than sending its meaning without its speech
- *   (PR #151 F-02);
+ * - a said/meant pair travels with its said line first or not at all, so
+ *   its meaning never arrives without its speech (PR #151 F-02);
  * - a handoff sample (Slice 4B) is found again as a pair of adjacent
  *   sentences and travels with both, in order, or not at all; two sentences
  *   with the same words are two roles, never one quote (PR #155 F-02);
@@ -40,8 +37,13 @@
  * - the item carries the claim (with a story's stances, a pair's speaker,
  *   or a craft tile's own host counts, as labeled points) and those quotes:
  *   never the board or any other tile; and it is bounded by
- *   `WORKSHOP_LIGHTBOX_TILE_LIMITS`, a quote longer than its bound dropped
- *   rather than cut, so every quote stays verbatim.
+ *   `WORKSHOP_LIGHTBOX_TILE_LIMITS`. Those bounds are the Workshop's own,
+ *   and a reading's asks now run past them (Slice 4H, epic decision 37), so
+ *   Bring clips at this surface rather than withholding: a title, a claim, a
+ *   point or a quote longer than its bound travels as its start and an
+ *   ellipsis (`clipLightboxText`), after every anchor is checked whole. A
+ *   quote's start is still the chapter's own words; the ellipsis marks
+ *   where it was cut.
  * The Workshop decides what to do with it: a pending attachment above its
  * composer, sent only when the writer sends.
  */
@@ -69,6 +71,7 @@ import {
   formatLightboxFigure,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
+import { clipLightboxText } from '@shared/constants/lightboxClip';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { findLightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
 import { lightboxPhraseHeld } from '@/infrastructure/lightbox/LightboxTermCounts';
@@ -94,9 +97,8 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   reading: 'This lens is being read again. Wait for it to land, then bring it.',
   setAside: 'You set this spark aside. Bring it back first.',
   saidGone: 'Its said line is no longer in the chapter, so it was not brought.',
-  saidTooLong: 'Its said line, as the chapter has it, is longer than a Workshop quote can carry, so the pair was not brought. Nothing was cut.',
   quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
-  handoffIncomplete: 'Its two sentences, as the chapter has them, cannot both travel to the Workshop, so the handoff was not brought. Nothing was cut.',
+  handoffIncomplete: 'Its two sentences are no longer side by side in the chapter, so the handoff was not brought.',
   notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
   phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
   steeringNoInstance: 'None of its quotes still holds an instance of the figure it reads, as the chapter has it, so it was not brought.',
@@ -177,11 +179,8 @@ export function prepareLightboxTileHandoff(
     }
   }
   const quotesFound = quotes.length;
-  const bounded = quotes.filter((quote) => quote.text.length <= LIMITS.quoteCharacters).slice(0, LIMITS.quotes);
-  // A pair's said line is its anchor: checked after every bound, never dropped or cut to fit.
-  if (said && bounded[0]?.said !== true) {
-    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong);
-  }
+  // The Workshop's count; a said/meant pair's said line leads, so it always travels. Lengths are clipped last, in `tileOf`.
+  const bounded = quotes.slice(0, LIMITS.quotes);
   // A thread with its plant and resolution, a synopsis with two quotes, a movement with its boundary (Slice 4C).
   const anchors = lightboxPlotAnchorRefusal(tile, bounded);
   if (anchors) {
@@ -227,8 +226,9 @@ function travelOrder(tile: LightboxReadingTile): ReadonlyArray<{ paragraph: numb
 
 /**
  * A handoff is its two sentences, in order: found again as adjacent sentences
- * of one paragraph, each within the Workshop's quote bound, or refused, never
- * halved. Both roles travel even when their words are the same (PR #155 F-02).
+ * of one paragraph, or refused, never halved; each is clipped to the
+ * Workshop's quote bound as it travels. Both roles travel even when their
+ * words are the same (PR #155 F-02).
  */
 function handoffOf(
   request: LightboxTileHandOffRequest,
@@ -238,7 +238,7 @@ function handoffOf(
 ): LightboxTileHandoffPreparation {
   const verdict = findLightboxSentencePair(verifier, tile.from, tile.to);
   const pair = verdict.ok ? [verdict.pair.from, verdict.pair.to].map(({ paragraph, text }) => ({ paragraph, text })) : [];
-  if (pair.length !== 2 || pair.some((quote) => quote.text.length > LIMITS.quoteCharacters)) {
+  if (pair.length !== 2) {
     return { ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete };
   }
   return {
@@ -281,12 +281,18 @@ function tileOf(
     tileId: tile.id.slice(0, LIMITS.idCharacters),
     kindLabel: LIGHTBOX_TILE_KIND_LABELS[tile.kind].slice(0, LIMITS.labelCharacters),
     lensLabel: lightboxLensLabel(tile.lens).slice(0, LIMITS.labelCharacters),
-    title: tile.title.slice(0, LIMITS.titleCharacters).trim(),
-    claim: tile.claim.slice(0, LIMITS.claimCharacters).trim(),
+    title: clipLightboxText(tile.title, LIMITS.titleCharacters),
+    claim: clipLightboxText(tile.claim, LIMITS.claimCharacters),
+    // Points read the quotes whole (a steering example anchors in its note's quote); only then are the quotes clipped.
     points: pointsOf(tile, board, verifier, quotes),
-    quotes,
+    quotes: quotes.map((quote) => lightboxWorkshopQuote(quote)),
     sourceLabel: board.source.displayPath.slice(0, LIMITS.sourceLabelCharacters)
   };
+}
+
+/** A quote as it travels: the chapter's words, clipped to the Workshop's quote bound with an ellipsis when longer (Slice 4H). */
+export function lightboxWorkshopQuote(quote: WorkshopLightboxTileQuote): WorkshopLightboxTileQuote {
+  return { ...quote, text: clipLightboxText(quote.text, LIMITS.quoteCharacters) };
 }
 
 /** What a claim says in its own right: a story's stances, who says a line, or a craft tile's own counts and fields. */
@@ -296,9 +302,10 @@ function pointsOf(
   verifier: LightboxQuoteVerifier,
   quotes: readonly WorkshopLightboxTileQuote[]
 ): WorkshopLightboxTilePoint[] {
+  // Labels are the host's own; a point's text is clipped to the Workshop's point with an ellipsis (Slice 4H).
   const point = (label: string, text: string): WorkshopLightboxTilePoint => ({
     label: label.slice(0, LIMITS.pointLabelCharacters),
-    text: text.slice(0, LIMITS.pointCharacters).trim()
+    text: clipLightboxText(text.trim(), LIMITS.pointCharacters)
   });
   switch (tile.kind) {
     case 'lineage':

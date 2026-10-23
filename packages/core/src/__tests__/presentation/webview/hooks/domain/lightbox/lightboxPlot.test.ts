@@ -74,6 +74,18 @@ describe('the read lanes\' notes', () => {
     });
   });
 
+  it('says the movements were withheld for not tiling only when no block was withheld (Slice 4H)', () => {
+    // A reply cut off at the output ceiling inside the summary block: the block is withheld, and its frame says why.
+    const cut = withE({
+      ...readGroup('E'),
+      tiles: readGroup('E').tiles.filter((tile) => tile.lens !== 'summary'),
+      withheldBlocks: [{ kind: 'synopsis', lens: 'summary', reason: 'The reply reached the output ceiling before this block finished.' }]
+    });
+    expect(lightboxMovementsLane(cut, true)).toMatchObject({ bands: [], note: 'The movements were withheld: Summary & movements says why.' });
+    const untiled = withE({ ...readGroup('E'), tiles: readGroup('E').tiles.filter((tile) => tile.kind !== 'movement') });
+    expect(lightboxMovementsLane(untiled, true).note).toBe('The movements were withheld: they did not tile the chapter.');
+  });
+
   it('keeps engagement apart from tension, and says why it is absent', () => {
     expect(lightboxEngagementLane(withE(), []).bands.map((band) => band.value.level)).toEqual(['low', 'high', 'medium']);
     expect(lightboxEngagementLane(withE(), []).note).toContain('it is not the tension score');

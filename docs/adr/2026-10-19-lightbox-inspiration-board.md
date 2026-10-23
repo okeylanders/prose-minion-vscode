@@ -426,6 +426,69 @@ with the text. The same decision counts contractions of be as being verbs,
 through the one shared detector, so the rate, the quote check and the
 steering totals still agree.
 
+**Addendum to D6 and D7 (2026-10-23): asks versus gates** (Slice 4H; epic
+decisions 37–40). On the writer's long chapters, whole blocks were withheld
+for a note one character over its bound ("template.freshness.note must be a
+string of at most 120 characters"), and a paid group failed because its
+reply closed one brace too many. The writer: "If the model returns more
+then just show it." The validation policy becomes:
+
+- **A number a prompt states is an ask, not a gate.** The asks rose by
+  about a quarter to a third (`PROMPT_BUDGETS.lightbox`; the prompt/budget
+  sync test pins the prompts to them). A field longer than asked, and more
+  quotes, items or sentences than asked, are read and shown, in every group.
+  The codec withholds only a **real fault**: a missing field, a wrong type,
+  a value outside its vocabulary, fewer items than a stated minimum, an
+  unknown key, a quote the verifier cannot find, or a **structural rule**
+  (one score or ending per ribbon column, the two fields of a collision,
+  each lineage stance and each steering figure at most once, movements
+  tiling the chapter, a host key's shape). The fences around the two
+  evaluative exceptions stay gates: the Opinion's and steering's text rules,
+  one example per note, none on a note that earns, dialogue as voice.
+- **One safety ceiling, never in a prompt, for free prose only.** A
+  claim, gist, note, friction, description or reason past
+  `safetyMultiple` (8) times its ask is clipped with an ellipsis, counted
+  and logged; nothing is withheld for it. **Every field a rule reads is
+  read whole and never clipped** (PR #165 F-01): a quote (the verifier
+  holds it to its paragraph), a term, a title or name used as a key or
+  counted, a steering example (anchored in its quote), and every field a
+  text rule checks, fresh, on carry or at Bring. So a clip can neither
+  reject real evidence nor let an altered quote pass, and its ellipsis is
+  never taken for the chapter's text. A whole response is refused only
+  past eight times the characters the prompt asks for. The ceiling's only
+  job is to keep runaway prose from breaking the layout or a saved board's
+  size.
+- **A surface with real bounds clips at that surface.** Bring to Workshop
+  holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`, which do not change: a
+  title, claim, point, quote or steering example longer than its bound
+  travels clipped with an ellipsis, after every anchor (a said line, a
+  thread's plant, a handoff's two sentences, an example in its quote) is
+  checked whole. A quote's start is still the chapter's own words. The
+  Build lens seed clips a field's name and metaphor the same way, and still
+  leaves out a counted term too long for it, since a cut term is not the
+  chapter's word.
+- **The output ceiling is 12,000 tokens a group** (D6 and D8's
+  reservation), and the response asked for 48,000 characters.
+- **A frame is repaired before it is rejected** (D6's "an undecodable body
+  is quarantined", now only after this). The repair is deterministic and
+  structure-only: stray or missing closing brackets, trailing commas, a
+  code fence, curly quotation marks as a string's delimiters. A content
+  guard tokenizes both texts and refuses any repair that would change, add
+  or drop a string or other scalar. It lives in a feature-agnostic parser,
+  `infrastructure/api/parsers/ModelJsonRepair.ts`, which imports nothing
+  (a boundary test holds it to that) and throws an error carrying only
+  positions and a closed reason; sentinels stay each caller's, so the
+  Lightbox's frame alone accepts a reply with no closing sentinel whose JSON
+  is complete. Each repair is logged by its kind.
+- **A reply cut off at the output ceiling is salvaged** (D6's
+  "`finishReason === 'length'` is a failed group", superseded). The blocks
+  it finished are read; the block it was cut inside is withheld with the
+  host's reason and where the paid reply was saved; lenses it never reached
+  are reported as missing. The repair only closes the root, and the cut
+  block is dropped, never trusted. The paid body is still saved for
+  recovery, and every Lightbox recovery file now names its own group's
+  sentinels and blocks.
+
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 
 New `PROMPT_BUDGETS.lightbox` constants, pinned by the prompt-budget tests:

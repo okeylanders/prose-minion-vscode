@@ -7,10 +7,10 @@
 
 import type { LightboxOpinionViewId, LightboxOpinionWeight } from '@messages';
 
-/** An observation's key: `O1` to `O6`, unique in its block. */
-export const LIGHTBOX_OPINION_OBSERVATION_ID = /^O[1-6]$/;
+/** An observation's key, unique in its block: the shared grammar (Slice 4H). */
+export { LIGHTBOX_OPINION_OBSERVATION_ID } from '@shared/constants/lightboxOpinion';
 
-/** The fewest observations an Opinion gives (the ceiling is `opinionObservations`). */
+/** The fewest observations an Opinion gives (the prompt asks for at most `opinionObservations`). */
 export const LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS = 2;
 
 /** A cite as written: a tile by its host id (maybe one of its quotes, by index), or a measured figure by its ref. */

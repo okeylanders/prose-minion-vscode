@@ -2,7 +2,8 @@
  * What a reading tile hands to the Workshop (Lightbox Slice 4), pure: the
  * tile is resolved on the board, refused when stale, re-reading or set
  * aside, and its quotes are checked again against the current paragraphs,
- * a said line first; only quotes found travel, verbatim and bounded.
+ * a said line first; only quotes found travel, as the chapter has them,
+ * clipped with an ellipsis to the Workshop's own bounds (Slice 4H).
  * Worked example group B, verified against its own excerpt of "Alice's
  * Adventures in Wonderland" (1865, public domain); the long said line is a
  * sentence written for these tests.
@@ -13,6 +14,7 @@ import {
   LIGHTBOX_TILE_HANDOFF_REFUSALS,
   prepareLightboxTileHandoff
 } from '@/infrastructure/lightbox/LightboxTileHandoff';
+import { LIGHTBOX_ELLIPSIS, clipLightboxText } from '@shared/constants/lightboxClip';
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
@@ -61,7 +63,7 @@ describe('prepareLightboxTileHandoff', () => {
     expect(prepareLightboxTileHandoff(request(board, motif.id), board, blank).ok).toBe(false);
   });
 
-  it('carries only quotes found again, drops one over the bound rather than cutting it, and keeps at most four', () => {
+  it('carries only quotes found again, clips one over the Workshop\'s bound with an ellipsis (Slice 4H), and keeps at most four', () => {
     const long = 'x'.repeat(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters + 1);
     const paragraphs = [...PARAGRAPHS, `${long}. And the rest.`];
     const extra = paragraphs.length;
@@ -85,14 +87,43 @@ describe('prepareLightboxTileHandoff', () => {
     const quotes = prepared.handoff.tile.quotes;
     expect(quotes).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quotes);
     expect(quotes[0]).toEqual({ paragraph: tile.said.paragraph, text: tile.said.text, said: true });
-    expect(quotes.some((quote) => quote.text === long)).toBe(false);
+    // The long quote travels, clipped to the Workshop's quote with an ellipsis; it was never withheld for its length.
+    const clipped = quotes.find((quote) => quote.paragraph === extra)!;
+    expect(clipped.text).toBe(clipLightboxText(long, WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters));
+    expect(clipped.text).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters);
+    expect(clipped.text.endsWith(LIGHTBOX_ELLIPSIS)).toBe(true);
     expect(quotes.some((quote) => quote.text.includes('not a line'))).toBe(false);
-    // Every quote travels as the chapter has it.
-    expect(quotes.every((quote) => paragraphs[quote.paragraph - 1].includes(quote.text))).toBe(true);
+    // Every quote travels as the chapter has it, up to the ellipsis where one was clipped.
+    expect(quotes.every((quote) => paragraphs[quote.paragraph - 1].includes(quote.text.replace(LIGHTBOX_ELLIPSIS, '')))).toBe(true);
+    expect(validateWorkshopLightboxTile(prepared.handoff.tile).quotes).toEqual(quotes);
     expect(prepared.quotesChecked).toBe(tile.evidence.length);
   });
 
-  describe('a said line the Workshop cannot carry whole (PR #151 F-02)', () => {
+  it('clips a title, a claim and a point longer than the Workshop\'s own bounds with an ellipsis, never withholding them (Slice 4H)', () => {
+    const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
+    const long = (start: string, bound: number) => `${start} ${'The line carries more than it says. '.repeat(Math.ceil(bound / 30))}`.trim();
+    const board = boardWith((group) => ({
+      ...group,
+      tiles: group.tiles.map((tile) => tile.kind !== 'subtext' ? tile : {
+        ...tile,
+        title: long('White Rabbit', LIMITS.titleCharacters),
+        claim: long('Being late is the whole of its worry.', LIMITS.claimCharacters),
+        speaker: long('White Rabbit', LIMITS.pointCharacters)
+      })
+    }));
+    const tile = subtextOf(board);
+    const prepared = prepareLightboxTileHandoff(request(board, tile.id), board, PARAGRAPHS);
+    if (!prepared.ok) {
+      throw new Error(prepared.reason);
+    }
+    const sent = validateWorkshopLightboxTile(prepared.handoff.tile);
+    expect(sent.title).toBe(clipLightboxText(tile.title, LIMITS.titleCharacters));
+    expect(sent.claim).toBe(clipLightboxText(tile.claim, LIMITS.claimCharacters));
+    expect(sent.points).toEqual([{ label: 'Speaker', text: clipLightboxText(tile.speaker, LIMITS.pointCharacters) }]);
+    expect([sent.title, sent.claim, sent.points[0].text].every((text) => text.endsWith(LIGHTBOX_ELLIPSIS))).toBe(true);
+  });
+
+  describe('a said line longer than a Workshop quote (PR #151 F-02; Slice 4H)', () => {
     const SAID = 'I have told you everything I remember about that night, from the sound of the rain against the windows ' +
       'to the empty chair beside the fire, and if there is anything else you want from me, you will have to ask ' +
       'someone who was actually there.';
@@ -118,14 +149,25 @@ describe('prepareLightboxTileHandoff', () => {
       return { board, paragraphs, tile: subtextOf(board) };
     }
 
-    it('refuses the pair when its said line, found as the chapter has it, is longer than a Workshop quote', () => {
+    it('brings the pair led by its said line, clipped to a Workshop quote, when the chapter has it longer', () => {
       expect(SAID).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters - 1);
       const { board, paragraphs, tile } = pairOn(WRAPPED);
       // The board draws it: the verifier finds the wrapped speech, 251 characters as the chapter has them.
       expect(tile.said).toEqual({ paragraph: 1, text: WRAPPED, match: 'normalized' });
       expect(tile.said.text).toHaveLength(WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters + 11);
-      expect(prepareLightboxTileHandoff(request(board, tile.id), board, paragraphs))
-        .toEqual({ ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong });
+      const prepared = prepareLightboxTileHandoff(request(board, tile.id), board, paragraphs);
+      if (!prepared.ok) {
+        throw new Error(prepared.reason);
+      }
+      // Its meaning still arrives with its speech, first: the speech's start, and an ellipsis where it was cut.
+      const staged = validateWorkshopLightboxTile(prepared.handoff.tile);
+      expect(staged.quotes[0]).toEqual({
+        paragraph: 1,
+        text: clipLightboxText(WRAPPED, WORKSHOP_LIGHTBOX_TILE_LIMITS.quoteCharacters),
+        said: true
+      });
+      expect(WRAPPED.startsWith(staged.quotes[0].text.replace(LIGHTBOX_ELLIPSIS, ''))).toBe(true);
+      expect(staged.quotes[0].text.endsWith(LIGHTBOX_ELLIPSIS)).toBe(true);
     });
 
     it('brings the same pair when its said line fits, leading with it verbatim at the Workshop boundary', () => {

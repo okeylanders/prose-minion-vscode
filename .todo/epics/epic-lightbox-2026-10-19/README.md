@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review. 5B (Compare) follows it.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). 5B (Compare) follows it. **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) is built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd` (PR #164 merged).
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -73,6 +73,10 @@ carried into the Workshop.
 | 34 | The changed-file notice above the board (2026-10-22) | **Writer: yes.** The notice that a snapshot's file now holds another text, with **Read the current text**, also shows above the board itself, not only at the top of the Boards rail. One source of truth: both come from the same shelf, so they appear and go together, under the same ordering guards (PR #163 F-02, F-05) (Slice 5A.1) |
 | 35 | A spark set aside saves at once (2026-10-22) | **Writer: yes.** "Not for me", and its Undo, update the file that holds the board on screen in place, through the rename's rewrite: no new timestamped file, so no new row. A board no file holds yet, or one kept for the session only, takes the mark with its next save, as before (Slice 5A.1; the 5A tech debt closes) |
 | 36 | Stopped and partial runs keep saving (2026-10-22) | **Writer: yes**, confirming decision 27's default: a run that ends with at least one group back saves, whether it finished, was stopped, or had a group fail. No code change (Slice 5A.1) |
+| 37 | Asks, not gates (2026-10-23) | **The writer: "If the model returns more then just show it."** Every length and count a Lightbox prompt states is an **ask**, raised by about a quarter to a third (notes 120 → 160, labels 60 → 80, claims 320 → 400, friction 280 → 360, sparks and quotes 240 → 300, the synopsis 320 characters and 4 sentences → 400 and 5, the Opinion's and steering's fields alike). A field longer than asked, or more quotes, beats, threads, motifs, items or sentences than asked, is **shown**, never withheld: no block, no item, no field, in groups A–G. What still withholds is a real fault: a missing field, a wrong type, a value outside its vocabulary, fewer items than a stated minimum, a quote the verifier cannot find, an unknown key, or a structural rule (one score per ribbon column, movements tiling the chapter, one example per note, a figure read once). **One safety ceiling**, never in a prompt, for free prose only: a claim, gist, note or friction past eight times its ask is clipped with an ellipsis, counted and logged, never withheld; a quote, a term, a key, an example and every field a text rule checks are read and checked whole, never clipped (PR #165 F-01). **A surface with real bounds clips there**: Bring to Workshop clips a title, claim, point, quote or steering example to the Workshop's own bounds with an ellipsis, and the Build lens seed its field and metaphor. Saved boards (format 1) already read any length (Slice 4H) |
+| 38 | The output ceiling (2026-10-23) | **12,000 output tokens a group** (was 8,000), and the whole response the prompt asks for **48,000 characters** (was 32,000), keeping the ratio, for every group, F and G included. The fit check reserves 12,000 for the reply. The estimate's price is unchanged: it prices what a reply typically runs to, not the ceiling (Slice 4H) |
+| 39 | Repair before rejecting (2026-10-23) | A group's JSON that `JSON.parse` refuses is first given a **deterministic, structure-only repair**, no model call: stray closing brackets after the root (the writer's real case, group E closing with `}}}`), trailing commas, a code fence, missing closing brackets when the reply stopped with its frame closed, and curly quotation marks used as a string's delimiters, only where safe. **The content guard:** both texts are tokenized and their strings and other scalars must be identical, or the repair is refused and the reply rejected and saved as before. A reply with no closing sentinel whose JSON is complete is accepted. Each repair is logged by its kind, never with text. **The writer's addendum:** the repair is a **reusable, feature-agnostic parser** (`@parsers/ModelJsonRepair`), wired into the Lightbox only for now; the four Workshop widget call sites adopt it later ([tech debt](../../tech-debt/2026-10-23-widget-model-json-repair-adoption.md)). A small model asked to repair syntax ("Tier 2") is a follow-up, built only if the logs show rejections this pass cannot read (Slice 4H) |
+| 40 | A reply cut off at the output ceiling (2026-10-23) | **Salvaged, no longer failed.** The blocks it finished are read; the block it was cut inside is withheld with the host's reason ("The reply reached the output ceiling before this block finished.") and where the paid reply was saved; lenses it never reached are reported as any missing lens is. The repair may only close brackets, and the cut block is dropped, never trusted. The paid body is still saved for recovery, with its group's own contract (Slice 4H) |
 
 ## Slices
 
@@ -91,7 +95,8 @@ carried into the Workshop.
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Merged (PR #160) |
 | 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Merged (PR #162, at `3e6a156`) |
 | 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Merged (PR #163, at `3e5c3a1`) |
-| 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | PR #164: review corrections made, awaiting re-review (`epic/lightbox-slice-5a1-board-names`) |
+| 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | Merged (PR #164, at `a57a5cd`) |
+| 4H | [Reading tolerance](slice-4h-reading-tolerance.md) | Asks raised and overruns shown, not withheld (one safety ceiling; Bring clips at the Workshop's bounds); a 12,000-token output ceiling; a structure-only JSON repair with a content guard, in a shared parser; a reply cut off at the ceiling salvaged; the recovery file names its group's own contract (decisions 37–40) | Built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`; PR to come |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -563,7 +568,7 @@ lens, and adds its items to 4D's digest.
       session state.
   - **Follow-ups:**
     [a reading in flight when the chapter changes](../../tech-debt/2026-10-19-lightbox-forward-in-flight-readings.md)
-    and [one home for the codec's field decoders](../../tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md),
+    and [one home for the codec's field decoders](../../archive/tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md),
     both Low; the two lenses join Slice 6's live pass.
 
 - **2026-10-19. Slice 3: PR #150 review fixes.** Astra's
@@ -864,7 +869,7 @@ lens, and adds its items to 4D's digest.
     Endings lane on the ribbon, inspector details and Bring for every kind.
   - **Deviations and limits** are in the slice's
     [implementation notes](slice-4b-craft-lenses.md#implementation-notes-2026-10-20);
-    one item went to [tech debt](../../tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md).
+    one item went to [tech debt](../../archive/tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md).
   - **Verification.**
 
     | Check | `eca952a` | Slice 4B head |
@@ -916,7 +921,7 @@ lens, and adds its items to 4D's digest.
     every kind.
   - **Deviations and limits** are in the slice's
     [implementation notes](slice-4c-story-lenses.md#implementation-notes-2026-10-20);
-    one item went to [tech debt](../../tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md).
+    one item went to [tech debt](../../archive/tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md).
   - **Verification.**
 
     | Check | `8b930fb` (4B) | `16e85b1` (4B, PR #155 fixes) | Slice 4C head |
@@ -1559,3 +1564,55 @@ lens, and adds its items to 4D's digest.
       `verify:bundle` pass, twice; `webview.js` `66c1f405…` (unchanged),
       `extension.js` `e9c04557…`; the evidence states, rebuilt, are
       byte-identical. No live or billable call.
+- **2026-10-23. Slice 4H (reading tolerance) is built** on
+  `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`
+  (PR #164 merged), awaiting its PR. The writer saw blocks withheld on long
+  chapters for a field one character over its bound, and a whole paid
+  group fail on one stray closing brace. See the
+  [slice notes](slice-4h-reading-tolerance.md), with every maximum the
+  codecs held classed as an ask or a structural rule, and what the writer
+  may want to redirect.
+  - **Asks, not gates (decision 37):** the asks raised by a quarter to a
+    third; overruns shown in groups A–G; one safety ceiling (eight times
+    each ask, never in a prompt) clips runaway free prose with an ellipsis
+    and counts it, and every field a rule reads is checked whole (PR #165
+    F-01); Bring and the Build lens seed clip at their own bounds.
+  - **The output ceiling (decision 38):** 12,000 tokens and 48,000
+    characters a group; the estimate still prices typical output.
+  - **Repair before rejecting (decision 39), in a shared parser:**
+    `@parsers/ModelJsonRepair` (with `ModelJsonTokens`), feature-agnostic
+    and guarded so; structure-only repairs under a content guard, errors
+    with no text; wired into the Lightbox only, the four widget call sites
+    recorded as tech debt.
+  - **Truncation salvage (decision 40):** the finished blocks read, the cut
+    one withheld with the host's reason and the recovery file's place; the
+    ribbon's Movements lane no longer blames tiling for it.
+  - **Verification**, after `npm ci` into a real `node_modules`: 488
+    suites / 6,737 tests / 59 snapshots (482 / 6,653 / 59 at `a57a5cd`);
+    lint 0 errors / 1,133 warnings, identical per file and rule; typecheck
+    and build with `verify:bundle` pass, twice; `webview.js` `405f6cd1…`,
+    `extension.js` `47c258bb…`; visual evidence in
+    `docs/pr-reviews/evidence/lightbox-slice-4h-visual/`, 15 captures,
+    `errors.txt` empty, 3 errors against the base bundle. No live or
+    billable call.
+  - **PR #165's review** (four Medium / P2), all fixed in `2ebeda4b`; see
+    the [author response](../../../docs/pr-reviews/pr-165-lightbox-reading-tolerance-review.md#author-response-2026-10-23).
+    F-01: every rule reads a field whole; only free prose is clipped at
+    the safety ceiling. F-02: a reply cut off inside its closing sentinel
+    or fence keeps its finished blocks. F-03: a cut curly-quoted token
+    drops only its member. F-04: no test pins the engine's `JSON.parse`
+    wording, and the parser reads a position only from a message's end.
+    490 suites / 6,794 tests / 59 snapshots under Node 22, and the same
+    under Node 18.20.8, all passing. Lint identical; typecheck and both
+    builds pass; `webview.js` `405f6cd1…` (unchanged), `extension.js`
+    `4730ecf7…`.
+  - **PR #165's re-review** (F-01 to F-04 closed; one new Medium / P2,
+    F-05), fixed in `decd276d`; see the
+    [author response](../../../docs/pr-reviews/pr-165-lightbox-reading-tolerance-review.md#author-response-to-the-re-review-2026-10-23).
+    F-05: the bare-digit rule's lookbehind re-read a long digit run for
+    every digit, now that F-01 hands it whole fields; `lightboxHasBareDigit`
+    reads the text once and keeps the rule exactly. The same audit fixed a
+    spark's closing-mark strip and a chapter line's trailing-space trim.
+    491 suites / 6,829 tests / 59 snapshots under Node 22 and Node 18.20.8,
+    all passing; lint identical; typecheck and both builds pass;
+    `webview.js` `405f6cd1…` (unchanged), `extension.js` `1da47dcf…`.

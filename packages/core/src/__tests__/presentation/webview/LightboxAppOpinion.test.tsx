@@ -200,7 +200,7 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
     const opinionCall = {
       group: 'F' as const, lenses: ['opinion' as const], inputTokens: 9_400, expectedOutputTokens: 1_400,
-      reservedOutputTokens: 8_000, inputBound: 'digest' as const, fit: 'fits' as const, costUsd: 0.05
+      reservedOutputTokens: 12_000, inputBound: 'digest' as const, fit: 'fits' as const, costUsd: 0.05
     };
     const request = posted(MessageType.LIGHTBOX_SET_LENSES).at(-1);
     fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, {

@@ -87,7 +87,7 @@ packages/core/src/
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
-│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
+│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing)
 │   ├── account/       # OpenRouter account-balance client + service
 │   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164)
@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) with PR #164's corrections (claims live or abandoned by age, deletes that claim, restores that settle a claimed file, a spark's write scoped to its tile, the name field's own edits) and its re-review's (deletes acknowledged only once retired, every missing read classified), on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
-- 482 suites / 6,653 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`, with PR #165's corrections and its re-review's):
+- 491 suites / 6,829 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1090,6 +1090,36 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   `LightboxStaleReadings`, the carry parity sweep and every-kind test, and
   Bring's points. Its bounds live in `PROMPT_BUDGETS.lightbox`, pinned to
   the prompt text by `lightboxPromptBudgetsSync.test.ts`.
+- **Asks, not gates (Slice 4H; epic decision 37; ADR D6/D7 addendum of
+  2026-10-23).** Every length and count a prompt states is an ask: read a
+  field with `LightboxReadingFields.text(value, path, ask)` and a list with
+  `listAt(value, path, minimum, noun)`, never a maximum. Withhold only a
+  real fault (a missing field, a wrong type, a value outside its
+  vocabulary, fewer items than a stated minimum, an unknown key, a quote the
+  verifier cannot find) or a structural rule (one entry per ribbon column,
+  movements tiling the chapter, one example per note); check a structural
+  count exactly with `boundedArrayAt`, and say why beside it. **Every rule
+  reads the field whole** (PR #165 F-01): a quote, a term, a key, an
+  example and every field a text rule checks are read with `text`, never
+  clipped. One safety ceiling (`safetyMultiple` times the ask, never in a
+  prompt) clips only free prose no rule reads (a claim, gist, note,
+  friction), read with `prose`, with an ellipsis, and counts it; never
+  check a clipped value against the chapter. A rule on a whole field
+  reads it in time linear in its length (PR #165 F-05): no
+  variable-length lookbehind (`lightboxHasBareDigit` replaced one) and no
+  unanchored `[…]+$` on model text; read from the end instead. A surface with bounds of
+  its own clips there with `clipLightboxText`, after its anchors are
+  checked whole: Bring holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`,
+  which stay as they are.
+- **A frame's JSON goes through the shared parser** (Slice 4H; decisions
+  39 and 40). `LightboxReadingFrame` keeps the Lightbox's sentinels, a
+  fence around the frame and the missing closing sentinel; the JSON itself
+  is `parseModelJson` (structure-only repairs under a content guard) or,
+  at the output ceiling, `salvageModelJson` (the finished blocks read, the
+  cut one withheld with `LIGHTBOX_CUT_OFF_REASON`). Never add a JSON repair
+  to a Lightbox module, and never let `@parsers/*` import a feature:
+  `boundaries.test.ts` fails on either. Log each repair by its kind, never
+  with text.
 - **Lenses read together.** When one lens's reading names another's items
   (engagement names movements), the two are read in one call:
   `LIGHTBOX_READ_TOGETHER` in `shared/constants/lightbox.ts`, through

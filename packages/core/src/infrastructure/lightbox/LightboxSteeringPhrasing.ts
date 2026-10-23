@@ -34,7 +34,7 @@
  */
 
 import { LIGHTBOX_DOUBLE_QUOTATION_MARKS } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import { LIGHTBOX_BARE_DIGIT } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { lightboxHasBareDigit } from '@/infrastructure/lightbox/LightboxReadingFields';
 import { lightboxOpensWithInstruction } from '@/infrastructure/lightbox/LightboxSparkPhrasing';
 
 /** The words craft steering never uses (epic decision 23), each with its forms below. */
@@ -80,7 +80,7 @@ export function lightboxSteeringTextFault(text: string, rules: LightboxSteeringT
   if (DOUBLE_QUOTES.test(text)) {
     return LIGHTBOX_STEERING_PHRASING_REASONS.quoted;
   }
-  if (LIGHTBOX_BARE_DIGIT.test(text) || LIKELIHOOD.test(text)) {
+  if (lightboxHasBareDigit(text) || LIKELIHOOD.test(text)) {
     return LIGHTBOX_STEERING_PHRASING_REASONS.figure;
   }
   if (rules.instruction && lightboxOpensWithInstruction(text)) {

@@ -37,6 +37,7 @@
  */
 
 import { lightboxOpinionFigures } from '@shared/constants/lightboxOpinionItems';
+import { LIGHTBOX_OPINION_OBSERVATION_ID } from '@shared/constants/lightboxOpinion';
 import { lightboxOpensWithInstruction } from '@/infrastructure/lightbox/LightboxSparkPhrasing';
 import { LIGHTBOX_DOUBLE_QUOTATION_MARKS } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 
@@ -64,8 +65,8 @@ export const LIGHTBOX_OPINION_PHRASING_REASONS = {
 /** The verifier's own set, so the two never disagree on what a double quotation mark is (PR #157 N-01). */
 const QUOTATION_MARKS = new RegExp(`[${LIGHTBOX_DOUBLE_QUOTATION_MARKS}]`, 'u');
 const PERCENT = /%|\bper\s?cent\b/iu;
-/** Observation ids are keys, not figures: "O3" holds no number. */
-const OBSERVATION_IDS = /\bO[1-6]\b/gu;
+/** Observation ids are keys, not figures: "O3" holds no number. The shared grammar, unanchored and word-bounded. */
+const OBSERVATION_IDS = new RegExp(`\\b(?:${LIGHTBOX_OPINION_OBSERVATION_ID.source.replace(/^\^|\$$/g, '')})\\b`, 'gu');
 
 /**
  * Why `texts` cannot be shown as the Opinion's (`part` names it), or
