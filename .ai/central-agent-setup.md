@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-22, Lightbox Slice 5A.1 (board names, rewrites in place, the models that read a board, the changed-file notice above the board, and a spark set aside saved at once) with PR #164's corrections (claims live or abandoned by age, deletes that claim, restores that settle a claimed file, a spark's write scoped to its tile, the name field's own edits) and its re-review's (deletes acknowledged only once retired, every missing read classified), on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at `3e5c3a1`):
-- 482 suites / 6,653 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`):
+- 488 suites / 6,737 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

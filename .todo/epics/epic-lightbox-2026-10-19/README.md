@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review. 5B (Compare) follows it. **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) is built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd` (PR #164 merged).
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). 5B (Compare) follows it. **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) is built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd` (PR #164 merged).
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -1564,3 +1564,33 @@ lens, and adds its items to 4D's digest.
       `verify:bundle` pass, twice; `webview.js` `66c1f405…` (unchanged),
       `extension.js` `e9c04557…`; the evidence states, rebuilt, are
       byte-identical. No live or billable call.
+- **2026-10-23. Slice 4H (reading tolerance) is built** on
+  `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`
+  (PR #164 merged), awaiting its PR. The writer saw blocks withheld on long
+  chapters for a field one character over its bound, and a whole paid
+  group fail on one stray closing brace. See the
+  [slice notes](slice-4h-reading-tolerance.md), with every maximum the
+  codecs held classed as an ask or a structural rule, and what the writer
+  may want to redirect.
+  - **Asks, not gates (decision 37):** the asks raised by a quarter to a
+    third; overruns shown in groups A–G; one safety ceiling (eight times
+    each ask, never in a prompt) clips a runaway field with an ellipsis and
+    counts it; Bring and the Build lens seed clip at their own bounds.
+  - **The output ceiling (decision 38):** 12,000 tokens and 48,000
+    characters a group; the estimate still prices typical output.
+  - **Repair before rejecting (decision 39), in a shared parser:**
+    `@parsers/ModelJsonRepair` (with `ModelJsonTokens`), feature-agnostic
+    and guarded so; structure-only repairs under a content guard, errors
+    with no text; wired into the Lightbox only, the four widget call sites
+    recorded as tech debt.
+  - **Truncation salvage (decision 40):** the finished blocks read, the cut
+    one withheld with the host's reason and the recovery file's place; the
+    ribbon's Movements lane no longer blames tiling for it.
+  - **Verification**, after `npm ci` into a real `node_modules`: 488
+    suites / 6,737 tests / 59 snapshots (482 / 6,653 / 59 at `a57a5cd`);
+    lint 0 errors / 1,133 warnings, identical per file and rule; typecheck
+    and build with `verify:bundle` pass, twice; `webview.js` `405f6cd1…`,
+    `extension.js` `47c258bb…`; visual evidence in
+    `docs/pr-reviews/evidence/lightbox-slice-4h-visual/`, 15 captures,
+    `errors.txt` empty, 3 errors against the base bundle. No live or
+    billable call.

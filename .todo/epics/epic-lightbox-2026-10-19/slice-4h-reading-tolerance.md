@@ -253,6 +253,12 @@ the content guard over whatever it returns.
   `[LightboxReadingRunner] Group C reached the output ceiling: 1 blocks
   finished, cut inside lineage`;
 - **group F** reads the same way: its one block cut withholds the Opinion;
+- **the ribbon's Movements lane** said "The movements were withheld: they
+  did not tile the chapter." whenever no movements were drawn. With the
+  summary block withheld, by a cut-off or a format fault, that named the
+  wrong cause: it now says "The movements were withheld: Summary &
+  movements says why." (`lightboxPlot.ts`), and keeps the tiling words for
+  a tiling fault. This is the slice's one webview change;
 - a reply that cannot be salvaged (prose where JSON belongs, no root object)
   fails as before, its message naming the ceiling: "the reply reached the
   12,000-token output ceiling, and what came back could not be read".
@@ -295,6 +301,9 @@ the content guard over whatever it returns.
   (491) are untouched; every module stays under 500 lines.
 - **The decode report** (`LightboxDecodedGroup.report`) carries the repairs,
   the clips and whether the reply was cut off; the reply reader logs it.
+- **The webview:** only the Movements lane's note (`lightboxPlot.ts`). The
+  test harness `lightboxBoardsHarness` may take a recovery store, so the
+  visual evidence saves its salvaged reply through the real one.
 
 ## Tests
 
@@ -308,11 +317,57 @@ groups E and F, the log lines), `LightboxReadingTolerance.test.ts`
 `lightboxClip.test.ts`. Changed: the codec, runner (group C cut inside
 lineage through a whole run, and a cut reply that cannot be salvaged),
 Opinion, plot, steering, anchor, handoff, recovery-store, budget, sync and
-boundary tests.
+boundary tests, and the webview's `lightboxPlot.test.ts` (the Movements
+lane's note).
 
 ## Verification
 
-Filled in at the end of the slice; see the epic's progress notes.
+After `npm ci` into a real `node_modules`:
+- **jest:** 488 suites / 6,737 tests / 59 snapshots, all passing (482 /
+  6,653 / 59 at `a57a5cd`).
+- **lint:** 0 errors and 1,133 warnings, identical per file, rule and
+  severity to `a57a5cd`. **typecheck** passes.
+- **build**, with `verify:bundle`, twice: `webview.js` SHA-256
+  `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` and
+  `extension.js`
+  `47c258bb3d9e2b09212a8ccabfff1ac95aedb821eeadfe30a67f6f87d6be8a45`, the
+  same both times. `git diff --check` is clean.
+- **Visual evidence** in
+  [`docs/pr-reviews/evidence/lightbox-slice-4h-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4h-visual/README.md):
+  15 captures at 1440, 1000 and 500 px, from that `webview.js`; every
+  overrun shown whole, nothing cut or past its box, no overflow, no clipped
+  button; `errors.txt` empty. Against the base bundle it writes 3 errors
+  (the Movements lane's note) and exits 1. The same replies read through
+  `a57a5cd`'s codec withhold ten blocks across groups A–E, and fail the cut
+  group E whole (`states/before-a57a5cd.txt`).
+- No live or billable provider call.
+
+**Which tests fail on `a57a5cd`.** The new and changed test files, copied
+onto an export of `a57a5cd`:
+- **Typed, as CI runs them:** 21 of the 26 suites fail. Fourteen do not
+  compile there, since they import a module or a field this slice adds
+  (`ModelJsonRepair`, `lightboxClip`, `LIGHTBOX_CUT_OFF_REASON`,
+  `safetyMultiple`, a capture's `contract`, `lightboxSteeringExampleShowsNoChange`):
+  the parser, repair, tolerance, field-handoff-clip, clip, tile-, craft- and
+  Opinion-handoff, steering, example-anchor, codec, board-tolerance,
+  recovery-store and sync suites. Seven fail by test: boundaries (3: the
+  parser guard, the module list, the Workshop-route guard over the new
+  modules), prompt budgets (1: the new numbers), Opinion readings (4: a
+  seventh observation and the widened ids), plot readings (1: a synopsis
+  past its asks), the runner (2: salvage, and an unsalvageable cut reply)
+  and the estimate (1: the 12,000 reservation), and the webview's plot
+  lane (1: the Movements note). Five pass there: the two sentence-rule
+  suites (comments only) and three webview suites whose fixtures moved to
+  12,000.
+- **With type checking off** (to see each test): 40 tests fail in the
+  suites that load, among them 16 of the 17 in `LightboxReadingRepair`
+  (all but the one that only shows `JSON.parse` failing on the real case),
+  6 of the 9 in the example-anchor suite, the codec's two frame cases, and
+  the recovery store's contract case; eight suites cannot load at all.
+  `LightboxBoardTolerance`'s round-trip fails there only at its own setup
+  (`safetyMultiple` is new): given the multiple, all three of its tests
+  pass on `a57a5cd`, since format 1 never bounded a reading's text or a
+  list's length.
 
 ## For the writer to decide
 
