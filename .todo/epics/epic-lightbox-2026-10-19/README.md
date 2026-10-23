@@ -1670,4 +1670,15 @@ lens, and adds its items to 4D's digest.
     headline's Re-analyze stays mounted, as "Analyzing…", while call A reads
     it, so its focus holds through the start, the landing, a failure and a
     stop. The evidence gains four host moments (the headline rerun, landed
-    and failed) and the headline-rerun captures.
+    and failed) and the headline-rerun captures. `epic/lightbox` (PR #165
+    merged, `08b0d22`) is merged in.
+    **Verification** on the response's head, after `npm ci` into a real
+    `node_modules`: 494 suites / 6,897 tests / 59 snapshots, the same under Node 22 and Node 18.20.8;
+    lint 0 errors / 1,133 warnings, identical per file, rule and severity
+    to `d255b8e`; typecheck and build with `verify:bundle` pass, twice;
+    `webview.js` `4eb8932c…`, `extension.js` `0b1af8b7…` (unchanged), the
+    same both times. Evidence: 39 captures, `errors.txt` empty; 273
+    errors against the reviewed head's bundle (F-01 27, N-01 204, N-02
+    42) and 189 against the base. 33 of the new and changed tests fail on
+    the reviewed head's source. No live or billable call. See the
+    [author response](../../../docs/pr-reviews/pr-166-lightbox-run-controls-review.md).

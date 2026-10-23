@@ -26,10 +26,10 @@
  * its lenses and its price ("Run A, call A: Headline, … · ≈ $0.07"), so the
  * label a writer sees is the name they can speak (PR #166 N-01).
  *
- * While any run of the board
- * is in flight or starting, every control is disabled with the reason, and
- * Stop stays on the run line. Nothing here posts anything: a press goes
- * through the run line's own `run(scope)`, with the estimate it was shown.
+ * While any run of the board is in flight or starting, every control is
+ * disabled with the reason, and Stop stays on the run line. Nothing here
+ * posts anything: a press goes through the run line's own `run(scope)`,
+ * with the estimate it was shown.
  */
 
 import type {
