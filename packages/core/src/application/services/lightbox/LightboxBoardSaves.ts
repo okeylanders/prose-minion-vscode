@@ -21,12 +21,14 @@
  *   written. A save in place writes the board's name; a board with none
  *   keeps the name its file shows.
  * - **The board a save is owed (PR #167 F-01).** A save waits its turn in
- *   the store's queue, and another run may start meanwhile. At its turn it
- *   writes the board as it then stands only when that is still the same
- *   adoption and settled (no reading in flight); otherwise it writes the
- *   settled board it was captured with when its run ended, under the name
- *   and file the board has now. A reading that landed is never dropped for
- *   a run that has not, and a reading in flight is never written.
+ *   the store's queue, and another run may start meanwhile, clear a group
+ *   (decision 42), and be stopped with nothing back. At its turn the save
+ *   writes the readings its own run settled, as captured when that run
+ *   ended, under the file, revision and name the board has now, with the
+ *   writer's spark marks (`owedBoard`). A reading that landed is never
+ *   dropped for a later run that landed nothing, whichever side of the
+ *   queue's turn the Stop falls; a reading in flight is never written; a
+ *   later run that lands saves itself.
  * - **The board on screen (PR #163 F-01).** Every adoption moves the reload
  *   pointer at once: to the file that already holds the board, writing
  *   nothing, or, for a board no file holds yet, to the file its save
@@ -36,7 +38,7 @@
  * Logs carry file ids and outcomes, never the writer's text or a name.
  */
 
-import type { LightboxBoard } from '@messages';
+import type { LightboxBoard, LightboxReadingGroup, LightboxReadingTile } from '@messages';
 import type { LogSink } from '@/platform';
 import { lightboxDefaultBoardName } from '@shared/constants/lightboxBoardName';
 import type { LightboxSavableBoard, LightboxService } from '@/infrastructure/lightbox/LightboxService';
@@ -140,32 +142,53 @@ export class LightboxBoardSaves {
 }
 
 /**
- * What a save owed `captured` writes at its turn (PR #167 F-01): `now`, the
- * same adoption as it stands then, when no reading of it is in flight;
- * otherwise the settled board captured when its run ended, with the name
- * and the file `now` has (a rename or a save queued before this one moved
- * them). With no `now` (the board is gone, or replaced by a snapshot of the
+ * What a save owed `captured` writes at its turn (PR #167 F-01, and its
+ * re-review): the readings and rules its run settled, exactly as captured,
+ * never a later state of them. A later run may have cleared a group since
+ * (decision 42) and been stopped with nothing back, or may be reading still;
+ * either way this save owes what its own run landed, and a later run that
+ * lands gets its own save. From `now`, the same adoption as it stands at the
+ * save's turn, it takes only what the writer holds apart from readings: the
+ * file and revision the board holds (a save or rewrite queued before this one
+ * moved them), its name, and the set-aside mark of each spark both boards
+ * hold. With no `now` (the board is gone, or replaced by a snapshot of the
  * same id), the captured board as it was.
  */
 export function owedBoard(captured: LightboxSavableBoard, now: LightboxSavableBoard | undefined): LightboxSavableBoard {
   if (!now) {
     return captured;
   }
-  if (lightboxBoardSettled(now.board)) {
-    return now;
-  }
-  const { name: _name, savedFileId: _file, savedRevision: _revision, ...settled } = captured;
+  const { name: _name, savedFileId: _file, savedRevision: _revision, ...owed } = captured;
   return {
-    ...settled,
+    ...owed,
+    board: { ...captured.board, readings: withSparkMarks(captured.board.readings, now.board.readings) },
     ...(now.savedFileId !== undefined ? { savedFileId: now.savedFileId } : {}),
     ...(now.savedRevision !== undefined ? { savedRevision: now.savedRevision } : {}),
     ...(now.name !== undefined ? { name: now.name } : {})
   };
 }
 
-/** No reading of the board is in flight: every group has ended, so the board may be saved as it is. */
-export function lightboxBoardSettled(board: LightboxBoard): boolean {
-  return board.readings.every((group) => group.status !== 'running' && group.pending === undefined);
+/**
+ * `owed`, each spark that `now` also holds carrying `now`'s set-aside mark
+ * (the writer's, not the run's: Slice 5A.1). A spark `now` no longer holds
+ * keeps the mark it was captured with.
+ */
+function withSparkMarks(owed: LightboxReadingGroup[], now: readonly LightboxReadingGroup[]): LightboxReadingGroup[] {
+  const marks = new Map<string, number | undefined>();
+  for (const tile of now.flatMap((group) => group.tiles)) {
+    if (tile.kind === 'spark') {
+      marks.set(tile.id, tile.dismissedOrder);
+    }
+  }
+  const remarked = (tile: LightboxReadingTile): LightboxReadingTile => {
+    if (tile.kind !== 'spark' || !marks.has(tile.id) || marks.get(tile.id) === tile.dismissedOrder) {
+      return tile;
+    }
+    const { dismissedOrder: _captured, ...spark } = tile;
+    const order = marks.get(tile.id);
+    return order === undefined ? spark : { ...spark, dismissedOrder: order };
+  };
+  return owed.map((group) => (group.tiles.some((tile) => remarked(tile) !== tile) ? { ...group, tiles: group.tiles.map(remarked) } : group));
 }
 
 /**

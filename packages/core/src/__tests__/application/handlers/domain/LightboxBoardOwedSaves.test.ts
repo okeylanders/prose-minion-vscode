@@ -220,6 +220,102 @@ describe('a finished run\'s save, held in the queue while another run starts (PR
     expect(reloaded.service.currentBoard()?.readings.find((group) => group.group === 'F')?.tiles).toEqual(opinion);
   });
 
+  describe('a call run on its own after it, stopped with nothing back (PR #167 F-01 re-review)', () => {
+    /** A host with the chapter measured and saved, whose group B replies wait while `engine.holdB` is set. */
+    async function boardedHoldingB() {
+      const engine: { holdB?: ReturnType<typeof deferred<void>> } = {};
+      const host = createLightboxBoardsHost({
+        respond: async (request: InitialRunRequest): Promise<ExecutionResult> => {
+          if (groupOf(request) === 'B' && engine.holdB) {
+            await engine.holdB.promise;
+          }
+          return ok(groupOf(request), groupOf(request) === 'F' ? opinionReplyFor(request) : undefined);
+        }
+      });
+      host.writeChapter(CHAPTER_PATH, CHAPTER);
+      const tab = host.openTab();
+      await tab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+      await tab.shelf(null);
+      await tab.choose(CHAPTER_PATH);
+      await quiet();
+      expect(host.savedFiles()).toEqual([OWN]);
+      const read = await readBWithTheSaveHeld(host, tab);
+      const landed = host.service.currentBoard()?.readings.find((group) => group.group === 'B')?.tiles ?? [];
+      expect(landed.length).toBeGreaterThan(0);
+      // Group B again, on its own (decision 42): cleared on screen, its reply held.
+      engine.holdB = deferred<void>();
+      await tab.run({ mode: 'group', group: 'B' });
+      await quiet();
+      expect(host.service.currentBoard()?.readings.find((group) => group.group === 'B')).toMatchObject({ status: 'running', tiles: [] });
+      return { host, tab, read, landed, engine };
+    }
+
+    async function stop(host: Awaited<ReturnType<typeof boardedHoldingB>>['host'], tab: Awaited<ReturnType<typeof boardedHoldingB>>['tab']) {
+      const run = host.runner.activeRun('board-1');
+      expect(run?.groups).toEqual(['B']);
+      await tab.route(MessageType.LIGHTBOX_CANCEL_RUN, { boardId: run?.boardId, token: run?.token });
+      await quiet();
+      const progress = tab.posted.filter((message) => message.type === MessageType.LIGHTBOX_RUN_PROGRESS).at(-1)?.payload;
+      expect(progress).toMatchObject({ phase: 'cancelled', groups: ['B'], groupsBack: 0 });
+      expect(host.service.currentBoard()?.readings.find((group) => group.group === 'B')).toMatchObject({ status: 'cancelled', tiles: [] });
+    }
+
+    async function expectBOnDisk(host: Awaited<ReturnType<typeof boardedHoldingB>>['host'], tab: Awaited<ReturnType<typeof boardedHoldingB>>['tab'], tiles: unknown[], lenses = ['characters']) {
+      expect(host.savedFiles()).toEqual([OWN]);
+      expect(savedBoard(host).readings.find((group) => group.group === 'B')).toMatchObject({ status: 'ok', tiles });
+      const shelf = (await tab.shelf('board-1')).shelf;
+      expect(shelf.availability).toMatchObject({ lastSaveFailed: false });
+      expect(shelf.boards.find((row) => row.onScreen)?.lenses).toEqual(lenses);
+      const reloaded = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
+      const again = reloaded.openTab();
+      await again.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+      await again.shelf(null);
+      await quiet();
+      expect(reloaded.service.currentBoard()?.readings.find((group) => group.group === 'B')).toMatchObject({ status: 'ok', tiles });
+    }
+
+    it('the reviewer\'s order, Stop before the queue lets the save go: the save writes the B its run landed, not the stopped one', async () => {
+      const { host, tab, read, landed, engine } = await boardedHoldingB();
+      await stop(host, tab);
+
+      read.release();
+      await quiet();
+      engine.holdB?.resolve();
+      await quiet();
+
+      await expectBOnDisk(host, tab, landed);
+    });
+
+    it('control, the queue lets the save go before the Stop: the same B on disk, and the Stop saves nothing', async () => {
+      const { host, tab, read, landed, engine } = await boardedHoldingB();
+      read.release();
+      await quiet();
+      expect(savedBoard(host).readings.find((group) => group.group === 'B')).toMatchObject({ status: 'ok', tiles: landed });
+      const bytes = host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', OWN));
+
+      await stop(host, tab);
+      engine.holdB?.resolve();
+      await quiet();
+
+      expect(host.fileSystem.files.get(path.posix.join(WORKSPACE, 'prose-minion', 'boards', OWN))).toEqual(bytes);
+      await expectBOnDisk(host, tab, landed);
+    });
+
+    it('control, the rerun lands after the queue lets the save go: its own save writes the new B over the one owed', async () => {
+      const { host, tab, read, landed, engine } = await boardedHoldingB();
+      read.release();
+      await quiet();
+      engine.holdB?.resolve();
+      await quiet();
+
+      const fresh = host.service.currentBoard()?.readings.find((group) => group.group === 'B');
+      expect(fresh?.status).toBe('ok');
+      expect(fresh?.tiles.some((tile) => landed.some((old) => old.id === tile.id))).toBe(false);
+      // The call reads every lens of B that is on (decision 42), so its own save lists them.
+      await expectBOnDisk(host, tab, fresh?.tiles ?? [], fresh?.lenses);
+    });
+  });
+
   it('a later name given while the save waits is the one it writes', async () => {
     const { host, tab } = await boarded();
     const read = await readBWithTheSaveHeld(host, tab);
