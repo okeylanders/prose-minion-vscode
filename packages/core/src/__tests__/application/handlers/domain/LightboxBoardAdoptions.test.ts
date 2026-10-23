@@ -170,6 +170,47 @@ describe('a press still preparing yields to a newer adoption (PR #163 F-02)', ()
     expect(host.savedFiles()).toEqual([first, read].sort());
   });
 
+  it.each([
+    ['a call\'s Run', { mode: 'group', group: 'B' }],
+    ['a widget\'s Analyze', { mode: 'group', group: 'B', lens: 'voice' }],
+    ['the Opinion\'s Analyze', { mode: 'group', group: 'F', lens: 'opinion' }]
+  ] as const)('pressing %s (Slice 4I), is refused when a saved snapshot of its own board is opened, and nothing is sent or landed', async (_name, scope) => {
+    const { host, tab, first, read } = await readChapter();
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });
+    const calls = host.runInitial.mock.calls.length;
+    const estimate = await tab.estimate();
+    const prepare = host.holdPrepare();
+
+    const pressing = tab.run(scope, estimate);
+    await prepare.reached;
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-first', fileId: first });
+    expect(statuses(host)?.every((status) => status === 'not-run')).toBe(true);
+    prepare.release();
+    await pressing;
+    await quiet();
+
+    expect(host.runInitial.mock.calls.length).toBe(calls);
+    expect(statuses(host)?.every((status) => status === 'not-run')).toBe(true);
+    expect(progress(tab).at(-1)).toMatchObject({ phase: 'refused', message: BOARD_CHANGED, reestimate: true, groups: [scope.group] });
+    expect(host.savedFiles()).toEqual([first, read].sort());
+  });
+
+  it('control, the open landed first: a call\'s Run at the estimate shown before it starts and re-reads the call whole (Slice 4I)', async () => {
+    const { host, tab, first, read } = await readChapter();
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });
+    const estimate = await tab.estimate();
+    await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-first', fileId: first });
+    const calls = host.runInitial.mock.calls.length;
+
+    await tab.run({ mode: 'group', group: 'B', lens: 'voice' }, estimate);
+    await quiet();
+
+    expect(host.runInitial.mock.calls.length).toBe(calls + 1);
+    expect(host.service.currentBoard()?.readings.find((group) => group.group === 'B')).toMatchObject({
+      status: 'ok', lenses: ['characters', 'voice', 'subtext']
+    });
+  });
+
   it('control, the open landed first: a press at the estimate shown before it starts, as a snapshot of the board prices the same inputs', async () => {
     const { host, tab, first, read } = await readChapter();
     await tab.route(MessageType.LIGHTBOX_OPEN_BOARD, { requestId: 'open-read', fileId: read });

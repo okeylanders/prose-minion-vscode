@@ -28,7 +28,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
 import { buildLightboxOpinionDigest, buildLightboxOpinionUserMessage } from '@/infrastructure/lightbox/LightboxOpinionDigest';
-import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@/infrastructure/lightbox/LightboxOpinionCall';
+import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@shared/constants/lightboxOpinion';
 import { LIGHTBOX_OPINION_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxOpinionHandoff';
 import { LIGHTBOX_OPINION_PHRASING_REASONS } from '@/infrastructure/lightbox/LightboxOpinionPhrasing';
 import { prepareLightboxTileHandoff } from '@/infrastructure/lightbox/LightboxTileHandoff';

@@ -178,7 +178,7 @@ describe('LightboxReadingHandler', () => {
   it.each([
     ['another board', { boardId: 'board-old' }, 'The board changed. Read the board on screen.'],
     ['every lens off', { lensesOff: ALL_LENSES_OFF }, 'Every lens is off, so there is nothing to read.'],
-    ['no API key', { engine: false }, 'Add an OpenRouter API key in Settings to read the chapter.']
+    ['no API key', { engine: false }, 'Add an OpenRouter API key in Settings to run AI analyses.']
   ])('refuses before sending anything: %s', async (_label, variant, message) => {
     const { setLenses, run, ofType, runInitial } = await setup({ engine: (variant as { engine?: boolean }).engine });
     await setLenses((variant as { lensesOff?: typeof ALL_LENSES_OFF }).lensesOff ?? []);

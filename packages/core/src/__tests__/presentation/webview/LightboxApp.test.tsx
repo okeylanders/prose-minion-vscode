@@ -94,10 +94,10 @@ describe('LightboxApp', () => {
     expect(screen.getByLabelText('Parts of speech · repetition')).not.toBeNull();
     const motifs = screen.getByLabelText('Motifs · where they recur');
     expect(motifs.getAttribute('data-register')).toBe('read');
-    expect(within(motifs).getByText('Not read yet. Runs with the next press.')).not.toBeNull();
+    expect(within(motifs).getByText('Not analyzed yet.')).not.toBeNull();
 
     // Nothing is priced until the host estimates, so the press waits.
-    const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
+    const read = screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(true);
     expect(screen.getByText('Estimating the cost…')).not.toBeNull();
     expect(screen.queryByText(/\$\d/)).toBeNull();

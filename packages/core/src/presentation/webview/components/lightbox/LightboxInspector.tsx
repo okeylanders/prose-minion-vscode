@@ -40,7 +40,7 @@ import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxPassageWell } from '@components/lightbox/LightboxPassageWell';
 import type { LightboxPassageWellView } from '@hooks/domain/lightbox/lightboxPassages';
 
-/** What "Re-read this tile" says and does. */
+/** What "Re-analyze this tile" says and does (epic decision 48; "Re-read this tile" before). */
 export interface LightboxRereadControl {
   /** "1 call · est. $0.01" for a lens. */
   note: (lens: LightboxLensId) => string | undefined;
@@ -404,7 +404,7 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
             title={rereadReason ?? rereadNote}
             onClick={() => reread.onReread(reading.lens)}
           >
-            Re-read this tile
+            Re-analyze this tile
           </button>
           <span className="pm-lb-run-note">{rereadReason ?? rereadNote ?? '1 call'}</span>
         </div>

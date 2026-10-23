@@ -1,7 +1,9 @@
 /**
  * The run line (ADR 2026-10-19 D6, D8): the press states its calls and cost
- * first, warns when book-sized, refuses when too large, counts groups back
- * while reading, and afterwards counts the quotes checked and withheld.
+ * first, warns when book-sized, refuses when too large, counts calls back
+ * while analyzing, and afterwards counts the quotes checked and withheld.
+ * Its three presses are the writer's words (Slice 4I, epic decision 41):
+ * "Run AI analyses", "Finish" and "Re-analyze".
  */
 import type { LightboxBoard, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
@@ -25,7 +27,7 @@ describe('the run line', () => {
     expect(line(makeBoard(8), { estimate: undefined })).toEqual({
       status: 'estimating',
       note: 'Estimating the cost…',
-      action: { label: 'Read the chapter', scope: { mode: 'all' }, cost: '', disabled: true }
+      action: { label: 'Run AI analyses', scope: { mode: 'all' }, cost: '', disabled: true }
     });
   });
 
@@ -33,7 +35,7 @@ describe('the run line', () => {
     expect(line(makeBoard(8))).toEqual({
       status: 'idle',
       note: '3 calls · est. $0.04',
-      action: { label: 'Read the chapter', scope: { mode: 'all' }, cost: '3 calls · est. $0.04', disabled: false }
+      action: { label: 'Run AI analyses', scope: { mode: 'all' }, cost: '3 calls · est. $0.04', disabled: false }
     });
   });
 
@@ -58,10 +60,10 @@ describe('the run line', () => {
     expect(view.action?.disabled).toBe(false);
   });
 
-  it('needs an API key to read', () => {
+  it('needs an API key to analyze', () => {
     expect(line(makeBoard(8), { providerPaused: true }).action).toMatchObject({
       disabled: true,
-      reason: 'Add an OpenRouter API key in Settings to read the chapter.'
+      reason: 'Add an OpenRouter API key in Settings to run AI analyses.'
     });
   });
 
@@ -72,7 +74,7 @@ describe('the run line', () => {
     });
   });
 
-  it('counts the groups back while reading, and offers Stop once the host names the run', () => {
+  it('counts the calls back while analyzing, and offers Stop once the host names the run', () => {
     const board = withGroups(makeBoard(8), [
       readGroup('A'),
       { ...emptyLightboxReadingGroup('B'), status: 'running', pending: ['characters', 'voice'] },
@@ -81,12 +83,27 @@ describe('the run line', () => {
     const activeRun = { boardId: board.boardId, token: 'run-1', groups: ['A', 'B', 'C'] as LightboxReadingGroupId[] };
     expect(line(board, { activeRun })).toEqual({
       status: 'running',
-      note: 'Reading… 1 of 3 lens groups back',
+      note: 'Analyzing… 1 of 3 calls back',
       stopToken: 'run-1'
     });
     // Before the host names the run there is nothing to stop, and only the groups visibly running are counted.
-    expect(line(board)).toEqual({ status: 'running', note: 'Reading… 0 of 2 lens groups back' });
+    expect(line(board)).toEqual({ status: 'running', note: 'Analyzing… 0 of 2 calls back' });
     expect(line(makeBoard(8), { awaitingStart: true })).toEqual({ status: 'running', note: 'Starting…' });
+  });
+
+  it('says the Opinion is weighing the board when it runs last, or on its own (Slice 4I)', () => {
+    const opinionOnly = withGroups(makeBoard(8), [
+      readGroup('A'),
+      { ...emptyLightboxReadingGroup('F'), status: 'running', pending: ['opinion'] }
+    ]);
+    const alone = { boardId: opinionOnly.boardId, token: 'run-f', groups: ['F'] as LightboxReadingGroupId[] };
+    expect(line(opinionOnly, { activeRun: alone })).toEqual({
+      status: 'running',
+      note: 'Weighing the board for the Opinion… 0 of 1 call back',
+      stopToken: 'run-f'
+    });
+    const last = { ...alone, groups: ['A', 'F'] as LightboxReadingGroupId[] };
+    expect(line(opinionOnly, { activeRun: last }).note).toBe('Weighing the board for the Opinion… 1 of 2 calls back');
   });
 
   describe('everything on the line is the board\'s own (PR #149 F-03)', () => {
@@ -111,21 +128,21 @@ describe('the run line', () => {
       const ownRun = { boardId: board.boardId, token: 'run-own', groups: ['B'] as LightboxReadingGroupId[] };
       expect(line(board, { activeRun: ownRun, progress: otherProgress })).toEqual({
         status: 'running',
-        note: 'Reading… 0 of 1 lens group back',
+        note: 'Analyzing… 0 of 1 call back',
         stopToken: 'run-own'
       });
     });
   });
 
-  it('counts quotes checked and withheld once everything landed, and offers a re-read', () => {
+  it('counts quotes checked and withheld once everything landed, and offers Re-analyze', () => {
     const view = line(makeReadBoard({ paraphraseOne: true }));
     expect(view.status).toBe('done');
     // Six calls: groups A–E and the Opinion (Slice 4D).
     expect(view.note).toMatch(/^\d+ quotes checked · 1 withheld · 7 calls$/);
-    expect(view.action).toMatchObject({ label: 'Re-read', scope: { mode: 'all' } });
+    expect(view.action).toMatchObject({ label: 'Re-analyze', scope: { mode: 'all' }, disabled: false });
   });
 
-  it('says how many lenses are stale after the chapter changed, and still offers a re-read (D4)', () => {
+  it('says how many lenses are stale after the chapter changed, and still offers Re-analyze (D4)', () => {
     const read = makeReadBoard();
     const board = withGroups(read, read.readings.map((group) => ({
       ...group,
@@ -133,10 +150,10 @@ describe('the run line', () => {
     })));
     const view = line(board);
     expect(view.note).toMatch(/ · \d+ lenses stale$/);
-    expect(view.action).toMatchObject({ label: 'Re-read', scope: { mode: 'all' } });
+    expect(view.action).toMatchObject({ label: 'Re-analyze', scope: { mode: 'all' } });
   });
 
-  it('after a stop, keeps the finished groups and offers to read the rest at its own cost', () => {
+  it('after a stop, keeps the finished groups and offers Finish at its own cost', () => {
     const board = withGroups(makeBoard(8), [
       readGroup('A'),
       { ...emptyLightboxReadingGroup('B'), status: 'cancelled', error: 'Stopped before this group came back.' },
@@ -145,7 +162,14 @@ describe('the run line', () => {
     const view = line(board);
     expect(view.status).toBe('stopped');
     expect(view.note).toContain('stopped, finished groups kept');
-    expect(view.action).toMatchObject({ label: 'Read the rest', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03' });
+    expect(view.action).toMatchObject({ label: 'Finish', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03' });
+  });
+
+  it('offers Finish after one call ran on its own, priced for the calls not back yet (Slice 4I)', () => {
+    const board = withGroups(makeBoard(8), [emptyLightboxReadingGroup('A'), readGroup('B'), emptyLightboxReadingGroup('C')]);
+    const view = line(board);
+    expect(view.status).toBe('done');
+    expect(view.action).toMatchObject({ label: 'Finish', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03' });
   });
 
   it('shows a refusal for this board', () => {
@@ -159,19 +183,19 @@ describe('the run line', () => {
     const base = { estimate: makeEstimate(), lens: 'motif' as const, lensesOff: [], providerPaused: false, running: false };
     expect(lightboxRereadAvailability(base)).toEqual({ note: '1 call · est. $0.01' });
     expect(lightboxRereadAvailability({ ...base, lensesOff: ['motif'] })).toEqual({
-      reason: 'The Theme & motif lens is off. Turn it on in the rail to re-read this tile.'
+      reason: 'The Theme & motif lens is off. Turn it on in the rail to re-analyze this tile.'
     });
     expect(lightboxRereadAvailability({ ...base, estimate: undefined })).toEqual({ reason: 'Estimating the cost…' });
     expect(lightboxRereadAvailability({ ...base, lens: 'voice' })).toEqual({
-      reason: 'This tile cannot be re-read until the board is estimated.'
+      reason: 'This tile cannot be re-analyzed until the board is estimated.'
     });
     const tight = makeEstimate();
     tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
     expect(lightboxRereadAvailability({ ...base, estimate: tight })).toEqual({
-      reason: 'Re-reading this tile would send about 40,000 tokens and reserve 12,000 for the reply, ' +
+      reason: 'Re-analyzing this tile would send about 40,000 tokens and reserve 12,000 for the reply, ' +
         'more than provider/model-v1\'s 200,000-token window allows.'
     });
-    expect(lightboxRereadAvailability({ ...base, running: true }).reason).toMatch(/^A reading is running/);
+    expect(lightboxRereadAvailability({ ...base, running: true }).reason).toMatch(/^An analysis is running/);
     expect(lightboxRereadAvailability({ ...base, providerPaused: true }).reason).toMatch(/^Add an OpenRouter API key/);
   });
 

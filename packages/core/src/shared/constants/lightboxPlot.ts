@@ -130,9 +130,9 @@ export const LIGHTBOX_BASIS_LINES = {
   missingStock: 'Read Stock & signature to count the signature share.',
   missingTemplate: 'Read Template & freshness to count its subversions.',
   noBeats: 'No template beat was found, so there is no subversion count.',
-  staleStock: 'Stock & signature was read against an earlier version of this chapter, so the basis is not counted. Re-read it to count it.',
-  staleTemplate: 'Template & freshness was read against an earlier version of this chapter, so the basis is not counted. Re-read it to count it.',
-  staleBoth: 'Stock & signature and Template & freshness were read against an earlier version of this chapter, so the basis is not counted. Re-read them to count it.',
+  staleStock: 'Stock & signature was read against an earlier version of this chapter, so the basis is not counted. Re-analyze it to count it.',
+  staleTemplate: 'Template & freshness was read against an earlier version of this chapter, so the basis is not counted. Re-analyze it to count it.',
+  staleBoth: 'Stock & signature and Template & freshness were read against an earlier version of this chapter, so the basis is not counted. Re-analyze them to count it.',
   reading: 'A half of the basis is being read again; it is counted when the reading lands.'
 } as const;
 

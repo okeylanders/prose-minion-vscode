@@ -13,9 +13,12 @@
  *   the host never posts one unasked, and an answer overtaken by a newer
  *   request while its prompt files loaded is dropped, not posted late.
  * - **Validate before spend.** A press is refused, with nothing sent, when
- *   the board is not the one on screen, its estimate is no longer current,
- *   every lens is off, the board is already being read, a call is too large
- *   for the model's window, or there is no API key.
+ *   its scope is not one the board can run (`LightboxPressScope`: a call is
+ *   named by group, A–G, with at most a lens of its own; Slice 4I), the
+ *   board is not the one on screen, its estimate is no longer current,
+ *   every lens is off, the Opinion alone has nothing current to weigh, the
+ *   board is already being read, a call is too large for the model's
+ *   window, or there is no API key.
  * - **A press owns what it was priced (PR #149 F-02).** A press names the key
  *   of the estimate it was shown (`LightboxRunEstimate.key`: the board and
  *   its text, the lenses on, the context shelf's revision, the assistant
@@ -72,12 +75,7 @@ import {
 import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { startLightboxGroups, stopLightboxGroups } from '@/infrastructure/lightbox/LightboxReadingState';
-import {
-  isLightboxLensId,
-  LIGHTBOX_LENSES,
-  lightboxPlannedCalls,
-  lightboxRereadLenses
-} from '@shared/constants/lightbox';
+import { isLightboxLensId } from '@shared/constants/lightbox';
 import {
   LightboxActiveRun,
   LightboxAddContextFilesMessage,
@@ -97,6 +95,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
 import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
 import { lightboxOpinionPort, lightboxPressRun } from '@handlers/domain/LightboxPressRun';
+import { lightboxEstimateCalls, lightboxPressCalls, lightboxPressKeptLens, parseLightboxRunScope } from '@handlers/domain/LightboxPressScope';
 import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 
 const SOURCE = 'extension.lightbox';
@@ -200,18 +199,22 @@ export class LightboxReadingHandler {
 
   async handleRun(message: LightboxRunMessage): Promise<void> {
     this.subscribe();
-    const { boardId, scope, estimateKey, model } = message.payload ?? ({} as LightboxRunMessage['payload']);
-    const lens = scope?.mode === 'lens' ? scope.lens : undefined;
+    const { boardId, estimateKey, model } = message.payload ?? ({} as LightboxRunMessage['payload']);
     const refuse = (text: string, groups: LightboxReadingGroupId[] = [], reestimate = false): void => {
       this.outputChannel.appendLine(`[LightboxReadingHandler] Run refused: ${text}`);
       this.postProgress({
         boardId, phase: 'refused', groups, groupsBack: 0, outputCharacters: 0, message: text, ...(reestimate ? { reestimate: true } : {})
       });
     };
-    if (!scope || !['all', 'rest', 'lens'].includes(scope.mode) || (scope.mode === 'lens' && !isLightboxLensId(lens))) {
-      refuse('That is not a reading this board can run.');
+    // The webview names a scope; the host decides what it reads (`LightboxPressScope`, Slice 4I).
+    const parsed = parseLightboxRunScope(message.payload?.scope);
+    if ('refusal' in parsed) {
+      refuse(parsed.refusal);
       return;
     }
+    const { scope } = parsed;
+    // A tile's re-read, and the Opinion run on its own (decision 47), keep their reading until the new one lands.
+    const lens = lightboxPressKeptLens(scope);
     // The press's snapshot, and its board's reservation, before the first await.
     const press = this.pressSnapshot(boardId);
     if (!press) {
@@ -227,11 +230,12 @@ export class LightboxReadingHandler {
       refuse(MODEL_NOT_IN_USE, [], true);
       return;
     }
-    const calls = lightboxPlannedCalls(this.lensesOff, scope, press.board.readings);
-    if (calls.length === 0) {
-      refuse(scope.mode === 'rest' ? 'Every group is already read.' : 'Every lens is off, so there is nothing to read.');
+    const planned = lightboxPressCalls(scope, this.lensesOff, press.board);
+    if ('refusal' in planned) {
+      refuse(planned.refusal);
       return;
     }
+    const { calls } = planned;
     const groups = calls.map((call) => call.group);
     const held = this.runner.reserve(boardId, groups, { lens });
     if (!held.reserved) {
@@ -405,11 +409,7 @@ export class LightboxReadingHandler {
       });
       return;
     }
-    const groups = lightboxPlannedCalls(this.lensesOff, { mode: 'all' });
-    // What each tile's "Re-read" sends: its lens, with any read together with it (Slice 4C).
-    const rereads = LIGHTBOX_LENSES
-      .filter((lens) => !this.lensesOff.includes(lens.id))
-      .map((lens) => ({ group: lens.group, lenses: lightboxRereadLenses(lens.id, this.lensesOff) }));
+    const { groups, rereads } = lightboxEstimateCalls(this.lensesOff);
     try {
       const estimate = await this.runner.estimate(press.source, groups, rereads, press);
       if (this.disposed || sequence !== this.estimateSequence) {

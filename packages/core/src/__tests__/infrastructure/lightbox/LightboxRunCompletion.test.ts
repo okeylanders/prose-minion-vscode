@@ -41,7 +41,7 @@ const RUN_THEN_ASCII = `${'漢'.repeat(150_000)} Alice waited.`;
 const UNSPACED_LATIN = 'Alicewaitedquietly'.repeat(10_000).slice(0, ENDS_IN_ONE_RUN.length);
 
 const SETUP_FAILED = 'The chapter could not be prepared for checking quotes, so nothing was sent.';
-const CHECK_FAILED = 'The reading came back but could not be checked against the chapter. Read the rest to try again.';
+const CHECK_FAILED = 'The reading came back but could not be checked against the chapter. Press Finish or Analyze to try again.';
 
 const sourceOf = (paragraphs: readonly string[]): LightboxRunSource => ({
   boardId: 'board-1',

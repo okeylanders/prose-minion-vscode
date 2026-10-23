@@ -102,11 +102,11 @@ export function lightboxEndingsLane(board: LightboxBoard, lensOn: boolean): Ligh
         ? 'The paragraph endings did not come back.'
         : view.phase === 'ok'
           ? 'The paragraph endings were withheld.'
-          : 'Endings are a reading. Not read yet.';
+          : 'Endings are a reading. Not analyzed yet.';
     return { stale: view.stale, note };
   }
   if (tile.endings.length !== board.ribbon.length) {
-    return { stale: view.stale, note: 'The endings were read on other paragraphs and cannot be drawn on these. Re-read to read this version.', tileId: tile.id };
+    return { stale: view.stale, note: 'The endings were read on other paragraphs and cannot be drawn on these. Re-analyze to read this version.', tileId: tile.id };
   }
   const note = !view.stale
     ? 'How each paragraph ends, as read: lands, holds or opens.'

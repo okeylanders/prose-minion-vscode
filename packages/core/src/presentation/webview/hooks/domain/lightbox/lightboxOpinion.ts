@@ -157,7 +157,7 @@ export function lightboxOpinionBringBlock(
   if (standing.stale) {
     return standing.earlierRule
       ? LIGHTBOX_OPINION_EARLIER_RULE
-      : 'Something this Opinion cites changed since it was read. Re-read the Opinion before bringing it.';
+      : 'Something this Opinion cites changed since it was read. Re-analyze the Opinion before bringing it.';
   }
   const quotes = view.why.flatMap((point) => point.observations)
     .flatMap((id) => tile.observations.find((observation) => observation.id === id)?.cites ?? [])

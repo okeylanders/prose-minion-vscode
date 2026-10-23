@@ -44,7 +44,7 @@ export interface LightboxRejection {
   diagnostic?: string;
 }
 
-const TRY_AGAIN = 'Read the rest to try again.';
+const TRY_AGAIN = 'Press Finish or Analyze to try again.';
 /** Bounds the recovery sidecar's note about an unexpected decode failure. */
 const DIAGNOSTIC_CHARACTERS = 2_000;
 
@@ -136,7 +136,7 @@ export function describeLightboxHostFailure(error: unknown, stage: 'setup' | 'ch
 function unavailableMessage(reason: AgentRunUnavailableReason, retryAfterSeconds?: number): string {
   switch (reason) {
     case 'missing-credentials':
-      return 'Add an OpenRouter API key in Settings to read the chapter.';
+      return 'Add an OpenRouter API key in Settings to run AI analyses.';
     case 'authentication':
       return 'OpenRouter rejected the saved API key. Update it in Settings, then read the rest.';
     case 'insufficient-credits':
@@ -148,8 +148,8 @@ function unavailableMessage(reason: AgentRunUnavailableReason, retryAfterSeconds
         'turn off lenses, or choose a model with a larger window.';
     case 'rate-limited':
       return Number.isSafeInteger(retryAfterSeconds) && (retryAfterSeconds as number) > 0
-        ? `OpenRouter is rate limiting requests. Read the rest in about ${retryAfterSeconds} seconds.`
-        : 'OpenRouter is rate limiting requests. Read the rest in a moment.';
+        ? `OpenRouter is rate limiting requests. Try again in about ${retryAfterSeconds} seconds.`
+        : 'OpenRouter is rate limiting requests. Try again in a moment.';
     case 'provider-unavailable':
       return `The model's provider is unavailable right now. ${TRY_AGAIN}`;
     default: {

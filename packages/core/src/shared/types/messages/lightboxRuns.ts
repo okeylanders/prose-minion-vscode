@@ -14,12 +14,22 @@ import type { LightboxLensId, LightboxReadingGroup, LightboxReadingGroupId } fro
 // ---------------------------------------------------------------------------
 
 /**
- * What a press reads: every group with a lens on, only the groups not yet
- * read (after a stop or a failure), or one lens (a tile's "Re-read").
+ * What a press reads (Slice 4I adds `group`):
+ * - `all`: every call with a lens on ("Run AI analyses", "Re-analyze");
+ * - `rest`: only the calls not yet read, after a stop or a failure ("Finish");
+ * - `group`: one call, by its group (a widget's "Analyze", a call's "Run" in
+ *   the Lenses panel). The host resolves its lenses: the call's lenses that
+ *   are on, with `lens` added even when it is off (the widget pressed). The
+ *   webview never names a list of lenses. Group F, the Opinion, reads the
+ *   board as it stands. A call that already holds readings is read again
+ *   whole, cleared first, as in a full run;
+ * - `lens`: one lens, with any lens read together with it (a tile's
+ *   "Re-read"), leaving the group's other readings in place.
  */
 export type LightboxRunScope =
   | { mode: 'all' }
   | { mode: 'rest' }
+  | { mode: 'group'; group: LightboxReadingGroupId; lens?: LightboxLensId }
   | { mode: 'lens'; lens: LightboxLensId };
 
 /**

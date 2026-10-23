@@ -207,7 +207,7 @@ describe('opening a saved board (epic decision 29)', () => {
     const result = tab.posted.filter((message) => message.type === MessageType.LIGHTBOX_HAND_OFF_RESULT).at(-1);
     expect(result?.payload).toMatchObject({ ok: false, message: LIGHTBOX_TILE_HANDOFF_REFUSALS.snapshotChanged });
     expect(LIGHTBOX_TILE_HANDOFF_REFUSALS.snapshotChanged).toBe(
-      'This saved board was read from an earlier text of the chapter. Choose Read the current text, then read the lens again before bringing it.'
+      'This saved board was read from an earlier text of the chapter. Choose Read the current text, then re-analyze the lens before bringing it.'
     );
 
     // "Read the current text": the file as it is now, the saved readings carried, stale.

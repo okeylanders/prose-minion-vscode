@@ -199,3 +199,22 @@
   font-size: 10.5px;
   color: var(--pm-faint);
 }
+
+/* The tension line under the ribbon, with call A's Analyze beside it (Slice 4I). */
+[data-pm-surface="lightbox"] .pm-lb-tension-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 6px 0 0 84px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-row > .pm-lb-ribbon-note {
+  margin: 0;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-row > .pm-lb-tension-note {
+  width: auto;
+  margin-left: -6px;
+}

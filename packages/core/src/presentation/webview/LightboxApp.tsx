@@ -13,6 +13,12 @@
  * the Lightbox, which treats it as the host's confirmation of the model and
  * its prices and asks for a fresh estimate (PR #149 F-03 re-review).
  *
+ * Each call can also run on its own (Slice 4I): every AI-read widget's
+ * Analyze and each call's Run in the Lenses panel come from one view model
+ * (`lightboxCallControls`), over the same board, estimate and run state as
+ * the run line, and press through the same `run(scope)`. The widgets read it
+ * from `LightboxCallControlsProvider`, around the board.
+ *
  * "Choose from project…" and the context list's "Add from project…" open the
  * shared project picker (2026-10-20) as an overlay inside the frame:
  * `useLightboxProjectFiles` owns its catalog and routes, and each use's
@@ -68,6 +74,7 @@ import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { LightboxWorkshopTray } from '@components/lightbox/LightboxWorkshopTray';
 import { LightboxProjectPicker } from '@components/lightbox/LightboxProjectPicker';
 import type { LightboxOpinionActions } from '@components/lightbox/LightboxOpinion';
+import { LightboxCallControlsProvider, type LightboxCallControlsValue } from '@components/lightbox/LightboxCallButton';
 import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxHandoff } from '@hooks/domain/useLightboxHandoff';
@@ -84,6 +91,7 @@ import {
   lightboxCallsNote,
   lightboxRereadAvailability
 } from '@hooks/domain/lightbox/lightboxRunLine';
+import { lightboxCallControls } from '@hooks/domain/lightbox/lightboxCallControls';
 import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import { lightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
 import {
@@ -171,6 +179,10 @@ export const LightboxApp: React.FC = () => {
   );
   const running = runLine?.status === 'running';
   const { estimate, lensesOff, run } = lightbox;
+  // Each call's own run (Slice 4I): every widget's Analyze and each call's Run, over what the run line reads.
+  const callControls = React.useMemo<LightboxCallControlsValue | null>(() => (board
+    ? { controls: lightboxCallControls({ board, estimate, lensesOff, providerPaused: chrome.providerPaused, running }), onRun: run }
+    : null), [board, chrome.providerPaused, estimate, lensesOff, run, running]);
   const reread = React.useMemo(() => {
     const availability = (lens: LightboxLensId) =>
       lightboxRereadAvailability({ estimate, lens, lensesOff, providerPaused: chrome.providerPaused, running });
@@ -201,18 +213,14 @@ export const LightboxApp: React.FC = () => {
     : undefined), [board, bringTile, handoff, openWorkshop, opinionChosen, tray]);
 
   const { setSparkDismissed } = lightbox;
-  // The Opinion's tabs, its own re-read (priced "up to" its digest bound) and its Bring (Slice 4D).
+  // The Opinion's tabs and its Bring (Slice 4D); its Analyze is its frame's (Slice 4I).
   const opinionActions = React.useMemo<LightboxOpinionActions>(() => ({
     chosen: opinionChosen,
     onChoose: chooseOpinionView,
-    reread: {
-      ...lightboxRereadAvailability({ estimate, lens: 'opinion', lensesOff, providerPaused: chrome.providerPaused, running }),
-      onReread: () => run({ mode: 'lens', lens: 'opinion' })
-    },
     ...(board
       ? { bring: { view: (tile, view) => lightboxBringView(board, tile, handoff, tray, view), onBring: bringTile, onOpenWorkshop: openWorkshop } }
       : {})
-  }), [board, bringTile, chooseOpinionView, chrome.providerPaused, estimate, handoff, lensesOff, openWorkshop, opinionChosen, run, running, tray]);
+  }), [board, bringTile, chooseOpinionView, handoff, openWorkshop, opinionChosen, tray]);
   const tileActions = React.useMemo(() => ({
     opinion: opinionActions,
     onDismissSpark: setSparkDismissed,
@@ -363,6 +371,7 @@ export const LightboxApp: React.FC = () => {
             <LightboxLensesPanel
               lensesOff={lightbox.lensesOff}
               costNote={lightbox.estimate === undefined ? 'Estimating…' : lightboxCallsNote(lightbox.estimate?.groups ?? [])}
+              calls={callControls ? { controls: callControls.controls.group, onRun: callControls.onRun } : undefined}
               onToggle={lightbox.toggleLens}
             />
           </>
@@ -371,21 +380,23 @@ export const LightboxApp: React.FC = () => {
       main={{
         label: 'Board',
         content: (
-          <LightboxBoardMain
-            board={lightbox.board}
-            refusal={lightbox.refusal}
-            filter={lightbox.filter}
-            lensesOff={lightbox.lensesOff}
-            focus={focus}
-            runLine={runLine}
-            onFilter={lightbox.setFilter}
-            onChooseFromProject={chooseFromProject}
-            onDismissRefusal={lightbox.dismissRefusal}
-            onRun={lightbox.run}
-            onStop={lightbox.cancelRun}
-            actions={tileActions}
-            changedFile={changedFile}
-          />
+          <LightboxCallControlsProvider value={callControls}>
+            <LightboxBoardMain
+              board={lightbox.board}
+              refusal={lightbox.refusal}
+              filter={lightbox.filter}
+              lensesOff={lightbox.lensesOff}
+              focus={focus}
+              runLine={runLine}
+              onFilter={lightbox.setFilter}
+              onChooseFromProject={chooseFromProject}
+              onDismissRefusal={lightbox.dismissRefusal}
+              onRun={lightbox.run}
+              onStop={lightbox.cancelRun}
+              actions={tileActions}
+              changedFile={changedFile}
+            />
+          </LightboxCallControlsProvider>
         )
       }}
       aside={{

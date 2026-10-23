@@ -63,9 +63,9 @@ describe('a thread across the ribbon', () => {
 describe('the read lanes\' notes', () => {
   it('says a lane is off, not read yet, or drawn, and when it is stale', () => {
     const unread = withE(emptyLightboxReadingGroup('E'));
-    expect(lightboxMovementsLane(unread, true).note).toBe('Summary & movements is a reading. Not read yet.');
+    expect(lightboxMovementsLane(unread, true).note).toBe('Summary & movements is a reading. Not analyzed yet.');
     expect(lightboxMovementsLane(withE(), false).note).toBe('The Summary & movements lens is off.');
-    expect(lightboxPressureLaneView(unread, true)).toEqual({ stale: false, note: 'Pressure is a reading. Not read yet.' });
+    expect(lightboxPressureLaneView(unread, true)).toEqual({ stale: false, note: 'Pressure is a reading. Not analyzed yet.' });
     expect(lightboxPressureLaneView(withE(), true).counts).toEqual([0, 0, 0, 1, 2, 3, 3, 3]);
     const stale = withE({ ...readGroup('E'), staleLenses: [{ lens: 'summary', readAgainst: 'old' }] });
     expect(lightboxMovementsLane(stale, true)).toMatchObject({

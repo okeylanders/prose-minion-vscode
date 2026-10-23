@@ -230,8 +230,10 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(), refusal: null });
     const lenses = screen.getByLabelText('Lenses');
     const toggle = within(lenses).getByRole('checkbox', { name: /^Craft steering/ });
-    expect(toggle.closest('label')?.textContent).toBe('Craft steeringcall G');
-    expect(lenses.textContent).toContain('as up to 7 grouped calls');
+    // Listed under call G's header, which holds its Run (Slice 4I); the label still names its call.
+    expect(toggle.closest('label')?.textContent).toBe('Craft steering · call G');
+    expect(within(within(lenses).getByRole('group', { name: 'Call G' })).getByRole('button', { name: /^Run G, call G: Craft steering/ })).not.toBeNull();
+    expect(lenses.textContent).toContain('Run AI analyses makes up to 7 calls');
     fireEvent.click(toggle);
     expect(posted(MessageType.LIGHTBOX_SET_LENSES).at(-1)).toEqual(expect.objectContaining({
       payload: expect.objectContaining({ lensesOff: ['steering'] })
