@@ -1034,6 +1034,8 @@ const LIGHTBOX_MODULES = [
   // Slice 5A.1: a saved board's name, one rule for the codec, the route and the rail (epic decision 33).
   'shared/constants/lightboxBoardName.ts',
   'shared/constants/lightboxSteering.ts',
+  // Slice 4H: clipping at a surface (the safety ceiling, a Workshop tile's bounds).
+  'shared/constants/lightboxClip.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
   'infrastructure/lightbox/LightboxMeasureRules.ts',
@@ -1045,6 +1047,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxReadingWire.ts',
   'infrastructure/lightbox/LightboxReadingCodec.ts',
   'infrastructure/lightbox/LightboxReadingFields.ts',
+  // Slice 4H: a group's frame, its sentinels and a reply cut off at the output ceiling; its JSON goes through `@parsers/ModelJsonRepair`.
+  'infrastructure/lightbox/LightboxReadingFrame.ts',
   'infrastructure/lightbox/LightboxGravityCodec.ts',
   'infrastructure/lightbox/LightboxGravityCounts.ts',
   'infrastructure/lightbox/LightboxGravityTiles.ts',
@@ -1909,6 +1913,24 @@ describe('architectural boundaries', () => {
       SRC_ROOT,
       'presentation/webview/hooks/domain/useWorkshop.ts'
     ))).toBe(false);
+  });
+
+  it('keeps the shared model-output parsers feature-agnostic: they import only one another (Lightbox Slice 4H)', () => {
+    const parsers = path.join(SRC_ROOT, 'infrastructure', 'api', 'parsers');
+    const files = collectSourceFiles(parsers);
+    expect(files.map((file) => path.relative(SRC_ROOT, file))).toEqual(expect.arrayContaining([
+      'infrastructure/api/parsers/ModelJsonRepair.ts',
+      'infrastructure/api/parsers/ModelJsonTokens.ts'
+    ]));
+    expect(files.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)).toEqual([]);
+    // A parser any feature may call (Lightbox now; the Workshop widgets later) names no feature, host or platform module.
+    const outside = files.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .filter(({ module }) => !module.startsWith('@parsers/') && !module.startsWith('./'))
+      .map(({ module }) => `${path.relative(SRC_ROOT, file)} -> ${module}`));
+    expect(outside).toEqual([]);
+    // And no Lightbox module keeps a JSON repair of its own: the frame reads its JSON through the shared parser.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'lightbox', 'LightboxReadingFrame.ts'), 'utf8'))
+      .toMatch(/from '@parsers\/ModelJsonRepair'/);
   });
 
   it('lists every Lightbox module, each under 500 lines (ADR 2026-10-19 D13)', () => {

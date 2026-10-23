@@ -5,7 +5,9 @@
  * known; a throw here withholds the whole block, and an item that breaks its
  * own rules is withheld by its title (a host title where the item has none).
  *
- * Rules enforced here, not only asked for in the prompt:
+ * Counts and lengths the prompt states are asks (Slice 4H): more beats,
+ * phrases, echoes or handoffs than asked are read and shown. Rules enforced
+ * here, not only asked for in the prompt:
  * - **Stock.** The `economy` object is required (its beats may be empty);
  *   each beat's tier and each familiar phrase's kind is in its vocabulary.
  *   An echo carries no likelihood: a `%` or "percent" in its title, in what
@@ -39,7 +41,9 @@ import {
   decodeItems,
   evidence,
   LIGHTBOX_BARE_DIGIT,
+  oneOf,
   paragraphNumber,
+  singleQuote,
   strictObject,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
@@ -56,8 +60,7 @@ import {
   type LightboxDecodedNumberReading,
   type LightboxDecodedNumbersBlock,
   type LightboxDecodedRhythmBlock,
-  type LightboxDecodedStockBlock,
-  type LightboxWireQuote
+  type LightboxDecodedStockBlock
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxNumberLabel } from '@/infrastructure/lightbox/LightboxNumbers';
 import { isLightboxNumberStat } from '@shared/constants/lightbox';
@@ -77,7 +80,7 @@ const LIKELIHOOD = /%|\bper\s?cent\b/i;
 export function decodeStockBlock(value: unknown, path: string, friction: string): LightboxDecodedStockBlock {
   const block = strictObject(value, path, ['economy', 'signature', 'familiar', 'airLocks', 'echoes', 'friction']);
   const economy = strictObject(block.economy, `${path}.economy`, ['note', 'beats']);
-  const beats = decodeItems(economy.beats, `${path}.economy.beats`, B.stockBeats, 'beat', (item, itemPath) => {
+  const beats = decodeItems(economy.beats, `${path}.economy.beats`, 'beat', (item, itemPath) => {
     const beat = strictObject(item, itemPath, ['para', 'quote', 'tier']);
     return {
       para: paragraphNumber(beat.para, `${itemPath}.para`),
@@ -85,10 +88,10 @@ export function decodeStockBlock(value: unknown, path: string, friction: string)
       tier: oneOf(beat.tier, `${itemPath}.tier`, LIGHTBOX_STOCK_TIERS, 'functional, decorated, weighted or signature')
     };
   });
-  const signature = decodeItems(block.signature, `${path}.signature`, B.signaturePhrases, 'signature phrase', notedLine);
-  const familiar = decodeItems(block.familiar, `${path}.familiar`, B.familiarPhrases, 'familiar phrase', decodeFamiliar);
-  const airLocks = decodeItems(block.airLocks, `${path}.airLocks`, B.airLocks, 'air-lock', notedLine);
-  const echoes = decodeItems(block.echoes, `${path}.echoes`, B.echoes, 'echo', decodeEcho);
+  const signature = decodeItems(block.signature, `${path}.signature`, 'signature phrase', notedLine);
+  const familiar = decodeItems(block.familiar, `${path}.familiar`, 'familiar phrase', decodeFamiliar);
+  const airLocks = decodeItems(block.airLocks, `${path}.airLocks`, 'air-lock', notedLine);
+  const echoes = decodeItems(block.echoes, `${path}.echoes`, 'echo', decodeEcho);
   return {
     lens: 'stock',
     economy: { note: text(economy.note, `${path}.economy.note`, B.claimCharacters), beats: beats.items },
@@ -114,10 +117,11 @@ export function decodeRhythmBlock(
   columnCount: number
 ): LightboxDecodedRhythmBlock {
   const block = strictObject(value, path, ['endings', 'movement', 'evidence', 'handoffs', 'friction']);
+  // One ending per ribbon column: a structural rule, so the count is exact.
   boundedArrayAt(block.endings, `${path}.endings`, columnCount, columnCount, 'endings, one per ribbon column');
   const endings = block.endings.map((ending, index) =>
     oneOf(ending, `${path}.endings[${index}]`, LIGHTBOX_PARAGRAPH_ENDINGS, 'lands, holds or opens'));
-  const handoffs = decodeItems(block.handoffs, `${path}.handoffs`, B.handoffs, 'handoff', decodeHandoff);
+  const handoffs = decodeItems(block.handoffs, `${path}.handoffs`, 'handoff', decodeHandoff);
   return {
     lens: 'rhythm',
     endings,
@@ -131,7 +135,8 @@ export function decodeRhythmBlock(
 
 export function decodeNumbersBlock(value: unknown, path: string, friction: string): LightboxDecodedNumbersBlock {
   const block = strictObject(value, path, ['items', 'friction']);
-  const decoded = decodeItems(block.items, `${path}.items`, B.numberReadings, 'reading', decodeNumberReading);
+  // At most one reading per figure: held by the figure, a repeat withheld by its title, never by the list's length.
+  const decoded = decodeItems(block.items, `${path}.items`, 'reading', decodeNumberReading);
   const seen = new Set<string>();
   const items = decoded.items.filter((item) => {
     if (seen.has(item.stat)) {
@@ -208,16 +213,4 @@ function decodeNumberReading(item: Record<string, unknown>, path: string): Light
     claim,
     evidence: evidence(reading.evidence, `${path}.evidence`, 1)
   };
-}
-
-function singleQuote(value: unknown, path: string): LightboxWireQuote {
-  const quote = strictObject(value, path, ['para', 'quote']);
-  return { para: paragraphNumber(quote.para, `${path}.para`), quote: text(quote.quote, `${path}.quote`, B.quoteCharacters) };
-}
-
-function oneOf<T extends string>(value: unknown, path: string, allowed: readonly T[], expected: string): T {
-  if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    shapeError(path, expected);
-  }
-  return value as T;
 }

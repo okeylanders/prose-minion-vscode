@@ -149,7 +149,7 @@ export function makeEstimate(overrides: Partial<LightboxRunEstimate> = {}): Ligh
     lenses,
     inputTokens: 3_000,
     expectedOutputTokens: 900,
-    reservedOutputTokens: 8_000,
+    reservedOutputTokens: 12_000,
     fit: 'fits' as const,
     costUsd
   });

@@ -44,6 +44,20 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(shared).toContain(`The whole response stays under ${n(B.groupResponseCharacters)} characters.`);
   });
 
+  it('states asks only, never the safety ceiling past them (Slice 4H)', () => {
+    const bundle = [shared, ...(Object.keys(LIGHTBOX_PROMPT_FILES.lenses) as Array<keyof typeof LIGHTBOX_PROMPT_FILES.lenses>).map(lens)].join('\n');
+    expect(bundle).not.toMatch(/\bsafety\b/i);
+    const asks = [
+      B.quoteCharacters, B.claimCharacters, B.frictionCharacters, B.labelCharacters, B.noteCharacters, B.sparkCharacters,
+      B.opinionObservationCharacters, B.opinionHeadlineCharacters, B.opinionBodyCharacters, B.opinionWhyCharacters,
+      B.steeringWhyCharacters, B.steeringNudgeCharacters, B.steeringExampleCharacters
+    ];
+    for (const ask of asks) {
+      expect(bundle).toContain(`${n(ask)} characters`);
+      expect(bundle).not.toContain(`${n(ask * B.safetyMultiple)} characters`);
+    }
+  });
+
   it('states each lens\'s field ceilings and counts', () => {
     expect(lens('headline')).toContain(`one sentence, at most ${B.noteCharacters} characters`);
     expect(lens('headline')).toContain(`\`terms\`: 1–${B.termsPerClaim} words`);
@@ -243,12 +257,15 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(B.opinionQuotesPerItem).toBe(3);
     expect(opinion).toContain(`\`observations\`: ${LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS}–${B.opinionObservations} observations about the chapter`);
     expect(opinion).toContain(`\`id\`: \`O1\` to \`O${B.opinionObservations}\`, each used once.`);
+    // The prompt asks for O1 to O6; the grammar reads more, since more observations than asked are shown (Slice 4H).
     expect([
       LIGHTBOX_OPINION_OBSERVATION_ID.test('O1'),
       LIGHTBOX_OPINION_OBSERVATION_ID.test(`O${B.opinionObservations}`),
       LIGHTBOX_OPINION_OBSERVATION_ID.test(`O${B.opinionObservations + 1}`),
-      LIGHTBOX_OPINION_OBSERVATION_ID.test('O0')
-    ]).toEqual([true, true, false, false]);
+      LIGHTBOX_OPINION_OBSERVATION_ID.test(`O${B.opinionObservations * B.safetyMultiple}`),
+      LIGHTBOX_OPINION_OBSERVATION_ID.test('O0'),
+      LIGHTBOX_OPINION_OBSERVATION_ID.test('O100')
+    ]).toEqual([true, true, true, true, false, false]);
     expect(opinion).toContain(`\`text\`: one sentence, at most ${B.opinionObservationCharacters} characters`);
     expect(opinion).toContain(`\`cites\`: 1–${B.opinionCitesPerObservation} board items the observation stands on`);
     expect(opinion).toContain(`\`headline\`: one sentence, at most ${B.opinionHeadlineCharacters} characters`);

@@ -108,11 +108,22 @@ export interface PromptBudgets {
    * the tension arc is read per column (open question 3, Slice 2B).
    *
    * The rest bound one reading group's call (Slice 2B): its output ceiling
-   * (the engine's `maxTokens`, which the fit check reserves), the whole
-   * response the codec accepts, and the per-field and per-block ceilings the
-   * prompt bundle states and the codec enforces block by block. Slice 3 adds
-   * gravity's borrowed fields, their terms, collisions and literal set-asides,
-   * and the palette's clusters, cluster words, swatches and swatch words.
+   * (the engine's `maxTokens`, which the fit check reserves and the provider
+   * enforces), the whole response the prompt asks for, and the per-field and
+   * per-block numbers the prompt bundle states. Slice 3 adds gravity's
+   * borrowed fields, their terms, collisions and literal set-asides, and the
+   * palette's clusters, cluster words, swatches and swatch words.
+   *
+   * **Asks, not gates (Slice 4H, epic decisions 37–40).** Every character
+   * and item number below that a prompt states is what the prompt *asks*
+   * for. The codec no longer withholds a field, an item or a block for
+   * running past one: a longer note, or more quotes or beats than asked, is
+   * shown. What still withholds is a real fault (a missing or mistyped
+   * field, a value outside its vocabulary, fewer items than a stated
+   * minimum, a quote the verifier cannot find, a structural rule such as
+   * movements tiling the chapter). One safety ceiling, `safetyMultiple`
+   * times a field's ask (never stated in a prompt), clips a runaway field
+   * with an ellipsis, counted and logged; it never withholds.
    */
   readonly lightbox: Readonly<{
     sourceWords: number;
@@ -179,7 +190,7 @@ export interface PromptBudgets {
     movements: number;
     /** Quotes a synopsis may give; at least two must be found. */
     synopsisQuotes: number;
-    /** Sentences a synopsis may run to (the prose-stats sentence rule). */
+    /** Sentences a synopsis is asked to run to (the prose-stats sentence rule). */
     synopsisSentences: number;
     /**
      * The Opinion's digest of the board (Slice 4D), in the engine's own
@@ -198,7 +209,7 @@ export interface PromptBudgets {
     /** Board items one observation may cite. */
     opinionCitesPerObservation: number;
     opinionObservationCharacters: number;
-    /** A view's headline, body and Why points fit a Workshop tile's title, claim and points, so a brought view travels whole. */
+    /** A view's headline, body and Why points: asks. Bring clips each to the Workshop tile's title, claim and point at that surface (Slice 4H). */
     opinionHeadlineCharacters: number;
     opinionBodyCharacters: number;
     /** Why points one view may give (at least one), each citing at most `opinionCitesPerObservation` observations. */
@@ -208,14 +219,22 @@ export interface PromptBudgets {
     steeringNotes: number;
     /** A note's why: one line on how the instance works where it stands. */
     steeringWhyCharacters: number;
-    /** A note's nudge: the craft move, named, worth a look. Within a Workshop tile's point, so a brought note travels whole. */
+    /** A note's nudge: the craft move, named, worth a look. An ask; Bring clips it to a Workshop tile's point (Slice 4H). */
     steeringNudgeCharacters: number;
     /** A note's one example (epic decision 23): its `before`, a run of the checked quote, in words. */
     steeringExampleBeforeWords: number;
-    /** Its `after`, one way the move could go, in words: phrase-level, never a passage. */
+    /** Its `after`, one way the move could go, in words: phrase-level, as asked. */
     steeringExampleAfterWords: number;
-    /** Either side of the example, in characters: both, with the arrow between, fit one Workshop tile point. */
+    /** Either side of the example, in characters, as asked. Bring clips the pair, with the arrow between, to one Workshop tile point (Slice 4H). */
     steeringExampleCharacters: number;
+    /**
+     * The one safety ceiling (Slice 4H): a field runs to at most this many
+     * times its ask before the codec clips it with an ellipsis, and a whole
+     * response to this many times `groupResponseCharacters` before it is
+     * refused. Never stated in a prompt: it protects layout and file sizes
+     * against a runaway field, and nothing else.
+     */
+    safetyMultiple: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -445,13 +464,13 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     sourceWords: 50_000,
     chapterWords: 12_000,
     ribbonColumns: 96,
-    groupOutputTokens: 8_000,
-    groupResponseCharacters: 32_000,
-    quoteCharacters: 240,
-    claimCharacters: 320,
-    frictionCharacters: 280,
-    labelCharacters: 60,
-    noteCharacters: 120,
+    groupOutputTokens: 12_000,
+    groupResponseCharacters: 48_000,
+    quoteCharacters: 300,
+    claimCharacters: 400,
+    frictionCharacters: 360,
+    labelCharacters: 80,
+    noteCharacters: 160,
     quotesPerClaim: 3,
     termsPerClaim: 5,
     motifs: 4,
@@ -472,7 +491,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     subtextPairs: 4,
     subtextContextQuotes: 2,
     sparks: 4,
-    sparkCharacters: 240,
+    sparkCharacters: 300,
     stockBeats: 40,
     signaturePhrases: 4,
     familiarPhrases: 6,
@@ -487,24 +506,25 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     artifactSteps: 5,
     movements: 8,
     synopsisQuotes: 3,
-    synopsisSentences: 4,
+    synopsisSentences: 5,
     opinionDigestTokens: 9_000,
     opinionQuotesPerItem: 3,
     opinionParagraphsPerLine: 12,
     opinionSections: 24,
     opinionObservations: 6,
     opinionCitesPerObservation: 3,
-    opinionObservationCharacters: 200,
-    opinionHeadlineCharacters: 120,
-    opinionBodyCharacters: 320,
+    opinionObservationCharacters: 260,
+    opinionHeadlineCharacters: 160,
+    opinionBodyCharacters: 400,
     opinionWhyPoints: 4,
-    opinionWhyCharacters: 120,
+    opinionWhyCharacters: 160,
     steeringNotes: 4,
-    steeringWhyCharacters: 160,
-    steeringNudgeCharacters: 120,
+    steeringWhyCharacters: 200,
+    steeringNudgeCharacters: 160,
     steeringExampleBeforeWords: 8,
     steeringExampleAfterWords: 6,
-    steeringExampleCharacters: 56
+    steeringExampleCharacters: 72,
+    safetyMultiple: 8
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

@@ -36,6 +36,15 @@ import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinio
 /** Host words for an Opinion cited under another basis rule: its standing note, and why Bring is refused. */
 export const LIGHTBOX_OPINION_EARLIER_RULE = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
 
+/**
+ * An observation's key: `O` and a number from 1, unique in its block. The
+ * prompt asks for `O1` to `O6`; more observations than asked are read and
+ * shown (Slice 4H), so the grammar takes up to `O99`, far past the safety
+ * ceiling's count of observations. The codec, the Opinion's text rules and
+ * the webview's item refs all read this one pattern.
+ */
+export const LIGHTBOX_OPINION_OBSERVATION_ID = /^O[1-9]\d?$/;
+
 /** The tabs, in order. */
 export const LIGHTBOX_OPINION_VIEWS: readonly LightboxOpinionViewId[] = ['enthusiastic', 'neutral', 'blunt'];
 

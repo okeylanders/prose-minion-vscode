@@ -139,30 +139,19 @@ describe('group E, read fresh (Slice 4C)', () => {
       ]]);
     });
 
-    it('withholds a synopsis that runs past four sentences, alone', () => {
+    it('shows a synopsis past the sentences and characters asked, whole, beside its movements (Slice 4H)', () => {
       const body = storyBody();
-      body.summary.synopsis.text = 'She is bored. She sees a rabbit. It has a watch. She follows it. She falls.';
+      const text = 'She is bored. She sees a rabbit. It has a watch. She follows it. She falls. She falls a long way, past ' +
+        'cupboards and shelves, maps and pictures, a jar of marmalade she takes down and puts back. She wonders where she ' +
+        'will land, and whether she will come out among the people who walk with their heads downward. Then she thinks ' +
+        'of her cat at home, and of whether cats eat bats, and the fall goes on, slowly, until she lands on a heap of sticks.';
+      expect(text.length).toBeGreaterThan(400);
+      body.summary.synopsis.text = text;
       const { assembled } = readStory(body);
-      expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([
-        ['Synopsis', 'It broke the format: The synopsis runs past 4 sentences.']
-      ]);
+      // Seven sentences and more characters than asked: a length or a count is an ask, never a reason to withhold.
+      expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([]);
+      expect(tilesOf(assembled, 'synopsis').map((tile) => tile.claim)).toEqual([text]);
       expect(tilesOf(assembled, 'movement')).toHaveLength(3);
-    });
-
-    it('counts a closing bracket with its sentence: four sentences ending ".)" stand (ADR 2026-10-21)', () => {
-      const body = storyBody();
-      // The former rule counted the final ")" as a fifth sentence and withheld this.
-      body.summary.synopsis.text = 'She is bored. She sees a rabbit. She follows it. She falls (down a well.)';
-      const { assembled } = readStory(body);
-      expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([]);
-    });
-
-    it('counts a speech and its lower-case tag as one sentence: four sentences stand (ADR 2026-10-21)', () => {
-      const body = storyBody();
-      // The closing-marks rule alone read "cries a rabbit." as a fifth sentence and withheld this.
-      body.summary.synopsis.text = 'She is bored. “Oh dear!” cries a rabbit. She follows it. She falls.';
-      const { assembled } = readStory(body);
-      expect(claimsOf(assembled.withheldClaims, 'synopsis')).toEqual([]);
     });
   });
 

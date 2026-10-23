@@ -5,7 +5,9 @@
  * withholds the whole block, and an item that breaks its own rules is
  * withheld by its title.
  *
- * Rules enforced here, not only asked for in the prompt:
+ * Counts and lengths the prompt states are asks (Slice 4H): more stories,
+ * pairs or sparks than asked are read and shown. Rules enforced here, not
+ * only asked for in the prompt:
  * - **Lineage.** A block carries its `setAside` list (possibly empty): the
  *   stories it checked and set aside, each with a reason. A story carries one
  *   to three stances, each `matches`, `departs` or `subverts` and each at
@@ -29,7 +31,8 @@ import { boundedArrayAt, shapeError } from '@/application/services/workshop/pers
 import {
   decodeItems,
   evidence,
-  paragraphNumber,
+  listAt,
+  singleQuote,
   strictObject,
   terms,
   text
@@ -41,8 +44,7 @@ import type {
   LightboxDecodedSpark,
   LightboxDecodedSparkBlock,
   LightboxDecodedSubtextBlock,
-  LightboxDecodedSubtextPair,
-  LightboxWireQuote
+  LightboxDecodedSubtextPair
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 
 const B = PROMPT_BUDGETS.lightbox;
@@ -53,7 +55,7 @@ export function decodeLineageBlock(value: unknown, path: string, friction: strin
   const block = strictObject(value, path, ['items', 'setAside', 'friction']);
   const setAside = decodeSetAside(block.setAside, `${path}.setAside`);
   const set = new Set(setAside.map((entry) => nameKey(entry.title)));
-  const decoded = decodeItems(block.items, `${path}.items`, B.lineageStories, 'story', (item, itemPath) => {
+  const decoded = decodeItems(block.items, `${path}.items`, 'story', (item, itemPath) => {
     const story = decodeStory(item, itemPath);
     if (set.has(nameKey(story.title))) {
       throw new Error('It is also listed as checked and set aside, so it cannot be drawn.');
@@ -75,13 +77,13 @@ export function decodeLineageBlock(value: unknown, path: string, friction: strin
 
 export function decodeSubtextBlock(value: unknown, path: string, friction: string): LightboxDecodedSubtextBlock {
   const block = strictObject(value, path, ['items', 'friction']);
-  const { items, malformed } = decodeItems(block.items, `${path}.items`, B.subtextPairs, 'pair', decodePair);
+  const { items, malformed } = decodeItems(block.items, `${path}.items`, 'pair', decodePair);
   return { lens: 'subtext', items, malformed, friction };
 }
 
 export function decodeSparkBlock(value: unknown, path: string, friction: string): LightboxDecodedSparkBlock {
   const block = strictObject(value, path, ['items', 'friction']);
-  const { items, malformed } = decodeItems(block.items, `${path}.items`, B.sparks, 'spark', decodeSpark);
+  const { items, malformed } = decodeItems(block.items, `${path}.items`, 'spark', decodeSpark);
   return { lens: 'spark', items, malformed, friction };
 }
 
@@ -96,6 +98,7 @@ function decodeStory(item: Record<string, unknown>, path: string): LightboxDecod
   };
 }
 
+/** Each of the three stances at most once: a structural rule, so the count is checked with it. */
 function decodeStances(value: unknown, path: string): LightboxLineageStanceNote[] {
   boundedArrayAt(value, path, 1, B.lineageStances, 'stances');
   const seen = new Set<LightboxLineageStance>();
@@ -116,7 +119,7 @@ function decodeStances(value: unknown, path: string): LightboxLineageStanceNote[
 
 /** Required as a key (`strictObject` withholds a block without it), possibly empty. */
 function decodeSetAside(value: unknown, path: string): LightboxLineageSetAside[] {
-  boundedArrayAt(value, path, 0, B.lineageSetAsides, 'stories set aside');
+  listAt(value, path, 0, 'stories set aside');
   const seen = new Set<string>();
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
@@ -134,20 +137,10 @@ function decodePair(item: Record<string, unknown>, path: string): LightboxDecode
   const pair = strictObject(item, path, ['speaker', 'said', 'meant', 'evidence']);
   return {
     speaker: text(pair.speaker, `${path}.speaker`, B.labelCharacters),
-    said: saidQuote(pair.said, `${path}.said`),
+    said: singleQuote(pair.said, `${path}.said`),
     meant: text(pair.meant, `${path}.meant`, B.noteCharacters),
-    evidence: contextQuotes(pair.evidence, `${path}.evidence`)
+    evidence: evidence(pair.evidence, `${path}.evidence`, 0)
   };
-}
-
-function saidQuote(value: unknown, path: string): LightboxWireQuote {
-  const said = strictObject(value, path, ['para', 'quote']);
-  return { para: paragraphNumber(said.para, `${path}.para`), quote: text(said.quote, `${path}.quote`, B.quoteCharacters) };
-}
-
-function contextQuotes(value: unknown, path: string): LightboxWireQuote[] {
-  boundedArrayAt(value, path, 0, B.subtextContextQuotes, 'quotes');
-  return evidence(value, path, 0);
 }
 
 function decodeSpark(item: Record<string, unknown>, path: string): LightboxDecodedSpark {

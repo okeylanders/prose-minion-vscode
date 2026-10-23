@@ -3,12 +3,17 @@
  * Slice 4F). Pure: no host, no I/O. Called by `LightboxReadingCodec` once
  * the block's friction is known; a throw here withholds the whole block.
  *
- * - **Figures.** 0–3, each one of `LIGHTBOX_STEERING_STATS` at most once,
- *   each exactly `{stat, claim, evidence, notes}`. A figure that breaks its
+ * Counts and lengths the prompt states are asks (Slice 4H): more notes or
+ * quotes than asked, and a longer claim, why, nudge or example, are read
+ * and shown; Bring clips them to a Workshop tile.
+ * - **Figures.** Each one of `LIGHTBOX_STEERING_STATS` at most once (a
+ *   repeat is withheld by its label), each exactly
+ *   `{stat, claim, evidence, notes}`. A figure that breaks its
  *   shape is withheld whole, by its host label. A claim that breaks a text
  *   rule (`LightboxSteeringPhrasing`) withholds the figure's reading alone;
  *   its notes are read on their own.
- * - **Notes.** 0–`steeringNotes` per figure, each exactly `{para, quote,
+ * - **Notes.** Any number per figure (the prompt asks for at most
+ *   `steeringNotes`), each exactly `{para, quote,
  *   stance, why, nudge, example}`, withheld by its host title when it breaks
  *   a rule: the stance is earns, leans or compensates; the why and the
  *   nudge pass the text rules; a note that earns has `"nudge": null`. One
@@ -19,13 +24,14 @@
  * - **The one example** (epic decision 23, the writer's choice): `null`, or
  *   one `{before, after}`. A fault in it withholds the example alone, with
  *   a host reason, and the note stands: an example on a note that earns;
- *   more than one (a list: the first is read and the rest withheld); a
- *   `before` over its word bound; an `after` empty, over its bounds, the
- *   same as the `before` (by the quote verifier's fold), or breaking a text
- *   rule. Whether the `before` stands in the checked quote and holds the
- *   instance is the chapter's question, answered at assembly
+ *   more than one (a list: the first is read and the rest withheld: one
+ *   example is the writer's fence, epic decision 23, not an ask); an
+ *   `after` empty, the same as the `before` (by the quote verifier's fold),
+ *   or breaking a text rule. Its words and characters are asks: a longer
+ *   part is shown. Whether the `before` stands in the checked quote and
+ *   holds the instance is the chapter's question, answered at assembly
  *   (`LightboxSteeringTiles`), which holds the pair as the chapter has it to
- *   the same bounds again (PR #160 F-02).
+ *   a change between its parts again (PR #160 F-02).
  * Every object decodes with `strictObject`: a field the format does not
  * define is counted, never named, and every reason is host-owned.
  */
@@ -33,11 +39,17 @@
 import type { LightboxSteeringExample, LightboxSteeringStance, LightboxSteeringStatId } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
-import { LIGHTBOX_STEERING_STATS, isLightboxSteeringStat } from '@shared/constants/lightboxSteering';
-import { countWords } from '@/utils/textUtils';
+import { isLightboxSteeringStat } from '@shared/constants/lightboxSteering';
 import { foldWithMap } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import { boundedArrayAt, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
-import { evidence, paragraphNumber, strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
+import {
+  evidence,
+  lightboxFieldAtCeiling,
+  listAt,
+  paragraphNumber,
+  strictObject,
+  text
+} from '@/infrastructure/lightbox/LightboxReadingFields';
 import type { LightboxMalformedItem } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxSteeringTextFault } from '@/infrastructure/lightbox/LightboxSteeringPhrasing';
 import {
@@ -58,8 +70,6 @@ export const LIGHTBOX_STEERING_EXAMPLE_REASONS = {
   earns: 'A note that earns its place shows no example, so this one is not shown.',
   more: 'A note shows one example; the reading gave more, and only the first is shown.',
   shape: 'Its example broke the format, so it is not shown.',
-  beforeLong: `Its example's first part runs past ${B.steeringExampleBeforeWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
-  afterLong: `Its example's second part runs past ${B.steeringExampleAfterWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
   same: 'Its example shows no change: its second part is its first again.',
   unanchored: 'Its example\'s first part is not a run of whole words of its checked quote holding the instance, so it is not shown.',
   unanchoredCarried: 'Its example\'s first part no longer stands in its checked quote holding the instance, so it is not shown.',
@@ -68,28 +78,23 @@ export const LIGHTBOX_STEERING_EXAMPLE_REASONS = {
   /** A first part that holds narration but also takes in a character's words (PR #162 F-02): fresh and carried alike. */
   speech: 'Its example\'s first part takes in words a character speaks, the character\'s voice, so it is not shown.',
   /** The pair as the chapter has it, once anchored (PR #160 F-02): fresh and carried alike. */
-  anchoredLong: `Its example's first part, as the chapter has it, runs past ${B.steeringExampleBeforeWords} words or ${B.steeringExampleCharacters} characters: an example is a phrase, never a passage.`,
-  anchoredSame: 'Its example shows no change: as the chapter has it, its first part reads as its second.',
-  anchoredFit: 'Its example, as the chapter has it, does not fit one Workshop point, so it is not shown.'
+  anchoredSame: 'Its example shows no change: as the chapter has it, its first part reads as its second.'
 } as const;
 
-/** Which bound a pair breaks, or whether it shows no change; undefined when it keeps them. The text rules are the second part's alone. */
-export type LightboxSteeringExamplePairFault = 'beforeLong' | 'afterLong' | 'same';
-
-/** The pair's own contract: each part within its words and characters, and a change between them. */
-export function lightboxSteeringExamplePairFault(example: LightboxSteeringExample): LightboxSteeringExamplePairFault | undefined {
-  if (countWords(example.before) > B.steeringExampleBeforeWords || example.before.length > B.steeringExampleCharacters) {
-    return 'beforeLong';
-  }
-  if (countWords(example.after) > B.steeringExampleAfterWords || example.after.length > B.steeringExampleCharacters) {
-    return 'afterLong';
-  }
-  return sameWords(example.before, example.after) ? 'same' : undefined;
+/**
+ * The pair's own contract: a change between its parts. Its words and
+ * characters are asks (Slice 4H): a longer part is shown on the board, and
+ * Bring clips the pair to one Workshop point. The text rules are the second
+ * part's alone.
+ */
+export function lightboxSteeringExampleShowsNoChange(example: LightboxSteeringExample): boolean {
+  return sameWords(example.before, example.after);
 }
 
 export function decodeSteeringBlock(value: unknown, path: string, friction: string): LightboxDecodedSteeringBlock {
   const block = strictObject(value, path, ['figures', 'friction']);
-  boundedArrayAt(block.figures, `${path}.figures`, 0, LIGHTBOX_STEERING_STATS.length, 'figures');
+  // At most one reading per figure: held by the figure, a repeat withheld by its label, never by the list's length.
+  listAt(block.figures, `${path}.figures`, 0, 'figures');
   const figures: LightboxDecodedSteeringFigure[] = [];
   const malformed: LightboxMalformedItem[] = [];
   block.figures.forEach((item, index) => {
@@ -119,7 +124,7 @@ function decodeFigure(item: Record<string, unknown>, path: string): LightboxDeco
   const label = LIGHTBOX_NUMBER_STAT_LABELS[stat];
   const claim = text(figure.claim, `${path}.claim`, B.claimCharacters);
   const quotes = evidence(figure.evidence, `${path}.evidence`, 1);
-  boundedArrayAt(figure.notes, `${path}.notes`, 0, B.steeringNotes, 'notes');
+  listAt(figure.notes, `${path}.notes`, 0, 'notes');
   const notes: LightboxDecodedSteeringNote[] = [];
   const malformedNotes: LightboxMalformedItem[] = [];
   figure.notes.forEach((note, index) => {
@@ -211,11 +216,10 @@ function exampleOf(value: unknown, path: string): { example: LightboxSteeringExa
   if (!nonblank(pair.before) || !nonblank(pair.after)) {
     return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.shape };
   }
-  const before = pair.before.trim();
-  const after = pair.after.trim();
-  const pairFault = lightboxSteeringExamplePairFault({ before, after });
-  if (pairFault) {
-    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS[pairFault] };
+  const before = lightboxFieldAtCeiling(pair.before.trim(), B.steeringExampleCharacters);
+  const after = lightboxFieldAtCeiling(pair.after.trim(), B.steeringExampleCharacters);
+  if (lightboxSteeringExampleShowsNoChange({ before, after })) {
+    return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.same };
   }
   const fault = lightboxSteeringTextFault(after, { instruction: false });
   return fault ? { fault: `Its example was withheld. ${fault}` } : { example: { before, after } };

@@ -68,7 +68,7 @@ describe('the Opinion, read on the board it weighs (Slice 4D)', () => {
     it('withholds a view that breaks the format alone, by name, and keeps the others', () => {
       const read = readOpinion(board, edited((body) => { body.views.blunt.why = []; }));
       expect(read.tile?.views.map((view) => view.view)).toEqual(['enthusiastic', 'neutral']);
-      expect(withheldView(read, 'blunt')).toMatch(/^It broke the format: opinion\.views\.blunt\.why must be an array of 1–4 points/);
+      expect(withheldView(read, 'blunt')).toMatch(/^It broke the format: opinion\.views\.blunt\.why must be an array of 1 or more points/);
     });
 
     it('counts fields the format does not define, never naming them', () => {
@@ -80,20 +80,45 @@ describe('the Opinion, read on the board it weighs (Slice 4D)', () => {
 
     it('withholds an observation with a malformed id by its position, and a second O1 as a duplicate', () => {
       const bad = readOpinion(board, edited((body) => { body.observations[2].id = 'X3'; }));
-      expect(bad.tile?.withheldObservations).toEqual([{ id: 'Observation 3', reason: expect.stringContaining('an observation id, O1 to O6') }]);
+      expect(bad.tile?.withheldObservations).toEqual([{ id: 'Observation 3', reason: expect.stringContaining('an observation id: O and a number from 1') }]);
       const twice = readOpinion(board, edited((body) => { body.observations[1].id = 'O1'; }));
       expect(withheldObservation(twice, 'Observation 2')).toBe('Another observation in this block already has that id.');
     });
 
-    it('takes 2–6 observations and 1–3 cites, and a cite as a tile (maybe with a quote number) or a measured ref, nothing else', () => {
+    it('takes at least 2 observations and 1 cite, and a cite as a tile (maybe with a quote number) or a measured ref, nothing else', () => {
       expect(readOpinion(board, edited((body) => { body.observations = body.observations.slice(0, 1); })).decoded.withheld[0].reason)
-        .toMatch(/opinion\.observations must be an array of 2–6 observations/);
+        .toMatch(/opinion\.observations must be an array of 2 or more observations/);
       const odd = readOpinion(board, edited((body) => {
         body.observations[0].cites = [{ tile: body.observations[0].cites[0].tile, measured: 'headline' }];
         body.observations[1].cites = [{ tile: body.observations[1].cites[1].tile, quote: -1 }];
       }));
       expect(withheldObservation(odd, 'O1')).toMatch(/It broke the format: opinion\.observations\[0\]\.cites\[0\]/);
       expect(withheldObservation(odd, 'O2')).toMatch(/a quote number \(a whole number from 0\)/);
+    });
+  });
+
+  describe('more than asked is shown (Slice 4H)', () => {
+    it('reads a seventh observation, a fourth cite, a fifth Why point and words past their asks, and draws them all', () => {
+      const long = (text: string, ask: number) => `${text} ${'It holds across the chapter, paragraph by paragraph. '.repeat(Math.ceil(ask / 40))}`.trim();
+      const read = readOpinion(board, edited((body) => {
+        const [first, second] = body.observations;
+        body.observations.push({ id: 'O7', text: long(first.text, 260), cites: [...first.cites, ...second.cites].slice(0, 4) });
+        body.views.neutral.headline = long(body.views.neutral.headline, 160);
+        body.views.neutral.body = long(body.views.neutral.body, 400);
+        const points = body.views.neutral.why;
+        body.views.neutral.why = [...points, ...points, { weight: 'even', text: long('Both readings stand.', 160), observations: ['O1', 'O2', 'O7', 'O3'] }]
+          .slice(0, 5);
+      }));
+      expect(read.decoded.withheld).toEqual([]);
+      expect(read.tile?.withheldObservations).toEqual([]);
+      expect(read.tile?.observations.map((observation) => observation.id)).toEqual(['O1', 'O2', 'O3', 'O4', 'O5', 'O6', 'O7']);
+      expect(read.tile?.observations[6].text.length).toBeGreaterThan(260);
+      expect(read.tile?.observations[6].cites).toHaveLength(4);
+      const neutral = read.tile?.views.find((view) => view.view === 'neutral');
+      expect(neutral?.why).toHaveLength(5);
+      expect(neutral?.headline.length).toBeGreaterThan(160);
+      expect(neutral?.body.length).toBeGreaterThan(400);
+      expect(read.tile?.withheldViews).toEqual([]);
     });
   });
 

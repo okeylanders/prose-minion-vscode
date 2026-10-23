@@ -22,6 +22,7 @@ import type {
 import type { LightboxDecodedPlotBlock } from '@/infrastructure/lightbox/LightboxPlotWire';
 import type { LightboxDecodedOpinionBlock } from '@/infrastructure/lightbox/LightboxOpinionWire';
 import type { LightboxDecodedSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringWire';
+import type { ModelJsonRepairKind } from '@parsers/ModelJsonRepair';
 
 /** The protocol version every group's JSON carries. */
 export const LIGHTBOX_READING_PROTOCOL_VERSION = 1;
@@ -372,12 +373,23 @@ export type LightboxDecodedBlock =
   | LightboxDecodedOpinionBlock
   | LightboxDecodedSteeringBlock;
 
+/** How a reply ended: as the model chose (`stop`), or at the output ceiling (`ceiling`, `finishReason === 'length'`). */
+export type LightboxReplyEnd = 'stop' | 'ceiling';
+
+/** A structural repair the frame was given before its blocks were read (Slice 4H, epic decision 39). */
+export type LightboxFrameRepair = ModelJsonRepairKind | 'missing-closing-sentinel';
+
+/** Why the block a reply was cut inside is withheld (Slice 4H, epic decision 40): host words. */
+export const LIGHTBOX_CUT_OFF_REASON = 'The reply reached the output ceiling before this block finished.';
+
 export interface LightboxGroupDecodeContext {
   group: LightboxReadingGroupId;
   /** The lenses the call asked for, in rail order. */
   lenses: readonly LightboxLensId[];
   /** Ribbon columns the tension arc must score. */
   columnCount: number;
+  /** How the reply ended; `stop` when absent. A reply cut off at the ceiling is salvaged (`LightboxReadingFrame`). */
+  end?: LightboxReplyEnd;
 }
 
 export interface LightboxDecodedGroup {
@@ -387,6 +399,17 @@ export interface LightboxDecodedGroup {
   withheld: Array<{ lens: LightboxLensId; reason: string }>;
   /** Blocks the model returned for lenses the call did not ask for; dropped, never shown. */
   ignored: LightboxLensId[];
+  /** How the frame was read (Slice 4H): set by `decodeLightboxGroup`, for the reply's log line. */
+  report?: LightboxDecodeReport;
+}
+
+export interface LightboxDecodeReport {
+  /** The structural repairs the frame was given, each kind once. */
+  repairs: LightboxFrameRepair[];
+  /** Fields clipped at the safety ceiling (`PROMPT_BUDGETS.lightbox.safetyMultiple` times their ask). */
+  clipped: number;
+  /** The reply reached the output ceiling before its frame closed: what it finished was read, the rest withheld. */
+  cutOff: boolean;
 }
 
 /**

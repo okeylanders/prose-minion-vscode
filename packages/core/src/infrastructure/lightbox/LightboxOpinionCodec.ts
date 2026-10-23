@@ -3,9 +3,13 @@
  * Pure: no host, no I/O. Called by `LightboxReadingCodec` once the block's
  * friction is known; a throw here withholds the whole block.
  *
- * Rules enforced here, not only asked for in the prompt:
- * - **Observations.** 2–6, each with an id `O1`–`O6` unique in the block,
- *   a text within its ceiling, and 1–3 cites. A cite is a tile, by its host
+ * Counts and lengths the prompt states are asks (Slice 4H): more
+ * observations, cites or Why points than asked, and longer words, are read
+ * and shown; Bring clips a view to a Workshop tile. Rules enforced here, not
+ * only asked for in the prompt:
+ * - **Observations.** At least two, each with an id unique in the block
+ *   (`O` and a number from 1; the prompt asks for `O1`–`O6`), a text, and at
+ *   least one cite. A cite is a tile, by its host
  *   id, optionally with one of the quotes the digest numbered for it (a
  *   whole number from 0), or a measured figure, by its ref; nothing else. An
  *   observation that breaks the format is withheld by its id (or, with no
@@ -14,9 +18,9 @@
  *   (`LightboxOpinionGates`), against the digest.
  * - **Views.** All three are required: a block without one of
  *   `enthusiastic`, `neutral` and `blunt` is withheld. Each is decoded on
- *   its own: a headline, a body and 1–4 Why points, each weighted
- *   `strength`, `even` or `concern`, citing 1–3 observation ids. A view
- *   that breaks the format is withheld alone.
+ *   its own: a headline, a body and at least one Why point, each weighted
+ *   `strength`, `even` or `concern`, citing at least one observation id. A
+ *   view that breaks the format is withheld alone.
  * - **No counts.** No field carries one: an Opinion states only figures the
  *   items it cites hold, checked against them afterwards.
  * Every object decodes with `strictObject`: a field the format does not
@@ -26,8 +30,8 @@
 import type { LightboxOpinionViewId } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_OPINION_VIEWS, LIGHTBOX_OPINION_WEIGHTS } from '@shared/constants/lightboxOpinion';
-import { boundedArrayAt, exactObject, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
-import { strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { exactObject, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
+import { listAt, strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
 import {
   LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS,
   LIGHTBOX_OPINION_OBSERVATION_ID,
@@ -39,7 +43,7 @@ import {
 } from '@/infrastructure/lightbox/LightboxOpinionWire';
 
 const B = PROMPT_BUDGETS.lightbox;
-/** A host key a cite may name: a tile id or a measured ref. Longer is not a key the host mints. */
+/** A host key a cite may name: a tile id or a measured ref. Longer is not a key the host mints: a structural rule, not an ask. */
 const KEY_CHARACTERS = 120;
 
 export function decodeOpinionBlock(value: unknown, path: string, friction: string): LightboxDecodedOpinionBlock {
@@ -60,7 +64,7 @@ function decodeObservations(
   value: unknown,
   path: string
 ): { items: LightboxDecodedObservation[]; malformed: LightboxDecodedOpinionBlock['malformed'] } {
-  boundedArrayAt(value, path, LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS, B.opinionObservations, 'observations');
+  listAt(value, path, LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS, 'observations');
   const items: LightboxDecodedObservation[] = [];
   const malformed: LightboxDecodedOpinionBlock['malformed'] = [];
   const seen = new Set<string>();
@@ -84,7 +88,7 @@ function decodeObservations(
 
 function decodeObservation(item: Record<string, unknown>, path: string): LightboxDecodedObservation {
   const observation = strictObject(item, path, ['id', 'text', 'cites']);
-  boundedArrayAt(observation.cites, `${path}.cites`, 1, B.opinionCitesPerObservation, 'cites');
+  listAt(observation.cites, `${path}.cites`, 1, 'cites');
   return {
     id: observationId(observation.id, `${path}.id`),
     text: text(observation.text, `${path}.text`, B.opinionObservationCharacters),
@@ -112,7 +116,7 @@ function decodeCite(value: unknown, path: string): LightboxDecodedOpinionCite {
 
 function decodeView(value: unknown, path: string): LightboxDecodedOpinionView {
   const view = strictObject(value, path, ['headline', 'body', 'why']);
-  boundedArrayAt(view.why, `${path}.why`, 1, B.opinionWhyPoints, 'points');
+  listAt(view.why, `${path}.why`, 1, 'points');
   return {
     headline: text(view.headline, `${path}.headline`, B.opinionHeadlineCharacters),
     body: text(view.body, `${path}.body`, B.opinionBodyCharacters),
@@ -125,7 +129,7 @@ function decodeWhy(value: unknown, path: string): LightboxDecodedWhy {
   if (typeof point.weight !== 'string' || !(LIGHTBOX_OPINION_WEIGHTS as readonly string[]).includes(point.weight)) {
     shapeError(`${path}.weight`, 'strength, even or concern');
   }
-  boundedArrayAt(point.observations, `${path}.observations`, 1, B.opinionCitesPerObservation, 'observation ids');
+  listAt(point.observations, `${path}.observations`, 1, 'observation ids');
   return {
     weight: point.weight as LightboxDecodedWhy['weight'],
     text: text(point.text, `${path}.text`, B.opinionWhyCharacters),
@@ -135,7 +139,7 @@ function decodeWhy(value: unknown, path: string): LightboxDecodedWhy {
 
 function observationId(value: unknown, path: string): string {
   if (typeof value !== 'string' || !LIGHTBOX_OPINION_OBSERVATION_ID.test(value)) {
-    shapeError(path, 'an observation id, O1 to O6');
+    shapeError(path, 'an observation id: O and a number from 1');
   }
   return value as string;
 }

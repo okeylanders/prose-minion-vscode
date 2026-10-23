@@ -3,9 +3,12 @@
  * D7 addendum; Slice 4D). Beside `LightboxGroupReply`, which reads the
  * chapter groups' replies.
  *
- * - **Unusable replies** fail the group as any group's do: one cut off at
- *   the output ceiling, or whose frame cannot be read, is quarantined in the
- *   rejected-response recovery store and the writer told where it went.
+ * - **Replies** are read as any group's are (`decodeLightboxReply`): a
+ *   frame is given its structure-only repairs, each logged; one cut off at
+ *   the output ceiling keeps its Opinion only if the block finished, and is
+ *   saved for recovery either way (Slice 4H); one whose frame cannot be
+ *   read is quarantined in the rejected-response recovery store and the
+ *   writer told where it went.
  * - **Checked replies** are held to the Opinion's rules against the digest
  *   the call read, never the chapter: each cite must name an item that
  *   digest held, and nothing the board changed since the digest was built
@@ -18,11 +21,7 @@
 
 import type { LightboxGroupOutcome } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
-import { lightboxRejectionOf } from '@/infrastructure/lightbox/LightboxCallFailure';
-import { failedLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
-import { quarantineLightboxReply, type LightboxGroupReplyPorts } from '@/infrastructure/lightbox/LightboxGroupReply';
+import { decodeLightboxReply, type LightboxGroupReplyPorts } from '@/infrastructure/lightbox/LightboxGroupReply';
 import type { LightboxPreparedCall } from '@/infrastructure/lightbox/LightboxRunEstimate';
 import type { LightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 import { lightboxDecodedViews } from '@/infrastructure/lightbox/LightboxOpinionCodec';
@@ -63,19 +62,12 @@ export async function readLightboxOpinionReply(
   ports: LightboxGroupReplyPorts,
   { call, result, digest, token }: LightboxOpinionReply
 ): Promise<LightboxGroupOutcome> {
-  const content = result.rawContent ?? result.content;
   const keyed = { digestKey: digest.key };
-  if (result.finishReason === 'length') {
-    return { ...failedLightboxGroup(call, await quarantineLightboxReply(ports, call, content, result, {
-      message: `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
-    }), result), ...keyed };
+  const read = await decodeLightboxReply(ports, { ...call, group: 'F', lenses: ['opinion'] }, result, { columnCount: 0 });
+  if ('failed' in read) {
+    return { ...read.failed, ...keyed };
   }
-  let decoded: ReturnType<typeof decodeLightboxGroup>;
-  try {
-    decoded = decodeLightboxGroup(content, { group: 'F', lenses: ['opinion'], columnCount: 0 });
-  } catch (error) {
-    return { ...failedLightboxGroup(call, await quarantineLightboxReply(ports, call, content, result, lightboxRejectionOf(error)), result), ...keyed };
-  }
+  const decoded = read.decoded;
   const block = decoded.blocks.find((candidate): candidate is LightboxDecodedOpinionBlock => candidate.lens === 'opinion');
   const summary: LightboxOpinionDigestSummary = { key: digest.key, items: digest.items.size, leftOut: digest.leftOut };
   const assembled = block

@@ -6,7 +6,9 @@
  * that breaks its own rules is withheld by its title (a host title, its noun
  * and position, where the item has none of its own).
  *
- * Rules enforced here, not only asked for in the prompt:
+ * Counts and lengths the prompt states are asks (Slice 4H): more beats,
+ * threads, objects, steps, movements or synopsis sentences than asked are
+ * read and shown. Rules enforced here, not only asked for in the prompt:
  * - **Template.** A name, a description with 1–3 quotes, beats whose
  *   stance is aligns, subverts or departs, and a freshness reading on the
  *   three-step scale with a note. Engagement entries name a movement by the
@@ -22,24 +24,26 @@
  * - **Artifacts.** Each object names its terms for the host to count and an
  *   arc of 1–5 quoted steps; "planted, unused" is a boolean the host checks
  *   against its counts afterwards.
- * - **Summary.** A synopsis of at most 320 characters and four sentences
- *   (the prose-stats sentence rule) with 2–3 quotes; a synopsis that breaks
- *   the format is kept as a fault, withholding it alone. Movements: 1–8,
- *   each with a short key unique in the block, a title, a range, a gist and
- *   a boundary quote; one that breaks the format is withheld by title, which
- *   withholds the set, since the rest no longer tile the chapter.
+ * - **Summary.** A synopsis with at least two quotes (its length and its
+ *   sentences are asks); a synopsis that breaks the format is kept as a
+ *   fault, withholding it alone. Movements: at least one, each with a short
+ *   key unique in the block, a title, a range, a gist and a boundary quote;
+ *   one that breaks the format is withheld by title, which withholds the
+ *   set, since the rest no longer tile the chapter.
  * Every object decodes with `strictObject`: a field the format does not
  * define is counted, never named, and every reason is host-owned. The model
  * never supplies a count: no field carries one.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { boundedArrayAt, shapeError } from '@/application/services/workshop/persistedValidation';
-import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
+import { shapeError } from '@/application/services/workshop/persistedValidation';
 import {
   decodeItems,
   evidence,
+  listAt,
+  oneOf,
   paragraphNumber,
+  singleQuote,
   strictObject,
   terms,
   text
@@ -68,7 +72,7 @@ const B = PROMPT_BUDGETS.lightbox;
 export function decodeTemplateBlock(value: unknown, path: string, friction: string): LightboxDecodedTemplateBlock {
   const block = strictObject(value, path, ['name', 'description', 'evidence', 'beats', 'freshness', 'engagement', 'friction']);
   const freshness = strictObject(block.freshness, `${path}.freshness`, ['level', 'note']);
-  const beats = decodeItems(block.beats, `${path}.beats`, B.templateBeats, 'template beat', decodeBeat);
+  const beats = decodeItems(block.beats, `${path}.beats`, 'template beat', decodeBeat);
   const engagement = lenient(() => decodeEngagement(block.engagement, `${path}.engagement`));
   return {
     lens: 'template',
@@ -89,20 +93,20 @@ export function decodeTemplateBlock(value: unknown, path: string, friction: stri
 
 export function decodePressureBlock(value: unknown, path: string, friction: string): LightboxDecodedPressureBlock {
   const block = strictObject(value, path, ['threads', 'friction']);
-  const threads = decodeItems(block.threads, `${path}.threads`, B.pressureThreads, 'thread', decodeThread);
+  const threads = decodeItems(block.threads, `${path}.threads`, 'thread', decodeThread);
   return { lens: 'pressure', threads: threads.items, malformed: threads.malformed, friction };
 }
 
 export function decodeArtifactsBlock(value: unknown, path: string, friction: string): LightboxDecodedArtifactsBlock {
   const block = strictObject(value, path, ['objects', 'friction']);
-  const objects = decodeItems(block.objects, `${path}.objects`, B.artifacts, 'object', decodeArtifact);
+  const objects = decodeItems(block.objects, `${path}.objects`, 'object', decodeArtifact);
   return { lens: 'artifacts', objects: objects.items, malformed: objects.malformed, friction };
 }
 
 export function decodeSummaryBlock(value: unknown, path: string, friction: string): LightboxDecodedSummaryBlock {
   const block = strictObject(value, path, ['synopsis', 'movements', 'friction']);
   const synopsis = lenient(() => decodeSynopsis(block.synopsis, `${path}.synopsis`));
-  const decoded = decodeItems(block.movements, `${path}.movements`, B.movements, 'movement', decodeMovement, 1);
+  const decoded = decodeItems(block.movements, `${path}.movements`, 'movement', decodeMovement, 1);
   // A key names one movement: a second movement under the same key is malformed.
   const seen = new Set<string>();
   const movements = decoded.items.filter((movement, index) => {
@@ -134,7 +138,8 @@ function decodeBeat(item: Record<string, unknown>, path: string): LightboxDecode
 }
 
 function decodeEngagement(value: unknown, path: string): LightboxDecodedEngagement[] {
-  boundedArrayAt(value, path, 0, B.movements, 'engagement entries, one per movement');
+  // One entry per movement is checked against the movements drawn (`LightboxPlotGates`), never by the list's length here.
+  listAt(value, path, 0, 'engagement entries, one per movement');
   return value.map((item, index) => {
     const entryPath = `${path}[${index}]`;
     const entry = strictObject(item, entryPath, ['movement', 'level']);
@@ -147,7 +152,7 @@ function decodeEngagement(value: unknown, path: string): LightboxDecodedEngageme
 
 function decodeThread(item: Record<string, unknown>, path: string): LightboxDecodedThread {
   const thread = strictObject(item, path, ['question', 'planted', 'escalations', 'resolution', 'dormant']);
-  boundedArrayAt(thread.escalations, `${path}.escalations`, 0, B.threadEscalations, 'escalations');
+  listAt(thread.escalations, `${path}.escalations`, 0, 'escalations');
   const escalations = thread.escalations.map((quote, index) => singleQuote(quote, `${path}.escalations[${index}]`));
   const resolution = thread.resolution === null ? null : singleQuote(thread.resolution, `${path}.resolution`);
   if (typeof thread.dormant !== 'boolean') {
@@ -168,7 +173,7 @@ function decodeThread(item: Record<string, unknown>, path: string): LightboxDeco
 
 function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDecodedArtifact {
   const artifact = strictObject(item, path, ['name', 'terms', 'arc', 'plantedUnused']);
-  boundedArrayAt(artifact.arc, `${path}.arc`, 1, B.artifactSteps, 'steps');
+  listAt(artifact.arc, `${path}.arc`, 1, 'steps');
   if (typeof artifact.plantedUnused !== 'boolean') {
     shapeError(`${path}.plantedUnused`, 'true or false');
   }
@@ -190,11 +195,8 @@ function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDe
 
 function decodeSynopsis(value: unknown, path: string): { text: string; evidence: LightboxWireQuote[] } {
   const synopsis = strictObject(value, path, ['text', 'evidence']);
+  // Its characters and sentences are asks: a longer synopsis is shown whole (Slice 4H).
   const body = text(synopsis.text, `${path}.text`, B.claimCharacters);
-  if (proseSentenceSpans(body).length > B.synopsisSentences) {
-    throw new Error(`The synopsis runs past ${B.synopsisSentences} sentences.`);
-  }
-  boundedArrayAt(synopsis.evidence, `${path}.evidence`, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES, B.synopsisQuotes, 'quotes');
   return { text: body, evidence: evidence(synopsis.evidence, `${path}.evidence`, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES) };
 }
 
@@ -217,17 +219,6 @@ function movementId(value: unknown, path: string): string {
   return value as string;
 }
 
-function singleQuote(value: unknown, path: string): LightboxWireQuote {
-  const quote = strictObject(value, path, ['para', 'quote']);
-  return { para: paragraphNumber(quote.para, `${path}.para`), quote: text(quote.quote, `${path}.quote`, B.quoteCharacters) };
-}
-
-function oneOf<T extends string>(value: unknown, path: string, allowed: readonly T[], expected: string): T {
-  if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    shapeError(path, expected);
-  }
-  return value as T;
-}
 
 /** A part decoded on its own: its value, or its fault in host words, so it withholds only itself. */
 function lenient<T>(decode: () => T): { value: T } | { fault: string } {
