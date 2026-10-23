@@ -1,6 +1,6 @@
 /**
- * useLightboxBoards — the rail's saved boards (Slice 5A), mirroring the
- * host's `LightboxBoardsHandler`.
+ * useLightboxBoards — the saved boards (Slice 5A; the Boards menu and
+ * browser from Slice 5A.2), mirroring the host's `LightboxBoardsHandler`.
  *
  * On mount, and whenever the board on screen changes, it asks for that
  * board's shelf with `LIGHTBOX_REQUEST_BOARDS` (naming no board on a mount
@@ -25,6 +25,11 @@
  * (`fileId: null`) the board on screen; the answer is the shelf, taken as
  * any request's is, and a rename forgets the held shelf as a Delete does.
  *
+ * Slice 5A.2: the shelf lists every chapter's boards. "Open a board file…"
+ * posts `LIGHTBOX_OPEN_BOARD_FILE`, and the host shows its picker; Delete
+ * and Rename may name no board on screen (the browser works without one);
+ * `refresh` asks for the shelf again, as the browser opens.
+ *
  * Nothing persists: the files are the host's, and a board's name, the
  * writer's words, lives only in the shelf the host sent.
  */
@@ -42,11 +47,17 @@ export interface LightboxBoardsState {
   shelf: LightboxBoardShelf | null;
   /** The file being opened, until the host answers. */
   opening: string | null;
+  /** "Open a board file…" is waiting for the host's picker and its answer (Slice 5A.2). */
+  openingFile: boolean;
 }
 
 export interface LightboxBoardsActions {
   handleBoards: (message: LightboxBoardsMessage) => void;
   openBoard: (fileId: string) => void;
+  /** Show the host's picker for a board file, and open the one picked (Slice 5A.2). */
+  openBoardFile: () => void;
+  /** Ask for the shelf again (the browser opening). */
+  refresh: () => void;
   /** Delete a saved board's file; the rail asks the writer to confirm first. */
   deleteBoard: (fileId: string) => void;
   /** Name a saved board's file, or (`null`) the board on screen; an empty name unnames it (Slice 5A.1). */
@@ -85,6 +96,7 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
   const boardId = board?.boardId ?? null;
   const [answer, setAnswer] = React.useState<ShelfAnswer | null>(null);
   const [opening, setOpening] = React.useState<string | null>(null);
+  const [openingFile, setOpeningFile] = React.useState(false);
   // The board on screen as last rendered: a pushed shelf is taken only for it.
   const onScreen = React.useRef(boardId);
   onScreen.current = boardId;
@@ -105,6 +117,7 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
   /** Ask for the shelf of the board on screen, unless the one held already describes it. */
   const requestShelfForBoard = React.useCallback(() => {
     setOpening(null);
+    setOpeningFile(false);
     if (answeredFor.current === boardId && boardId !== null) {
       pending.current = null;
       return;
@@ -145,6 +158,7 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     }
     pending.current = null;
     setOpening(null);
+    setOpeningFile(false);
     take(next);
   }, [take]);
 
@@ -153,16 +167,24 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     send(MessageType.LIGHTBOX_OPEN_BOARD, { fileId });
   }, [send]);
 
+  const openBoardFile = React.useCallback(() => {
+    setOpeningFile(true);
+    send(MessageType.LIGHTBOX_OPEN_BOARD_FILE, {});
+  }, [send]);
+
+  const refresh = React.useCallback(() => {
+    answeredFor.current = undefined;
+    send(MessageType.LIGHTBOX_REQUEST_BOARDS, { boardId });
+  }, [boardId, send]);
+
   const deleteBoard = React.useCallback((fileId: string) => {
-    if (boardId !== null) {
-      // The held shelf lists the file until the answer lands: coming back to this board asks again (PR #163 N-01).
-      answeredFor.current = undefined;
-      send(MessageType.LIGHTBOX_DELETE_BOARD, { boardId, fileId });
-    }
+    // The held shelf lists the file until the answer lands: coming back to this board asks again (PR #163 N-01).
+    answeredFor.current = undefined;
+    send(MessageType.LIGHTBOX_DELETE_BOARD, { boardId, fileId });
   }, [boardId, send]);
 
   const renameBoard = React.useCallback((fileId: string | null, name: string) => {
-    if (boardId !== null) {
+    if (boardId !== null || fileId !== null) {
       // As for a Delete: the held shelf shows the old name until the answer lands, so coming back asks again.
       answeredFor.current = undefined;
       send(MessageType.LIGHTBOX_RENAME_BOARD, { boardId, fileId, name });
@@ -170,5 +192,16 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
   }, [boardId, send]);
 
   const shelf = answer && answer.boardId === boardId ? answer.shelf : null;
-  return { shelf, opening, handleBoards, openBoard, deleteBoard, renameBoard, persistedState: NO_PERSISTENCE };
+  return {
+    shelf,
+    opening,
+    openingFile,
+    handleBoards,
+    openBoard,
+    openBoardFile,
+    refresh,
+    deleteBoard,
+    renameBoard,
+    persistedState: NO_PERSISTENCE
+  };
 }

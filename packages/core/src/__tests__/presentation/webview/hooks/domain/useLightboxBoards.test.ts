@@ -11,7 +11,10 @@
  * Delete name the host's file id; nothing persists. Rename (Slice 5A.1)
  * names a file or the board on screen, its answer is taken as any request's
  * is, and it makes the held shelf ask again as a Delete does; a name is held
- * only in the shelf, never persisted.
+ * only in the shelf, never persisted. Slice 5A.2: the browser deletes and
+ * renames a file with no board on screen, "Open a board file…" asks the
+ * host's picker and waits for its answer, and opening the browser asks for
+ * the shelf again; every row names its board and its chapter.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -29,7 +32,9 @@ const shelfOf = (count: number): LightboxBoardShelf => ({
   availability: { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false },
   boards: Array.from({ length: count }, (_, index) => ({
     fileId: `drafts-alice-1-md-9b099095/2026-10-22T14-0${5 + index}-09-123Z.board.json`,
+    name: `alice-1 - 10/22/2026 2:0${5 + index} PM`,
     savedAt: 1_792_677_909_123 + index * 60_000,
+    source: { kind: 'file' as const, displayPath: 'Drafts/alice-1.md' },
     wordCount: 508,
     lenses: [],
     staleLenses: [],
@@ -248,10 +253,52 @@ describe('useLightboxBoards', () => {
       ]);
     });
 
-    it('sends nothing with no board on screen', () => {
+    it('sends nothing for the board on screen with no board on screen', () => {
       const { result } = mount(null);
       act(() => result.current.renameBoard(null, NAME));
       expect(sent().map((message) => message.type)).toEqual([MessageType.LIGHTBOX_REQUEST_BOARDS]);
+    });
+  });
+
+  describe('the browser (Slice 5A.2)', () => {
+    it('renames and deletes a file with no board on screen, naming none', () => {
+      const { result } = mount(null);
+      act(() => result.current.renameBoard(FILE, 'model A'));
+      act(() => result.current.deleteBoard(FILE));
+      expect(sent().slice(1).map((message) => [message.type, message.payload])).toEqual([
+        [MessageType.LIGHTBOX_RENAME_BOARD, { requestId: expect.stringMatching(/-2$/), boardId: null, fileId: FILE, name: 'model A' }],
+        [MessageType.LIGHTBOX_DELETE_BOARD, { requestId: expect.stringMatching(/-3$/), boardId: null, fileId: FILE }]
+      ]);
+    });
+
+    it('asks the host picker for a board file, says so until the answer, and takes the answer as any request is taken', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.openBoardFile());
+      expect(result.current.openingFile).toBe(true);
+      const open = sent()[1];
+      expect(open).toEqual(expect.objectContaining({
+        type: MessageType.LIGHTBOX_OPEN_BOARD_FILE,
+        source: 'webview.lightbox.boards',
+        payload: { requestId: expect.stringMatching(/-2$/) }
+      }));
+      // Another request's answer does not end it.
+      act(() => result.current.handleBoards(reply('lbx-brd-other-9', 'board-6', shelfOf(1))));
+      expect(result.current.openingFile).toBe(true);
+      act(() => result.current.handleBoards(reply(open.payload.requestId, 'board-6', shelfOf(2))));
+      expect(result.current.openingFile).toBe(false);
+      expect(result.current.shelf).toEqual(shelfOf(2));
+    });
+
+    it('asks for the shelf again when the browser opens, though one is held', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(1))));
+      act(() => result.current.refresh());
+      expect(sent().map((message) => [message.type, message.payload.boardId])).toEqual([
+        [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6'],
+        [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6']
+      ]);
+      act(() => result.current.handleBoards(reply(sent()[1].payload.requestId, 'board-6', shelfOf(3))));
+      expect(result.current.shelf).toEqual(shelfOf(3));
     });
   });
 });

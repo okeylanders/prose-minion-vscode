@@ -53,7 +53,12 @@ export interface LightboxBoardMainProps {
   onStop: (token: string) => void;
   /** The Spark lane's actions ("Not for me", Bring). */
   actions?: LightboxTileActions;
-  /** A saved board whose file has changed since (`lightboxChangedFileNotice`), and the re-read it offers (Slice 5A.1). */
+  /**
+   * The note above a board opened from a file (`lightboxSnapshotNotice`):
+   * its file changed since, offering the re-read (Slice 5A.1); from Slice
+   * 5A.2, as the rail went, also one whose file could not be compared, one
+   * with parts left out, and one opened from outside the boards folder.
+   */
   changedFile?: {
     view: LightboxSnapshotView;
     rereading: boolean;
@@ -149,16 +154,18 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   return (
     <div className="pm-lb-scroll">
       {changedFile && (
-        <div className="pm-lb-snapshot is-warn pm-lb-board-notice" role="status" aria-label="The saved board and its file">
-          <Icon name="alert" size={14} />
+        <div className={`pm-lb-snapshot is-${changedFile.view.tone} pm-lb-board-notice`} role="status" aria-label="The saved board and its file">
+          <Icon name={changedFile.view.tone === 'warn' ? 'alert' : 'history'} size={14} />
           <div className="pm-lb-snapshot-body">
             <p>{changedFile.view.opened}</p>
             <p>{changedFile.view.file}</p>
             {changedFile.view.dropped && <p>{changedFile.view.dropped}</p>}
-            <button type="button" className="pm-lb-button" onClick={changedFile.onReadCurrentText} disabled={changedFile.rereading}>
-              <Icon name="refresh" size={13} />
-              {changedFile.rereading ? 'Reading…' : 'Read the current text'}
-            </button>
+            {changedFile.view.readCurrentText && (
+              <button type="button" className="pm-lb-button" onClick={changedFile.onReadCurrentText} disabled={changedFile.rereading}>
+                <Icon name="refresh" size={13} />
+                {changedFile.rereading ? 'Reading…' : 'Read the current text'}
+              </button>
+            )}
           </div>
         </div>
       )}

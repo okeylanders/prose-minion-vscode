@@ -1,30 +1,39 @@
 /**
- * The rail's Boards section in words (Slice 5A; epic decision 31): each
- * saved board's date and time, lenses, stale lenses and approximate cost;
- * the board on screen; where boards are kept; what a board opened from a
- * file says about that file; and, past one page, how many are shown (PR
- * #163 F-04). Slice 5A.1 (decisions 33 and 34): a named row's name first,
- * the models that read each board, the head's name for the board on screen,
- * and the changed-file notice the board shows above itself, the rail's own.
+ * The saved boards in words (Slice 5A; Slice 5A.1; Slice 5A.2, epic decision
+ * 41): the Boards menu's trigger and status, its five newest boards of every
+ * chapter, and where boards are kept; the browser's rows (name, chapter,
+ * when, lenses, stale, cost, models, on screen), its notes, its search over
+ * names and chapter paths, and its groups by date and by chapter; and the
+ * note above a board opened from a file. The rail's paging and head are gone
+ * with the rail (Slice 5A.2).
  * Dates are pinned to UTC; names and model ids are made up.
  */
 
 import type { LightboxBoardShelf, LightboxSavedBoardSummary } from '@messages';
 import {
-  LIGHTBOX_BOARDS_PAGE,
-  buildLightboxBoardsView,
-  lightboxChangedFileNotice,
-  lightboxModelsNote
+  LIGHTBOX_RECENT_BOARDS,
+  buildLightboxBoardsBrowser,
+  buildLightboxBoardsMenu,
+  lightboxBoardRows,
+  lightboxBoardsByChapter,
+  lightboxBoardsByDate,
+  lightboxModelsNote,
+  lightboxSnapshotNotice,
+  searchLightboxBoardRows
 } from '@hooks/domain/lightbox/lightboxBoardsView';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 
 const UTC = { timeZone: 'UTC' };
 const PROJECT = { kind: 'project', displayPath: 'prose-minion/boards', lastSaveFailed: false } as const;
 const EVERY_LENS = LIGHTBOX_LENSES.map((lens) => lens.id);
+const CHAPTER = { kind: 'file', displayPath: 'Drafts/alice-1.md' } as const;
+const NAME = '3.2.1 - after the cut - model B';
 
 const saved = (overrides: Partial<LightboxSavedBoardSummary>): LightboxSavedBoardSummary => ({
   fileId: 'drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json',
+  name: 'alice-1 - 10/22/2026 2:05 PM',
   savedAt: Date.parse('2026-10-22T14:05:09.123Z'),
+  source: CHAPTER,
   wordCount: 508,
   lenses: [],
   staleLenses: [],
@@ -33,130 +42,38 @@ const saved = (overrides: Partial<LightboxSavedBoardSummary>): LightboxSavedBoar
 });
 const shelf = (overrides: Partial<LightboxBoardShelf>): LightboxBoardShelf => ({ availability: PROJECT, boards: [], unreadable: 0, ...overrides });
 
-describe('buildLightboxBoardsView', () => {
-  it('lists each saved board with its date, lenses, stale lenses and cost, and marks the board on screen', () => {
-    const view = buildLightboxBoardsView(shelf({
+describe('the browser\'s rows', () => {
+  it('names each board, its chapter, when, its lenses, stale lenses and cost, and marks the one on screen', () => {
+    const rows = lightboxBoardRows(shelf({
       boards: [
-        saved({ fileId: 'b', savedAt: Date.parse('2026-10-22T15:10:00.000Z'), lenses: EVERY_LENS, staleLenses: ['headline', 'motif'], costUsd: 0.0712, onScreen: true }),
-        saved({ fileId: 'c', savedAt: Date.parse('2026-10-22T14:30:00.000Z'), lenses: ['steering'], costUsd: 0.004 }),
+        saved({ fileId: 'b', name: NAME, savedAt: Date.parse('2026-10-22T15:10:00.000Z'), lenses: EVERY_LENS, staleLenses: ['headline', 'motif'], costUsd: 0.0712, onScreen: true }),
+        saved({ fileId: 'c', source: { kind: 'selection', displayPath: 'Drafts/alice-2.md', startLine: 4, endLine: 30 }, lenses: ['steering'], costUsd: 0.004 }),
         saved({ fileId: 'd', lenses: ['headline', 'motif', 'tension'] }),
-        saved({ fileId: 'a' })
+        saved({ fileId: 'a', source: { kind: 'selection', displayPath: 'Drafts/alice-2.md', startLine: 7, endLine: 7 } })
       ]
-    }), true, UTC);
+    }), UTC);
 
-    expect(view.status).toBe('4 saved');
-    expect(view.rows).toEqual([
-      { fileId: 'b', when: 'Oct 22, 2026, 3:10 PM', dateTime: '2026-10-22T15:10:00.000Z', lenses: 'Every lens read', stale: '2 stale', cost: '≈ $0.07', onScreen: true },
-      { fileId: 'c', when: 'Oct 22, 2026, 2:30 PM', dateTime: '2026-10-22T14:30:00.000Z', lenses: '1 lens read', cost: 'under $0.01', onScreen: false },
-      { fileId: 'd', when: 'Oct 22, 2026, 2:05 PM', dateTime: '2026-10-22T14:05:09.123Z', lenses: '3 lenses read', onScreen: false },
-      { fileId: 'a', when: 'Oct 22, 2026, 2:05 PM', dateTime: '2026-10-22T14:05:09.123Z', lenses: 'Measured only', onScreen: false }
+    expect(rows).toEqual([
+      {
+        fileId: 'b', name: NAME, chapter: 'Drafts/alice-1.md', chapterKey: 'file:Drafts/alice-1.md:-', savedAt: Date.parse('2026-10-22T15:10:00.000Z'),
+        when: 'Oct 22, 2026, 3:10 PM', dateTime: '2026-10-22T15:10:00.000Z', lenses: 'Every lens read', stale: '2 stale', cost: '≈ $0.07', onScreen: true
+      },
+      {
+        fileId: 'c', name: 'alice-1 - 10/22/2026 2:05 PM', chapter: 'Drafts/alice-2.md · lines 4–30', chapterKey: 'selection:Drafts/alice-2.md:4-30',
+        savedAt: Date.parse('2026-10-22T14:05:09.123Z'), when: 'Oct 22, 2026, 2:05 PM', dateTime: '2026-10-22T14:05:09.123Z', lenses: '1 lens read', cost: 'under $0.01', onScreen: false
+      },
+      expect.objectContaining({ fileId: 'd', lenses: '3 lenses read', chapter: 'Drafts/alice-1.md' }),
+      expect.objectContaining({ fileId: 'a', lenses: 'Measured only', chapter: 'Drafts/alice-2.md · line 7' })
     ]);
-    expect(view.caption).toBe('Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.');
-    expect(view.empty).toBeUndefined();
-  });
-
-  it('says what a board opened from a file means for that file', () => {
-    const snapshot = { fileId: 'a', savedAt: Date.parse('2026-10-21T09:00:00.000Z'), dropped: 0 };
-    const of = (file: 'same' | 'changed' | 'unreadable' | 'none', dropped = 0) =>
-      buildLightboxBoardsView(shelf({ boards: [saved({})], snapshot: { ...snapshot, file, dropped } }), true, UTC).snapshot;
-
-    expect(of('same')).toEqual({
-      tone: 'quiet', opened: 'Opened from the board saved Oct 21, 2026, 9:00 AM.', file: 'The file still holds the text it was read from.', readCurrentText: false
-    });
-    expect(of('changed')).toEqual({
-      tone: 'warn',
-      opened: 'Opened from the board saved Oct 21, 2026, 9:00 AM.',
-      file: 'The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text.',
-      readCurrentText: true
-    });
-    expect(of('unreadable')).toMatchObject({ tone: 'warn', file: 'The file could not be read to compare it with this board.', readCurrentText: false });
-    expect(of('none')).toMatchObject({ tone: 'quiet', file: 'It was a selection, so there is no file to compare.', readCurrentText: false });
-    expect(of('same', 1)?.dropped).toBe('1 part of it could not be read and was left out.');
-    expect(of('same', 3)?.dropped).toBe('3 parts of it could not be read and were left out.');
-  });
-
-  it('says why boards are kept for the session only, with no list and no caption', () => {
-    expect(buildLightboxBoardsView(shelf({ availability: { kind: 'session', reason: 'no-workspace' } }), true, UTC)).toEqual({
-      status: 'this session',
-      board: { label: 'Unnamed board', named: false, name: '', action: 'Name', note: 'A name lasts as long as this session, as the board does.' },
-      rows: [],
-      availability: 'Boards are kept for this session only: no folder is open. Open one folder to save them.'
-    });
-    expect(buildLightboxBoardsView(shelf({ availability: { kind: 'session', reason: 'multi-root' } }), true, UTC).availability)
-      .toBe('Boards are kept for this session only: several folders are open. Open one folder to save them.');
-  });
-
-  it('says when the last save failed, when there are none yet, and how many files could not be read', () => {
-    const view = buildLightboxBoardsView(shelf({ availability: { ...PROJECT, lastSaveFailed: true }, unreadable: 2, notice: 'That saved board is no longer in the boards folder.' }), true, UTC);
-    expect(view).toMatchObject({
-      status: '0 saved',
-      availability: 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.',
-      empty: 'No saved boards of this source yet. A board saves itself when it is first measured, and after each reading.',
-      unreadable: '2 files here could not be read as boards. They were left as they are.',
-      notice: 'That saved board is no longer in the boards folder.'
-    });
-    expect(buildLightboxBoardsView(shelf({ boards: [saved({})], unreadable: 1 }), true, UTC).unreadable)
-      .toBe('1 file here could not be read as a board. It was left as it is.');
-  });
-
-  it('shows the newest page and says how many there are, counting every one in the head (PR #163 F-04)', () => {
-    const many = Array.from({ length: 2 * LIGHTBOX_BOARDS_PAGE + 3 }, (_, index) =>
-      saved({ fileId: `f${index}`, savedAt: Date.parse('2026-10-22T14:05:00.000Z') - index * 60_000, onScreen: index === 0 }));
-    const first = buildLightboxBoardsView(shelf({ boards: many }), true, UTC);
-    expect(LIGHTBOX_BOARDS_PAGE).toBe(20);
-    expect(first.status).toBe('43 saved');
-    expect(first.rows.map((row) => row.fileId)).toEqual(many.slice(0, 20).map((board) => board.fileId));
-    expect(first.page).toEqual({ note: 'Showing the newest 20 of 43.', more: 'Show 20 older', next: 40 });
-
-    const second = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 40 });
-    expect(second.rows).toHaveLength(40);
-    expect(second.page).toEqual({ note: 'Showing the newest 40 of 43.', more: 'Show 3 older', next: 43 });
-    const all = buildLightboxBoardsView(shelf({ boards: many }), true, { ...UTC, shown: 60 });
-    expect(all.rows).toHaveLength(43);
-    expect(all.page).toBeUndefined();
-
-    // The page reaches the board on screen, however old.
-    const older = many.map((board, index) => ({ ...board, onScreen: index === 30 }));
-    const reaching = buildLightboxBoardsView(shelf({ boards: older }), true, UTC);
-    expect(reaching.rows).toHaveLength(31);
-    expect(reaching.rows.at(-1)).toMatchObject({ fileId: 'f30', onScreen: true });
-    // Show older goes on from the rows shown, not from the first page (PR #163 N-03).
-    expect(reaching.page).toEqual({ note: 'Showing the newest 31 of 43.', more: 'Show 12 older', next: 43 });
-
-    // One page or fewer: no note.
-    expect(buildLightboxBoardsView(shelf({ boards: many.slice(0, 20) }), true, UTC).page).toBeUndefined();
-  });
-
-  it('waits for the host, and with no board on screen says where boards will show', () => {
-    expect(buildLightboxBoardsView(null, true, UTC)).toEqual({ status: '…', rows: [], empty: 'Looking for saved boards…' });
-    expect(buildLightboxBoardsView(shelf({ boards: [saved({})] }), false, UTC)).toEqual({
-      status: 'none', rows: [], empty: 'Board a chapter, and the boards saved from it show here.'
-    });
-  });
-});
-
-describe('names and models (Slice 5A.1)', () => {
-  const NAME = '3.2.1 - after the cut - model B';
-
-  it('shows a named row\'s name first, its date and time under it, and an unnamed row as before', () => {
-    const view = buildLightboxBoardsView(shelf({
-      boards: [saved({ fileId: 'b', name: NAME, onScreen: true }), saved({ fileId: 'a' })]
-    }), true, UTC);
-
-    expect(view.rows.map((row) => [row.name ?? null, row.when])).toEqual([[NAME, 'Oct 22, 2026, 2:05 PM'], [null, 'Oct 22, 2026, 2:05 PM']]);
-    expect(view.rows[1]).not.toHaveProperty('name');
+    expect(rows[2]).not.toHaveProperty('cost');
   });
 
   it('names the models that read a row, shortened and once each; a measured-only row has no model line', () => {
-    const view = buildLightboxBoardsView(shelf({
-      boards: [
-        saved({ fileId: 'b', lenses: EVERY_LENS, models: ['provider/model-v1', 'provider/model-b'] }),
-        saved({ fileId: 'a' })
-      ]
-    }), true, UTC);
-
-    expect(view.rows[0]).toMatchObject({ models: 'Read by model-v1 and model-b', modelIds: 'provider/model-v1, provider/model-b' });
-    expect(view.rows[1]).not.toHaveProperty('models');
+    const rows = lightboxBoardRows(shelf({
+      boards: [saved({ fileId: 'b', lenses: EVERY_LENS, models: ['provider/model-v1', 'provider/model-b'] }), saved({ fileId: 'a' })]
+    }), UTC);
+    expect(rows[0]).toMatchObject({ models: 'Read by model-v1 and model-b', modelIds: 'provider/model-v1, provider/model-b' });
+    expect(rows[1]).not.toHaveProperty('models');
   });
 
   it('writes the model line: one, two, more than two, the same name from two providers once, and a long name cut', () => {
@@ -175,41 +92,155 @@ describe('names and models (Slice 5A.1)', () => {
       .toBe(`Read by ${alike.slice(0, 31)}…, ${alike.slice(0, 31)}… and 2 more`);
     expect(lightboxModelsNote([`provider/${alike}-one`, `mirror/${alike}-one`])).toBe(`Read by ${alike.slice(0, 31)}…`);
   });
+});
 
-  it('names the board on screen in the head, or says it is unnamed, with Name or Rename', () => {
-    expect(buildLightboxBoardsView(shelf({ boards: [saved({ onScreen: true })] }), true, UTC).board)
-      .toEqual({ label: 'Unnamed board', named: false, name: '', action: 'Name' });
-    expect(buildLightboxBoardsView(shelf({ name: NAME, boards: [saved({ name: NAME, onScreen: true })] }), true, UTC).board)
-      .toEqual({ label: NAME, named: true, name: NAME, action: 'Rename' });
+describe('search and groups', () => {
+  // Local times: the date groups are told in the local zone, as the Workshop's are, in any zone the tests run in.
+  const at = (month: number, day: number, hour: number) => new Date(2026, month - 1, day, hour).getTime();
+  const rows = lightboxBoardRows(shelf({
+    boards: [
+      saved({ fileId: 'today-2', name: 'Chapter 6 - draft three', savedAt: at(10, 23, 15), source: { kind: 'file', displayPath: 'Book/chapter-6.md' } }),
+      saved({ fileId: 'today-1', name: NAME, savedAt: at(10, 23, 9) }),
+      saved({ fileId: 'week', name: 'alice-1 - 10/20/2026 8:00 AM', savedAt: at(10, 20, 8) }),
+      saved({ fileId: 'earlier', name: 'Chapter 6 - first pass', savedAt: at(9, 1, 8), source: { kind: 'file', displayPath: 'Book/chapter-6.md' } })
+    ]
+  }));
+
+  it('searches names and chapter paths, every word, ignoring case; an empty search is every row', () => {
+    expect(searchLightboxBoardRows(rows, '').map((row) => row.fileId)).toEqual(['today-2', 'today-1', 'week', 'earlier']);
+    expect(searchLightboxBoardRows(rows, 'CHAPTER 6').map((row) => row.fileId)).toEqual(['today-2', 'earlier']);
+    expect(searchLightboxBoardRows(rows, 'book/chapter').map((row) => row.fileId)).toEqual(['today-2', 'earlier']);
+    expect(searchLightboxBoardRows(rows, 'alice model').map((row) => row.fileId)).toEqual(['today-1']);
+    expect(searchLightboxBoardRows(rows, 'drafts/alice-1')).toHaveLength(2);
+    expect(searchLightboxBoardRows(rows, 'nothing like this')).toEqual([]);
   });
 
-  it('says when a name waits for the board\'s next save, and that a session-only name lasts as long as the session', () => {
-    expect(buildLightboxBoardsView(shelf({ name: NAME, boards: [saved({})] }), true, UTC).board?.note)
-      .toBe('Not in a saved file yet: the name is saved with this board\'s next save.');
-    expect(buildLightboxBoardsView(shelf({ name: NAME, availability: { kind: 'session', reason: 'multi-root' } }), true, UTC).board)
-      .toMatchObject({ label: NAME, note: 'A name lasts as long as this session, as the board does.' });
+  it('groups by date as the Workshop does: Today, This week, Earlier, newest first within each', () => {
+    const groups = lightboxBoardsByDate(rows, new Date(at(10, 23, 18)));
+    expect(groups.map((group) => [group.label, group.items.map((row) => row.fileId)])).toEqual([
+      ['Today', ['today-2', 'today-1']],
+      ['This week', ['week']],
+      ['Earlier', ['earlier']]
+    ]);
   });
 
-  it('has no head until the host answers, and none with no board on screen', () => {
-    expect(buildLightboxBoardsView(null, true, UTC).board).toBeUndefined();
-    expect(buildLightboxBoardsView(shelf({ name: NAME }), false, UTC).board).toBeUndefined();
+  it('groups by chapter: each chapter once, in the order of its newest board', () => {
+    expect(lightboxBoardsByChapter(rows).map((group) => [group.label, group.items.map((row) => row.fileId)])).toEqual([
+      ['Book/chapter-6.md', ['today-2', 'earlier']],
+      ['Drafts/alice-1.md', ['today-1', 'week']]
+    ]);
   });
 });
 
-describe('the changed-file notice above the board (Slice 5A.1, epic decision 34)', () => {
+describe('the Boards menu', () => {
+  it('names the board on screen, says it is saved, and lists the five newest boards of every chapter', () => {
+    const many = Array.from({ length: 7 }, (_, index) => saved({
+      fileId: `f${index}`, name: `board ${index}`, savedAt: Date.parse('2026-10-22T14:05:00.000Z') - index * 60_000, onScreen: index === 3
+    }));
+    const view = buildLightboxBoardsMenu(shelf({ name: 'board 3', boards: many }), CHAPTER, UTC);
+
+    expect(LIGHTBOX_RECENT_BOARDS).toBe(5);
+    expect(view).toMatchObject({ label: 'board 3', status: { state: 'saved', text: 'Saved' }, canRename: true });
+    expect(view.recent.map((row) => row.fileId)).toEqual(['f0', 'f1', 'f2', 'f3', 'f4']);
+    expect(view.availability).toBeUndefined();
+  });
+
+  it('names a board no file holds yet by its chapter\'s file name, not saved yet', () => {
+    expect(buildLightboxBoardsMenu(shelf({ boards: [saved({})] }), CHAPTER, UTC)).toMatchObject({
+      label: 'alice-1', status: { state: 'session', text: 'Not saved yet' }
+    });
+  });
+
+  it('says when the last save failed, and when boards are kept for the session only, and why', () => {
+    expect(buildLightboxBoardsMenu(shelf({ availability: { ...PROJECT, lastSaveFailed: true } }), CHAPTER, UTC)).toMatchObject({
+      status: { state: 'error', text: 'Save failed' },
+      availability: 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.'
+    });
+    expect(buildLightboxBoardsMenu(shelf({ name: NAME, availability: { kind: 'session', reason: 'no-workspace' } }), CHAPTER, UTC)).toEqual({
+      label: NAME,
+      status: { state: 'session', text: 'This session only' },
+      recent: [],
+      canRename: true,
+      availability: 'Boards are kept for this session only: no folder is open. Open one folder to save them.'
+    });
+    expect(buildLightboxBoardsMenu(shelf({ availability: { kind: 'session', reason: 'multi-root' } }), CHAPTER, UTC).availability)
+      .toBe('Boards are kept for this session only: several folders are open. Open one folder to save them.');
+  });
+
+  it('with no board on screen: "Boards", no status and no rename, and still the newest boards', () => {
+    expect(buildLightboxBoardsMenu(shelf({ boards: [saved({})] }), null, UTC)).toMatchObject({
+      label: 'Boards', canRename: false, recent: [expect.objectContaining({ fileId: saved({}).fileId })]
+    });
+    expect(buildLightboxBoardsMenu(shelf({}), null, UTC).status).toBeUndefined();
+    expect(buildLightboxBoardsMenu(null, CHAPTER, UTC)).toEqual({ label: 'alice-1', recent: [], canRename: false });
+  });
+});
+
+describe('the browser', () => {
+  it('says what it cannot list, in order: where boards are kept, the host\'s notice, unreadable files and folders', () => {
+    const view = buildLightboxBoardsBrowser(shelf({
+      availability: { ...PROJECT, lastSaveFailed: true }, unreadable: 2, unreadableFolders: 1, notice: 'That saved board is no longer in the boards folder.'
+    }), UTC);
+    expect(view.notes).toEqual([
+      { tone: 'warn', text: 'The last save could not be written (the output log says why). Until one is, this board is kept for this session only.' },
+      { tone: 'alert', text: 'That saved board is no longer in the boards folder.' },
+      { tone: 'quiet', text: '2 files in the boards folder could not be read as boards. They were left as they are.' },
+      { tone: 'warn', text: '1 chapter\'s folder could not be read, so its boards are not listed. The output log says why.' }
+    ]);
+    expect(view.saving).toBe(true);
+    expect(view.empty).toBe('No saved boards yet. A board saves itself when it is first measured, and again after each reading, in a file of its own.');
+    expect(view.caption).toBe('Saved in prose-minion/boards, one file per board. "Read the current text" starts a new one. Nothing is deleted unless you delete it.');
+    expect(buildLightboxBoardsBrowser(shelf({ unreadable: 1, unreadableFolders: 3 }), UTC).notes.map((note) => note.text)).toEqual([
+      '1 file in the boards folder could not be read as a board. It was left as it is.',
+      '3 chapters\' folders could not be read, so their boards are not listed. The output log says why.'
+    ]);
+  });
+
+  it('says boards last only for the session, session-only', () => {
+    const view = buildLightboxBoardsBrowser(shelf({ availability: { kind: 'session', reason: 'no-workspace' } }), UTC);
+    expect(view).toMatchObject({
+      saving: false,
+      empty: 'Boards are kept for this session only, so there are none to open here.',
+      caption: 'Open one folder, and boards save themselves there.',
+      notes: [{ tone: 'warn', text: 'Boards are kept for this session only: no folder is open. Open one folder to save them.' }]
+    });
+  });
+
+  it('waits for the host', () => {
+    expect(buildLightboxBoardsBrowser(null, UTC)).toEqual({ rows: [], notes: [], saving: false, empty: 'Looking for saved boards…', caption: '' });
+  });
+});
+
+describe('the note above a board opened from a file (decision 34; Slice 5A.2)', () => {
   const snapshot = { fileId: 'a', savedAt: Date.parse('2026-10-21T09:00:00.000Z'), dropped: 0 };
+  const of = (overrides: Partial<NonNullable<LightboxBoardShelf['snapshot']>>) =>
+    lightboxSnapshotNotice(shelf({ boards: [saved({ onScreen: true })], snapshot: { ...snapshot, file: 'same', ...overrides } }), UTC);
 
-  it('is the rail\'s own note, from the same shelf, and only while it offers Read the current text', () => {
-    const changed = shelf({ boards: [saved({ onScreen: true })], snapshot: { ...snapshot, file: 'changed' } });
-    expect(lightboxChangedFileNotice(changed, UTC)).toEqual(buildLightboxBoardsView(changed, true, UTC).snapshot);
-    expect(lightboxChangedFileNotice(changed, UTC)?.readCurrentText).toBe(true);
+  it('offers Read the current text when the file changed', () => {
+    expect(of({ file: 'changed' })).toEqual({
+      tone: 'warn',
+      opened: 'Opened from the board saved Oct 21, 2026, 9:00 AM.',
+      file: 'The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text.',
+      readCurrentText: true
+    });
+  });
 
-    for (const file of ['same', 'unreadable', 'none'] as const) {
-      const quiet = shelf({ boards: [saved({ onScreen: true })], snapshot: { ...snapshot, file } });
-      expect(lightboxChangedFileNotice(quiet, UTC)).toBeUndefined();
-      expect(buildLightboxBoardsView(quiet, true, UTC).snapshot?.readCurrentText).toBe(false);
-    }
-    expect(lightboxChangedFileNotice(shelf({ boards: [saved({})] }), UTC)).toBeUndefined();
-    expect(lightboxChangedFileNotice(null, UTC)).toBeUndefined();
+  it('says so when the chapter could not be compared, when parts were left out, and when the file is outside the boards folder', () => {
+    expect(of({ file: 'unreadable' })).toMatchObject({
+      tone: 'warn', file: 'Its chapter could not be read to compare it with this board, so Bring is held back.', readCurrentText: false
+    });
+    expect(of({ dropped: 1 })).toMatchObject({ tone: 'quiet', dropped: '1 part of it could not be read and was left out.' });
+    expect(of({ dropped: 3 })?.dropped).toBe('3 parts of it could not be read and were left out.');
+    expect(of({ fileId: undefined, outside: true })).toMatchObject({
+      tone: 'quiet',
+      opened: 'Opened from a board file outside the boards folder, saved Oct 21, 2026, 9:00 AM. Its next save writes it there, as a file of its own.'
+    });
+  });
+
+  it('says nothing for an unchanged file or a selection, a board built now, or before the host answers', () => {
+    expect(of({})).toBeUndefined();
+    expect(of({ file: 'none' })).toBeUndefined();
+    expect(lightboxSnapshotNotice(shelf({ boards: [saved({})] }), UTC)).toBeUndefined();
+    expect(lightboxSnapshotNotice(null, UTC)).toBeUndefined();
   });
 });

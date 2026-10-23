@@ -1,126 +1,41 @@
 /* ============================================================
-   Prose Minion — the Lightbox rail's saved boards (Slice 5A; ADR 2026-10-19
-   D12 addendum): the list newest first, the board on screen marked, the
-   in-row delete confirmation, and the note on a board opened from a file.
-   Slice 5A.1: a board's name (in a row and in the section's head), the
-   models that read it, the field that names it in place, and the
-   changed-file notice above the board itself.
-   The card is the frame's .pm-ws-block; buttons and chips are rail.css's and
-   board.css's. Every feature here holds on the Chromium 114 floor.
+   Prose Minion — the Lightbox's saved boards (Slice 5A; ADR 2026-10-19
+   D12 addendum; Slice 5A.2).
+   From Slice 5A.2 the boards live in the header's Boards menu, the browser
+   and the name sheet, which are the full tabs' shared saved-item surfaces:
+   their rules are the frame's (styles/fulltab/savedItems.css). Here are only
+   the Lightbox's own parts: a row's glyph, chapter and model line, the name
+   sheet's width and refusal, and the note above a board opened from a file
+   (decision 34; the rail it was copied from is gone). Every feature here
+   holds on the Chromium 114 floor.
    ============================================================ */
 
-[data-pm-surface="lightbox"] .pm-lb-boards-list {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* ---------- The saved-board browser's rows ---------- */
+[data-pm-surface="lightbox"] .pm-lb-board-glyph {
+  color: var(--pm-accent-hi);
 }
-[data-pm-surface="lightbox"] .pm-lb-saved-board {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 8px 9px;
-  border-radius: 8px;
-  background: var(--pm-surface-2);
-  border: 1px solid var(--pm-border);
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board.is-on-screen {
-  border-color: var(--pm-lb-measured-line);
-  background: var(--pm-lb-measured-soft);
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-text {
-  flex: 1 1 140px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-when {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--pm-text);
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-meta {
-  font-family: var(--pm-mono);
-  font-size: 10.5px;
-  line-height: 1.5;
-  color: var(--pm-muted);
-  overflow-wrap: anywhere;
-}
-/* Slice 5A.1: a named board's name leads, and its date and time sit under it. */
-[data-pm-surface="lightbox"] .pm-lb-saved-board-name {
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--pm-text);
-  overflow-wrap: anywhere;
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-when.is-under-name {
-  font-size: 11.5px;
-  font-weight: 500;
+[data-pm-surface="lightbox"] .pm-lb-board-chapter {
+  overflow: hidden;
   color: var(--pm-text-2);
+  text-overflow: ellipsis;
 }
-[data-pm-surface="lightbox"] .pm-lb-saved-board-models {
+[data-pm-surface="lightbox"] .pm-lb-board-models {
+  color: var(--pm-dim);
   font-size: 11px;
-  line-height: 1.45;
-  color: var(--pm-muted);
-  overflow-wrap: anywhere;
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-actions,
-[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm {
-  flex: 1 1 100%;
-  justify-content: flex-end;
-  font-size: 12px;
-  color: var(--pm-text-2);
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board-confirm span {
-  margin-right: auto;
-}
-[data-pm-surface="lightbox"] .pm-lb-saved-board .pm-lb-button {
-  min-height: 28px;
-  padding: 0 10px;
-}
-[data-pm-surface="lightbox"] .pm-lb-button.is-danger {
-  border-color: color-mix(in srgb, var(--pm-red) 55%, var(--pm-border));
-  color: var(--pm-red);
-}
-[data-pm-surface="lightbox"] .pm-lb-button.is-danger:not(:disabled):hover {
-  border-color: var(--pm-red);
-  color: var(--pm-text);
-}
-[data-pm-surface="lightbox"] .pm-lb-icon-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  border: 1px solid transparent;
-  background: none;
-  display: grid;
-  place-items: center;
-  color: var(--pm-muted);
-  cursor: pointer;
-  flex: none;
-}
-[data-pm-surface="lightbox"] .pm-lb-icon-button:hover {
-  color: var(--pm-text);
-  border-color: var(--pm-border-2);
-}
-[data-pm-surface="lightbox"] .pm-lb-icon-button:focus-visible,
-[data-pm-surface="lightbox"] .pm-lb-saved-board .pm-lb-button:focus-visible {
-  outline: 2px solid var(--pm-accent);
-  outline-offset: 1px;
 }
 
-/* ---------- A board opened from a file ---------- */
+/* ---------- Rename board… ---------- */
+[data-pm-surface="lightbox"] .pm-lb-board-name-modal {
+  width: min(640px, 100%);
+}
+[data-pm-surface="lightbox"] .pm-lb-board-name-fault {
+  margin: 8px 2px 0;
+  color: var(--pm-red, #d66);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ---------- A board opened from a file: the note above it ---------- */
 [data-pm-surface="lightbox"] .pm-lb-snapshot {
   display: flex;
   align-items: flex-start;
@@ -156,107 +71,6 @@
 [data-pm-surface="lightbox"] .pm-lb-snapshot-body .pm-lb-button {
   margin-top: 4px;
 }
-
-[data-pm-surface="lightbox"] .pm-lb-boards-note,
-[data-pm-surface="lightbox"] .pm-lb-boards-empty {
-  margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--pm-dim);
-}
-/* PR #163 F-04: how many of the source's boards are shown, and Show older. */
-[data-pm-surface="lightbox"] .pm-lb-boards-page {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px 10px;
-  margin-top: 10px;
-}
-[data-pm-surface="lightbox"] .pm-lb-boards-page .pm-lb-boards-note {
-  margin: 0;
-}
-[data-pm-surface="lightbox"] .pm-lb-boards-notice {
-  margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--pm-amber);
-}
-
-/* ---------- Slice 5A.1: the board on screen's name ---------- */
-[data-pm-surface="lightbox"] .pm-lb-board-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 10px 0 0;
-  min-width: 0;
-}
-[data-pm-surface="lightbox"] .pm-lb-board-name-label {
-  flex: 1 1 140px;
-  min-width: 0;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--pm-text);
-  overflow-wrap: anywhere;
-}
-[data-pm-surface="lightbox"] .pm-lb-board-name-label.is-unnamed {
-  font-weight: 500;
-  font-style: italic;
-  color: var(--pm-muted);
-}
-[data-pm-surface="lightbox"] .pm-lb-board-name .pm-lb-button {
-  min-height: 28px;
-  padding: 0 10px;
-}
-[data-pm-surface="lightbox"] .pm-lb-board-name .pm-lb-button:focus-visible {
-  outline: 2px solid var(--pm-accent);
-  outline-offset: 1px;
-}
-[data-pm-surface="lightbox"] .pm-lb-board-name-note {
-  flex: 1 1 100%;
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--pm-dim);
-}
-
-/* The field that names a board in place, in a row or in the head. */
-[data-pm-surface="lightbox"] .pm-lb-name-field {
-  flex: 1 1 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-[data-pm-surface="lightbox"] .pm-lb-name-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 30px;
-  padding: 0 8px;
-  border-radius: 7px;
-  border: 1px solid var(--pm-border-2);
-  background: var(--pm-surface);
-  color: var(--pm-text);
-  font: 500 12.5px var(--pm-sans);
-}
-[data-pm-surface="lightbox"] .pm-lb-name-input:focus {
-  outline: 2px solid var(--pm-accent);
-  outline-offset: 0;
-}
-[data-pm-surface="lightbox"] .pm-lb-name-input[aria-invalid="true"] {
-  border-color: var(--pm-amber);
-}
-[data-pm-surface="lightbox"] .pm-lb-name-fault {
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--pm-amber);
-}
-
-/* Slice 5A.1: the changed-file notice above the board, the rail's own. */
 [data-pm-surface="lightbox"] .pm-lb-board-notice {
   margin: 0 0 14px;
 }

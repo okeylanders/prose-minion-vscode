@@ -1170,10 +1170,13 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  // Slice 5A.2: which of the saved boards' surfaces is open.
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
-  'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
-  // Slice 5A.1: naming a board in place, in the rail.
-  'presentation/webview/components/lightbox/LightboxBoardNameField.tsx',
+  // Slice 5A.2: the header's Boards menu, the saved-board browser and the name sheet (the rail's panel is gone).
+  'presentation/webview/components/lightbox/LightboxBoardsMenu.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardBrowserModal.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardNameModal.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
@@ -1236,7 +1239,8 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
-  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts'
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts'
 ] as const;
 /**
  * Complete Lightbox route ledger (2026-10-20). Every `LIGHTBOX_*` message type
