@@ -157,6 +157,69 @@ describe('a finished run\'s save, held in the queue while another run starts (PR
     expect((await tab.shelf('board-1')).shelf.availability).toMatchObject({ lastSaveFailed: false });
   });
 
+  it('keeps the old Opinion through an owed save (decision 47): a failed Opinion call\'s save, held while the Opinion runs again, writes the failed call and the old Opinion, never the run', async () => {
+    const engine: { failF: boolean; holdF?: ReturnType<typeof deferred<void>> } = { failF: false };
+    const host = createLightboxBoardsHost({
+      respond: async (request: InitialRunRequest): Promise<ExecutionResult> => {
+        const group = groupOf(request);
+        if (group === 'F' && engine.holdF) {
+          await engine.holdF.promise;
+        }
+        if (group === 'F' && engine.failF) {
+          throw new Error('stub provider: no reply');
+        }
+        return ok(group, group === 'F' ? opinionReplyFor(request) : undefined);
+      }
+    });
+    host.writeChapter(CHAPTER_PATH, CHAPTER);
+    const tab = host.openTab();
+    await tab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    await tab.shelf(null);
+    await tab.choose(CHAPTER_PATH);
+    await quiet();
+    await tab.read();
+    await quiet();
+    const opinion = host.service.currentBoard()?.readings.find((group) => group.group === 'F')?.tiles;
+    expect(opinion?.length).toBeGreaterThan(0);
+    expect(savedBoard(host).readings.find((group) => group.group === 'F')?.tiles).toEqual(opinion);
+
+    // The Opinion's call fails; its save waits in the queue.
+    engine.failF = true;
+    const read = host.holdBoardRead();
+    await tab.run({ mode: 'group', group: 'F' });
+    await quiet();
+    expect(status(host.service.currentBoard(), 'F')).toBe('failed');
+
+    // The writer runs the Opinion again: the old one stays on the board, running, until a new one lands.
+    engine.failF = false;
+    engine.holdF = deferred<void>();
+    await tab.run({ mode: 'group', group: 'F' });
+    await quiet();
+    expect(host.service.currentBoard()?.readings.find((group) => group.group === 'F')).toMatchObject({ status: 'running', pending: ['opinion'], tiles: opinion });
+
+    // The owed save writes the failed call, the old Opinion with it.
+    read.release();
+    await quiet();
+    expect(savedBoard(host).readings.find((group) => group.group === 'F')).toMatchObject({ status: 'failed', tiles: opinion });
+    expect(savedBoard(host).readings.find((group) => group.group === 'F')?.pending).toBeUndefined();
+
+    // The second call is stopped: nothing saves, and the file still holds the old Opinion.
+    const run = host.runner.activeRun('board-1');
+    await tab.route(MessageType.LIGHTBOX_CANCEL_RUN, { boardId: run?.boardId, token: run?.token });
+    engine.holdF.resolve();
+    await quiet();
+
+    expect(host.savedFiles()).toEqual([OWN]);
+    expect(savedBoard(host).readings.find((group) => group.group === 'F')).toMatchObject({ status: 'failed', tiles: opinion });
+    expect((await tab.shelf('board-1')).shelf.availability).toMatchObject({ lastSaveFailed: false });
+    const reloaded = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
+    const again = reloaded.openTab();
+    await again.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    await again.shelf(null);
+    await quiet();
+    expect(reloaded.service.currentBoard()?.readings.find((group) => group.group === 'F')?.tiles).toEqual(opinion);
+  });
+
   it('a later name given while the save waits is the one it writes', async () => {
     const { host, tab } = await boarded();
     const read = await readBWithTheSaveHeld(host, tab);
