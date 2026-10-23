@@ -232,7 +232,7 @@ describe('LightboxApp: craft steering (Slice 4F)', () => {
     const toggle = within(lenses).getByRole('checkbox', { name: /^Craft steering/ });
     // Listed under call G's header, which holds its Run (Slice 4I); the label still names its call.
     expect(toggle.closest('label')?.textContent).toBe('Craft steering · call G');
-    expect(within(within(lenses).getByRole('group', { name: 'Call G' })).getByRole('button', { name: /^Run call G: Craft steering/ })).not.toBeNull();
+    expect(within(within(lenses).getByRole('group', { name: 'Call G' })).getByRole('button', { name: /^Run G, call G: Craft steering/ })).not.toBeNull();
     expect(lenses.textContent).toContain('Run AI analyses makes up to 7 calls');
     fireEvent.click(toggle);
     expect(posted(MessageType.LIGHTBOX_SET_LENSES).at(-1)).toEqual(expect.objectContaining({

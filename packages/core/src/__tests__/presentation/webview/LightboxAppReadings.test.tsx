@@ -104,7 +104,7 @@ describe('LightboxApp readings', () => {
     const motifs = screen.getByLabelText('Motifs · where they recur');
     // The shimmer and the widget's own control both say its call is in flight (Slice 4I).
     expect(motifs.querySelector('.pm-lb-skeleton-note')?.textContent).toBe('Analyzing…');
-    expect(within(motifs).getByRole('button', { name: /^Analyzing call A:/ }).getAttribute('aria-disabled')).toBe('true');
+    expect(within(motifs).getByRole('button', { name: /^Analyzing…, call A:/ }).getAttribute('aria-disabled')).toBe('true');
 
     fromHost(MessageType.LIGHTBOX_GROUP_RESULT, { boardId: 'board-8', token: 'run-1', group: readGroup('A') });
     expect(screen.getByText('Analyzing… 1 of 3 calls back')).not.toBeNull();

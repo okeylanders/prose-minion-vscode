@@ -24,8 +24,15 @@
  * has landed, and each call's Run in the Lenses panel ("Running A…", "Rerun
  * A", "Run A"). Every AI-read widget in view must carry exactly one control
  * and no bare "read" badge, a counted-read one a "counted" chip, a measured
- * one none. A control must be reachable by the keyboard: Enter on a widget's
- * Analyze sends that call, and Enter on one that is disabled sends nothing.
+ * one none. Every control's accessible name must start with its visible
+ * label ("Run A, call A: …"; PR #166 N-01), and every price must read as an
+ * approximate total ("≈ $0.05" or "< $0.01", never "up to"), the Opinion's
+ * name and tooltip adding "input at digest limit" (F-01). A control must be
+ * reachable by the keyboard: Enter on a widget's Analyze sends that call,
+ * and Enter on one that is disabled sends nothing. The read headline's
+ * Re-analyze, focused and pressed, must keep the focus, the same button,
+ * through the host's own moments of that rerun: in flight, landed, pressed
+ * again, failed (N-02).
  * Nothing may be cut by its own box, run past it, overflow the page, or clip
  * a button, and above 1240 px, where the tab is a fixed frame, the page
  * itself may not scroll (a stray absolutely positioned element stretching
@@ -38,6 +45,8 @@ const { chromium } = (() => {
   try { return require('playwright'); } catch { /* fall through */ }
   return require(process.env.PLAYWRIGHT_MODULE || '/opt/node22/lib/node_modules/playwright');
 })();
+
+const { headlineRerun } = require('./headline-rerun');
 
 const [bundle, outDir] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
@@ -137,9 +146,8 @@ function expectedAnalyze(board, lens) {
   const group = groupOf(board, id);
   const inFlight = group.status === 'running' && (group.pending || []).includes(lens);
   const label = inFlight ? 'Analyzing…' : group.lenses.includes(lens) ? 'Re-analyze' : 'Analyze';
-  const verb = inFlight ? 'Analyzing' : label;
   const disabled = anyRunning(board) || (id === 'F' && !opinionCanWeigh(board));
-  return { label, namePrefix: `${verb} call ${id}:`, disabled };
+  return { label, namePrefix: `${label}, call ${id}:`, disabled };
 }
 
 /** A call's Run in the Lenses panel. */
@@ -148,6 +156,18 @@ function expectedRun(board, id) {
   const label = group.status === 'running' ? `Running ${id}…` : group.lenses.length > 0 ? `Rerun ${id}` : `Run ${id}`;
   const disabled = anyRunning(board) || (id === 'F' && !opinionCanWeigh(board));
   return { label, disabled };
+}
+
+/** What a control's price and name may say (PR #166 F-01): approximate, never a cap; the Opinion's input bound said apart. */
+function priceFaults(control, where) {
+  const out = [];
+  if (control.cost && !/^(≈ \$\d+\.\d\d|< \$0\.01)$/.test(control.cost)) { out.push(`${where}: priced "${control.cost}", not an approximate total`); }
+  if (/up to|at most|max/i.test(`${control.cost ?? ''} ${control.name ?? ''} ${control.title ?? ''}`)) { out.push(`${where}: says its price is a maximum: "${control.name}"`); }
+  if (control.group === 'F' && control.cost && !(control.name ?? '').endsWith(` · ${control.cost} · input at digest limit`)) {
+    out.push(`${where}: the Opinion's name does not say its input is at the digest limit: "${control.name}"`);
+  }
+  if (control.title !== (control.reason ?? control.name)) { out.push(`${where}: its tooltip is "${control.title}"`); }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +214,7 @@ const showAtTop = (selector) => async (tab) => {
 };
 
 const { fresh, oneCall, analyzing, read } = states;
+const HEADLINE = '.pm-lb-headline-row';
 const scenarios = [
   // The run line in each label state.
   { name: 'fresh-runline', data: fresh, act: showAtTop('.pm-lb-main-eyebrow'), within: TOOLBAR, expect: { press: true } },
@@ -207,7 +228,9 @@ const scenarios = [
   { name: 'fresh-opinion', data: fresh, act: showUnderRibbon(OPINION), within: OPINION, expect: { widgets: true, opinionReason: reasons.opinionNothingToWeigh } },
   // The Lenses panel: Run, Rerun, and Running.
   { name: 'one-call-lenses', data: oneCall, act: showAtTop(LENSES), within: LENSES, expect: { runs: true } },
-  { name: 'analyzing-lenses', data: analyzing, act: showAtTop(LENSES), within: LENSES, expect: { runs: true } }
+  { name: 'analyzing-lenses', data: analyzing, act: showAtTop(LENSES), within: LENSES, expect: { runs: true } },
+  // The headline's Re-analyze, focused and pressed: the same button keeps the focus through its rerun (PR #166 N-02).
+  { name: 'headline-rerun', data: read, act: showAtTop('.pm-lb-main-eyebrow'), within: HEADLINE, expect: { headlineRerun: true } }
 ];
 
 const viewports = [
@@ -247,6 +270,7 @@ const facts = ({ within, sparkle }) => {
     label: clean(button.querySelector('.pm-lb-call-label')?.textContent),
     cost: clean(button.querySelector('.pm-lb-call-cost')?.textContent) || null,
     name: button.getAttribute('aria-label'),
+    title: button.getAttribute('title'),
     disabled: button.getAttribute('aria-disabled') === 'true' || button.disabled,
     focusable: button.tabIndex >= 0 && !button.disabled,
     lens: button.getAttribute('data-lens'),
@@ -337,6 +361,7 @@ const faults = (seen, scenario) => {
       if (lenses[control.lens].group !== control.group) { out.push(`${widget.title}: its control runs call ${control.group}`); }
       if (control.label !== want.label) { out.push(`${widget.title}: says "${control.label}", not "${want.label}"`); }
       if (!control.name || !control.name.startsWith(want.namePrefix)) { out.push(`${widget.title}: named "${control.name}", not "${want.namePrefix} …"`); }
+      out.push(...priceFaults(control, widget.title));
       if (control.disabled !== want.disabled) { out.push(`${widget.title}: ${control.disabled ? 'disabled' : 'enabled'}, not ${want.disabled ? 'disabled' : 'enabled'}`); }
       if (control.disabled && !control.reason) { out.push(`${widget.title}: disabled with no reason`); }
       if (!control.focusable) { out.push(`${widget.title}: its control is not reachable by the keyboard`); }
@@ -365,7 +390,8 @@ const faults = (seen, scenario) => {
       if (entry.controls.length !== 1) { out.push(`${entry.call}: ${entry.controls.length} Run controls, not 1`); continue; }
       if (control.label !== want.label) { out.push(`${entry.call}: says "${control.label}", not "${want.label}"`); }
       if (control.disabled !== want.disabled) { out.push(`${entry.call}: ${control.disabled ? 'disabled' : 'enabled'}, not ${want.disabled ? 'disabled' : 'enabled'}`); }
-      if (!control.name || !control.name.startsWith(`${want.label.replace(/ [A-G]…?$/, '').replace('…', '')} call ${id}`)) { out.push(`${entry.call}: named "${control.name}"`); }
+      if (!control.name || !control.name.startsWith(`${want.label}, call ${id}`)) { out.push(`${entry.call}: named "${control.name}", not "${want.label}, call ${id} …"`); }
+      out.push(...priceFaults(control, entry.call));
       if (!control.focusable) { out.push(`${entry.call}: its Run is not reachable by the keyboard`); }
     }
   }
@@ -446,7 +472,21 @@ async function keyboard(tab, { lens, sends }) {
           errors.push(`${scenario.name}@${viewport.tag}: ${problem}`);
         }
       }
-      all[`${scenario.name}@${viewport.tag}`] = { ...seen, ...(keys ? { keyboard: { focused: keys.focused, sent: keys.sent } } : {}) };
+      // The headline's rerun, after the screenshot of the read headline, each step captured once it settles.
+      let rerun;
+      if (scenario.expect.headlineRerun) {
+        const capture = async (step) => {
+          await tab.mouse.move(4, 4);
+          await tab.waitForTimeout(300);
+          fs.writeFileSync(path.join(outDir, `lightbox-${scenario.name}-${step}-${viewport.tag}.png`), await tab.screenshot({ animations: 'disabled', caret: 'hide' }));
+        };
+        rerun = await headlineRerun(tab, capture, { states, selector: HEADLINE });
+        for (const problem of rerun.problems) {
+          errors.push(`${scenario.name}@${viewport.tag}: ${problem}`);
+        }
+      }
+      const extra = { ...(keys ? { keyboard: { focused: keys.focused, sent: keys.sent } } : {}), ...(rerun ? { rerun: { steps: rerun.steps, sent: rerun.sent } } : {}) };
+      all[`${scenario.name}@${viewport.tag}`] = { ...seen, ...extra };
       await context.close();
     }
   }

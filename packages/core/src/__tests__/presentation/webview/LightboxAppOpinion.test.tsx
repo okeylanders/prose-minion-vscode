@@ -194,7 +194,7 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
       .toEqual([{ kind: 'tile', boardId: BOARD.boardId, tileId: OPINION.id, view: 'blunt' }]);
   });
 
-  it('prices its Analyze "up to" its digest bound, in its header, and runs the Opinion alone (Slice 4I)', () => {
+  it('prices its Analyze "≈", its input at the digest limit said apart, in its header, and runs the Opinion alone (Slice 4I; PR #166 F-01)', () => {
     render(<LightboxApp />);
     fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
@@ -209,9 +209,11 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     });
     const frame = opinionFrame();
     const head = frame.querySelector('.pm-lb-tile-head') as HTMLElement;
-    const analyze = within(head).getByRole('button', { name: 'Re-analyze call F: Opinion · up to $0.05' });
-    expect(analyze.textContent).toBe('Re-analyzeup to $0.05');
+    const analyze = within(head).getByRole('button', { name: 'Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit' });
+    expect(analyze.textContent).toBe('Re-analyze≈ $0.05');
     expect(analyze.getAttribute('aria-disabled')).toBeNull();
+    // An approximate total, never a cap; the tooltip says what its input is priced at (PR #166 F-01).
+    expect(analyze.getAttribute('title')).toBe('Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit');
     // The header's Re-analyze replaces the tile's own "Re-read the Opinion".
     expect(within(frame).queryByRole('button', { name: 'Re-read the Opinion' })).toBeNull();
     fireEvent.click(analyze);

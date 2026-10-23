@@ -335,6 +335,12 @@ rerun that call. The press model becomes:
   Each call's price is the estimate's own entry for that group (`groups`,
   one per group with a lens on), and the host fit-checks the exact call at
   the press.
+- **A price is an approximate total, never a cap** (PR #166 F-01). Every
+  call's estimate prices its input as sent and its output at what such a
+  reply typically runs to, not at the output it may use; a control shows it
+  as "≈ $…". Group F's input is priced at its digest's whole bound, and its
+  control says so apart from the price ("· input at digest limit"), not by
+  calling the total a bound. No budget is enforced.
 
 ### D7. Every reading is anchored, verified and allowed to strain
 

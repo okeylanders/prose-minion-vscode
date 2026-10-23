@@ -11,8 +11,13 @@
  * - the Opinion's Analyze, disabled with the Opinion's own reason, shown,
  *   while nothing on the board is read and current;
  * - each call's Run in the Lenses panel, Run A / Rerun A;
- * - accessible names that name the call, its lenses and its price, and
- *   controls that stay focusable while they cannot run.
+ * - accessible names that start with the visible label, then name the
+ *   call, its lenses and its price (PR #166 N-01), and controls that stay
+ *   focusable while they cannot run;
+ * - the Opinion's price, approximate like every call's, its input bound
+ *   said apart from it (PR #166 F-01);
+ * - the headline's Analyze, which keeps the focus through its own rerun
+ *   (PR #166 N-02).
  * The host is played by window messages; readings are the worked examples'
  * through the production codec and verifier (Alice, public domain).
  */
@@ -58,7 +63,7 @@ const fromHost = (type: MessageType, payload: object) =>
 // eslint-disable-next-line @typescript-eslint/naming-convention -- keys are the calls' group letters, protocol literals.
 const COSTS: Readonly<Record<LightboxReadingGroupId, number>> = { A: 0.07, B: 0.0412, C: 0.03, D: 0.05, E: 0.06, G: 0.04, F: 0.05 };
 
-/** The host's estimate for `makeBoard(8)` with every lens on: one call per group, the Opinion "up to" its digest bound. */
+/** The host's estimate for `makeBoard(8)` with every lens on: one call per group, the Opinion's input at its digest bound. */
 function estimate(lensesOff: readonly string[] = []): LightboxRunEstimate {
   const groups = LIGHTBOX_READING_GROUPS
     .map((group) => ({ group, lenses: lightboxGroupLenses(group).filter((lens) => !lensesOff.includes(lens)) }))
@@ -157,7 +162,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
       show(makeBoard(8));
       const motifs = tile('Motifs · where they recur');
       const analyze = within(head(motifs)).getByRole('button', {
-        name: 'Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.07'
+        name: 'Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.07'
       });
       expect(analyze.textContent).toBe('Analyze≈ $0.07');
       expect(within(head(motifs)).queryByText('read')).toBeNull();
@@ -173,7 +178,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
       const voice = head(tile('Voice'));
       expect(within(voice).getByText('counted')).not.toBeNull();
       expect(within(voice).queryByText('counted · read')).toBeNull();
-      expect(within(voice).getByRole('button', { name: /^Analyze call B: Characters, Voice, Subtext · ≈ \$0\.04$/ })).not.toBeNull();
+      expect(within(voice).getByRole('button', { name: /^Analyze, call B: Characters, Voice, Subtext · ≈ \$0\.04$/ })).not.toBeNull();
       const words = head(tile('Top words · sized by count'));
       expect(within(words).getByText('measured')).not.toBeNull();
       expect(within(words).queryByRole('button')).toBeNull();
@@ -181,20 +186,20 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
 
     it('says Re-analyze once its lens has a reading', () => {
       show(withGroups(makeBoard(8), readGroup('B')));
-      expect(within(head(tile('Characters · the vibes they give'))).getByRole('button', { name: /^Re-analyze call B:/ })).not.toBeNull();
-      expect(within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze call A:/ })).not.toBeNull();
+      expect(within(head(tile('Characters · the vibes they give'))).getByRole('button', { name: /^Re-analyze, call B:/ })).not.toBeNull();
+      expect(within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze, call A:/ })).not.toBeNull();
     });
 
     it('says Analyzing… while its call is in flight; every other control waits, focusable, with the reason', () => {
       show(withGroups(makeBoard(8), { ...emptyLightboxReadingGroup('B'), status: 'running', pending: ['characters', 'voice', 'subtext'] }));
       fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, { boardId: 'board-8', token: 'run-1', phase: 'started', groups: ['B'], groupsBack: 0, outputCharacters: 0 });
       const voice = tile('Voice');
-      const live = within(head(voice)).getByRole('button', { name: /^Analyzing call B:/ });
+      const live = within(head(voice)).getByRole('button', { name: /^Analyzing…, call B:/ });
       expect(live.textContent).toBe('Analyzing…');
       expect(live.getAttribute('aria-disabled')).toBe('true');
       expect(voice.querySelector('.pm-lb-skeleton-note')?.textContent).toBe('Analyzing…');
 
-      const motifs = within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze call A:/ }) as HTMLButtonElement;
+      const motifs = within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze, call A:/ }) as HTMLButtonElement;
       expect(motifs.getAttribute('aria-disabled')).toBe('true');
       expect(motifs.disabled).toBe(false);
       expect(descriptionOf(motifs)).toBe('An analysis is running. Stop it, or wait for it to finish.');
@@ -210,21 +215,21 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
       render(<LightboxApp />);
       fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
       fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(8), refusal: null });
-      const analyze = within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze call A:/ });
+      const analyze = within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze, call A:/ });
       expect(analyze.getAttribute('aria-disabled')).toBe('true');
       expect(descriptionOf(analyze)).toBe('Its cost is being estimated.');
     });
 
     it('draws Analyze for the spark lane, the tension line and a read headline', () => {
       show(makeReadBoard());
-      expect(within(document.querySelector('.pm-lb-spark-head') as HTMLElement).getByRole('button', { name: /^Re-analyze call C: Genre neighborhood, Lineage, Spark/ })).not.toBeNull();
+      expect(within(document.querySelector('.pm-lb-spark-head') as HTMLElement).getByRole('button', { name: /^Re-analyze, call C: Genre neighborhood, Lineage, Spark/ })).not.toBeNull();
       const tension = document.querySelector('.pm-lb-tension-row') as HTMLElement;
-      expect(within(tension).getByRole('button', { name: /^Re-analyze call A:/ })).not.toBeNull();
+      expect(within(tension).getByRole('button', { name: /^Re-analyze, call A:/ })).not.toBeNull();
       // The line no longer carries a "read" badge: the button marks it as an AI reading.
       expect(tension.querySelector('.pm-lb-badge.pm-lb-reg-read')).toBeNull();
       const headline = document.querySelector('.pm-lb-headline-row') as HTMLElement;
       expect(within(headline).getByText('a reading')).not.toBeNull();
-      expect(within(headline).getByRole('button', { name: /^Re-analyze call A:/ })).not.toBeNull();
+      expect(within(headline).getByRole('button', { name: /^Re-analyze, call A:/ })).not.toBeNull();
     });
   });
 
@@ -232,7 +237,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
     it('says why it cannot run while nothing on the board is read and current, and sends nothing', () => {
       show(makeBoard(8));
       const opinion = head(document.querySelector('section.pm-lb-opinion') as HTMLElement);
-      const analyze = within(opinion).getByRole('button', { name: 'Analyze call F: Opinion · up to $0.05' });
+      const analyze = within(opinion).getByRole('button', { name: 'Analyze, call F: Opinion · ≈ $0.05 · input at digest limit' });
       expect(analyze.getAttribute('aria-disabled')).toBe('true');
       expect(descriptionOf(analyze)).toBe(LIGHTBOX_OPINION_NOTHING_TO_WEIGH);
       // Shown, not only described: it is the Opinion's own reason.
@@ -244,11 +249,27 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
     it('runs group F alone once one call has landed', () => {
       show(withGroups(makeBoard(8), readGroup('B')));
       const opinion = head(document.querySelector('section.pm-lb-opinion') as HTMLElement);
-      const analyze = within(opinion).getByRole('button', { name: 'Analyze call F: Opinion · up to $0.05' });
+      const analyze = within(opinion).getByRole('button', { name: 'Analyze, call F: Opinion · ≈ $0.05 · input at digest limit' });
       expect(analyze.getAttribute('aria-disabled')).toBeNull();
       expect(within(opinion).queryByText(LIGHTBOX_OPINION_NOTHING_TO_WEIGH)).toBeNull();
       fireEvent.click(analyze);
       expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ scope: { mode: 'group', group: 'F', lens: 'opinion' } });
+    });
+  });
+
+  describe('the Opinion\'s price (PR #166 F-01)', () => {
+    it('reads "≈" on its Analyze and on Run F, never "up to", and says in the name and tooltip that its input is at the digest limit', () => {
+      show(withGroups(makeBoard(8), readGroup('B')));
+      const analyze = within(head(document.querySelector('section.pm-lb-opinion') as HTMLElement)).getByRole('button', { name: /^Analyze, call F:/ });
+      const run = within(within(screen.getByLabelText('Lenses')).getByRole('group', { name: 'Call F' })).getByRole('button', { name: /^Run F, call F:/ });
+      for (const [button, label] of [[analyze, 'Analyze'], [run, 'Run F']] as const) {
+        expect(button.textContent).toBe(`${label}≈ $0.05`);
+        expect(button.querySelector('.pm-lb-call-cost')?.textContent).toBe('≈ $0.05');
+        expect(button.getAttribute('aria-label')).toBe(`${label}, call F: Opinion · ≈ $0.05 · input at digest limit`);
+        expect(button.getAttribute('title')).toBe(button.getAttribute('aria-label'));
+        expect(`${button.textContent} ${button.getAttribute('aria-label')}`).not.toMatch(/up to|at most|max/i);
+      }
+      expect(document.body.textContent).not.toContain('up to $');
     });
   });
 
@@ -259,18 +280,18 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
       const calls = within(lenses).getAllByRole('group').map((group) => group.getAttribute('aria-label'));
       expect(calls).toEqual(['Call A', 'Call B', 'Call C', 'Call D', 'Call E', 'Call G', 'Call F']);
       const a = within(within(lenses).getByRole('group', { name: 'Call A' })).getByRole('button', {
-        name: 'Rerun call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.07'
+        name: 'Rerun A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.07'
       });
       expect(a.textContent).toBe('Rerun A≈ $0.07');
       const b = within(within(lenses).getByRole('group', { name: 'Call B' })).getByRole('button', {
-        name: 'Run call B: Characters, Voice, Subtext · ≈ $0.04'
+        name: 'Run B, call B: Characters, Voice, Subtext · ≈ $0.04'
       });
       expect(b.textContent).toBe('Run B≈ $0.04');
       expect(within(within(lenses).getByRole('group', { name: 'Call B' })).getAllByRole('checkbox')).toHaveLength(3);
       fireEvent.click(a);
       expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ scope: { mode: 'group', group: 'A' } });
       // One run at a time: once a press is sent, every other control waits for it, with the reason.
-      const waiting = within(within(lenses).getByRole('group', { name: 'Call B' })).getByRole('button', { name: /^Run call B:/ });
+      const waiting = within(within(lenses).getByRole('group', { name: 'Call B' })).getByRole('button', { name: /^Run B, call B:/ });
       expect(waiting.getAttribute('aria-disabled')).toBe('true');
       expect(descriptionOf(waiting)).toBe('An analysis is running. Stop it, or wait for it to finish.');
       fireEvent.click(waiting);
@@ -279,7 +300,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
 
     it('runs call B from its header', () => {
       show(makeBoard(8));
-      fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('button', { name: 'Run call B: Characters, Voice, Subtext · ≈ $0.04' }));
+      fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('button', { name: 'Run B, call B: Characters, Voice, Subtext · ≈ $0.04' }));
       expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ scope: { mode: 'group', group: 'B' } });
     });
 
@@ -287,10 +308,105 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
       vscode.getState.mockReturnValue({ lightboxLensesOff: ['subtext', 'steering'] });
       show(makeBoard(8), estimate(['subtext', 'steering']));
       const lenses = screen.getByLabelText('Lenses');
-      expect(within(lenses).getByRole('button', { name: 'Run call B: Characters, Voice · ≈ $0.04' })).not.toBeNull();
-      const g = within(within(lenses).getByRole('group', { name: 'Call G' })).getByRole('button', { name: 'Run call G' });
+      expect(within(lenses).getByRole('button', { name: 'Run B, call B: Characters, Voice · ≈ $0.04' })).not.toBeNull();
+      const g = within(within(lenses).getByRole('group', { name: 'Call G' })).getByRole('button', { name: 'Run G, call G' });
       expect(g.getAttribute('aria-disabled')).toBe('true');
       expect(within(lenses).getByText('Every lens of call G is off. Turn one on to run it.')).not.toBeNull();
+    });
+  });
+
+  describe('every call button\'s name starts with what it shows (PR #166 N-01)', () => {
+    it('Run, Rerun and Running, Analyze, Re-analyze and Analyzing…: the visible label, then its call and price', () => {
+      show(withGroups(makeBoard(8), readGroup('A'), { ...emptyLightboxReadingGroup('B'), status: 'running', pending: ['characters', 'voice', 'subtext'] }));
+      fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, { boardId: 'board-8', token: 'run-1', phase: 'started', groups: ['B'], groupsBack: 0, outputCharacters: 0 });
+      const labels = new Set<string>();
+      for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('.pm-lb-call-button'))) {
+        const label = button.querySelector('.pm-lb-call-label')?.textContent ?? '';
+        const cost = button.querySelector('.pm-lb-call-cost')?.textContent;
+        const name = button.getAttribute('aria-label') ?? '';
+        expect(name.startsWith(`${label}, call ${button.dataset.call}`)).toBe(true);
+        expect(button.textContent).toBe(`${label}${cost ?? ''}`);
+        if (cost) {
+          expect(name).toContain(` · ${cost}`);
+        }
+        labels.add(label.replace(/ [A-G](…?)$/, ' X$1'));
+      }
+      expect([...labels].sort()).toEqual(['Analyze', 'Analyzing…', 'Re-analyze', 'Rerun X', 'Run X', 'Running X…']);
+      const lenses = screen.getByLabelText('Lenses');
+      const runOf = (call: string, name: RegExp) => within(within(lenses).getByRole('group', { name: `Call ${call}` })).getByRole('button', { name });
+      expect(runOf('A', /^Rerun A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ \$0\.07$/).textContent).toBe('Rerun A≈ $0.07');
+      expect(runOf('B', /^Running B…, call B: Characters, Voice, Subtext · ≈ \$0\.04$/).textContent).toBe('Running B…');
+      expect(runOf('C', /^Run C, call C: Genre neighborhood, Lineage, Spark · ≈ \$0\.03$/).textContent).toBe('Run C≈ $0.03');
+    });
+  });
+
+  describe('the headline\'s Analyze through its own rerun (PR #166 N-02)', () => {
+    const readingA = (board: LightboxBoard) =>
+      withGroups(board, { ...emptyLightboxReadingGroup('A'), status: 'running', pending: lightboxGroupLenses('A') });
+    const progress = (token: string, phase: 'started' | 'finished' | 'cancelled', groupsBack = 0) =>
+      fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, { boardId: 'board-8', token, phase, groups: ['A'], groupsBack, outputCharacters: 0 });
+    const headlineAnalyze = () => document.querySelector('.pm-lb-headline-row')?.querySelector<HTMLButtonElement>('.pm-lb-call-button') ?? null;
+
+    it('keeps the focused button through the start, the landing, a failure and a stop', () => {
+      show(makeReadBoard());
+      const button = headlineAnalyze() as HTMLButtonElement;
+      expect(button.getAttribute('aria-label')).toMatch(/^Re-analyze, call A:/);
+      button.focus();
+      fireEvent.click(button);
+      expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ scope: { mode: 'group', group: 'A', lens: 'headline' } });
+
+      // Start: call A's readings are cleared while it reads again; the button stays, disabled, and keeps the focus.
+      progress('run-1', 'started');
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: readingA(makeReadBoard()), refusal: null });
+      expect(document.querySelector('.pm-lb-headline-reading')).toBeNull();
+      expect(headlineAnalyze()).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.textContent).toBe('Analyzing…');
+      expect(button.getAttribute('aria-label')).toMatch(/^Analyzing…, call A:/);
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+
+      // Completion: the new headline lands beside it.
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: makeReadBoard(), refusal: null });
+      progress('run-1', 'finished', 1);
+      estimateFromHost(estimate());
+      expect(document.querySelector('.pm-lb-headline-reading')).not.toBeNull();
+      expect(headlineAnalyze()).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-label')).toMatch(/^Re-analyze, call A:/);
+      expect(button.getAttribute('aria-disabled')).toBeNull();
+
+      // Failure: pressed again, the call does not come back; the plain heading returns with the reason under it.
+      fireEvent.click(button);
+      progress('run-2', 'started');
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: readingA(makeReadBoard()), refusal: null });
+      expect(document.activeElement).toBe(button);
+      const failed = withGroups(makeReadBoard(), { ...emptyLightboxReadingGroup('A'), status: 'failed', error: 'The model did not answer. Press Finish or Analyze to try again.' });
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: failed, refusal: null });
+      progress('run-2', 'finished', 1);
+      estimateFromHost(estimate());
+      expect(headlineAnalyze()).toBe(button);
+      expect(document.activeElement).toBe(button);
+      expect(button.getAttribute('aria-label')).toMatch(/^Analyze, call A:/);
+      expect(within(document.querySelector('.pm-lb-headline-state') as HTMLElement).getByText(/^The headline did not come back\./)).not.toBeNull();
+
+      // A stop: the writer stops the next attempt, and the button still holds the focus.
+      fireEvent.click(button);
+      progress('run-3', 'started');
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: readingA(failed), refusal: null });
+      expect(document.activeElement).toBe(button);
+      fromHost(MessageType.LIGHTBOX_BOARD, {
+        board: withGroups(failed, { ...emptyLightboxReadingGroup('A'), status: 'cancelled', error: 'Stopped before it came back.' }),
+        refusal: null
+      });
+      progress('run-3', 'cancelled');
+      expect(headlineAnalyze()).toBe(button);
+      expect(document.activeElement).toBe(button);
+    });
+
+    it('draws no Analyze beside the plain heading of a board whose headline was never asked for', () => {
+      show(makeBoard(8));
+      expect(document.querySelector('.pm-lb-headline-row')).toBeNull();
+      expect(screen.getByRole('heading', { name: 'One chapter, held up to the light.' })).not.toBeNull();
     });
   });
 });

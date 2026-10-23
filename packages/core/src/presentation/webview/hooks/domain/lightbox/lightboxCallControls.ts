@@ -16,7 +16,17 @@
  * (`lightboxOpinionNothingToWeigh`), which the host also refuses with.
  *
  * Every price is the host's estimate of exactly that call (`estimate.groups`
- * prices each call with its lenses that are on). While any run of the board
+ * prices each call with its lenses that are on), an approximate total: its
+ * input as sent, its output as such a reply typically runs, never its
+ * ceiling. The Opinion's input is its digest's whole bound, so its price
+ * says "≈" like every other call's, and its name and tooltip add
+ * "input at digest limit" (PR #166 F-01). Neither is a cap.
+ *
+ * The accessible name starts with the visible label, then names the call,
+ * its lenses and its price ("Run A, call A: Headline, … · ≈ $0.07"), so the
+ * label a writer sees is the name they can speak (PR #166 N-01).
+ *
+ * While any run of the board
  * is in flight or starting, every control is disabled with the reason, and
  * Stop stays on the run line. Nothing here posts anything: a press goes
  * through the run line's own `run(scope)`, with the estimate it was shown.
@@ -51,9 +61,13 @@ export interface LightboxCallControl {
   scope: LightboxRunScope;
   /** "Analyze", "Re-analyze", "Analyzing…"; or "Run A", "Rerun A", "Running A…". */
   label: string;
-  /** Shown beside the label: "≈ $0.06", "up to $0.05", "< $0.01"; absent when the call is not priced. */
+  /** Shown beside the label: "≈ $0.06", "< $0.01"; absent when the call is not priced. An estimate, never a cap. */
   cost?: string;
-  /** The accessible name and tooltip: "Analyze call B: Characters, Voice, Subtext · ≈ $0.04". */
+  /**
+   * The accessible name and tooltip, the visible label first:
+   * "Analyze, call B: Characters, Voice, Subtext · ≈ $0.04"; the Opinion's
+   * adds "· input at digest limit".
+   */
   name: string;
   /** Why it cannot run now; absent when it can. */
   reason?: string;
@@ -87,6 +101,8 @@ export interface LightboxCallControls {
 }
 
 const ESTIMATING = 'Its cost is being estimated.';
+/** Said after the Opinion's price: its input is priced at the digest's whole bound (PR #166 F-01). */
+export const LIGHTBOX_DIGEST_INPUT_NOTE = 'input at digest limit';
 const NOT_PRICED = 'This call has no estimate yet. Wait for the cost, then press again.';
 
 /** Every call's controls on this board, the Opinion's reason read once. */
@@ -107,13 +123,11 @@ function analyzeControl(input: LightboxCallControlsInput, lens: LightboxLensId, 
   const view = lightboxLensView(input.board, lens);
   const inFlight = view.phase === 'reading';
   const again = !inFlight && read(groupOf(input.board, group), lens);
-  const verb = inFlight ? 'Analyzing' : again ? 'Re-analyze' : 'Analyze';
   return control(input, {
     group,
     lenses,
     scope: { mode: 'group', group, lens },
-    label: inFlight ? 'Analyzing…' : verb,
-    verb,
+    label: inFlight ? 'Analyzing…' : again ? 'Re-analyze' : 'Analyze',
     inFlight,
     again,
     opinionReason
@@ -126,13 +140,11 @@ function runControl(input: LightboxCallControlsInput, group: LightboxReadingGrou
   const reading = groupOf(input.board, group);
   const inFlight = reading?.status === 'running';
   const again = !inFlight && (reading?.lenses.length ?? 0) > 0;
-  const verb = inFlight ? 'Running' : again ? 'Rerun' : 'Run';
   return control(input, {
     group,
     lenses,
     scope: { mode: 'group', group },
-    label: inFlight ? `Running ${group}…` : `${verb} ${group}`,
-    verb,
+    label: inFlight ? `Running ${group}…` : again ? `Rerun ${group}` : `Run ${group}`,
     inFlight,
     again,
     opinionReason
@@ -143,9 +155,8 @@ interface ControlParts {
   group: LightboxReadingGroupId;
   lenses: LightboxLensId[];
   scope: LightboxRunScope;
+  /** The visible label, which the accessible name starts with. */
   label: string;
-  /** The name's verb: "Analyze call B: …", "Rerun call A: …". */
-  verb: string;
   inFlight: boolean;
   again: boolean;
   opinionReason: string | undefined;
@@ -156,13 +167,14 @@ function control(input: LightboxCallControlsInput, parts: ControlParts): Lightbo
   const cost = call ? lightboxCallCost(call) : undefined;
   const { reason, blocked } = availability(input, parts, call);
   const lensNames = parts.lenses.map(lightboxLensLabel).join(', ');
+  const priced = cost ? ` · ${cost}${call?.inputBound === 'digest' ? ` · ${LIGHTBOX_DIGEST_INPUT_NOTE}` : ''}` : '';
   return {
     group: parts.group,
     lenses: parts.lenses,
     scope: parts.scope,
     label: parts.label,
     ...(cost ? { cost } : {}),
-    name: `${parts.verb} call ${parts.group}${lensNames ? `: ${lensNames}` : ''}${cost ? ` · ${cost}` : ''}`,
+    name: `${parts.label}, call ${parts.group}${lensNames ? `: ${lensNames}` : ''}${priced}`,
     ...(reason ? { reason } : {}),
     blocked,
     inFlight: parts.inFlight,
@@ -210,18 +222,18 @@ function availability(
 }
 
 /**
- * A call's price as its button shows it: "≈ $0.06", "< $0.01", or for the
- * Opinion, priced at its digest's bound, "up to $0.05"; absent without live
- * pricing.
+ * A call's price as its button shows it, an approximate total: "≈ $0.06",
+ * or "< $0.01"; absent without live pricing. The Opinion's reads the same
+ * way: its input is priced at the digest's bound, but its output, like every
+ * call's, at what such a reply typically runs to, so a reply below the
+ * call's output ceiling can cost more (PR #166 F-01). Its name says the
+ * rest (`LIGHTBOX_DIGEST_INPUT_NOTE`).
  */
-export function lightboxCallCost(call: Pick<LightboxCallEstimate, 'costUsd' | 'inputBound'>): string | undefined {
+export function lightboxCallCost(call: Pick<LightboxCallEstimate, 'costUsd'>): string | undefined {
   if (call.costUsd === undefined) {
     return undefined;
   }
   const amount = formatLightboxCost(call.costUsd);
-  if (call.inputBound === 'digest') {
-    return `up to ${amount}`;
-  }
   return amount.startsWith('<') ? amount : `≈ ${amount}`;
 }
 

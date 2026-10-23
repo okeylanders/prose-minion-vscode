@@ -15,7 +15,8 @@
  * - its standing: stale when anything it cites changed since it was read
  *   (`lightboxOpinionStanding`);
  * - its Analyze in the header (Slice 4I, epic decision 44): group F alone,
- *   on the board as it stands, priced "up to" the digest's bound, and
+ *   on the board as it stands, priced "≈" like every call, its name adding
+ *   that its input is counted at the digest limit (PR #166 F-01), and
  *   disabled with the Opinion's own reason while nothing on the board is
  *   read and current. It replaces the tile's own "Re-read the Opinion";
  * - "Bring this view to Workshop", when the host would carry it.

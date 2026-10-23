@@ -23,3 +23,13 @@
 [LightboxReadingRunner] Run run-3-token finished: C ok, D ok, E ok, G ok, F ok
 [LightboxReadingHandler] Run run-3-token finished: 5 groups, 6000 tokens, $0.0500
 [LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-08-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-4-token started: groups A
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 16 tiles, 0 blocks withheld, 0 claims withheld, 25 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-4-token finished: A ok
+[LightboxReadingHandler] Run run-4-token finished: 1 groups, 1200 tokens, $0.0100
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-09-09-123Z.board.json (160090 bytes).
+[LightboxReadingRunner] Run run-5-token started: groups A
+[LightboxReadingRunner] Group A call failed: unexpected (Error)
+[LightboxReadingRunner] Run run-5-token finished: A failed
+[LightboxReadingHandler] Run run-5-token finished: 1 groups, 0 tokens
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-10-09-123Z.board.json (133510 bytes).

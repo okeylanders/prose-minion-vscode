@@ -83,7 +83,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -103,7 +104,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -123,7 +125,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -141,7 +144,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -159,7 +163,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -177,7 +182,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -197,7 +203,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -215,7 +222,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -235,7 +243,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -253,7 +262,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -273,7 +283,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -293,7 +304,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -311,7 +323,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -329,7 +342,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -349,7 +363,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -369,7 +384,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -418,7 +434,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -438,7 +455,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -458,7 +476,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -476,7 +495,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -494,7 +514,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -512,7 +533,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -532,7 +554,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -550,7 +573,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -570,7 +594,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -588,7 +613,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -608,7 +634,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -628,7 +655,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -646,7 +674,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -664,7 +693,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -684,7 +714,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -704,7 +735,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -757,7 +789,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "motif",
@@ -777,7 +810,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "gravity",
@@ -797,7 +831,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "palette",
@@ -815,7 +850,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "characters",
@@ -833,7 +869,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "lineage",
@@ -851,7 +888,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "genre",
@@ -871,7 +909,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "voice",
@@ -889,7 +928,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "subtext",
@@ -909,7 +949,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "stock",
@@ -927,7 +968,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "rhythm",
@@ -947,7 +989,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "numbers",
@@ -967,7 +1010,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "steering",
@@ -985,7 +1029,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "summary",
@@ -1003,7 +1048,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "template",
@@ -1023,7 +1069,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "pressure",
@@ -1043,7 +1090,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "artifacts",
@@ -1095,8 +1143,9 @@
         "controls": [
           {
             "label": "Analyze",
-            "cost": "up to $0.05",
-            "name": "Analyze call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
             "disabled": true,
             "focusable": true,
             "lens": "opinion",
@@ -1136,7 +1185,8 @@
           {
             "label": "Run A",
             "cost": "≈ $0.06",
-            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1152,7 +1202,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1168,7 +1219,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1184,7 +1236,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1200,7 +1253,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1216,7 +1270,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "Run G, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1231,8 +1286,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -1264,7 +1320,8 @@
           {
             "label": "Running A…",
             "cost": null,
-            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Running A…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1280,7 +1337,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1296,7 +1354,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1312,7 +1371,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1328,7 +1388,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1344,7 +1405,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1359,8 +1421,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -1376,6 +1439,107 @@
     "horizontalOverflow": false,
     "pageScrolled": 0,
     "clippedButtons": []
+  },
+  "headline-rerun@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "rerun": {
+      "steps": [
+        {
+          "step": "read",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "landed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing-again",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "failed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyze",
+          "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": false,
+          "failed": "The headline did not come back. The call failed before a reading came back. Press Finish or Analyze to try again."
+        }
+      ],
+      "sent": [
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ],
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ]
+      ]
+    }
   },
   "fresh-runline@1000": {
     "found": true,
@@ -1461,7 +1625,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -1481,7 +1646,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -1501,7 +1667,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -1519,7 +1686,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -1537,7 +1705,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -1555,7 +1724,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -1575,7 +1745,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -1593,7 +1764,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -1613,7 +1785,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -1631,7 +1804,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -1651,7 +1825,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -1671,7 +1846,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -1689,7 +1865,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -1707,7 +1884,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -1727,7 +1905,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -1747,7 +1926,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -1796,7 +1976,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -1816,7 +1997,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -1836,7 +2018,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -1854,7 +2037,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -1872,7 +2056,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -1890,7 +2075,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -1910,7 +2096,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -1928,7 +2115,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -1948,7 +2136,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -1966,7 +2155,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -1986,7 +2176,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -2006,7 +2197,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -2024,7 +2216,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -2042,7 +2235,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -2062,7 +2256,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -2082,7 +2277,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -2135,7 +2331,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "motif",
@@ -2155,7 +2352,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "gravity",
@@ -2175,7 +2373,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "palette",
@@ -2193,7 +2392,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "characters",
@@ -2211,7 +2411,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "lineage",
@@ -2229,7 +2430,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "genre",
@@ -2249,7 +2451,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "voice",
@@ -2267,7 +2470,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "subtext",
@@ -2287,7 +2491,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "stock",
@@ -2305,7 +2510,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "rhythm",
@@ -2325,7 +2531,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "numbers",
@@ -2345,7 +2552,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "steering",
@@ -2363,7 +2571,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "summary",
@@ -2381,7 +2590,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "template",
@@ -2401,7 +2611,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "pressure",
@@ -2421,7 +2632,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "artifacts",
@@ -2473,8 +2685,9 @@
         "controls": [
           {
             "label": "Analyze",
-            "cost": "up to $0.05",
-            "name": "Analyze call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
             "disabled": true,
             "focusable": true,
             "lens": "opinion",
@@ -2514,7 +2727,8 @@
           {
             "label": "Run A",
             "cost": "≈ $0.06",
-            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2530,7 +2744,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2546,7 +2761,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2562,7 +2778,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2578,7 +2795,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2594,7 +2812,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "Run G, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2609,8 +2828,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -2642,7 +2862,8 @@
           {
             "label": "Running A…",
             "cost": null,
-            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Running A…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2658,7 +2879,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2674,7 +2896,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2690,7 +2913,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2706,7 +2930,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2722,7 +2947,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2737,8 +2963,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -2754,6 +2981,107 @@
     "horizontalOverflow": false,
     "pageScrolled": 0,
     "clippedButtons": []
+  },
+  "headline-rerun@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "rerun": {
+      "steps": [
+        {
+          "step": "read",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "landed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing-again",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "failed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyze",
+          "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": false,
+          "failed": "The headline did not come back. The call failed before a reading came back. Press Finish or Analyze to try again."
+        }
+      ],
+      "sent": [
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ],
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ]
+      ]
+    }
   },
   "fresh-runline@500": {
     "found": true,
@@ -2839,7 +3167,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -2859,7 +3188,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -2879,7 +3209,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -2897,7 +3228,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -2915,7 +3247,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -2933,7 +3266,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -2953,7 +3287,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -2971,7 +3306,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -2991,7 +3327,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -3009,7 +3346,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -3029,7 +3367,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -3049,7 +3388,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -3067,7 +3407,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -3085,7 +3426,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -3105,7 +3447,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -3125,7 +3468,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -3174,7 +3518,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "motif",
@@ -3194,7 +3539,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "gravity",
@@ -3214,7 +3560,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.06",
-            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": "palette",
@@ -3232,7 +3579,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "characters",
@@ -3250,7 +3598,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "lineage",
@@ -3268,7 +3617,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": "genre",
@@ -3288,7 +3638,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "voice",
@@ -3306,7 +3657,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "subtext",
@@ -3326,7 +3678,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "stock",
@@ -3344,7 +3697,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "rhythm",
@@ -3364,7 +3718,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": "numbers",
@@ -3384,7 +3739,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "Analyze, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": "steering",
@@ -3402,7 +3758,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "summary",
@@ -3420,7 +3777,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "template",
@@ -3440,7 +3798,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "pressure",
@@ -3460,7 +3819,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": "artifacts",
@@ -3513,7 +3873,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "motif",
@@ -3533,7 +3894,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "gravity",
@@ -3553,7 +3915,8 @@
           {
             "label": "Analyzing…",
             "cost": null,
-            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": "palette",
@@ -3571,7 +3934,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "characters",
@@ -3589,7 +3953,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "lineage",
@@ -3607,7 +3972,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.04",
-            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Analyze, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "genre",
@@ -3627,7 +3993,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "voice",
@@ -3645,7 +4012,8 @@
           {
             "label": "Re-analyze",
             "cost": "≈ $0.03",
-            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Re-analyze, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "subtext",
@@ -3665,7 +4033,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "stock",
@@ -3683,7 +4052,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "rhythm",
@@ -3703,7 +4073,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.05",
-            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Analyze, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "numbers",
@@ -3723,7 +4094,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.03",
-            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "name": "Analyze, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "steering",
@@ -3741,7 +4113,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "summary",
@@ -3759,7 +4132,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "template",
@@ -3779,7 +4153,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "pressure",
@@ -3799,7 +4174,8 @@
           {
             "label": "Analyze",
             "cost": "≈ $0.07",
-            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Analyze, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": "artifacts",
@@ -3851,8 +4227,9 @@
         "controls": [
           {
             "label": "Analyze",
-            "cost": "up to $0.05",
-            "name": "Analyze call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
             "disabled": true,
             "focusable": true,
             "lens": "opinion",
@@ -3892,7 +4269,8 @@
           {
             "label": "Run A",
             "cost": "≈ $0.06",
-            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Run A, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3908,7 +4286,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3924,7 +4303,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3940,7 +4320,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3956,7 +4337,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3972,7 +4354,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "Run G, call G: Craft steering · ≈ $0.03",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -3987,8 +4370,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
             "disabled": false,
             "focusable": true,
             "lens": null,
@@ -4020,7 +4404,8 @@
           {
             "label": "Running A…",
             "cost": null,
-            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "name": "Running A…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "title": "Call A is running. Stop is on the run line.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4036,7 +4421,8 @@
           {
             "label": "Rerun B",
             "cost": "≈ $0.03",
-            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "name": "Rerun B, call B: Characters, Voice, Subtext · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4052,7 +4438,8 @@
           {
             "label": "Run C",
             "cost": "≈ $0.04",
-            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "name": "Run C, call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4068,7 +4455,8 @@
           {
             "label": "Run D",
             "cost": "≈ $0.05",
-            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "name": "Run D, call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4084,7 +4472,8 @@
           {
             "label": "Run E",
             "cost": "≈ $0.07",
-            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "name": "Run E, call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4100,7 +4489,8 @@
           {
             "label": "Run G",
             "cost": "≈ $0.03",
-            "name": "Run call G: Craft steering · ≈ $0.03",
+            "name": "Run G, call G: Craft steering · ≈ $0.03",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4115,8 +4505,9 @@
         "controls": [
           {
             "label": "Run F",
-            "cost": "up to $0.05",
-            "name": "Run call F: Opinion · up to $0.05",
+            "cost": "≈ $0.05",
+            "name": "Run F, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "An analysis is running. Stop it, or wait for it to finish.",
             "disabled": true,
             "focusable": true,
             "lens": null,
@@ -4132,5 +4523,106 @@
     "horizontalOverflow": false,
     "pageScrolled": 0,
     "clippedButtons": []
+  },
+  "headline-rerun@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "rerun": {
+      "steps": [
+        {
+          "step": "read",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "landed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Re-analyze",
+          "name": "Re-analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": true,
+          "failed": null
+        },
+        {
+          "step": "analyzing-again",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyzing…",
+          "name": "Analyzing…, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": true,
+          "headline": false,
+          "failed": null
+        },
+        {
+          "step": "failed",
+          "same": true,
+          "connected": true,
+          "focused": true,
+          "active": "BUTTON",
+          "label": "Analyze",
+          "name": "Analyze, call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+          "disabled": false,
+          "headline": false,
+          "failed": "The headline did not come back. The call failed before a reading came back. Press Finish or Analyze to try again."
+        }
+      ],
+      "sent": [
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ],
+        [
+          {
+            "mode": "group",
+            "group": "A",
+            "lens": "headline"
+          }
+        ]
+      ]
+    }
   }
 }

@@ -14,9 +14,9 @@
  *   keyboard reaches it and a screen reader hears why; a press then does
  *   nothing. The reason is shown under it when it is the call's own (the
  *   Opinion with nothing to weigh, a call too large), and only described
- *   while another run is in flight. The accessible name names the call, its
- *   lenses and its price ("Analyze call B: Characters, Voice, Subtext ·
- *   ≈ $0.04").
+ *   while another run is in flight. The accessible name starts with the
+ *   visible label, then names the call, its lenses and its price ("Analyze,
+ *   call B: Characters, Voice, Subtext · ≈ $0.04"; PR #166 N-01).
  */
 import * as React from 'react';
 import type { LightboxLensId, LightboxRunScope } from '@messages';

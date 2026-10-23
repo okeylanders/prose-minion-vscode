@@ -9,16 +9,23 @@
  * The model it reports is the placeholder `provider/model-v1`. No provider is
  * called.
  *
- * Four moments of one board, each pressed as the webview presses it:
+ * Eight moments of one board, each pressed as the webview presses it:
  * 1. `fresh`: the chapter boarded and measured, nothing analyzed.
  * 2. `one-call`: call B analyzed on its own, from the Voice widget's Analyze
  *    (`{ mode: 'group', group: 'B', lens: 'voice' }`).
  * 3. `analyzing`: call A's Run pressed in the Lenses panel
  *    (`{ mode: 'group', group: 'A' }`), its reply held: A in flight.
  * 4. `read`: A released, then Finish (`{ mode: 'rest' }`): every call read.
+ * Then the headline's own Analyze, twice (PR #166 N-02), each pressed as
+ * `{ mode: 'group', group: 'A', lens: 'headline' }` with A's reply held:
+ * 5. `rereading`: A in flight again, every other call still read;
+ * 6. `reread`: A released and read again;
+ * 7. `failing`: pressed again, A in flight;
+ * 8. `failed`: A's reply fails; A failed, every other call still read.
  * Each moment records what a mount sees: the board, the run's progress while
  * one is in flight, the rail's shelves and the estimate, with the run the
- * host names.
+ * host names. A moment a run ends in also carries the host's `finished`
+ * progress for it, so a page that watched the run sees it end.
  *
  * Not part of the test suite: copy it to packages/core/src/__tests__/ and run
  * `npx jest packages/core/src/__tests__/build-run-controls.test.ts`, with
@@ -81,8 +88,9 @@ const press = (tab: LightboxBoardsTab, scope: LightboxRunScope) => tab.run(scope
 
 it('dumps the run-control states', async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  // The reply for group A can be held, so a moment with a call in flight can be recorded.
+  // The reply for group A can be held, so a moment with a call in flight can be recorded, and then fail.
   let holdA: ReturnType<typeof deferred<void>> | undefined;
+  let failA = false;
   const host = createLightboxBoardsHost({
     now: () => NOW,
     fileSystem: new MemoryFileSystem(),
@@ -90,6 +98,9 @@ it('dumps the run-control states', async () => {
       const group = groupOf(request);
       if (group === 'A' && holdA) {
         await holdA.promise;
+      }
+      if (group === 'A' && failA) {
+        throw new Error('stub provider: no reply');
       }
       return ok(group, group === 'F' ? opinionReplyFor(request) : undefined);
     }
@@ -136,11 +147,47 @@ it('dumps the run-control states', async () => {
   const read = await scene(tab, 'read');
   expect(statuses(boardOf(read)).every((entry) => entry.endsWith(':ok'))).toBe(true);
 
+  // 5–8 (PR #166 N-02): the headline's own Analyze, once to land and once to fail.
+  const headline: LightboxRunScope = { mode: 'group', group: 'A', lens: 'headline' };
+  const others = ['B:ok', 'C:ok', 'D:ok', 'E:ok', 'G:ok', 'F:ok'];
+  const finished = () => ({
+    ...(tab.posted.filter((message) => message.type === MessageType.LIGHTBOX_RUN_PROGRESS && message.payload.phase === 'finished').at(-1) as ExtensionToWebviewMessage),
+    timestamp: 1
+  });
+  holdA = deferred<void>();
+  await press(tab, headline);
+  await quiet();
+  const rereading = await scene(tab, 'rereading');
+  expect(statuses(boardOf(rereading))).toEqual(['A:running', ...others]);
+  holdA.resolve();
+  holdA = undefined;
+  await quiet();
+  const reread = await scene(tab, 'reread');
+  reread.messages.push(finished());
+  expect(statuses(boardOf(reread))).toEqual(['A:ok', ...others]);
+
+  holdA = deferred<void>();
+  failA = true;
+  await press(tab, headline);
+  await quiet();
+  const failing = await scene(tab, 'failing');
+  expect(statuses(boardOf(failing))).toEqual(['A:running', ...others]);
+  holdA.resolve();
+  holdA = undefined;
+  await quiet();
+  failA = false;
+  const failed = await scene(tab, 'failed');
+  failed.messages.push(finished());
+  expect(statuses(boardOf(failed))).toEqual(['A:failed', ...others]);
+
   // Each lens's call, for the harness to word what each widget's control should say.
   const lenses = Object.fromEntries(LIGHTBOX_LENSES.map((lens) => [lens.id, { label: lens.label, group: lens.group }]));
   // The host's own refusal of the Opinion alone on the fresh board: what its Analyze must show there.
   const reasons = { opinionNothingToWeigh: (refused?.payload as { message?: string } | undefined)?.message };
-  fs.writeFileSync(path.join(OUT, 'run-controls.json'), `${JSON.stringify({ lenses, reasons, fresh, oneCall, analyzing, read })}\n`);
+  fs.writeFileSync(
+    path.join(OUT, 'run-controls.json'),
+    `${JSON.stringify({ lenses, reasons, fresh, oneCall, analyzing, read, rereading, reread, failing, failed })}\n`
+  );
 
   // The log names groups, lenses, counts and reasons; never the chapter's words.
   const log = `${host.lines.join('\n')}\n`;

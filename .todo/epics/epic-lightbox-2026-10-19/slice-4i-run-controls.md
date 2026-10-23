@@ -117,8 +117,13 @@ state; `components/lightbox/LightboxCallButton.tsx` draws it.
   characters, voice, subtext, genre, lineage, stock, rhythm, numbers,
   steering, template, pressure, artifacts, summary and the Opinion), the
   Spark lane's head, the tension line under the ribbon (beside it, outside
-  its pin) and the headline's row once it has a reading or a state to show
-  (the plain heading of a board not analyzed yet is no widget). The frames
+  its pin) and the headline's row once its lens has been asked for: while
+  call A reads it, once it lands, and when it was withheld, failed or
+  stopped (the plain heading of a board whose headline was never asked for
+  is no widget). The row keeps one shape through all of these, so a
+  focused Re-analyze keeps the focus through its own rerun: it reads
+  "Analyzing…", disabled, then "Re-analyze" or, after a failure,
+  "Analyze" (PR #166 N-02). The frames
   read it from `LightboxCallControlsProvider`, a context around the board,
   so the renderer map and the tile components pass nothing new.
 - **It replaces the bare "read" badge.** A counted-read widget keeps a
@@ -139,13 +144,19 @@ state; `components/lightbox/LightboxCallButton.tsx` draws it.
   it; a run in flight is only described, so the board does not fill with
   the same sentence.
 - **Cost:** inside the button, small, after the label: "Analyze ≈ $0.04";
-  "< $0.01" for a call that rounds to nothing; "up to $0.05" for the
-  Opinion, priced at its digest's bound; nothing without live pricing. It
-  reads cleanly at 500 px, where the header wraps.
-- **Accessible name:** the verb, the call, its lenses and the price:
-  "Analyze call B: Characters, Voice, Subtext · ≈ $0.04", "Re-analyze call
-  F: Opinion · up to $0.05", "Analyzing call A: Headline, …". The visible
-  label is the name's first word.
+  "< $0.01" for a call that rounds to nothing; nothing without live
+  pricing. Every price is an approximate total, the Opinion's too
+  ("≈ $0.05"), never a cap (PR #166 F-01): a call's input is priced as sent
+  (the Opinion's at its digest's whole bound) and its output at what such
+  a reply typically runs to, so a reply under the call's 12,000-token
+  output ceiling can cost more. It reads cleanly at 500 px, where the
+  header wraps.
+- **Accessible name and tooltip:** the visible label first, then the
+  call, its lenses and the price (PR #166 N-01): "Analyze, call B:
+  Characters, Voice, Subtext · ≈ $0.04", "Analyzing…, call A: Headline,
+  …". The Opinion's adds what its input is priced at, apart from the
+  price: "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit".
+  A disabled control's tooltip is its reason.
 
 ## 4. The Opinion's Analyze (decision 44)
 
@@ -154,7 +165,9 @@ alone, over the board as it stands. While nothing on the board is read and
 current, it is disabled and shows "Nothing on the board is read and
 current, so the Opinion has nothing to weigh. Analyze another call first,
 then the Opinion." under it; the host refuses the same press with the same
-words. Its price is "up to" the digest's bound.
+words. Its price reads "≈ $0.05", approximate like every call's; its name
+and tooltip add "input at digest limit", the one thing its estimate does
+differently (PR #166 F-01).
 
 It replaces the tile's own **Re-read the Opinion** at its foot, which ran
 the same call (as the per-lens re-read); the Bring row stays. The two
@@ -176,15 +189,17 @@ names its call to a screen reader ("Palette · call A"), visually hidden.
   A…** while it is in flight; disabled with a reason as the widgets are, and
   "Every lens of call G is off. Turn one on to run it." shown when none is
   on. It reads the call's lenses that are on (`{ mode: 'group', group }`).
-- **Tooltip and accessible name:** "Run call A: Headline, Theme & motif,
-  Tension arc, Lexical gravity, Palette · ≈ $0.07".
+- **Tooltip and accessible name:** the label first (PR #166 N-01): "Run A,
+  call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette ·
+  ≈ $0.07"; "Rerun B, call B: …" and "Running A…, call A: …" likewise;
+  "Run F, call F: Opinion · ≈ $0.05 · input at digest limit".
 
 ## Implementation notes
 
 - **New modules:** `application/handlers/domain/LightboxPressScope.ts` (127
   lines: the scope's parse, the calls a press makes, what an estimate
   prices), `presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts`
-  (245, pure, transport-free), `presentation/webview/components/lightbox/LightboxCallButton.tsx`
+  (257, pure, transport-free), `presentation/webview/components/lightbox/LightboxCallButton.tsx`
   (the button, the provider, the widget's Analyze). All three join
   `boundaries.test.ts`'s Lightbox module list, the hook its transport-free
   list.
@@ -218,9 +233,12 @@ New suites:
   turned off, a price changed, another board adopted while preparing; a
   stale estimate key before any prompt is read); the estimate's entry equal
   to the call sent.
-- `lightboxCallControls.test.ts` (15): every control state and reason,
+- `lightboxCallControls.test.ts` (22): every control state and reason,
   names and prices, the Opinion's reason and its stale case, the panel's
-  Run/Rerun and its every-lens-off reason.
+  Run/Rerun and its every-lens-off reason; the Opinion's price never a
+  maximum, its input bound said apart, with and without live pricing and
+  at a tiny price (F-01); every name led by its label, in four moments of
+  the board (N-01).
 - `LightboxAppRunControls.test.tsx` (15): the run line in each label state
   (orange, sparkle, cost), Analyzing… with Stop; a widget's Analyze in its
   header in place of the read badge and the press it sends; COUNTED +
@@ -229,7 +247,11 @@ New suites:
   that sends nothing; the estimate pending; the spark lane, the tension
   line and the headline; the Opinion's shown reason and its press once a
   call landed; the Lenses panel's headers, Run and Rerun, one run at a
-  time, and a call with every lens off.
+  time, and a call with every lens off; the Opinion's "≈" price, name and
+  tooltip on its Analyze and on Run F (F-01); label and name for every
+  call button, Run, Rerun and Running among them (N-01); the headline's
+  focused Re-analyze held through its rerun's start, landing, failure and
+  stop, and absent on a fresh board (N-02). 19 tests.
 
 Changed: `LightboxBoardAdoptions.test.ts` (a call's Run, a widget's Analyze
 and the Opinion's Analyze refused when a saved snapshot of the same board
@@ -238,7 +260,8 @@ is opened while they prepare, and a control), `lightboxRunLine.test.ts`
 that named the old copy, `boundaries.test.ts` (the module lists), and the
 host tests that pinned the old failure words.
 
-In all, 3 new suites (51 tests) and 6 more tests in changed suites.
+In all, 3 new suites (62 tests, 51 before the PR #166 corrections) and 6
+more tests in changed suites.
 
 **Which tests fail on `d255b8e`.** The 24 new and changed suites, as
 committed at `f21b0626` (before the 4H corrections were merged), copied
@@ -266,7 +289,31 @@ onto an export of `d255b8e`:
 See the epic's progress note for the gates on the final head. Visual
 evidence in
 [`docs/pr-reviews/evidence/lightbox-slice-4i-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4i-visual/README.md):
-27 captures, `errors.txt` empty; 186 errors against the base bundle.
+39 captures, `errors.txt` empty; against the reviewed head's bundle
+(`28a977e`) the corrected harness writes 273 errors, among them each of
+the three review findings, and 189 against the base bundle (`d255b8e`).
+
+## PR #166 review corrections (2026-10-23)
+
+Astra's review ([report](../../../docs/pr-reviews/pr-166-lightbox-run-controls-review.md))
+asked for one correction and two nonblocking follow-ups; all three are made.
+
+- **F-01 (P2): the Opinion's price was shown as a cap.** "up to $0.05"
+  priced its input at the digest's bound but its output at the typical
+  1,440 tokens, not the 12,000 the call may use, so a permitted reply could
+  cost more. It now reads "≈ $0.05" like every call's, on its Analyze and
+  on Run F, and the name and tooltip add "input at digest limit". No
+  budget is imposed and the estimate itself is unchanged
+  (`lightboxCallCost`, `LIGHTBOX_DIGEST_INPUT_NOTE`).
+- **N-01 (P3): names now start with the visible label**, "Run A, call
+  A: …", "Rerun B, call B: …", "Running A…, call A: …", "Analyze, call B: …",
+  keeping the call, lenses and price.
+- **N-02 (P3): the headline's Re-analyze keeps the focus through its own
+  rerun.** The row with the button stays while call A reads the headline,
+  in one shape for every state, so the button is never replaced; it says
+  "Analyzing…", disabled, and then "Re-analyze", or "Analyze" after a
+  failure or stop. A board whose headline was never asked for still shows
+  the plain heading alone.
 
 ## For the writer to decide
 
@@ -284,9 +331,12 @@ evidence in
 - **"Re-read this tile"** in the inspector keeps its words, since it is the
   per-lens re-read and differs from a call's Re-analyze. It could become
   "Re-analyze this tile" if one verb is wanted.
-- **The headline's Analyze** appears only once the headline has a reading
-  or a state to show, not beside the plain heading of a fresh board, where
-  it would compete with "Run AI analyses".
-- **Label in name.** The Lenses panel's accessible name is the writer's
-  "Run call A: …", while the button shows "Run A"; a speech user saying
-  "click Run A" may not match it. "Run A, call A: …" would.
+- **The headline's Analyze** appears once the headline has been asked
+  for (while it is read, once it lands, or a state of it), not beside the
+  plain heading of a board whose headline was never asked for, where it
+  would compete with "Run AI analyses".
+
+**Answered:** *Label in name.* The accessible names said "Run call A: …"
+while the button showed "Run A", so a speech user saying "click Run A" might
+not reach it. They now start with the visible label, "Run A, call A: …"
+(PR #166 N-01).

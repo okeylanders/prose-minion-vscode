@@ -15,10 +15,18 @@
  * as every reading frame does (D4; PR #150 F-06).
  *
  * Call A's Analyze (Slice 4I, epic decision 43) sits in the headline's row
- * once there is a headline reading, or a state of one, to show; the plain
- * heading of a board not analyzed yet is no widget and has none (the run
- * line and the other widgets of call A offer it). "a reading" stays beside
- * a read headline, so it never passes for the board's own title.
+ * once the headline lens has been asked for: while call A reads it, after a
+ * headline lands, and when it was withheld, failed or stopped. The plain
+ * heading of a board whose headline was never asked for is no widget and has
+ * none (the run line and the other widgets of call A offer it). "a reading"
+ * stays beside a read headline, so it never passes for the board's own
+ * title.
+ *
+ * One row, one button (PR #166 N-02): the row keeps the same shape whether
+ * a headline is read, being read, or failed, so pressing a focused
+ * Re-analyze clears the old headline without unmounting the button; it
+ * reads "Analyzing…", disabled, and then "Re-analyze" or "Analyze" again
+ * with the focus still on it.
  */
 import * as React from 'react';
 import type { LightboxTileProps } from '@components/lightbox/LightboxTiles';
@@ -35,46 +43,37 @@ const STALE_HEADLINE = 'Read against an earlier version of this chapter. Its quo
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) => {
   const [headline] = lightboxTilesOfKind(board, 'headline');
-  if (!headline) {
-    const view = lightboxLensView(board, 'headline');
-    const failed = (view.phase === 'failed' || view.phase === 'cancelled') && view.notice;
-    const withheld = view.withheldBlocks.length > 0 || view.withheldClaims.length > 0;
-    return (
-      <>
-        {withheld || failed
-          ? (
-            <div className="pm-lb-headline-row">
-              <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>
-              <LightboxAnalyzeButton lens="headline" />
-            </div>
-          )
-          : <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>}
-        {(withheld || failed) && (
-          <div className="pm-lb-headline-state" aria-label="Headline reading">
-            {view.stale && <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>}
-            {failed && <p className="pm-lb-reading-notice is-failed">The headline did not come back. {view.notice}</p>}
-            <LightboxWithheldBlocks blocks={view.withheldBlocks} label="Headline withheld" />
-            <LightboxWithheldClaims claims={view.withheldClaims} />
-          </div>
-        )}
-      </>
-    );
-  }
-  const stale = lightboxLensView(board, 'headline').stale;
+  const view = lightboxLensView(board, 'headline');
+  const failed = !headline && (view.phase === 'failed' || view.phase === 'cancelled') && Boolean(view.notice);
+  const withheld = !headline && (view.withheldBlocks.length > 0 || view.withheldClaims.length > 0);
+  // Asked for at least once: its Analyze stays in the row through a rerun's start, landing and failure (N-02).
+  const asked = headline !== undefined || view.phase !== 'not-run';
+  const state = headline ? view.stale : withheld || failed;
   return (
     <>
-      <div className="pm-lb-headline-row">
-        <h2 className="pm-lb-headline">
-          <LightboxItemButton binding={bind({ kind: 'reading', tileId: headline.id })} className="pm-lb-headline-reading">
-            {headline.title}
-          </LightboxItemButton>
-        </h2>
-        <span className="pm-lb-badge pm-lb-reg-read">a reading</span>
-        <LightboxAnalyzeButton lens="headline" />
-      </div>
-      {stale && (
+      {asked
+        ? (
+          <div className="pm-lb-headline-row">
+            <h2 className="pm-lb-headline">
+              {headline
+                ? (
+                  <LightboxItemButton binding={bind({ kind: 'reading', tileId: headline.id })} className="pm-lb-headline-reading">
+                    {headline.title}
+                  </LightboxItemButton>
+                )
+                : LIGHTBOX_PLAIN_HEADLINE}
+            </h2>
+            {headline && <span className="pm-lb-badge pm-lb-reg-read">a reading</span>}
+            <LightboxAnalyzeButton lens="headline" />
+          </div>
+        )
+        : <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>}
+      {state && (
         <div className="pm-lb-headline-state" aria-label="Headline reading">
-          <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>
+          {view.stale && <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>}
+          {failed && <p className="pm-lb-reading-notice is-failed">The headline did not come back. {view.notice}</p>}
+          {withheld && <LightboxWithheldBlocks blocks={view.withheldBlocks} label="Headline withheld" />}
+          {withheld && <LightboxWithheldClaims claims={view.withheldClaims} />}
         </div>
       )}
     </>

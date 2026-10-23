@@ -60,6 +60,7 @@ fresh-opinion@1440: Opinion: 0 controls, not 1
 fresh-opinion@1440: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@1440: the calls listed are []
 analyzing-lenses@1440: the calls listed are []
+headline-rerun@1440: the read headline has 0 Analyze controls, not 1
 fresh-runline@1000: the run press says "Read the chapter", not "Run AI analyses"
 one-call-runline@1000: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
 one-call-runline@1000: the run press "Finish" is not in the primary style
@@ -122,6 +123,7 @@ fresh-opinion@1000: Opinion: 0 controls, not 1
 fresh-opinion@1000: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@1000: the calls listed are []
 analyzing-lenses@1000: the calls listed are []
+headline-rerun@1000: the read headline has 0 Analyze controls, not 1
 fresh-runline@500: the run press says "Read the chapter", not "Run AI analyses"
 one-call-runline@500: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
 one-call-runline@500: the run press "Finish" is not in the primary style
@@ -184,3 +186,4 @@ fresh-opinion@500: Opinion: 0 controls, not 1
 fresh-opinion@500: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@500: the calls listed are []
 analyzing-lenses@500: the calls listed are []
+headline-rerun@500: the read headline has 0 Analyze controls, not 1

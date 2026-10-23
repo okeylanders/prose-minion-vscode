@@ -1251,12 +1251,19 @@ adding a way to start a reading:
   running state, and presses through `useLightbox.run`, with the estimate
   key and model it was shown. A control that cannot run stays focusable
   (`aria-disabled`, its reason as its description), and its accessible name
-  names the call, its lenses and its price.
+  starts with its visible label, then names the call, its lenses and its
+  price ("Run A, call A: … · ≈ $0.07"; PR #166 N-01).
+- **A price is approximate, never a cap** (PR #166 F-01): "≈ $…" or
+  "< $0.01" for every call, the Opinion's too; its name and tooltip add
+  "input at digest limit" (`LIGHTBOX_DIGEST_INPUT_NOTE`). Never word an
+  estimate as "up to" or "at most".
 - **A widget's control replaces its bare "read" badge** (`LightboxTileFrame`'s
   `action`; a counted-read tile keeps "counted"). A new reading frame gets
   it for free from `LightboxCallControlsProvider`; a reading drawn outside a
   frame (the headline, the tension line, the Spark lane) draws
-  `LightboxAnalyzeButton` for its lens itself.
+  `LightboxAnalyzeButton` for its lens itself, and keeps it mounted, in
+  the same place, while its call reads it, so a focused control keeps the
+  focus through its own rerun (the headline's row; PR #166 N-02).
 
 ### Lightbox Passages
 
