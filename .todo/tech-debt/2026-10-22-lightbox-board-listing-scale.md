@@ -30,7 +30,7 @@ chapter's history is usually tens of files.
 boards (`LightboxBoardFiles.listAll`), for the Boards menu and browser, so
 each listing reads every chapter folder and stats every board file in the
 boards folder, not one source's. Two things offset it: one file per board
-(decision 41) means a chapter's history grows by boards, not by saves, and
+(decision 46) means a chapter's history grows by boards, not by saves, and
 the summary cache serves every folder. The webview asks for the shelf on
 every adoption, save and delete, and again as the browser opens.
 

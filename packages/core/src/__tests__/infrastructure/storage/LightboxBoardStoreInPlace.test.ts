@@ -1,5 +1,5 @@
 /**
- * One file per board (Lightbox Slice 5A.2; epic decision 41), at the store:
+ * One file per board (Lightbox Slice 5A.2; epic decision 46), at the store:
  * a save that names the file holding its board (`inPlace`) rewrites that
  * file through the 5A.1 claim, keeping its id, and records the save's time;
  * a new file names an unnamed board (`defaultName`). When the file cannot
@@ -74,7 +74,7 @@ function inPlace(fileId: string, revision: string, board: LightboxBoard = BOARD)
 
 const bytesOf = (fileSystem: MemoryFileSystem, fileId: string) => fileSystem.files.get(pathOf(fileId));
 
-describe('a save in place (decision 41)', () => {
+describe('a save in place (decision 46)', () => {
   it('rewrites the file that holds the board: the same id, the board as it stands, the save\'s time, and no other file', async () => {
     const { fileSystem, store, fileId, revision, clock } = await firstSave();
     clock.at = LATER;

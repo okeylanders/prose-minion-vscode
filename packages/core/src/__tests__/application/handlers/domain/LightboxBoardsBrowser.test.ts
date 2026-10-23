@@ -1,6 +1,6 @@
 /**
  * Saved boards in the Workshop's design language (Lightbox Slice 5A.2; epic
- * decision 41), through the real handlers, service, runner, store and
+ * decision 46), through the real handlers, service, runner, store and
  * library (`lightboxBoardsHarness`).
  *
  * - **One file per board.** A board's first save writes its file, named by
@@ -88,7 +88,7 @@ async function openFile(host: Host, tab: Tab, picked: string | undefined, reques
   return tab.shelves().find((payload) => payload.requestId === requestId);
 }
 
-describe('one file per board (decision 41)', () => {
+describe('one file per board (decision 46)', () => {
   it('names the first file by default, and rewrites it in place for a second run, and a third', async () => {
     const { host, tab } = await boarded();
     expect(host.savedFiles()).toEqual([OWN]);

@@ -2,8 +2,8 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D12 and its addendum of 2026-10-22
-**Writer decisions:** 5, 14, 25, 27–36 and 41 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) merged (PR #164, `epic/lightbox` at `a57a5cd`); see [its section](#slice-5a1-board-names-and-the-writers-calls). **5A.2** (saved boards in the Workshop's design language, decision 41: one file per board, the Boards menu and a shared browser of every chapter's boards, "Open a board file…") is built on `epic/lightbox-boards-browser`; see [its section](#slice-5a2-saved-boards-in-the-workshops-design-language). **5B** (Compare) follows them and needs no format change.
+**Writer decisions:** 5, 14, 25, 27–36 and 46 in the [epic table](README.md#writer-decisions-2026-10-19)
+**Status:** Split into two PRs (2026-10-22). **5A** (saved boards: the format, save, open, delete, reload) merged (PR #163, `epic/lightbox` at `3e5c3a1`); see [its implementation notes](#implementation-notes-2026-10-22). **5A.1** (board names and the writer's four calls on 5A, decisions 33–36) merged (PR #164, `epic/lightbox` at `a57a5cd`); see [its section](#slice-5a1-board-names-and-the-writers-calls). **5A.2** (saved boards in the Workshop's design language, decision 46: one file per board, the Boards menu and a shared browser of every chapter's boards, "Open a board file…") is built on `epic/lightbox-boards-browser`; see [its section](#slice-5a2-saved-boards-in-the-workshops-design-language). **5B** (Compare) follows them and needs no format change.
 
 ## Before starting
 
@@ -737,9 +737,12 @@ evidence stands as rendered.
 ## Slice 5A.2: saved boards in the Workshop's design language
 
 **Branch:** `epic/lightbox-boards-browser`, from `epic/lightbox` at
-`a57a5cd` (5A.1 merged, PR #164). **Writer decision:** 41 in the
+`a57a5cd` (5A.1 merged, PR #164), with `epic/lightbox` at `08b0d22`
+(Slice 4H, PR #165) merged in. **Writer decision:** 46 in the
 [epic table](README.md#writer-decisions-2026-10-19), which amends decision
-27 (one file per board, not per save) and replaces decision 31's rail.
+27 (one file per board, not per save) and replaces decision 31's rail. It
+is numbered after 45: Slice 4I (run controls, PR #166, in review) takes
+decisions 41–45.
 
 The writer, on 5A.1's Boards panel (2026-10-23):
 
@@ -977,21 +980,35 @@ and exports are new.
 Visual evidence:
 [`lightbox-slice-5a2-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-5a2-visual/README.md):
 ten host states at 1440, 1000 and 500 px, 30 captures, `errors.txt` empty
-(183 errors and exit 1 against `a57a5cd`'s bundle); and the Workshop's
-menu and browser with the base's bundle and this branch's, five states at
-three widths, markup, computed styles and boxes identical,
-`workshop-errors.txt` empty. Rendering it caught four things, fixed: the
+(183 errors and exit 1 against `a57a5cd`'s bundle, and against
+`08b0d22`'s); and the Workshop's menu and browser with the base's bundle
+and this branch's, five states at three widths, markup, computed styles
+and boxes identical, `workshop-errors.txt` empty. Rendered again after
+the merge of `08b0d22`, with the same results. Rendering it caught four things, fixed: the
 Boards menu running off the window at 500 px, a row glyph's icon pinned
 to its corner, a row's chapter cut to one letter at 500 px, and a 0.015 px
 shift in the Workshop's browser heading (two text nodes where it had one).
 
-Gates at this slice's code (`webview.js` as rendered in the evidence):
-full `npx jest`, 490 suites / 6,720 tests / 59 snapshots (482 / 6,653 / 59
-at `a57a5cd`); `npm run lint`, 0 errors and 1,133 warnings, identical per
-file, rule and severity to `a57a5cd`; `npm run typecheck`; `npm ci` into a
-real `node_modules`, then `npm run build` with `verify:bundle` twice,
+Gates at this slice's code, before the merge: full `npx jest`, 490
+suites / 6,720 tests / 59 snapshots (482 / 6,653 / 59 at `a57a5cd`);
+`npm run lint`, 0 errors and 1,133 warnings, identical per file, rule and
+severity to `a57a5cd`; `npm run typecheck`; `npm ci` into a real
+`node_modules`, then `npm run build` with `verify:bundle` twice,
 `webview.js` SHA-256 `be9b6a9c…6aaa` and `extension.js` `10d4dd8d…c2b4`
-both times; `git diff --check` clean. No live or billable call.
+both times; `git diff --check` clean.
+
+Gates after merging `epic/lightbox` at `08b0d22` (Slice 4H, PR #165), on
+the code as pushed, under Node 22.22.0 and Node 18.20.8 (CI's): full
+`npx jest`, 499 suites / 6,896 tests / 59 snapshots (491 / 6,829 / 59 at
+`08b0d22`), all passing under both; `npm run lint`, 0 errors and 1,133
+warnings, identical per file, rule and severity to `08b0d22`, under both;
+`npm run typecheck` under both; `npm ci`, then two builds with
+`verify:bundle` under each, `webview.js` `1f28383f…7a2e` and `extension.js`
+`44596e69…3b9b` all four times (the evidence's bundle); `git diff --check`
+clean. A first Node 18 run, beside another suite on the same four cores,
+missed four timing bounds (the linear-time checks of Slices 4E and 4G,
+and a Workshop intake's wait); each passed alone, and the whole suite
+passed when run again. No live or billable call.
 
 ### Implementation notes (2026-10-23)
 
@@ -1032,7 +1049,7 @@ What the writer may want to redirect:
 ## Slice 5B: draft compare (a later PR)
 
 Unchanged from the original plan, now reading format 1 as it is. From
-Slice 5A.2 a board is one file (decision 41), so the two drafts Compare
+Slice 5A.2 a board is one file (decision 46), so the two drafts Compare
 reads are two boards: one from before "Read the current text", one after.
 **Compare** picks an earlier board of the same source and shows:
 

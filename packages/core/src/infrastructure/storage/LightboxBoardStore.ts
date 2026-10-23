@@ -36,7 +36,7 @@
  *   live claim holds is busy, for a delete, a read or a rewrite; a claim
  *   abandoned mid-rewrite goes back under its saved name when a listing or
  *   a read finds it (`LightboxBoardClaims`).
- * - **One file per board (Slice 5A.2, epic decision 41).** A save names the
+ * - **One file per board (Slice 5A.2, epic decision 46).** A save names the
  *   file that holds its board (`inPlace`), found at the save's turn, and
  *   the revision its window last read or wrote: that file is rewritten in
  *   place, through the same claim. A board no file holds is saved to a new

@@ -11,7 +11,7 @@
  * The chapter is ¶1–¶8 of "Alice's Adventures in Wonderland" (1865, public
  * domain). No provider is called.
  *
- * Slice 5A.2 (epic decision 41): one file per board. A board's first save
+ * Slice 5A.2 (epic decision 46): one file per board. A board's first save
  * writes its file, named by default; its later saves rewrite that file in
  * place. The earlier snapshot of the same board the open tests use is a
  * copy kept beside it (`keepEarlierSave`), as 5A's one file per save left
@@ -111,7 +111,7 @@ describe('saving (epic decision 27)', () => {
     expect(savedBoard(host, READ)).toEqual({ board: host.service.currentBoard(), text: CHAPTER });
   });
 
-  it('saves the board as it stands after a run that landed readings: its own file, rewritten in place, with the lenses and the cost (decision 41)', async () => {
+  it('saves the board as it stands after a run that landed readings: its own file, rewritten in place, with the lenses and the cost (decision 46)', async () => {
     const { host, tab } = await readChapter({ earlier: false });
 
     expect(host.savedFiles()).toEqual([READ]);

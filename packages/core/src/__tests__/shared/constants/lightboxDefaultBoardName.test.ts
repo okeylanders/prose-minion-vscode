@@ -1,5 +1,5 @@
 /**
- * A board's default name (Lightbox Slice 5A.2; epic decision 41): what a
+ * A board's default name (Lightbox Slice 5A.2; epic decision 46): what a
  * board the writer has not named is called when it is first saved, "<the
  * source's file name without its extension> - <M/D/YYYY h:mm AM/PM>", in the
  * zone given (the host's own in the extension). Pinned clocks and zones; the

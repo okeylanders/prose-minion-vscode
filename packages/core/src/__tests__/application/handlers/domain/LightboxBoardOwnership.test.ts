@@ -7,7 +7,7 @@
  * was read. An open made while a save is being written reads after that save
  * commits, so the board it opens keeps its own file.
  *
- * Slice 5A.2 (epic decision 41): a board's later saves rewrite its own file,
+ * Slice 5A.2 (epic decision 46): a board's later saves rewrite its own file,
  * so the earlier snapshot these tests open is a copy kept beside it
  * (`keepEarlierSave`), as 5A's one file per save left them.
  *

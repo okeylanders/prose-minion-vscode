@@ -15,7 +15,7 @@
  * A name is writer text, treated as source text is: never in a log, and
  * never in the webview's saved state.
  *
- * Slice 5A.2 (epic decision 41): a board the writer has not named takes a
+ * Slice 5A.2 (epic decision 46): a board the writer has not named takes a
  * default name when it is first saved, from its source and the time
  * (`lightboxDefaultBoardName`), and the writer can rename it.
  */
@@ -88,7 +88,7 @@ export function lightboxBoardSourceLabel(source: LightboxBoardNameSource): strin
 
 /**
  * A board's name when it is first saved and the writer has not named it
- * (Slice 5A.2, epic decision 41): "<source> - <M/D/YYYY h:mm AM/PM>", as
+ * (Slice 5A.2, epic decision 46): "<source> - <M/D/YYYY h:mm AM/PM>", as
  * "Chapter 6 - 10/23/2026 9:08 AM", in `timeZone` (the host's own when
  * absent; tests pin one). A saved name by the rule above: one line, and the
  * source's part cut, with an ellipsis, so the whole stays within

@@ -18,7 +18,7 @@
  *   after it.
  * - **Logs** never carry a name.
  *
- * Slice 5A.2 (epic decision 41): one file per board, and every saved board
+ * Slice 5A.2 (epic decision 46): one file per board, and every saved board
  * named. A board's first save gives it a default name (the chapter's file
  * name and the time); its later saves rewrite its file in place, and "Read
  * the current text" starts a new board with a new file and a new dated
@@ -119,7 +119,7 @@ describe('naming the board on screen', () => {
     expect(tab.shelves().slice(pushes).filter((payload) => payload.requestId === null).map((payload) => payload.shelf.name)).toEqual([NAME]);
   });
 
-  it('carries the name into the board\'s later saves, which rewrite its file in place (decision 41)', async () => {
+  it('carries the name into the board\'s later saves, which rewrite its file in place (decision 46)', async () => {
     const { host, tab, first, read } = await readChapter();
     await rename(tab, null, NAME);
 

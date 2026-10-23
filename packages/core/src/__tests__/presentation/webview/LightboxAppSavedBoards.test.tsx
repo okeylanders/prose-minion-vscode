@@ -2,7 +2,7 @@
 
 /**
  * The saved boards through the real Lightbox root (Slice 5A.1; Slice 5A.2,
- * epic decision 41).
+ * epic decision 46).
  *
  * - **The Boards menu** sits in the header, as the Workshop's sessions menu
  *   does: it names the board on screen from the host's shelf, opens a recent

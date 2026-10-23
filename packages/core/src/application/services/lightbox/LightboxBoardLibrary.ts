@@ -165,7 +165,7 @@ export class LightboxBoardLibrary {
     return this.shelfListeners.add(listener);
   }
 
-  /** A run on `boardId` ended having landed readings: save the board as it stands now, in its own file (decision 41). */
+  /** A run on `boardId` ended having landed readings: save the board as it stands now, in its own file (decision 46). */
   saveAfterRun(boardId: string): Promise<void> {
     return this.saves.saveAfterRun(boardId);
   }

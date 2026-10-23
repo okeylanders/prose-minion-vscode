@@ -33,7 +33,7 @@
  *   listed or the file next read; a claim left beside a committed rewrite
  *   is removed (`LightboxBoardClaims`). A file found gone is settled first:
  *   held by a live claim, it is busy.
- * - **A save in place (Slice 5A.2, epic decision 41)** names the revision
+ * - **A save in place (Slice 5A.2, epic decision 46)** names the revision
  *   it expects (the bytes its window last read or wrote): a file found at
  *   another one (another window changed it since) is `changed`, and is left
  *   as it is; the store then saves the board to a new file, so neither

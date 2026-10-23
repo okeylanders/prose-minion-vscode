@@ -1,10 +1,10 @@
 /**
  * LightboxBoardSaves — when a Lightbox board is saved, and where (ADR
  * 2026-10-19 D12 addendum; Slice 5A, epic decision 27; Slice 5A.2, epic
- * decision 41). Built by `LightboxBoardLibrary` over the same service and
+ * decision 46). Built by `LightboxBoardLibrary` over the same service and
  * store, and reached only through it. Split from the library in Slice 5A.2.
  *
- * - **One file per board (decision 41, amending decision 27).** A board's
+ * - **One file per board (decision 46, amending decision 27).** A board's
  *   first save writes its file; every later save of the same board (more
  *   readings, a re-read lens, a stopped run) rewrites that file in place,
  *   through the store's claim. "Read the current text" builds a new board,
@@ -16,7 +16,7 @@
  *   failed, leaves the file as it is and saves the board to a new file, in
  *   the same turn of the store's queue. No reading is lost and nothing
  *   unreadable is written over.
- * - **The name (decision 41).** A board the writer has not named takes its
+ * - **The name (decision 46).** A board the writer has not named takes its
  *   default name ("Chapter 6 - 10/23/2026 9:08 AM") when its first file is
  *   written. A save in place writes the board's name; a board with none
  *   keeps the name its file shows.
@@ -92,7 +92,7 @@ export class LightboxBoardSaves {
         return { board, text, ...(name !== undefined ? { name } : {}) };
       }, {
         onlyIfNewText,
-        // The file that holds the board, found at this save's turn, at the revision this window knows (decision 41).
+        // The file that holds the board, found at this save's turn, at the revision this window knows (decision 46).
         inPlace: {
           holding: () => {
             const { savedFileId, savedRevision } = latest();

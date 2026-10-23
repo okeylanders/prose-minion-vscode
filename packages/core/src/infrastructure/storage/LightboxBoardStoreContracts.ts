@@ -64,7 +64,7 @@ export interface LightboxBoardSaveOptions {
   /** Called synchronously once the file stands, before the store's next operation. */
   onCommitted?: (fileId: string, committed: LightboxBoardCommitted) => void;
   /**
-   * One file per board (Slice 5A.2, epic decision 41): the file that holds
+   * One file per board (Slice 5A.2, epic decision 46): the file that holds
    * the board, found at this save's turn, with the revision it must still be
    * at, and the file as this save rewrites it (`update`, given the file as
    * it reads now and the save's time). Without a file, or when it cannot be

@@ -682,7 +682,7 @@ on real chapters before it becomes a contract.
 
 **Addendum to D12 (2026-10-22): saved boards, format 1** (Slice 5A; epic
 decisions 25 and 27–32; amended for Slice 5A.1, decisions 33–36, and for
-Slice 5A.2, decision 41 (2026-10-23), where marked). Slice 5 is split. 5A
+Slice 5A.2, decision 46 (2026-10-23), where marked). Slice 5 is split. 5A
 saves, opens, deletes and restores boards; 5A.1 names them and builds the
 writer's other calls on 5A; 5A.2 keeps one file per board and moves the
 boards into the Workshop's design language; 5B, a later PR, compares two
@@ -733,7 +733,7 @@ of them. The format is fixed so that 5B needs no change to it.
     unnamed; naming any other saved file changes only that file; open and
     restore bring the file's name back. Session-only, the name is the
     in-memory board's.
-- **One file per board (Slice 5A.2, decision 41).** The writer asked for
+- **One file per board (Slice 5A.2, decision 46).** The writer asked for
   the Workshop's design language without a `current.json`: a board's
   first save writes its file and names it by default,
   `<source file name> - <M/D/YYYY h:mm AM/PM>` in the extension host's
@@ -857,7 +857,7 @@ of them. The format is fixed so that 5B needs no change to it.
 - **When a board saves** (decision 27): when a run ends having landed a
   group, and when a board with no readings is built for a source no saved
   board of which holds that text. From Slice 5A.2 the first save writes the
-  board's file and the rest rewrite it (decision 41, above). No pruning.
+  board's file and the rest rewrite it (decision 46, above). No pruning.
   The writer confirmed that a stopped or partial run saves (decision 36,
   2026-10-22). A spark set aside,
   or brought back, saves at once (decision 35): the file that holds the
@@ -894,9 +894,9 @@ of them. The format is fixed so that 5B needs no change to it.
   once each; the section's head names the board on screen ("Unnamed board"
   otherwise) with Name or Rename. A name is edited in place: Enter saves,
   Escape cancels, focus returns to the action; only an edit the writer made
-  is sent (PR #164 F-04). *Replaced in Slice 5A.2 (decision 41) by the
+  is sent (PR #164 F-04). *Replaced in Slice 5A.2 (decision 46) by the
   Boards menu and browser, below.*
-- **The Boards menu and browser (Slice 5A.2, decision 41).** The rail's
+- **The Boards menu and browser (Slice 5A.2, decision 46).** The rail's
   Boards section is gone: a side panel grows with every chapter analyzed.
   The Workshop's sessions menu and session browser became the full tabs'
   shared `SavedItemsMenu` and `SavedItemBrowserModal` (their CSS moved to

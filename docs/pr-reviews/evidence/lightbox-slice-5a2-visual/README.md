@@ -1,7 +1,7 @@
 # Lightbox Slice 5A.2 visual evidence: saved boards in the Workshop's design language
 
 Lightbox Slice 5A.2 builds the writer's call on 5A.1's Boards panel (epic
-decision 41): **one file per board**, named by date at its first save
+decision 46): **one file per board**, named by date at its first save
 ("alice-1 - 10/23/2026 9:08 AM") and rewritten in place after; the Boards
 side panel replaced by a **Boards menu** in the header and the Workshop's
 **session browser, made shared**, over **every chapter's** boards; and
@@ -91,10 +91,20 @@ recorded call costs $0.01. No provider was called.
 ## Results
 
 From the committed `facts.json` and `workshop-facts.json`, rendered from
-the bundle `npm run build` writes at this branch's code (`webview.js`
-SHA-256 `be9b6a9c3d5b34e531cead143848cd202703db42db617776ad168e02096b6aaa`),
-and, for the Workshop's before, from an export of `epic/lightbox` at
-`a57a5cd` built the same way (`decd8431…9627`).
+the bundle `npm run build` writes at this branch's code with
+`epic/lightbox` at `08b0d22` (Slice 4H, PR #165) merged in (`webview.js`
+SHA-256 `1f28383f3a8ebffbf6dbe55652411eddbbcb28f30f4287add6cf45c161f37a2e`,
+the same under Node 22 and Node 18), and, for the Workshop's before, from
+an export of `08b0d22` built the same way (`fc3a409f…0a0f`).
+
+**Before the merge** the same harnesses ran on the branch's own bundle
+(`be9b6a9c…6aaa`, against `a57a5cd`'s `decd8431…9627` for the Workshop's
+before), with the same results. The merge changed the states only in the
+estimates (4H's 12,000-token output reserve, decision 38); the DOM facts of
+all 30 Lightbox captures are identical before and after it. Twenty
+screenshots are pixel-identical, eight differ in 7 to 81 pixels (tints),
+and `changed` and `outside` at 1000 px differ in about 4,700, where the
+ribbon's bars, under the notice, sit about a pixel apart.
 
 **The Lightbox**, across all 30 captures: every state shows what the host's
 answers say; no Boards panel; the menu and browser stay on screen; no
@@ -106,13 +116,12 @@ saved per capture); no page error. `errors.txt` is empty.
 the markup is identical, every computed style of every element (58 in the
 menu, 239 to 250 in the browser) and every box is identical, and focus
 lands on the same element. `workshop-errors.txt` is empty. Pixels:
-`workshop-compare.py` counts 0 to 605 differing pixels per pair (largest
+`workshop-compare.py` counts 0 to 581 differing pixels per pair (largest
 channel difference 5). The same bundle rendered in two runs differs by as
-much: 0 to 605 pixels, largest channel difference 5, the worst in the base
-bundle's own `browser-rename` at 500 px. A second before-and-after run
-moved the counts about (that pair fell to 0) and again found the DOM
-identical. The pixels are raster noise and add nothing to the DOM's
-answer. Rendered
+much: 0 to 605 pixels, largest channel difference 5, the worst in
+`a57a5cd`'s own `browser-rename` at 500 px. Each before-and-after run
+moved the counts about and found the DOM identical. The pixels are raster
+noise and add nothing to the DOM's answer. Rendered
 alone in jsdom (`tools/`), the menu and browser are identical in fifteen
 states, focus included.
 
@@ -130,10 +139,12 @@ states, focus included.
   Workshop's literal was one. It is one again.
 
 **The states are deterministic.** `tools/build-boards.test.ts`, run again
-after the last code change, wrote `states/` byte for byte.
+before the merge, wrote `states/` byte for byte; after it, the same but
+for the estimates.
 
 **The harness fails rather than skips.** Against the base bundle
-(`a57a5cd`, `decd8431…9627`) it writes 183 errors and exits 1: the Boards
+(`08b0d22`, `fc3a409f…0a0f`, and before the merge `a57a5cd`,
+`decd8431…9627`) it writes 183 errors and exits 1: the Boards
 panel is there in all 30 captures; no menu, browser, rename field or
 confirm can be reached (30 "could not act"); no trigger or save status;
 the notice above the board is missing after the open that never happens.
@@ -141,7 +152,7 @@ the notice above the board is missing after the open that never happens.
 **Bundle provenance.** `npm ci` into the worktree's own `node_modules`, a
 real directory, not a symlink: webpack's production module ids come from
 file paths. Then `npm run build`, which empties `dist/` first and runs
-`verify:bundle`. The base was built from an export of `a57a5cd` whose
+`verify:bundle`. Each base was built from an export of its commit whose
 `node_modules` is a link to this worktree's, as 5A.1's was.
 
 **Limitations:**
@@ -174,7 +185,7 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node harness.js $DIR/webview.js $DIR/v
 ```
 
 and the Workshop's, with a base bundle built the same way from
-`epic/lightbox` at `a57a5cd`:
+`epic/lightbox` at `08b0d22`:
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node workshop-harness.js $DIR/webview.js $BASE/webview.js $DIR/visual

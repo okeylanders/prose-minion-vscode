@@ -9,7 +9,7 @@
  * reports is the placeholder `provider/model-v1` or `provider/model-b`. No
  * provider is called.
  *
- * The story it runs, in UTC, one board file per board (epic decision 41).
+ * The story it runs, in UTC, one board file per board (epic decision 46).
  * Each day is a working session: a new host (a window opened) over the same
  * files and memento, which first restores the last board on screen.
  * 1. Oct 12, 2:05 PM: alice-1 is boarded (its file is written and named

@@ -20,7 +20,7 @@
  *   it, and a request observed before it is answered again. Controls: no
  *   interleaving, and a newer save at the same adoption, both posted.
  *
- * Slice 5A.2 (epic decision 41): a board's later saves rewrite its own
+ * Slice 5A.2 (epic decision 46): a board's later saves rewrite its own
  * file, so the earlier snapshot of the same board these tests open is a
  * copy kept beside it (`keepEarlierSave`), as 5A's one file per save left
  * them, and a press on a snapshot saves into the file it was opened from.

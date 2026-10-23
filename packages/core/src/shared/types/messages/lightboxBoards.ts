@@ -1,7 +1,7 @@
 /**
  * Lightbox saved boards (ADR 2026-10-19 D12 and its addendum of 2026-10-22;
  * Slice 5A; epic decisions 27–32; Slice 5A.1, decisions 33–36; Slice 5A.2,
- * decision 41).
+ * decision 46).
  *
  * A board saves itself to `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`
  * in format 1 (`LightboxBoardCodec`), and the rail's Boards section lists the

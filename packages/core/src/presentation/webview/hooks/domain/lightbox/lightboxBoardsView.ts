@@ -1,6 +1,6 @@
 /**
  * The saved boards as the writer reads them (Slice 5A; Slice 5A.1; Slice
- * 5A.2, epic decision 41): the Boards menu in the header, Workshop-style,
+ * 5A.2, epic decision 46): the Boards menu in the header, Workshop-style,
  * and the browser it opens. Pure: the host's shelf in, words out, so every
  * sentence is tested without a webview. Nothing here carries the source's
  * text; a board's name is the writer's words, held only as the shelf holds
