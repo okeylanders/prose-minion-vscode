@@ -139,3 +139,74 @@ Only public-domain *Alice* fixtures and synthetic text were used. No private man
 ## Correction handoff
 
 Correct F-01 through F-04 without reinstating prompt maximum gates or trusting cut content. Re-run the discriminating boundary/content cases, full repository gates and both configured CI events on the final implementation head. Preserve the existing recovery, quote, steering voice and saved-board contracts. Native/writer validation remains separate.
+
+## Author response (2026-10-23)
+
+**F-01, F-02, F-03 and F-04: fixed.** One commit, `2ebeda4b`, sits on top
+of your report's commit `4dcdb2b`, followed by the commit that adds this
+response and records the corrections in the slice notes, the ADR's D6/D7
+addendum, the agents guide and the epic. Nothing above this section was
+edited.
+
+Each reproduction you gave is now a regression test. With the new and
+changed test files copied onto an export of your reviewed head `d255b8e`
+(type checking off, so each test reports), **29 tests fail there**, and
+every control you named passes there:
+- `LightboxCheckedWhole` (F-01): your four reproductions, and the
+  2,401-character quote (5 of 15);
+- `LightboxReadingFrameEnding` (F-02): groups A–G one character short,
+  the sweep through the sentinel, and the four fence cases (12 of 25);
+- `LightboxReadingRepair` (F-02 through the reply reader, 1 of 18);
+- `ModelJsonRepair` (F-03's five curly cases, and five cases of the new
+  position helper, which does not exist there; 10 of 49);
+- `LightboxSteeringReadings` (the example kept whole, 1 of 72).
+
+F-04 is the Node 18 wording: the corrected suites, and the whole suite,
+pass under Node 18.20.8.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | Medium / P2 | **Fixed** | **Every rule reads the field whole.** `text(value, path)` no longer clips: a quote, a term, a title or name used as a key or counted (a set-aside story, a character's name and aliases), and every field a text rule checks (a spark's question, the Opinion's texts, craft steering's claim, why, nudge and example, a numbers reading's claim, an echo's fields) are read and checked as the model wrote them. Only free prose that no rule reads, fresh, on carry or at Bring (a claim, gist, note, friction, description or reason), goes through the new `prose(value, path, ask)`, which clips at the safety ceiling, after decoding, and counts it.<br>**Quotes are never clipped in the codec.** The verifier holds a quote to the paragraph it names, so its length is bounded by the chapter, and a saved board, a carry and Bring all see the verified text. Bring still clips at the Workshop's bounds, after its anchors are checked whole.<br>**The steering example** is read whole and anchored whole in its note's checked quote; Bring clips the pair to one point afterwards.<br>Clipping was not replaced by verifying a shortened prefix. Your fabricated-tail case stays withheld | `LightboxCheckedWhole.test.ts`:<br>• **Reproduction 1:** a 2,732-character paragraph quoted whole: the headline is drawn with that quote, nothing clipped<br>• **Reproduction 2:** your generator, chapter = `clipLightboxText(rawQuote, 2400)`: the headline is withheld, "No quote it gave was found in the paragraph it named."<br>• **Reproduction 3:** a real narration first part past 576 characters: the example and its note are kept<br>• **Reproduction 4:** a question past 2,400 characters that passes the phrasing rule: drawn whole, still ending in "?"<br>**Your controls:** real quotes of 2,399 and 2,400 characters (and 2,401); first parts of about 575, 576 and 577 characters, cut back to whole words; missing short and long quotes still withheld; a first part not in its quote withheld alone, the note kept; a long non-question still withheld<br>**Added control:** a runaway motif gist is still clipped and counted, and the motif drawn<br>`LightboxSteeringReadings.test.ts`: a second part past eight times its ask is kept whole<br>Bring's own clipping: `LightboxTileHandoff`, `LightboxFieldHandoffClip` and the example-anchor suite, unchanged and passing | `2ebeda4b` |
+| F-02 | Medium / P2 | **Fixed** | **The frame owner recognizes a cut ending.** At a length cutoff only (`end: 'ceiling'`), `LightboxReadingFrame` sets aside a last line that is a proper, non-empty start of this group's closing sentinel, or of the closing fence of a fence the reply opened (around the frame, or inside the sentinels), before salvage. The JSON then reads, so every finished block is kept; a reply whose sentinel was written whole reads as complete.<br>A reply that stopped normally gets no such allowance, and any other last line (prose, backticks with no fence opened, another group's sentinel, a sentinel written past its own) is refused as before. The raw reply and its group's recovery contract are saved as they were | `LightboxReadingFrameEnding.test.ts`:<br>• **Your sequence:** groups A–G with the closing sentinel one character short, each reading the same blocks and withheld list as the whole reply<br>• every cut point inside group E's sentinel<br>• **The two fence cases:** a fenced frame cut one and two backticks into its closing fence; JSON fenced inside the sentinels, cut one and two backticks in<br>**Your controls:** no closing sentinel at all for A–G; a partial sentinel and a partial fence on an ordinary stop refused; prose after a finished root refused<br>**Added controls:** backticks with no fence opened, another group's sentinel start, a sentinel with a character past its own, all refused at the ceiling<br>`LightboxReadingRepair.test.ts`: through the reply reader, the sentinel one character short lands every block, logs "cut between blocks", and still saves the raw reply with group E's contract | `2ebeda4b` |
+| F-03 | Medium / P2 | **Fixed** | `tokenizeModelJson` passes `partialEnd` to `curlyString`. In a salvage, a curly-quoted token with no closing mark before the end is an incomplete token, like a cut straight string: it runs to the end and holds nothing, so the walk drops the member it stands in and keeps its finished siblings. An incomplete token is never counted as a `curly-quote-delimiters` repair.<br>A completed curly-quoted string is held to the same rule as ever, in a salvage or a parse, and an ordinary parse stays strict: a curly string with no closing mark is still `unsafe-curly-quotes` | `ModelJsonRepair.test.ts`, "a reply cut off inside a curly-quoted token":<br>• **Your reproduction:** `{"version":1,"a":{"x":"complete"},"b":{"y":“unfinish` keeps `version` and `a`, drops `b`, `cutKey: 'b'`<br>• a cut nested key, and a cut next root key (no `cutKey`), each beside its straight-quoted control<br>• a cut curly token holding a straight quote and a line break, which a completed one may not<br>• no content leaks: nothing of the cut token is in the result<br>**Controls:** a completed curly string before the cut still reads and is counted; a completed unsafe one is refused in a salvage and a parse; an unclosed one is refused in a parse | `2ebeda4b` |
+| F-04 | Medium / P2 | **Fixed** | Both tests now assert `SyntaxError`, an engine-independent fact; the repaired-value assertions are unchanged.<br>**Production code no longer leans on the wording either.** `parseModelJson` read the position with `/position (\d+)/` anywhere in the message. Newer engines can echo a slice of the reply in their message ("Unexpected token 'x', \"…\" is not valid JSON"), so a number in the reply could have been taken for the position. The new `jsonParseErrorPosition` reads only a position at the message's very end, in Node 18's wording ("… at position 95") and Node 20 and later's ("… at position 95 (line 1 column 96)"), and none otherwise. Only the error's own words use it; no decision depends on it | `ModelJsonRepair.test.ts`: the helper on Node 18's, Node 20+'s, a positionless, an echoing and an empty message; and this engine's position (or none) beside the same refusal<br>`LightboxReadingRepair.test.ts` and `ModelJsonRepair.test.ts` pass under Node 18.20.8, and so does the whole suite | `2ebeda4b` |
+| Guard limit | (noted, not promoted) | **Documented** | `modelJsonContentMatches` now says it compares scalar sequences, not structure: regrouping, or an empty object for an empty array, passes it. The deterministic walk never makes such a change; a model-based repair would need a structural check of its own | — | `2ebeda4b` |
+
+### Verification at the correction head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 22.22.0 | **490 suites / 6,794 tests / 59 snapshots, all passing** (was 488 / 6,737 / 59) |
+| Full Jest, Node 18.20.8 (`npx -p node@18`) | **490 suites / 6,794 tests / 59 snapshots, all passing** |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to a fresh export of `a57a5cd` |
+| Typecheck | **Pass** |
+| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass**, the same hashes both times: `webview.js` `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged: no webview code changed), `extension.js` `4730ecf7cc91b6bbd375b1d6daa130274ebf0d01cf8ac169c1209974e5f3638e` |
+| `git diff --check` | **Clean** |
+| Visual evidence | **Unchanged.** The host builder, rerun at this head, writes the same `log.txt` and the same states but for the recovery file's random id, and the bundle is the one the captures were made from, so nothing was regenerated |
+
+Other sessions' test runs shared this four-core machine (load average up to
+about 13). In one Node 22 run and two Node 18 runs under that load, three
+wall-clock bounds in suites this slice does not touch ran over (the
+passage and being-verb scale cases, the steering-note scale case at 2,021
+against 2,000 ms) and one picker suite hit its 5-second test timeouts. Each
+passes on its own (the steering case in 253–262 ms under Node 18), and the
+full runs in the table, made when the load had dropped, pass whole.
+
+Pushing this head starts both CI events again; their results are not in this response.
+
+### What changes in the PR body's claims
+
+- **Safety ceiling:** it clips only free prose no rule reads (claims,
+  gists, notes, frictions, descriptions, reasons). Quotes, terms, keys,
+  the steering example and every field a text rule checks are read and
+  checked whole, never clipped in the codec.
+- **Truncation salvage** also covers a reply cut off inside its closing
+  sentinel or the closing fence of a fence it opened, and one cut inside a
+  curly-quoted token.
+- **Parser sizes:** `ModelJsonRepair.ts` 426 lines, `ModelJsonTokens.ts`
+  183. The API adds `jsonParseErrorPosition`.
+- **Verification:** 490 suites / 6,794 tests / 59 snapshots; the suite also
+  passes under Node 18.20.8; `extension.js` `4730ecf7…` (`webview.js`
+  unchanged, `405f6cd1…`).

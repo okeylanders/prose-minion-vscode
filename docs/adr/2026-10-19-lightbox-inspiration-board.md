@@ -445,11 +445,19 @@ then just show it." The validation policy becomes:
   tiling the chapter, a host key's shape). The fences around the two
   evaluative exceptions stay gates: the Opinion's and steering's text rules,
   one example per note, none on a note that earns, dialogue as voice.
-- **One safety ceiling, never in a prompt.** A field past
+- **One safety ceiling, never in a prompt, for free prose only.** A
+  claim, gist, note, friction, description or reason past
   `safetyMultiple` (8) times its ask is clipped with an ellipsis, counted
-  and logged; nothing is withheld for it. A whole response is refused only
-  past eight times the characters the prompt asks for. Its only job is to
-  keep a runaway field from breaking the layout or a saved board's size.
+  and logged; nothing is withheld for it. **Every field a rule reads is
+  read whole and never clipped** (PR #165 F-01): a quote (the verifier
+  holds it to its paragraph), a term, a title or name used as a key or
+  counted, a steering example (anchored in its quote), and every field a
+  text rule checks, fresh, on carry or at Bring. So a clip can neither
+  reject real evidence nor let an altered quote pass, and its ellipsis is
+  never taken for the chapter's text. A whole response is refused only
+  past eight times the characters the prompt asks for. The ceiling's only
+  job is to keep runaway prose from breaking the layout or a saved board's
+  size.
 - **A surface with real bounds clips at that surface.** Bring to Workshop
   holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`, which do not change: a
   title, claim, point, quote or steering example longer than its bound

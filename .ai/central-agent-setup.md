@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`):
-- 488 suites / 6,737 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`, with PR #165's corrections):
+- 490 suites / 6,794 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1098,9 +1098,13 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   vocabulary, fewer items than a stated minimum, an unknown key, a quote the
   verifier cannot find) or a structural rule (one entry per ribbon column,
   movements tiling the chapter, one example per note); check a structural
-  count exactly with `boundedArrayAt`, and say why beside it. One safety
-  ceiling (`safetyMultiple` times the ask, never in a prompt) clips a
-  runaway field with an ellipsis and counts it. A surface with bounds of
+  count exactly with `boundedArrayAt`, and say why beside it. **Every rule
+  reads the field whole** (PR #165 F-01): a quote, a term, a key, an
+  example and every field a text rule checks are read with `text`, never
+  clipped. One safety ceiling (`safetyMultiple` times the ask, never in a
+  prompt) clips only free prose no rule reads (a claim, gist, note,
+  friction), read with `prose`, with an ellipsis, and counts it; never
+  check a clipped value against the chapter. A surface with bounds of
   its own clips there with `clipLightboxText`, after its anchors are
   checked whole: Bring holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`,
   which stay as they are.
