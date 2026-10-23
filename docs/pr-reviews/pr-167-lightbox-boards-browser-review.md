@@ -151,3 +151,136 @@ Independently inspected seven supplied captures: menu at 500 px, chapter browser
 3. Fix F-03 with visible persistence outcomes after sheet closure. The failing saved file must stay unchanged; the UI must not suggest the in-memory rename was durably saved.
 4. Resolve N-01 through N-04 as focused status, copy, privacy and keyboard follow-ups. They do not independently block this slice.
 5. Re-run the discriminating regressions plus full gates, and check the actual new head. If #166 or other base changes integrate first, review that combined head and conflict resolution separately. No native/real-chapter or future-slice acceptance is inferred from these checks.
+
+## Author response (2026-10-23)
+
+**All seven findings are fixed.** The commits on top of your report's
+commit `77f9ebe` are:
+- `2de78db7`: the corrections;
+- `b15a5e36`: the merge of `epic/lightbox` at `fcf86ff` (Slice 4I, PR
+  #166), which merged first, as you anticipated;
+- `fed2e929`: a test of decision 47 through an owed save;
+- the commit that adds this response, renders the evidence again, and
+  records the corrections in the slice notes, the ADR's D12 addendum, the
+  agents guide and the epic.
+
+Nothing above this section was edited.
+
+Each sequence you gave is now a regression test. With the new and changed
+tests run on your reviewed code's source files (`77f9ebe`, type checks
+off, so each test reports), **21 of the 129 tests in the nine suites
+fail**:
+- F-01: 3;
+- N-01: 2;
+- F-02: 6;
+- F-03: 5;
+- N-02: 2;
+- N-03: 1;
+- N-04: 1;
+- the app's existing rename test, whose message now carries the sheet's
+  adoption.
+
+Every control you named passes there, with one exception: the same-board
+rename. It fails only because the message it expects carries the
+`adoption` the old webview does not send; the sheet stays open and the
+rename goes to the same board. Two of your host sequences pass at both
+heads:
+- **The held-read rename:** the host renamed the board whose id it was
+  sent. The wrong target came from the webview's sheet.
+- **The staging-write failure:** the host left the file as it was and
+  said so. The notice had nowhere to show.
+
+Both are kept as host tests, beside the webview tests that fail there.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **A save writes the board it was owed.** `LightboxBoardSaves.save` captures the settled board when the run finishes. At its turn in the store's queue, `owedBoard(captured, now)` takes the board as it then stands only when nothing on it is reading (`lightboxBoardSettled`: no group `running`, nothing `pending`). Otherwise it takes the captured board, carrying the file, revision and name the board holds now. So the file it rewrites is the board's own, a fallback copy is followed, and a rename or spark mark given while it waited is written. A board replaced in the meantime is written as captured and never pointed at (the reload-pointer guard is unchanged). Nothing transient is persisted.<br>**Truthful status:** the save path moved out of the store into `LightboxBoardSaving.ts` (the store is 429 lines, was 489). It reports each commit and each failure to the store, which sets `lastSaveFailed` on a failed write or on a board that would not read back whole | `LightboxBoardOwedSaves.test.ts` (new):<br>• **Your sequence:** the board's read held, B landed, C started and held, the read released, C stopped before any group came back. B is on disk, a new host restores it, the menu's availability says not failed, and the row on screen lists Characters<br>• a name given while the save waits is the one it writes<br>**Your controls:** no second run; the later run succeeds, and its own save adds C to the same file<br>`LightboxBoardStoreInPlace.test.ts`: a board with a reading in flight is not written, and the save says it failed | `2de78db7` |
+| F-02 | P2 | **Fixed** | **The sheet names its target.** `useLightboxBoardsSurface` opens the name sheet for `{ boardId, adoption }`, taken from the shelf answer on screen. `LightboxApp` closes the sheet, sending nothing, when another board or another adoption of the same board comes on screen, so a typed draft is never retargeted. Rename board… is disabled ("A board is opening") while an open or "Open a board file…" waits.<br>**The host checks it too.** `LIGHTBOX_RENAME_BOARD` carries the sheet's `adoption`. A rename of the board on screen (no file) whose adoption has changed is refused with nothing written, and the shelf says "Another board came on screen before the name was given, so nothing was renamed." (`boardChanged`). Source adoption is under the same rule | `LightboxAppSavedBoards.test.tsx`:<br>• **Your held-read sequence:** the sheet closes, sending nothing, when B comes on screen while A's draft is typed; reopened, it starts from B's name<br>• closes on a newer adoption of the same board<br>• Rename held back while a board opens<br>**Your control:** the same board, its shelf pushed again at the same adoption, keeps the sheet and its draft, and renames it<br>`LightboxBoardRenames.test.ts`: your held-read open of board-2, then a rename for board-1, names board-1's file only; a draft for an earlier adoption is refused, and nothing is written; the current adoption is renamed<br>`useLightboxBoards.test.ts`: the rename sends the sheet's board and adoption | `2de78db7` |
+| F-03 | P2 | **Fixed** | **Outcomes have a surface of their own.** `useLightboxBoards` takes the host's notice from any answer to an open, delete or rename, even one a newer request has superseded; a plain shelf request leaves it alone. `LightboxBoardsOutcome` shows it under the header, `role="alert"`, with Dismiss, until dismissed or replaced by the next such answer. It outlives the sheet and the browser. It also shows the shelf-only refusal of an open while a run reads the board on screen.<br>**No false "Saved".** The menu says "Name not saved" when the board's name is not the one its file holds.<br>**Source refusals** (malformed, missing) stay on the board's source alert | `LightboxBoardRenames.test.ts`: **your staging-write EIO**, the file byte for byte as it was, `nameKeptFailed`, the row still under its old name, no source refusal<br>`LightboxAppSavedBoards.test.tsx`: after the sheet closes, the banner holds the host's words and the menu says "Name not saved"; the open refused while a run reads is said there, and the next answer with nothing to say clears it; **control:** a malformed source is said on the board, not in the banner<br>`lightboxBoardsView.test.ts`: "Name not saved"<br>`useLightboxBoards.test.ts`: superseded answers, plain shelf answers, Dismiss<br>**Evidence:** the `kept` state | `2de78db7` |
+| N-01 | P3 | **Fixed** | The store's `committed()` status clears `lastSaveFailed` on every commit, in place or to a new file. It runs before `onCommitted`, so the shelf the commit publishes is already clear. It logs "Boards are saved again after an earlier failure." | `LightboxBoardStoreInPlace.test.ts`: failing writes, then an in-place save. The flag is clear by the time the caller hears the commit<br>`LightboxBoardOwedSaves.test.ts`: through the host, EIO then a later in-place save | `2de78db7` |
+| N-02 | P3 | **Fixed** | `lightboxSnapshotNotice` bases its words on the board's saved ownership now, and keeps the opened-from-outside history separate. Once the board has a file here, it says "It is saved in the boards folder now, as a file of its own; the file it came from is as it was." | `lightboxBoardsView.test.ts`; your follow-through in `LightboxBoardsBrowser.test.ts` | `2de78db7` |
+| N-03 | P3 | **Fixed** | A read outside the store logs `(<code>)` from the error's `code`, when it is a plain identifier, and never its message: "Could not read a board file outside the boards folder: (ENOTDIR)" | `LightboxBoardStoreChapters.test.ts`: a real `node:fs` error whose message names the absolute path; the log carries the code and not the path | `2de78db7` |
+| N-04 | P3 | **Fixed** | When the browser's search is disabled after the last delete, the shared browser's `returnFocus` path focuses the dialog's Close button. Only the Lightbox opts in, so the Workshop's markup and focus are unchanged | `LightboxBoardBrowserModal.test.tsx`: focus on "Close saved boards"; **control:** search keeps focus when rows remain | `2de78db7` |
+
+### Decision 47 after the merge
+
+4I's decision 47 keeps the old Opinion when the Opinion's call, run on
+its own, fails, and the board saved after the failure holds it. Here is
+how it fits this slice:
+- **One file per board.** 4I's test counted a new file for that save. It
+  now checks that the board's one file is rewritten in place and holds
+  the failed call with the old Opinion, standing and stale marks
+  included, and that a reload restores it. The stopped-call case checks
+  that the file is byte for byte as it was.
+- **F-01's owed save.** A failed Opinion call's board is settled (the
+  call `failed`, nothing `pending`), so the owed save writes it as it
+  stands. In `fed2e929`: if the writer runs the Opinion again before that
+  save's turn, the save still writes the failed call with the old
+  Opinion, never the running board. Stopping the second call then saves
+  nothing, and a reload restores the old Opinion. With the save path as
+  it was at `77f9ebe`, the running board would not read back whole, and
+  the file kept the call as `ok`.
+
+### Verification on the merged head
+
+Each check below ran on the code as pushed, after `npm ci` into the
+worktree's own `node_modules`.
+
+| Check | Base `fcf86ff` | This branch |
+| --- | --- | --- |
+| Full `npx jest`, Node 22.22.0 | 495 suites / 6,905 tests / 59 snapshots (an export, measured) | **504 / 7,000 / 59, all pass** |
+| Full `npx jest`, Node 18.20.8 (CI's) | 495 / 6,905 / 59 | **504 / 7,000 / 59, all pass**, first run |
+| `npm run lint`, both Nodes | 0 errors / 1,133 warnings | identical per file, rule and severity |
+| `npm run typecheck`, both Nodes | — | pass |
+| `npm run build` with `verify:bundle`, twice under each Node | `webview.js` `09deafc2…5fdd1` (the export, for the evidence's before) | `webview.js` `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15`, `extension.js` `805bd13410f9f202f1c71bae59929989c396df783a22b9f4eb35c6ead0646d02`, all four times |
+| `git diff --check` | — | clean on these commits; since `77f9ebe` the only hits are the two review reports' own Markdown line breaks |
+
+Before the merge, at `2de78db7`, the changed suites and the architecture
+guards passed, and so did the typecheck and lint of the changed files.
+
+**Evidence**
+([`lightbox-slice-5a2-visual`](evidence/lightbox-slice-5a2-visual/README.md)),
+rendered again on this bundle:
+- **11 states, 33 captures**, `errors.txt` empty. The new `kept` state is
+  your F-03 sequence through the menu's sheet. The host's answer was
+  recorded with the staged write failing (EIO), and the file is byte for
+  byte as it was. The page shows "Name not saved" and the banner after
+  the sheet closes, and it sent the board and adoption the sheet was
+  opened for.
+- **The ten earlier states' DOM facts are identical** to the render
+  before, apart from random request ids. Their pixels moved under 4I's
+  run controls.
+- **Against `fcf86ff`'s bundle**, 204 errors and exit 1: the ten earlier
+  states' 183, and `kept`'s 21.
+- **Against your reviewed head's bundle** (`4e0be76`, `1f28383f…7a2e`):
+  9 errors, all in `kept`, three at each width (`errors-4e0be76.txt`).
+  The menu says "Saved", there is no banner once the sheet closes, and
+  the rename names no adoption. The other ten states pass there.
+- **The Workshop**, before (`fcf86ff`) and after: markup, every computed
+  style and box identical in all fifteen pairs, `workshop-errors.txt`
+  empty. In jsdom, 15 of 15 states are identical, focus included.
+
+The evidence and gates prove nothing beyond themselves: this is headless
+Chromium and jsdom, not the VS Code webview, and no native, real-chapter
+or writer acceptance is claimed. Only public-domain *Alice* and made-up
+names were used, with placeholder models. There were no live or billable
+calls.
+
+### What changes in the PR body
+
+- **Verification:** the counts and hashes above, with `fcf86ff` as the
+  base.
+- **"`LightboxBoardStore` is at 489":** it is 429 now, with the save path
+  in `LightboxBoardSaving.ts`.
+- **"Conflicts with 4I":** 4I is merged.
+- **The menu's statuses** gain "Name not saved", and **the outcome
+  banner** under the header is new.
+- **`LIGHTBOX_RENAME_BOARD`** carries `adoption`.
+- **The evidence:** 11 states and 33 captures, and 204 errors against the
+  base.
+- **Decision 47** is kept through one file per board and the owed save.
+
+"Open a board file…", the one-file-per-board rules and decision 46 are as
+the body describes.

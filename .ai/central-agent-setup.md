@@ -202,7 +202,7 @@ packages/core/src/presentation/webview/
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item), useLightboxEscape, useLightboxOpinionView (the view chosen per board), useLightboxBoardsSurface (which saved-board surface is open, and the browser's search; Slice 5A.2)
 │       ├── useLightboxHandoff.ts       # Handoffs as the webview asks for them, the Workshop tray, Open Workshop
 │       ├── useLightboxProjectFiles.ts  # The project picker: which one is open (source, context), its catalog, search, and choices by key
-│       ├── useLightboxBoards.ts        # The saved boards: the shelf of the board on screen by request id, Open, Delete, Rename (5A.1), Open a board file and refresh (5A.2); persists nothing (Slice 5A)
+│       ├── useLightboxBoards.ts        # The saved boards: the shelf of the board on screen by request id, Open, Delete, Rename (5A.1), Open a board file and refresh (5A.2), and the outcome an open, delete or rename left to say (PR #167); persists nothing (Slice 5A)
 │       ├── useLightboxPassages.ts      # The inspector's passages: one request per pin, board and text; takes only the pending answer; persists nothing (Slice 4E)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
@@ -835,8 +835,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser), on `epic/lightbox-boards-browser`, from `epic/lightbox` at `a57a5cd`, with `epic/lightbox` at `08b0d22` (Slice 4H, PR #165: reading tolerance) merged in):
-- 499 suites / 6,896 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
+- 504 suites / 7,000 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1406,6 +1406,22 @@ records, when it saves, or how a saved one comes back:
   finds its file at the rewrite's turn in the queue, changes only what the
   writer acted on (one spark's mark, not the board's every mark: PR #164
   F-03), and never writes a file that does not read whole.
+- **A save writes the board it was owed (PR #167 F-01).** A save waits
+  its turn in the store's queue, and another run may start in the
+  meantime. At its turn, `owedBoard` takes the board as it stands only
+  when nothing on it is reading. Otherwise it takes the settled board its
+  run captured, carrying the file, revision and name the board holds now.
+  Never save a board with a group `running` or a lens `pending`: the
+  codec refuses it. The store's save status clears on any commit before
+  the commit is announced (N-01).
+- **A mutation's outcome is shown where it outlives its sheet (PR #167
+  F-02, F-03).** The name sheet is opened for a board and its adoption,
+  and closes when either changes. A rename of the board on screen carries
+  that adoption, and the host refuses one for an earlier adoption. The
+  host's notice from an open, delete or rename answer goes to the
+  outcome banner under the header (`LightboxBoardsOutcome`), never only
+  to a sheet or the browser. A refused source stays on the board's source
+  alert.
 - **Claims are live or abandoned by age (PR #164 F-01, F-02).**
   `LightboxBoardClaims` names a claim with the time it was taken; younger
   than `LIGHTBOX_BOARD_CLAIM_LEASE_MS` it is live and no other window

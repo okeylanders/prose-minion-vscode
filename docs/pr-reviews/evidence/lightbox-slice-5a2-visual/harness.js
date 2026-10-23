@@ -21,8 +21,10 @@
  * for a request naming no board), `lightbox_open_board` and
  * `lightbox_open_board_file` with the opened board and then the host's
  * answer, and `lightbox_set_lenses` with the estimate for the board then on
- * screen. Nothing is renamed or deleted in the page: `browser-rename` opens
- * a row's field and types, `browser-delete` asks, and both leave it there.
+ * screen; and `lightbox_rename_board`, in `kept` only, with the host's
+ * answer to that name (PR #167 F-03). Nothing else is renamed, and nothing
+ * is deleted in the page: `browser-rename` opens a row's field and types,
+ * `browser-delete` asks, and both leave it there.
  * The page's clock is pinned to 3:00 PM UTC on Oct 23, 2026, so "Today",
  * "Yesterday" and "This week" are the same on every run. A state whose page
  * does not show what the host's answers say is written to errors.txt, and
@@ -81,6 +83,13 @@ const pageHtml = `<!DOCTYPE html>
         }
         if (m.type === 'lightbox_open_board_file' && scenario.files) {
           play(scenario.files, m.payload.requestId);
+        }
+        if (m.type === 'lightbox_rename_board') {
+          const renamed = (scenario.renames || {})[m.payload.name];
+          if (renamed) {
+            renamed.messages.forEach(host);
+            answer('lightbox_boards', renamed.answer, m.payload.requestId);
+          }
         }
       },
       getState: () => undefined,
@@ -228,10 +237,14 @@ const OUTSIDE_NOTE = {
   readCurrentText: false
 };
 const LIBRARY_HEAD = { trigger: ON_SCREEN, status: 'Saved', subtitle: 'Drafts/alice-1.md · 508 words' };
+// PR #167 F-03: the name the writer gives in the menu's sheet while the board's file cannot be written.
+const MORNING_READ = 'alice-1 - morning read';
+const LIBRARY_ID = Object.keys(states.library.shelves)[0];
+const NAME_KEPT = 'The board on screen is named, but the file it was saved to could not be changed. The output log says why.';
 
 const scenarios = [
   {
-    // Decision 41: the Boards menu in the header, as the Workshop's sessions menu: the five newest boards of every chapter.
+    // Decision 46: the Boards menu in the header, as the Workshop's sessions menu: the five newest boards of every chapter.
     name: 'menu', data: states.library, act: openMenu,
     expect: { ...LIBRARY_HEAD, menu: MENU(LIBRARY_RECENT), browser: null, focused: 'Rename board…' }
   },
@@ -297,6 +310,19 @@ const scenarios = [
     // "Open a board file…": a copy kept outside the boards folder opens as a snapshot; no file holds it yet.
     name: 'outside', data: states.outside, act: then(openBrowser, press('Open a board file…'), showTop('.pm-lb-board-notice')),
     expect: { trigger: BOARD.A.name, status: 'Not saved yet', subtitle: 'Drafts/alice-1.md · 508 words', menu: null, browser: null, boardNotice: OUTSIDE_NOTE, posted: ['lightbox_open_board_file'] }
+  },
+  {
+    // PR #167 F-03: the board on screen renamed from the menu's sheet while its file cannot be written. The sheet
+    // closes; the host's words stay under the header, and the menu says the name is not saved, not Saved.
+    // PR #167 F-02: the rename names the board and adoption the sheet was opened for.
+    name: 'kept', data: states.kept,
+    act: then(openMenu, choose('Rename board…'), type('Board name', MORNING_READ), press('Rename')),
+    expect: {
+      trigger: MORNING_READ, status: 'Name not saved', subtitle: 'Drafts/alice-1.md · 508 words', menu: null, browser: null,
+      outcome: { role: 'alert', text: `Saved boards ${NAME_KEPT}`, dismiss: true },
+      renames: [{ boardId: LIBRARY_ID, fileId: null, name: MORNING_READ, adoption: states.kept.shelves[LIBRARY_ID].adoption }],
+      posted: ['lightbox_rename_board']
+    }
   }
 ];
 
@@ -370,6 +396,17 @@ const facts = () => {
       readCurrentText: Boolean([...notice.querySelectorAll('button')].find((button) => clean(button.textContent) === 'Read the current text'))
     } : null,
     boardNoticeFirst: notice ? notice.parentElement?.firstElementChild === notice : null,
+    // What an open, a delete or a rename left to say, under the header (PR #167 F-03).
+    outcome: (() => {
+      const banner = document.querySelector('.pm-lb-boards-outcome');
+      return banner ? {
+        role: banner.getAttribute('role'),
+        text: clean(banner.querySelector('span')?.textContent),
+        dismiss: Boolean([...banner.querySelectorAll('button')].find((button) => clean(button.textContent) === 'Dismiss'))
+      } : null;
+    })(),
+    renames: window.__pmPosted.filter((m) => m.type === 'lightbox_rename_board')
+      .map((m) => ({ boardId: m.payload.boardId, fileId: m.payload.fileId, name: m.payload.name, adoption: m.payload.adoption })),
     boardsPanel: Boolean(document.querySelector('.pm-lb-boards')),
     // The menu and the browser stay on screen: neither runs past the window's left or right edge, or above it.
     offscreen: [['menu', menu], ['browser', dialog?.querySelector('.pm-ws-session-browser-layout') ?? dialog]]
@@ -389,7 +426,7 @@ const facts = () => {
       .map((m) => `${m.type} ${JSON.stringify(m.payload)}`),
     savedStates: window.__pmSaved.length,
     savedStateNamesAFile: window.__pmSaved.some((state) => state.includes('.board.json')),
-    savedStateHoldsAName: window.__pmSaved.some((state) => /first pass|second pass|after the change|\d+\/\d+\/2026/.test(state))
+    savedStateHoldsAName: window.__pmSaved.some((state) => /first pass|second pass|after the change|morning read|\d+\/\d+\/2026/.test(state))
   };
 };
 
@@ -405,6 +442,8 @@ const faults = (seen, expect) => {
   if (expect.focused && seen.focused !== expect.focused) { out.push(`focus on "${seen.focused}", not "${expect.focused}"`); }
   if (!same(seen.boardNotice, expect.boardNotice ?? null)) { out.push(`the notice above the board ${JSON.stringify(seen.boardNotice)}, not ${JSON.stringify(expect.boardNotice ?? null)}`); }
   if (expect.boardNotice && seen.boardNoticeFirst !== true) { out.push('the notice is not the first thing in the board\'s column'); }
+  if (!same(seen.outcome, expect.outcome ?? null)) { out.push(`the outcome banner ${JSON.stringify(seen.outcome)}, not ${JSON.stringify(expect.outcome ?? null)}`); }
+  if (!same(seen.renames, expect.renames ?? [])) { out.push(`renames sent ${JSON.stringify(seen.renames)}, not ${JSON.stringify(expect.renames ?? [])}`); }
   if (seen.boardsPanel) { out.push('the Boards side panel is still there'); }
   for (const type of expect.posted ?? []) {
     if (!seen.posted.some((line) => line.startsWith(`${type} `))) { out.push(`never posted ${type}`); }

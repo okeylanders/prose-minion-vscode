@@ -24,12 +24,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-5214w4a7-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ykazt7bh-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -112,13 +114,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-bc5fo4ef-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-bc5fo4ef-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-mj8mab1j-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-mj8mab1j-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -201,13 +205,15 @@
     "focused": "Chapter",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-x0kkcx9a-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-x0kkcx9a-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-njdhzfc3-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-njdhzfc3-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -257,13 +263,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-r1u4x9la-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-r1u4x9la-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-71hhbzdb-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-71hhbzdb-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 12,
     "savedStateNamesAFile": false,
@@ -351,13 +359,15 @@
     "focused": "Rename board",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-q3vuhbjx-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-q3vuhbjx-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fno90ysp-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fno90ysp-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -445,13 +455,15 @@
     "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-uo9vc7gc-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-uo9vc7gc-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-h81bs4n2-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-h81bs4n2-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -479,12 +491,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-lot0k7qz-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-jguj3rv3-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -511,13 +525,15 @@
     "focused": "Close saved boards",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-mq40tdbu-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-mq40tdbu-2\",\"boardId\":\"board-7\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-afu0oo27-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-afu0oo27-2\",\"boardId\":\"board-7\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -541,14 +557,16 @@
       "readCurrentText": true
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-fmm7661r-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-fmm7661r-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-fmm7661r-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-blid4mjl-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-blid4mjl-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-blid4mjl-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 15,
     "savedStateNamesAFile": false,
@@ -572,16 +590,54 @@
       "readCurrentText": false
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-2s3ks5fy-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-2s3ks5fy-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board_file {\"requestId\":\"lbx-brd-2s3ks5fy-3\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7ynhcgp4-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7ynhcgp4-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-7ynhcgp4-3\"}"
     ],
     "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ja5ohrpc-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-ja5ohrpc-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 13,
     "savedStateNamesAFile": false,
     "savedStateHoldsAName": false
   },
@@ -610,12 +666,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-qoo2i2ko-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-9l6njoc1-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -698,13 +756,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-bcw8b475-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-bcw8b475-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2apoe19z-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2apoe19z-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -787,13 +847,15 @@
     "focused": "Chapter",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v7bebjj8-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v7bebjj8-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2yhw0py5-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2yhw0py5-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -843,13 +905,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-uhkp0muk-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-uhkp0muk-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-izv7o81q-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-izv7o81q-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 12,
     "savedStateNamesAFile": false,
@@ -937,13 +1001,15 @@
     "focused": "Rename board",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-grbs0ohx-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-grbs0ohx-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-av0es7nc-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-av0es7nc-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1031,13 +1097,15 @@
     "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-1tzsqqxb-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-1tzsqqxb-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hhlmt29w-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hhlmt29w-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1065,12 +1133,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-bx6jfb7t-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-z0j9w7pu-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -1097,13 +1167,15 @@
     "focused": "Close saved boards",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9o7c0pzh-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9o7c0pzh-2\",\"boardId\":\"board-7\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hemy3zdo-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hemy3zdo-2\",\"boardId\":\"board-7\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1127,16 +1199,18 @@
       "readCurrentText": true
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-4126mj7q-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-4126mj7q-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-4126mj7q-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-6s16yl61-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-6s16yl61-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-6s16yl61-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
     ],
-    "savedStates": 16,
+    "savedStates": 15,
     "savedStateNamesAFile": false,
     "savedStateHoldsAName": false
   },
@@ -1158,16 +1232,54 @@
       "readCurrentText": false
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-b4afpg1i-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-b4afpg1i-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board_file {\"requestId\":\"lbx-brd-b4afpg1i-3\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-66i7mqs8-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-66i7mqs8-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-66i7mqs8-3\"}"
     ],
-    "savedStates": 16,
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fb8e9528-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-fb8e9528-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 14,
     "savedStateNamesAFile": false,
     "savedStateHoldsAName": false
   },
@@ -1196,12 +1308,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-ij6ma3hv-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-1xicvvuw-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -1284,13 +1398,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9c2jod8g-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-9c2jod8g-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xbuduq4a-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xbuduq4a-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1373,13 +1489,15 @@
     "focused": "Chapter",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-d3s1uayh-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-d3s1uayh-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-bb19c7w5-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-bb19c7w5-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1429,13 +1547,15 @@
     "focused": "Search board names and chapters",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-duwccjah-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-duwccjah-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-o58cm1vd-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-o58cm1vd-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 12,
     "savedStateNamesAFile": false,
@@ -1523,13 +1643,15 @@
     "focused": "Rename board",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-lfrmgwde-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-lfrmgwde-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-01rh8eub-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-01rh8eub-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1617,13 +1739,15 @@
     "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v3l6h43e-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-v3l6h43e-2\",\"boardId\":\"board-6\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-uv6674q7-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-uv6674q7-2\",\"boardId\":\"board-6\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1651,12 +1775,14 @@
     "focused": "Rename board…",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-x47uuxa3-1\",\"boardId\":null}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-in4nv0pi-1\",\"boardId\":null}"
     ],
     "savedStates": 9,
     "savedStateNamesAFile": false,
@@ -1683,13 +1809,15 @@
     "focused": "Close saved boards",
     "boardNotice": null,
     "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-gkhzpddl-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-gkhzpddl-2\",\"boardId\":\"board-7\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ivef0sgk-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ivef0sgk-2\",\"boardId\":\"board-7\"}"
     ],
     "savedStates": 11,
     "savedStateNamesAFile": false,
@@ -1713,14 +1841,16 @@
       "readCurrentText": true
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-upq73fto-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-upq73fto-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board {\"requestId\":\"lbx-brd-upq73fto-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-nl8bd4ws-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-nl8bd4ws-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-nl8bd4ws-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
     ],
     "savedStates": 15,
     "savedStateNamesAFile": false,
@@ -1744,16 +1874,54 @@
       "readCurrentText": false
     },
     "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
     "boardsPanel": false,
     "offscreen": [],
     "horizontalOverflow": false,
     "clippedButtons": [],
     "posted": [
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-hvlsyqi5-1\",\"boardId\":null}",
-      "lightbox_request_boards {\"requestId\":\"lbx-brd-hvlsyqi5-2\",\"boardId\":\"board-6\"}",
-      "lightbox_open_board_file {\"requestId\":\"lbx-brd-hvlsyqi5-3\"}"
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-0j7wtrfj-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-0j7wtrfj-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-0j7wtrfj-3\"}"
     ],
     "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ihqyysrd-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-ihqyysrd-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 12,
     "savedStateNamesAFile": false,
     "savedStateHoldsAName": false
   }

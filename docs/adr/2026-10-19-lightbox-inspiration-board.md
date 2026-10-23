@@ -814,6 +814,21 @@ of them. The format is fixed so that 5B needs no change to it.
     declines writes nothing.
   - *A rename or spark mark of a file follows it* only when the board knew
     that file, so renaming an older file never moves the board to it.
+  - *The board a save is owed (PR #167 F-01).* A save reads the board at
+    its turn in the store's queue. When another run is reading on that
+    board by then (a group `running`, a lens `pending`, which the codec
+    refuses to save), it writes the settled board its run finished with,
+    carrying the file, revision and name the board holds now. A board that
+    was replaced is written as captured and never pointed at. With
+    decision 47, the board saved after a failed Opinion call holds the old
+    Opinion even when the Opinion runs again before the save's turn. The
+    store's save status ("Save failed") clears on the next commit, by
+    either path, before the commit is announced (N-01).
+  - *A name given for the board on screen names the board it was typed
+    for (PR #167 F-02).* The name sheet is opened for a board and its
+    adoption, and closes when either changes; the rename carries the
+    adoption, and the host refuses, with nothing written, a rename of the
+    board on screen whose adoption has changed.
 - **Sources are a list.** `sources` holds every source with its own text.
   Paragraph numbers stay the board's, 1 to N, so no reading changes shape;
   each paragraph names its source and its offsets into that source's text.
@@ -975,6 +990,16 @@ of them. The format is fixed so that 5B needs no change to it.
   in the host's words. The changed-file notice stays above the board.
   **Compare (5B)** reads two boards, and with one file per board two text
   versions of a chapter are two boards.
+  - *What an open, delete or rename left to say (PR #167 F-03).* The
+    host's notice from an answer to any of the three is shown in a
+    dismissible banner under the header (`role="alert"`), even when a
+    newer request has taken the shelf. It outlives the name sheet and the
+    browser. A board whose name its file does not hold says "Name not
+    saved" in the menu, not "Saved". A refused source (malformed, missing)
+    is still said on the board. A board from outside that has since saved
+    here says so, and no longer that its next save writes it there (N-02).
+    A picked file's read error is logged by its code, never its message
+    (N-03).
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a

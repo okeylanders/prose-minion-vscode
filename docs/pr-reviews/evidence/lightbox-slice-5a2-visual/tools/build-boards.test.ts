@@ -34,6 +34,10 @@
  * 9. alice-1 changes on disk, and the Oct 12 board is opened from the
  *    browser: the changed-file notice above it. This is `changed`.
  * 10. A window with no folder open boards and reads alice-1: `session`.
+ * Between 7 and 8 (PR #167 F-03): the board on screen is renamed "alice-1 -
+ * morning read" from the menu's sheet while the file's staged write fails
+ * (EIO): the name is kept on the board, its file is byte for byte as it was,
+ * and the host's answer says so. This is `kept`.
  *
  * Not part of the test suite: copy it to packages/core/src/__tests__/ and run
  * `npx jest packages/core/src/__tests__/build-boards.test.ts`, with
@@ -57,6 +61,7 @@ import {
   type LightboxRunScope
 } from '@messages';
 import { LIGHTBOX_LENSES, lightboxGroupLenses } from '@shared/constants/lightbox';
+import { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardNotices';
 import {
   CHAPTER,
   CHAPTER_PATH,
@@ -80,6 +85,7 @@ const changed = (text: string) => `${text}\n\nThe writer added this closing line
 /** Names made up for this evidence. */
 const FIRST_PASS = 'alice-1 - first pass';
 const SECOND_PASS = 'alice-2 - second pass';
+const MORNING_READ = 'alice-1 - morning read';
 /** Every lens but groups A's and B's. */
 const ONLY_A_AND_B: LightboxLensId[] = LIGHTBOX_LENSES.map((lens) => lens.id)
   .filter((lens) => ![...lightboxGroupLenses('A'), ...lightboxGroupLenses('B')].includes(lens));
@@ -265,6 +271,21 @@ it('dumps the library, outside, changed and session states', async () => {
   ]);
   expect(shelf.name).toBe('alice-1 - 10/23/2026 9:08 AM');
 
+  // The board on screen renamed from the menu's sheet while its file's staged write fails (PR #167 F-03): the name
+  // is kept on the board, the file is byte for byte as it was, and the host's notice says so.
+  const ownFile = shelf.boards.find((board) => board.onScreen)?.fileId as string;
+  const ownBytes = host.fileSystem.files.get(posix.join(BOARDS, ownFile));
+  const writes = jest.spyOn(host.fileSystem, 'writeFile').mockImplementation(async () => {
+    throw Object.assign(new Error('EIO: i/o error'), { code: 'EIO' });
+  });
+  const kept = await answerTo(tab, MessageType.LIGHTBOX_RENAME_BOARD,
+    { boardId: library, fileId: null, name: MORNING_READ, adoption: host.service.adoptionOf(library) }, 'rename-kept');
+  writes.mockRestore();
+  expect(kept.answer?.shelf).toMatchObject({ name: MORNING_READ, notice: LIGHTBOX_BOARD_NOTICES.nameKeptFailed });
+  expect(kept.answer?.shelf.boards.find((board) => board.onScreen)).toMatchObject({ fileId: ownFile, name: 'alice-1 - 10/23/2026 9:08 AM' });
+  expect(host.fileSystem.files.get(posix.join(BOARDS, ownFile))).toEqual(ownBytes);
+  expect(host.savedFiles()).toEqual(before);
+
   // "Open a board file…": a copy of the Oct 12 file, kept outside the boards folder. Nothing is written.
   const outsidePath = '/elsewhere/exports/alice-1 - first pass.board.json';
   host.fileSystem.files.set(outsidePath, host.fileSystem.files.get(posix.join(BOARDS, firstPassFile)) as Uint8Array);
@@ -304,6 +325,10 @@ it('dumps the library, outside, changed and session states', async () => {
       opens: { [firstPassFile]: answered(changedOpen) }
     },
     session: sessionScene,
+    kept: {
+      ...libraryScene,
+      renames: { [MORNING_READ]: { messages: kept.messages, answer: kept.answer } }
+    },
     files: before
   };
   fs.writeFileSync(path.join(OUT, 'boards.json'), `${JSON.stringify(states)}\n`);
@@ -313,6 +338,6 @@ it('dumps the library, outside, changed and session states', async () => {
   for (const paragraph of PARAGRAPHS) {
     expect(log.includes(paragraph.slice(0, 40))).toBe(false);
   }
-  expect(log).not.toMatch(/first pass|second pass/);
+  expect(log).not.toMatch(/first pass|second pass|morning read/);
   fs.writeFileSync(path.join(OUT, 'log.txt'), log);
 });

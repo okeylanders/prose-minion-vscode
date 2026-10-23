@@ -1735,3 +1735,39 @@ lens, and adds its items to 4D's digest.
     to `08b0d22`, typecheck and two builds under Node 22 and Node 18.20.8,
     `webview.js` `1f28383f…` and `extension.js` `44596e69…` each time;
     the evidence rendered again, with the same results.
+  - **PR #167's review corrections (2026-10-23).** Astra's review asked
+    for changes: three P2 findings and four P3 findings, all now made.
+    - **F-01:** a finished run's save, waiting in the store's queue while
+      another run starts on the same board, writes the settled board it
+      was owed, not the running one.
+    - **F-02:** the name sheet is bound to the board and adoption it was
+      opened for. It closes when either changes, Rename is held back
+      while a board opens, and the host refuses a rename for an earlier
+      adoption.
+    - **F-03:** the answers to opening, deleting and renaming show in a
+      banner under the header that outlives the sheet and the browser,
+      and a name its file does not hold shows "Name not saved".
+    - **N-01:** "Save failed" clears on the next commit.
+    - **N-02:** a board from outside says it is saved here once it is.
+    - **N-03:** a picked file's read error is logged by its code only.
+    - **N-04:** deleting the last board leaves focus on Close.
+
+    21 of the new and changed tests fail on the reviewed code's sources.
+    Every control the review named passes there, except the same-board
+    rename, whose expected message now carries the adoption. The evidence gains `kept`,
+    the banner state. See the
+    [author response](../../../docs/pr-reviews/pr-167-lightbox-boards-browser-review.md).
+  - **`epic/lightbox` at `fcf86ff` (Slice 4I, PR #166) merged in.** The
+    conflicts were this README (4I's decisions 41–45, 47 and 48 around
+    this slice's 46), the Lightbox module list and the test inventory.
+    4I's decision-47 host test counted a new file for the save after a
+    failed Opinion call. It now checks that the board's one file is
+    rewritten in place, still holding the old Opinion. A new test pins
+    decision 47 through an owed save: the failed call's save, held while
+    the Opinion runs again, writes the failed call with the old Opinion.
+    After it: 504 suites / 7,000 tests / 59 snapshots (495 / 6,905 / 59
+    at `fcf86ff`), all passing under Node 22 and Node 18.20.8. Lint is
+    identical to `fcf86ff`. Typecheck and two builds pass under each Node,
+    with `webview.js` `1fe07246…` and `extension.js` `805bd134…` all four
+    times. The evidence was rendered again on that bundle: 33 captures,
+    `errors.txt` empty, and 204 errors against `fcf86ff`'s bundle.

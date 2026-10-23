@@ -738,11 +738,12 @@ evidence stands as rendered.
 
 **Branch:** `epic/lightbox-boards-browser`, from `epic/lightbox` at
 `a57a5cd` (5A.1 merged, PR #164), with `epic/lightbox` at `08b0d22`
-(Slice 4H, PR #165) merged in. **Writer decision:** 46 in the
+(Slice 4H, PR #165) and then at `fcf86ff` (Slice 4I, PR #166) merged in.
+PR #167. **Writer decision:** 46 in the
 [epic table](README.md#writer-decisions-2026-10-19), which amends decision
 27 (one file per board, not per save) and replaces decision 31's rail. It
-is numbered after 45: Slice 4I (run controls, PR #166, in review) takes
-decisions 41–45.
+is numbered after 45: Slice 4I (run controls) takes decisions 41–45, and
+47 and 48.
 
 The writer, on 5A.1's Boards panel (2026-10-23):
 
@@ -831,12 +832,35 @@ panel**.
   and the store's `save` takes it as a function, read at its turn in the
   queue, with `inPlace` (the file the board holds, its revision, and how to
   write the board as it now stands into that file) and `defaultName`. The
-  store (`LightboxBoardStore.save`) rewrites in place when it can, and
+  store (`LightboxBoardStore.save`, through `LightboxBoardSaving.ts`) rewrites
+  in place when it can, and
   otherwise writes a new file (`LightboxBoardNewFile.ts`, new), logging
   `<file id> could not be saved in place (<why>); the board is saved to a
   new file.` Its contracts moved to `LightboxBoardStoreContracts.ts` to keep
   the store under 500 lines. The save result keeps its shapes
   (`saved`, `replaced`, `withdrawn`, `failed`, `refused`).
+- **The board a save is owed** (PR #167 F-01; `owedBoard`). A save waits
+  its turn in the store's queue, and another run may start on the same
+  board in that time. At its turn it writes the board as it then stands
+  only when nothing on it is reading (no group `running`, nothing
+  `pending`). Otherwise it writes the settled board its run finished with,
+  carrying the file, revision and name the board holds now, so a rename
+  given while it waited is written and the file it rewrites is the board's
+  own. A board that was replaced in the meantime is written as captured
+  and is never pointed at. With decision 47, the board saved after a
+  failed Opinion call holds the old Opinion, even when the writer has
+  started the Opinion again by the time the save runs.
+- **Save status** (PR #167 N-01). The store marks a save failed when its
+  writes fail or the board would not read back whole. It clears the mark
+  when any later save commits, by either path, before the commit is
+  announced, and logs "Boards are saved again after an earlier failure."
+- **A name for the board on screen names the board it was typed for**
+  (PR #167 F-02). The rename message carries the adoption the name sheet
+  was opened for. A rename with no file whose board was adopted again (a
+  snapshot keeps its id) is refused, nothing is written, and the shelf's
+  notice says so (`boardChanged`).
+- **A picked file's read error** is logged by its error code, never its
+  message, which names the path (PR #167 N-03).
 - **Every chapter's listing** (`LightboxBoardStore.listAll`,
   `LightboxBoardFiles.listAll`): every folder in the boards folder whose
   name is a slug and hash (`[a-z0-9-]`), each read as a source's listing is
@@ -895,8 +919,10 @@ panel**.
 - **The Boards menu** (`LightboxBoardsMenu`), in the header between the
   Workshop tray and the status, where the Workshop puts its sessions menu:
   the trigger names the board on screen (its name, or its file's name before
-  a first save) and says "Saved", "Not saved yet", "Save failed" or "This
-  session only". Board: Rename board…, Board another chapter… (the project
+  a first save) and says "Saved", "Not saved yet", "Save failed", "Name not
+  saved" (the board's name is not the one its file holds: PR #167 F-03) or
+  "This session only". Rename board… is held back while a board opens
+  (PR #167 F-02). Board: Rename board…, Board another chapter… (the project
   picker), Open prior board…; Recent: the five newest boards of every
   chapter, each with its chapter and when, the one on screen disabled;
   Browse all boards…. Session-only, its head says why.
@@ -913,12 +939,29 @@ panel**.
   of the menu, the browser and the name sheet is open, and the browser's
   search. Opening the browser asks for the shelf again
   (`useLightboxBoards.refresh`). Escape closes the open menu before it lets
-  go of a pinned item.
+  go of a pinned item. The name sheet is opened for a board and its
+  adoption (`openRename({ boardId, adoption })`). It closes when another
+  board, or another adoption of the same one, comes on screen, so a typed
+  draft never goes to a board it was not typed for (PR #167 F-02).
+- **What an open, delete or rename left to say** (`LightboxBoardsOutcome`,
+  PR #167 F-03): a banner under the header (`role="alert"`, a Dismiss
+  button) shows the host's notice from an answer to any of the three. It
+  shows even when a newer request has taken the shelf, and it stays when
+  the name sheet or the browser closes, until it is dismissed or the next
+  such answer replaces it. Examples: a rename whose file could not be
+  changed, or an open refused while a run reads the board on screen. A
+  source that could not be opened (malformed, missing) is still said on
+  the board, as any refused source is.
 - **The notice above the board** (`lightboxSnapshotNotice`, from the shelf,
   through the same guards) keeps decision 34's changed-file notice and Read
   the current text, and also says when the chapter could not be compared,
   when parts were left out, and when the file came from outside the boards
-  folder ("Its next save writes it there, as a file of its own.").
+  folder ("Its next save writes it there, as a file of its own."; once it
+  has saved here, "It is saved in the boards folder now, as a file of its
+  own; the file it came from is as it was.": PR #167 N-02).
+- **Deleting the last board** in the browser leaves its search disabled, so
+  focus goes to the browser's Close button, never to the page (PR #167
+  N-04).
 - **Gone:** `LightboxBoardsPanel`, `LightboxBoardNameField` and their tests.
 - **At 520 px and under** the frame's header wraps its actions to the left;
   the Lightbox's Boards menu hangs from the actions block at the gutter, so
@@ -979,7 +1022,8 @@ and exports are new.
 
 Visual evidence:
 [`lightbox-slice-5a2-visual`](../../../docs/pr-reviews/evidence/lightbox-slice-5a2-visual/README.md):
-ten host states at 1440, 1000 and 500 px, 30 captures, `errors.txt` empty
+ten host states at 1440, 1000 and 500 px, 30 captures (eleven and 33
+after PR #167's corrections, below), `errors.txt` empty
 (183 errors and exit 1 against `a57a5cd`'s bundle, and against
 `08b0d22`'s); and the Workshop's menu and browser with the base's bundle
 and this branch's, five states at three widths, markup, computed styles
@@ -1045,6 +1089,78 @@ What the writer may want to redirect:
 - **"Open a board file…" closes the browser** before the host's picker
   shows, as the project picker does. A dismissed picker leaves the board as
   it was, with the browser closed.
+
+### PR #167 review corrections (2026-10-23)
+
+The review asked for changes: three P2 findings and four P3 findings. It
+is in
+[`pr-167-lightbox-boards-browser-review.md`](../../../docs/pr-reviews/pr-167-lightbox-boards-browser-review.md),
+with the author's response and ledger below it. Each correction is
+described in place above. What the writer may want to know:
+
+- **A finished reading reaches its file even when the next run starts
+  first** (F-01). A save waits its turn. If a later run is reading on the
+  same board by then, the save writes the board its own run finished
+  with, and the later run's own save adds what it lands. A later run that
+  is stopped adds nothing, and the earlier reading stays on disk.
+- **The old Opinion is kept through such a wait** (decision 47, from
+  Slice 4I). Say the Opinion's call fails, and the writer presses it again
+  before the save runs. The save still writes the failed call with the
+  old Opinion, never the running board.
+- **The name sheet names the board it was opened for** (F-02). It closes
+  when another board comes on screen, or the same board is opened again
+  from a file, and Rename board… is held back while a board opens. A name
+  typed for one board never goes to another.
+- **What a rename, open or delete left to say stays on screen** (F-03).
+  It shows in a banner under the header until the writer dismisses it or
+  the next answer replaces it. A board whose name did not reach its file
+  shows "Name not saved" in the menu, not "Saved". A file that could not
+  be opened is still said on the board, as before.
+- **"Save failed" clears** once a later save lands, in place or to a new
+  file (N-01).
+- **A board opened from outside the boards folder** says it is saved
+  there once it is (N-02). A picked file's read error is logged by its
+  code, never its path (N-03). Deleting the last board leaves focus on
+  the browser's Close button (N-04).
+
+**Against the reviewed code** (`77f9ebe`; the new and changed tests run
+on its source files, type checks off): 21 of the 129 tests in the nine
+suites fail. They are F-01 3, N-01 2, F-02 6, F-03 5, N-02 2, N-03 1 and
+N-04 1, plus the app's rename test, whose message now carries the
+adoption. Every control the review named passes there except the
+same-board rename, whose expected message carries that adoption too. The review's
+held-read host sequence and its staging-write host sequence pass at both
+heads: the host was right given the ids it was sent, and the wrong target
+and the hidden notice were the webview's. The decision-47 test fails with
+the save path as it was at `77f9ebe`: the file kept the Opinion's call as
+`ok`, and no failure was recorded.
+
+**The evidence** gains `kept`: the board on screen renamed from the
+menu's sheet while its file's staged write fails (EIO). The sheet closes,
+and the banner and "Name not saved" stay; the file is byte for byte as it
+was. That makes 11 states and 33 captures, and `errors.txt` is empty. The
+other states' host messages are unchanged apart from two observation
+numbers (the failed rename's answer and its shelf come first), and their
+DOM facts are unchanged. Against the reviewed head's bundle (`4e0be76`)
+only `kept` fails, three errors at each width: "Saved", no banner, and no
+adoption sent. Against `fcf86ff`'s it writes 204 errors.
+
+Gates after merging `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166), on
+the code as pushed, under Node 22.22.0 and Node 18.20.8 (CI's), all
+passing on the first run under each:
+- full `npx jest`: 504 suites / 7,000 tests / 59 snapshots, against
+  495 / 6,905 / 59 at `fcf86ff` (measured on an export of it, under both
+  Nodes);
+- `npm run lint`: 0 errors and 1,133 warnings, identical per file, rule
+  and severity to `fcf86ff`;
+- `npm run typecheck`;
+- `npm ci`, then two builds with `verify:bundle` under each Node:
+  `webview.js` `1fe07246…e6fe15` and `extension.js` `805bd134…646d02`
+  all four times (the evidence's bundle);
+- `git diff --check` clean on these commits (the only hits since `77f9ebe`
+  are the two review reports' own Markdown line breaks).
+
+No live or billable call.
 
 ## Slice 5B: draft compare (a later PR)
 

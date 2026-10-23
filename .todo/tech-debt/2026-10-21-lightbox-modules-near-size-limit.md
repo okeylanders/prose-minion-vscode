@@ -102,6 +102,13 @@ Before 5B adds Compare's reads to the store, move its listings
 (`listAll`, `locate`, `readOutside` and the claim settling they share)
 into `LightboxBoardFiles.ts` or a module of their own.
 
+**After PR #167's corrections (2026-10-23).** The store's save path (the
+in-place attempt, its fallback to a new file, and the save status) moved
+to `LightboxBoardSaving.ts` (130). `LightboxBoardStore.ts` is now 429 (was
+489). The four modules above it are unchanged by the corrections and by
+the merge of Slice 4I. `LightboxApp.tsx` is 461: the outcome banner and
+the name sheet's target, with 4I's run controls.
+
 ## Recommendation
 
 Before Slice 5 adds to them:
