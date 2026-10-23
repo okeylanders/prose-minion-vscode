@@ -284,3 +284,90 @@ calls.
 
 "Open a board file…", the one-file-per-board rules and decision 46 are as
 the body describes.
+
+## Independent correction and integration re-review — 2026-10-23
+
+**Reviewed correction head:** `14c371869e58dee0e7c7b990ec039024c18e05f1`
+
+**Actual integrated base and verified merge-base:** `fcf86ff8077a9e4e58895860ce78366a64522c39` (merged PR #166)
+
+**Delta reviewed:** `77f9ebeb1f3ae10295679d412a4c34ac1501eea1..14c371869e58dee0e7c7b990ec039024c18e05f1`, 211 files, +11,767 / −536, including the #166 integration, tests, documents and regenerated evidence. Current PR against its base: 150 files, +11,755 / −3,096.
+
+**Reviewer:** Astra · independent re-review, not an author-test-only disposition
+
+### Latest disposition
+
+**Request changes remains: F-01 is partially corrected but still open (P2).** The original in-flight-save failure is fixed, but an independently reproduced cancellation-order variation still loses a completed reading on disk and reload. **F-02, F-03 and N-01 through N-04 are closed.** This latest disposition supersedes the original seven-open ledger; the author’s stated resolution is preserved above as their response, not adopted as independent acceptance.
+
+The entire original report and author response above are preserved. The actual #166 integration was inspected and tested here, rather than inferred from the separate branch reviews. This is technical review of this exact tree, not a formal GitHub approval or instruction to merge, native/real-chapter or writer acceptance, Slice 5B approval, or authorization to publish the extension.
+
+| ID | Independent correction result |
+| --- | --- |
+| **F-01 — P2, open / partially fixed** | The original running-board rejection and Opinion overlap cases now pass. The added zero-result Stop-before-queue-release ordering below still silently discards the completed reading; its counterpart and both actual-base orderings pass. |
+| **F-02 — closed** | Board/adoption capture, replacement dismissal, pending-open/picker disabling and same-adoption draft retention are checked through the app and actual host/store. |
+| **F-03 — closed** | The real staging-write EIO leaves the original file unchanged and now has a visible post-sheet outcome; the menu qualifies the name as not saved. |
+| **N-01 — closed** | The original failure-then-success witness passes. In-place and new-file commits clear the failure flag before announcing the commit. |
+| **N-02 — closed** | The original imported-board follow-through passes: the notice changes after its first store save, and the external original remains byte-identical. |
+| **N-03 — closed** | External reads log a bounded error-code token, not a filesystem message; the real path-bearing-error witness and adversarial cases are checked. |
+| **N-04 — closed** | Final-row deletion uses the enabled dialog Close control, with next-row and explicit-cancellation controls retained. |
+
+### Integration and correction controls
+
+#### F-01 remains open: a stopped rerun is settled, but does not own a save
+
+**Location:** [`LightboxBoardSaves.ts:150–168`](https://github.com/okeylanders/prose-minion-vscode/blob/14c371869e58dee0e7c7b990ec039024c18e05f1/packages/core/src/application/services/lightbox/LightboxBoardSaves.ts#L150-L168), particularly the `return now` at lines 154–155.
+
+The new `owedBoard` protects the captured completed reading only while the latest board contains a running/pending group. A zero-result Stop removes those markers. The board is now valid to encode, but it is not the completed state that this earlier save owes.
+
+Independent real-handler/store sequence, with synthetic responses and a held ordinary store read:
+
+1. The measured board already has its initial saved file. Hold the store queue on a read of that file.
+2. Complete Characters B; its three tiles are visible and its autosave is waiting behind the read.
+3. Start B again through the new standalone call scope (`{ mode: 'group', group: 'B' }`, not a per-lens re-read). As decision 42 intends, the on-screen B group is cleared while the response is held.
+4. **Stop this rerun before releasing the store read.** The actual progress reports `groupsBack: 0`; Stop owes no new save. Its late provider response is ignored.
+5. Release the store queue. `lightboxBoardSettled(now.board)` is true for the cancelled group, so the earlier B save writes that cancelled state instead of its captured completed B. The sole file and a fresh host restored from it contain **cancelled B with zero tiles**. The On screen row has no Characters lens and `lastSaveFailed` is false.
+
+The same test with **release before Stop** saves/restores B as `ok` with all three tiles. Both orderings pass on the actual #166 source-equivalent base (`3cd2be0e`; production-source comparison against merged `fcf86ff` is empty). On corrected #167, only Stop-before-release fails. The original four independent probes and five added rename/Spark/fallback/Opinion controls pass.
+
+This is **not** a request to reverse #166’s intentional on-screen clearing policy. The already-completed reading must reach disk even when the next run lands nothing; whether it does must not depend on which side of a queue release the writer presses Stop. It is a continuation of F-01’s lost-owed-save defect, not a new tied-clock recovery finding. Since these cancelled bytes are valid, the new failed-save flag cannot detect the loss.
+
+**Requested correction:** distinguish the settled state actually owed by a completed run from a later merely-stopped state. Preserve the appropriate completed snapshot while still carrying current file/revision/name ownership and queued Spark edits; keep both ordering controls, the later-success control and the Opinion retention controls. Re-run this regression before closing F-01.
+
+The save correction’s other interactions were exercised, not assumed: queued rename, Spark dismiss and Undo, follow-on revision continuity/reload, and two owed saves following a conflict fallback all pass. Both current and changed-text/stale Opinions survive a failed standalone rerun overlapped by another running retry, then cancellation and reload. Replacing only the save module with the exact pre-correction module produces **two expected Opinion failures**; this is a targeted old-save-path substitution in the current merged host, not a claim that the entire old #167 head had #166’s semantics.
+
+The retained #166 host probes exercise scope rejection/planning, model/estimate ownership and the real $0.063 synthetic-usage witness: the Opinion’s approximate estimate is not a spending cap. One saved-board probe was intentionally adapted from the superseded new-file-per-save expectation to decision 46: the same file changes, sibling groups and unrelated bytes remain intact, the reload pointer follows it, and reload restores both groups. The deletion-during-call control still does not resurrect the deleted file.
+
+UI/host regression tests now prove F-02 and F-03 through actual saved-file effects, not only callback inspection: adoption during a typed draft sends no rename and leaves both saved names intact; staging EIO leaves the saved bytes intact, displays the host warning after sheet closure and says **Name not saved**; a successful retry clears the warning and restores **Saved**. Same-id/new-adoption replacement closes the sheet, a same-adoption update preserves its draft, and Rename is unavailable during a pending open/picker or before the first shelf. Repeated cancellation, retained/superseded known outcomes, Dismiss and duplicate-answer handling pass. Deleting the last row focuses Close, with next-row and Escape controls passing.
+
+The unchanged integrated #166 control semantics are replayed on the exact rebuilt bundle: approximate Opinion price/limit-input qualification, visible-label prefixes in computed accessible names, headline button identity/focus through run/success/failure/cancellation, and earlier-Opinion qualification. This is DOM/state/transport/focus evidence, not native accessibility acceptance.
+
+Production host fixtures were regenerated on this actual merged tree. The 5A.2 `boards.json` and log are byte-identical to the committed correction evidence. The #166 `run-controls.json` is **not** byte-identical to its older committed fixture: all 96 differing JSON paths are in the saved-board mount/shelf summaries (default names, source summaries and one-file ids/counts); every scenario’s board/progress messages and estimates match. Its log differences are saved-name bytes and in-place saves instead of new files. The integrated DOM replay uses the newly generated fixture, rather than silently claiming the old shelf model was current.
+
+### Fresh verification
+
+| Check | Independent result on `14c371869` |
+| --- | --- |
+| Full Jest, isolated cloud workspace Node 24.19.0 | **504 suites / 7,000 tests / 59 snapshots pass**, 374.941 s |
+| Typecheck / production build including `verify:bundle` | **Both pass**, existing webpack size warnings only |
+| Lint | **0 errors / 1,133 warnings**, identical to the reviewed #166 correction by relative file, rule and severity |
+| Independent persistence / correction controls | **10 pass / 1 desired-behavior failure**, 11 tests in 4 suites, 11.3 s; remaining F-01 above |
+| Actual-base cancellation-order controls | **2/2 pass**, 6.179 s |
+| Targeted old-save-path Opinion negative control | **2 expected failures**, 7.103 s; the same standing/stale cases pass on the current merged code |
+| Retained #166 host and price checks | **20 + 1 tests pass**, 6.91 s and 2.472 s; saved-file expectation deliberately follows decision 46 |
+| Retained #163/#164 codec/storage/recovery checks | **38 tests / 5 suites pass**, 14.11 s |
+| Regenerated production-host fixtures | **Both builder tests pass**, 7.493 s / 6.421 s; byte and semantic comparisons described above |
+| Shared Workshop parity | **15/15 markup-and-focus states identical** against the source-equivalent actual base, 11 tests per side, 5.742 s / 4.624 s |
+| Independent UI / actual host-store correction tests | **16/16 pass**, 13.295 s; same tests against original #167 source: **11 expected failures / 5 controls pass**, 12.436 s. One of the 11 is the newly required adoption field on an otherwise valid same-board rename, not a draft-retention failure |
+| Exact rebuilt production-bundle DOM | **6/6 board scenarios** and **195 retained #166 correction checks pass**; **395 broader retained #166 checks also pass**, with no runtime/assertion errors; CSS parsing is outside these DOM assertions |
+| Independent picker/privacy controls | **48/48 tests in 3 suites pass**, 8.102 s: original 15 plus 33 adversarial error/code cases. The real EACCES privacy witness still fails as expected on the preserved original source |
+| Exact implementation-head configured CI | **Both events success**: [PR run 40027797061](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40027797061), [push run 40027791306](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40027791306) |
+
+Rebuilt SHA-256 values match the author’s integrated evidence: webview `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15`; extension `805bd13410f9f202f1c71bae59929989c396df783a22b9f4eb35c6ead0646d02`.
+
+The red F-01 assertion is evidence of the remaining defect, not passing coverage. The new outcome/Name not saved captures at 500 and 1440 px and the outside snapshot at 1000 px were independently inspected: the warning and Dismiss remain legible, and no additional clipping defect was established. These are supplied pixels, not independently rendered native geometry.
+
+The base is an ancestor of this head. The clean three-way merge tree equals the head tree (`6632858ef81a14e08758bd20eecac6682e81acbb`). The merged #166 report, including its independent closing appendix, is retained. Production run-control helpers/components are unchanged from that base; their composition in LightboxApp and the changed board-save policy were reviewed separately. Both authentic format-1 fixtures remain byte-identical. The save-path extraction reduces LightboxBoardStore to 429 lines; no production core `vscode` import or new `any` type was found. Diff whitespace checks identify only the existing review reports' intentional Markdown hard breaks, not implementation whitespace defects.
+
+All heavy work was serialized. Dependencies were reused after matching the unchanged lockfile and installing checkout-local workspace links. Only public-domain *Alice* and synthetic data with stub providers were used. No private manuscript, live/billable provider, implementation change, formal review, merge, deployment or extension publication occurred. Timings describe the named cloud/CI contexts, not native UI latency. JSDOM and supplied captures do not establish native keyboard defaults, geometry or screen-reader acceptance; no denied browser route was retried. The existing #164 tied-clock claim-recovery debt remains separate and is not reopened.
+
+**Next step:** correct the remaining F-01 cancellation-order gap, preserve the now-passing ownership/UI/privacy controls, and re-review the actual next head. No other blocking finding is open in this reviewed integration.
