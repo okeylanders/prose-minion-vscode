@@ -820,7 +820,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-23, Lightbox Slice 4I (run controls: "Run AI analyses", a call run on its own by group, every AI-read widget's Analyze, each call's Run in the Lenses panel), on `epic/lightbox-run-controls`, stacked on Slice 4H (`epic/lightbox-reading-tolerance` at `bdec17f`, with PR #165's corrections and its re-review's)):
-- 493 suites / 6,851 tests / 59 snapshots
+- 494 suites / 6,886 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

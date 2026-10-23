@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md) D6, and its **addendum of 2026-10-23, a call can run on its own**
 **Writer decisions:** 41–45 in the [epic table](README.md#writer-decisions-2026-10-19)
-**Status:** Built on `epic/lightbox-run-controls`, from `epic/lightbox-reading-tolerance` (Slice 4H, PR #165) at `4dcdb2b`, with its review corrections merged in at `467950d`. PR to come.
+**Status:** Built on `epic/lightbox-run-controls`, from `epic/lightbox-reading-tolerance` (Slice 4H, PR #165) at `4dcdb2b`, with its review corrections merged in at `467950d` and its re-review's at `bdec17f`. PR to come.
 
 ## Why
 

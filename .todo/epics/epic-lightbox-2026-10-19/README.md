@@ -102,7 +102,7 @@ carried into the Workshop.
 | 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Merged (PR #163, at `3e5c3a1`) |
 | 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | Merged (PR #164, at `a57a5cd`) |
 | 4H | [Reading tolerance](slice-4h-reading-tolerance.md) | Asks raised and overruns shown, not withheld (one safety ceiling; Bring clips at the Workshop's bounds); a 12,000-token output ceiling; a structure-only JSON repair with a content guard, in a shared parser; a reply cut off at the ceiling salvaged; the recovery file names its group's own contract (decisions 37–40) | Built on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`; PR to come |
-| 4I | [Run controls](slice-4i-run-controls.md) | The run line's "Run AI analyses", "Finish" and "Re-analyze", all orange; a `group` run scope the host resolves (a call's checked lenses plus the widget's own); every AI-read widget's Analyze / Re-analyze / Analyzing…; the Opinion's Analyze, disabled with its own reason until a call has landed; one Run / Rerun per call in the Lenses panel (decisions 41–45) | Built on `epic/lightbox-run-controls`, stacked on 4H (`epic/lightbox-reading-tolerance` at `467950d` merged in); PR to come |
+| 4I | [Run controls](slice-4i-run-controls.md) | The run line's "Run AI analyses", "Finish" and "Re-analyze", all orange; a `group` run scope the host resolves (a call's checked lenses plus the widget's own); every AI-read widget's Analyze / Re-analyze / Analyzing…; the Opinion's Analyze, disabled with its own reason until a call has landed; one Run / Rerun per call in the Lenses panel (decisions 41–45) | Built on `epic/lightbox-run-controls`, stacked on 4H (`epic/lightbox-reading-tolerance` at `bdec17f` merged in); PR to come |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1625,7 +1625,8 @@ lens, and adds its items to 4D's digest.
 - **2026-10-23. Slice 4I (run controls) is built** on
   `epic/lightbox-run-controls`, stacked on 4H (from
   `epic/lightbox-reading-tolerance` at `4dcdb2b`, with its PR #165
-  corrections merged in at `467950d`), awaiting its PR. The writer asked,
+  corrections and its re-review's merged in, at `467950d` and `bdec17f`),
+  awaiting its PR. The writer asked,
   after using the board on real chapters, for "Run AI Analyses" that stays
   orange as "Finish" and "Re-analyze", an Analyze on every widget that runs
   and reruns its call, and the Lenses panel's "call A" as a button. See the
@@ -1649,12 +1650,12 @@ lens, and adds its items to 4D's digest.
     with the host's refusal; it replaces "Re-read the Opinion".
   - **One Run per call in the Lenses panel (decision 45):** a small header
     per call.
-  - **Verification**, after `npm ci` into a real `node_modules`: 493
-    suites / 6,851 tests / 59 snapshots (490 / 6,794 / 59 at `467950d`;
+  - **Verification**, after `npm ci` into a real `node_modules`: 494
+    suites / 6,886 tests / 59 snapshots (491 / 6,829 / 59 at `bdec17f`;
     488 / 6,737 / 59 at `d255b8e`), the same under Node 22 and Node
     18.20.8; lint 0 errors / 1,133 warnings, identical per file, rule and
     severity to `d255b8e`; typecheck and build with `verify:bundle` pass,
-    twice; `webview.js` `478dbd9b…`, `extension.js` `d93ac10d…`, the same
+    twice; `webview.js` `478dbd9b…`, `extension.js` `0b1af8b7…`, the same
     both times; visual evidence in
     `docs/pr-reviews/evidence/lightbox-slice-4i-visual/`, 27 captures,
     `errors.txt` empty, 186 errors against the base bundle. 23 of the 24

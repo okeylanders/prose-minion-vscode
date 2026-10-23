@@ -167,5 +167,6 @@ To rebuild `states/`:
 4. Copy `$DIR/states/*` here.
 
 `$DIR` defaults to `/tmp/lightbox-4i`; keep it outside the repository. The
-states rebuilt after merging the Slice 4H corrections (`467950d`) were
-byte-identical to the ones built before.
+states rebuilt after merging the Slice 4H corrections (`467950d`, then
+`bdec17f`) were byte-identical to the ones built before, and the bundle
+built after the second merge is the one rendered here, byte for byte.
