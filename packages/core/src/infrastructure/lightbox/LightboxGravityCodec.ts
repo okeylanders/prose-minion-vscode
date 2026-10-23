@@ -30,6 +30,7 @@ import {
   listAt,
   strictObject,
   terms,
+  prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import type {
@@ -91,10 +92,10 @@ function decodeField(item: Record<string, unknown>, path: string): LightboxDecod
   const field = strictObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
   const termList = decodeTermList(field.terms, `${path}.terms`);
   return {
-    name: text(field.name, `${path}.name`, B.labelCharacters),
-    metaphor: text(field.metaphor, `${path}.metaphor`, B.noteCharacters),
+    name: text(field.name, `${path}.name`),
+    metaphor: prose(field.metaphor, `${path}.metaphor`, B.noteCharacters),
     pull: claimedFraction(field.pull, `${path}.pull`),
-    claim: text(field.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(field.claim, `${path}.claim`, B.claimCharacters),
     terms: termList,
     evidence: evidence(field.evidence, `${path}.evidence`, 1)
   };
@@ -105,7 +106,7 @@ function decodeTermList(value: unknown, path: string): LightboxDecodedGravityTer
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
     const term = strictObject(entry, itemPath, ['term', 'degree']);
-    return { term: text(term.term, `${itemPath}.term`, B.labelCharacters), degree: degreeAt(term.degree, `${itemPath}.degree`) };
+    return { term: text(term.term, `${itemPath}.term`), degree: degreeAt(term.degree, `${itemPath}.degree`) };
   });
 }
 
@@ -131,7 +132,7 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
   }
   return {
     fields: [names[0], names[1]],
-    claim: text(collision.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(collision.claim, `${path}.claim`, B.claimCharacters),
     evidence: evidence(collision.evidence, `${path}.evidence`, 1)
   };
 }
@@ -139,8 +140,8 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
 function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDecodedLiteral {
   const literal = strictObject(item, path, ['name', 'reason', 'terms', 'evidence']);
   return {
-    name: text(literal.name, `${path}.name`, B.labelCharacters),
-    reason: text(literal.reason, `${path}.reason`, B.noteCharacters),
+    name: text(literal.name, `${path}.name`),
+    reason: prose(literal.reason, `${path}.reason`, B.noteCharacters),
     terms: terms(literal.terms, `${path}.terms`),
     evidence: evidence(literal.evidence, `${path}.evidence`, 1)
   };
@@ -149,8 +150,8 @@ function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDec
 function decodeCluster(item: Record<string, unknown>, path: string): LightboxDecodedCluster {
   const cluster = strictObject(item, path, ['name', 'claim', 'words', 'evidence']);
   return {
-    name: text(cluster.name, `${path}.name`, B.labelCharacters),
-    claim: text(cluster.claim, `${path}.claim`, B.claimCharacters),
+    name: text(cluster.name, `${path}.name`),
+    claim: prose(cluster.claim, `${path}.claim`, B.claimCharacters),
     words: terms(cluster.words, `${path}.words`, 2),
     evidence: evidence(cluster.evidence, `${path}.evidence`, 1)
   };
@@ -163,10 +164,10 @@ function decodeSwatch(item: Record<string, unknown>, path: string): LightboxDeco
     shapeError(`${path}.hex`, 'a color as #RRGGBB');
   }
   return {
-    name: text(swatch.name, `${path}.name`, B.labelCharacters),
+    name: text(swatch.name, `${path}.name`),
     words: terms(swatch.words, `${path}.words`, 1),
     hex: (hex as string).toUpperCase(),
-    note: text(swatch.note, `${path}.note`, B.noteCharacters),
+    note: prose(swatch.note, `${path}.note`, B.noteCharacters),
     evidence: evidence(swatch.evidence, `${path}.evidence`, 1)
   };
 }

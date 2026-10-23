@@ -46,6 +46,7 @@ import {
   singleQuote,
   strictObject,
   terms,
+  prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import type { LightboxWireQuote } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -76,13 +77,13 @@ export function decodeTemplateBlock(value: unknown, path: string, friction: stri
   const engagement = lenient(() => decodeEngagement(block.engagement, `${path}.engagement`));
   return {
     lens: 'template',
-    name: text(block.name, `${path}.name`, B.labelCharacters),
-    description: text(block.description, `${path}.description`, B.claimCharacters),
+    name: text(block.name, `${path}.name`),
+    description: prose(block.description, `${path}.description`, B.claimCharacters),
     evidence: evidence(block.evidence, `${path}.evidence`, 1),
     beats: beats.items,
     freshness: {
       level: oneOf(freshness.level, `${path}.freshness.level`, LIGHTBOX_FRESHNESS_READINGS, 'familiar, mixed or fresh'),
-      note: text(freshness.note, `${path}.freshness.note`, B.noteCharacters)
+      note: prose(freshness.note, `${path}.freshness.note`, B.noteCharacters)
     },
     engagement: 'value' in engagement ? engagement.value : [],
     ...('fault' in engagement ? { engagementFault: engagement.fault } : {}),
@@ -132,7 +133,7 @@ function decodeBeat(item: Record<string, unknown>, path: string): LightboxDecode
   const beat = strictObject(item, path, ['stance', 'note', 'evidence']);
   return {
     stance: oneOf(beat.stance, `${path}.stance`, LIGHTBOX_TEMPLATE_STANCES, 'aligns, subverts or departs'),
-    note: text(beat.note, `${path}.note`, B.noteCharacters),
+    note: prose(beat.note, `${path}.note`, B.noteCharacters),
     evidence: evidence(beat.evidence, `${path}.evidence`, 1)
   };
 }
@@ -163,7 +164,7 @@ function decodeThread(item: Record<string, unknown>, path: string): LightboxDeco
     throw new Error('A dormant thread is planted and never touched again, so it gives no escalation and no resolution; this one does.');
   }
   return {
-    question: text(thread.question, `${path}.question`, B.noteCharacters),
+    question: text(thread.question, `${path}.question`),
     planted: singleQuote(thread.planted, `${path}.planted`),
     escalations,
     resolution,
@@ -178,15 +179,15 @@ function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDe
     shapeError(`${path}.plantedUnused`, 'true or false');
   }
   return {
-    name: text(artifact.name, `${path}.name`, B.labelCharacters),
+    name: text(artifact.name, `${path}.name`),
     terms: terms(artifact.terms, `${path}.terms`),
     arc: artifact.arc.map((entry, index) => {
       const stepPath = `${path}.arc[${index}]`;
       const step = strictObject(entry, stepPath, ['step', 'para', 'quote']);
       return {
-        step: text(step.step, `${stepPath}.step`, B.labelCharacters),
+        step: text(step.step, `${stepPath}.step`),
         para: paragraphNumber(step.para, `${stepPath}.para`),
-        quote: text(step.quote, `${stepPath}.quote`, B.quoteCharacters)
+        quote: text(step.quote, `${stepPath}.quote`)
       };
     }),
     plantedUnused: artifact.plantedUnused as boolean
@@ -196,7 +197,7 @@ function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDe
 function decodeSynopsis(value: unknown, path: string): { text: string; evidence: LightboxWireQuote[] } {
   const synopsis = strictObject(value, path, ['text', 'evidence']);
   // Its characters and sentences are asks: a longer synopsis is shown whole (Slice 4H).
-  const body = text(synopsis.text, `${path}.text`, B.claimCharacters);
+  const body = prose(synopsis.text, `${path}.text`, B.claimCharacters);
   return { text: body, evidence: evidence(synopsis.evidence, `${path}.evidence`, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES) };
 }
 
@@ -204,10 +205,10 @@ function decodeMovement(item: Record<string, unknown>, path: string): LightboxDe
   const movement = strictObject(item, path, ['id', 'title', 'from', 'to', 'gist', 'boundary']);
   return {
     id: movementId(movement.id, `${path}.id`),
-    title: text(movement.title, `${path}.title`, B.labelCharacters),
+    title: text(movement.title, `${path}.title`),
     from: paragraphNumber(movement.from, `${path}.from`),
     to: paragraphNumber(movement.to, `${path}.to`),
-    gist: text(movement.gist, `${path}.gist`, B.noteCharacters),
+    gist: prose(movement.gist, `${path}.gist`, B.noteCharacters),
     boundary: singleQuote(movement.boundary, `${path}.boundary`)
   };
 }

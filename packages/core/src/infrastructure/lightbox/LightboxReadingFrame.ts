@@ -20,7 +20,13 @@
  *   no bracket is added to it;
  * - a reply that reached the output ceiling before its frame closed keeps
  *   the root's finished members, and names the member it was cut inside
- *   (`cutOff.cutKey`), which is dropped, never trusted.
+ *   (`cutOff.cutKey`), which is dropped, never trusted;
+ * - a reply cut off at the output ceiling while it wrote its frame's ending
+ *   (PR #165 F-02) has that part set aside first, only when the last line
+ *   is a start of this group's closing sentinel, or of the closing fence
+ *   of a fence the reply opened, around the frame or inside it. A reply
+ *   that stopped normally gets no such allowance, and any other last line
+ *   is read as it stands, and refused as before.
  * Every message is host-owned (PR #149 F-05): positions and the protocol's
  * own names, never the text. Why a repair was refused goes only into the
  * frame error's `diagnostic`, beside the body in the recovery store.
@@ -67,7 +73,8 @@ export function readLightboxFrame(content: string, group: LightboxReadingGroupId
   }
   const repairs = new Set<LightboxFrameRepair>();
   const { start, end: close } = lightboxGroupSentinels(group);
-  const lines = unfenced(content.replace(/\r\n?/g, '\n').trim().split('\n'), repairs);
+  const written = content.replace(/\r\n?/g, '\n').trim().split('\n');
+  const lines = unfenced(end === 'ceiling' ? withoutCutEnding(written, close) : written, repairs);
   const text = lines.join('\n');
   if (occurrences(text, start) !== 1) {
     throw new LightboxGroupFrameError(`The group ${group} response must contain exactly one ${start}`);
@@ -82,7 +89,9 @@ export function readLightboxFrame(content: string, group: LightboxReadingGroupId
   if (closes === 1 && lines[lines.length - 1].trim() !== close) {
     throw new LightboxGroupFrameError(`The group ${group} closing sentinel must be the final line`);
   }
-  const jsonText = lines.slice(1, closes === 1 ? -1 : undefined).join('\n').trim();
+  const between = lines.slice(1, closes === 1 ? -1 : undefined);
+  // Cut off inside the closing fence of a fence opened inside the sentinels: the fence's start is set aside too.
+  const jsonText = (end === 'ceiling' && closes === 0 ? withoutCutEnding(between) : between).join('\n').trim();
   if (jsonText.length === 0) {
     throw new LightboxGroupFrameError(`The group ${group} response JSON is empty`);
   }
@@ -162,6 +171,25 @@ function unfenced(lines: string[], repairs: Set<LightboxFrameRepair>): string[] 
     repairs.add('code-fence');
   }
   return from === 0 && to === lines.length ? lines : lines.slice(from, to);
+}
+
+/** A proper, non-empty start of `marker`, alone on its line: what a reply cut off while writing it leaves. */
+function cutStartOf(line: string, marker: string): boolean {
+  const written = line.trim();
+  return written.length > 0 && written.length < marker.length && marker.startsWith(written);
+}
+
+/**
+ * The lines without a last line that is a start of the frame's ending, cut
+ * off at the output ceiling (PR #165 F-02): the closing fence of a fence
+ * these lines open, or, given, this group's closing sentinel. Only a length
+ * cutoff calls it; any other last line is kept, to be read or refused.
+ */
+function withoutCutEnding(lines: string[], close?: string): string[] {
+  const last = lines[lines.length - 1] ?? '';
+  const opensFence = lines.length > 1 && OPENING_FENCE.test(lines[0].trim());
+  const cut = (opensFence && cutStartOf(last, CLOSING_FENCE)) || (close !== undefined && cutStartOf(last, close));
+  return cut ? lines.slice(0, -1) : lines;
 }
 
 function occurrences(text: string, marker: string): number {

@@ -35,6 +35,7 @@ import {
   singleQuote,
   strictObject,
   terms,
+  prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import { lightboxSparkPhrasingFault } from '@/infrastructure/lightbox/LightboxSparkPhrasing';
@@ -90,10 +91,10 @@ export function decodeSparkBlock(value: unknown, path: string, friction: string)
 function decodeStory(item: Record<string, unknown>, path: string): LightboxDecodedLineageStory {
   const story = strictObject(item, path, ['title', 'source', 'stances', 'claim', 'evidence']);
   return {
-    title: text(story.title, `${path}.title`, B.labelCharacters),
-    source: text(story.source, `${path}.source`, B.labelCharacters),
+    title: text(story.title, `${path}.title`),
+    source: text(story.source, `${path}.source`),
     stances: decodeStances(story.stances, `${path}.stances`),
-    claim: text(story.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(story.claim, `${path}.claim`, B.claimCharacters),
     evidence: evidence(story.evidence, `${path}.evidence`, 1)
   };
 }
@@ -113,7 +114,7 @@ function decodeStances(value: unknown, path: string): LightboxLineageStanceNote[
       shapeError(`${itemPath}.stance`, 'a stance not already given for this story');
     }
     seen.add(stance as LightboxLineageStance);
-    return { stance: stance as LightboxLineageStance, note: text(row.note, `${itemPath}.note`, B.noteCharacters) };
+    return { stance: stance as LightboxLineageStance, note: prose(row.note, `${itemPath}.note`, B.noteCharacters) };
   });
 }
 
@@ -124,34 +125,34 @@ function decodeSetAside(value: unknown, path: string): LightboxLineageSetAside[]
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
     const row = strictObject(entry, itemPath, ['title', 'reason']);
-    const title = text(row.title, `${itemPath}.title`, B.labelCharacters);
+    const title = text(row.title, `${itemPath}.title`);
     if (seen.has(nameKey(title))) {
       shapeError(`${itemPath}.title`, 'a story not already set aside');
     }
     seen.add(nameKey(title));
-    return { title, reason: text(row.reason, `${itemPath}.reason`, B.noteCharacters) };
+    return { title, reason: prose(row.reason, `${itemPath}.reason`, B.noteCharacters) };
   });
 }
 
 function decodePair(item: Record<string, unknown>, path: string): LightboxDecodedSubtextPair {
   const pair = strictObject(item, path, ['speaker', 'said', 'meant', 'evidence']);
   return {
-    speaker: text(pair.speaker, `${path}.speaker`, B.labelCharacters),
+    speaker: text(pair.speaker, `${path}.speaker`),
     said: singleQuote(pair.said, `${path}.said`),
-    meant: text(pair.meant, `${path}.meant`, B.noteCharacters),
+    meant: prose(pair.meant, `${path}.meant`, B.noteCharacters),
     evidence: evidence(pair.evidence, `${path}.evidence`, 0)
   };
 }
 
 function decodeSpark(item: Record<string, unknown>, path: string): LightboxDecodedSpark {
   const spark = strictObject(item, path, ['title', 'question', 'terms', 'evidence']);
-  const question = text(spark.question, `${path}.question`, B.sparkCharacters);
+  const question = text(spark.question, `${path}.question`);
   const fault = lightboxSparkPhrasingFault(question);
   if (fault) {
     throw new Error(fault);
   }
   return {
-    title: text(spark.title, `${path}.title`, B.labelCharacters),
+    title: text(spark.title, `${path}.title`),
     question,
     terms: terms(spark.terms, `${path}.terms`),
     evidence: evidence(spark.evidence, `${path}.evidence`, 1)

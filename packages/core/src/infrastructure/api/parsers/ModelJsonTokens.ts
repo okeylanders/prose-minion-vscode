@@ -94,7 +94,7 @@ export function tokenizeModelJson(text: string, options: { partialEnd: boolean }
       tokens.push(token);
       at = token.end;
     } else if (character === OPEN_CURLY) {
-      const token = curlyString(text, at);
+      const token = curlyString(text, at, options.partialEnd);
       tokens.push(token);
       at = token.end;
     } else {
@@ -144,9 +144,19 @@ function straightString(text: string, start: number, partialEnd: boolean): Model
   return { kind: 'string', value: '', curly: false, start, end: text.length, complete: false };
 }
 
-/** `“…”` where a token starts: read only when nothing between could be the text's own quotation. */
-function curlyString(text: string, start: number): ModelJsonToken {
+/**
+ * `“…”` where a token starts: read only when nothing between could be the
+ * text's own quotation. With `partialEnd` (a salvage), one the reply was cut
+ * off inside, its closing mark never written, is an incomplete token like a
+ * cut straight string (PR #165 F-03): it runs to the end, holds nothing, and
+ * the member it stands in is dropped. A completed one is held to the same
+ * rule as ever.
+ */
+function curlyString(text: string, start: number, partialEnd: boolean): ModelJsonToken {
   const close = text.indexOf(CLOSE_CURLY, start + 1);
+  if (close < 0 && partialEnd) {
+    return { kind: 'string', value: '', curly: true, start, end: text.length, complete: false };
+  }
   const inner = close < 0 ? '' : text.slice(start + 1, close);
   if (close < 0 || /["\\“”\n\r]/u.test(inner)) {
     throw new ModelJsonRefused('unsafe-curly-quotes', start);

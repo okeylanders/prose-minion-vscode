@@ -28,7 +28,8 @@ const EXTRA_BRACE = E.response.replace(`}}${END_E}`, `}}}${END_E}`);
 describe('the real case: one closing brace too many after the last block (group E)', () => {
   it('fails JSON.parse near its end, as the writer\'s reply did', () => {
     const json = EXTRA_BRACE.split('\n').slice(1, -1).join('\n');
-    expect(() => JSON.parse(json)).toThrow(/Unexpected non-whitespace character after JSON/);
+    // An engine-independent fact: the engine's own wording differs (Node 18 and Node 22 word it differently).
+    expect(() => JSON.parse(json)).toThrow(SyntaxError);
     expect(json.length).toBeGreaterThan(5_000);
   });
 
@@ -147,6 +148,19 @@ describe('a reply cut off at the output ceiling (decision 40)', () => {
       }
     }));
     expect(logged).toContain('[LightboxReadingRunner] Group E reached the output ceiling: 3 blocks finished, cut inside summary');
+  });
+
+  it('lands every block of a reply cut inside its closing sentinel, still saving the paid reply as written (PR #165 F-02)', async () => {
+    const cutSentinel = E.response.slice(0, -1);
+    const { outcome, logged, capture } = await readReply(cutSentinel, 'length');
+    expect(outcome.status).toBe('ok');
+    expect(outcome.withheldBlocks).toEqual([]);
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({
+      rawResponse: cutSentinel,
+      finishReason: 'length',
+      contract: expect.objectContaining({ protocol: expect.stringContaining('final-line ===END_LIGHTBOX_GROUP_E_V1===') })
+    }));
+    expect(logged).toContain('[LightboxReadingRunner] Group E reached the output ceiling: 4 blocks finished, cut between blocks');
   });
 });
 

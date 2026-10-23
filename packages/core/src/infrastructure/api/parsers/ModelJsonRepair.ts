@@ -144,15 +144,28 @@ export class ModelJsonParseError extends Error {
   }
 }
 
+/**
+ * The character `JSON.parse` stopped at, from its message, or undefined.
+ * The wording is the engine's, not a contract: Node 18 says "Unexpected
+ * token } in JSON at position 95", Node 20 and later "… at position 95 (line
+ * 1 column 96)", and some messages give no position at all, or echo a slice
+ * of the text instead ("Unexpected token 'x', \"…\" is not valid JSON").
+ * Only a position at the very end of the message is read, so a number in an
+ * echoed slice is never taken for one. Nothing depends on it but the
+ * error's own words.
+ */
+export function jsonParseErrorPosition(message: string): number | undefined {
+  const found = / at position (\d+)(?: \(line \d+ column \d+\))?$/u.exec(message)?.[1];
+  return found !== undefined ? Number(found) : undefined;
+}
+
 /** `JSON.parse`, or the structure-only repair under its content guard; throws `ModelJsonParseError`. */
 export function parseModelJson(jsonText: string, options: { closeMissingBrackets?: boolean } = {}): ModelJsonParsed {
   let position: number | undefined;
   try {
     return { value: JSON.parse(jsonText), repairs: [] };
   } catch (error) {
-    // The parser's message can echo a slice of the text; keep only its position.
-    const found = /position (\d+)/.exec(error instanceof Error ? error.message : '')?.[1];
-    position = found !== undefined ? Number(found) : undefined;
+    position = jsonParseErrorPosition(error instanceof Error ? error.message : '');
   }
   try {
     const fence = unfenceModelJson(jsonText);
@@ -196,6 +209,15 @@ export function salvageModelJson(jsonText: string): ModelJsonSalvaged {
  * repaired text holds exactly the original's string literals and other
  * scalars, kind and value, in order. Only structure may differ. False when
  * either text holds anything that is not a token.
+ *
+ * **It compares scalar sequences, not structure.** It does not prove that
+ * the grouping survived: moving a value into another object or array, or
+ * swapping an empty object for an empty array, keeps the same scalars and
+ * passes. The deterministic walk above never makes such a change (it only
+ * drops a stray closer or a trailing comma, appends closers, or rewrites a
+ * curly string's delimiters), so the guard is enough for it. A repair that
+ * could regroup (a model asked to fix the syntax, say) needs a structural
+ * check of its own as well; this guard alone is not one.
  */
 export function modelJsonContentMatches(original: string, repaired: string): boolean {
   try {
@@ -262,11 +284,12 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
     }
     const container = top();
     if (token.kind === 'string' || token.kind === 'scalar') {
-      if (token.kind === 'string' && token.curly) {
-        repairs.add('curly-quote-delimiters');
-      }
+      // A token cut off at the end is never trusted, and never counted as a repair: its member is dropped.
       if (!token.complete) {
         return;
+      }
+      if (token.kind === 'string' && token.curly) {
+        repairs.add('curly-quote-delimiters');
       }
       if (container?.kind === 'object' && (container.state === 'start' || container.state === 'key')) {
         if (token.kind !== 'string') {

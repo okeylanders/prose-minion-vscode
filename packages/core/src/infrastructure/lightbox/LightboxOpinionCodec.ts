@@ -28,7 +28,6 @@
  */
 
 import type { LightboxOpinionViewId } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_OPINION_VIEWS, LIGHTBOX_OPINION_WEIGHTS } from '@shared/constants/lightboxOpinion';
 import { exactObject, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
 import { listAt, strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
@@ -42,7 +41,6 @@ import {
   type LightboxDecodedWhy
 } from '@/infrastructure/lightbox/LightboxOpinionWire';
 
-const B = PROMPT_BUDGETS.lightbox;
 /** A host key a cite may name: a tile id or a measured ref. Longer is not a key the host mints: a structural rule, not an ask. */
 const KEY_CHARACTERS = 120;
 
@@ -91,7 +89,7 @@ function decodeObservation(item: Record<string, unknown>, path: string): Lightbo
   listAt(observation.cites, `${path}.cites`, 1, 'cites');
   return {
     id: observationId(observation.id, `${path}.id`),
-    text: text(observation.text, `${path}.text`, B.opinionObservationCharacters),
+    text: text(observation.text, `${path}.text`),
     cites: observation.cites.map((cite, index) => decodeCite(cite, `${path}.cites[${index}]`))
   };
 }
@@ -118,8 +116,8 @@ function decodeView(value: unknown, path: string): LightboxDecodedOpinionView {
   const view = strictObject(value, path, ['headline', 'body', 'why']);
   listAt(view.why, `${path}.why`, 1, 'points');
   return {
-    headline: text(view.headline, `${path}.headline`, B.opinionHeadlineCharacters),
-    body: text(view.body, `${path}.body`, B.opinionBodyCharacters),
+    headline: text(view.headline, `${path}.headline`),
+    body: text(view.body, `${path}.body`),
     why: view.why.map((point, index) => decodeWhy(point, `${path}.why[${index}]`))
   };
 }
@@ -132,7 +130,7 @@ function decodeWhy(value: unknown, path: string): LightboxDecodedWhy {
   listAt(point.observations, `${path}.observations`, 1, 'observation ids');
   return {
     weight: point.weight as LightboxDecodedWhy['weight'],
-    text: text(point.text, `${path}.text`, B.opinionWhyCharacters),
+    text: text(point.text, `${path}.text`),
     observations: point.observations.map((id, index) => observationId(id, `${path}.observations[${index}]`))
   };
 }

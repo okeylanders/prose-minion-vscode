@@ -9,6 +9,7 @@
 import {
   ModelJsonParseError,
   describeModelJsonRefusal,
+  jsonParseErrorPosition,
   modelJsonContentMatches,
   parseModelJson,
   salvageModelJson,
@@ -37,7 +38,8 @@ describe('parseModelJson', () => {
 
   it('drops stray closing brackets after a complete root, the real case', () => {
     const text = '{"version":1,"summary":{"movements":[{"id":"m1"}],"friction":"The chase could close with ¶4."}}}';
-    expect(() => JSON.parse(text)).toThrow(/Unexpected non-whitespace character after JSON/);
+    // An engine-independent fact: the engine's own wording differs (Node 18 and Node 22 word it differently).
+    expect(() => JSON.parse(text)).toThrow(SyntaxError);
     expect(parseModelJson(text)).toEqual({
       value: { version: 1, summary: { movements: [{ id: 'm1' }], friction: 'The chase could close with ¶4.' } },
       repairs: ['stray-closing-bracket']
@@ -98,6 +100,25 @@ describe('parseModelJson', () => {
     expect(describeModelJsonRefusal(error.refusal)).toBe(`text that is not JSON at character ${at}`);
     expect(`${error.message} ${JSON.stringify(error)}`).not.toMatch(/Synthetic|Queen|maybe/);
   });
+
+  // PR #165 F-04: the engine's wording is not a contract. CI and VS Code 1.82's extension host run Node 18.
+  it.each([
+    ['Node 18', 'Unexpected token } in JSON at position 95', 95],
+    ['Node 20 and later', 'Unexpected non-whitespace character after JSON at position 95 (line 1 column 96)', 95],
+    ['a message with no position', 'Unexpected end of JSON input', undefined],
+    ['a message echoing the text, a number in it', 'Unexpected token \'x\', "{"note":"at position 7" x}" is not valid JSON', undefined],
+    ['no message', '', undefined]
+  ])('reads JSON.parse\'s position from %s, or none', (_engine, message, expected) => {
+    expect(jsonParseErrorPosition(message)).toBe(expected);
+  });
+
+  it('carries this engine\'s position, or none, and the same refusal either way', () => {
+    const text = '{"a":1}}"x"';
+    const error = refusedBy(() => parseModelJson(text));
+    expect(error.refusal).toEqual({ reason: 'more-after-root', at: 8 });
+    // Whatever this engine's words, the position is where JSON.parse stopped (the stray brace) or absent.
+    expect([7, undefined]).toContain(error.position);
+  });
 });
 
 describe('the content guard', () => {
@@ -157,6 +178,43 @@ describe('salvageModelJson', () => {
       root: { version: 1, a: { b: [1, 2] } },
       repairs: ['code-fence', 'trailing-comma', 'missing-closing-bracket'],
       cutKey: 'c'
+    });
+  });
+
+  // PR #165 F-03: a reply cut off inside a curly-quoted token loses only the member it stands in.
+  describe('a reply cut off inside a curly-quoted token', () => {
+    const finished = { version: 1, a: { x: 'complete' } };
+    it.each([
+      ['a nested value', '{"version":1,"a":{"x":"complete"},"b":{"y":“unfinish', 'b'],
+      ['a nested value, straight (control)', '{"version":1,"a":{"x":"complete"},"b":{"y":"unfinish', 'b'],
+      ['a nested key', '{"version":1,"a":{"x":"complete"},"b":{“unfin', 'b'],
+      ['a nested key, straight (control)', '{"version":1,"a":{"x":"complete"},"b":{"unfin', 'b'],
+      ['the next root key', '{"version":1,"a":{"x":"complete"},“unfin', undefined],
+      ['the next root key, straight (control)', '{"version":1,"a":{"x":"complete"},"unfin', undefined],
+      ['a cut token holding marks a completed one may not', '{"version":1,"a":{"x":"complete"},"b":{"y":“she said "unfin\nish', 'b']
+    ])('keeps the finished siblings when cut inside %s, and nothing of the cut one', (_case, text, cutKey) => {
+      const salvaged = salvageModelJson(text);
+      expect(salvaged).toEqual({ root: finished, repairs: ['missing-closing-bracket'], ...(cutKey ? { cutKey } : {}) });
+      expect(JSON.stringify(salvaged)).not.toMatch(/unfin|she said/);
+    });
+
+    it('still reads a completed curly-quoted string, and names its repair, before the cut', () => {
+      expect(salvageModelJson('{"version":1,“a”:{"x":“complete”},"b":{"y":“unfinish')).toEqual({
+        root: finished,
+        repairs: ['curly-quote-delimiters', 'missing-closing-bracket'],
+        cutKey: 'b'
+      });
+    });
+
+    it('still refuses a completed curly-quoted string holding a mark it may not, in a salvage or a parse', () => {
+      const unsafe = '{"version":1,"a":{"x":“she said "hi" to me”},"b":{"y":"unfinish';
+      expect(refusedBy(() => salvageModelJson(unsafe)).refusal).toEqual({ reason: 'unsafe-curly-quotes', at: unsafe.indexOf('“') });
+      expect(refusal('{"a":“she said "hi"”}')).toEqual({ reason: 'unsafe-curly-quotes', at: 5 });
+    });
+
+    it('keeps an ordinary parse strict: a curly-quoted string with no closing mark is refused', () => {
+      expect(refusal('{"a":“unfinished}')).toEqual({ reason: 'unsafe-curly-quotes', at: 5 });
+      expect(refusal('{"a":“unfinished', true)).toEqual({ reason: 'unsafe-curly-quotes', at: 5 });
     });
   });
 
