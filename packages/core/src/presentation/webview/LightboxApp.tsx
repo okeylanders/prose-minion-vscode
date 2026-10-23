@@ -270,11 +270,16 @@ export const LightboxApp: React.FC = () => {
   const reading = running || lightbox.activeRun !== null;
   const onScreenFile = savedShelf?.boards.find((row) => row.onScreen)?.fileId;
   const { closeBrowser } = boardsSurface;
-  const { openBoard } = savedBoards;
+  const { openBoard, openBoardFile } = savedBoards;
   const openSavedBoard = React.useCallback((fileId: string) => {
     openBoard(fileId);
     closeBrowser();
   }, [closeBrowser, openBoard]);
+  // The host's picker takes over, as "Explore project folders…" closes the project picker before VS Code's dialog.
+  const openSavedBoardFile = React.useCallback(() => {
+    openBoardFile();
+    closeBrowser();
+  }, [closeBrowser, openBoardFile]);
 
   const source = board?.source ?? null;
   const subtitle = source ? (
@@ -405,7 +410,7 @@ export const LightboxApp: React.FC = () => {
         reading={reading}
         onQueryChange={boardsSurface.setQuery}
         onOpen={openSavedBoard}
-        onOpenFile={savedBoards.openBoardFile}
+        onOpenFile={openSavedBoardFile}
         onRename={savedBoards.renameBoard}
         onDelete={savedBoards.deleteBoard}
         onClose={boardsSurface.closeBrowser}

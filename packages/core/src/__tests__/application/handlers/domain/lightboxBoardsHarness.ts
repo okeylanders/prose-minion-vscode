@@ -91,6 +91,10 @@ export interface LightboxBoardsHostOptions {
   claimNow?: () => number;
   /** The zone default names are told in (Slice 5A.2); UTC by default, so names are the same on every machine. */
   timeZone?: string;
+  /** The store's save clock; `SAVED_AT(0)`, then one minute later per save, by default. */
+  savedAt?: () => number;
+  /** Board ids; `board-1`, `board-2`, … per host by default (a story across reloads shares one counter). */
+  mintBoardId?: () => string;
 }
 
 export interface LightboxBoardsTab {
@@ -130,7 +134,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
     new WordFrequencyService({} as ToolOptionsProvider),
     new StyleFlagsService(),
     { enrichWithStandards: async (stats: object) => stats } as never,
-    { now: options.now ?? (() => 1_700_000_000_000), mintBoardId: () => `board-${++boardIds}` }
+    { now: options.now ?? (() => 1_700_000_000_000), mintBoardId: options.mintBoardId ?? (() => `board-${++boardIds}`) }
   );
   const runInitial = jest.fn(async (request: InitialRunRequest) =>
     (options.respond ?? ((call) => ok(groupOf(call), groupOf(call) === 'F' ? opinionReplyFor(call) : undefined)))(request)
@@ -151,7 +155,7 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
   const claimNow = options.claimNow ?? (() => SAVED_AT(0));
   const store = new LightboxBoardStore(fileSystem, workspace, log, {
     memory,
-    now: () => new Date(SAVED_AT(saves++)),
+    now: () => new Date(options.savedAt ? options.savedAt() : SAVED_AT(saves++)),
     claimNow: () => new Date(claimNow())
   });
 

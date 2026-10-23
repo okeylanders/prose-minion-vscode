@@ -363,7 +363,8 @@ export function SavedItemBrowserModal<T>({
 
           <section className="pm-ws-session-browser-section" aria-labelledby={section.id}>
             <div className="pm-ws-sessions-section-title" id={section.id}>
-              {section.title} <span>{section.note}</span>
+              {/* One text node, as the Workshop's literal heading was: two would shape the space apart (a sub-pixel shift). */}
+              {`${section.title} `}<span>{section.note}</span>
             </div>
             {items.length > 0 ? groups.map((group) => (
               <div className="pm-ws-session-browser-group" key={group.key}>

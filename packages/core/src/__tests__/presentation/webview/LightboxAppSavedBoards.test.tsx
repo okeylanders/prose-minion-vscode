@@ -147,13 +147,19 @@ describe('LightboxApp: saved boards (Slices 5A.1 and 5A.2)', () => {
 
     fireEvent.click(within(browser).getByRole('button', { name: 'Open a board file…' }));
     expect(sentOf(MessageType.LIGHTBOX_OPEN_BOARD_FILE)).toHaveLength(1);
-    // While the host's picker is open, nothing else opens; its answer ends it (the writer dismissed it).
-    expect(within(browser).getByRole('button', { name: 'Opening…' })).not.toBeNull();
+    // The host's picker takes over: the browser closes, as the project picker does before VS Code's dialog.
+    expect(screen.queryByRole('dialog', { name: 'Open a prior board' })).toBeNull();
+    // While the picker is open, nothing else opens from the menu; its answer ends it (the writer dismissed it).
+    fireEvent.click(screen.getByTitle('Board commands and recent saved boards'));
+    expect((screen.getByRole('menuitem', { name: /^Chapter 6 - first pass/ }) as HTMLButtonElement).disabled).toBe(true);
     fromHost(MessageType.LIGHTBOX_BOARDS, {
       requestId: sentOf(MessageType.LIGHTBOX_OPEN_BOARD_FILE)[0].payload.requestId, boardId: 'board-6', adoption: 1, observation: 2, shelf: shelfWith('same')
     });
+    expect((screen.getByRole('menuitem', { name: /^Chapter 6 - first pass/ }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Browse all boards…' }));
+    const again = screen.getByRole('dialog', { name: 'Open a prior board' });
 
-    fireEvent.click(within(browser).getByRole('button', { name: 'Open Chapter 6 - first pass' }));
+    fireEvent.click(within(again).getByRole('button', { name: 'Open Chapter 6 - first pass' }));
     expect(sentOf(MessageType.LIGHTBOX_OPEN_BOARD).at(-1)?.payload).toEqual({ requestId: expect.any(String), fileId: OTHER });
     expect(screen.queryByRole('dialog', { name: 'Open a prior board' })).toBeNull();
   });

@@ -14,14 +14,44 @@
 [data-pm-surface="lightbox"] .pm-lb-board-glyph {
   color: var(--pm-accent-hi);
 }
+/* The Workshop's glyph pins its last icon (a persona's focus) to the corner;
+   a board's glyph has one icon, centred. */
+[data-pm-surface="lightbox"] .pm-lb-board-glyph svg:last-child {
+  position: static;
+}
 [data-pm-surface="lightbox"] .pm-lb-board-chapter {
   overflow: hidden;
+  max-width: 100%;
   color: var(--pm-text-2);
   text-overflow: ellipsis;
+}
+/* A board's line wraps between its parts where the Workshop's cuts, so a
+   narrow browser still names the chapter rather than its first letter. */
+[data-pm-surface="lightbox"] .pm-lb-board-browser .pm-ws-session-row-meta {
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 [data-pm-surface="lightbox"] .pm-lb-board-models {
   color: var(--pm-dim);
   font-size: 11px;
+}
+
+/* ---------- The Boards menu at narrow widths ----------
+   At 520 px and under the frame's header wraps its actions to the left, so
+   a menu anchored to its trigger's right edge runs off the window's left
+   edge (and, with the Workshop tray before it, could run off the right).
+   Here it hangs from the actions block instead, at the gutter. */
+@media (max-width: 520px) {
+  [data-pm-surface="lightbox"] .pm-ws-header-actions {
+    position: relative;
+  }
+  [data-pm-surface="lightbox"] .pm-ws-sessions-menu-wrap {
+    position: static;
+  }
+  [data-pm-surface="lightbox"] .pm-ws-sessions-menu {
+    left: 0;
+    right: auto;
+  }
 }
 
 /* ---------- Rename board… ---------- */
