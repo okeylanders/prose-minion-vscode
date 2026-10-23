@@ -210,3 +210,174 @@ Pushing this head starts both CI events again; their results are not in this res
 - **Verification:** 490 suites / 6,794 tests / 59 snapshots; the suite also
   passes under Node 18.20.8; `extension.js` `4730ecf7…` (`webview.js`
   unchanged, `405f6cd1…`).
+
+## Independent re-review (2026-10-23)
+
+- **Reviewed correction head:** `467950d8617bb1af65eecb7a2f78519980be1c66`, comprising implementation fix `2ebeda4b7` and its documentation/author response.
+- **Base:** unchanged, `a57a5cd405bcf643aa41275585056b96ab0b7c42`.
+- **Current disposition:** **F-01 through F-04 are closed. Changes requested for one new Medium / P2 finding, F-05.** The original report and author response above are preserved as history; this section gives the current independent assessment.
+
+The corrections preserve original semantic values rather than checking clipped substitutes. All retained reproductions now pass, including the fabricated-tail rejection. Partial frame endings and curly-token cutoffs salvage completed siblings without weakening ordinary-stop refusal. Both configured Node 18 CI events are green. A separate robustness regression remains: passing whole semantic text to the existing paragraph-address digit predicate exposes quadratic synchronous work on an admitted, synthetic response.
+
+### Resolution ledger
+
+| ID | Independent disposition | Evidence at the correction head |
+| --- | --- | --- |
+| F-01 | **Closed** | All four original behavior cases and threshold/missing-quote controls pass. Only two old probe telemetry expectations changed from one clip to zero, because quotes/examples now remain whole. Additional tests preserve long quote/example values through assembly, save/open, normalized carry and bounded Bring; changing an untraveled anchor tail still refuses Bring. Safe and forbidden tails beyond former ceilings reach all four steering fields and all four Opinion text positions, and Spark checks; long common-prefix identity joins remain distinct and exact duplicates still fail. The `prose` call sites were traced to ensure no remaining clipped anchor, key or phrasing field. |
+| F-02 | **Closed** | Original A–G partial-sentinel cases, both closing-fence cases, absent-marker controls and the character-boundary sweep pass. Additional composed-fence, CRLF/indentation and cut-curly/frame combinations preserve exact completed roots. Normal stops, inline markers, wrong-group markers, arbitrary suffixes and unopened partial fences still refuse. Recovery remains raw-response based. |
+| F-03 | **Closed** | The four retained direct-parser cases now all pass. Additional EOF curly/straight escape, exponent, boolean and nested-container cases preserve completed Unicode, negative zero, empty containers and grouping. Cut content and its synthetic canary do not leak; incomplete curly tokens do not count as completed delimiter repairs. Completed unsafe curly strings and normal parsing remain strict. |
+| F-04 | **Closed** | Both assertions now require `SyntaxError`, not a V8 message. Independently inspected correction-head Node **18.20.8** CI logs show **490 suites / 6,794 tests / 59 snapshots passing**, plus successful typecheck, lint and build, for both events. Additional position-extraction/privacy controls pass; the helper accepts terminal engine positions, not a number embedded in echoed input. |
+
+### F-05 — Make the whole-text paragraph-address digit check linear
+
+**Severity: Medium / P2. New; not a reopening of F-01.**
+
+**Locations:** the now-whole steering claim at [`LightboxSteeringCodec.ts:121`](https://github.com/okeylanders/prose-minion-vscode/blob/467950d8617bb1af65eecb7a2f78519980be1c66/packages/core/src/infrastructure/lightbox/LightboxSteeringCodec.ts#L121) reaches the check at [137](https://github.com/okeylanders/prose-minion-vscode/blob/467950d8617bb1af65eecb7a2f78519980be1c66/packages/core/src/infrastructure/lightbox/LightboxSteeringCodec.ts#L137), through [`LightboxSteeringPhrasing.ts:83`](https://github.com/okeylanders/prose-minion-vscode/blob/467950d8617bb1af65eecb7a2f78519980be1c66/packages/core/src/infrastructure/lightbox/LightboxSteeringPhrasing.ts#L83). The shared predicate is [`LightboxReadingFields.ts:42`](https://github.com/okeylanders/prose-minion-vscode/blob/467950d8617bb1af65eecb7a2f78519980be1c66/packages/core/src/infrastructure/lightbox/LightboxReadingFields.ts#L42):
+
+```ts
+/(?<!¶\s?\d*)\d/u
+```
+
+For `¶` followed by a long digit run, every candidate digit rescans the preceding run to find the paragraph mark, fails the negative lookbehind, and advances only one character. The total work grows quadratically. The regex is not new, but removing the former semantic-field clip newly exposes it to the whole accepted response. Spark and numbers readings share this predicate too.
+
+**Independent reproduction:** frame the following object with the real group G sentinels and call `decodeLightboxGroup(content, { group: 'G', lenses: ['steering'], columnCount: 1, end: 'stop' })`:
+
+```ts
+{
+  version: 1,
+  steering: {
+    figures: [{
+      stat: 'being-verbs',
+      claim: 'A state holds at ¶' + '1'.repeat(n) + '.',
+      evidence: [{ para: 1, quote: 'She was waiting.' }],
+      notes: []
+    }],
+    friction: 'One line is thin ground.'
+  }
+}
+```
+
+This is valid framed JSON and a supported decoder shape, not an invalid-input exception or a copied-regex microbenchmark. The source fixture can be the synthetic sentence `She was waiting.`. Completed runs retain the claim, with no malformed item, withheld block or JSON repair. Every complete response below is under the **384,000-character hard acceptance bound**.
+
+**Direct cloud Node 24.19.0 observations, not Jest or native VS Code timings:** each isolated child loads the production modules, warms once with a tiny safe input, then times only the synchronous full-group decoder. The original-head control loads `d255b8e` source without changing the checkout. The ordinary control replaces the paragraph mark/digits with an equal-length letter run.
+
+| Digits `n` | Complete response characters | Original-head digit case | Corrected-head digit case | Corrected-head ordinary control |
+| --- | --- | --- | --- | --- |
+| 12,000 | 12,247 | 11.08 ms | 48.26 ms | 0.41 ms |
+| 24,000 | 24,247 | 11.10 ms | 210.80 ms | 0.25 ms |
+| 48,000 | 48,247 | 10.11 ms | 831.04 ms | 0.31 ms |
+| 96,000 | 96,247 | 9.88 ms | 3,429.97 ms | 0.45 ms |
+| 192,000 | 192,247 | 10.29 ms | Child watchdog stopped the run | 1.00 ms |
+
+The last child synchronously emitted its `decode-start` marker after module loading and warmup, then did not return before the **10-second subprocess watchdog**. That watchdog includes startup, so it is **not** an exact ten-second decoder measurement. The finite 24k/48k/96k observations show approximately four times the work per doubling. There was no concurrent heavy local job.
+
+**Reachability and impact limits:** these are deliberately synthetic runaway paragraph-address strings, not ordinary manuscript paragraph numbers. The provider's actual output ceiling is **12,000 tokens** and the prompt asks for **48,000 characters**; 48,247 characters is just beyond that character ask, and 96,247/192,247 are further beyond it while still inside the hard acceptance envelope. This review does not claim a provider commonly emits these inputs, that every tested string fits the token ceiling, or that native VS Code takes the measured cloud times. It establishes a newly expensive synchronous path for responses the application boundary admits. During that decode the host cannot yield or service cancellation.
+
+**Requested correction:** replace the variable-length lookbehind with a bounded, linear scan over digit runs/paragraph-address spans, preserving the existing rule and checking the complete original text. Do **not** restore semantic clipping or verify only a shortened prefix; F-01's protections must stay. Add long paragraph-address and ordinary/bare-digit controls through the real decoder, with deterministic work accounting where practical and a generous isolated performance bound rather than a fragile CI wall-clock assertion.
+
+### Fresh verification at `467950d86`
+
+| Check | Independent result |
+| --- | --- |
+| Full repository Jest, cloud Node 24.19.0 | **490 suites / 6,794 tests / 59 snapshots pass**, Jest 309.845 s |
+| Typecheck | **Pass**, shell 24.066 s |
+| Lint | **0 errors / 1,133 warnings**; exact per-file/rule/severity counts unchanged from the retained review baseline, no additions/removals |
+| Build including `verify:bundle` | **Pass**, shell 50.055 s; existing webpack size warnings |
+| Retained external regressions, persistence controls and host builder | **37 tests pass**, Jest 7.290 s |
+| Additional independent semantic and parser/frame boundary controls | **48 tests pass**, Jest 4.873 s |
+| Retained direct curly regressions | **4 pass**, including both formerly failing curly cases |
+| Bounded direct-Node parser samples | **12/12 succeed**, including the former curly-EOF refusal; 24,006–380,008 characters, approximately 0.8–227 ms in these samples |
+| Regenerated host evidence | Log byte-identical; states identical after normalizing only recovery UUIDs |
+| Exact rebuilt production webview in JSDOM | **51 checks pass** against freshly regenerated host states |
+| Whitespace and scope | `git diff --check` passes; no implementation edits |
+| Correction-head configured CI | Both events **success**, including tests, typecheck, lint and build |
+
+Correction-head CI: [pull-request run 39994420926](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39994420926), [push run 39994414532](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39994414532). Their independently inspected Node 18.20.8 test logs report 189.273 s and 242.748 s respectively. These CI/Jest durations are separate execution contexts from F-05's direct-Node measurements.
+
+Rebuilt SHA-256 values match the author's correction evidence:
+
+- `webview.js`: `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged).
+- `extension.js`: `4730ecf7cc91b6bbd375b1d6daa130274ebf0d01cf8ac169c1209974e5f3638e`.
+
+All heavy work was serialized. The lockfile is unchanged and disk-backed dependencies retain this worktree's package links. Only public/synthetic fixtures were used; no live or paid provider call, private manuscript, implementation change, formal GitHub review, merge or publication of the extension occurred. The unchanged production webview and regenerated host evidence support the prior scoped pixel inspection, not a new native layout/accessibility checkpoint. Decisions 37–40 remain author design context, not independently verified writer acceptance. The existing #164 tied-clock debt, typical-output price estimate and future structural requirements for any model-based repair remain separate from this correction review.
+
+The remaining correction is **F-05 only**. Keep the now-passing F-01–F-04 contracts and rerun full gates and both exact-head CI events after changing the digit predicate.
+
+## Author response to the re-review (2026-10-23)
+
+**F-05: fixed.** One commit, `decd276d`, sits on top of your re-review's
+commit `711aa7f`, followed by the commit that adds this response and
+records the fix in the slice notes, the agents guide and the epic. F-01
+to F-04 are untouched. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-05 | Medium / P2 | **Fixed** | **One pass, the rule kept exactly.** `LIGHTBOX_BARE_DIGIT` (`/(?<!¶\s?\d*)\d/u`) is gone. `lightboxHasBareDigit(text)` walks the whole original text once. Every digit of a run shares the run's start, so the run is judged once, at its start: it is an address when the character before it is `¶`, or is one whitespace character (tested with `/^\s$/u`, the pattern's own `\s`) with `¶` before that. Any other ASCII digit is bare, and the scan stops at the first one. Non-ASCII digits are not digits to the rule, as they were not to `\d`. Each character is read at most once.<br>**Nothing is clipped or checked by prefix.** The steering claim, why, nudge and example, a spark's question and a numbers reading's claim reach it whole, as F-01 requires.<br>**Callers:** `LightboxSteeringPhrasing`, `LightboxSparkPhrasing` and the numbers reading in `LightboxCraftCodec` | `LightboxBareDigitScan.test.ts`:<br>• **Your reproduction:** your group G object with a 200,000-digit paragraph address, through `decodeLightboxGroup` with `end: 'stop'`: the claim is kept whole, with no malformed item, withheld block or repair, in a 200,247-character response. It takes about 10 ms here; at `467950d` the same test took **15.4 s**<br>• **Linearity, counted, not timed:** the scan's own step count is at most the text's length, and 8× the digits is under 8.1× the steps (24,000 against 192,000); it stops at the first bare digit<br>• **The rule pinned to the old pattern:** 19 edge cases (no digit, a bare digit, an opening digit, `¶12`, `¶ 12`, a no-break space, an em space and a line break after `¶`, two spaces, a letter between, a second run, a second address, a range, a comma, an Arabic-Indic digit, a trailing `¶`, an empty text, a 50,000-digit address, a bare digit after it), and 20,000 seeded random texts, all agreeing with `/(?<!¶\s?\d*)\d/u`<br>**Controls:** a claim stating a bare number is still withheld with steering's figure reason, and `¶ 1` is kept | `decd276d` |
+
+### The other patterns checked
+
+I measured every regular expression the Lightbox codecs, frame, parser
+and text rules run on model text: adversarial inputs at 24,000 and 96,000
+characters, in Node 22.
+
+**Super-linear on model text, fixed in the same commit:**
+- **A spark's closing marks**, `/[\s"'“”‘’)\]}*_]+$/u` in
+  `LightboxSparkPhrasing`. An engine tries this from every start in a long
+  run of marks before the end: 757 ms at 24,000 and 12.8 s at 96,000. They
+  are now read back from the end one character at a time. Tests pin the
+  result to the old pattern on eight edge cases and 20,000 seeded endings.
+  A spark question with 200,000 spaces inside reads as a question in about
+  5 ms; at `467950d` it took **35.9 s**.
+
+**Super-linear on the chapter, not model text, fixed as well:**
+- **A chapter line's trailing spaces**, `line.replace(/\s+$/, '')` in
+  `LightboxSections` (6.7 s on a 96,000-space run inside a line). It is
+  now `line.trimEnd()`, which removes exactly the same characters; a test
+  checks every whitespace character. The Sections lane's output is
+  unchanged, so no rule id moves.
+
+**Linear, unchanged (the ratio from 24k to 96k in brackets):**
+- the steering rules' `WORD`, `/[\p{L}]+(?:'[\p{L}]+)*/gu`: its repetition
+  needs an apostrophe each time (2.2);
+- spark and Opinion `CLAUSE_BREAK`, `/[.!?;:]+|\s[-–—]+\s|[–—]+/u`, on a
+  space then a dash run and on spaced dashes (2.5, 1.5);
+- `LEADING_MARKS`, anchored at the start (1.8), and `split(/\s+/u)` (1.4);
+- `LIKELIHOOD` and the Opinion's `PERCENT`, `/%|\bper\s?cent\b/i` (1.8);
+- the numbers `DIRECTIVE` word alternation, and the Opinion's
+  `OBSERVATION_IDS`, `/\b(?:O[1-9]\d?)\b/gu` (2.2);
+- the Opinion's figures, `/\d+(?:,\d{3})*(?:\.\d+)?/g`: its repetition
+  needs a comma each time (1.8 to 6.1 across three inputs, 5.4 ms at most
+  at 96,000);
+- the quote verifier's `SEGMENT`, `/\P{M}\p{M}*|\p{M}+/gu` (2.7), and its
+  `indexOf` search: a 96,000-character quote of repeated letters against a
+  paragraph twice as long, growing linearly to 192,000 (1.0, 1.6 ms);
+- the frame's and parser's `OPENING_FENCE` (anchored, 1.6), and the
+  parser's `PARTIAL_SCALAR`, which is sticky, so it is tried at one
+  position only;
+- the clip's word boundary, `/\s\S*$/u`: each start reads only up to the
+  next space (2.6);
+- the word scans (`holdsPhrase`, `holdsWord`), which step from one
+  `indexOf` hit to the next: `"cut'a "` repeated (2.3).
+
+No other lookbehind runs on model text. The only others in the measured
+code are `beingVerbs`' fixed-width ones, which run on the chapter.
+
+Outside the Lightbox, `workshopTranscriptExport`'s stem, `/^-+|-+$/g`,
+has the unanchored-end shape, but it runs on a session title already cut
+to the stem's length bound, with every run of other characters collapsed
+to one hyphen first, so it is bounded; left alone.
+
+### Verification at the F-05 head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 22.22.0 | **491 suites / 6,829 tests / 59 snapshots, all passing** (was 490 / 6,794 / 59) |
+| Full Jest, Node 18.20.8 | **491 suites / 6,829 tests / 59 snapshots, all passing** |
+| `LightboxBareDigitScan` on an export of `467950d` | **22 of 35 fail.** The scan's 22 cases need the new function. The decoder and spark cases pass there, but take 15.4 s and 35.9 s; here they take about 10 ms and 5 ms. Per your request, those are not wall-clock assertions |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to a fresh export of `a57a5cd` |
+| Typecheck | **Pass** |
+| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass**, the same hashes both times: `webview.js` `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged), `extension.js` `1da47dcf24fb145d4773d4b8428eac235ec35cee7369951edf8cdfe32a0fd402` |
+| `git diff --check` | **Clean** |
+| Visual evidence | **Unchanged.** Rerun at this head, the host builder writes the same `log.txt` and the same states but for the recovery file's random id, and `webview.js` is the bundle the captures were made from |

@@ -1608,9 +1608,20 @@ lens, and adds its items to 4D's digest.
     or fence keeps its finished blocks. F-03: a cut curly-quoted token
     drops only its member. F-04: no test pins the engine's `JSON.parse`
     wording, and the parser reads a position only from a message's end.
-    490 suites / 6,794 tests / 59 snapshots under Node 22; the same 490 / 6,794 / 59, all passing.
-    Lint identical; typecheck and both builds pass; `webview.js`
-    `405f6cd1…` (unchanged), `extension.js` `4730ecf7…`.
+    490 suites / 6,794 tests / 59 snapshots under Node 22, and the same
+    under Node 18.20.8, all passing. Lint identical; typecheck and both
+    builds pass; `webview.js` `405f6cd1…` (unchanged), `extension.js`
+    `4730ecf7…`.
+  - **PR #165's re-review** (F-01 to F-04 closed; one new Medium / P2,
+    F-05), fixed in `decd276d`; see the
+    [author response](../../../docs/pr-reviews/pr-165-lightbox-reading-tolerance-review.md#author-response-to-the-re-review-2026-10-23).
+    F-05: the bare-digit rule's lookbehind re-read a long digit run for
+    every digit, now that F-01 hands it whole fields; `lightboxHasBareDigit`
+    reads the text once and keeps the rule exactly. The same audit fixed a
+    spark's closing-mark strip and a chapter line's trailing-space trim.
+    491 suites / 6,829 tests / 59 snapshots under Node 22 and Node 18.20.8,
+    all passing; lint identical; typecheck and both builds pass;
+    `webview.js` `405f6cd1…` (unchanged), `extension.js` `1da47dcf…`.
 - **2026-10-23. Slice 4I (run controls) is built** on
   `epic/lightbox-run-controls`, stacked on 4H (from
   `epic/lightbox-reading-tolerance` at `4dcdb2b`, with its PR #165

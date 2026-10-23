@@ -338,6 +338,23 @@ found four faults (Medium / P2), all fixed; see its author response.
   `jsonParseErrorPosition` now reads only a position at the message's end,
   in both engines' wordings, and none otherwise. Only the error's own words
   use it. The full suite was run under Node 18.20.8 as well.
+- **F-05 (the re-review): whole fields, read in linear time.** F-01 hands
+  the text rules whole fields, and the bare-digit rule was the lookbehind
+  `/(?<!¶\s?\d*)\d/u`, which re-read a run of digits for every digit in
+  it: the reviewer's group G claim with a paragraph address of 96,000
+  digits took about 3.4 seconds to decode in the review's measurement,
+  and 200,000 took 15.4 seconds in a test run here at `467950d`
+  (about 10 ms now). `lightboxHasBareDigit` reads the text once and keeps the rule
+  exactly: a run of ASCII digits is an address when the character before
+  it is `¶`, or one whitespace character (as `\s` reads it) after `¶`. It
+  is pinned to the old pattern on every edge case and on 20,000 seeded
+  random texts, and its work is counted. Auditing every regular expression
+  the codecs and text rules run on model text found one more: a spark's
+  closing marks were stripped with `/[…]+$/u`, tried from every start in
+  a long run (a question with 200,000 spaces inside took 35.9 seconds);
+  they are read back from the end now. A chapter line's trailing spaces
+  had the same shape and use `trimEnd`, which removes the same characters
+  (`LightboxBareDigitScan.test.ts`).
 - **The guard's limit, written down.** `modelJsonContentMatches` compares
   scalar sequences, not structure; its comment says so, so a future
   model-based repair does not take it for proof that grouping survived.
@@ -412,6 +429,15 @@ typecheck passes; after `npm ci`, two builds give `webview.js` `405f6cd1…`
 evidence host builder, rerun, writes the same log and states but for the
 recovery file's random id, so the captures stand. On an export of
 `d255b8e`, 29 of the new and changed tests fail and every control passes.
+
+**After the re-review's F-05** (`decd276d`): 491 suites / 6,829 tests /
+59 snapshots, all passing under Node 22.22.0 and under Node 18.20.8; lint
+identical; typecheck passes; two builds give `webview.js` `405f6cd1…`
+(unchanged) and `extension.js`
+`1da47dcf24fb145d4773d4b8428eac235ec35cee7369951edf8cdfe32a0fd402`. On an
+export of `467950d`, 22 of the 35 new tests fail (the scan's), and the
+decoder and spark cases there take 15.4 s and 35.9 s against about 10 ms
+and 5 ms here.
 
 **Which tests fail on `a57a5cd`.** The new and changed test files, copied
 onto an export of `a57a5cd`:
