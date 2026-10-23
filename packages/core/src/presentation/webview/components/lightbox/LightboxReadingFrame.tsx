@@ -10,13 +10,19 @@
  * against an earlier version of the text is labeled stale (D4). The withheld
  * lists are their own components, so a reading drawn outside a frame (the
  * headline, in the board's heading) shows its withheld state the same way.
+ *
+ * The header carries the lens's call control, Analyze (Slice 4I, epic
+ * decision 43), when the board gives its controls: it runs this lens's
+ * call, and stands in for the bare "read" badge.
  */
 import * as React from 'react';
 import type { LightboxReadingTileKind, LightboxWithheldBlock, LightboxWithheldClaim } from '@messages';
+import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import type { LightboxLensView } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxTileFrame } from '@components/lightbox/LightboxTileFrame';
 import { LightboxReadingPlaceholder } from '@components/lightbox/LightboxReadingPlaceholder';
+import { LightboxAnalyzeButton, useLightboxHasCallControls } from '@components/lightbox/LightboxCallButton';
 
 export interface LightboxReadingFrameProps {
   kind: LightboxReadingTileKind;
@@ -55,6 +61,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
 }) => {
   const read = view.phase === 'ok';
   const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
+  const analyze = useLightboxHasCallControls() ? <LightboxAnalyzeButton lens={LIGHTBOX_TILE_LENS[kind]} /> : undefined;
   return (
     <LightboxTileFrame
       kind={kind}
@@ -63,6 +70,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
       footnote={read && view.tiles.length > 0 ? footnote : undefined}
       chip={chip}
       className={frameClass}
+      action={analyze}
     >
       {staleFirst && view.stale && <LightboxStaleNote />}
       {aside}
@@ -92,7 +100,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
 export const LightboxStaleNote: React.FC = () => (
   <p className="pm-lb-stale-note">
     <b>Stale</b> Read against an earlier version of this chapter. Its quotes were checked again against
-    this one, and its counts recounted. Re-read to read it fresh.
+    this one, and its counts recounted. Re-analyze to read it fresh.
   </p>
 );
 

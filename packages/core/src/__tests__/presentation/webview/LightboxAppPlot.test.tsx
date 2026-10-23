@@ -94,7 +94,7 @@ describe('LightboxApp: the story lenses (Slice 4C)', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: UNREAD, refusal: null });
     const note = 'Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs.';
     expect(within(plotLanes()).getByText(note)).not.toBeNull();
-    expect(within(plotLanes()).getAllByText('Summary & movements is a reading. Not read yet.')).toHaveLength(1);
+    expect(within(plotLanes()).getAllByText('Summary & movements is a reading. Not analyzed yet.')).toHaveLength(1);
     expect(summaryTile().textContent).toContain(note);
   });
 

@@ -169,7 +169,7 @@ describe('a press with craft steering on (Slice 4F)', () => {
     expect([group.status, group.error]).toEqual([
       'failed',
       'The reading came back unusable (The group G response must contain exactly one ===LIGHTBOX_GROUP_G_V1===). ' +
-        'The complete response could not be saved; see the Prose Minion output for details. Read the rest to try again.'
+        'The complete response could not be saved; see the Prose Minion output for details. Press Finish or Analyze to try again.'
     ]);
     // The other groups and the Opinion still read.
     expect(groupIn(press.host, 'D').tiles.length).toBeGreaterThan(0);

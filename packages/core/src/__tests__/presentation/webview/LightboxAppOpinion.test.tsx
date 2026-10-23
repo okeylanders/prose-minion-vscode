@@ -170,7 +170,7 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     expect(frame.textContent).not.toContain('O2 · changed since');
     const bring = within(frame).getByRole('button', { name: /Bring this view to Workshop/ }) as HTMLButtonElement;
     expect(bring.disabled).toBe(true);
-    expect(bring.title).toContain('Re-read the Opinion');
+    expect(bring.title).toContain('Re-analyze the Opinion');
   });
 
   it('marks a withheld view\'s tab, and shows the host\'s reason for it, never its words', () => {
@@ -194,7 +194,7 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
       .toEqual([{ kind: 'tile', boardId: BOARD.boardId, tileId: OPINION.id, view: 'blunt' }]);
   });
 
-  it('prices its own re-read "up to" its digest bound, and re-reads the Opinion alone', () => {
+  it('prices its Analyze "up to" its digest bound, in its header, and runs the Opinion alone (Slice 4I)', () => {
     render(<LightboxApp />);
     fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
@@ -208,9 +208,16 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
       estimate: makeEstimate({ boardId: BOARD.boardId, groups: [...makeEstimate().groups, opinionCall], rereads: [opinionCall] })
     });
     const frame = opinionFrame();
-    expect(frame.querySelector('.pm-lb-op-actions')?.textContent).toContain('1 call · est. $0.05 · up to its digest bound');
-    fireEvent.click(within(frame).getByRole('button', { name: 'Re-read the Opinion' }));
-    expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ boardId: BOARD.boardId, scope: { mode: 'lens', lens: 'opinion' } });
+    const head = frame.querySelector('.pm-lb-tile-head') as HTMLElement;
+    const analyze = within(head).getByRole('button', { name: 'Re-analyze call F: Opinion · up to $0.05' });
+    expect(analyze.textContent).toBe('Re-analyzeup to $0.05');
+    expect(analyze.getAttribute('aria-disabled')).toBeNull();
+    // The header's Re-analyze replaces the tile's own "Re-read the Opinion".
+    expect(within(frame).queryByRole('button', { name: 'Re-read the Opinion' })).toBeNull();
+    fireEvent.click(analyze);
+    expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({
+      boardId: BOARD.boardId, scope: { mode: 'group', group: 'F', lens: 'opinion' }, estimateKey: 'estimate-board-8'
+    });
   });
 
   it('changes nothing else: every other frame is drawn exactly as on the board with no Opinion', () => {

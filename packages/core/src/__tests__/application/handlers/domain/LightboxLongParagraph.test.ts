@@ -19,7 +19,7 @@ jest.mock('p-limit', () => ({
 
 import { MessageType } from '@/shared/types/messages';
 import * as quoteVerifier from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@/infrastructure/lightbox/LightboxOpinionCall';
+import { LIGHTBOX_OPINION_NOTHING_TO_WEIGH } from '@shared/constants/lightboxOpinion';
 import { createLightboxReadingHost, settle } from './lightboxReadingHarness';
 
 const SENTENCE = '彼女は静かな部屋で時計の音を聞いた。';

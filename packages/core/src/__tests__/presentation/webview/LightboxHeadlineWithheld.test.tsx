@@ -91,12 +91,12 @@ describe('a withheld headline is shown, not hidden (PR #149 F-04)', () => {
     show({
       ...emptyLightboxReadingGroup('A'),
       status: 'failed',
-      error: 'The provider refused the call (HTTP 400). Read the rest to try again.'
+      error: 'The provider refused the call (HTTP 400). Press Finish or Analyze to try again.'
     });
 
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('One chapter, held up to the light.');
     expect(within(screen.getByLabelText('Headline reading')).getByText(
-      'The headline did not come back. The provider refused the call (HTTP 400). Read the rest to try again.'
+      'The headline did not come back. The provider refused the call (HTTP 400). Press Finish or Analyze to try again.'
     )).not.toBeNull();
   });
 

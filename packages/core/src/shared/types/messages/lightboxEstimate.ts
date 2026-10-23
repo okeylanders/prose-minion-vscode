@@ -46,7 +46,13 @@ export interface LightboxRunEstimate {
   model?: string;
   /** The model's live context length; absent when unknown. */
   contextLength?: number;
-  /** One per group with a lens on, in group order. */
+  /**
+   * One per group with a lens on, in group order: what "Run AI analyses"
+   * sends, and each call's own price (Slice 4I). A call run on its own (a
+   * widget's Analyze, a call's Run) reads exactly these lenses when the lens
+   * pressed is on, so its button shows this entry; the host fit-checks the
+   * exact call again at the press.
+   */
   groups: LightboxCallEstimate[];
   /** One per lens that is on: what "Re-read this tile" would send. */
   rereads: LightboxCallEstimate[];

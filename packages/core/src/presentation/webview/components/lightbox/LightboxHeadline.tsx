@@ -13,17 +13,24 @@
  *
  * A headline read against an earlier version of the text says so beside it,
  * as every reading frame does (D4; PR #150 F-06).
+ *
+ * Call A's Analyze (Slice 4I, epic decision 43) sits in the headline's row
+ * once there is a headline reading, or a state of one, to show; the plain
+ * heading of a board not analyzed yet is no widget and has none (the run
+ * line and the other widgets of call A offer it). "a reading" stays beside
+ * a read headline, so it never passes for the board's own title.
  */
 import * as React from 'react';
 import type { LightboxTileProps } from '@components/lightbox/LightboxTiles';
 import { lightboxLensView, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxWithheldBlocks, LightboxWithheldClaims } from '@components/lightbox/LightboxReadingFrame';
+import { LightboxAnalyzeButton } from '@components/lightbox/LightboxCallButton';
 
 export const LIGHTBOX_PLAIN_HEADLINE = 'One chapter, held up to the light.';
 
 /** Said beside a stale headline reading. */
-const STALE_HEADLINE = 'Read against an earlier version of this chapter. Its quotes were checked again against this one. Re-read to read it fresh.';
+const STALE_HEADLINE = 'Read against an earlier version of this chapter. Its quotes were checked again against this one. Re-analyze to read it fresh.';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) => {
@@ -34,7 +41,14 @@ export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) =
     const withheld = view.withheldBlocks.length > 0 || view.withheldClaims.length > 0;
     return (
       <>
-        <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>
+        {withheld || failed
+          ? (
+            <div className="pm-lb-headline-row">
+              <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>
+              <LightboxAnalyzeButton lens="headline" />
+            </div>
+          )
+          : <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>}
         {(withheld || failed) && (
           <div className="pm-lb-headline-state" aria-label="Headline reading">
             {view.stale && <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>}
@@ -56,6 +70,7 @@ export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) =
           </LightboxItemButton>
         </h2>
         <span className="pm-lb-badge pm-lb-reg-read">a reading</span>
+        <LightboxAnalyzeButton lens="headline" />
       </div>
       {stale && (
         <div className="pm-lb-headline-state" aria-label="Headline reading">

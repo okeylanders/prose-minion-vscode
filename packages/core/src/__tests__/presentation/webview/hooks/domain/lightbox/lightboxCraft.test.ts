@@ -50,7 +50,7 @@ describe('paragraph endings', () => {
     expect(lane.endings).toEqual(['opens', 'holds', 'opens', 'opens', 'opens', 'opens', 'lands', 'lands']);
     expect(lane).toMatchObject({ stale: false, note: 'How each paragraph ends, as read: lands, holds or opens.' });
     expect(lightboxEndingsLane(read, false)).toEqual({ stale: false, note: 'The rhythm lens is off.' });
-    expect(lightboxEndingsLane(makeBoard(8), true)).toEqual({ stale: false, note: 'Endings are a reading. Not read yet.' });
+    expect(lightboxEndingsLane(makeBoard(8), true)).toEqual({ stale: false, note: 'Endings are a reading. Not analyzed yet.' });
 
     const groupD = readGroup('D');
     const stale = withGroupD(read, { ...groupD, staleLenses: [{ lens: 'rhythm', readAgainst: 'old' }] });

@@ -95,7 +95,7 @@ describe('LightboxApp: stale headline and tension (PR #150 F-06)', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith(staleGroupA(Array.from({ length: 8 }, () => null))), refusal: null });
     const lane = document.querySelector('.pm-lb-lane-label[title^="Tension"]') as HTMLElement;
     expect(lane.getAttribute('title')).toBe(
-      'Tension was read against an earlier version of this chapter, and no paragraph it scored is unchanged. Re-read to score this version.'
+      'Tension was read against an earlier version of this chapter, and no paragraph it scored is unchanged. Re-analyze to score this version.'
     );
     expect(document.querySelectorAll('.pm-lb-col-tension i')).toHaveLength(0);
   });

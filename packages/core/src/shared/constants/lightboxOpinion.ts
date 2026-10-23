@@ -30,8 +30,35 @@ import type {
   LightboxOpinionWeight
 } from '@messages';
 import { LIGHTBOX_BOARD_GROUP } from '@shared/constants/lightbox';
-import { lightboxOpinionItemMap, type LightboxOpinionBoard, type LightboxOpinionItem } from '@shared/constants/lightboxOpinionItems';
+import {
+  lightboxOpinionItemMap,
+  lightboxOpinionItems,
+  type LightboxOpinionBoard,
+  type LightboxOpinionItem
+} from '@shared/constants/lightboxOpinionItems';
 import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
+
+/**
+ * Host words: nothing on the board is read and current, so group F has
+ * nothing to weigh and nothing is sent (Slice 4D). The Opinion's Analyze
+ * says so instead of running (Slice 4I).
+ */
+export const LIGHTBOX_OPINION_NOTHING_TO_WEIGH =
+  'Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.';
+
+/**
+ * Why the Opinion cannot be read on this board now, or `undefined` when it
+ * can: the reason when no reading tile the digest would hold is current
+ * (`lightboxOpinionItems`' own rule: a tile of a chapter group, not a spark,
+ * whose lens is neither stale nor being read again). The host reads it
+ * before a press of group F alone, and the webview before drawing the
+ * Opinion's Analyze (Slice 4I); the call's own check, when it opens on the
+ * digest, stays the last word (`LightboxOpinionCall`).
+ */
+export function lightboxOpinionNothingToWeigh(board: Pick<LightboxOpinionBoard, 'readings'>): string | undefined {
+  const current = lightboxOpinionItems({ readings: board.readings }).some((item) => item.kind === 'tile' && item.current);
+  return current ? undefined : LIGHTBOX_OPINION_NOTHING_TO_WEIGH;
+}
 
 /** Host words for an Opinion cited under another basis rule: its standing note, and why Bring is refused. */
 export const LIGHTBOX_OPINION_EARLIER_RULE = 'Saved under an earlier citation rule; read the Opinion again to bring it current.';
@@ -136,10 +163,10 @@ export function lightboxOpinionStanding(
   const note = earlierRule
     ? LIGHTBOX_OPINION_EARLIER_RULE
     : readEarlier
-      ? 'Read against an earlier version of this chapter, and on the readings of that version. Re-read the Opinion to weigh the board as it stands.'
+      ? 'Read against an earlier version of this chapter, and on the readings of that version. Re-analyze the Opinion to weigh the board as it stands.'
       : changed.length > 0
         ? `Something it cites changed since it was read (${changed.join(', ')}): a tile was read again or withheld, a lens went stale, ` +
-          'or a figure was measured again. Re-read the Opinion to weigh the board as it stands.'
+          'or a figure was measured again. Re-analyze the Opinion to weigh the board as it stands.'
         : undefined;
   return { stale, readEarlier, reading, earlierRule, changed, ...(note ? { note } : {}) };
 }

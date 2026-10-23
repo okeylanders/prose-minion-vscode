@@ -44,6 +44,7 @@ import {
   LightboxBoardsPayload,
   LightboxLensId,
   LightboxRunEstimate,
+  LightboxRunScope,
   LightboxSourceRefusal,
   MessageType
 } from '@/shared/types/messages';
@@ -112,6 +113,8 @@ export interface LightboxBoardsTab {
   estimate: () => Promise<LightboxRunEstimate | null | undefined>;
   /** Press one lens on the board on screen at `estimate` (a fresh one by default), as a lens's Read does. */
   press: (lens: LightboxLensId, estimate?: LightboxRunEstimate | null) => Promise<void>;
+  /** Press any scope on the board on screen at `estimate` (a fresh one by default): a call's Run or a widget's Analyze (Slice 4I). */
+  run: (scope: LightboxRunScope, estimate?: LightboxRunEstimate | null) => Promise<void>;
   dispose: () => void;
 }
 
@@ -264,6 +267,12 @@ export function createLightboxBoardsHost(options: LightboxBoardsHostOptions = {}
         const estimate = given === undefined ? await estimateNow() : given;
         await route(MessageType.LIGHTBOX_RUN, {
           boardId: service.currentBoard()?.boardId, scope: { mode: 'lens', lens }, estimateKey: estimate?.key, model: estimate?.model
+        });
+      },
+      run: async (scope, given) => {
+        const estimate = given === undefined ? await estimateNow() : given;
+        await route(MessageType.LIGHTBOX_RUN, {
+          boardId: service.currentBoard()?.boardId, scope, estimateKey: estimate?.key, model: estimate?.model
         });
       },
       dispose: () => {

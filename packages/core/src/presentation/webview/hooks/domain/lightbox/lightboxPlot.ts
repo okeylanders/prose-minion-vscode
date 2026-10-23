@@ -132,7 +132,7 @@ function lensNote(board: LightboxBoard, lens: LightboxLensId, label: string, len
     case 'cancelled':
       return `${label} did not come back.`;
     case 'not-run':
-      return `${label} is a reading. Not read yet.`;
+      return `${label} is a reading. Not analyzed yet.`;
     case 'ok':
       return undefined;
   }

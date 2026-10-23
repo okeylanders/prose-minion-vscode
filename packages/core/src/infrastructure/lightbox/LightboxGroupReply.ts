@@ -215,7 +215,7 @@ export async function quarantineLightboxReply(
     result,
     contract: lightboxRecoveryContract(call)
   });
-  return `The reading came back unusable (${rejection.message}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
+  return `The reading came back unusable (${rejection.message}). ${recoveryLocationNotice(receipt)} Press Finish or Analyze to try again.`;
 }
 
 /**

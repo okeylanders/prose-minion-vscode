@@ -8,7 +8,8 @@
  * the host, which marks the board's own spark (`LightboxSparkLane`): the lane
  * draws what the board says and keeps no dismissal of its own. The lane
  * shows the honesty states every reading frame does: not read, reading,
- * failed, stale, withheld, and an empty answer with its friction.
+ * failed, stale, withheld, and an empty answer with its friction. Its head
+ * carries call C's Analyze (Slice 4I, epic decision 43).
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxSparkTile } from '@messages';
@@ -24,6 +25,7 @@ import {
   LightboxWithheldClaims
 } from '@components/lightbox/LightboxReadingFrame';
 import { LightboxReadingPlaceholder } from '@components/lightbox/LightboxReadingPlaceholder';
+import { LightboxAnalyzeButton } from '@components/lightbox/LightboxCallButton';
 
 /** What a spark's Bring button shows; absent when the board offers no Bring. */
 export interface LightboxSparkBring {
@@ -53,6 +55,7 @@ export const LightboxSparkLane: React.FC<LightboxSparkLaneProps> = ({ board, bin
       <div className="pm-lb-spark-head">
         <p className="pm-lb-tile-eyebrow">Spark · open doors</p>
         <span className="pm-lb-spark-note">Offers, not fixes. Nothing here grades the chapter.</span>
+        <LightboxAnalyzeButton lens="spark" />
       </div>
       {view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}

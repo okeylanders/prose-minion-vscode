@@ -48,7 +48,7 @@ import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQu
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
 
 export const LIGHTBOX_OPINION_HANDOFF_REFUSALS = {
-  changed: 'Something this Opinion cites changed since it was read. Re-read the Opinion, then bring it.',
+  changed: 'Something this Opinion cites changed since it was read. Re-analyze the Opinion, then bring it.',
   withheld: 'That view was withheld, so there is nothing of it to bring.',
   quotesGone: 'None of the quotes this view\'s observations cite is still in the chapter, so it was not brought.'
 } as const;

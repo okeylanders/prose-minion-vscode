@@ -1141,6 +1141,8 @@ const LIGHTBOX_MODULES = [
   'application/handlers/domain/LightboxProjectFiles.ts',
   'application/handlers/domain/LightboxReadingHandler.ts',
   'application/handlers/domain/LightboxPressRun.ts',
+  // Slice 4I: what a press asks to read, checked (a call run on its own, by group).
+  'application/handlers/domain/LightboxPressScope.ts',
   'application/handlers/domain/LightboxPassageHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
@@ -1166,10 +1168,13 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
+  // Slice 4I: each call's own run, a widget's Analyze and a call's Run (pure), and its button.
+  'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxCallButton.tsx',
   'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
   // Slice 5A.1: naming a board in place, in the rail.
   'presentation/webview/components/lightbox/LightboxBoardNameField.tsx',
@@ -1228,6 +1233,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',

@@ -209,19 +209,19 @@ export function lightboxTensionLane(board: LightboxBoard, lensOn: boolean): Ligh
         ? 'The tension arc did not come back.'
         : view.phase === 'ok'
           ? 'The tension arc was withheld.'
-          : 'Tension is a reading. Not read yet.';
+          : 'Tension is a reading. Not analyzed yet.';
     return { stale: view.stale, note };
   }
   const scores = lightboxTensionScores(board);
   if (!scores) {
-    return { stale: view.stale, note: 'The tension arc was read on other paragraphs and cannot be drawn on these. Re-read to score this version.' };
+    return { stale: view.stale, note: 'The tension arc was read on other paragraphs and cannot be drawn on these. Re-analyze to score this version.' };
   }
   const unscored = scores.filter((score) => score === null).length;
   if (!view.stale) {
     return { scores, stale: false, note: 'Tension is a reading, scored per column.' };
   }
   const note = unscored === scores.length
-    ? 'Tension was read against an earlier version of this chapter, and no paragraph it scored is unchanged. Re-read to score this version.'
+    ? 'Tension was read against an earlier version of this chapter, and no paragraph it scored is unchanged. Re-analyze to score this version.'
     : unscored > 0
       ? 'Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-read to score the rest.'
       : 'Tension was read against an earlier version of this chapter; each score stands on the same, unchanged paragraphs.';

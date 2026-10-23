@@ -433,3 +433,83 @@
   border-color: var(--pm-lb-measured);
   background: var(--pm-lb-measured-soft);
 }
+
+/* ---------- A call's own run (Slice 4I, epic decisions 43–45): a widget's Analyze, a call's Run ----------
+   In a reading's header it stands in for the bare "read" badge; a counted-read tile keeps a "counted"
+   chip beside it. It is never disabled outright: aria-disabled keeps it focusable, so its reason reads. */
+[data-pm-surface="lightbox"] .pm-lb-call {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  row-gap: 1px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  border: 1px dashed var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+  color: var(--pm-lb-read);
+  font: 600 11.5px var(--pm-sans);
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button:not([aria-disabled="true"]):hover {
+  border-style: solid;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button:focus-visible {
+  outline: 2px solid var(--pm-lb-read);
+  outline-offset: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button[aria-disabled="true"] {
+  cursor: default;
+  color: var(--pm-dim);
+  background: transparent;
+  border-color: var(--pm-border);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button.is-live {
+  color: var(--pm-lb-read);
+  border-style: solid;
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button svg {
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-cost {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-reason {
+  max-width: 44ch;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pm-amber);
+  text-align: right;
+}
+[data-pm-surface="lightbox"] .pm-lb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-spin.is-small {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
