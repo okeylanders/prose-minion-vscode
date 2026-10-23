@@ -40,7 +40,7 @@ import { boundedArrayAt, shapeError } from '@/application/services/workshop/pers
 import {
   decodeItems,
   evidence,
-  LIGHTBOX_BARE_DIGIT,
+  lightboxHasBareDigit,
   oneOf,
   paragraphNumber,
   singleQuote,
@@ -205,7 +205,7 @@ function decodeNumberReading(item: Record<string, unknown>, path: string): Light
   if (DIRECTIVE.test(claim)) {
     throw new Error('A numbers reading describes how a figure is used and never directs a change; its claim does.');
   }
-  if (LIGHTBOX_BARE_DIGIT.test(claim) || LIKELIHOOD.test(claim)) {
+  if (lightboxHasBareDigit(claim) || LIKELIHOOD.test(claim)) {
     throw new Error('A numbers reading never states a figure: the board shows the measured one beside it.');
   }
   return {

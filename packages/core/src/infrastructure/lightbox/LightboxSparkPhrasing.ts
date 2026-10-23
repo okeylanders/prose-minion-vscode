@@ -41,7 +41,7 @@
  * Every reason is host-owned: none quotes the spark.
  */
 
-import { LIGHTBOX_BARE_DIGIT } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { lightboxHasBareDigit } from '@/infrastructure/lightbox/LightboxReadingFields';
 
 /** First words (or two-word starts) that make a clause an instruction. Lower case. */
 export const LIGHTBOX_SPARK_IMPERATIVE_OPENERS: readonly string[] = [
@@ -92,12 +92,13 @@ export const LIGHTBOX_SPARK_PHRASING_REASONS = {
 const CLAUSE_BREAK = /[.!?;:]+|\s[-–—]+\s|[–—]+/u;
 /** What may wrap a clause's first word: quotes, brackets, emphasis marks, spaces. */
 const LEADING_MARKS = /^[\s"'“”‘’([{*_]+/u;
-const CLOSING_MARKS = /[\s"'“”‘’)\]}*_]+$/u;
+/** A mark that may close a question after its question mark: one character, read from the end (PR #165 F-05). */
+const CLOSING_MARK = /^[\s"'“”‘’)\]}*_]$/u;
 
 /** Why the spark cannot be shown as written, or undefined when it can. */
 export function lightboxSparkPhrasingFault(question: string): string | undefined {
   const text = question.trim();
-  if (!text.replace(CLOSING_MARKS, '').endsWith('?')) {
+  if (!withoutClosingMarks(text).endsWith('?')) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.notQuestion;
   }
   if (lightboxOpensWithInstruction(text)) {
@@ -107,7 +108,7 @@ export function lightboxSparkPhrasingFault(question: string): string | undefined
   if (LIGHTBOX_SPARK_DIRECTIVE_PHRASES.some((phrase) => holdsPhrase(folded, phrase))) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.directive;
   }
-  if (LIGHTBOX_BARE_DIGIT.test(text)) {
+  if (lightboxHasBareDigit(text)) {
     return LIGHTBOX_SPARK_PHRASING_REASONS.number;
   }
   return undefined;
@@ -163,6 +164,20 @@ function opensAsQuestion(words: readonly string[]): boolean {
     return words.length > 1 && LIGHTBOX_SPARK_QUESTION_OPENERS.includes(words[1]);
   }
   return LIGHTBOX_SPARK_QUESTION_OPENERS.includes(words[0]);
+}
+
+/**
+ * `text` without the closing marks at its end, read back from the end one
+ * character at a time. The same as removing `/[…]+$/u`, which an engine
+ * tries from every start in a long run of marks before the end, work that
+ * grew with the square of the run (PR #165 F-05).
+ */
+function withoutClosingMarks(text: string): string {
+  let end = text.length;
+  while (end > 0 && CLOSING_MARK.test(text.charAt(end - 1))) {
+    end -= 1;
+  }
+  return text.slice(0, end);
 }
 
 /** Lower case, curly apostrophes straight, so "Don’t" is "don't". */

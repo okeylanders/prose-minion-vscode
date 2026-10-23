@@ -35,11 +35,51 @@ import { exactObject, objectAt, shapeError, stringAt } from '@/application/servi
 
 const B = PROMPT_BUDGETS.lightbox;
 
+/** One whitespace character, as a regular expression's `\s` reads it (with the `u` flag). */
+const WHITESPACE = /^\s$/u;
+
+const isAsciiDigit = (code: number): boolean => code >= 48 && code <= 57;
+
 /**
- * A digit outside a ¶ address: a reading that states a number where the
- * board's counts belong (a spark, Slice 4; a numbers reading, Slice 4B).
+ * Whether `text` states a digit outside a ¶ address: a reading that states a
+ * number where the board's counts belong (a spark, Slice 4; a numbers
+ * reading, Slice 4B; craft steering, Slice 4F).
+ *
+ * The rule is the one `/(?<!¶\s?\d*)\d/u` stated, and is pinned to it by
+ * tests: a run of ASCII digits is an address when the character just
+ * before it is `¶`, or is one whitespace character (as `\s` reads it) with
+ * `¶` just before that; any other digit is bare. Every digit of a run
+ * shares the run's start, so the run is read once, start to end, and the
+ * whole text in one pass (PR #165 F-05): the lookbehind re-read the run
+ * for every digit in it, work that grew with the square of a long run.
+ * `work`, when given, counts the characters read, for tests.
  */
-export const LIGHTBOX_BARE_DIGIT = /(?<!¶\s?\d*)\d/u;
+export function lightboxHasBareDigit(text: string, work?: { steps: number }): boolean {
+  let at = 0;
+  while (at < text.length) {
+    if (work) {
+      work.steps += 1;
+    }
+    if (!isAsciiDigit(text.charCodeAt(at))) {
+      at += 1;
+      continue;
+    }
+    // `at` starts a run of digits: everything before it was read and is not a digit.
+    const before = text.charAt(at - 1);
+    const addressed = before === '¶' || (WHITESPACE.test(before) && text.charAt(at - 2) === '¶');
+    if (!addressed) {
+      return true;
+    }
+    at += 1;
+    while (at < text.length && isAsciiDigit(text.charCodeAt(at))) {
+      if (work) {
+        work.steps += 1;
+      }
+      at += 1;
+    }
+  }
+  return false;
+}
 
 /**
  * The fields clipped at the safety ceiling while one decode runs. Decoding
