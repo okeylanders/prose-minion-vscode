@@ -1,0 +1,4136 @@
+{
+  "fresh-runline@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-runline@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "read-runline@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "fresh-widgets@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-widgets@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": [
+        {
+          "mode": "group",
+          "group": "A",
+          "lens": "motif"
+        }
+      ]
+    }
+  },
+  "analyzing-widgets@1440": {
+    "found": true,
+    "width": 744,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": []
+    }
+  },
+  "fresh-opinion@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "up to $0.05",
+            "name": "Analyze call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
+            "reasonShown": true
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-lenses@1440": {
+    "found": true,
+    "width": 267,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Run A",
+            "cost": "≈ $0.06",
+            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "analyzing-lenses@1440": {
+    "found": true,
+    "width": 267,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Running A…",
+            "cost": null,
+            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "fresh-runline@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-runline@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "read-runline@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "fresh-widgets@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-widgets@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": [
+        {
+          "mode": "group",
+          "group": "A",
+          "lens": "motif"
+        }
+      ]
+    }
+  },
+  "analyzing-widgets@1000": {
+    "found": true,
+    "width": 680,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": []
+    }
+  },
+  "fresh-opinion@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "up to $0.05",
+            "name": "Analyze call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
+            "reasonShown": true
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-lenses@1000": {
+    "found": true,
+    "width": 247,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Run A",
+            "cost": "≈ $0.06",
+            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "analyzing-lenses@1000": {
+    "found": true,
+    "width": 247,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Running A…",
+            "cost": null,
+            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "fresh-runline@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-runline@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "read-runline@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Re-analyze7 calls · est. $0.33 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "129 quotes checked · 0 withheld · 7 calls",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "fresh-widgets@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-widgets@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.06",
+            "name": "Analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": [
+        {
+          "mode": "group",
+          "group": "A",
+          "lens": "motif"
+        }
+      ]
+    }
+  },
+  "analyzing-widgets@500": {
+    "found": true,
+    "width": 468,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Motifs · where they recur",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "motif",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lexical gravity · borrowed fields the prose leans on",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "gravity",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Palette",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": "palette",
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Characters · the vibes they give",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "characters",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Lineage · adjacent stories",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "lineage",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Genre neighborhood",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.04",
+            "name": "Analyze call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": "genre",
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Voice",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "voice",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Subtext · said and meant",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.03",
+            "name": "Re-analyze call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "subtext",
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Stock & signature",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "stock",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Rhythm & handoffs",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "rhythm",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "What stands out in the numbers",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.05",
+            "name": "Analyze call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "numbers",
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Craft steering",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.03",
+            "name": "Analyze call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": "steering",
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Summary & movements",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "summary",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Template & freshness",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "template",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Pressure",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "pressure",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "title": "Artifacts",
+        "register": "counted-read",
+        "badges": [
+          "counted"
+        ],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "≈ $0.07",
+            "name": "Analyze call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": "artifacts",
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [
+      {
+        "title": "Top words · sized by count",
+        "controls": 0
+      },
+      {
+        "title": "Parts of speech · repetition",
+        "controls": 0
+      }
+    ],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "keyboard": {
+      "focused": true,
+      "sent": []
+    }
+  },
+  "fresh-opinion@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Run AI analyses",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "7 calls · est. $0.33 · the Opinion up to its digest bound",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyze",
+            "cost": "up to $0.05",
+            "name": "Analyze call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Nothing on the board is read and current, so the Opinion has nothing to weigh. Analyze another call first, then the Opinion.",
+            "reasonShown": true
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "one-call-lenses@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Finish6 calls · est. $0.30 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "13 quotes checked · 0 withheld · 1 call",
+    "stop": false,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Run A",
+            "cost": "≈ $0.06",
+            "name": "Run call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": false,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  },
+  "analyzing-lenses@500": {
+    "found": true,
+    "width": 468,
+    "press": null,
+    "runNote": "Analyzing… 0 of 1 call back",
+    "stop": true,
+    "widgets": [],
+    "measured": [],
+    "runs": [
+      {
+        "call": "Call A",
+        "controls": [
+          {
+            "label": "Running A…",
+            "cost": null,
+            "name": "Running call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "A",
+            "reason": "Call A is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call B",
+        "controls": [
+          {
+            "label": "Rerun B",
+            "cost": "≈ $0.03",
+            "name": "Rerun call B: Characters, Voice, Subtext · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "B",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call C",
+        "controls": [
+          {
+            "label": "Run C",
+            "cost": "≈ $0.04",
+            "name": "Run call C: Genre neighborhood, Lineage, Spark · ≈ $0.04",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "C",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call D",
+        "controls": [
+          {
+            "label": "Run D",
+            "cost": "≈ $0.05",
+            "name": "Run call D: Stock & signature, Rhythm & handoffs, The numbers · ≈ $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "D",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call E",
+        "controls": [
+          {
+            "label": "Run E",
+            "cost": "≈ $0.07",
+            "name": "Run call E: Template & freshness, Pressure, Artifacts, Summary & movements · ≈ $0.07",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "E",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call G",
+        "controls": [
+          {
+            "label": "Run G",
+            "cost": "≈ $0.03",
+            "name": "Run call G: Craft steering · ≈ $0.03",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "G",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      },
+      {
+        "call": "Call F",
+        "controls": [
+          {
+            "label": "Run F",
+            "cost": "up to $0.05",
+            "name": "Run call F: Opinion · up to $0.05",
+            "disabled": true,
+            "focusable": true,
+            "lens": null,
+            "group": "F",
+            "reason": "An analysis is running. Stop it, or wait for it to finish.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": []
+  }
+}

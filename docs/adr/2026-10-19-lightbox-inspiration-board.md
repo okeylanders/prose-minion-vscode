@@ -296,6 +296,46 @@ lenses on is not called.
   quarantined through `persistRejectedWidgetResponse`, and the writer is told
   where it went.
 
+**Addendum to D6 (2026-10-23): a call can run on its own** (Slice 4I; epic
+decisions 41–45). After using the board on real chapters, the writer asked
+for every AI-read widget to "kick off the call(s) associated with that
+widget" and allow a re-run, and for the Lenses panel's "call A" to run or
+rerun that call. The press model becomes:
+
+- **Four scopes.** `LightboxRunScope` was `all | rest | lens`. It gains
+  `{ mode: 'group', group, lens? }`: one call, by its group. "Run AI
+  analyses" and "Re-analyze" send `all`, "Finish" sends `rest` (the calls
+  with a lens on that are not back), a widget's Analyze sends `group` with
+  its own lens, a call's Run in the Lenses panel sends `group` alone, and a
+  tile's "Re-read" still sends `lens`.
+- **The host resolves what a call reads.** The webview names a group and
+  at most the lens pressed, never a list of lenses. The call reads its
+  lenses that are on, with the lens named even when it is off; its other
+  lenses that are off stay out (`lightboxGroupCallLenses`, through the one
+  planner). A lens of another call, an unknown lens, a group that is no
+  model call (counting, Measure, is free and makes none) and an unknown
+  mode are refused before anything is reserved (`LightboxPressScope`).
+- **A call run on its own is a full run of its group**: cleared first and
+  replaced whole when it lands, as in a full run, so a re-run never mixes
+  two calls' readings; the other calls keep theirs. Only a tile's re-read
+  keeps its group's other lenses' tiles.
+- **Group F alone reads the board as it stands.** It is refused, with
+  nothing reserved or sent, while nothing on the board is read and current,
+  in the Opinion's own words; the rule (`lightboxOpinionNothingToWeigh`,
+  over `lightboxOpinionItems`) is shared with the webview, which disables
+  the Opinion's Analyze with the same reason, and F's own check when its
+  call opens on the digest stays the last word. Group G alone needs nothing
+  read first: its task carries the board's measured counts, which every
+  board has.
+- **Everything else a press owns is unchanged.** The estimate's key, the
+  model it priced, the board's adoption and the shelf's observation are
+  checked as for any press, before and after its prompts load; one run of a
+  board at a time, so a call pressed while another run is going is
+  refused, and every control in the webview says why until Stop or the end.
+  Each call's price is the estimate's own entry for that group (`groups`,
+  one per group with a lens on), and the host fit-checks the exact call at
+  the press.
+
 ### D7. Every reading is anchored, verified and allowed to strain
 
 This is the honesty design of the board.
