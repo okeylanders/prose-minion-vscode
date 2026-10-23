@@ -26,8 +26,12 @@
  *     failed), and is removed, never put back.
  * - **A delete retires a file's leftovers.** Holding the file under its own
  *   claim, a delete removes every other claim of that saved name, of any
- *   age, before it removes its own: no earlier version can come back after
- *   a delete.
+ *   age, and looks again: only when none is left may it remove its own
+ *   (PR #164 F-01, re-review). No earlier version can come back after a
+ *   delete.
+ * - **A folder that cannot be read is not an empty one** (PR #164 F-01,
+ *   F-02, re-review). Only a folder that is not there counts as holding
+ *   nothing; any other error leaves the state `unknown`, never `absent`.
  * - **Logs** carry file names, never the writer's text or a name.
  *
  * The small file helpers at the end serve the store's new-file writes too.
@@ -35,6 +39,7 @@
 
 import * as path from 'node:path';
 import type { FileSystem, LogSink } from '@/platform';
+import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
 
 const LOG = '[LightboxBoardStore]';
 
@@ -49,8 +54,12 @@ export const LIGHTBOX_BOARD_CLAIM = /^\.(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{
  */
 export const LIGHTBOX_BOARD_CLAIM_LEASE_MS = 30_000;
 
-/** What a saved name is once its claims are settled: standing, gone, or held by a live claim. */
-export type LightboxBoardClaimState = 'present' | 'absent' | 'busy';
+/**
+ * What a saved name is once its claims are settled: standing, gone (neither
+ * the file nor a claim is there), held by a live claim, or not known (its
+ * folder could not be read).
+ */
+export type LightboxBoardClaimState = 'present' | 'absent' | 'busy' | 'unknown';
 
 interface Claim {
   name: string;
@@ -79,12 +88,19 @@ export class LightboxBoardClaims {
   async settle(filePath: string): Promise<LightboxBoardClaimState> {
     const folder = path.dirname(filePath);
     const entries = await this.entriesOf(folder);
+    if (!entries) {
+      this.log.appendLine(`${LOG} Could not look for ${path.basename(filePath)}'s claims; it is not taken for gone.`);
+      return 'unknown';
+    }
     return (await this.settleName(folder, path.basename(filePath), entries)).state;
   }
 
   /** Settle every saved name in `folder` that has claims; whether anything changed on disk. */
   async settleFolder(folder: string): Promise<boolean> {
     const entries = await this.entriesOf(folder);
+    if (!entries) {
+      return false;
+    }
     const savedNames = new Set(entries.flatMap((entry) => {
       const saved = LIGHTBOX_BOARD_CLAIM.exec(entry)?.[1];
       return saved ? [saved] : [];
@@ -96,14 +112,32 @@ export class LightboxBoardClaims {
     return changed;
   }
 
-  /** A delete holds the file under `own`: every other claim of its saved name, of any age, is a leftover, and is removed. */
-  async retire(filePath: string, own: string): Promise<void> {
+  /**
+   * A delete holds the file under `own`: every other claim of its saved name,
+   * of any age, is a leftover, and is removed. Whether the folder, looked at
+   * again, shows none left: an error reading it, or a leftover that would not
+   * go, is `false`, and the delete must not go on.
+   */
+  async retire(filePath: string, own: string): Promise<boolean> {
     const folder = path.dirname(filePath);
-    for (const claim of claimsOf(await this.entriesOf(folder), path.basename(filePath))) {
-      if (claim.name !== path.basename(own) && await deleteBoardFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
-        this.log.appendLine(`${LOG} Removed an earlier version of ${path.basename(filePath)}, left by a rewrite, with it.`);
+    const saved = path.basename(filePath);
+    const others = (entries: readonly string[]) => claimsOf(entries, saved).filter((claim) => claim.name !== path.basename(own));
+    const entries = await this.entriesOf(folder);
+    if (!entries) {
+      this.log.appendLine(`${LOG} Could not look for earlier versions of ${saved}; it was not deleted.`);
+      return false;
+    }
+    for (const claim of others(entries)) {
+      if (await deleteBoardFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
+        this.log.appendLine(`${LOG} Removed an earlier version of ${saved}, left by a rewrite, with it.`);
       }
     }
+    const after = await this.entriesOf(folder);
+    if (!after || others(after).length > 0) {
+      this.log.appendLine(`${LOG} An earlier version of ${saved} could not be removed, or the folder could not be read again; it was not deleted.`);
+      return false;
+    }
+    return true;
   }
 
   private async settleName(folder: string, saved: string, entries: readonly string[]): Promise<{ state: LightboxBoardClaimState; changed: boolean }> {
@@ -147,11 +181,12 @@ export class LightboxBoardClaims {
     return removed;
   }
 
-  private async entriesOf(folder: string): Promise<string[]> {
+  /** The folder's entries; none when the folder is not there; undefined when it could not be read. */
+  private async entriesOf(folder: string): Promise<string[] | undefined> {
     try {
       return (await this.fileSystem.readDirectory(folder)).map(([name]) => name);
-    } catch {
-      return [];
+    } catch (error) {
+      return isMissingFileSystemPathError(error) ? [] : undefined;
     }
   }
 }

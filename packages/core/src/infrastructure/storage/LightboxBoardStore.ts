@@ -97,6 +97,8 @@ const encoder = new TextEncoder();
 const LOG = '[LightboxBoardStore]';
 /** A commit that finds its final name taken tries the next free one, this many times at most. */
 const COMMIT_ATTEMPTS = 3;
+/** A read that finds its file gone, then put back, then gone again, reads it this many times at most. */
+const READ_ATTEMPTS = 3;
 
 /** The reload pointer's key in the workspace memento. */
 export const LIGHTBOX_BOARD_POINTER_KEY = 'proseMinion.lightbox.lastBoardOnScreen';
@@ -208,10 +210,11 @@ export class LightboxBoardStore {
   }
 
   /**
-   * A saved board's file, decoded. A file found gone is settled first
-   * (PR #164 F-02): a board left under an abandoned claim is put back and
-   * read; one a live claim holds is `busy`; `missing` is neither file nor
-   * claim.
+   * A saved board's file, decoded. Every `missing` is classified first
+   * (PR #164 F-02, and its re-review): a board left under an abandoned claim
+   * is put back and read again; one a live claim holds, or one that keeps
+   * moving, is `busy`; a folder that cannot be read is `unreadable`, never
+   * gone. `missing` is neither file nor claim, looked for and not found.
    */
   read(fileId: string): Promise<LightboxBoardRead> {
     return this.enqueue(async () => {
@@ -223,12 +226,8 @@ export class LightboxBoardStore {
       if (!filePath) {
         return { kind: 'missing' };
       }
-      const read = await this.files.read(fileId, filePath);
-      if (read.kind !== 'missing') {
-        return read;
-      }
-      const state = await this.claims.settle(filePath);
-      return state === 'present' ? this.files.read(fileId, filePath) : state === 'busy' ? { kind: 'busy' } : read;
+      const read = await this.settledRead(fileId, filePath);
+      return read.kind === 'unknown' ? { kind: 'unreadable', reason: 'Its folder could not be read.' } : read;
     });
   }
 
@@ -291,7 +290,10 @@ export class LightboxBoardStore {
    * Delete a saved board's file, if it reads as one; a file that does not is
    * left as it is. The file is claimed first, as a rewrite claims it, and
    * every earlier version a rewrite left beside it goes with it (PR #164
-   * F-01). A file another writer holds is `busy`.
+   * F-01). Only once none is left is the file deleted: a leftover that would
+   * not go, or a folder that could not be read again, puts the board back as
+   * it was and says the delete `failed` (its re-review). A file another
+   * writer holds is `busy`.
    */
   delete(fileId: string): Promise<LightboxBoardDeleteResult> {
     return this.enqueue(async () => {
@@ -303,17 +305,16 @@ export class LightboxBoardStore {
       if (!filePath) {
         return { kind: 'missing' };
       }
-      let read = await this.files.read(fileId, filePath);
-      if (read.kind === 'missing') {
-        // Gone, held by another window's rewrite (busy: it is not gone), or left mid-rewrite (put back, then deleted).
-        const state = await this.claims.settle(filePath);
-        if (state !== 'present') {
-          return { kind: state === 'busy' ? 'busy' : 'missing' };
-        }
-        read = await this.files.read(fileId, filePath);
+      // Gone, held by another window (busy: it is not gone), left mid-rewrite (put back, then deleted), or not known.
+      const read = await this.settledRead(fileId, filePath);
+      if (read.kind === 'missing' || read.kind === 'busy') {
+        return { kind: read.kind };
+      }
+      if (read.kind === 'unknown') {
+        return { kind: 'failed' };
       }
       if (read.kind !== 'board') {
-        return { kind: read.kind === 'missing' ? 'missing' : 'unreadable' };
+        return { kind: 'unreadable' };
       }
       // Held under a claim of its own, so no other writer rewrites it meanwhile.
       const claimPath = await this.claims.take(filePath, this.mintStagingId());
@@ -322,7 +323,11 @@ export class LightboxBoardStore {
         return { kind: state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed' };
       }
       // Every earlier version a rewrite left beside it goes first, so none can come back after the delete.
-      await this.claims.retire(filePath, claimPath);
+      if (!(await this.claims.retire(filePath, claimPath))) {
+        await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
+          .catch(() => this.log.appendLine(`${LOG} ${fileId} could not be put back at once; it comes back once its claim is older than the lease.`));
+        return { kind: 'failed' };
+      }
       try {
         await this.fileSystem.delete(claimPath);
       } catch (error) {
@@ -358,6 +363,28 @@ export class LightboxBoardStore {
     }
     Promise.resolve(memory.update(LIGHTBOX_BOARD_POINTER_KEY, fileId ? { root: location.root, fileId } : undefined))
       .catch((error: unknown) => this.log.appendLine(`${LOG} Could not record the board on screen: ${errorMessage(error)}`));
+  }
+
+  /**
+   * A file read with every `missing` classified by its claims: put back and
+   * read again (a few times at most), `busy` under a live claim or while it
+   * keeps moving, `unknown` when its folder could not be read, and `missing`
+   * only when neither the file nor a claim is there.
+   */
+  private async settledRead(fileId: string, filePath: string): Promise<LightboxBoardRead | { kind: 'unknown' }> {
+    for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
+      const read = await this.files.read(fileId, filePath);
+      if (read.kind !== 'missing') {
+        return read;
+      }
+      const state = await this.claims.settle(filePath);
+      if (state !== 'present') {
+        return state === 'absent' ? read : { kind: state };
+      }
+      // Put back, or standing again: read it again.
+    }
+    this.log.appendLine(`${LOG} ${fileId} kept moving while it was read; another window is changing it.`);
+    return { kind: 'busy' };
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {

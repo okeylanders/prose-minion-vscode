@@ -41,9 +41,10 @@
  *   board's name belongs to the board, and every save writes it; a rename,
  *   and a spark set aside, rewrite the file that holds the board in place
  *   (`LightboxBoardEdits`, which this library builds and answers for). A
- *   restore whose file is gone forgets the reload pointer; one whose file
- *   another window holds (busy) keeps it, and a board left mid-rewrite is
- *   put back by the store's read and restored (PR #164 F-02).
+ *   restore whose file is shown gone forgets the reload pointer; one whose
+ *   file another window holds (busy), or whose folder could not be read,
+ *   keeps it, and a board left mid-rewrite is put back by the store's read
+ *   and restored (PR #164 F-02 and its re-review).
  *
  * Logs carry file ids, counts and reasons; never the writer's text or a
  * board's name.
@@ -258,7 +259,8 @@ export class LightboxBoardLibrary {
     const ticket = this.ports.service.beginSourceRequest();
     const read = await this.ports.store.read(fileId);
     // A pointer to a file that is gone would be tried, and logged, every session: forget it (5A tech debt).
-    // `missing` is neither the file nor a claim on it; a file another window holds is `busy`, and the pointer stays.
+    // `missing` is established absence, neither the file nor a claim on it (the store classifies every one); a file
+    // another window holds is `busy`, and one whose folder could not be read is `unreadable`: the pointer stays.
     if (read.kind === 'missing' && this.ports.store.lastOnScreen() === fileId) {
       this.ports.store.rememberOnScreen(undefined);
     }

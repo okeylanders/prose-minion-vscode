@@ -221,9 +221,18 @@ export class LightboxBoardRewrites {
   }
 }
 
-/** A file found gone, once its claims are settled: put back (read it again), held by a live claim, or gone. */
+/** A file found gone, once its claims are settled: put back (read it again), held by a live claim, gone, or not known (failed). */
 function gone(state: LightboxBoardClaimState): LightboxBoardReplaceResult | 'again' {
-  return state === 'present' ? 'again' : state === 'busy' ? { kind: 'busy' } : { kind: 'missing' };
+  switch (state) {
+    case 'present':
+      return 'again';
+    case 'busy':
+      return { kind: 'busy' };
+    case 'absent':
+      return { kind: 'missing' };
+    case 'unknown':
+      return { kind: 'failed' };
+  }
 }
 
 function sameBytes(left: Uint8Array, right: Uint8Array): boolean {

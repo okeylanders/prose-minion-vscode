@@ -14,6 +14,11 @@
  *   rule, `LightboxSparkSaves.test.ts`).
  * - **The newer source still wins:** a source chosen while the restore's
  *   read puts the board back keeps the screen.
+ * - **Only established absence forgets the pointer** (PR #164 re-review,
+ *   2026-10-23). A board put back from an abandoned claim, then claimed by
+ *   another window's rewrite before the restore reads it again, is busy:
+ *   nothing is restored and the pointer stays. A folder that cannot be read
+ *   is not an empty one: the pointer stays, and the claim with it.
  *
  * The chapter is ¶1–¶8 of "Alice's Adventures in Wonderland" (1865, public
  * domain), read from the worked examples. No provider is called.
@@ -26,10 +31,12 @@ jest.mock('p-limit', () => ({
 
 import * as path from 'node:path';
 import { MessageType } from '@/shared/types/messages';
+import { namedLightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import { LIGHTBOX_BOARD_POINTER_KEY } from '@/infrastructure/storage/LightboxBoardStore';
 import { LIGHTBOX_BOARD_CLAIM_LEASE_MS } from '@/infrastructure/storage/LightboxBoardClaims';
 import { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardLibrary';
 import { CHAPTER, CHAPTER_PATH, SAVED_AT, WORKSPACE, createLightboxBoardsHost, quiet } from './lightboxBoardsHarness';
+import { deferred } from './lightboxHandlerHarness';
 
 type Host = ReturnType<typeof createLightboxBoardsHost>;
 
@@ -130,6 +137,79 @@ describe('a restore whose file a rewrite left under a claim', () => {
     expect(next.service.currentBoard()?.source.displayPath).toBe(OTHER_PATH);
     expect(next.logged()).toContain(`[LightboxBoardLibrary] Dropped the restore of ${pointed}: a newer source was chosen`);
     // The board went back under its name all the same: nothing is left hidden.
+    expect(host.fileSystem.files.has(filePath(pointed))).toBe(true);
+  });
+});
+
+describe('a restore forgets the pointer only when the board is shown gone (PR #164 re-review)', () => {
+  it('a board put back, then claimed by another window before the restore reads it again, is busy: nothing restored, the pointer kept', async () => {
+    const { host, pointed } = await readChapter();
+    const claimPath = claim(host, pointed, ABANDONED_AT);
+    const next = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
+    const other = createLightboxBoardsHost({ fileSystem: host.fileSystem, memory: host.memory });
+    const tab = next.openTab();
+    // Hold the restore once its read has put the board back, before it reads it again.
+    const putBack = deferred<void>();
+    const resume = deferred<void>();
+    const rename = host.fileSystem.rename.bind(host.fileSystem);
+    jest.spyOn(host.fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      await rename(fromPath, toPath, options);
+      if (fromPath === claimPath) {
+        putBack.resolve();
+        await resume.promise;
+      }
+    });
+    // Hold the other window's rename once it has claimed the file, as it checks the claimed bytes.
+    const claimed = deferred<void>();
+    const commit = deferred<void>();
+    const readFile = host.fileSystem.readFile.bind(host.fileSystem);
+    jest.spyOn(host.fileSystem, 'readFile').mockImplementation(async (filePath) => {
+      if (/\.claim-\d{13}-/.test(filePath) && filePath !== claimPath) {
+        claimed.resolve();
+        await commit.promise;
+      }
+      return readFile(filePath);
+    });
+
+    const mounting = tab.shelf(null);
+    await putBack.promise;
+    const renaming = other.store.replace({ fileId: pointed }, (file) => namedLightboxBoardFile(file, 'model A'), { renames: true });
+    await claimed.promise;
+    resume.resolve();
+    await mounting;
+    await quiet();
+
+    expect(next.service.currentBoard()).toBeUndefined();
+    expect(pointer(host)).toBe(pointed);
+    expect(next.logged()).toContain(`Could not restore ${pointed}: ${LIGHTBOX_BOARD_NOTICES.busy}`);
+
+    commit.resolve();
+    expect(await renaming).toEqual({ kind: 'replaced', fileId: pointed });
+    expect(host.fileSystem.files.has(filePath(pointed))).toBe(true);
+    expect(pointer(host)).toBe(pointed);
+  });
+
+  it('a folder that cannot be read keeps the pointer and the claim; a later session restores the board', async () => {
+    const { host, pointed } = await readChapter();
+    const claimPath = claim(host, pointed, ABANDONED_AT);
+    const readDirectory = host.fileSystem.readDirectory.bind(host.fileSystem);
+    const failing = jest.spyOn(host.fileSystem, 'readDirectory').mockImplementation(async (folder) => {
+      if (folder.startsWith(BOARDS)) {
+        throw new Error(`EIO: ${folder}`);
+      }
+      return readDirectory(folder);
+    });
+
+    const { next } = await reload(host);
+
+    expect(next.service.currentBoard()).toBeUndefined();
+    expect(pointer(host)).toBe(pointed);
+    expect(host.fileSystem.files.has(claimPath)).toBe(true);
+    expect(next.logged()).toContain(`Could not restore ${pointed}: ${LIGHTBOX_BOARD_NOTICES.unreadable}`);
+
+    failing.mockRestore();
+    const { next: later } = await reload(host);
+    expect(later.service.savable(later.service.currentBoard()?.boardId as string)?.savedFileId).toBe(pointed);
     expect(host.fileSystem.files.has(filePath(pointed))).toBe(true);
   });
 });
