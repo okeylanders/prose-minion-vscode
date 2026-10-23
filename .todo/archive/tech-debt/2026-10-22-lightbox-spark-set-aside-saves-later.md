@@ -1,8 +1,8 @@
 # A Spark Set Aside Is Saved Only With the Board's Next Save
 
 **Date Identified**: 2026-10-22 (Lightbox Slice 5A)
-**Status**: Identified
-**Priority**: Low
+**Status**: Resolved in Lightbox Slice 5A.1, 2026-10-22 (`epic/lightbox-slice-5a1-board-names`). The writer chose to save a set-aside at once (epic decision 35): "Not for me", and its Undo, rewrite the file that holds the board on screen in place (`LightboxBoardEdits.keepSpark`, through the store's claimed rewrite; since PR #164 F-03 the one spark acted on, and no other), so no new file and no new row is written. A board no file holds yet, or a session-only one, takes the mark with its next save, as before. Tests: `LightboxSparkSaves.test.ts` (in place, no new file, a reload brings it back; Undo; session-only) and `LightboxBoardStoreRewrite.test.ts`
+**Priority**: Was Low; resolved
 **Estimated Effort**: Small
 
 ## Problem

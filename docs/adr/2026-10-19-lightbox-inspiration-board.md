@@ -618,9 +618,11 @@ on real chapters before it becomes a contract.
   changed, the comparison is labeled approximate.
 
 **Addendum to D12 (2026-10-22): saved boards, format 1** (Slice 5A; epic
-decisions 25 and 27–32). Slice 5 is split. 5A saves, opens, deletes and
-restores boards; 5B, a later PR, compares two of them. The format is fixed
-so that 5B needs no change to it.
+decisions 25 and 27–32; amended for Slice 5A.1, decisions 33–36, where
+marked). Slice 5 is split. 5A saves, opens, deletes and restores boards;
+5A.1 names them and builds the writer's other calls on 5A; 5B, a later PR,
+compares two of them. The format is fixed so that 5B needs no change to
+it.
 
 - **The file.** One file per save, written once and never overwritten:
   `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`.
@@ -632,7 +634,7 @@ so that 5B needs no change to it.
 
   ```jsonc
   { "formatVersion": 1, "kind": "lightbox-board", "savedAt": "<ISO>",
-    "board": { "boardId", "rules", "sources": [ { …LightboxSource, "text" } ],
+    "board": { "boardId", "name"?, "rules", "sources": [ { …LightboxSource, "text" } ],
                "paragraphs": [ { "source": 0, "index", "start", "end", … } ],
                "ribbon", "measured", "readings" } }
   ```
@@ -645,6 +647,26 @@ so that 5B needs no change to it.
   Sections layer, craft steering's breakdown). `boardVersion` becomes 1.
   Webview preferences are not saved: the Opinion view showing, the filter,
   the pin, the lens toggles.
+- **The name (Slice 5A.1, decision 33).** `board.name` is optional: the
+  writer's own words for the board, to record the chapter version and the
+  model (a name such as "3.2.1 - after the cut - model B"). Still
+  `formatVersion: 1`, since format 1 has not shipped; an unnamed board is
+  written exactly as before, so `board-v1.json` still reads and writes back
+  byte for byte, and `board-v1-named.json` is its named companion. One rule
+  (`lightboxBoardName`) serves the codec, the route and the rail: trimmed,
+  one line (no control character, line or paragraph separator), at most
+  120 characters; empty means unnamed. A name in a hand-edited file that
+  does not read is left out and counted, as a dropped tile is, and the
+  board opens whole, unnamed: a board is never lost over its name (the
+  writer-data rule below). No rule id moves with a name. A name is writer
+  text: logs never carry it, and the webview never persists it.
+  - *A name belongs to the board*: its retained id and that board's saves.
+    Naming the board on screen, or the file that holds it, names the
+    retained board, so its later automatic saves carry the name; a re-read
+    of unchanged text keeps it; "Read the current text" builds a new board,
+    unnamed; naming any other saved file changes only that file; open and
+    restore bring the file's name back. Session-only, the name is the
+    in-memory board's.
 - **Sources are a list.** `sources` holds every source with its own text.
   Paragraph numbers stay the board's, 1 to N, so no reading changes shape;
   each paragraph names its source and its offsets into that source's text.
@@ -702,6 +724,40 @@ so that 5B needs no change to it.
     rename is never reported as this save: the store takes the next free
     name and runs the commit point again, at most three times, then fails
     the save.
+  - *Rewrites in place (Slice 5A.1, decisions 33 and 35).* A rename, and
+    a spark set aside, rewrite the file that holds the board instead of
+    saving a new one: the one exception to "written once". Through the same
+    queue, a rewrite reads the file and checks it (it reads whole, a name
+    that did not read aside, and holds the board expected), stages the new
+    bytes privately, then *claims* the file: renames it, never over
+    anything, to a name private to the write. A rename is atomic, so a file
+    another window's store deleted first cannot be claimed and stays
+    deleted, and once the claim holds no other writer can delete or rewrite
+    it. The claimed bytes must be the bytes read, or the claim is put back
+    and the file read again. Then the commit point, and the staged file
+    takes the saved name, never over anything. The `FileSystem` port's
+    `rename` allows `overwrite: true`, but a plain overwrite could bring a
+    deleted board back; the claim cannot. The last rewrite to commit wins,
+    each reports only bytes it wrote, and a rewrite, delete or read that
+    finds the file claimed by another window says it is busy.
+  - *Claims and deletes (PR #164 F-01, F-02).* A claim's name records when
+    it was taken. Younger than a lease of 30 seconds, it is live and no
+    other window touches it; older, it was abandoned. A listing that finds
+    claims, and a read, rewrite or delete that finds its file gone, settle
+    them: an abandoned claim with its saved name empty goes back under it
+    (the newest, never over anything); one beside a standing file is a
+    committed rewrite's leftover and is removed, never put back. A rewrite
+    checks its claim is still there before its commit point. A delete
+    claims the file as a rewrite does, removes every other claim of that
+    name, young or old, and looks again; only when none is left does it
+    remove its own, so no earlier version comes back after it. Otherwise
+    it puts the board back as it was and fails (PR #164 re-review). A
+    folder that cannot be read is never taken for an empty one: a read
+    reports it `unreadable`, and `missing` means the folder was read and
+    neither file nor claim was there; a read classifies every `missing`,
+    and a board claimed again before it is read is `busy`. The one race left needs a writer stalled past the lease and
+    another window's put-back and delete inside its final rename; a file
+    system with only rename and delete offers no stronger lock.
   - *Complete listings (PR #163 F-04).* A source's folder is read whole:
     every board of the source is listed, newest first, and the same-text
     check reads them all. The rail shows the newest twenty and says how
@@ -710,22 +766,40 @@ so that 5B needs no change to it.
     listing decodes only the files that changed.
 - **When a board saves** (decision 27): when a run ends having landed a
   group, and when a board with no readings is built for a source no saved
-  board of which holds that text. No pruning.
+  board of which holds that text. No pruning. The writer confirmed that a
+  stopped or partial run saves (decision 36, 2026-10-22). A spark set aside,
+  or brought back, saves at once (decision 35): the file that holds the
+  board on screen takes that spark's mark in place, and no other (PR #164
+  F-03), and no new file is written; a board no file holds yet takes its
+  marks with its next save.
 - **Open is a snapshot** (decision 29). An opened board shows exactly as
   saved, against its saved text, under its saved rules; nothing is measured
   again. When the file's text differs now, a notice at the head of the
   rail's Boards section offers **Read the current text**, the existing
   re-read, which carries the readings onto a board built from the file,
-  marked stale (D4). Bring from such a snapshot is refused with a reason
-  that points there.
+  marked stale (D4). The same notice also shows above the board itself
+  (decision 34, Slice 5A.1), from the same shelf through one function, so
+  the two appear and go together under the shelf's ordering guards. Bring
+  from such a snapshot is refused with a reason that points there.
 - **Who decides.** `LightboxBoardLibrary`, an application service built
   once at the composition root over the service, the store and the runner,
   decides when a board saves, opens and restores one, and lists and deletes
-  them. A fourth handler, `LightboxBoardsHandler`, owns the rail's three
+  them. A fourth handler, `LightboxBoardsHandler`, owns the rail's four
   routes (`LIGHTBOX_REQUEST_BOARDS`, `LIGHTBOX_OPEN_BOARD`,
-  `LIGHTBOX_DELETE_BOARD`) and answers each with `LIGHTBOX_BOARDS` under its
-  request id; each adoption and each committed save is pushed with
-  `requestId: null`. A shelf names the adoption it was built for.
+  `LIGHTBOX_DELETE_BOARD`, and from Slice 5A.1 `LIGHTBOX_RENAME_BOARD`) and
+  answers each with `LIGHTBOX_BOARDS` under its request id; each adoption,
+  each committed save and each name given to the board on screen is pushed
+  with `requestId: null`. A shelf names the adoption it was built for.
+  The library's `LightboxBoardEdits` names boards and keeps spark marks,
+  finding the file that holds the board at the rewrite's turn in the queue,
+  so a save queued before a rename is the file the rename names.
+- **The rail (Slice 5A.1, decisions 31 and 33).** A named row shows its
+  name first and its date and time under it; every row names the models
+  that read it, from the groups' provider-reported `model`, shortened and
+  once each; the section's head names the board on screen ("Unnamed board"
+  otherwise) with Name or Rename. A name is edited in place: Enter saves,
+  Escape cancels, focus returns to the action; only an edit the writer made
+  is sent (PR #164 F-04).
 - **Ownership.** An open is a source choice (PR #148 F-01, PR #152 F-01): it
   takes a ticket before its first await and adopts only under the newest.
   It never replaces a board a run is reading. Restoring on mount takes a
@@ -758,7 +832,10 @@ so that 5B needs no change to it.
   It follows every adoption (PR #163 F-01): coming back to a board a file
   already holds points at that file and writes nothing; a board no file
   holds yet points at the file its save commits, or the newest file
-  holding its text.
+  holding its text. A restore forgets the pointer only when neither its
+  file nor a claim on it is there; a board left under an abandoned claim
+  is put back and restored, and one another window holds now keeps the
+  pointer for a later session (Slice 5A.1; PR #164 F-02).
   This amends the consequence below: in a single-folder workspace readings
   come back after a reload; session-only mode keeps the old behaviour.
 

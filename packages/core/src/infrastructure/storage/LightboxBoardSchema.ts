@@ -13,7 +13,8 @@
  * Keys are exact. A key the shape does not name fails its object, counted
  * and never named: the file's own keys never reach a reason or a log. A list
  * whose entries may be lost without hiding anything (`droppable`) drops an
- * entry that fails and counts it; everything else fails whole.
+ * entry that fails and counts it, and so does an optional field that may be
+ * (`leftOutIfInvalid`); everything else fails whole.
  */
 
 /** Why a value was refused: a key this build does not read, or any other shape fault. */
@@ -43,9 +44,13 @@ const DROPPED_PATHS_KEPT = 10;
 
 export type Decoder<T> = (value: unknown, at: string, context: LightboxBoardDecodeContext) => T;
 
-/** An optional field's decoder: the key may be absent; present, it must decode. */
+/**
+ * An optional field's decoder: the key may be absent; present, it must
+ * decode. One that reads as `undefined` (`leftOutIfInvalid`) leaves the key
+ * out of the object.
+ */
 export interface Optional<T> {
-  readonly optional: Decoder<T>;
+  readonly optional: Decoder<T | undefined>;
 }
 
 /** The keys `T` may leave out: `{}` is assignable to a pick of only those. */
@@ -59,6 +64,27 @@ export function optional<T>(decoder: Decoder<T>): Optional<T> {
   return { optional: decoder };
 }
 
+/**
+ * An optional field that may be lost without hiding anything (a board's
+ * name, Slice 5A.1): present and failing, it is left out and counted, as a
+ * droppable entry is, and its object reads without it.
+ */
+export function leftOutIfInvalid<T>(decoder: Decoder<T>): Optional<T> {
+  return {
+    optional: (value, at, context) => {
+      try {
+        return decoder(value, at, context);
+      } catch (error) {
+        if (!(error instanceof LightboxBoardShapeError)) {
+          throw error;
+        }
+        countDropped(context, at);
+        return undefined;
+      }
+    }
+  };
+}
+
 function isOptional(field: Decoder<unknown> | Optional<unknown>): field is Optional<unknown> {
   return typeof field === 'object' && field !== null && 'optional' in field;
 }
@@ -69,8 +95,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * An object read by its shape: exact keys, every required one present, an
- * optional one absent or decoded. The value keeps the file's key order, so
- * a board read and written again is the same text.
+ * optional one absent or decoded (and left out when it reads as nothing).
+ * The value keeps the file's key order, so a board read and written again
+ * is the same text.
  */
 export function object<T>(shape: Shape<T>): Decoder<T> {
   const fields = new Map(Object.entries(shape) as Array<[string, Decoder<unknown> | Optional<unknown>]>);
@@ -91,7 +118,10 @@ export function object<T>(shape: Shape<T>): Decoder<T> {
     const read: Record<string, unknown> = {};
     for (const key of keys) {
       const field = fields.get(key) as Decoder<unknown> | Optional<unknown>;
-      read[key] = isOptional(field) ? field.optional(value[key], `${at}.${key}`, context) : field(value[key], `${at}.${key}`, context);
+      const decoded = isOptional(field) ? field.optional(value[key], `${at}.${key}`, context) : field(value[key], `${at}.${key}`, context);
+      if (decoded !== undefined || !isOptional(field)) {
+        read[key] = decoded;
+      }
     }
     return read as T;
   };
@@ -227,14 +257,18 @@ export function droppable<T>(item: Decoder<T>): Decoder<T[]> {
         if (!(error instanceof LightboxBoardShapeError)) {
           throw error;
         }
-        context.dropped.count += 1;
-        if (context.dropped.at.length < DROPPED_PATHS_KEPT) {
-          context.dropped.at.push(`${at}[${index}]`);
-        }
+        countDropped(context, `${at}[${index}]`);
       }
     });
     return read;
   };
+}
+
+function countDropped(context: LightboxBoardDecodeContext, at: string): void {
+  context.dropped.count += 1;
+  if (context.dropped.at.length < DROPPED_PATHS_KEPT) {
+    context.dropped.at.push(at);
+  }
 }
 
 /** A fixed-length list. */

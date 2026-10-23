@@ -1,0 +1,755 @@
+{
+  "named@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-a6odutzp-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "rename-open@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": {
+      "label": "Name for the board saved Oct 22, 2026, 2:06 PM",
+      "value": "3.2.2 - before the cut - model A",
+      "focused": true
+    },
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-i111wfxk-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-board@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-h8hwh92f-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-h8hwh92f-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-rail@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-y2nspidb-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-y2nspidb-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "spark@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:07 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": "1 spark set aside. Undo Brings back “The empty jar”.",
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-x6s8f2e5-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-named@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": "A name lasts as long as this session, as the board does."
+    },
+    "rows": [],
+    "rowModelTitles": [],
+    "current": [],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ilph0cid-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "named@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-li4zndqu-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "rename-open@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": {
+      "label": "Name for the board saved Oct 22, 2026, 2:06 PM",
+      "value": "3.2.2 - before the cut - model A",
+      "focused": true
+    },
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-42d793cw-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-board@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-eeq45arz-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-eeq45arz-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-rail@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-qyghqxnf-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-qyghqxnf-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "spark@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:07 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": "1 spark set aside. Undo Brings back “The empty jar”.",
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-l24vq1o7-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-named@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": "A name lasts as long as this session, as the board does."
+    },
+    "rows": [],
+    "rowModelTitles": [],
+    "current": [],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-s3iquith-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "named@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-c1msdiak-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "rename-open@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": {
+      "label": "Name for the board saved Oct 22, 2026, 2:06 PM",
+      "value": "3.2.2 - before the cut - model A",
+      "focused": true
+    },
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-khdbj88r-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-board@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-kqwfx960-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-kqwfx960-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed-rail@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - before the cut - model A",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOpen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNotice": {
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-qt8jztaa-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-qt8jztaa-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "spark@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": null
+    },
+    "rows": [
+      "3.2.1 - after the cut - model BOct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Read by model-v1 and model-bOn screen",
+      "3.2.1 - before the cut - model AOct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Read by model-v1Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "rowModelTitles": [
+      "provider/model-v1, provider/model-b",
+      "provider/model-v1",
+      null
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:07 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": null,
+    "notice": null,
+    "setAside": "1 spark set aside. Undo Brings back “The empty jar”.",
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-kwaaf5dx-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-named@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "head": {
+      "label": "3.2.1 - after the cut - model B",
+      "action": "Rename the board on screen",
+      "note": "A name lasts as long as this session, as the board does."
+    },
+    "rows": [],
+    "rowModelTitles": [],
+    "current": [],
+    "snapshot": null,
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "field": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "notice": null,
+    "setAside": null,
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-plag55ig-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  }
+}

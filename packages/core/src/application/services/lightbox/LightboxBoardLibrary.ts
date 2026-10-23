@@ -1,6 +1,7 @@
 /**
  * LightboxBoardLibrary — when Lightbox boards are saved, and how a saved one
- * comes back (ADR 2026-10-19 D12 addendum; Slice 5A; epic decisions 27–31).
+ * comes back (ADR 2026-10-19 D12 addendum; Slice 5A; epic decisions 27–31;
+ * Slice 5A.1, decisions 33–35).
  * Built once at the composition root and carried in `CoreServices`, over the
  * one LightboxService, LightboxBoardStore and reading runner. Handlers call
  * it; it constructs nothing.
@@ -36,8 +37,17 @@
  *   is awaited. Every change the rail must hear (an adoption, a committed
  *   save, a delete's answer) starts a new observation, so a shelf observed
  *   before one already sent has nothing newer to say.
+ * - **Names and sparks in place (Slice 5A.1, decisions 33 and 35).** A
+ *   board's name belongs to the board, and every save writes it; a rename,
+ *   and a spark set aside, rewrite the file that holds the board in place
+ *   (`LightboxBoardEdits`, which this library builds and answers for). A
+ *   restore whose file is shown gone forgets the reload pointer; one whose
+ *   file another window holds (busy), or whose folder could not be read,
+ *   keeps it, and a board left mid-rewrite is put back by the store's read
+ *   and restored (PR #164 F-02 and its re-review).
  *
- * Logs carry file ids, counts and reasons; never the writer's text.
+ * Logs carry file ids, counts and reasons; never the writer's text or a
+ * board's name.
  */
 
 import * as path from 'node:path';
@@ -57,19 +67,14 @@ import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolve
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import type { LightboxBoardRead, LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
+import { LIGHTBOX_BOARD_NOTICES, type LightboxBoardAction } from '@/application/services/lightbox/LightboxBoardNotices';
+import { LightboxBoardEdits, type LightboxBoardRename } from '@/application/services/lightbox/LightboxBoardEdits';
+
+export { LIGHTBOX_BOARD_NOTICES } from '@/application/services/lightbox/LightboxBoardNotices';
+export type { LightboxBoardAction } from '@/application/services/lightbox/LightboxBoardNotices';
+export type { LightboxBoardRename } from '@/application/services/lightbox/LightboxBoardEdits';
 
 const LOG = '[LightboxBoardLibrary]';
-
-/** Writer-facing words for an open or a delete that did not happen. */
-export const LIGHTBOX_BOARD_NOTICES = {
-  reading: 'A run is reading this board. Stop it, or let it finish, before opening a saved board.',
-  missing: 'That saved board is no longer in the boards folder.',
-  unreadable: 'That saved board could not be read, so it was left as it is.',
-  unavailable: 'Boards are kept for this session only, so there is no saved board to open or delete.',
-  severalSources: 'That saved board holds more than one source, and this version opens boards of one source.',
-  deleteUnreadable: 'That file could not be read as a board, so it was not deleted.',
-  deleteFailed: 'That saved board could not be deleted. The output log says why.'
-} as const;
 
 const OPEN_SUGGESTION = 'Choose another saved board, or read the chapter again.';
 
@@ -86,20 +91,16 @@ export interface LightboxBoardLibraryPorts {
     | 'hasSourceRequests'
     | 'isCurrentRequest'
     | 'markSaved'
+    | 'nameBoard'
     | 'refuseSource'
     | 'retainedForSource'
     | 'savable'
   >;
-  store: Pick<LightboxBoardStore, 'availability' | 'delete' | 'lastOnScreen' | 'list' | 'read' | 'rememberOnScreen' | 'save'>;
+  store: Pick<LightboxBoardStore, 'availability' | 'delete' | 'lastOnScreen' | 'list' | 'read' | 'rememberOnScreen' | 'replace' | 'save'>;
   runs: Pick<LightboxReadingRunner, 'activeRun'>;
   textSourceResolver: Pick<TextSourceResolver, 'resolve'>;
   workspace: Pick<Workspace, 'workspaceFolders'>;
   outputChannel: LogSink;
-}
-
-/** What an open or a delete left for the rail to say. */
-export interface LightboxBoardAction {
-  notice?: string;
 }
 
 /** The rail's shelf, naming the board it describes (`null`: none), that board's adoption, and when it was observed. */
@@ -113,12 +114,14 @@ export interface LightboxBoardShelfAnswer {
 
 export class LightboxBoardLibrary {
   private readonly shelfListeners: ListenerSet<[]>;
+  private readonly edits: LightboxBoardEdits;
   private readonly unsubscribe: () => void;
   private restoring?: Promise<void>;
   private observations = 0;
 
   constructor(private readonly ports: LightboxBoardLibraryPorts) {
     this.shelfListeners = new ListenerSet<[]>(`${LOG} Shelf listener`, ports.outputChannel);
+    this.edits = new LightboxBoardEdits({ ...ports, announce: () => this.shelfListeners.emit() });
     // Every adoption is the board on screen: the pointer follows it, and the rail hears it.
     this.unsubscribe = ports.service.addOutcomeListener((change) => {
       if (change.kind === 'board') {
@@ -172,6 +175,16 @@ export class LightboxBoardLibrary {
     return this.adopt(ticket, fileId, read, 'open');
   }
 
+  /** Name a board, rename it, or unname it (Slice 5A.1; `LightboxBoardEdits`). */
+  rename(request: LightboxBoardRename): Promise<LightboxBoardAction> {
+    return this.edits.rename(request);
+  }
+
+  /** A spark on `boardId` was set aside or brought back: its file takes that spark's mark in place (Slice 5A.1; `LightboxBoardEdits`). */
+  keepSpark(boardId: string, tileId: string): Promise<void> {
+    return this.edits.keepSpark(boardId, tileId);
+  }
+
   /** Delete a saved board's file; the board on screen, if it came from it, stays as it is. */
   async remove(fileId: string): Promise<LightboxBoardAction> {
     const result = await this.ports.store.delete(fileId);
@@ -181,6 +194,8 @@ export class LightboxBoardLibrary {
         return {};
       case 'missing':
         return {};
+      case 'busy':
+        return { notice: LIGHTBOX_BOARD_NOTICES.busy };
       case 'unreadable':
         return { notice: LIGHTBOX_BOARD_NOTICES.deleteUnreadable };
       case 'unavailable':
@@ -204,22 +219,26 @@ export class LightboxBoardLibrary {
     const snapshot = await this.snapshotState(savable);
     // The listing is the last thing awaited: answers leave in the store's order.
     const listing = await store.list(savable.board.source);
-    const heldIn = service.savable(savable.board.boardId)?.savedFileId;
+    const latest = service.savable(savable.board.boardId);
     const boards = listing.entries.map((entry): LightboxSavedBoardSummary => ({
       fileId: entry.fileId,
+      ...(entry.name !== undefined ? { name: entry.name } : {}),
       savedAt: entry.savedAt,
       wordCount: entry.wordCount,
       lenses: entry.lenses,
       staleLenses: entry.staleLenses,
       ...(entry.costUsd !== undefined ? { costUsd: entry.costUsd } : {}),
-      onScreen: entry.fileId === heldIn
+      ...(entry.models.length > 0 ? { models: entry.models } : {}),
+      onScreen: entry.fileId === latest?.savedFileId
     }));
+    const name = latest?.name;
     return {
       boardId: savable.board.boardId,
       adoption,
       observation,
       shelf: {
         availability: store.availability(),
+        ...(name !== undefined ? { name } : {}),
         boards,
         unreadable: listing.unreadable,
         ...(snapshot ? { snapshot } : {})
@@ -239,6 +258,12 @@ export class LightboxBoardLibrary {
     }
     const ticket = this.ports.service.beginSourceRequest();
     const read = await this.ports.store.read(fileId);
+    // A pointer to a file that is gone would be tried, and logged, every session: forget it (5A tech debt).
+    // `missing` is established absence, neither the file nor a claim on it (the store classifies every one); a file
+    // another window holds is `busy`, and one whose folder could not be read is `unreadable`: the pointer stays.
+    if (read.kind === 'missing' && this.ports.store.lastOnScreen() === fileId) {
+      this.ports.store.rememberOnScreen(undefined);
+    }
     await this.adopt(ticket, fileId, read, 'restore');
   }
 
@@ -259,7 +284,8 @@ export class LightboxBoardLibrary {
     if (read.kind !== 'board') {
       return fail(read.kind === 'missing' ? LIGHTBOX_BOARD_NOTICES.missing
         : read.kind === 'unavailable' ? LIGHTBOX_BOARD_NOTICES.unavailable
-          : LIGHTBOX_BOARD_NOTICES.unreadable);
+          : read.kind === 'busy' ? LIGHTBOX_BOARD_NOTICES.busy
+            : LIGHTBOX_BOARD_NOTICES.unreadable);
     }
     const held = lightboxBoardOfFile(read.file);
     if (held.kind !== 'board') {
@@ -276,7 +302,8 @@ export class LightboxBoardLibrary {
       fileId,
       savedAt: Date.parse(read.file.savedAt),
       dropped: read.dropped,
-      rereadPath: this.rereadPathOf(held.board)
+      rereadPath: this.rereadPathOf(held.board),
+      ...(held.name !== undefined ? { name: held.name } : {})
     }, ticket);
     if (adopted.kind === 'superseded') {
       return {};
@@ -317,7 +344,7 @@ export class LightboxBoardLibrary {
     const { board, text } = savable;
     let result: Awaited<ReturnType<LightboxBoardLibraryPorts['store']['save']>>;
     try {
-      result = await store.save({ board, text }, {
+      result = await store.save({ board, text, ...(savable.name !== undefined ? { name: savable.name } : {}) }, {
         onlyIfNewText,
         onCommitted: (fileId) => {
           service.markSaved(board.boardId, fileId);

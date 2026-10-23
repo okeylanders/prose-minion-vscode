@@ -30,24 +30,8 @@ export * from './results';
 export * from './streaming';
 export * from './configuredResources';
 export * from './workshop';
-export * from './lightbox';
-export * from './lightboxReadings';
-export * from './lightboxRuns';
-export * from './lightboxEstimate';
-export * from './lightboxStoryTiles';
-export * from './lightboxGravity';
-export * from './lightboxStale';
-export * from './lightboxHandoff';
-export * from './lightboxProjectFiles';
-export * from './lightboxContextFiles';
-export * from './lightboxCraftTiles';
-export * from './lightboxNumbers';
-export * from './lightboxPlotTiles';
-export * from './lightboxSections';
-export * from './lightboxOpinion';
-export * from './lightboxSteering';
-export * from './lightboxPassages';
-export * from './lightboxBoards';
+// The Lightbox domain, behind its own barrel (Slice 5A.1)
+export * from './lightboxBarrel';
 
 // Union types for message routing
 import {
@@ -248,45 +232,7 @@ import {
   WorkshopRemoveStandingWidgetMessage,
   WorkshopWidgetActionResultMessage
 } from './workshop';
-import {
-  LightboxRequestBoardMessage,
-  LightboxSetSourceMessage,
-  LightboxPickSourceFileMessage,
-  LightboxRefreshSourceMessage,
-  LightboxDismissRefusalMessage,
-  LightboxBoardMessage,
-  LightboxSourceRefusedMessage
-} from './lightbox';
-import {
-  LightboxSetLensesMessage,
-  LightboxRunEstimateMessage,
-  LightboxRunMessage,
-  LightboxCancelRunMessage,
-  LightboxRunProgressMessage,
-  LightboxGroupResultMessage
-} from './lightboxRuns';
-import {
-  LightboxAddContextFilesMessage,
-  LightboxRemoveContextFileMessage,
-  LightboxContextFilesMessage
-} from './lightboxContextFiles';
-import {
-  LightboxHandOffMessage,
-  LightboxHandOffResultMessage,
-  LightboxOpenWorkshopMessage,
-  LightboxWorkshopTrayMessage
-} from './lightboxHandoff';
-import { LightboxSetSparkDismissedMessage } from './lightboxStoryTiles';
-import {
-  LightboxAddProjectContextMessage,
-  LightboxChooseProjectSourceMessage,
-  LightboxProjectCatalogMessage,
-  LightboxProjectCatalogSearchResultsMessage,
-  LightboxRequestProjectCatalogMessage,
-  LightboxSearchProjectCatalogMessage
-} from './lightboxProjectFiles';
-import { LightboxPassageMessage, LightboxRequestPassageMessage } from './lightboxPassages';
-import { LightboxBoardsMessage, LightboxBoardsRequestMessage } from './lightboxBoards';
+import { LightboxExtensionToWebviewMessage, LightboxWebviewToExtensionMessage } from './lightboxBarrel';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -401,25 +347,7 @@ export type WebviewToExtensionMessage =
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
   | WorkshopRemoveStandingWidgetMessage
-  | LightboxRequestBoardMessage
-  | LightboxSetSourceMessage
-  | LightboxDismissRefusalMessage
-  | LightboxPickSourceFileMessage
-  | LightboxRefreshSourceMessage
-  | LightboxSetLensesMessage
-  | LightboxRunMessage
-  | LightboxCancelRunMessage
-  | LightboxAddContextFilesMessage
-  | LightboxRemoveContextFileMessage
-  | LightboxHandOffMessage
-  | LightboxSetSparkDismissedMessage
-  | LightboxOpenWorkshopMessage
-  | LightboxRequestProjectCatalogMessage
-  | LightboxSearchProjectCatalogMessage
-  | LightboxChooseProjectSourceMessage
-  | LightboxAddProjectContextMessage
-  | LightboxRequestPassageMessage
-  | LightboxBoardsRequestMessage;
+  | LightboxWebviewToExtensionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -482,15 +410,4 @@ export type ExtensionToWebviewMessage =
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
-  | LightboxBoardMessage
-  | LightboxSourceRefusedMessage
-  | LightboxRunEstimateMessage
-  | LightboxRunProgressMessage
-  | LightboxGroupResultMessage
-  | LightboxContextFilesMessage
-  | LightboxHandOffResultMessage
-  | LightboxWorkshopTrayMessage
-  | LightboxProjectCatalogMessage
-  | LightboxProjectCatalogSearchResultsMessage
-  | LightboxPassageMessage
-  | LightboxBoardsMessage;
+  | LightboxExtensionToWebviewMessage;

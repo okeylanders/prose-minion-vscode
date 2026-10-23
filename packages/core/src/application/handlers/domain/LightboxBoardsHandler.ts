@@ -13,6 +13,9 @@
  *   every Lightbox webview; this handler answers with the shelf of the board
  *   then on screen and any notice.
  * - `LIGHTBOX_DELETE_BOARD` deletes one, after the rail's confirm step.
+ * - `LIGHTBOX_RENAME_BOARD` (Slice 5A.1) names a saved file in place, or the
+ *   board on screen and the file that holds it; the name is the writer's
+ *   words, so it is never logged.
  *
  * Every answer is `LIGHTBOX_BOARDS`, echoing its request's id. From this
  * webview's first board message on, each adoption and each committed save
@@ -30,6 +33,7 @@ import {
   LightboxBoardsMessage,
   LightboxDeleteBoardMessage,
   LightboxOpenBoardMessage,
+  LightboxRenameBoardMessage,
   LightboxRequestBoardsMessage,
   MessageType
 } from '@messages';
@@ -43,7 +47,7 @@ const LOG = '[LightboxBoardsHandler]';
 /** A file id is a slug folder and a timestamped name; anything longer is not one of the host's. */
 const FILE_ID_CHARACTERS = 160;
 
-export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'describesCurrent' | 'open' | 'remove' | 'restore' | 'shelf'>;
+export type LightboxBoardLibraryPort = Pick<LightboxBoardLibrary, 'addShelfListener' | 'describesCurrent' | 'open' | 'remove' | 'rename' | 'restore' | 'shelf'>;
 type ShelfAnswer = Awaited<ReturnType<LightboxBoardLibraryPort['shelf']>>;
 /** An answer is built again at most this many times while its board keeps changing. */
 const ANSWER_ATTEMPTS = 3;
@@ -64,6 +68,7 @@ export class LightboxBoardsHandler {
     router.register(MessageType.LIGHTBOX_REQUEST_BOARDS, this.handleRequestBoards.bind(this));
     router.register(MessageType.LIGHTBOX_OPEN_BOARD, this.handleOpenBoard.bind(this));
     router.register(MessageType.LIGHTBOX_DELETE_BOARD, this.handleDeleteBoard.bind(this));
+    router.register(MessageType.LIGHTBOX_RENAME_BOARD, this.handleRenameBoard.bind(this));
   }
 
   /** Stop hearing saves; a disposed handler posts nothing more. */
@@ -112,6 +117,20 @@ export class LightboxBoardsHandler {
     }
     this.subscribe();
     const { notice } = await this.library.remove(fileId);
+    await this.answer(requestId, boardId, notice);
+  }
+
+  async handleRenameBoard(message: LightboxRenameBoardMessage): Promise<void> {
+    const payload = message.payload as Partial<LightboxRenameBoardMessage['payload']> | undefined;
+    const requestId = boundedName(payload?.requestId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
+    const boardId = boundedName(payload?.boardId, LIGHTBOX_PASSAGE_BOUNDS.nameCharacters);
+    const fileId = payload?.fileId === null ? null : boundedName(payload?.fileId, FILE_ID_CHARACTERS);
+    if (!requestId || !boardId || fileId === undefined || typeof payload?.name !== 'string') {
+      this.outputChannel.appendLine(`${LOG} A rename without its request id, board, file or name was ignored.`);
+      return;
+    }
+    this.subscribe();
+    const { notice } = await this.library.rename({ boardId, fileId, name: payload.name });
     await this.answer(requestId, boardId, notice);
   }
 

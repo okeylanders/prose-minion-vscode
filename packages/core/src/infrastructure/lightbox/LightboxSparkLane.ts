@@ -5,9 +5,13 @@
  * **The host owns dismissal.** A spark set aside is marked on the board's own
  * tile (`LightboxSparkTile.dismissedOrder`), in the retained board the
  * service keeps per source, so a hidden tab, a reloaded webview, or a switch
- * to another source and back all find it still set aside; and when Slice 5
- * saves boards, the mark is saved with its board. The webview keeps no
- * dismissal state of its own: it asks, and shows what the board says.
+ * to another source and back all find it still set aside; and the mark is
+ * saved with its board. From Slice 5A.1 (epic decision 35) it is saved at
+ * once: the file that holds the board takes that spark's mark in place, by
+ * this same function over the file's readings (`LightboxBoardEdits`), and a
+ * board no file holds yet takes its marks with its next save. The webview
+ * keeps no dismissal state of its own: it asks, and shows what the board
+ * says.
  *
  * - The order is the board's own: one more than the highest order on it, so
  *   Undo can bring back the latest first, from any webview, after a reload.

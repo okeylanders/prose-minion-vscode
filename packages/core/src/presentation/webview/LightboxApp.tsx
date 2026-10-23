@@ -24,8 +24,10 @@
  * by board id and hash, and never persisted.
  *
  * The rail's saved boards (Slice 5A) are `useLightboxBoards`'s: the shelf of
- * the board on screen, Open and Delete. An opened board arrives as any board
- * does; "Read the current text" is the source's own re-read.
+ * the board on screen, Open, Delete and (Slice 5A.1) Rename. An opened board
+ * arrives as any board does; "Read the current text" is the source's own
+ * re-read. The changed-file notice above the board is the rail's, from the
+ * same shelf (`lightboxChangedFileNotice`), so the two come and go together.
  *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
@@ -76,6 +78,7 @@ import {
 } from '@hooks/domain/lightbox/lightboxRunLine';
 import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import { lightboxBringView } from '@hooks/domain/lightbox/lightboxBring';
+import { lightboxChangedFileNotice } from '@hooks/domain/lightbox/lightboxBoardsView';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import { usePersistence } from '@hooks/usePersistence';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -242,6 +245,13 @@ export const LightboxApp: React.FC = () => {
   const chooseFromProject = React.useCallback(() => openProjectPicker('source'), [openProjectPicker]);
   const addContextFromProject = React.useCallback(() => openProjectPicker('context'), [openProjectPicker]);
 
+  // The rail's changed-file notice, shown above the board too: one shelf, so the two agree (Slice 5A.1).
+  const { shelf: savedShelf } = savedBoards;
+  const changedFile = React.useMemo(() => {
+    const view = lightboxChangedFileNotice(savedShelf);
+    return view && { view, rereading: lightbox.rereading, onReadCurrentText: lightbox.refreshSource };
+  }, [lightbox.refreshSource, lightbox.rereading, savedShelf]);
+
   const source = board?.source ?? null;
   const subtitle = source ? (
     <>
@@ -292,6 +302,7 @@ export const LightboxApp: React.FC = () => {
               rereading={lightbox.rereading}
               onOpen={savedBoards.openBoard}
               onDelete={savedBoards.deleteBoard}
+              onRename={savedBoards.renameBoard}
               onReadCurrentText={lightbox.refreshSource}
             />
             <LightboxContextList
@@ -323,6 +334,7 @@ export const LightboxApp: React.FC = () => {
             onRun={lightbox.run}
             onStop={lightbox.cancelRun}
             actions={tileActions}
+            changedFile={changedFile}
           />
         )
       }}

@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; `epic/lightbox` is at `3e6a156`. Slice 5 is split: 5A (saved boards) is built on `epic/lightbox-slice-5a-saved-boards`, awaiting review, and 5B (Compare) follows it.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) is built on `epic/lightbox-slice-5a1-board-names` (PR #164), with its review's corrections, awaiting re-review. 5B (Compare) follows it.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -63,12 +63,16 @@ carried into the Workshop.
 | 24 | Steering in the Opinion (2026-10-21) | The Opinion's digest holds each steering figure's **measured counts and its notes' stances, never a nudge** (Slice 4F) |
 | 25 | The Opinion's citation basis for saved boards (2026-10-21) | **The writer chose a data basis**: a citation's basis becomes a hash of the cited item's canonical data (its key, kind, quotes with their ¶ addresses, counts and figures), not of the digest's rendered wording, and saved boards carry an explicit basis/format version. **Slice 5 implements it as its first step**, after 4E and 4F merge; until then bases are computed as today ([tech debt](../../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md)) |
 | 26 | Being-verb contractions, and dialogue as voice (2026-10-21) | **"Yes, count them."** A contraction of be is a being verb: I'm, 're (you're, we're, they're), 's read as *is* (the tagger reads a verb, and it is not *has* before been, got, gotten or had), isn't, aren't, wasn't, weren't and ain't (not before been, got, gotten or had). Never 's as a possessive or *has*, let's, 'd, 'll or 've. **The writer then added three rules:** after a name or noun the tagger reads as a possessive, the next word decides ("Tobin's late", "everyone's here" are *is*; "the Rabbit's watch", "Alice's sister" stay possessive; "the dog's barking" is read as *is*); "had" makes 's *has* ("it's had"), and ain't too; 'tis, 'twas and 'twere count as one being verb each. One shared detector (`findBeingVerbs`) feeds the rate, the numbers row, standouts, the writer's average, steering totals and the quote check, so they agree. "He's gone" counts as *is*: the stated limit. **Dialogue is voice, for all three steering figures** (the coordinator's default; the writer may narrow it to being verbs only): a note whose instance stands in dialogue may be drawn, with its stance, and may name a pattern, but carries no nudge and no example, by a host rule applied fresh, on carry and at Bring. Dialogue is steering's own split, double quotation marks only (Slice 4G) |
-| 27 | Saving (2026-10-22) | *The coordinator's default; the writer may redirect.* **A board saves itself** when a reading run ends having landed a group (finished, or stopped with groups back), and when a board with no readings is built for a source no saved board of which holds that text. One file per save, `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`, never overwritten; no pruning; the writer deletes from the rail (Slice 5A; the folder's hash from PR #163 F-04) |
+| 27 | Saving (2026-10-22) | *The coordinator's default; the writer confirmed it for stopped and partial runs (decision 36).* **A board saves itself** when a reading run ends having landed a group (finished, or stopped with groups back), and when a board with no readings is built for a source no saved board of which holds that text. One file per save, `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`, never overwritten; no pruning; the writer deletes from the rail (Slice 5A; the folder's hash from PR #163 F-04) |
 | 28 | Where boards save (2026-10-22) | *Default.* **The Lexical Gravity library's rule**: a single-folder workspace saves; no folder, or several, keeps boards for the session only, said plainly in the rail (Slice 5A) |
-| 29 | Opening a saved board (2026-10-22) | *Default.* **A snapshot**: it shows exactly as saved, against its own saved text and rules; nothing is measured again. When the file's text now differs (content hash), a notice offers **Read the current text**, which builds a board from the file and carries the readings, marked stale. Bring from such a snapshot is refused with a reason that points there (Slice 5A) |
+| 29 | Opening a saved board (2026-10-22) | *Default; the notice also shows above the board (decision 34).* **A snapshot**: it shows exactly as saved, against its own saved text and rules; nothing is measured again. When the file's text now differs (content hash), a notice offers **Read the current text**, which builds a board from the file and carries the readings, marked stale. Bring from such a snapshot is refused with a reason that points there (Slice 5A) |
 | 30 | Reload (2026-10-22) | *Default.* **The last board on screen comes back**: a window reload, or reopening the tab after one, reopens it from the store instead of losing its readings. Session-only mode keeps the old behaviour; the ADR's "readings are lost on reload" consequence is amended (Slice 5A) |
-| 31 | The Boards rail (2026-10-22) | *Default.* The open source's saved boards, newest first: when, the lenses read, an approximate cost when recorded, and which is on screen. **Open**, and **Delete** with a confirm step; keyboard reachable; plain CSS on the Chromium 114 floor (Slice 5A). Every board is listed; past twenty the rail says how many and offers **Show older** (PR #163 F-04) |
+| 31 | The Boards rail (2026-10-22) | *Default; names and models added by decision 33.* The open source's saved boards, newest first: when, the lenses read, an approximate cost when recorded, and which is on screen. **Open**, and **Delete** with a confirm step; keyboard reachable; plain CSS on the Chromium 114 floor (Slice 5A). Every board is listed; past twenty the rail says how many and offers **Show older** (PR #163 F-04) |
 | 32 | What a saved board records (2026-10-22) | The board whole (every tile kind, every measured layer, readings with what was withheld and their stale marks), its **sources as a list, each with its text**, and **the ids of the rules that measured it**: paragraphs, sentences (ADR 2026-10-21), dialogue, being verbs (decision 26) and the Opinion's citation basis (decision 25). Not saved: the Opinion view showing, or any other webview preference. Compare is **Slice 5B**, a later PR, and needs no format change (ADR D12 addendum, 2026-10-22). **The writer-data rule (2026-10-22): a saved board only ever loses standing, never the board.** A file whose Opinion was cited under another basis rule opens whole: its Opinion is stale with the host's reason ("Saved under an earlier citation rule; read the Opinion again to bring it current."), its Bring is refused with it, and every other kind is as saved. Reading the Opinion again cites it under this build's rule. |
+| 33 | Board names (2026-10-22) | **The writer's call: name saved boards**, to record the model and the chapter version (a name such as "3.2.1 - after the cut - model B"). Saves stay automatic and silent; a name is optional, and can be added or changed at any time. **A name belongs to the board**: its retained id and that board's saves. Naming the board on screen, or the row that holds it, names the retained board, so its later automatic saves carry the name; "Read the current text" builds a new board, which starts unnamed; naming a row that is not on screen changes only that file; Open and restore bring a name back. **A rename rewrites that file in place**, atomically, and never a file the store cannot read; the last rename wins. Format 1 gains an optional `board.name` (still `formatVersion: 1`: format 1 has not shipped): trimmed, one line, at most 120 characters, empty for unnamed; a name in a hand-edited file that does not read is left out and counted, and the board opens whole (decision 32's writer-data rule). Every row also names the models that read it, from the groups' provider-reported model. Session-only, the name lasts as long as the session, and the rail says so. A name is writer text: never logged (Slice 5A.1) |
+| 34 | The changed-file notice above the board (2026-10-22) | **Writer: yes.** The notice that a snapshot's file now holds another text, with **Read the current text**, also shows above the board itself, not only at the top of the Boards rail. One source of truth: both come from the same shelf, so they appear and go together, under the same ordering guards (PR #163 F-02, F-05) (Slice 5A.1) |
+| 35 | A spark set aside saves at once (2026-10-22) | **Writer: yes.** "Not for me", and its Undo, update the file that holds the board on screen in place, through the rename's rewrite: no new timestamped file, so no new row. A board no file holds yet, or one kept for the session only, takes the mark with its next save, as before (Slice 5A.1; the 5A tech debt closes) |
+| 36 | Stopped and partial runs keep saving (2026-10-22) | **Writer: yes**, confirming decision 27's default: a run that ends with at least one group back saves, whether it finished, was stopped, or had a group fail. No code change (Slice 5A.1) |
 
 ## Slices
 
@@ -86,7 +90,8 @@ carried into the Workshop.
 | 4E | [Reading aids in the inspector](slice-4e-inspector-aids.md) | Measured only: a pinned paragraph's text, the sentences a counted item stands in, and the hapax list, with counts that agree by construction; plural count strings | Merged (PR #159) |
 | 4F | [Craft steering (Group G)](slice-4f-craft-steering.md) | Being verbs, adverbs and intensifiers measured by construction, then read per figure with instance notes (Earns · Leans · Compensates) and nudges that name the craft move; the numbers lens stops reading those three | Merged (PR #160) |
 | 4G | [Being-verb contractions and dialogue as voice](slice-4g-being-contractions.md) | Contractions of be counted by the one shared detector (decision 26); craft steering's notes on dialogue keep their stance but carry no nudge or example, by a host rule fresh, on carry and at Bring | Merged (PR #162, at `3e6a156`) |
-| 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Built, awaiting review (`epic/lightbox-slice-5a-saved-boards`) |
+| 5A | [Saved boards](slice-5-saved-boards-and-compare.md#slice-5a-saved-boards) | The Opinion's data basis first (decision 25); `prose-minion/boards/` files in format 1 with their sources, text and rule ids; saved after a run and on a source's first measured board; the Boards rail (open, delete); open as a snapshot with the changed-file notice; the last board back after a reload (decisions 27–32) | Merged (PR #163, at `3e5c3a1`) |
+| 5A.1 | [Board names and the writer's calls](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls) | Optional board names in format 1, renamed in place from the rail; the models that read each board; the changed-file notice above the board; a spark set aside saved at once; stopped and partial runs keep saving (decisions 33–36) | PR #164: review corrections made, awaiting re-review (`epic/lightbox-slice-5a1-board-names`) |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source: measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1470,3 +1475,87 @@ lens, and adds its items to 4D's digest.
       snapshots; lint identical per file and rule; typecheck and build pass;
       `webview.js` `acfc8891…`, `extension.js` `2738d16b…`;
       evidence states rebuilt, 27 captures, `errors.txt` empty.
+
+- **2026-10-22. Slice 5A.1 (board names and the writer's calls) is built**
+  on `epic/lightbox-slice-5a1-board-names`, from `epic/lightbox` at
+  `3e5c3a1` (5A merged, PR #163), awaiting review. The writer made four
+  calls on 5A (decisions 33–36); see the slice's
+  [section](slice-5-saved-boards-and-compare.md#slice-5a1-board-names-and-the-writers-calls)
+  for what the writer may want to redirect.
+  - **The barrel first,** in its own commit with no behaviour change:
+    `messages/lightboxBarrel.ts` holds the Lightbox re-exports and its parts
+    of the routing unions; `index.ts` went from 496 lines to 413.
+  - **Names (decision 33):** an optional `board.name` in format 1 (still
+    format 1), one rule for the codec, the route and the rail (trimmed, one
+    line, at most 120 characters); a name that does not read is left out
+    and counted, never the board; `board-v1.json` unchanged beside
+    `board-v1-named.json`. `LIGHTBOX_RENAME_BOARD` names the board on screen
+    and the file that holds it, or one other file; each row names the models
+    that read it; the head names the board on screen, with Name or Rename,
+    edited in place.
+  - **Rewrites in place:** the store claims a file (an atomic rename that
+    never overwrites) before it replaces it, so a rewrite never brings back
+    a board another window deleted; the last rewrite to commit wins; a
+    claimed file is busy; a claim left behind is put back.
+  - **The notice above the board (decision 34):** the rail's own, from the
+    same shelf, so the two come and go together.
+  - **A spark set aside saves at once (decision 35),** in place, with no
+    new file. **Stopped and partial runs keep saving (decision 36):** no
+    change.
+  - **Extras from 5A's tech debt, both done:** focus after a confirmed
+    delete, and a missing restore's pointer; both notes archived.
+  - **Verification**, after `npm ci` into a real `node_modules`: 479
+    suites / 6,617 tests / 59 snapshots (474 / 6,541 / 59 at `3e5c3a1`);
+    lint 0 errors / 1,133 warnings, identical per file and rule; typecheck
+    and build with `verify:bundle` pass; `webview.js` SHA-256 `427e81f8…`
+    and `extension.js` `54c130f5…`, the same on a second build; visual
+    evidence in `docs/pr-reviews/evidence/lightbox-slice-5a1-visual/`, 18
+    captures, `errors.txt` empty, 51 errors against the base bundle. No
+    live or billable call.
+  - **PR #164's review** (request changes: four P2, two P3), all six
+    fixed. Each of the review's sequences fails on `ada5717`, and each of
+    its controls passes there; see the
+    [author response](../../../docs/pr-reviews/pr-164-lightbox-board-names-review.md#author-response-2026-10-22).
+    - **F-01:** claims are live or abandoned by age. A claim's name records
+      when it was taken; younger than the 30-second lease, no other window
+      touches it, and the file is busy. Abandoned claims are put back when
+      the saved name is empty and removed beside a standing file. A delete
+      claims the file and retires every earlier version, so a delete is
+      never undone. A rewrite checks its claim before committing. The one
+      race left (a stall past the lease, with another window's put-back
+      and delete inside its last rename) is recorded in the slice notes.
+    - **F-02:** the store's read settles a gone file's claims; a restore
+      keeps its pointer while another window holds the file, and restores
+      a board left mid-rewrite.
+    - **F-03:** a spark's file write is that spark's alone (the order after
+      the file's highest), so two windows' marks on different sparks stand.
+    - **F-04:** the name field sends only an edit the writer made; an
+      answer that lands while it is open shows in it. **N-01:** a refused
+      name on leaving keeps the field open with its reason. **N-02:** the
+      model line counts whole names.
+    - **The 500 px clipping** the review noted predates this slice (it
+      clipped at `3e5c3a1`); a press's button now wraps its cost, and the
+      evidence harness fails on any clipped button.
+    - **Verification:** 481 suites / 6,643 tests / 59 snapshots; lint
+      identical per file and rule; typecheck and build with
+      `verify:bundle` pass, twice; `webview.js` `66c1f405…`,
+      `extension.js` `b72fa490…`; evidence re-rendered, 18 captures,
+      `errors.txt` empty, states byte-identical. No live or billable call.
+  - **PR #164's re-review** (2026-10-23: F-03, F-04, N-01 and N-02
+    resolved; F-01 and F-02 open on narrower paths), both fixed in
+    `bad728eb`. Each of the five witnesses fails on `17e4cd7`, and the
+    controls pass there.
+    - **F-01:** a delete is acknowledged only once a second look at the
+      folder finds no earlier version left. A leftover that would not go,
+      or a folder it could not read, puts the board back as it was and
+      the delete says it failed. A folder read error is never an empty
+      folder.
+    - **F-02:** every `missing` a read returns is classified. A board put
+      back and claimed again before the reread is busy, an unreadable
+      folder is unreadable, and a restore forgets its pointer only on
+      established absence.
+    - **Verification:** 482 suites / 6,653 tests / 59 snapshots; lint
+      identical per file and rule; typecheck and build with
+      `verify:bundle` pass, twice; `webview.js` `66c1f405…` (unchanged),
+      `extension.js` `e9c04557…`; the evidence states, rebuilt, are
+      byte-identical. No live or billable call.

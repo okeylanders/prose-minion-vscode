@@ -21,7 +21,12 @@
  * forgets which board the held shelf answered for, so coming back to that
  * board asks again (PR #163 N-01).
  *
- * Nothing persists: the files are the host's.
+ * Rename (Slice 5A.1) posts `LIGHTBOX_RENAME_BOARD`, naming a saved file or
+ * (`fileId: null`) the board on screen; the answer is the shelf, taken as
+ * any request's is, and a rename forgets the held shelf as a Delete does.
+ *
+ * Nothing persists: the files are the host's, and a board's name, the
+ * writer's words, lives only in the shelf the host sent.
  */
 
 import * as React from 'react';
@@ -44,6 +49,8 @@ export interface LightboxBoardsActions {
   openBoard: (fileId: string) => void;
   /** Delete a saved board's file; the rail asks the writer to confirm first. */
   deleteBoard: (fileId: string) => void;
+  /** Name a saved board's file, or (`null`) the board on screen; an empty name unnames it (Slice 5A.1). */
+  renameBoard: (fileId: string | null, name: string) => void;
 }
 
 /** Nothing: the saved boards are files the host keeps. */
@@ -154,6 +161,14 @@ export function useLightboxBoards({ board }: UseLightboxBoardsArgs): UseLightbox
     }
   }, [boardId, send]);
 
+  const renameBoard = React.useCallback((fileId: string | null, name: string) => {
+    if (boardId !== null) {
+      // As for a Delete: the held shelf shows the old name until the answer lands, so coming back asks again.
+      answeredFor.current = undefined;
+      send(MessageType.LIGHTBOX_RENAME_BOARD, { boardId, fileId, name });
+    }
+  }, [boardId, send]);
+
   const shelf = answer && answer.boardId === boardId ? answer.shelf : null;
-  return { shelf, opening, handleBoards, openBoard, deleteBoard, persistedState: NO_PERSISTENCE };
+  return { shelf, opening, handleBoards, openBoard, deleteBoard, renameBoard, persistedState: NO_PERSISTENCE };
 }

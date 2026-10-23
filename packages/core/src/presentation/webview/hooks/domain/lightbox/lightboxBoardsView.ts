@@ -4,7 +4,15 @@
  * approximate cost and whether it is the board on screen; where boards are
  * kept; and, for a board opened from a file, whether that file still holds
  * its text. Pure: the host's shelf in, words out, so every sentence is tested
- * without a webview. Nothing here carries the writer's text.
+ * without a webview. Nothing here carries the source's text.
+ *
+ * Slice 5A.1 (epic decisions 33 and 34): a named board shows its name first,
+ * with its date and time under it; every row names the models that read it,
+ * shortened (`lightboxModelsNote`); the section's head names the board on
+ * screen, or says it is unnamed; and the changed-file notice the rail shows
+ * is the one the board shows above itself (`lightboxChangedFileNotice`),
+ * from the same shelf. A name is the writer's words, held only as the host's
+ * shelf holds it.
  *
  * The host lists every saved board of the source. The rail shows the newest
  * page of them and says so when there are more: "Showing the newest 20 of
@@ -17,7 +25,9 @@ import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 
 export interface LightboxSavedBoardRow {
   fileId: string;
-  /** The date and time it was saved, as the rail shows it. */
+  /** The writer's name for the board, its first line when it has one (Slice 5A.1). */
+  name?: string;
+  /** The date and time it was saved, as the rail shows it: the first line, or the second under a name. */
   when: string;
   /** The same moment for `<time dateTime>`. */
   dateTime: string;
@@ -27,7 +37,24 @@ export interface LightboxSavedBoardRow {
   stale?: string;
   /** Its recorded cost, approximately, when a call recorded one. */
   cost?: string;
+  /** The models that read it, shortened ("Read by model-v1"); absent for a board no model read. */
+  models?: string;
+  /** Their ids as the provider reported them, for the line's tooltip. */
+  modelIds?: string;
   onScreen: boolean;
+}
+
+/** The section's head: the board on screen's name, or that it has none, and what naming it does (Slice 5A.1). */
+export interface LightboxBoardNameView {
+  /** Its name, or "Unnamed board". */
+  label: string;
+  named: boolean;
+  /** The name as it stands, for the field to start from; empty when unnamed. */
+  name: string;
+  /** "Name" or "Rename". */
+  action: 'Name' | 'Rename';
+  /** When the name lives only as long as the session, or waits for the board's next save. */
+  note?: string;
 }
 
 export interface LightboxSnapshotView {
@@ -65,6 +92,8 @@ export interface LightboxBoardsView {
   notice?: string;
   snapshot?: LightboxSnapshotView;
   caption?: string;
+  /** Present once the host has answered for the board on screen. */
+  board?: LightboxBoardNameView;
 }
 
 export interface LightboxBoardsViewOptions {
@@ -75,6 +104,8 @@ export interface LightboxBoardsViewOptions {
 }
 
 const EVERY_LENS = LIGHTBOX_LENSES.length;
+/** A shortened model name is at most this long. */
+const MODEL_CHARACTERS = 32;
 
 /** The Boards section for the board on screen (`hasBoard`), from the host's shelf for it (`null` until it answers). */
 export function buildLightboxBoardsView(
@@ -95,6 +126,7 @@ export function buildLightboxBoardsView(
   const rows = shelf.boards.slice(0, shown).map((board) => rowOf(board, when));
   const view: LightboxBoardsView = {
     status: shelf.availability.kind === 'session' ? 'this session' : `${total} saved`,
+    board: nameViewOf(shelf),
     rows,
     ...(rows.length < total ? {
       page: {
@@ -125,14 +157,73 @@ export function buildLightboxBoardsView(
   return view;
 }
 
+/**
+ * The changed-file notice the board shows above itself (Slice 5A.1, epic
+ * decision 34): exactly the rail's snapshot note, from the same shelf, and
+ * only while it offers "Read the current text". So the two appear and go
+ * together, and the board's notice obeys every ordering guard the shelf does.
+ */
+export function lightboxChangedFileNotice(
+  shelf: LightboxBoardShelf | null,
+  options: Pick<LightboxBoardsViewOptions, 'timeZone'> = {}
+): LightboxSnapshotView | undefined {
+  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone));
+  return snapshot?.readCurrentText ? snapshot : undefined;
+}
+
+/**
+ * The models that read a board, once each and shortened: "Read by model-v1",
+ * "… and model-b", "… and 2 more". Each is counted by its whole name without
+ * the provider before it is cut for show, so two models whose names begin
+ * alike still count as two (PR #164 N-02).
+ */
+export function lightboxModelsNote(models: readonly string[] | undefined): string | undefined {
+  const short = [...new Set((models ?? []).map(modelName))].map(shortModelName);
+  if (short.length === 0) {
+    return undefined;
+  }
+  return short.length <= 2
+    ? `Read by ${short.join(' and ')}`
+    : `Read by ${short[0]}, ${short[1]} and ${short.length - 2} more`;
+}
+
+/** A model id without its provider: "provider/model-v1" → "model-v1". */
+function modelName(model: string): string {
+  return model.slice(model.lastIndexOf('/') + 1) || model;
+}
+
+/** A model's name as the row shows it: at most 32 characters. */
+function shortModelName(name: string): string {
+  return name.length > MODEL_CHARACTERS ? `${name.slice(0, MODEL_CHARACTERS - 1)}…` : name;
+}
+
+function nameViewOf(shelf: LightboxBoardShelf): LightboxBoardNameView {
+  const named = shelf.name !== undefined;
+  const view: LightboxBoardNameView = {
+    label: shelf.name ?? 'Unnamed board',
+    named,
+    name: shelf.name ?? '',
+    action: named ? 'Rename' : 'Name'
+  };
+  if (shelf.availability.kind === 'session') {
+    view.note = 'A name lasts as long as this session, as the board does.';
+  } else if (named && !shelf.boards.some((board) => board.onScreen)) {
+    view.note = 'Not in a saved file yet: the name is saved with this board\'s next save.';
+  }
+  return view;
+}
+
 function rowOf(board: LightboxSavedBoardSummary, when: Intl.DateTimeFormat): LightboxSavedBoardRow {
+  const models = lightboxModelsNote(board.models);
   return {
     fileId: board.fileId,
+    ...(board.name !== undefined ? { name: board.name } : {}),
     when: when.format(board.savedAt),
     dateTime: new Date(board.savedAt).toISOString(),
     lenses: lensesNote(board.lenses.length),
     ...(board.staleLenses.length > 0 ? { stale: `${board.staleLenses.length} stale` } : {}),
     ...(board.costUsd !== undefined ? { cost: costNote(board.costUsd) } : {}),
+    ...(models ? { models, modelIds: (board.models ?? []).join(', ') } : {}),
     onScreen: board.onScreen
   };
 }

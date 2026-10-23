@@ -1022,6 +1022,8 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxPassages.ts',
   // Slice 5A: the rail's saved boards, their shelf and its requests.
   'shared/types/messages/lightboxBoards.ts',
+  // Slice 5A.1: the Lightbox message domain's own barrel, re-exported by `messages/index.ts`.
+  'shared/types/messages/lightboxBarrel.ts',
   'shared/constants/lightboxPassages.ts',
   'shared/constants/lightbox.ts',
   'shared/constants/lightboxPlot.ts',
@@ -1029,6 +1031,8 @@ const LIGHTBOX_MODULES = [
   'shared/constants/lightboxOpinionItems.ts',
   // Slice 5A: the Opinion's citation basis, the cited item's canonical data (epic decision 25).
   'shared/constants/lightboxOpinionBasis.ts',
+  // Slice 5A.1: a saved board's name, one rule for the codec, the route and the rail (epic decision 33).
+  'shared/constants/lightboxBoardName.ts',
   'shared/constants/lightboxSteering.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
@@ -1116,9 +1120,16 @@ const LIGHTBOX_MODULES = [
   'infrastructure/storage/LightboxBoardStore.ts',
   // PR #163 F-04: one source's folder read whole, and each file's summary.
   'infrastructure/storage/LightboxBoardFiles.ts',
+  // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
+  'infrastructure/storage/LightboxBoardRewrite.ts',
+  // PR #164 F-01, F-02: claims live or abandoned, settled, and a delete's leftovers retired.
+  'infrastructure/storage/LightboxBoardClaims.ts',
   // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
   'infrastructure/lightbox/LightboxRetainedBoards.ts',
   'application/services/lightbox/LightboxBoardLibrary.ts',
+  // Slice 5A.1: names and spark marks in place, and the rail's notices.
+  'application/services/lightbox/LightboxBoardEdits.ts',
+  'application/services/lightbox/LightboxBoardNotices.ts',
   'application/handlers/domain/LightboxBoardsHandler.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'application/handlers/domain/LightboxHandoffRoute.ts',
@@ -1156,6 +1167,8 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   'presentation/webview/components/lightbox/LightboxBoardsPanel.tsx',
+  // Slice 5A.1: naming a board in place, in the rail.
+  'presentation/webview/components/lightbox/LightboxBoardNameField.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
@@ -1263,7 +1276,7 @@ const LIGHTBOX_ROUTE_OWNERS = [
   {
     // Slice 5A: the rail's saved boards
     owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
-    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD']
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD']
   }
 ] as const;
 const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
@@ -1925,6 +1938,11 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxBoardStore\s*\(/)).toEqual([]);
     // Slice 5A: one library hears every board and restores once per session.
     expect(constructions(/\bnew\s+LightboxBoardLibrary\s*\(/)).toEqual([]);
+    // Slice 5A.1: the library's edits and the store's rewrites are their owners' own.
+    expect(constructions(/\bnew\s+LightboxBoardEdits\s*\(/)).toEqual(['application/services/lightbox/LightboxBoardLibrary.ts']);
+    expect(constructions(/\bnew\s+LightboxBoardRewrites\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
+    // PR #164 F-01: one store's claims settle its folder; nothing else takes or puts back a claim.
+    expect(constructions(/\bnew\s+LightboxBoardClaims\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
     expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);

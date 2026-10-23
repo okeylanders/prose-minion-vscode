@@ -8,7 +8,10 @@
  * earlier adoption's shelf over a later one's for the same board (PR #163
  * F-02), nor, within one adoption, a shelf observed before the one held
  * (PR #163 F-05); a Delete makes the held shelf ask again (PR #163 N-01); Open and
- * Delete name the host's file id; nothing persists.
+ * Delete name the host's file id; nothing persists. Rename (Slice 5A.1)
+ * names a file or the board on screen, its answer is taken as any request's
+ * is, and it makes the held shelf ask again as a Delete does; a name is held
+ * only in the shelf, never persisted.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -199,5 +202,56 @@ describe('useLightboxBoards', () => {
       type: MessageType.LIGHTBOX_DELETE_BOARD,
       payload: { requestId: expect.stringMatching(/-3$/), boardId: 'board-6', fileId: FILE }
     }));
+  });
+
+  describe('Rename (Slice 5A.1)', () => {
+    const NAME = '3.2.1 - after the cut - model B';
+
+    it('names a file, or the board on screen, by the host\'s ids, and takes the answer with the name', () => {
+      const { result } = mount(makeBoard(6));
+      act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(2))));
+
+      act(() => result.current.renameBoard(FILE, NAME));
+      act(() => result.current.renameBoard(null, ''));
+      expect(sent().slice(1)).toEqual([
+        expect.objectContaining({
+          type: MessageType.LIGHTBOX_RENAME_BOARD,
+          source: 'webview.lightbox.boards',
+          payload: { requestId: expect.stringMatching(/-2$/), boardId: 'board-6', fileId: FILE, name: NAME }
+        }),
+        expect.objectContaining({
+          type: MessageType.LIGHTBOX_RENAME_BOARD,
+          payload: { requestId: expect.stringMatching(/-3$/), boardId: 'board-6', fileId: null, name: '' }
+        })
+      ]);
+
+      // The newer request's answer is the one taken.
+      const named: LightboxBoardShelf = { ...shelfOf(2), name: NAME, boards: shelfOf(2).boards.map((board) => ({ ...board, name: NAME })) };
+      act(() => result.current.handleBoards(reply(sent()[1].payload.requestId, 'board-6', named)));
+      expect(result.current.shelf).toEqual(shelfOf(2));
+      act(() => result.current.handleBoards(reply(sent()[2].payload.requestId, 'board-6', named)));
+      expect(result.current.shelf).toEqual(named);
+      expect(result.current.persistedState).toEqual({});
+    });
+
+    it('asks again on return to a board whose held shelf a rename made stale', () => {
+      const { result, rerender } = mount(makeBoard(6));
+      act(() => result.current.handleBoards(reply(sent()[0].payload.requestId, 'board-6', shelfOf(2))));
+      act(() => result.current.renameBoard(null, NAME));
+      rerender({ board: makeBoard(7) });
+      rerender({ board: makeBoard(6) });
+      expect(sent().map((message) => [message.type, message.payload.boardId])).toEqual([
+        [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6'],
+        [MessageType.LIGHTBOX_RENAME_BOARD, 'board-6'],
+        [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-7'],
+        [MessageType.LIGHTBOX_REQUEST_BOARDS, 'board-6']
+      ]);
+    });
+
+    it('sends nothing with no board on screen', () => {
+      const { result } = mount(null);
+      act(() => result.current.renameBoard(null, NAME));
+      expect(sent().map((message) => message.type)).toEqual([MessageType.LIGHTBOX_REQUEST_BOARDS]);
+    });
   });
 });

@@ -1,7 +1,7 @@
 # Several Lightbox Modules Sit Just Under the 500-Line Limit
 
 **Date Identified**: 2026-10-21 (Lightbox Slice 4F)
-**Reviewed**: 2026-10-22 (Lightbox Slice 5A, and its PR #163 corrections)
+**Reviewed**: 2026-10-22 (Lightbox Slice 5A, its PR #163 corrections, and Slice 5A.1)
 **Status**: Identified
 **Priority**: Medium
 **Estimated Effort**: Small to Medium (one split per module, each behind its existing tests)
@@ -60,6 +60,28 @@ its folder naming, reads, listings and summaries moved to
 generation added `adoptionOf` to `LightboxService.ts` (484, +9) and one
 line to `LightboxReadingHandler.ts` (484, +1); `LightboxBoardLibrary.ts`
 is 365. The barrel's unions are still to move before 5B.
+
+**After Slice 5A.1 (2026-10-22).** The barrel's split is done, first and in
+its own commit: the Lightbox re-exports and its parts of the two routing
+unions moved to `messages/lightboxBarrel.ts` (105 lines), and `index.ts` is
+413 (was 496). The store's rewrites in place went to their own module,
+`LightboxBoardRewrite.ts` (267), and the library's names and spark marks to
+`LightboxBoardEdits.ts`, so `LightboxBoardStore.ts` is 394 and
+`LightboxBoardLibrary.ts` 397. Board names added nine lines to
+`LightboxService.ts` (491) and the spark's save four to
+`LightboxReadingHandler.ts` (488). Still nearest the limit:
+
+| Module | Lines |
+|---|---|
+| `packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts` | 498 (unchanged) |
+| `packages/core/src/infrastructure/lightbox/LightboxService.ts` | 491 |
+| `packages/core/src/application/handlers/domain/LightboxReadingHandler.ts` | 488 |
+| `packages/core/src/application/handlers/domain/LightboxHandler.ts` | 486 (unchanged) |
+| `packages/core/src/infrastructure/lightbox/LightboxReadingTiles.ts` | 478 (unchanged) |
+
+Before 5B adds to the service or the reading handler, move the service's
+rebuild-and-carry step out (the recommendation below), and the reading
+handler's Spark lane and context routes.
 
 ## Recommendation
 

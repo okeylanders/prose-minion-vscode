@@ -6,7 +6,7 @@
  *
  * ```jsonc
  * { "formatVersion": 1, "kind": "lightbox-board", "savedAt": "<ISO>",
- *   "board": { "boardId", "rules", "sources": [ { …LightboxSource, "text" } ],
+ *   "board": { "boardId", "name"?, "rules", "sources": [ { …LightboxSource, "text" } ],
  *              "paragraphs": [ { "source": 0, "index", "start", "end", … } ],
  *              "ribbon", "measured", "readings" } }
  * ```
@@ -20,6 +20,12 @@
  *   its source and its offsets into that source's text. A source's
  *   paragraphs are the run of board paragraphs that name it. Each source's
  *   text is checked against its content hash.
+ * - **The name (Slice 5A.1).** Optional, the writer's own words for the
+ *   board (`lightboxBoardName`): absent, the board is unnamed. A name is not
+ *   a measurement, so no rule id moves with it. One that is not a name as a
+ *   board saves one (a hand-edited file) is left out and counted, as a
+ *   dropped tile is: the board opens whole, unnamed (decision 32's
+ *   writer-data rule: a board is never lost over its name).
  * - **Rule ids.** `board.rules` names the rules that measured it. Any
  *   well-formed id is read and kept: a board from another build keeps its
  *   ids, for Slice 5B to label. That includes the Opinion's citation basis:
@@ -55,6 +61,7 @@ import type {
   TokenUsage
 } from '@messages';
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
+import { isSavedLightboxBoardName } from '@shared/constants/lightboxBoardName';
 import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import {
   Decoder,
@@ -64,6 +71,7 @@ import {
   droppable,
   finite,
   flag,
+  leftOutIfInvalid,
   list,
   literal,
   never,
@@ -96,6 +104,8 @@ export interface LightboxSavedParagraph extends LightboxParagraphMetric {
 
 export interface LightboxSavedBoard {
   boardId: string;
+  /** The writer's name for the board (Slice 5A.1); absent, it is unnamed. */
+  name?: string;
   rules: LightboxMeasureRules;
   sources: LightboxSavedSource[];
   paragraphs: LightboxSavedParagraph[];
@@ -162,6 +172,15 @@ const ruleId: Decoder<string> = (value, at, context) => {
   return read;
 };
 
+/** A board's name, exactly as a board saves one (`lightboxBoardName`). */
+const boardName: Decoder<string> = (value, at, context) => {
+  const read = text(value, at, context);
+  if (!isSavedLightboxBoardName(read)) {
+    throw new LightboxBoardShapeError(at, 'a board name');
+  }
+  return read;
+};
+
 const lens = oneOf(LIGHTBOX_BOARD_LENSES);
 const tileKind = oneOf(LIGHTBOX_BOARD_TILE_KINDS);
 
@@ -219,6 +238,8 @@ const fileDecoder: Decoder<LightboxBoardFile> = object<LightboxBoardFile>({
   savedAt: text,
   board: object<LightboxSavedBoard>({
     boardId: bounded(200),
+    // Writer data: a name that does not read is left out and counted, never the board.
+    name: leftOutIfInvalid(boardName),
     rules: object<LightboxMeasureRules>({ paragraphs: ruleId, sentences: ruleId, dialogue: ruleId, beingVerbs: ruleId, opinionBasis: ruleId }),
     sources: list(savedSource),
     paragraphs: list(object<LightboxSavedParagraph>({ source: whole, ...LIGHTBOX_PARAGRAPH_METRIC_SHAPE })),
@@ -299,12 +320,12 @@ function integrityFault(board: LightboxSavedBoard): { reason: LightboxBoardInval
 
 /**
  * A board and the text it was measured from, as format 1 writes them: one
- * source, every paragraph in it. JSON with two-space indentation and a
- * closing newline.
+ * source, every paragraph in it, and the board's name when it has one.
+ * JSON with two-space indentation and a closing newline.
  */
-export function encodeLightboxBoardFile(input: { board: LightboxBoard; text: string; savedAt: Date }): string {
+export function encodeLightboxBoardFile(input: { board: LightboxBoard; text: string; savedAt: Date; name?: string }): string {
   const { board, text: sourceText } = input;
-  const file: LightboxBoardFile = {
+  return writeLightboxBoardFile(namedLightboxBoardFile({
     formatVersion: LIGHTBOX_BOARD_FORMAT_VERSION,
     kind: LIGHTBOX_BOARD_FILE_KIND,
     savedAt: input.savedAt.toISOString(),
@@ -317,12 +338,22 @@ export function encodeLightboxBoardFile(input: { board: LightboxBoard; text: str
       measured: board.measured,
       readings: board.readings
     }
-  };
+  }, input.name));
+}
+
+/** A saved file as format 1 writes it, read or changed (a board renamed in place, Slice 5A.1). */
+export function writeLightboxBoardFile(file: LightboxBoardFile): string {
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
+/** The file with its board named `name`, or unnamed for `undefined`; the name stands right after the board's id. */
+export function namedLightboxBoardFile(file: LightboxBoardFile, name: string | undefined): LightboxBoardFile {
+  const { boardId, name: _previous, ...rest } = file.board;
+  return { ...file, board: { boardId, ...(name !== undefined ? { name } : {}), ...rest } };
+}
+
 export type LightboxBoardOfFile =
-  | { kind: 'board'; board: LightboxBoard; text: string }
+  | { kind: 'board'; board: LightboxBoard; text: string; name?: string }
   /** The file holds several sources; this build opens one-source boards only. */
   | { kind: 'several-sources'; sources: number };
 
@@ -336,6 +367,7 @@ export function lightboxBoardOfFile(file: LightboxBoardFile): LightboxBoardOfFil
   return {
     kind: 'board',
     text: sourceText,
+    ...(board.name !== undefined ? { name: board.name } : {}),
     board: {
       boardVersion: 1,
       boardId: board.boardId,

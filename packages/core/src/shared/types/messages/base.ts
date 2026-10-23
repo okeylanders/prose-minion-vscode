@@ -260,7 +260,9 @@ export enum MessageType {
   LIGHTBOX_REQUEST_BOARDS = 'lightbox_request_boards',
   LIGHTBOX_BOARDS = 'lightbox_boards',
   LIGHTBOX_OPEN_BOARD = 'lightbox_open_board',
-  LIGHTBOX_DELETE_BOARD = 'lightbox_delete_board'
+  LIGHTBOX_DELETE_BOARD = 'lightbox_delete_board',
+  // Slice 5A.1: name a saved board, or the board on screen; answered with LIGHTBOX_BOARDS
+  LIGHTBOX_RENAME_BOARD = 'lightbox_rename_board'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

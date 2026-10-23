@@ -1,8 +1,8 @@
 /**
  * Lightbox saved boards (ADR 2026-10-19 D12 and its addendum of 2026-10-22;
- * Slice 5A; epic decisions 27–32).
+ * Slice 5A; epic decisions 27–32; Slice 5A.1, decisions 33–36).
  *
- * A board saves itself to `prose-minion/boards/<source-slug>/<timestamp>.board.json`
+ * A board saves itself to `prose-minion/boards/<source-slug>-<source-hash>/<timestamp>.board.json`
  * in format 1 (`LightboxBoardCodec`), and the rail's Boards section lists the
  * saved boards of the source on screen. These messages carry the rail, never
  * a board: an opened board arrives as `LIGHTBOX_BOARD`, as any board does.
@@ -26,9 +26,14 @@
  *   An open the host refuses at once (a run is reading the board it would
  *   replace) says why in `notice`; one that fails after reading says so as a
  *   standing refusal, like any source.
+ * - **Names (Slice 5A.1, epic decision 33).** A board may carry the writer's
+ *   name for it. `LIGHTBOX_RENAME_BOARD` names a saved file in place, or the
+ *   board on screen, and is answered with the shelf like every other
+ *   request.
  *
- * Nothing here carries the writer's text: summaries are dates, counts, lens
- * ids and costs.
+ * Nothing here carries the source's text. A board's name is the writer's
+ * own words, so it is treated as that text is: the shelf carries it to the
+ * rail, and nothing logs or persists it.
  */
 
 import { MessageEnvelope, MessageType } from './base';
@@ -49,6 +54,8 @@ export type LightboxBoardsAvailability =
 export interface LightboxSavedBoardSummary {
   /** The host's name for the file. Opaque: the webview hands it back, never a path. */
   fileId: string;
+  /** The writer's name for the board it holds (Slice 5A.1); absent when it is unnamed. */
+  name?: string;
   /** Epoch ms when it was saved. */
   savedAt: number;
   wordCount: number;
@@ -58,6 +65,11 @@ export interface LightboxSavedBoardSummary {
   staleLenses: LightboxLensId[];
   /** Every call's recorded cost, summed, in US dollars; absent when no call recorded one. */
   costUsd?: number;
+  /**
+   * The models that read it, as each group's provider reported them, once
+   * each, in group order (Slice 5A.1); absent for a board no model read.
+   */
+  models?: string[];
   /** It holds the board on screen: the board was opened from it, or last saved to it. */
   onScreen: boolean;
 }
@@ -81,6 +93,8 @@ export interface LightboxSnapshotState {
 /** The rail's Boards section for one board's source. */
 export interface LightboxBoardShelf {
   availability: LightboxBoardsAvailability;
+  /** The name of the board the shelf describes, the board on screen (Slice 5A.1); absent when it is unnamed. */
+  name?: string;
   /** Newest first. */
   boards: LightboxSavedBoardSummary[];
   /** Files in the source's folder that could not be read as boards; left as they are. */
@@ -109,6 +123,22 @@ export interface LightboxDeleteBoardPayload {
   requestId: string;
   boardId: string;
   fileId: string;
+}
+
+/**
+ * Name a board, or rename it (Slice 5A.1). `boardId` is the board on screen,
+ * whose shelf answers. `fileId` names the saved file to rename in place;
+ * `null` names the board on screen itself, and the file that holds it when
+ * one does. Naming the file that holds the board on screen names that board
+ * too, so its later saves carry the name; naming any other file changes only
+ * that file. `name` is the writer's words: trimmed, one line, at most
+ * `LIGHTBOX_BOARD_NAME_CHARACTERS`; empty unnames the board.
+ */
+export interface LightboxRenameBoardPayload {
+  requestId: string;
+  boardId: string;
+  fileId: string | null;
+  name: string;
 }
 
 /**
@@ -143,9 +173,17 @@ export interface LightboxDeleteBoardMessage extends MessageEnvelope<LightboxDele
   type: MessageType.LIGHTBOX_DELETE_BOARD;
 }
 
+export interface LightboxRenameBoardMessage extends MessageEnvelope<LightboxRenameBoardPayload> {
+  type: MessageType.LIGHTBOX_RENAME_BOARD;
+}
+
 export interface LightboxBoardsMessage extends MessageEnvelope<LightboxBoardsPayload> {
   type: MessageType.LIGHTBOX_BOARDS;
 }
 
-/** The rail's three requests, for the barrel's inbound union. */
-export type LightboxBoardsRequestMessage = LightboxRequestBoardsMessage | LightboxOpenBoardMessage | LightboxDeleteBoardMessage;
+/** The rail's four requests, for the barrel's inbound union. */
+export type LightboxBoardsRequestMessage =
+  | LightboxRequestBoardsMessage
+  | LightboxOpenBoardMessage
+  | LightboxDeleteBoardMessage
+  | LightboxRenameBoardMessage;
