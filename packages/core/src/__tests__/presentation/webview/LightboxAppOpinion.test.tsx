@@ -7,7 +7,9 @@
  * pressed until the writer picks another, the pick remembered per board in
  * webview state only; the observations under the views, lighting their
  * cited paragraphs on hover; stale and withheld notes in the host's words;
- * its own re-read priced "up to" its digest bound; Bring of the view on
+ * its Analyze priced "≈", its input at the digest limit said apart (PR #166
+ * F-01); the earlier Opinion kept in view while a new one is weighed, and
+ * after a failed or stopped call (epic decision 47); Bring of the view on
  * show, by name. Ignoring it changes nothing else on the board. The host is
  * played by window messages; readings come from the worked examples
  * through the production codec, digest and gates, over "Alice's Adventures
@@ -16,7 +18,7 @@
 
 import * as React from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import type { LightboxBoard, LightboxOpinionTile } from '@messages';
+import type { LightboxBoard, LightboxOpinionTile, LightboxReadingGroup } from '@messages';
 import { MessageType } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import { lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
@@ -48,6 +50,7 @@ jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmL
 
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { LightboxApp } from '@/presentation/webview/LightboxApp';
+import { LIGHTBOX_OPINION_KEEP } from '@components/lightbox/LightboxOpinion';
 
 const fromHost = (type: MessageType, payload: object) =>
   act(() => {
@@ -220,6 +223,50 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     expect(posted(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({
       boardId: BOARD.boardId, scope: { mode: 'group', group: 'F', lens: 'opinion' }, estimateKey: 'estimate-board-8'
     });
+  });
+
+  it('keeps the earlier Opinion in view while a new one is weighed, and after a failed or stopped call, with the reason (decision 47)', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
+    const withF = (edit: (group: LightboxReadingGroup) => LightboxReadingGroup): LightboxBoard =>
+      ({ ...BOARD, readings: BOARD.readings.map((group) => (group.group === 'F' ? edit(group) : group)) });
+    const headline = view('neutral')?.headline as string;
+
+    // Weighed again: the earlier Opinion stays, said to be the earlier one; no skeleton; its Analyze says Analyzing….
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: withF((group) => ({ ...group, status: 'running', pending: ['opinion'] })), refusal: null });
+    expect(opinionFrame().textContent).toContain(headline);
+    expect(within(opinionFrame()).getByRole('status').textContent).toBe(LIGHTBOX_OPINION_KEEP.reading);
+    expect(opinionFrame().querySelector('.pm-lb-skeleton')).toBeNull();
+    expect(within(opinionFrame()).getByRole('button', { name: /^Analyzing…, call F:/ }).getAttribute('aria-disabled')).toBe('true');
+    expect(within(opinionFrame()).getByRole('group', { name: 'Choose a view' })).not.toBeNull();
+
+    // Failed, then stopped: the earlier one stays, with the reason after saying so.
+    const failure = 'The call failed before a reading came back. Press Finish or Analyze to try again.';
+    for (const [status, error] of [['failed', failure], ['cancelled', 'Stopped before this group came back.']] as const) {
+      fromHost(MessageType.LIGHTBOX_BOARD, { board: withF((group) => ({ ...group, status, error })), refusal: null });
+      expect(opinionFrame().textContent).toContain(headline);
+      expect(within(opinionFrame()).getByText(`${LIGHTBOX_OPINION_KEEP.kept} ${error}`)).not.toBeNull();
+      expect(within(opinionFrame()).queryByText(LIGHTBOX_OPINION_KEEP.reading)).toBeNull();
+      expect(within(opinionFrame()).getByRole('button', { name: /^Re-analyze, call F:/ })).not.toBeNull();
+    }
+
+    // Landed: the Opinion on the board, with neither note.
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
+    expect(opinionFrame().textContent).toContain(headline);
+    expect(opinionFrame().textContent).not.toContain(LIGHTBOX_OPINION_KEEP.kept);
+    expect(opinionFrame().textContent).not.toContain(LIGHTBOX_OPINION_KEEP.reading);
+  });
+
+  it('control: an Opinion never read shows the Analyzing… skeleton while it is weighed, and its failure as it is', () => {
+    render(<LightboxApp />);
+    const none = (status: LightboxReadingGroup['status'], extra: Partial<LightboxReadingGroup> = {}): LightboxBoard =>
+      ({ ...BOARD, readings: BOARD.readings.map((group) => (group.group === 'F' ? { ...emptyLightboxReadingGroup('F'), status, ...extra } : group)) });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: none('running', { pending: ['opinion'] }), refusal: null });
+    expect(opinionFrame().querySelector('.pm-lb-skeleton.is-live')).not.toBeNull();
+    expect(opinionFrame().textContent).not.toContain(LIGHTBOX_OPINION_KEEP.reading);
+    const failure = 'The call failed before a reading came back. Press Finish or Analyze to try again.';
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: none('failed', { error: failure }), refusal: null });
+    expect(within(opinionFrame()).getByRole('alert').textContent).toBe(failure);
   });
 
   it('changes nothing else: every other frame is drawn exactly as on the board with no Opinion', () => {

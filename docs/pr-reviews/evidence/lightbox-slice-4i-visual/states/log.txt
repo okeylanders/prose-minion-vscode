@@ -33,3 +33,9 @@
 [LightboxReadingRunner] Run run-5-token finished: A failed
 [LightboxReadingHandler] Run run-5-token finished: 1 groups, 0 tokens
 [LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-10-09-123Z.board.json (133510 bytes).
+[LightboxReadingRunner] Run run-6-token started: groups F (re-read opinion)
+[LightboxReadingRunner] Run run-6-token group F digest: 59 items, 55 readings, 0 left out, about 5,154 tokens, key 1400b322d393
+[LightboxReadingRunner] Group F call failed: unexpected (Error)
+[LightboxReadingRunner] Run run-6-token finished: F failed
+[LightboxReadingHandler] Run run-6-token finished: 1 groups, 0 tokens
+[LightboxBoardStore] Saved drafts-alice-1-md-9b099095/2026-10-22T14-11-09-123Z.board.json (133616 bytes).

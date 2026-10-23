@@ -109,8 +109,11 @@ Correct F-01's cost meaning without changing the chosen call scope or imposing a
 **F-01 fixed; N-01 and N-02 fixed as well.** One commit, `c11bb439`,
 sits on top of your report's commit `50aa9b5`. Then `590b7a08` merges
 `epic/lightbox`, which now holds PR #165 and its review's closing notes
-(one documentation file, no code). The commit that adds this response
-records the verification. Nothing above this section was edited.
+(one documentation file, no code), and `cebcc5cd` added this response.
+The writer then answered two of the slice's open questions and asked for
+both in this PR. The commit after `cebcc5cd` adds them as decisions 47 and
+48 (below), and brings this response and its verification up to date.
+Nothing above this section was edited.
 
 The new and changed tests discriminate. I restored the four corrected
 source files to your reviewed head `28a977e` and ran the changed suites
@@ -132,15 +135,28 @@ the start: the button it focused is gone (`Received: null`).
 | N-01 | Low / P3 | **Fixed** | **The visible label first.** Every call control's name starts with exactly what its button shows, then the call, its lenses and its price: "Run A, call A: …", "Rerun B, call B: …", "Running A…, call A: …", "Analyze, call B: …", "Re-analyze, call B: …", "Analyzing…, call B: …". This answers the slice notes' "label in name" question, now recorded there as answered | `lightboxCallControls.test.ts`: in four board moments (fresh, one call landed, a call running, all read), every control's name starts with "label, call X" and contains its price; together they cover all six labels<br>`LightboxAppRunControls.test.tsx`: every `.pm-lb-call-button` on a board with A read and B running. Its visible label is the name's start, the button text is label plus price, and Run, Rerun and Running are each reached by role and name ("Rerun A, call A: … · ≈ $0.07" shows "Rerun A≈ $0.07") | `c11bb439` |
 | N-02 | Low / P3 | **Fixed** | **One row, one button.** `LightboxHeadline` keeps the headline row, with its Analyze, once the headline lens has been asked for: while call A reads it, once it lands, and when it was withheld, failed or stopped. The row has one shape (heading, an optional "a reading" badge, the button), so React keeps the same button through every change.<br>When a group run clears the old headline, the focused button stays and reads "Analyzing…" (`aria-disabled`, its reason described). It then reads "Re-analyze" when the new headline lands, or "Analyze" after a failure, with the failure under the plain heading.<br>A board whose headline was never asked for still shows the plain heading alone. One change follows from the rule: on a fresh board's first run, the heading now shows the disabled "Analyzing…" while call A reads it, as call A's other widgets do | `LightboxAppRunControls.test.tsx`: from a read board, the headline's Re-analyze is focused and pressed (`{ mode: 'group', group: 'A', lens: 'headline' }`).<br>• **Start:** A's readings cleared and running; the same element is focused, "Analyzing…", disabled<br>• **Landing:** the new headline is drawn; still focused, "Re-analyze", enabled<br>• **Failure:** pressed again, A fails; still focused, "Analyze", the failure shown<br>• **Stop:** pressed again, A cancelled; still focused<br>**Control:** a fresh board has no headline row and no headline Analyze | `c11bb439` |
 
+### The writer's two answers (decisions 47 and 48)
+
+These are not review findings; the writer answered two of the slice's open
+questions and asked for both in this PR. Decision 46 is the boards
+slice's (5A.2, on its own branch).
+
+| Decision | Change | Tests |
+| --- | --- | --- |
+| **47: keep the old Opinion until the new one lands** | The Opinion's Analyze or Re-analyze, and Run F or Rerun F (`{ mode: 'group', group: 'F' }`), no longer clear the Opinion when the call starts. The host takes the per-lens re-read's preserve-until-success path (`lightboxPressKeptLens` in `LightboxPressScope`: the group F scope keeps the Opinion's one lens; `startLightboxGroups`, `settleLightboxGroup` and `stopLightboxGroups` unchanged).<br>While it runs, group F is `running` with the Opinion pending and its old tiles kept. The frame draws the old Opinion with "Analyzing… This is the earlier Opinion until the new one lands." in place of the skeleton (`LightboxReadingFrame`'s `keep`, given only by the Opinion).<br>**Success** replaces it whole. **A failure or a Stop** leaves it exactly as it was, standing and stale marks included, with "The new Opinion did not land, so the earlier one stays." and the host's reason.<br>**Saving:** a failed call lands its group (failed, the old tiles kept), so the board saved after it holds the old Opinion; a Stop lands nothing and saves nothing.<br>The digest leaves group F out, so the new Opinion never weighs the old one. Every other call run on its own, and a run of several calls, still clear first | `LightboxOpinionRerun.test.ts` (new, 6; real handlers, store and library):<br>• **Success replaces:** the old tiles stay while it runs, and none is left after it lands<br>• **Failure keeps,** pressed from the Analyze and from Run F: tiles, withheld lists, stale mark and standing as they were, with the reason. The save after it holds the old Opinion, its shelf push (observed after the ones before it) lists it, and a reload restores it<br>• **Stop keeps,** and nothing is saved; the last save still holds the Opinion<br>• **Control:** another call run on its own, and the Opinion in a run of every call, are still cleared first<br>• **Guard:** a saved board opened while the new Opinion is weighed is refused, and the new one lands on its own board<br>Five of the six fail with the press back on clear-first (the control passes either way). `LightboxBoardAdoptions` (presses refused while preparing) passes unchanged<br>`LightboxAppOpinion.test.tsx` (+2): the earlier Opinion drawn while weighed, failed and stopped, with the kept note and the reason and no skeleton; control: an Opinion never read shows the skeleton and its failure as it is. The first fails without `keep` |
+| **48: "Re-read this tile" becomes "Re-analyze this tile"** | The inspector's button and its accessible name (its text) say "Re-analyze this tile". Its disabled reasons say "re-analyze" ("Turn it on in the rail to re-analyze this tile.", "This tile cannot be re-analyzed until the board is estimated.", "Re-analyzing this tile would send about …"), and so does copy that sends the writer to it: "Re-analyze it, then bring it.", "Re-analyze the numbers.", "then re-analyze the lens", "re-analyze to score the rest". "Re-read file", and "Re-read the file" where it means the chapter file, keep their words | `LightboxAppReadings`: the button by its new name, no "Re-read…" button left in the inspector, "Re-read file" still there. `lightboxRunLine`, `LightboxStaleTension` and `LightboxSavedBoards`: the reasons and copy |
+
 ### Evidence
 
 The visual evidence is regenerated
 (`docs/pr-reviews/evidence/lightbox-slice-4i-visual/`).
-- **New host moments.** The production-host builder records four more:
+- **New host moments.** The production-host builder records six more:
   the headline's Analyze with A held, then landed, then pressed again,
-  then failed. Each moment that ends a run carries the host's `finished`
+  then failed (N-02); and the Opinion's Analyze held, then failed
+  (decision 47). Each moment that ends a run carries the host's `finished`
   progress for it. The first four moments rebuilt byte-identical, and
-  `log.txt` only gained the new runs' lines.
+  `log.txt` only gained the new runs' lines, among them the board saved
+  after the failed Opinion.
 - **New checks.** The harness now checks:
   - F-01: every price is "≈ $…" or "< $0.01", nothing says "up to", the
     Opinion's name ends "· input at digest limit", and the tooltip is the
@@ -148,36 +164,45 @@ The visual evidence is regenerated
   - N-01: every name starts with "label, call X";
   - N-02 (`headline-rerun.js`): it focuses the read headline's
     Re-analyze, presses Enter and replays the host's moments. The same
-    button must hold the focus at each step and say what the board says.
-- **Corrected bundle** (`4eb8932c…`): 0 errors, 39 captures.
+    button must hold the focus at each step and say what the board says;
+  - decision 47 (`checks.js`): the Opinion re-analyzed on its own stays
+    drawn as the earlier one, never a skeleton, with the kept words read
+    from `LightboxOpinion.tsx` and, after the failure, the host's reason.
+- **This branch's bundle** (`4297b760…`): 0 errors, 45 captures.
 - **Your reviewed head's bundle** (rebuilt byte for byte, `478dbd9b…`):
-  273 errors, in `errors-28a977e.txt`.
-  - F-01: 27, "up to $0.05" on both Opinion controls.
-  - N-01: 204.
+  303 errors, in `errors-28a977e.txt`.
+  - F-01: 39, "up to $0.05" on both Opinion controls.
+  - N-01: 210.
   - N-02: 42, the button replaced and the focus on `BODY` at every step
     and width, as your exact-bundle probe found.
-- **Base bundle:** 189 errors (186 before).
-- **Repeat renders:** three renders of the corrected bundle gave
-  byte-identical `facts.json`.
-- **Captures inspected:** the Opinion at 500 px ("Analyze ≈ $0.05",
-  disabled, its reason under it) and the headline's Analyzing… and failed
-  steps at 500 and 1440 px.
+  - Decision 47: 12. While it is weighed, a skeleton in place of the
+    earlier Opinion (9); after the failure, the reason with nothing saying
+    the Opinion shown is the earlier one (3).
+- **Base bundle:** 207 errors (186 before the review).
+- **Repeat renders:** two renders of this bundle gave byte-identical
+  `facts.json` and empty `errors.txt`.
+- **Captures inspected:**
+  - the Opinion at 500 px ("Analyze ≈ $0.05", disabled, its reason under
+    it);
+  - the headline's Analyzing… and failed steps at 500 and 1440 px;
+  - the kept Opinion while weighed (500 px) and after its failure
+    (1000 px), its stale mark kept.
 
 ### Verification at the correction head
 
-Every gate ran on the head that adds this response: the corrections
-(`c11bb439`), the `epic/lightbox` merge (`590b7a08`), and this commit, which
-adds documentation and rewraps one doc comment in `lightboxCallControls.ts`.
+Every gate ran on the head that adds the writer's decisions: the
+corrections (`c11bb439`), the `epic/lightbox` merge (`590b7a08`), this
+response (`cebcc5cd`), and the commit after it.
 
 | Check | Result |
 | --- | --- |
-| Full Jest, Node 22.22.0 | **494 suites / 6,897 tests / 59 snapshots** (494 / 6,886 / 59 at `28a977e`: 7 tests added in `lightboxCallControls`, 4 in `LightboxAppRunControls`) |
-| Full Jest, Node 18.20.8 (CI's engine) | **494 suites / 6,897 tests / 59 snapshots** |
+| Full Jest, Node 22.22.0 | **495 suites / 6,905 tests / 59 snapshots** (494 / 6,886 / 59 at `28a977e`): 7 tests added in `lightboxCallControls` and 4 in `LightboxAppRunControls` for the review; for decision 47, the new `LightboxOpinionRerun` (6) and 2 in `LightboxAppOpinion` |
+| Full Jest, Node 18.20.8 (CI's engine) | **495 suites / 6,905 tests / 59 snapshots** |
 | Typecheck | **Pass** |
 | Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to the `d255b8e` baseline |
-| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass** both times, same hashes: `webview.js` `4eb8932c0555ecfc80b1a2f7b00c413656a858c415a10b24a0bd9244db3cef97` (the bundle the evidence renders), `extension.js` `0b1af8b7332bbb5f2ea3dd5a46b0f070e599dcac5d0b0507b271e3128445ccae` (unchanged: the corrections are webview-only) |
+| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass** both times, same hashes: `webview.js` `4297b7608e9b89684aa36979e5702a41e2749784815dca498bc61a0522fdd3b4` (the bundle the evidence renders), `extension.js` `ad1aaf122060f569ba41fe68e11e2e03a8542e05168252023b9e4e4c38070f7d` (decision 47 and 48 change host code; the review corrections alone left it at `0b1af8b7…`) |
 | `git diff --check` | **Clean** |
-| Modules | `lightboxCallControls.ts` 257 lines, `LightboxHeadline.tsx` 81; the harness 498 and `headline-rerun.js` 88. Core imports no `vscode`; no new `any` |
+| Modules | `lightboxCallControls.ts` 257 lines, `LightboxHeadline.tsx` 81, `LightboxPressScope.ts` 148, `LightboxReadingHandler.ts` 488 (unchanged); the harness 493, `headline-rerun.js` 88, `checks.js` 61. Core imports no `vscode`; no new `any` |
 
 No live or billable call: the provider is a stub, the prices are
 synthetic, the text is public-domain *Alice*, and the model id is the
@@ -185,9 +210,12 @@ placeholder `provider/model-v1`.
 
 ### Left as it was
 
-- **The writer's open questions are untouched:** whether a group re-run
-  of the Opinion should keep the old one until the new one lands, and
-  whether "Re-read this tile" should become "Re-analyze this tile".
+- **Finish after a failed Opinion.** Decision 47 names the Opinion's own
+  Analyze and Run F. A run of several calls (Run AI analyses, Re-analyze,
+  Finish) still clears the Opinion with the rest, so Finish, which the
+  run line offers after an Opinion that did not land, clears the kept one
+  while it weighs. That is now an open question for the writer, in the
+  slice notes.
 - **The run line's note** keeps Slice 4D's words: "est. $… · the Opinion
   up to its digest bound". If one vocabulary is wanted, it could read
   "· the Opinion's input at digest limit", a copy change outside this
@@ -201,13 +229,19 @@ placeholder `provider/model-v1`.
   Characters, Voice, Subtext · ≈ $0.04"; names start with the visible
   label.
 - **For the writer:**
-  - item 4 (accessible name) is done;
+  - item 1 (the Opinion) is answered: it keeps its old reading until the
+    new one lands (decision 47);
   - item 3: the headline's button now also appears, as Analyzing…, while
-    call A reads it, including a fresh board's first run.
-- **Verification:** the counts and the `webview.js` hash below
-  (`extension.js` is unchanged).
+    call A reads it, including a fresh board's first run;
+  - item 4 (accessible name) is done;
+  - item 5 is answered: "Re-analyze this tile" (decision 48);
+  - new: Finish after a failed Opinion (above).
+- **Summary:** add decisions 47 and 48: the Opinion's Analyze and Run F
+  keep the old Opinion until the new one lands, and "Re-read this tile" is
+  "Re-analyze this tile".
+- **Verification:** the counts and both hashes above.
 - **Visual evidence:**
-  - 39 captures (ten states and three rerun steps), from eight host
+  - 45 captures (twelve states and three rerun steps), from ten host
     moments;
-  - 189 errors against the base bundle (was 186);
-  - new: 273 errors against the reviewed head's bundle.
+  - 207 errors against the base bundle (was 186);
+  - new: 303 errors against the reviewed head's bundle.

@@ -86,7 +86,7 @@ describe('LightboxApp: stale headline and tension (PR #150 F-06)', () => {
     const lane = document.querySelector('button.pm-lb-lane-label[title^="Tension"]') as HTMLElement;
     expect(within(lane).getByText('stale')).not.toBeNull();
     expect(lane.getAttribute('title')).toBe(
-      'Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-read to score the rest.'
+      'Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-analyze to score the rest.'
     );
   });
 

@@ -15,9 +15,17 @@
  *   and current, it is refused with the Opinion's own reason
  *   (`lightboxOpinionNothingToWeigh`), before the board is reserved. F's
  *   call still checks again when it opens on the digest.
+ * - **What a press keeps until its new reading lands**
+ *   (`lightboxPressKeptLens`): a tile's "Re-analyze this tile" keeps its
+ *   lens's earlier reading, and so does the Opinion's call run on its own
+ *   (epic decision 47): the old Opinion stays on the board while the new one
+ *   is weighed, is replaced when it lands, and stays, standing and stale
+ *   marks and all, if the call fails or is stopped. Every other call run on
+ *   its own is cleared first and read whole (decision 42), and so is the
+ *   Opinion in a run of every call.
  * - **What an estimate prices** (`lightboxEstimateCalls`): every call with a
  *   lens on, which is also what each call's Run and each widget's Analyze
- *   send for a lens that is on, and each tile's re-read.
+ *   send for a lens that is on, and each tile's "Re-analyze this tile".
  */
 
 import type { LightboxBoard, LightboxLensId, LightboxRunScope } from '@messages';
@@ -109,10 +117,23 @@ export function lightboxPressCalls(
 }
 
 /**
+ * The lens whose earlier reading a press of `scope` keeps until its new one
+ * lands, if any (`startLightboxGroups`, `settleLightboxGroup`): a tile's
+ * lens, or the Opinion when its call runs on its own (decision 47). For any
+ * other press, its calls are cleared first and replaced whole.
+ */
+export function lightboxPressKeptLens(scope: LightboxRunScope): LightboxLensId | undefined {
+  if (scope.mode === 'lens') {
+    return scope.lens;
+  }
+  return scope.mode === 'group' && scope.group === LIGHTBOX_BOARD_GROUP ? 'opinion' : undefined;
+}
+
+/**
  * The calls an estimate prices: one per group with a lens on (what "Run AI
  * analyses" sends, and what a call's Run or a widget's Analyze sends for a
- * lens that is on), and what each tile's "Re-read" sends: its lens, with any
- * read together with it (Slice 4C).
+ * lens that is on), and what each tile's "Re-analyze this tile" sends: its
+ * lens, with any read together with it (Slice 4C).
  */
 export function lightboxEstimateCalls(lensesOff: readonly LightboxLensId[]): {
   groups: LightboxPlannedCall[];

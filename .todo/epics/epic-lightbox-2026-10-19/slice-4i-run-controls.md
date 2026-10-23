@@ -79,7 +79,8 @@ lens?: LightboxLensId }`. The webview never names a list of lenses.
   its group: `startLightboxGroups` clears it and marks its lenses pending,
   and its outcome replaces it whole, as in a full run. Its other calls keep
   their readings (and their tile ids). The per-lens re-read (`mode: 'lens'`)
-  is unchanged.
+  is unchanged. **The Opinion is the exception** (decision 47, below): run
+  on its own, it keeps its old reading until the new one lands.
 - **Group F alone** reads the board as it stands. While nothing on the
   board is read and current it is refused, with nothing reserved, in the
   Opinion's own words (`LIGHTBOX_OPINION_NOTHING_TO_WEIGH`, now in
@@ -170,11 +171,35 @@ and tooltip add "input at digest limit", the one thing its estimate does
 differently (PR #166 F-01).
 
 It replaces the tile's own **Re-read the Opinion** at its foot, which ran
-the same call (as the per-lens re-read); the Bring row stays. The two
-differed only in that a per-lens re-read keeps the old Opinion until the new
-one lands and on a failure, and a call's run clears it first, as the writer
-decided for every call's re-run. The inspector's **Re-read this tile**, on a
-pinned Opinion, still makes the per-lens re-read.
+the same call (as the per-lens re-read); the Bring row stays. The
+inspector's **Re-analyze this tile** (decision 48), on a pinned Opinion,
+still makes the per-lens re-read.
+
+**The old Opinion stays until the new one lands (decision 47, the writer's
+answer to this slice's first open question).** The Opinion's Analyze or
+Re-analyze, and Run F or Rerun F, no longer clear the Opinion when the
+call starts. The host takes the per-lens re-read's path for it
+(`lightboxPressKeptLens`, in `LightboxPressScope`: the group F scope keeps
+the Opinion's one lens), so:
+- **while the call runs**, group F is `running` with the Opinion pending,
+  and its old tiles stay on the board. The frame shows the old Opinion, its
+  views and observations, with "Analyzing… This is the earlier Opinion
+  until the new one lands." in place of the skeleton
+  (`LightboxReadingFrame`'s `keep`; `LIGHTBOX_OPINION_KEEP`), and its
+  Analyze says "Analyzing…";
+- **on success** the new Opinion replaces the old one whole;
+- **on a failure or a Stop** the old Opinion stays exactly as it was, its
+  standing and stale marks included, with "The new Opinion did not land,
+  so the earlier one stays." and the host's reason beside it.
+
+Saving holds the old Opinion too: a failed call lands its group (failed,
+with the old tiles kept), so the board saved after it still holds the
+Opinion, and a reload restores it; a Stop lands nothing and saves nothing.
+The digest the new Opinion reads leaves group F out, so keeping the old one
+changes nothing it weighs. Only the Opinion keeps its reading this way:
+every other call run on its own is still cleared first, and a run of
+several calls (Run AI analyses, Re-analyze, Finish) still clears the
+Opinion with the rest.
 
 ## 5. Lens panel: one Run per call (decision 45)
 
@@ -260,7 +285,27 @@ is opened while they prepare, and a control), `lightboxRunLine.test.ts`
 that named the old copy, `boundaries.test.ts` (the module lists), and the
 host tests that pinned the old failure words.
 
-In all, 3 new suites (62 tests, 51 before the PR #166 corrections) and 6
+With the writer's decisions 47 and 48:
+- `LightboxOpinionRerun.test.ts` (6, new; real handlers, store and library,
+  the engine held or failed). The old Opinion stays while the new one is
+  weighed, and is replaced whole when it lands. On a failure, pressed from
+  its Analyze and from Run F, it stays exactly as it was, standing and
+  stale mark included, with the reason; the board saved after it holds the
+  Opinion, its shelf push lists it, and a reload restores it. On a Stop it
+  stays, and nothing is saved. Control: another call run on its own, and
+  the Opinion in a run of every call, are still cleared first. Guard: a
+  saved board opened while the new Opinion is weighed is refused, and the
+  new one lands on its own board. Five of the six fail with the press back
+  on clear-first.
+- `LightboxAppOpinion.test.tsx` (+2): the earlier Opinion in view while it
+  is weighed, failed and stopped, with the kept note and the reason, and no
+  skeleton; control, an Opinion never read shows the skeleton and its
+  failure as it is.
+- The rename: `LightboxAppReadings` (the inspector's button by its new name,
+  no "Re-read…" button left, "Re-read file" kept), `lightboxRunLine`,
+  `LightboxStaleTension` and `LightboxSavedBoards` (the copy).
+
+In all, 4 new suites (68 tests; 51 before the PR #166 corrections) and 8
 more tests in changed suites.
 
 **Which tests fail on `d255b8e`.** The 24 new and changed suites, as
@@ -289,9 +334,10 @@ onto an export of `d255b8e`:
 See the epic's progress note for the gates on the final head. Visual
 evidence in
 [`docs/pr-reviews/evidence/lightbox-slice-4i-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4i-visual/README.md):
-39 captures, `errors.txt` empty; against the reviewed head's bundle
-(`28a977e`) the corrected harness writes 273 errors, among them each of
-the three review findings, and 189 against the base bundle (`d255b8e`).
+45 captures, `errors.txt` empty; against the reviewed head's bundle
+(`28a977e`) the corrected harness writes 303 errors, among them each of
+the three review findings and the kept Opinion (decision 47), and
+207 against the base bundle (`d255b8e`).
 
 ## PR #166 review corrections (2026-10-23)
 
@@ -315,28 +361,41 @@ asked for one correction and two nonblocking follow-ups; all three are made.
   failure or stop. A board whose headline was never asked for still shows
   the plain heading alone.
 
+With the corrections, the writer answered two of this slice's open
+questions (below): the old Opinion stays until the new one lands
+(decision 47, section 4), and the inspector's button is **Re-analyze this
+tile** (decision 48). Decision 46 is the boards slice's (5A.2, on its own
+branch).
+
 ## For the writer to decide
 
-- **The Opinion's re-run clears it first.** A call's Re-analyze clears its
-  readings when it starts, as the writer decided; for the Opinion that
-  means the old Opinion is gone while the new one is weighed, and stays
-  gone if the call fails. The removed "Re-read the Opinion" kept the old
-  one until the new one landed (the inspector's "Re-read this tile" still
-  does). If the Opinion should keep its old reading until the new one
-  lands, its Analyze could send the per-lens re-read instead.
+- **Finish after a failed Opinion.** A run of several calls still clears
+  the Opinion first (decision 47 names its own Analyze and Run F). After an
+  Opinion that did not land, the run line offers Finish, which re-runs F
+  with any other call not back, and so clears the kept Opinion while it
+  weighs; if that fails too, the Opinion is gone. Should Finish, and Run AI
+  analyses, also keep the old Opinion until a new one lands?
 - **A widget whose lens is off.** A lens that is off is not drawn on the
   board, so no widget's Analyze can name an off lens today; the host honours
   one (the decision), but no button reaches it. If off lenses should still
   show their widget with an Analyze, that is a board change.
-- **"Re-read this tile"** in the inspector keeps its words, since it is the
-  per-lens re-read and differs from a call's Re-analyze. It could become
-  "Re-analyze this tile" if one verb is wanted.
 - **The headline's Analyze** appears once the headline has been asked
   for (while it is read, once it lands, or a state of it), not beside the
   plain heading of a board whose headline was never asked for, where it
   would compete with "Run AI analyses".
 
-**Answered:** *Label in name.* The accessible names said "Run call A: …"
-while the button showed "Run A", so a speech user saying "click Run A" might
-not reach it. They now start with the visible label, "Run A, call A: …"
-(PR #166 N-01).
+**Answered:**
+- *Label in name.* The accessible names said "Run call A: …" while the
+  button showed "Run A", so a speech user saying "click Run A" might not
+  reach it. They now start with the visible label, "Run A, call A: …"
+  (PR #166 N-01).
+- *Keep the old Opinion until the new one lands?* Yes (decision 47; see
+  section 4).
+- *Rename "Re-read this tile"?* Yes: the inspector's button says
+  **Re-analyze this tile** (decision 48), so the verb for an AI run is the
+  same everywhere. Its disabled reasons say "re-analyze" too ("Turn it on in
+  the rail to re-analyze this tile."), and so does copy that sends the
+  writer to it ("Re-analyze it, then bring it.", "Re-analyze the numbers.",
+  "then re-analyze the lens", "re-analyze to score the rest"). "Re-read
+  file", and "Re-read the file" where it means the chapter file, keep their
+  words: they read the file, not the model.

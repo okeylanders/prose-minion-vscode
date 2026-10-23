@@ -319,6 +319,17 @@ rerun that call. The press model becomes:
   replaced whole when it lands, as in a full run, so a re-run never mixes
   two calls' readings; the other calls keep theirs. Only a tile's re-read
   keeps its group's other lenses' tiles.
+- **The Opinion keeps its reading until a new one lands** (epic decision
+  47, the writer's). Group F run on its own (its Analyze, Run F) takes the
+  tile re-read's path (`lightboxPressKeptLens`): its old tiles stay on the
+  board, the group `running` with the Opinion pending, and the webview
+  shows the old Opinion as the earlier one. The new one replaces it whole;
+  a failure or a Stop leaves it exactly as it was, standing and stale marks
+  included, with the reason. A failed call still lands its group, so the
+  board saved after it holds the old Opinion; a Stop lands nothing and
+  saves nothing. The digest leaves group F out, so the old Opinion is never
+  weighed by the new one. Every other call run on its own, and a run of
+  several calls, still clears first.
 - **Group F alone reads the board as it stands.** It is refused, with
   nothing reserved or sent, while nothing on the board is read and current,
   in the Opinion's own words; the rule (`lightboxOpinionNothingToWeigh`,

@@ -9,7 +9,7 @@
  * The model it reports is the placeholder `provider/model-v1`. No provider is
  * called.
  *
- * Eight moments of one board, each pressed as the webview presses it:
+ * Ten moments of one board, each pressed as the webview presses it:
  * 1. `fresh`: the chapter boarded and measured, nothing analyzed.
  * 2. `one-call`: call B analyzed on its own, from the Voice widget's Analyze
  *    (`{ mode: 'group', group: 'B', lens: 'voice' }`).
@@ -22,6 +22,10 @@
  * 6. `reread`: A released and read again;
  * 7. `failing`: pressed again, A in flight;
  * 8. `failed`: A's reply fails; A failed, every other call still read.
+ * Then the Opinion's Analyze (`{ mode: 'group', group: 'F', lens: 'opinion' }`;
+ * epic decision 47), its reply held:
+ * 9. `opinionReading`: F in flight, the earlier Opinion still on the board;
+ * 10. `opinionKept`: F's reply fails; the earlier Opinion kept, with the reason.
  * Each moment records what a mount sees: the board, the run's progress while
  * one is in flight, the rail's shelves and the estimate, with the run the
  * host names. A moment a run ends in also carries the host's `finished`
@@ -88,9 +92,11 @@ const press = (tab: LightboxBoardsTab, scope: LightboxRunScope) => tab.run(scope
 
 it('dumps the run-control states', async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  // The reply for group A can be held, so a moment with a call in flight can be recorded, and then fail.
+  // The reply for group A, or F, can be held, so a moment with a call in flight can be recorded, and then fail.
   let holdA: ReturnType<typeof deferred<void>> | undefined;
   let failA = false;
+  let holdF: ReturnType<typeof deferred<void>> | undefined;
+  let failF = false;
   const host = createLightboxBoardsHost({
     now: () => NOW,
     fileSystem: new MemoryFileSystem(),
@@ -100,6 +106,12 @@ it('dumps the run-control states', async () => {
         await holdA.promise;
       }
       if (group === 'A' && failA) {
+        throw new Error('stub provider: no reply');
+      }
+      if (group === 'F' && holdF) {
+        await holdF.promise;
+      }
+      if (group === 'F' && failF) {
         throw new Error('stub provider: no reply');
       }
       return ok(group, group === 'F' ? opinionReplyFor(request) : undefined);
@@ -180,13 +192,37 @@ it('dumps the run-control states', async () => {
   failed.messages.push(finished());
   expect(statuses(boardOf(failed))).toEqual(['A:failed', ...others]);
 
+  // 9–10 (decision 47): the Opinion's Analyze, held, then failed: the earlier Opinion stays.
+  const opinionTiles = (state: Awaited<ReturnType<typeof scene>>) =>
+    boardOf(state).readings.find((group) => group.group === 'F')?.tiles.map((tile) => tile.id);
+  const chapterCalls = ['A:failed', 'B:ok', 'C:ok', 'D:ok', 'E:ok', 'G:ok'];
+  holdF = deferred<void>();
+  failF = true;
+  await press(tab, { mode: 'group', group: 'F', lens: 'opinion' });
+  await quiet();
+  const opinionReading = await scene(tab, 'opinion-reading');
+  expect(statuses(boardOf(opinionReading))).toEqual([...chapterCalls, 'F:running']);
+  expect(opinionTiles(opinionReading)).toEqual(opinionTiles(failed));
+  holdF.resolve();
+  holdF = undefined;
+  await quiet();
+  failF = false;
+  const opinionKept = await scene(tab, 'opinion-kept');
+  opinionKept.messages.push(finished());
+  expect(statuses(boardOf(opinionKept))).toEqual([...chapterCalls, 'F:failed']);
+  expect(opinionTiles(opinionKept)).toEqual(opinionTiles(failed));
+
   // Each lens's call, for the harness to word what each widget's control should say.
   const lenses = Object.fromEntries(LIGHTBOX_LENSES.map((lens) => [lens.id, { label: lens.label, group: lens.group }]));
   // The host's own refusal of the Opinion alone on the fresh board: what its Analyze must show there.
-  const reasons = { opinionNothingToWeigh: (refused?.payload as { message?: string } | undefined)?.message };
+  // And the reason the host gave for the Opinion that did not land: what its kept Opinion must show (decision 47).
+  const reasons = {
+    opinionNothingToWeigh: (refused?.payload as { message?: string } | undefined)?.message,
+    unexpected: boardOf(opinionKept).readings.find((group) => group.group === 'F')?.error
+  };
   fs.writeFileSync(
     path.join(OUT, 'run-controls.json'),
-    `${JSON.stringify({ lenses, reasons, fresh, oneCall, analyzing, read, rereading, reread, failing, failed })}\n`
+    `${JSON.stringify({ lenses, reasons, fresh, oneCall, analyzing, read, rereading, reread, failing, failed, opinionReading, opinionKept })}\n`
   );
 
   // The log names groups, lenses, counts and reasons; never the chapter's words.

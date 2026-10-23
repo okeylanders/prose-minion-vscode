@@ -141,7 +141,7 @@ export const LIGHTBOX_GATE_REASONS = {
     carried: 'Its instance no longer stands in dialogue, and in narration a note that leans or compensates names a nudge; this one has none.'
   },
   /** The text is the same, but the figure was measured again and stands out differently (PR #155 F-01). */
-  numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.',
+  numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-analyze the numbers.',
   opinionNoView: {
     fresh: 'No view stood: each broke a rule (below), so the Opinion is not drawn.',
     carried: 'No view still stands on what the board holds now (below), so the Opinion is withheld.'

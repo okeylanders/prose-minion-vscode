@@ -374,7 +374,7 @@ const LIGHTBOX_READ_TOGETHER: Readonly<Partial<Record<LightboxLensId, readonly L
   summary: ['template']
 };
 
-/** What "Re-read this tile" reads for `lens`: the lens, with any lens read together with it that is on, in rail order. */
+/** What "Re-analyze this tile" reads for `lens`: the lens, with any lens read together with it that is on, in rail order. */
 export function lightboxRereadLenses(lens: LightboxLensId, lensesOff: readonly LightboxLensId[]): LightboxLensId[] {
   if (lensesOff.includes(lens)) {
     return [];

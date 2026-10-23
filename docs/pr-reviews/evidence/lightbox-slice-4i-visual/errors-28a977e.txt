@@ -70,6 +70,16 @@ analyzing-lenses@1440: Call F: named "Run call F: Opinion · up to $0.05", not "
 analyzing-lenses@1440: Call F: priced "up to $0.05", not an approximate total
 analyzing-lenses@1440: Call F: says its price is a maximum: "Run call F: Opinion · up to $0.05"
 analyzing-lenses@1440: Call F: the Opinion's name does not say its input is at the digest limit: "Run call F: Opinion · up to $0.05"
+opinion-reading@1440: Opinion: named "Analyzing call F: Opinion · up to $0.05", not "Analyzing…, call F: …"
+opinion-reading@1440: Opinion: says its price is a maximum: "Analyzing call F: Opinion · up to $0.05"
+opinion-reading@1440: the earlier Opinion is not drawn
+opinion-reading@1440: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1440: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1440: Opinion: named "Re-analyze call F: Opinion · up to $0.05", not "Re-analyze, call F: …"
+opinion-kept@1440: Opinion: priced "up to $0.05", not an approximate total
+opinion-kept@1440: Opinion: says its price is a maximum: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@1440: Opinion: the Opinion's name does not say its input is at the digest limit: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@1440: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@1440: press 2 on the headline's Analyze sent [], not {"mode":"group","group":"A","lens":"headline"}
 headline-rerun@1440: read: named "Re-analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06"
 headline-rerun@1440: analyzing: the headline's Analyze was replaced
@@ -161,6 +171,16 @@ analyzing-lenses@1000: Call F: named "Run call F: Opinion · up to $0.05", not "
 analyzing-lenses@1000: Call F: priced "up to $0.05", not an approximate total
 analyzing-lenses@1000: Call F: says its price is a maximum: "Run call F: Opinion · up to $0.05"
 analyzing-lenses@1000: Call F: the Opinion's name does not say its input is at the digest limit: "Run call F: Opinion · up to $0.05"
+opinion-reading@1000: Opinion: named "Analyzing call F: Opinion · up to $0.05", not "Analyzing…, call F: …"
+opinion-reading@1000: Opinion: says its price is a maximum: "Analyzing call F: Opinion · up to $0.05"
+opinion-reading@1000: the earlier Opinion is not drawn
+opinion-reading@1000: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1000: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1000: Opinion: named "Re-analyze call F: Opinion · up to $0.05", not "Re-analyze, call F: …"
+opinion-kept@1000: Opinion: priced "up to $0.05", not an approximate total
+opinion-kept@1000: Opinion: says its price is a maximum: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@1000: Opinion: the Opinion's name does not say its input is at the digest limit: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@1000: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@1000: press 2 on the headline's Analyze sent [], not {"mode":"group","group":"A","lens":"headline"}
 headline-rerun@1000: read: named "Re-analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06"
 headline-rerun@1000: analyzing: the headline's Analyze was replaced
@@ -252,6 +272,16 @@ analyzing-lenses@500: Call F: named "Run call F: Opinion · up to $0.05", not "R
 analyzing-lenses@500: Call F: priced "up to $0.05", not an approximate total
 analyzing-lenses@500: Call F: says its price is a maximum: "Run call F: Opinion · up to $0.05"
 analyzing-lenses@500: Call F: the Opinion's name does not say its input is at the digest limit: "Run call F: Opinion · up to $0.05"
+opinion-reading@500: Opinion: named "Analyzing call F: Opinion · up to $0.05", not "Analyzing…, call F: …"
+opinion-reading@500: Opinion: says its price is a maximum: "Analyzing call F: Opinion · up to $0.05"
+opinion-reading@500: the earlier Opinion is not drawn
+opinion-reading@500: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@500: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@500: Opinion: named "Re-analyze call F: Opinion · up to $0.05", not "Re-analyze, call F: …"
+opinion-kept@500: Opinion: priced "up to $0.05", not an approximate total
+opinion-kept@500: Opinion: says its price is a maximum: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@500: Opinion: the Opinion's name does not say its input is at the digest limit: "Re-analyze call F: Opinion · up to $0.05"
+opinion-kept@500: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@500: press 2 on the headline's Analyze sent [], not {"mode":"group","group":"A","lens":"headline"}
 headline-rerun@500: read: named "Re-analyze call A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette · ≈ $0.06"
 headline-rerun@500: analyzing: the headline's Analyze was replaced

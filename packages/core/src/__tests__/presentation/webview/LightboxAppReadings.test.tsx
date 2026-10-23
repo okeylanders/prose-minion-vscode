@@ -142,7 +142,11 @@ describe('LightboxApp readings', () => {
     expect(within(inspector).getByText('Where this reading strains')).not.toBeNull();
     expect(within(inspector).getByText('1 call · est. $0.01')).not.toBeNull();
 
-    fireEvent.click(within(inspector).getByRole('button', { name: 'Re-read this tile' }));
+    // One verb for every AI run (epic decision 48): the tile's own re-run says "Re-analyze", not "Re-read".
+    expect(within(inspector).queryByRole('button', { name: /^Re-read/ })).toBeNull();
+    // "Re-read file" keeps its words: it reads the chapter file again, not the model.
+    expect(screen.getByRole('button', { name: 'Re-read file' })).not.toBeNull();
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Re-analyze this tile' }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { scope: { mode: 'lens', lens: 'motif' } } });
   });
 
@@ -205,19 +209,19 @@ describe('LightboxApp readings', () => {
     estimateFromHost(makeEstimate());
     fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
     const inspector = screen.getByLabelText('Inspector');
-    const reread = () => within(inspector).getByRole('button', { name: 'Re-read this tile' }) as HTMLButtonElement;
+    const reread = () => within(inspector).getByRole('button', { name: 'Re-analyze this tile' }) as HTMLButtonElement;
     expect(reread().disabled).toBe(false);
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
     expect(reread().disabled).toBe(true);
-    expect(within(inspector).getByText('The Theme & motif lens is off. Turn it on in the rail to re-read this tile.')).not.toBeNull();
+    expect(within(inspector).getByText('The Theme & motif lens is off. Turn it on in the rail to re-analyze this tile.')).not.toBeNull();
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
     const tight = makeEstimate();
     tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
     estimateFromHost(tight);
     expect(reread().disabled).toBe(true);
-    expect(within(inspector).getByText(/^Re-reading this tile would send about 40,000 tokens/)).not.toBeNull();
+    expect(within(inspector).getByText(/^Re-analyzing this tile would send about 40,000 tokens/)).not.toBeNull();
   });
 
   it('disables the press with the reason when a call is too large', () => {

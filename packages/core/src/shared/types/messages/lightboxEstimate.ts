@@ -54,7 +54,7 @@ export interface LightboxRunEstimate {
    * exact call again at the press.
    */
   groups: LightboxCallEstimate[];
-  /** One per lens that is on: what "Re-read this tile" would send. */
+  /** One per lens that is on: what "Re-analyze this tile" would send. */
   rereads: LightboxCallEstimate[];
   /** The worst fit across `groups`. */
   fit: LightboxFit;

@@ -183,16 +183,16 @@ describe('the run line', () => {
     const base = { estimate: makeEstimate(), lens: 'motif' as const, lensesOff: [], providerPaused: false, running: false };
     expect(lightboxRereadAvailability(base)).toEqual({ note: '1 call · est. $0.01' });
     expect(lightboxRereadAvailability({ ...base, lensesOff: ['motif'] })).toEqual({
-      reason: 'The Theme & motif lens is off. Turn it on in the rail to re-read this tile.'
+      reason: 'The Theme & motif lens is off. Turn it on in the rail to re-analyze this tile.'
     });
     expect(lightboxRereadAvailability({ ...base, estimate: undefined })).toEqual({ reason: 'Estimating the cost…' });
     expect(lightboxRereadAvailability({ ...base, lens: 'voice' })).toEqual({
-      reason: 'This tile cannot be re-read until the board is estimated.'
+      reason: 'This tile cannot be re-analyzed until the board is estimated.'
     });
     const tight = makeEstimate();
     tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
     expect(lightboxRereadAvailability({ ...base, estimate: tight })).toEqual({
-      reason: 'Re-reading this tile would send about 40,000 tokens and reserve 12,000 for the reply, ' +
+      reason: 'Re-analyzing this tile would send about 40,000 tokens and reserve 12,000 for the reply, ' +
         'more than provider/model-v1\'s 200,000-token window allows.'
     });
     expect(lightboxRereadAvailability({ ...base, running: true }).reason).toMatch(/^An analysis is running/);

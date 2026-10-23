@@ -14,6 +14,11 @@
  * The header carries the lens's call control, Analyze (Slice 4I, epic
  * decision 43), when the board gives its controls: it runs this lens's
  * call, and stands in for the bare "read" badge.
+ *
+ * A frame given `keep` (the Opinion, epic decision 47) keeps its earlier
+ * reading in view while its call reads it again, with `keep.reading` beside
+ * it in place of the skeleton; after a failed or stopped call the earlier
+ * reading stays, the reason said after `keep.kept`.
  */
 import * as React from 'react';
 import type { LightboxReadingTileKind, LightboxWithheldBlock, LightboxWithheldClaim } from '@messages';
@@ -41,6 +46,8 @@ export interface LightboxReadingFrameProps {
   /** The frame's own chip and class (the Opinion, Slice 4D). */
   chip?: React.ReactNode;
   frameClass?: string;
+  /** Its earlier reading stays while its call reads it again: what to say then, and before a failure's reason. */
+  keep?: { reading: string; kept: string };
   children: React.ReactNode;
 }
 
@@ -57,9 +64,12 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   staleFirst,
   chip,
   frameClass,
+  keep,
   children
 }) => {
-  const read = view.phase === 'ok';
+  // Read again, its earlier reading still on the board: shown, said to be the earlier one (decision 47).
+  const keeping = keep !== undefined && view.phase === 'reading' && view.tiles.length > 0;
+  const read = view.phase === 'ok' || keeping;
   const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
   const analyze = useLightboxHasCallControls() ? <LightboxAnalyzeButton lens={LIGHTBOX_TILE_LENS[kind]} /> : undefined;
   return (
@@ -75,10 +85,16 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
       {staleFirst && view.stale && <LightboxStaleNote />}
       {aside}
       {!staleFirst && view.stale && <LightboxStaleNote />}
-      {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
+      {(view.phase === 'not-run' || (view.phase === 'reading' && !keeping)) && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
+      {keeping && (
+        <p className="pm-lb-reading-notice is-live" role="status">
+          <span className="pm-lb-spin is-small" aria-hidden="true" />
+          {keep.reading}
+        </p>
+      )}
       {view.notice && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>
-          {view.notice}
+          {keep && read && view.tiles.length > 0 ? `${keep.kept} ${view.notice}` : view.notice}
         </p>
       )}
       <LightboxWithheldBlocks blocks={view.withheldBlocks} />

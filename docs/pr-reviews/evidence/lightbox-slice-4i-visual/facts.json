@@ -1440,6 +1440,96 @@
     "pageScrolled": 0,
     "clippedButtons": []
   },
+  "opinion-reading@1440": {
+    "found": true,
+    "width": 744,
+    "press": null,
+    "runNote": "Weighing the board for the Opinion… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing…, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Call F is running. Stop is on the run line.",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Call F is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "Analyzing… This is the earlier Opinion until the new one lands."
+      ],
+      "skeleton": false
+    }
+  },
+  "opinion-kept@1440": {
+    "found": true,
+    "width": 744,
+    "press": {
+      "text": "Finish2 calls · est. $0.11 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "104 quotes checked · 0 withheld · 7 calls · 2 groups failed",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.05",
+            "name": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "disabled": false,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+      ],
+      "skeleton": false
+    }
+  },
   "headline-rerun@1440": {
     "found": true,
     "width": 744,
@@ -2982,6 +3072,96 @@
     "pageScrolled": 0,
     "clippedButtons": []
   },
+  "opinion-reading@1000": {
+    "found": true,
+    "width": 680,
+    "press": null,
+    "runNote": "Weighing the board for the Opinion… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing…, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Call F is running. Stop is on the run line.",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Call F is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "Analyzing… This is the earlier Opinion until the new one lands."
+      ],
+      "skeleton": false
+    }
+  },
+  "opinion-kept@1000": {
+    "found": true,
+    "width": 680,
+    "press": {
+      "text": "Finish2 calls · est. $0.11 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "104 quotes checked · 0 withheld · 7 calls · 2 groups failed",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.05",
+            "name": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "disabled": false,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+      ],
+      "skeleton": false
+    }
+  },
   "headline-rerun@1000": {
     "found": true,
     "width": 680,
@@ -4523,6 +4703,96 @@
     "horizontalOverflow": false,
     "pageScrolled": 0,
     "clippedButtons": []
+  },
+  "opinion-reading@500": {
+    "found": true,
+    "width": 468,
+    "press": null,
+    "runNote": "Weighing the board for the Opinion… 0 of 1 call back",
+    "stop": true,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Analyzing…",
+            "cost": null,
+            "name": "Analyzing…, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Call F is running. Stop is on the run line.",
+            "disabled": true,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": "Call F is running. Stop is on the run line.",
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "Analyzing… This is the earlier Opinion until the new one lands."
+      ],
+      "skeleton": false
+    }
+  },
+  "opinion-kept@500": {
+    "found": true,
+    "width": 468,
+    "press": {
+      "text": "Finish2 calls · est. $0.11 · the Opinion up to its digest bound",
+      "primary": true,
+      "sparkle": true,
+      "disabled": false,
+      "background": true
+    },
+    "runNote": "104 quotes checked · 0 withheld · 7 calls · 2 groups failed",
+    "stop": false,
+    "widgets": [
+      {
+        "title": "Opinion",
+        "register": "read",
+        "badges": [],
+        "controls": [
+          {
+            "label": "Re-analyze",
+            "cost": "≈ $0.05",
+            "name": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "title": "Re-analyze, call F: Opinion · ≈ $0.05 · input at digest limit",
+            "disabled": false,
+            "focusable": true,
+            "lens": "opinion",
+            "group": "F",
+            "reason": null,
+            "reasonShown": false
+          }
+        ]
+      }
+    ],
+    "measured": [],
+    "runs": [],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "pageScrolled": 0,
+    "clippedButtons": [],
+    "opinion": {
+      "view": "Weighed evenly, it holds.",
+      "notes": [
+        "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+      ],
+      "skeleton": false
+    }
   },
   "headline-rerun@500": {
     "found": true,

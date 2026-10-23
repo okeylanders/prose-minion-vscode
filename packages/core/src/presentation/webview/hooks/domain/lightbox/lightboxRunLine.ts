@@ -101,7 +101,7 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
   return `${count} · ${cost}${unknown}${bound}`;
 }
 
-/** What a tile's "Re-read" would cost. */
+/** What a tile's "Re-analyze this tile" would cost. */
 export function lightboxRereadNote(
   estimate: LightboxRunEstimate | null | undefined,
   lens: LightboxLensId,
@@ -136,19 +136,19 @@ export function lightboxRereadAvailability(input: LightboxRereadInput): { note?:
     return { reason: LIGHTBOX_RUN_BUSY };
   }
   if (input.lensesOff.includes(lens)) {
-    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-read this tile.` };
+    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-analyze this tile.` };
   }
   if (estimate === undefined) {
     return { reason: 'Estimating the cost…' };
   }
   const call = rereadCall(estimate, lens, input.lensesOff);
   if (!call) {
-    return { reason: 'This tile cannot be re-read until the board is estimated.' };
+    return { reason: 'This tile cannot be re-analyzed until the board is estimated.' };
   }
   if (call.fit === 'too-large') {
     const window = (estimate?.contextLength ?? 0).toLocaleString('en-US');
     return {
-      reason: `Re-reading this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
+      reason: `Re-analyzing this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
         `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
         `${estimate?.model ?? 'the assistant model'}'s ${window}-token window allows.`
     };

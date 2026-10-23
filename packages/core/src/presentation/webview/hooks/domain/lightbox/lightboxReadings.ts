@@ -223,7 +223,7 @@ export function lightboxTensionLane(board: LightboxBoard, lensOn: boolean): Ligh
   const note = unscored === scores.length
     ? 'Tension was read against an earlier version of this chapter, and no paragraph it scored is unchanged. Re-analyze to score this version.'
     : unscored > 0
-      ? 'Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-read to score the rest.'
+      ? 'Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-analyze to score the rest.'
       : 'Tension was read against an earlier version of this chapter; each score stands on the same, unchanged paragraphs.';
   return { scores, stale: true, note };
 }

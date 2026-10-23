@@ -14,6 +14,10 @@
  *   hovering one lights its cited items' paragraphs, a click pins it;
  * - its standing: stale when anything it cites changed since it was read
  *   (`lightboxOpinionStanding`);
+ * - its earlier reading kept while it is analyzed again (epic decision 47):
+ *   the old Opinion stays in view, said to be the earlier one, until the new
+ *   one lands; after a failed or stopped call it stays, standing and all,
+ *   with the reason;
  * - its Analyze in the header (Slice 4I, epic decision 44): group F alone,
  *   on the board as it stands, priced "≈" like every call, its name adding
  *   that its input is counted at the digest limit (PR #166 F-01), and
@@ -49,6 +53,11 @@ export interface LightboxOpinionActions {
 }
 
 const WAITING = 'Runs last: it waits for the other readings of this run to land, then weighs the checked board.';
+/** What the frame says beside the earlier Opinion while a new one is weighed, and before a failure's reason (decision 47). */
+export const LIGHTBOX_OPINION_KEEP = {
+  reading: 'Analyzing… This is the earlier Opinion until the new one lands.',
+  kept: 'The new Opinion did not land, so the earlier one stays.'
+} as const;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, actions }) => {
@@ -64,6 +73,7 @@ export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, acti
       span={6}
       title="Opinion"
       frameClass="pm-lb-opinion"
+      keep={LIGHTBOX_OPINION_KEEP}
       chip={<span className="pm-lb-op-chip">{LIGHTBOX_OPINION_CHIP}</span>}
       // Its staleness is its standing (below): a cited item changing makes it stale too, not only the text.
       view={{ ...lens, stale: false }}

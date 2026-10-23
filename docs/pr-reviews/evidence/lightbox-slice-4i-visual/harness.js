@@ -32,7 +32,9 @@
  * and Enter on one that is disabled sends nothing. The read headline's
  * Re-analyze, focused and pressed, must keep the focus, the same button,
  * through the host's own moments of that rerun: in flight, landed, pressed
- * again, failed (N-02).
+ * again, failed (N-02). The Opinion's Analyze held, then failed, keeps the
+ * earlier Opinion drawn, said to be the earlier one, never a skeleton
+ * (the writer's decision 47).
  * Nothing may be cut by its own box, run past it, overflow the page, or clip
  * a button, and above 1240 px, where the tab is a fixed frame, the page
  * itself may not scroll (a stray absolutely positioned element stretching
@@ -47,6 +49,7 @@ const { chromium } = (() => {
 })();
 
 const { headlineRerun } = require('./headline-rerun');
+const { priceFaults, opinionProbe, opinionKeptFaults } = require('./checks');
 
 const [bundle, outDir] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
@@ -158,18 +161,6 @@ function expectedRun(board, id) {
   return { label, disabled };
 }
 
-/** What a control's price and name may say (PR #166 F-01): approximate, never a cap; the Opinion's input bound said apart. */
-function priceFaults(control, where) {
-  const out = [];
-  if (control.cost && !/^(≈ \$\d+\.\d\d|< \$0\.01)$/.test(control.cost)) { out.push(`${where}: priced "${control.cost}", not an approximate total`); }
-  if (/up to|at most|max/i.test(`${control.cost ?? ''} ${control.name ?? ''} ${control.title ?? ''}`)) { out.push(`${where}: says its price is a maximum: "${control.name}"`); }
-  if (control.group === 'F' && control.cost && !(control.name ?? '').endsWith(` · ${control.cost} · input at digest limit`)) {
-    out.push(`${where}: the Opinion's name does not say its input is at the digest limit: "${control.name}"`);
-  }
-  if (control.title !== (control.reason ?? control.name)) { out.push(`${where}: its tooltip is "${control.title}"`); }
-  return out;
-}
-
 // ---------------------------------------------------------------------------
 // The states.
 // ---------------------------------------------------------------------------
@@ -213,7 +204,7 @@ const showAtTop = (selector) => async (tab) => {
   await tab.mouse.move(4, 4);
 };
 
-const { fresh, oneCall, analyzing, read } = states;
+const { fresh, oneCall, analyzing, read, opinionReading, opinionKept } = states;
 const HEADLINE = '.pm-lb-headline-row';
 const scenarios = [
   // The run line in each label state.
@@ -229,6 +220,9 @@ const scenarios = [
   // The Lenses panel: Run, Rerun, and Running.
   { name: 'one-call-lenses', data: oneCall, act: showAtTop(LENSES), within: LENSES, expect: { runs: true } },
   { name: 'analyzing-lenses', data: analyzing, act: showAtTop(LENSES), within: LENSES, expect: { runs: true } },
+  // The Opinion's Analyze, held, then failed: the earlier Opinion kept (decision 47).
+  { name: 'opinion-reading', data: opinionReading, act: showUnderRibbon(OPINION), within: OPINION, expect: { widgets: true, opinionKept: { state: 'reading' } } },
+  { name: 'opinion-kept', data: opinionKept, act: showUnderRibbon(OPINION), within: OPINION, expect: { widgets: true, opinionKept: { state: 'failed', error: reasons.unexpected } } },
   // The headline's Re-analyze, focused and pressed: the same button keeps the focus through its rerun (PR #166 N-02).
   { name: 'headline-rerun', data: read, act: showAtTop('.pm-lb-main-eyebrow'), within: HEADLINE, expect: { headlineRerun: true } }
 ];
@@ -461,7 +455,8 @@ async function keyboard(tab, { lens, sends }) {
       if (!stable) { errors.push(`${scenario.name}@${viewport.tag}: never settled`); }
       fs.writeFileSync(path.join(outDir, `lightbox-${scenario.name}-${viewport.tag}.png`), previous);
       const seen = await tab.evaluate(facts, { within: scenario.within, sparkle: SPARKLE });
-      for (const problem of faults(seen, scenario)) {
+      if (scenario.expect.opinionKept) { seen.opinion = await tab.evaluate(opinionProbe); }
+      for (const problem of [...faults(seen, scenario), ...(scenario.expect.opinionKept ? opinionKeptFaults(seen.opinion, scenario.expect.opinionKept) : [])]) {
         errors.push(`${scenario.name}@${viewport.tag}: ${problem}`);
       }
       // The keyboard, after the screenshot: Enter on a control the state names.

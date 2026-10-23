@@ -93,18 +93,18 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   busy: 'A tile is already on its way to the Workshop. Wait for it, then try again.',
   boardChanged: 'The board changed. Bring a tile from the board on screen.',
   notOnBoard: 'That tile is not on the board: it was withheld, or its lens was read again since.',
-  stale: 'This tile was read against an earlier version of the chapter. Re-read it, then bring it.',
+  stale: 'This tile was read against an earlier version of the chapter. Re-analyze it, then bring it.',
   reading: 'This lens is being read again. Wait for it to land, then bring it.',
   setAside: 'You set this spark aside. Bring it back first.',
   saidGone: 'Its said line is no longer in the chapter, so it was not brought.',
   quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
   handoffIncomplete: 'Its two sentences are no longer side by side in the chapter, so the handoff was not brought.',
-  notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
+  notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-analyze the numbers.',
   phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
   steeringNoInstance: 'None of its quotes still holds an instance of the figure it reads, as the chapter has it, so it was not brought.',
-  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.',
+  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then re-analyze the lens, before bringing it.',
   /** A saved board opened over a file that has changed since (Slice 5A, epic decision 29). */
-  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then read the lens again before bringing it.'
+  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then re-analyze the lens before bringing it.'
 } as const;
 
 /** Why the Workshop did not stage a tile, in the writer's words. */

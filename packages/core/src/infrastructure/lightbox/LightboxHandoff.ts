@@ -47,9 +47,9 @@ export const LIGHTBOX_HANDOFF_REFUSALS = {
   unknown: 'That is not something the Lightbox can hand to the Workshop.',
   busy: 'A field is already on its way to the Workshop. Wait for it, then try again.',
   boardChanged: 'The board changed. Build from the board on screen.',
-  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then read the lens again before building it.',
+  fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then re-analyze the lens before building it.',
   /** A saved board opened over a file that has changed since (Slice 5A, epic decision 29). */
-  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then read the lens again before building it.',
+  snapshotChanged: 'This saved board was read from an earlier text of the chapter. Choose Read the current text, then re-analyze the lens before building it.',
   fileUnreadable: 'The chapter could not be read to check it, so nothing was handed over.',
   notOnBoard: 'That field is not on the board: it was withheld, or the lens was read again since.',
   notAField: 'Only a borrowed field can be built as a lens.',

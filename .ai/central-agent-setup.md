@@ -819,8 +819,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 4I (run controls: "Run AI analyses", a call run on its own by group, every AI-read widget's Analyze, each call's Run in the Lenses panel) with PR #166's review corrections, on `epic/lightbox-run-controls`, with `epic/lightbox` at `08b0d22` (PR #165 merged) merged in):
-- 494 suites / 6,897 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4I (run controls: "Run AI analyses", a call run on its own by group, every AI-read widget's Analyze, each call's Run in the Lenses panel) with PR #166's review corrections and the writer's decisions 47 and 48, on `epic/lightbox-run-controls`, with `epic/lightbox` at `08b0d22` (PR #165 merged) merged in):
+- 495 suites / 6,905 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1241,7 +1241,13 @@ adding a way to start a reading:
   the scope in `LightboxPressScope` before anything is reserved. A new way
   to run joins that union and that check, never a second planner.
 - **A call run on its own replaces its group**, cleared first, as a full
-  run does; only `lens` keeps a group's other readings.
+  run does; only `lens`, and the Opinion's call on its own, keep their
+  reading until the new one lands (`lightboxPressKeptLens`; decision 47).
+  A failure or Stop leaves the kept reading as it was, and the Opinion's
+  frame shows it as the earlier one (`LightboxReadingFrame`'s `keep`).
+- **One verb for an AI run** (decision 48): "Analyze", "Re-analyze",
+  "Re-analyze this tile". "Re-read" is only for reading the chapter file
+  again ("Re-read file").
 - **The Opinion alone reads the board.** `lightboxOpinionNothingToWeigh`
   (over `lightboxOpinionItems`) is the one rule the host's refusal and the
   webview's disabled Analyze share; F's own check at its digest stays the

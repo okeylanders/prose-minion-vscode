@@ -60,6 +60,12 @@ fresh-opinion@1440: Opinion: 0 controls, not 1
 fresh-opinion@1440: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@1440: the calls listed are []
 analyzing-lenses@1440: the calls listed are []
+opinion-reading@1440: Opinion: 0 controls, not 1
+opinion-reading@1440: the earlier Opinion is not drawn
+opinion-reading@1440: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1440: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1440: Opinion: 0 controls, not 1
+opinion-kept@1440: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@1440: the read headline has 0 Analyze controls, not 1
 fresh-runline@1000: the run press says "Read the chapter", not "Run AI analyses"
 one-call-runline@1000: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
@@ -123,6 +129,12 @@ fresh-opinion@1000: Opinion: 0 controls, not 1
 fresh-opinion@1000: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@1000: the calls listed are []
 analyzing-lenses@1000: the calls listed are []
+opinion-reading@1000: Opinion: 0 controls, not 1
+opinion-reading@1000: the earlier Opinion is not drawn
+opinion-reading@1000: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1000: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1000: Opinion: 0 controls, not 1
+opinion-kept@1000: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@1000: the read headline has 0 Analyze controls, not 1
 fresh-runline@500: the run press says "Read the chapter", not "Run AI analyses"
 one-call-runline@500: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
@@ -186,4 +198,10 @@ fresh-opinion@500: Opinion: 0 controls, not 1
 fresh-opinion@500: the Opinion's Analyze does not show the host's reason: undefined
 one-call-lenses@500: the calls listed are []
 analyzing-lenses@500: the calls listed are []
+opinion-reading@500: Opinion: 0 controls, not 1
+opinion-reading@500: the earlier Opinion is not drawn
+opinion-reading@500: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@500: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@500: Opinion: 0 controls, not 1
+opinion-kept@500: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
 headline-rerun@500: the read headline has 0 Analyze controls, not 1
