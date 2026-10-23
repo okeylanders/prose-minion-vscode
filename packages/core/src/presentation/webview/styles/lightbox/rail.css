@@ -223,6 +223,10 @@
 }
 
 /* ---------- Each call's header in the Lenses panel, with its Run (Slice 4I, epic decision 45) ---------- */
+/* A lens row holds its visually hidden call name. */
+[data-pm-surface="lightbox"] .pm-lb-lens-call .pm-lb-lens-row {
+  position: relative;
+}
 [data-pm-surface="lightbox"] .pm-lb-lens-call + .pm-lb-lens-call,
 [data-pm-surface="lightbox"] .pm-lb-lens-row.is-fixed + .pm-lb-lens-call {
   border-top: 1px solid var(--pm-border);

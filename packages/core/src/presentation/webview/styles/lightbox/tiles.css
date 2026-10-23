@@ -444,6 +444,8 @@
   gap: 4px;
   max-width: 100%;
   min-width: 0;
+  /* Holds its visually hidden reason, which would otherwise stretch the page from wherever it sits. */
+  position: relative;
 }
 [data-pm-surface="lightbox"] .pm-lb-call-button {
   display: inline-flex;
@@ -490,12 +492,29 @@
   font-weight: 500;
   color: var(--pm-muted);
 }
+/* A call showing its own reason (the Opinion with nothing to weigh, a call too large): the chips and the button stay
+   together at the right of the head, and the reason takes a line of its own under it, the head's full width. */
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) {
+  justify-content: flex-start;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) > .pm-lb-tile-eyebrow {
+  margin-right: auto;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) .pm-lb-tile-badges,
+[data-pm-surface="lightbox"] .pm-lb-call.is-blocked {
+  display: contents;
+}
+[data-pm-surface="lightbox"] .pm-lb-call.is-blocked > .pm-lb-call-reason {
+  flex-basis: 100%;
+  max-width: none;
+}
 [data-pm-surface="lightbox"] .pm-lb-call-reason {
   max-width: 44ch;
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--pm-amber);
 }
+/* Read by a screen reader, never drawn. Its container is positioned, so it never stretches the page. */
 [data-pm-surface="lightbox"] .pm-lb-visually-hidden {
   position: absolute;
   width: 1px;
