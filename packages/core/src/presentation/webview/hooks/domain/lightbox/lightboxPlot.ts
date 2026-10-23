@@ -144,7 +144,11 @@ export function lightboxMovementsLane(board: LightboxBoard, lensOn: boolean): Li
   const pending = lensNote(board, 'summary', 'Summary & movements', lensOn);
   const movements = lightboxTilesOfKind(board, 'movement');
   if (pending || movements.length === 0) {
-    return { bands: [], stale: view.stale, note: pending ?? 'The movements were withheld: they did not tile the chapter.' };
+    // A withheld block (a format fault, or a reply cut off at the output ceiling, Slice 4H) is not a tiling fault: its frame says why.
+    const absent = view.withheldBlocks.length > 0
+      ? 'The movements were withheld: Summary & movements says why.'
+      : 'The movements were withheld: they did not tile the chapter.';
+    return { bands: [], stale: view.stale, note: pending ?? absent };
   }
   const bands = lightboxBands(lightboxColumnMovements(movements, board.ribbon), (a, b) => a.id === b.id);
   return {
