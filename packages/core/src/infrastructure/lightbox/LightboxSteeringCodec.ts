@@ -37,14 +37,12 @@
  */
 
 import type { LightboxSteeringExample, LightboxSteeringStance, LightboxSteeringStatId } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { LIGHTBOX_NUMBER_STAT_LABELS } from '@shared/constants/lightbox';
 import { isLightboxSteeringStat } from '@shared/constants/lightboxSteering';
 import { foldWithMap } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
 import {
   evidence,
-  lightboxFieldAtCeiling,
   listAt,
   paragraphNumber,
   strictObject,
@@ -59,8 +57,6 @@ import {
   type LightboxDecodedSteeringFigure,
   type LightboxDecodedSteeringNote
 } from '@/infrastructure/lightbox/LightboxSteeringWire';
-
-const B = PROMPT_BUDGETS.lightbox;
 
 /** A note that broke one of steering's own rules: its message is the host's whole reason, shown as it is. */
 class SteeringNoteRefusal extends Error {}
@@ -122,7 +118,7 @@ function decodeFigure(item: Record<string, unknown>, path: string): LightboxDeco
   }
   const stat = figure.stat;
   const label = LIGHTBOX_NUMBER_STAT_LABELS[stat];
-  const claim = text(figure.claim, `${path}.claim`, B.claimCharacters);
+  const claim = text(figure.claim, `${path}.claim`);
   const quotes = evidence(figure.evidence, `${path}.evidence`, 1);
   listAt(figure.notes, `${path}.notes`, 0, 'notes');
   const notes: LightboxDecodedSteeringNote[] = [];
@@ -153,7 +149,7 @@ function decodeNote(item: Record<string, unknown>, path: string, ordinal: number
   if (typeof stance !== 'string' || !LIGHTBOX_STEERING_STANCES.includes(stance as LightboxSteeringStance)) {
     shapeError(`${path}.stance`, 'earns, leans or compensates');
   }
-  const why = text(note.why, `${path}.why`, B.steeringWhyCharacters);
+  const why = text(note.why, `${path}.why`);
   const whyFault = lightboxSteeringTextFault(why, { instruction: true });
   if (whyFault) {
     throw new SteeringNoteRefusal(`Its why was withheld. ${whyFault}`);
@@ -166,7 +162,7 @@ function decodeNote(item: Record<string, unknown>, path: string, ordinal: number
     }
   } else if (note.nudge !== null) {
     // A null nudge is the shape for an instance in dialogue (epic decision 26); in narration the gate withholds it.
-    nudge = text(note.nudge, `${path}.nudge`, B.steeringNudgeCharacters);
+    nudge = text(note.nudge, `${path}.nudge`);
     const nudgeFault = lightboxSteeringTextFault(nudge, { instruction: true });
     if (nudgeFault) {
       throw new SteeringNoteRefusal(`Its nudge was withheld. ${nudgeFault}`);
@@ -175,7 +171,7 @@ function decodeNote(item: Record<string, unknown>, path: string, ordinal: number
   const example = decodeExample(note.example, `${path}.example`, earns);
   return {
     para: paragraphNumber(note.para, `${path}.para`),
-    quote: text(note.quote, `${path}.quote`, B.quoteCharacters),
+    quote: text(note.quote, `${path}.quote`),
     ordinal,
     stance: stance as LightboxSteeringStance,
     why,
@@ -216,8 +212,10 @@ function exampleOf(value: unknown, path: string): { example: LightboxSteeringExa
   if (!nonblank(pair.before) || !nonblank(pair.after)) {
     return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.shape };
   }
-  const before = lightboxFieldAtCeiling(pair.before.trim(), B.steeringExampleCharacters);
-  const after = lightboxFieldAtCeiling(pair.after.trim(), B.steeringExampleCharacters);
+  // Whole, however far past its ask: the first part is anchored in its note's checked quote, and both are checked
+  // as written, fresh, on carry and at Bring (PR #165 F-01). Bring clips the pair to one Workshop point after.
+  const before = pair.before.trim();
+  const after = pair.after.trim();
   if (lightboxSteeringExampleShowsNoChange({ before, after })) {
     return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.same };
   }

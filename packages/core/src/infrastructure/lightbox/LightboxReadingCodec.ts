@@ -71,6 +71,7 @@ import {
   paragraphNumber,
   strictObject,
   terms,
+  prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import { readLightboxFrame } from '@/infrastructure/lightbox/LightboxReadingFrame';
@@ -165,7 +166,7 @@ function decodeBlock(
       const block = strictObject(value, path, ['sentence', 'terms', 'evidence', 'friction']);
       return {
         lens,
-        sentence: text(block.sentence, `${path}.sentence`, B.noteCharacters),
+        sentence: prose(block.sentence, `${path}.sentence`, B.noteCharacters),
         terms: terms(block.terms, `${path}.terms`),
         evidence: evidence(block.evidence, `${path}.evidence`, 1),
         friction
@@ -181,7 +182,7 @@ function decodeBlock(
       return {
         lens,
         scores: scores(block.scores, `${path}.scores`, context.columnCount),
-        claim: text(block.claim, `${path}.claim`, B.claimCharacters),
+        claim: prose(block.claim, `${path}.claim`, B.claimCharacters),
         peaks: peaks(block.peaks, `${path}.peaks`),
         friction
       };
@@ -196,8 +197,8 @@ function decodeBlock(
       const block = strictObject(value, path, [...keys, 'claim', 'evidence', 'friction']);
       return {
         lens,
-        traits: keys.map((key) => ({ key, value: text(block[key], `${path}.${key}`, B.noteCharacters) })),
-        claim: text(block.claim, `${path}.claim`, B.claimCharacters),
+        traits: keys.map((key) => ({ key, value: prose(block[key], `${path}.${key}`, B.noteCharacters) })),
+        claim: prose(block.claim, `${path}.claim`, B.claimCharacters),
         evidence: evidence(block.evidence, `${path}.evidence`, 1),
         friction
       };
@@ -242,7 +243,7 @@ function requireFriction(value: unknown, path: string): string {
   if (typeof friction !== 'string' || friction.trim().length === 0) {
     throw new Error(`The ${path} block names no friction; every lens must say where it strains.`);
   }
-  return text(friction, `${path}.friction`, B.frictionCharacters);
+  return prose(friction, `${path}.friction`, B.frictionCharacters);
 }
 
 function decodeGenre(value: unknown, path: string, friction: string): LightboxDecodedBlock {
@@ -265,7 +266,7 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
     neighbors: items,
     malformed,
     promise: {
-      text: text(promise.text, `${path}.promise.text`, B.noteCharacters),
+      text: prose(promise.text, `${path}.promise.text`, B.noteCharacters),
       evidence: evidence(promise.evidence, `${path}.promise.evidence`, 1)
     },
     friction
@@ -279,9 +280,9 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
 function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecodedMotif {
   const motif = strictObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
   return {
-    title: text(motif.title, `${path}.title`, B.labelCharacters),
-    gist: text(motif.gist, `${path}.gist`, B.noteCharacters),
-    claim: text(motif.claim, `${path}.claim`, B.claimCharacters),
+    title: text(motif.title, `${path}.title`),
+    gist: prose(motif.gist, `${path}.gist`, B.noteCharacters),
+    claim: prose(motif.claim, `${path}.claim`, B.claimCharacters),
     terms: terms(motif.terms, `${path}.terms`),
     evidence: evidence(motif.evidence, `${path}.evidence`, LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS)
   };
@@ -293,13 +294,13 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
   ]);
   listAt(character.aliases, `${path}.aliases`, 0, 'aliases');
   return {
-    name: text(character.name, `${path}.name`, B.labelCharacters),
-    aliases: character.aliases.map((alias, index) => text(alias, `${path}.aliases[${index}]`, B.labelCharacters)),
-    archetype: text(character.archetype, `${path}.archetype`, B.labelCharacters),
-    energy: text(character.energy, `${path}.energy`, B.noteCharacters),
-    wants: text(character.wants, `${path}.wants`, B.noteCharacters),
-    hides: text(character.hides, `${path}.hides`, B.noteCharacters),
-    claim: text(character.claim, `${path}.claim`, B.claimCharacters),
+    name: text(character.name, `${path}.name`),
+    aliases: character.aliases.map((alias, index) => text(alias, `${path}.aliases[${index}]`)),
+    archetype: text(character.archetype, `${path}.archetype`),
+    energy: prose(character.energy, `${path}.energy`, B.noteCharacters),
+    wants: prose(character.wants, `${path}.wants`, B.noteCharacters),
+    hides: prose(character.hides, `${path}.hides`, B.noteCharacters),
+    claim: prose(character.claim, `${path}.claim`, B.claimCharacters),
     evidence: evidence(character.evidence, `${path}.evidence`, 1)
   };
 }
@@ -322,12 +323,12 @@ function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDe
   const affinity = Math.round(claimed * 100) / 100;
   stringAt(neighbor.nearMiss, `${path}.nearMiss`);
   const nearMiss = affinity <= LIGHTBOX_NEAR_MISS_AFFINITY
-    ? text(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
+    ? prose(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
     : '';
   return {
-    genre: text(neighbor.genre, `${path}.genre`, B.labelCharacters),
+    genre: text(neighbor.genre, `${path}.genre`),
     affinity,
-    claim: text(neighbor.claim, `${path}.claim`, B.claimCharacters),
+    claim: prose(neighbor.claim, `${path}.claim`, B.claimCharacters),
     nearMiss,
     evidence: evidence(neighbor.evidence, `${path}.evidence`, 1)
   };
@@ -344,8 +345,8 @@ function peaks(value: unknown, path: string): LightboxWirePeak[] {
     const peak = strictObject(item, itemPath, ['para', 'quote', 'note']);
     return {
       para: paragraphNumber(peak.para, `${itemPath}.para`),
-      quote: text(peak.quote, `${itemPath}.quote`, B.quoteCharacters),
-      note: text(peak.note, `${itemPath}.note`, B.noteCharacters)
+      quote: text(peak.quote, `${itemPath}.quote`),
+      note: prose(peak.note, `${itemPath}.note`, B.noteCharacters)
     };
   });
 }

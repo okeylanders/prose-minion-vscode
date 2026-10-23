@@ -31,8 +31,6 @@ import { createLightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxD
 import { lightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_GATE_REASONS, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import { LIGHTBOX_STEERING_EXAMPLE_REASONS } from '@/infrastructure/lightbox/LightboxSteeringCodec';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { clipLightboxText } from '@shared/constants/lightboxClip';
 import { lightboxSteeringTaskLines } from '@/infrastructure/lightbox/LightboxSteeringTiles';
 import { frame, readWorkedExample } from './lightboxReadingFixtures';
 
@@ -288,16 +286,14 @@ describe('the one example', () => {
   it.each([
     ['a second part of nine words', 'the dark came up all at once and swallowed it'],
     ['a second part of eighty characters', 'incomprehensibilities overwhelmingly counterrevolutionary internationalisations'],
-    ['a second part past the safety ceiling, clipped', 'darkness '.repeat(70).trim()]
+    ['a second part past eight times its ask, whole', 'darkness '.repeat(70).trim()]
   ])('shows an example with %s: its length is an ask (Slice 4H)', (_case, after) => {
     const shown = exampleOf({ before: 'it was too dark', after });
     expect(shown.withheld).toBeUndefined();
     expect(shown.example?.before).toBe('it was too dark');
-    // Whole up to the one safety ceiling, eight times the ask; a runaway part is clipped there with an ellipsis.
-    const ceiling = PROMPT_BUDGETS.lightbox.safetyMultiple * PROMPT_BUDGETS.lightbox.steeringExampleCharacters;
-    expect(shown.example?.after).toBe(after.length <= ceiling ? after : clipLightboxText(after, ceiling));
-    expect(shown.example!.after.length).toBeLessThanOrEqual(ceiling);
-    expect(shown.example!.after.endsWith('…')).toBe(after.length > ceiling);
+    // Whole however long (PR #165 F-01): both parts are checked as written, fresh, on carry and at Bring, so the codec
+    // never clips them; Bring clips the pair to one Workshop point after its checks.
+    expect(shown.example?.after).toBe(after);
   });
 
   it('shows a first part longer than asked when it stands whole in the note\'s checked quote', () => {

@@ -66,7 +66,7 @@ decided:
 
 | Maximum | Where | Class | Why |
 |---|---|---|---|
-| Every character bound above, every label, term, quote | all codecs | **Overrun: shown** | an ask; one safety ceiling clips a runaway |
+| Every character bound above, every label, term, quote | all codecs | **Overrun: shown** | an ask; one safety ceiling clips runaway free prose only, never a quote, term, key, example or field a text rule reads (PR #165 F-01) |
 | Quotes per claim (3), terms per claim (5) | `LightboxReadingFields` | **Overrun** | minimums stay (1 quote; 2 for a motif; 2 for a synopsis) |
 | Motifs (4), characters (6), aliases (3), genre neighbours (5), peaks (3) | `LightboxReadingCodec` | **Overrun** | minimums stay (2 neighbours with a near miss; 1 peak) |
 | Gravity fields (5), terms a field (8), collisions (3), literal set-asides (4), clusters (4), cluster words (6), swatches (6), swatch words (3) | `LightboxGravityCodec` | **Overrun** | minimums stay (1 set-aside, 1 term, 2 cluster words, 1 swatch word) |
@@ -96,11 +96,26 @@ all still withhold, unchanged.
 ### The safety ceiling
 
 **Chosen: eight times each field's ask** (`safetyMultiple: 8` in
-`PROMPT_BUDGETS.lightbox`, never stated in a prompt). A field past it is
+`PROMPT_BUDGETS.lightbox`, never stated in a prompt), **for free prose
+only**. A claim, gist, note, friction, description or reason past it is
 clipped there with an ellipsis (`clipLightboxText`, at a word boundary when
 one is near), counted while the group decodes, and logged as
 `[LightboxReadingRunner] Group E clipped 1 field at the safety ceiling`;
-nothing is withheld. A whole response is refused only past eight times the
+nothing is withheld.
+
+**Every field a rule reads is read whole** (PR #165 F-01). The codec reads
+those with `text`, and only free prose with `prose`, which clips: a quote
+(the verifier holds it to the paragraph it names, so it needs no
+ceiling), a term the counter counts, a title or name used as a key or
+counted (a set-aside story, a character's name and aliases), a steering
+example (anchored whole in its note's quote), and every field a text rule
+checks: a spark's question, the Opinion's texts, craft steering's claim,
+why, nudge and example, a numbers reading's claim, an echo's fields. The
+review showed what clipping first did: a real quote past the ceiling was
+withheld; a quote with an invented tail passed when the chapter held its
+clipped start, ellipsis and all; a real long example was discarded; and a
+long spark lost its question mark and was withheld. Each is now a test
+(`LightboxCheckedWhole.test.ts`), with the threshold controls. A whole response is refused only past eight times the
 characters its prompt asks for (384,000), which the 12,000-token output
 ceiling cannot reach in practice. A list has no ceiling of its own: the
 output ceiling bounds how many items a reply can hold. One mechanism, one
@@ -284,15 +299,59 @@ the content guard over whatever it returns.
   and [E](../../archive/tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md)
   response-ceiling items, superseded by decisions 38 and 40.
 
+## 6. PR #165's corrections
+
+[The review](../../../docs/pr-reviews/pr-165-lightbox-reading-tolerance-review.md)
+found four faults (Medium / P2), all fixed; see its author response.
+- **F-01: every rule reads the field whole.** The codec clipped at the
+  safety ceiling before the checks, so a check saw a different value from
+  the model's. Now `text(value, path)` reads a field whole for every rule (a
+  quote, a term, a key, a steering example, every field a text rule checks),
+  and only free prose no rule reads goes through `prose(value, path, ask)`,
+  which clips (§1, the safety ceiling). A quote needs no ceiling: the
+  verifier holds it to the paragraph it names. The reviewer's four cases
+  (a real long quote withheld; a quote with an invented tail passing when
+  the chapter held its clipped start; a real long example discarded; a long
+  spark losing its question mark) are tests, with her threshold and
+  full-anchor controls (`LightboxCheckedWhole.test.ts`).
+- **F-02: a reply cut off inside its frame's ending.** At a length cutoff
+  only, the frame sets aside a last line that is a start of this group's
+  closing sentinel, or of the closing fence of a fence the reply opened
+  (around the frame, or inside the sentinels), before salvage; every
+  finished block is read. A normal stop gets no such allowance, and any
+  other last line is refused as before; the raw reply and its group's
+  contract are still saved (`LightboxReadingFrameEnding.test.ts`: groups
+  A–G one character short, every cut point inside the sentinel, both fence
+  cases, and the controls).
+- **F-03: a reply cut off inside a curly-quoted token.** In a salvage, a
+  curly-quoted token the reply never closed is incomplete, like a cut
+  straight string: its member is dropped and its finished siblings are
+  kept. A completed curly-quoted string is held to the same rule as ever,
+  and an ordinary parse stays strict (`ModelJsonRepair.test.ts`: a partial
+  key and a nested value, each beside its straight-quoted control, with no
+  content leaking).
+- **F-04: no test pins the engine's wording.** CI and VS Code 1.82's
+  extension host run Node 18, whose `JSON.parse` words its errors
+  differently from Node 22's. The two tests now assert a `SyntaxError`. The
+  parser read a position from the message with `/position (\d+)/`, which
+  could take a number from a slice of the reply that newer engines echo;
+  `jsonParseErrorPosition` now reads only a position at the message's end,
+  in both engines' wordings, and none otherwise. Only the error's own words
+  use it. The full suite was run under Node 18.20.8 as well.
+- **The guard's limit, written down.** `modelJsonContentMatches` compares
+  scalar sequences, not structure; its comment says so, so a future
+  model-based repair does not take it for proof that grouping survived.
+
 ## Implementation notes
 
-- **Modules.** New: `infrastructure/api/parsers/ModelJsonRepair.ts` (403
-  lines: the API, the walk, the rebuild) and `ModelJsonTokens.ts` (173: the
+- **Modules.** New: `infrastructure/api/parsers/ModelJsonRepair.ts` (426
+  lines: the API, the walk, the rebuild) and `ModelJsonTokens.ts` (183: the
   tokenizer and the guard's comparison),
   `infrastructure/lightbox/LightboxReadingFrame.ts` (the frame,
   out of the codec), `shared/constants/lightboxClip.ts`. Changed: every
-  block codec, `LightboxReadingFields` (the one home of the field rules,
-  `text(value, path, ask)` and `listAt(value, path, minimum, noun)`),
+  block codec, `LightboxReadingFields` (the one home of the field rules:
+  `text(value, path)` whole for every rule, `prose(value, path, ask)` for
+  free prose that may be clipped, and `listAt(value, path, minimum, noun)`),
   `LightboxReadingWire` (`LightboxReplyEnd`, `LightboxFrameRepair`,
   `LIGHTBOX_CUT_OFF_REASON`, the decode report), `LightboxGroupReply`
   (`decodeLightboxReply`, shared with `LightboxOpinionReply`), the handoffs,
@@ -314,7 +373,8 @@ case from group E, each fault on a worked example, refusals, the salvage of
 groups E and F, the log lines), `LightboxReadingTolerance.test.ts`
 (groups A–E: overruns shown, real faults withheld, the safety ceiling),
 `LightboxFieldHandoffClip.test.ts`, `LightboxBoardTolerance.test.ts`,
-`lightboxClip.test.ts`. Changed: the codec, runner (group C cut inside
+`lightboxClip.test.ts`; after PR #165's review, `LightboxCheckedWhole.test.ts`
+(F-01) and `LightboxReadingFrameEnding.test.ts` (F-02). Changed: the codec, runner (group C cut inside
 lineage through a whole run, and a cut reply that cannot be salvaged),
 Opinion, plot, steering, anchor, handoff, recovery-store, budget, sync and
 boundary tests, and the webview's `lightboxPlot.test.ts` (the Movements
@@ -341,6 +401,17 @@ After `npm ci` into a real `node_modules`:
   `a57a5cd`'s codec withhold ten blocks across groups A–E, and fail the cut
   group E whole (`states/before-a57a5cd.txt`).
 - No live or billable provider call.
+
+**After PR #165's corrections** (`2ebeda4b`): 490 suites / 6,794 tests /
+59 snapshots, all passing under Node 22.22.0; under Node 18.20.8, which CI
+and VS Code 1.82's extension host run, the same 490 / 6,794 / 59, all passing. Lint
+identical per file, rule and severity to a fresh export of `a57a5cd`;
+typecheck passes; after `npm ci`, two builds give `webview.js` `405f6cd1…`
+(unchanged) and `extension.js`
+`4730ecf7cc91b6bbd375b1d6daa130274ebf0d01cf8ac169c1209974e5f3638e`. The
+evidence host builder, rerun, writes the same log and states but for the
+recovery file's random id, so the captures stand. On an export of
+`d255b8e`, 29 of the new and changed tests fail and every control passes.
 
 **Which tests fail on `a57a5cd`.** The new and changed test files, copied
 onto an export of `a57a5cd`:

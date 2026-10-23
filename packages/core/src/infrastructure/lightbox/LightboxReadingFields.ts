@@ -10,10 +10,22 @@
  * states (`PROMPT_BUDGETS.lightbox`) is what it asks for. A field longer
  * than its ask, or a list with more items than asked, is read and shown:
  * only a real fault throws here (a wrong type, a blank field, a list shorter
- * than its stated minimum). One safety ceiling, `safetyMultiple` times a
- * field's ask, clips a runaway field with an ellipsis; each clip is counted
+ * than its stated minimum).
+ *
+ * **Checked whole, clipped only as prose (PR #165 F-01).** Every field a
+ * rule reads is read whole with `text`: a quote the verifier finds, a term
+ * the counter counts, a title or name used as a key or counted, an example
+ * anchored in its quote, and every field a text rule checks (a spark's
+ * question, the Opinion's texts, craft steering's, a numbers reading's, an
+ * echo's), fresh, on carry or at Bring. Only free prose no rule reads (a
+ * claim, gist, note, friction, description or reason) is read with `prose`,
+ * which clips a runaway one at the one safety ceiling, `safetyMultiple`
+ * times its ask, with an ellipsis; each clip is counted
  * (`countLightboxClips`) so the reply's log line can say how many, and none
- * withholds anything.
+ * withholds anything. A clip is display: nothing ever checks a clipped
+ * value against the chapter, so its ellipsis is never taken for the
+ * chapter's text. A quote needs no ceiling: the verifier holds it to the
+ * paragraph it names.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -48,7 +60,10 @@ export function countLightboxClips<T>(decode: () => T): { value: T; clipped: num
   }
 }
 
-/** A field as read: whole up to the safety ceiling for its ask, clipped with an ellipsis past it, and counted. */
+/**
+ * Display prose as kept: whole up to the safety ceiling for its ask, clipped
+ * with an ellipsis past it, and counted. Never for a field a rule reads.
+ */
 export function lightboxFieldAtCeiling(value: string, ask: number): string {
   const ceiling = ask * B.safetyMultiple;
   if (value.length <= ceiling) {
@@ -60,14 +75,29 @@ export function lightboxFieldAtCeiling(value: string, ask: number): string {
   return clipLightboxText(value, ceiling);
 }
 
-/** A nonblank string, trimmed. `ask` is the prompt's number: past it the field is still read, and only a runaway one is clipped. */
-export function text(value: unknown, path: string, ask: number): string {
+/**
+ * A nonblank string, trimmed, whole: what a rule reads (a quote, a term, a
+ * key, a field a text rule checks). However far past its ask, it is never
+ * clipped, so every check sees what the model wrote.
+ */
+export function text(value: unknown, path: string): string {
   stringAt(value, path);
   const trimmed = (value as string).trim();
   if (trimmed.length === 0) {
     shapeError(path, 'a non-empty string');
   }
-  return lightboxFieldAtCeiling(trimmed, ask);
+  return trimmed;
+}
+
+/**
+ * Free prose no rule reads (a claim, gist, note, friction, description or
+ * reason): a nonblank string, trimmed, shown whole past its `ask`, and
+ * clipped only past the safety ceiling (`lightboxFieldAtCeiling`). Never a
+ * quote, a term, a key, or a field any text rule checks, fresh, on carry or
+ * at Bring: read those with `text`.
+ */
+export function prose(value: unknown, path: string, ask: number): string {
+  return lightboxFieldAtCeiling(text(value, path), ask);
 }
 
 /**
@@ -85,7 +115,7 @@ export function listAt(value: unknown, path: string, minimum: number, noun: stri
 /** Words or short phrases as they stand in the chapter; the host counts them. */
 export function terms(value: unknown, path: string, minimum = 1): string[] {
   listAt(value, path, minimum, 'terms');
-  return value.map((term, index) => text(term, `${path}[${index}]`, B.labelCharacters));
+  return value.map((term, index) => text(term, `${path}[${index}]`));
 }
 
 export function evidence(value: unknown, path: string, minimum: number): LightboxWireQuote[] {
@@ -93,10 +123,10 @@ export function evidence(value: unknown, path: string, minimum: number): Lightbo
   return value.map((item, index) => singleQuote(item, `${path}[${index}]`));
 }
 
-/** One `{para, quote}` pair. */
+/** One `{para, quote}` pair, its quote whole: the verifier holds it to the paragraph it names (PR #165 F-01). */
 export function singleQuote(value: unknown, path: string): LightboxWireQuote {
   const pair = strictObject(value, path, ['para', 'quote']);
-  return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`, B.quoteCharacters) };
+  return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`) };
 }
 
 /**
