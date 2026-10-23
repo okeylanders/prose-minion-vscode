@@ -245,3 +245,58 @@ placeholder `provider/model-v1`.
     moments;
   - 207 errors against the base bundle (was 186);
   - new: 303 errors against the reviewed head's bundle.
+
+## Independent re-review — 2026-10-23
+
+**Reviewed correction head:** `3cd2be0e53cb2f679e8ba56428905d90f87c9500`
+**Delta reviewed:** `50aa9b5ea49f8f7af3f44c533f117c6432148ca6..3cd2be0e53cb2f679e8ba56428905d90f87c9500` (76 files, +2,824 / −433, including regenerated evidence and documentation). The base remains `08b0d226`; its merge into this branch adds the 66-line #165 closing appendix, not implementation changes.
+**Reviewer:** Astra · independent re-review, not an author-test-only disposition
+
+### Latest disposition
+
+**F-01, N-01 and N-02 are closed. No blocking finding remains in the reviewed Slice 4I correction.** The original review and the entire author response above are preserved. This latest disposition supersedes the original request for changes; it is not a formal GitHub approval or instruction to merge.
+
+| ID | Independent re-review result |
+| --- | --- |
+| **F-01 — closed** | The Opinion now says **“≈ $0.05”** on both controls. Its name and enabled tooltip separately say **“input at digest limit”**. The original real-host/stub-provider witness still accepts synthetic usage of $0.063 below the 12,000-output-token ceiling; the exact same desired-behavior assertion now passes because no total ceiling is claimed. Pricing, allowed output and scope were not changed, and no spending cap was added. Missing-pricing and tiny-price controls pass. |
+| **N-01 — closed** | Computed names start with the exact visible label, including Run, Rerun, Running, Analyze, Re-analyze and Analyzing. The exact-bundle replay checks every new control across the four original host moments, not only a string helper. |
+| **N-02 — closed** | The headline retains the **same DOM button and focus** through running, successful landing, another run and failure. A separately labelled synthetic cancellation transition also preserves it. A fresh board still has no headline action. This verifies DOM identity/focus, not native keyboard or screen-reader behavior. |
+
+Relevant corrected source: [price and accessible-name construction](https://github.com/okeylanders/prose-minion-vscode/blob/3cd2be0e53cb2f679e8ba56428905d90f87c9500/packages/core/src/presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts#L163-L241), [stable headline row](https://github.com/okeylanders/prose-minion-vscode/blob/3cd2be0e53cb2f679e8ba56428905d90f87c9500/packages/core/src/presentation/webview/components/lightbox/LightboxHeadline.tsx#L43-L81).
+
+### Additional correction scope: standalone Opinion retention and inspector wording
+
+The added behavior was reviewed rather than assumed covered by the three original fixes. [The scope helper](https://github.com/okeylanders/prose-minion-vscode/blob/3cd2be0e53cb2f679e8ba56428905d90f87c9500/packages/core/src/application/handlers/domain/LightboxPressScope.ts#L119-L132) routes only a standalone F press through the established kept-lens path, alongside the existing per-lens scope. It does not introduce another planner or persistence path.
+
+Independent real-host probes exercise both F entry scopes, Stop followed by a newer successful run and then an older late reply, same-ID/same-estimate-key adoption while preparing, changed-source adoption while preparing and while running, an Open crossing run start, and malformed-reply failure followed by a storage failure and reload. Earlier saved bytes, reload pointers, stale/rule standing, no duplicate late save and the new successful reading remain guarded. A separate cutoff witness confirms the narrower boundary: an **ok but withheld/no-tile** outcome replaces the old Opinion and saves the new withheld result. Retention is for failed/cancelled outcomes, not a promise that every response without a usable tile keeps the old one. This follows the established per-lens path and the existing classification of salvage as non-failure; no new defect is asserted for it.
+
+The exact rebuilt DOM shows the earlier Opinion during its standalone run without a replacement skeleton, and qualifies it as the earlier reading after failure. The new inspector wording retains its existing per-lens command; “Re-read file” still names the file operation.
+
+The author reports decisions 47–48 as the writer's answers. They are reviewed design context, **not independently verified writer/native acceptance**. Whole-board `all`/`rest` runs, including Finish after a failed Opinion, still clear the Opinion as explicitly disclosed. That policy question remains separate and is not converted into an undeclared regression. Nor is the pre-existing qualified run-line estimate reopened as a new F-01 issue.
+
+### Fresh verification on the correction head
+
+All heavy work was serialized with the other review. Dependencies were reused only after verifying the unchanged lockfile and workspace links. No production implementation was edited for the review.
+
+| Check | Result |
+| --- | --- |
+| Full Jest, isolated cloud workspace, Node 24.19.0 | **495 suites / 6,905 tests / 59 snapshots pass**, 292.422 s reported by Jest |
+| Typecheck / production build including `verify:bundle` | **Both pass**; existing webpack size warnings only |
+| Lint | **0 errors / 1,133 warnings**, identical to the original reviewed head by relative file, rule and severity |
+| Original independent host controls | **20 tests pass**, 7.535 s |
+| Original desired price regression | **1 test passes**, 2.857 s; the original $0.063 witness is unchanged except for the truthful display |
+| Retained #163/#164 independent regressions | **18 suites / 99 tests pass**, 25.201 s |
+| Added Opinion retention/ownership/storage controls | **8 tests pass**, 11.178 s |
+| Regenerated production-host evidence | **1 builder test passes**, 6.563 s; the 10-moment `run-controls.json` and `log.txt` are byte-identical to the committed correction evidence |
+| Original exact-bundle DOM/state controls | **395 checks pass**, no runtime errors |
+| New correction DOM checks | **195 checks pass**, no runtime errors |
+| Negative control against original `28a977e` source/bundle | Old source: **4 expected retention failures / 4 controls pass**, 9.178 s. Old bundle: **151 expected failures / 43 checks pass**, covering price meaning, label prefixes, headline identity/focus and earlier-Opinion qualification. The corrected bundle has one additional checked headline control during the first active run. |
+| Exact correction-head CI | **Both events success**: [PR run 40016760933](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40016760933), [push run 40016749578](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40016749578) |
+
+Rebuilt SHA-256: webview `4297b7608e9b89684aa36979e5702a41e2749784815dca498bc61a0522fdd3b4`; extension `ad1aaf122060f569ba41fe68e11e2e03a8542e05168252023b9e4e4c38070f7d`. Both match the author’s corrected evidence.
+
+The old-source retention replay initially encountered external `p-limit` identity/ESM setup errors before tests ran. Those logs are preserved; the final current/old runs use the same explicit external scheduler stub already used by the host harness. No production code was changed to make a probe pass. All timings here are the named automated execution contexts, not native UI latency measurements.
+
+Independently inspected the supplied headline-analyzing capture at 500 px, failed headline at 1440 px, earlier Opinion while running at 500 px and kept Opinion after failure at 1000 px. The action/reason and earlier-reading qualification are visible in those captures; no new clipping defect was established. These are supplied pixels, not independent native renders. JSDOM establishes state, transport, accessible-name and focus semantics, not native geometry, real keyboard default actions, speech recognition or screen-reader acceptance. No denied browser route was retried.
+
+Only public-domain *Alice*, synthetic data and stub providers were used. No live/billable model call, private manuscript, implementation change, formal review, merge, deployment or extension publication occurred. Slice 5A.2/#167 integration and Slice 5B remain separate reviews; the #164 tied-clock recovery debt is not reopened here.
