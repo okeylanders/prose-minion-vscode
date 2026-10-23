@@ -1,3 +1,5 @@
+**Current independent disposition (correction re-review, 2026-10-23): Request changes at `17e4cd7`.** F-03, F-04, N-01 and N-02 are resolved. F-01 and F-02 remain open on narrower retirement-error and recovery/read-classification paths. See the [independent correction re-review](#independent-re-review-of-the-corrections-2026-10-23). The initial review and author response below are historical and preserved verbatim; writer/native acceptance remains separate.
+
 # PR Review — Lightbox Board Names and Immediate Spark Saves, Slice 5A.1
 
 **Author:** okeylanders · **PR:** [#164](https://github.com/okeylanders/prose-minion-vscode/pull/164) (open, unmerged at review)  
@@ -262,3 +264,95 @@ After `npm ci` into a real `node_modules`, at `3532f949` (the code, unchanged si
   byte-identical.
 
 No live or billable call was made.
+
+## Independent re-review of the corrections (2026-10-23)
+
+**Reviewed correction head:** `17e4cd74a81abbe20455f237cba867554ec3fd54`.
+
+**Compared with:** report commit `815fc05a54022609829487a96b9cb208b82ba0af`; base remains `3e5c3a1bc1b864bc0de208fb290f1374a819c363`. All four intervening commits were reviewed: 32 changed files, +1,526 / −334, including the author response and regenerated evidence.
+
+**Independent verdict: Request changes.** F-03, F-04, N-01 and N-02 are resolved. The ordinary F-01/F-02 sequences now pass, but their preservation guarantees remain incomplete on the narrower, independently reproduced paths below. These are not the disclosed lease-expired final-rename race and do not require changing the 30-second lease or adding an automatic restore retry.
+
+The original review and author response above are preserved verbatim. The author's resolution ledger is useful implementation evidence, not a substitute for this independent disposition.
+
+### Resolution ledger
+
+| ID | Independent disposition at `17e4cd7` | Evidence |
+| --- | --- | --- |
+| F-01 | **Partially corrected; P2 remains open** | Live claims are no longer stolen in the original normal-duration interleaving; one-off cleanup failure followed by successful retirement stays deleted. Persistent predecessor-removal failure or a retirement directory-scan error still reports Delete success and later resurrects the predecessor. |
+| F-02 | **Partially corrected; P2 remains open** | Ordinary abandoned-claim restore succeeds; live claims preserve the pointer and restore in a later session. A new claim between recovery and reread, or a failed claim-discovery scan, still causes false `missing` and clears the pointer. |
+| F-03 | **Resolved** | Sequential distinct-Spark actions from stale windows preserve both marks; a different window's Undo changes only its requested Spark. Queue/source-switch controls remain passing. |
+| F-04 | **Resolved** | Untouched fields follow acknowledgment without submitting; genuine edits, including an intentional reversion, survive acknowledgment and submit once. Head and saved-row paths pass. |
+| N-01 | **Resolved** | Invalid blur keeps the draft, validation reason and `aria-invalid`; correction and Escape work. |
+| N-02 | **Resolved** | Full provider-less identity is deduplicated before display truncation; distinct long names retain the correct count and provider aliases still deduplicate. |
+
+### F-01 remaining — Retirement failures are still acknowledged as a successful Delete
+
+**Locations:** [`LightboxBoardClaims.ts:100–106`](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/infrastructure/storage/LightboxBoardClaims.ts#L100-L106), [directory error handling at 150–155](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/infrastructure/storage/LightboxBoardClaims.ts#L150-L155), and [`LightboxBoardStore.ts:324–339`](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/infrastructure/storage/LightboxBoardStore.ts#L324-L339).
+
+The correction correctly makes Delete retire predecessor claims before deleting its own claim. However, `retire` ignores a failed predecessor deletion, and its enumeration helper turns any directory error into an empty list. The store then unconditionally deletes its own current-version claim and reports `deleted`.
+
+**Independent sequence A, persistent cleanup failure:**
+
+1. A real store renames `Original` to `Renamed`. Fail deletion of that write's old claim, leaving a correctly committed visible `Renamed` file and the genuine `Original` predecessor claim.
+2. A fresh store deletes the board. Keep the **same old claim** unremovable during this attempt; allow the fresh Delete's own claim to be removed.
+3. Delete returns `{ kind: 'deleted' }`.
+4. Release the old-claim failure, advance the injected clock past the lease, and list/read the board.
+
+**Observed:** the file reappears as **`Original`**, not `Renamed`. The latest version has been removed, and the predecessor is restored despite the successful explicit Delete. This models a claim-specific filesystem failure persisting through both cleanup attempts, not a stall inside the final rename.
+
+**Independent sequence B, failed retirement enumeration:** start with the same genuine leftover, let its cleanup failure end, then fail only the directory scan that Delete performs while holding its own claim. Delete again reports success; the next healthy listing past expiry restores `Original`. No overlapping rewrite is required for either sequence.
+
+**Passing controls:** when retirement succeeds, Delete remains effective past expiry; when deletion of Delete's **own** claim fails, the current implementation correctly returns `failed` and restores the exact latest bytes. All seven adapted original storage probes pass, including live-claim busy handling, normal recovery, failed final commit and malformed-data preservation. The missing symmetry is failure while retiring the other claims.
+
+**Requested correction:** do not treat an unknown/incomplete retirement as success. Distinguish a predecessor that is already gone from one still present or not verifiably retired. Only acknowledge Delete once no predecessor can later be recovered; otherwise preserve/restore the latest board and return a recoverable failure. Cover both removal and directory-enumeration errors, while retaining the successful retirement and own-claim rollback controls.
+
+### F-02 remaining — A second raw read and a failed scan still confuse busy/unknown with absent
+
+**Locations:** [`LightboxBoardStore.ts:226–231`](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/infrastructure/storage/LightboxBoardStore.ts#L226-L231), [`LightboxBoardClaims.ts:150–155`](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/infrastructure/storage/LightboxBoardClaims.ts#L150-L155), and [the pointer cleanup at `LightboxBoardLibrary.ts:258–265`](https://github.com/okeylanders/prose-minion-vscode/blob/17e4cd74a81abbe20455f237cba867554ec3fd54/packages/core/src/application/services/lightbox/LightboxBoardLibrary.ts#L258-L265).
+
+**Independent normal-filesystem interleaving:**
+
+1. The last-on-screen saved file sits in an abandoned claim, with its bytes intact.
+2. A fresh host starts restore. Its store recovers the abandoned claim to the visible filename.
+3. Before that store's subsequent raw reread, a second real store begins an ordinary rewrite and takes a **new, live** claim on the recovered file. Hold that writer at reading its claimed bytes.
+4. Let restore continue.
+
+**Observed at the store boundary:** `{ kind: 'missing' }`, not `busy`. **Observed through the actual restore handler/library:** no restored board and an undefined reload pointer while the fresh live claim still exists. Release the second writer: it commits normally, but the pointer has already been cleared. Both the store-level and production-host probes reproduce this sequence.
+
+The first `missing` is classified through `settle`, but the second `files.read` returned for `present` is not. No writer stalls past its lease in this interleaving; only the initial, genuinely abandoned claim is old.
+
+**Independent error case:** with the last board intact in an abandoned claim, fail claim-directory enumeration during restore. `entriesOf` returns `[]`, so the store calls it absent and restore clears the pointer. The claim remains intact. A failed scan is not proof that neither the file nor a claim exists.
+
+**Passing controls:** ordinary abandoned-claim restore, explicit-list recovery, live/busy restore with the pointer retained, a fresh session after expiry, and clearing the pointer for a genuinely absent file with no claim. The existing newer-source-choice guards also remain passing.
+
+**Requested correction:** classify every missing result used for restore, including the post-recovery reread, with bounded retry or a non-missing busy/failure outcome when ownership changes. Preserve directory-read errors as uncertainty/failure rather than absence. Clear the pointer only after actual absence is established. This is not a request to retry automatically when the disclosed lease ends, and no loss of saved-board bytes is claimed.
+
+### Fresh verification at the correction head
+
+| Check | Result |
+| --- | --- |
+| Full Jest | **481 suites / 6,643 tests / 59 snapshots passed**, 341.593 s |
+| Typecheck | **Pass** |
+| Lint | **0 errors / 1,133 warnings**, identical by relative file, rule and severity to the prior independent run and approved #163 baseline |
+| Production build / bundle verification | **Pass** |
+| Correction diff whitespace | **Pass** for `815fc05..17e4cd7`; historical report Markdown line breaks are unchanged |
+| Independent regressions | **99 tests: 94 pass, 5 desired assertions fail**, 18 suites, 22.783 s; the failures are two F-01 retirement cases and three F-02 store/host witnesses |
+| Canonical-basis direct Node controls | **Pass**; name/rule/basis stability and earlier-rule refusal precedence retained |
+| Regenerated production-host states | **Pass**; states and log match the committed corrected evidence byte-for-byte |
+| Exact rebuilt production-bundle DOM | **131 positive assertions pass**, including former rename/invalid-blur witnesses now asserted as desired behavior |
+
+All **47 preserved #163 controls** pass. All **28 independent UI checks** pass, including both editor targets, dirty edits across acknowledgments, intentional reversion, invalid draft recovery, model identity and Delete cancellation while an invalid editor remains open. The original 5A.1 probes were preserved; correction copies adapt only the claim-name format and the now-disclosed live/expired lease behavior. The added failure probes use real stores/hosts, synthetic filesystem errors and deterministic deferred operations, not fabricated store results or timing sleeps.
+
+Bundle SHA-256 values:
+
+- `webview.js`: `66c1f405b6ff52a41f5780771482b3383f21bf84479c3d5a47c0f800b103cd35`
+- `extension.js`: `b72fa49032476d85f838dc1f9002a1ceb082b1117730c2b8a23690797e7d0c39`
+
+The changed supplied 500 px capture was inspected: the previously clipped estimate button's cost now wraps within its card. The added right-edge button-clipping check is relevant, but neither supplied pixels nor JSDOM establishes native VS Code geometry or complete clipping/accessibility coverage. The production-host builder and DOM checks were rerun; no browser was launched for this re-review.
+
+All heavy jobs were serialized. Dependencies and the lockfile are unchanged; the workspace dependency link still resolves to this exact checkout. Timings are cloud Jest timings, not native latency. Public-domain Alice and synthetic names/files/models only; no private manuscript or live/paid call. No implementation file was changed by the review.
+
+The disclosed 30-second lease, soft busy restore without automatic retry, legacy undated-claim policy and residual expired-lease/final-rename race are recorded limitations, not silently claimed solved and not the basis of these two remaining findings. Author-attributed writer decisions, native use, the real-chapter checkpoint and Slice 5B remain separate from technical review.
+
+**Recommendation:** fix the two remaining error/ownership classification gaps, retain the now-passing original sequences and all #163 guards, then rerun the five discriminating assertions and full required gates. No new UI finding is raised in this round.
