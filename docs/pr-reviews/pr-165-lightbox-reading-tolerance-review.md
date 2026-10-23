@@ -302,3 +302,82 @@ Rebuilt SHA-256 values match the author's correction evidence:
 All heavy work was serialized. The lockfile is unchanged and disk-backed dependencies retain this worktree's package links. Only public/synthetic fixtures were used; no live or paid provider call, private manuscript, implementation change, formal GitHub review, merge or publication of the extension occurred. The unchanged production webview and regenerated host evidence support the prior scoped pixel inspection, not a new native layout/accessibility checkpoint. Decisions 37–40 remain author design context, not independently verified writer acceptance. The existing #164 tied-clock debt, typical-output price estimate and future structural requirements for any model-based repair remain separate from this correction review.
 
 The remaining correction is **F-05 only**. Keep the now-passing F-01–F-04 contracts and rerun full gates and both exact-head CI events after changing the digit predicate.
+
+## Author response to the re-review (2026-10-23)
+
+**F-05: fixed.** One commit, `decd276d`, sits on top of your re-review's
+commit `711aa7f`, followed by the commit that adds this response and
+records the fix in the slice notes, the agents guide and the epic. F-01
+to F-04 are untouched. Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-05 | Medium / P2 | **Fixed** | **One pass, the rule kept exactly.** `LIGHTBOX_BARE_DIGIT` (`/(?<!¶\s?\d*)\d/u`) is gone. `lightboxHasBareDigit(text)` walks the whole original text once. Every digit of a run shares the run's start, so the run is judged once, at its start: it is an address when the character before it is `¶`, or is one whitespace character (tested with `/^\s$/u`, the pattern's own `\s`) with `¶` before that. Any other ASCII digit is bare, and the scan stops at the first one. Non-ASCII digits are not digits to the rule, as they were not to `\d`. Each character is read at most once.<br>**Nothing is clipped or checked by prefix.** The steering claim, why, nudge and example, a spark's question and a numbers reading's claim reach it whole, as F-01 requires.<br>**Callers:** `LightboxSteeringPhrasing`, `LightboxSparkPhrasing` and the numbers reading in `LightboxCraftCodec` | `LightboxBareDigitScan.test.ts`:<br>• **Your reproduction:** your group G object with a 200,000-digit paragraph address, through `decodeLightboxGroup` with `end: 'stop'`: the claim is kept whole, with no malformed item, withheld block or repair, in a 200,247-character response. It takes about 10 ms here; at `467950d` the same test took **15.4 s**<br>• **Linearity, counted, not timed:** the scan's own step count is at most the text's length, and 8× the digits is under 8.1× the steps (24,000 against 192,000); it stops at the first bare digit<br>• **The rule pinned to the old pattern:** 19 edge cases (no digit, a bare digit, an opening digit, `¶12`, `¶ 12`, a no-break space, an em space and a line break after `¶`, two spaces, a letter between, a second run, a second address, a range, a comma, an Arabic-Indic digit, a trailing `¶`, an empty text, a 50,000-digit address, a bare digit after it), and 20,000 seeded random texts, all agreeing with `/(?<!¶\s?\d*)\d/u`<br>**Controls:** a claim stating a bare number is still withheld with steering's figure reason, and `¶ 1` is kept | `decd276d` |
+
+### The other patterns checked
+
+I measured every regular expression the Lightbox codecs, frame, parser
+and text rules run on model text: adversarial inputs at 24,000 and 96,000
+characters, in Node 22.
+
+**Super-linear on model text, fixed in the same commit:**
+- **A spark's closing marks**, `/[\s"'“”‘’)\]}*_]+$/u` in
+  `LightboxSparkPhrasing`. An engine tries this from every start in a long
+  run of marks before the end: 757 ms at 24,000 and 12.8 s at 96,000. They
+  are now read back from the end one character at a time. Tests pin the
+  result to the old pattern on eight edge cases and 20,000 seeded endings.
+  A spark question with 200,000 spaces inside reads as a question in about
+  5 ms; at `467950d` it took **35.9 s**.
+
+**Super-linear on the chapter, not model text, fixed as well:**
+- **A chapter line's trailing spaces**, `line.replace(/\s+$/, '')` in
+  `LightboxSections` (6.7 s on a 96,000-space run inside a line). It is
+  now `line.trimEnd()`, which removes exactly the same characters; a test
+  checks every whitespace character. The Sections lane's output is
+  unchanged, so no rule id moves.
+
+**Linear, unchanged (the ratio from 24k to 96k in brackets):**
+- the steering rules' `WORD`, `/[\p{L}]+(?:'[\p{L}]+)*/gu`: its repetition
+  needs an apostrophe each time (2.2);
+- spark and Opinion `CLAUSE_BREAK`, `/[.!?;:]+|\s[-–—]+\s|[–—]+/u`, on a
+  space then a dash run and on spaced dashes (2.5, 1.5);
+- `LEADING_MARKS`, anchored at the start (1.8), and `split(/\s+/u)` (1.4);
+- `LIKELIHOOD` and the Opinion's `PERCENT`, `/%|\bper\s?cent\b/i` (1.8);
+- the numbers `DIRECTIVE` word alternation, and the Opinion's
+  `OBSERVATION_IDS`, `/\b(?:O[1-9]\d?)\b/gu` (2.2);
+- the Opinion's figures, `/\d+(?:,\d{3})*(?:\.\d+)?/g`: its repetition
+  needs a comma each time (1.8 to 6.1 across three inputs, 5.4 ms at most
+  at 96,000);
+- the quote verifier's `SEGMENT`, `/\P{M}\p{M}*|\p{M}+/gu` (2.7), and its
+  `indexOf` search: a 96,000-character quote of repeated letters against a
+  paragraph twice as long, growing linearly to 192,000 (1.0, 1.6 ms);
+- the frame's and parser's `OPENING_FENCE` (anchored, 1.6), and the
+  parser's `PARTIAL_SCALAR`, which is sticky, so it is tried at one
+  position only;
+- the clip's word boundary, `/\s\S*$/u`: each start reads only up to the
+  next space (2.6);
+- the word scans (`holdsPhrase`, `holdsWord`), which step from one
+  `indexOf` hit to the next: `"cut'a "` repeated (2.3).
+
+No other lookbehind runs on model text. The only others in the measured
+code are `beingVerbs`' fixed-width ones, which run on the chapter.
+
+Outside the Lightbox, `workshopTranscriptExport`'s stem, `/^-+|-+$/g`,
+has the unanchored-end shape, but it runs on a session title already cut
+to the stem's length bound, with every run of other characters collapsed
+to one hyphen first, so it is bounded; left alone.
+
+### Verification at the F-05 head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 22.22.0 | **491 suites / 6,829 tests / 59 snapshots, all passing** (was 490 / 6,794 / 59) |
+| Full Jest, Node 18.20.8 | **491 suites / 6,829 tests / 59 snapshots, all passing** |
+| `LightboxBareDigitScan` on an export of `467950d` | **22 of 35 fail.** The scan's 22 cases need the new function. The decoder and spark cases pass there, but take 15.4 s and 35.9 s; here they take about 10 ms and 5 ms. Per your request, those are not wall-clock assertions |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to a fresh export of `a57a5cd` |
+| Typecheck | **Pass** |
+| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass**, the same hashes both times: `webview.js` `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged), `extension.js` `1da47dcf24fb145d4773d4b8428eac235ec35cee7369951edf8cdfe32a0fd402` |
+| `git diff --check` | **Clean** |
+| Visual evidence | **Unchanged.** Rerun at this head, the host builder writes the same `log.txt` and the same states but for the recovery file's random id, and `webview.js` is the bundle the captures were made from |

@@ -817,8 +817,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`, with PR #165's corrections):
-- 490 suites / 6,794 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 4H (reading tolerance: asks, not gates; the 12,000-token output ceiling; the shared model-JSON repair with its content guard; truncation salvage), on `epic/lightbox-reading-tolerance`, from `epic/lightbox` at `a57a5cd`, with PR #165's corrections and its re-review's):
+- 491 suites / 6,829 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1104,7 +1104,10 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   clipped. One safety ceiling (`safetyMultiple` times the ask, never in a
   prompt) clips only free prose no rule reads (a claim, gist, note,
   friction), read with `prose`, with an ellipsis, and counts it; never
-  check a clipped value against the chapter. A surface with bounds of
+  check a clipped value against the chapter. A rule on a whole field
+  reads it in time linear in its length (PR #165 F-05): no
+  variable-length lookbehind (`lightboxHasBareDigit` replaced one) and no
+  unanchored `[…]+$` on model text; read from the end instead. A surface with bounds of
   its own clips there with `clipLightboxText`, after its anchors are
   checked whole: Bring holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`,
   which stay as they are.
