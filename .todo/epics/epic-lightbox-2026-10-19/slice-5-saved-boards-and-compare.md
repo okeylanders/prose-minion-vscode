@@ -839,15 +839,17 @@ panel**.
   new file.` Its contracts moved to `LightboxBoardStoreContracts.ts` to keep
   the store under 500 lines. The save result keeps its shapes
   (`saved`, `replaced`, `withdrawn`, `failed`, `refused`).
-- **The board a save is owed** (PR #167 F-01; `owedBoard`). A save waits
-  its turn in the store's queue, and another run may start on the same
-  board in that time. At its turn it writes the board as it then stands
-  only when nothing on it is reading (no group `running`, nothing
-  `pending`). Otherwise it writes the settled board its run finished with,
-  carrying the file, revision and name the board holds now, so a rename
-  given while it waited is written and the file it rewrites is the board's
-  own. A board that was replaced in the meantime is written as captured
-  and is never pointed at. With decision 47, the board saved after a
+- **The board a save is owed** (PR #167 F-01 and its re-review;
+  `owedBoard`). A save waits its turn in the store's queue, and another
+  run may start on the same board in that time. It may still be reading,
+  or it may have cleared a group (decision 42) and been stopped with
+  nothing back. At its turn the save writes the readings and rules its own
+  run settled, exactly as captured, never a later state of them. It carries
+  the file, revision and name the board holds now, and each spark's
+  set-aside mark, so a rename or a mark given while it waited is written
+  and the file it rewrites is the board's own. A later run that lands
+  saves itself. A board that was replaced in the meantime is written as
+  captured and is never pointed at. With decision 47, the board saved after a
   failed Opinion call holds the old Opinion, even when the writer has
   started the Opinion again by the time the save runs.
 - **Save status** (PR #167 N-01). The store marks a save failed when its
@@ -1099,10 +1101,14 @@ with the author's response and ledger below it. Each correction is
 described in place above. What the writer may want to know:
 
 - **A finished reading reaches its file even when the next run starts
-  first** (F-01). A save waits its turn. If a later run is reading on the
-  same board by then, the save writes the board its own run finished
-  with, and the later run's own save adds what it lands. A later run that
-  is stopped adds nothing, and the earlier reading stays on disk.
+  first** (F-01). A save waits its turn, and it writes the readings its
+  own run finished with, whatever has happened on screen since. A later
+  run may be reading, or may have cleared a call (decision 42) and been
+  stopped with nothing back, before or after the save's turn. The later
+  run's own save adds what it lands; a later run stopped with nothing
+  back adds nothing, and the earlier reading stays on disk. The
+  re-review found the stopped case: until then, a Stop pressed before the
+  save's turn left the cleared call in the file.
 - **The old Opinion is kept through such a wait** (decision 47, from
   Slice 4I). Say the Opinion's call fails, and the writer presses it again
   before the save runs. The save still writes the failed call with the
@@ -1161,6 +1167,18 @@ passing on the first run under each:
   are the two review reports' own Markdown line breaks).
 
 No live or billable call.
+
+**After the re-review's F-01 fix** (`85c547c5`), under both Nodes, all
+passing on the first run:
+- 505 suites / 7,009 tests / 59 snapshots;
+- lint identical to `fcf86ff`;
+- typecheck;
+- two builds under each Node: `webview.js` `1fe07246…e6fe15` (unchanged)
+  and `extension.js` `d3c51bdb…48d9e8` all four times.
+
+The evidence's states rebuild byte for byte, so the captures stand.
+Against `14c3718`'s `owedBoard`, the reviewer's order and four of the six
+new pure cases fail, and the other order and the controls pass.
 
 ## Slice 5B: draft compare (a later PR)
 

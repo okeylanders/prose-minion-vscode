@@ -814,12 +814,15 @@ of them. The format is fixed so that 5B needs no change to it.
     declines writes nothing.
   - *A rename or spark mark of a file follows it* only when the board knew
     that file, so renaming an older file never moves the board to it.
-  - *The board a save is owed (PR #167 F-01).* A save reads the board at
-    its turn in the store's queue. When another run is reading on that
-    board by then (a group `running`, a lens `pending`, which the codec
-    refuses to save), it writes the settled board its run finished with,
-    carrying the file, revision and name the board holds now. A board that
-    was replaced is written as captured and never pointed at. With
+  - *The board a save is owed (PR #167 F-01 and its re-review).* A save
+    waits its turn in the store's queue, and another run may start on the
+    board meanwhile: still reading (a group `running`, a lens `pending`,
+    which the codec refuses to save), or cleared (decision 42) and stopped
+    with nothing back. Either way the save writes the readings and rules
+    its own run settled, exactly as captured. From the board at its turn it
+    takes only the file, revision and name the board holds, and each spark's
+    set-aside mark. A later run that lands saves itself. A board that was
+    replaced is written as captured and never pointed at. With
     decision 47, the board saved after a failed Opinion call holds the old
     Opinion even when the Opinion runs again before the save's turn. The
     store's save status ("Save failed") clears on the next commit, by

@@ -835,8 +835,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
-- 504 suites / 7,000 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review and re-review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
+- 505 suites / 7,009 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1408,12 +1408,14 @@ records, when it saves, or how a saved one comes back:
   F-03), and never writes a file that does not read whole.
 - **A save writes the board it was owed (PR #167 F-01).** A save waits
   its turn in the store's queue, and another run may start in the
-  meantime. At its turn, `owedBoard` takes the board as it stands only
-  when nothing on it is reading. Otherwise it takes the settled board its
-  run captured, carrying the file, revision and name the board holds now.
-  Never save a board with a group `running` or a lens `pending`: the
-  codec refuses it. The store's save status clears on any commit before
-  the commit is announced (N-01).
+  meantime, clear a group (decision 42) and be stopped with nothing back.
+  At its turn, `owedBoard` writes the readings and rules its own run
+  settled, exactly as captured, never a later state of them. It takes
+  from the board as it stands only the file, revision and name, and each
+  spark's set-aside mark. A later run that lands gets its own save. Never
+  save a board with a group `running` or a lens `pending`: the codec
+  refuses it. The store's save status clears on any commit before the
+  commit is announced (N-01).
 - **A mutation's outcome is shown where it outlives its sheet (PR #167
   F-02, F-03).** The name sheet is opened for a board and its adoption,
   and closes when either changes. A rename of the board on screen carries

@@ -1771,3 +1771,21 @@ lens, and adds its items to 4D's digest.
     with `webview.js` `1fe07246…` and `extension.js` `805bd134…` all four
     times. The evidence was rendered again on that bundle: 33 captures,
     `errors.txt` empty, and 204 errors against `fcf86ff`'s bundle.
+  - **PR #167's re-review (2026-10-23).** Astra closed F-02, F-03 and
+    N-01 to N-04, and confirmed the 4I integration. F-01 was open in one
+    order:
+    1. B landed, and its save waited in the queue.
+    2. B ran again on its own (cleared on screen, decision 42) and was
+       stopped with nothing back, before the save's turn.
+    3. The save wrote the stopped B.
+
+    Fixed in `85c547c5`: `owedBoard` writes the readings and rules its
+    own run settled, exactly as captured, carrying only the file,
+    revision, name and spark marks from the board at its turn. A later
+    run that lands saves itself. Both orders are now tested, beside a pure
+    test of the general shape. After it: 505 suites / 7,009 tests / 59
+    snapshots, all passing under Node 22 and Node 18.20.8. Lint is
+    identical to `fcf86ff`. Typecheck and two builds pass under each
+    Node, with `webview.js` `1fe07246…` (unchanged) and `extension.js`
+    `d3c51bdb…` all four times. The evidence's states rebuild byte for
+    byte.

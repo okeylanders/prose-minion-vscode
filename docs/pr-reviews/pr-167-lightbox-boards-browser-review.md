@@ -371,3 +371,50 @@ The base is an ancestor of this head. The clean three-way merge tree equals the 
 All heavy work was serialized. Dependencies were reused after matching the unchanged lockfile and installing checkout-local workspace links. Only public-domain *Alice* and synthetic data with stub providers were used. No private manuscript, live/billable provider, implementation change, formal review, merge, deployment or extension publication occurred. Timings describe the named cloud/CI contexts, not native UI latency. JSDOM and supplied captures do not establish native keyboard defaults, geometry or screen-reader acceptance; no denied browser route was retried. The existing #164 tied-clock claim-recovery debt remains separate and is not reopened.
 
 **Next step:** correct the remaining F-01 cancellation-order gap, preserve the now-passing ownership/UI/privacy controls, and re-review the actual next head. No other blocking finding is open in this reviewed integration.
+
+## Author response to the re-review (2026-10-23)
+
+**F-01: fixed.** One commit, `85c547c5`, sits on top of your re-review's
+commit `851b800`. It is followed by the commit that adds this response
+and records the fix in the slice notes, the ADR's D12 addendum, the
+agents guide and the epic. Nothing above this section was edited.
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **An owed save writes what its own run settled, never a later state of it.** `owedBoard(captured, now)` no longer returns `now` when it is settled. It always writes the captured readings and rules: the settled board the run that owes the save finished with. A later state that is running, or cleared (decision 42) and stopped with nothing back, or read again, never replaces them, so the outcome no longer depends on which side of the queue's turn the Stop falls. A later run that lands gets its own save.<br>From `now` it takes only what the writer holds: the file and revision the board holds, its name, and the set-aside mark of each spark both boards hold. A spark `now` no longer holds keeps its captured mark.<br>On-screen clearing (decision 42) is unchanged. `lightboxBoardSettled` had no other caller and is removed | `LightboxBoardOwedSaves.test.ts`:<br>• **Your sequence:** B lands with the board's read held; B runs again on its own (`{ mode: 'group', group: 'B' }`), cleared and held; Stop before the release, `groupsBack: 0`; release. The one file holds the landed B, `ok` with its tiles; the row on screen lists Characters; `lastSaveFailed` is false; a fresh host restores B<br>**Your counterpart:** release before the Stop: the same, and the Stop leaves the file byte for byte as it was<br>**Later success:** the rerun lands after the release, and its own save writes the new B<br>`LightboxOwedBoard.test.ts` (new), `owedBoard` on a real board through the general shape: a group cleared and stopped, cleared and running, read again; marks set aside and brought back since; a spark no longer held; no board<br>**Kept:** every earlier test, including the original in-flight witness and its controls, the queued name, N-01, the decision-47 Opinion retention tests (its owed-save test and 4I's), and the rename, spark and fallback suites | `85c547c5` |
+
+**With `14c3718`'s `owedBoard`** (only that module swapped in, type
+checks off), five of the 15 tests in those two suites fail:
+- your order;
+- four of the six pure cases: stopped, read again, and both mark cases,
+  whose expected group B is the captured one.
+
+Your counterpart, the rerun-landed control, the running case and the
+no-board case pass there.
+
+**One boundary, stated rather than changed.** After the owed save writes
+the landed B, the board on screen still shows B cleared and stopped, as
+decision 42 has it. If a later run lands (say C), its own save writes the
+board as it then stands, without that B. That now happens the same way
+in both orders of Stop and release. Keeping an earlier reading until a
+new one lands, for every call, is the writer's separate question, as
+decision 47 already does for the Opinion. This branch does not build it.
+
+### Verification
+
+On the code as pushed, after `npm ci` into the worktree's own
+`node_modules`:
+
+| Check | Base `fcf86ff` | This branch |
+| --- | --- | --- |
+| Full `npx jest`, Node 22.22.0 | 495 suites / 6,905 tests / 59 snapshots | **505 / 7,009 / 59, all pass** |
+| Full `npx jest`, Node 18.20.8 (CI's) | 495 / 6,905 / 59 | **505 / 7,009 / 59, all pass**, first run |
+| `npm run lint`, both Nodes | 0 errors / 1,133 warnings | identical per file, rule and severity |
+| `npm run typecheck`, both Nodes | — | pass |
+| `npm run build` with `verify:bundle`, twice under each Node | — | `webview.js` `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15` (unchanged: the fix is host-only), `extension.js` `d3c51bdbc4e90ee8984eeaad66b556eb2a9299e40cb25014f15e80f4ef48d9e8`, all four times |
+
+**The evidence stands as committed.** Rebuilt on this tree,
+`tools/build-boards.test.ts` writes `states/boards.json` and `log.txt`
+byte for byte. The webview bundle the captures were rendered from is the
+same. The fix changes no state the builder makes: none of its saves wait
+behind a later run. The one new suite is `LightboxOwedBoard.test.ts`.
