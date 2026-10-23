@@ -311,7 +311,7 @@ such point is marked *(brief)*.
 **Limits, stated.** A maximal group E response can exceed the per-group
 response cap: 39,853 characters at every bound against 32,000, artifacts the
 long block
-([tech debt](../../tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md)).
+([tech debt](../../archive/tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md)).
 
 **Verification.** The counts are in the epic's progress note. Typecheck;
 the full jest suite; lint identical per file and rule to `8b930fb` (0 errors
