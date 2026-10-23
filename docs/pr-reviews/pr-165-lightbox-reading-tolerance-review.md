@@ -381,3 +381,69 @@ to one hyphen first, so it is bounded; left alone.
 | `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass**, the same hashes both times: `webview.js` `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged), `extension.js` `1da47dcf24fb145d4773d4b8428eac235ec35cee7369951edf8cdfe32a0fd402` |
 | `git diff --check` | **Clean** |
 | Visual evidence | **Unchanged.** Rerun at this head, the host builder writes the same `log.txt` and the same states but for the recovery file's random id, and `webview.js` is the bundle the captures were made from |
+
+## Independent second re-review (2026-10-23)
+
+- **Reviewed correction head:** `bdec17f05561c9130f35881c2918a4ec3b3b5ae3`, including implementation `decd276db` and the latest author response/documentation.
+- **Base:** unchanged, `a57a5cd405bcf643aa41275585056b96ab0b7c42`.
+- **Current disposition:** **F-05 closed; F-01–F-04 remain closed. No remaining implementation findings in this review's scope.** This supersedes the earlier dispositions without editing the original reports or either author response.
+
+### F-05 resolution
+
+The new `lightboxHasBareDigit` advances monotonically through the original string, judges each ASCII digit run from its start with constant lookback, and skips the rest of an addressed run. Steering, Spark and numbers readings all use it. The semantic fields remain whole: the fix does not restore clipping, hide a forbidden tail or verify a shortened prefix.
+
+The original full-group G matrix was rerun against both the immediately preceding implementation (`467950d86`) and this correction, using the same framed response and equal-length ordinary-text controls. Every completed corrected case keeps the exact claim with zero clips, malformed items, withheld blocks or JSON repairs.
+
+**Fresh direct cloud Node 24.19.0 observations, not Jest or native VS Code latency:**
+
+| Digits | Complete response characters | Previous implementation | Corrected implementation | Corrected ordinary control |
+| --- | --- | --- | --- | --- |
+| 12,000 | 12,247 | 56.18 ms | 0.67 ms | 0.66 ms |
+| 24,000 | 24,247 | 201.77 ms | 0.69 ms | 0.80 ms |
+| 48,000 | 48,247 | 745.63 ms | 1.08 ms | 1.27 ms |
+| 96,000 | 96,247 | 2,918.06 ms | 1.58 ms | 1.56 ms |
+| 192,000 | 192,247 | Subprocess watchdog stopped the run | 2.19 ms | 2.07 ms |
+
+The previous implementation's largest case again reached the flushed production `decode-start` marker before its ten-second child watchdog fired. The watchdog includes startup and is not an exact decoder duration. Corrected runs completed normally. These synthetic addresses exercise the accepted safety envelope, not typical chapter numbers or demonstrated provider output. The **12,000-token provider ceiling**, **48,000-character prompt ask** and **384,000-character hard response bound** remain distinct; the larger samples are not asserted to fit a provider's token ceiling. Timings are scoped observations, not universal latency guarantees.
+
+Linearity is supported independently of timing and independently of the new optional `work.steps` counter. An external string-like wrapper counted actual length/`charAt`/`charCodeAt` accesses on long digit runs, repeated addressed runs and ordinary Unicode text, with a linear bound and early-stop control. Run-ending characters can be inspected again; this is bounded linear work, not a claim that each character has exactly one machine-level read.
+
+Eight additional independent tests pass:
+
+- The new predicate agrees with the old rule on **all 11,111 strings of lengths zero through four** over a boundary alphabet, plus all 25 ECMAScript whitespace characters and excluded separators, surrogate/emoji and non-ASCII-digit cases. CRLF remains two whitespace characters, not one; later bare runs remain faults.
+- Through the real group codec, steering, Spark and numbers each keep a long addressed claim/question whole and reject an otherwise identical value with a bare digit at its far tail.
+- Spark's changed closing-mark scan preserves the previous refusal decisions across Unicode, unmatched marks and internal-tail cases.
+- Actual Sections results match the previous production implementation across heading, setext, scene-break, chapter-line and front-matter corpora with whitespace/non-whitespace suffix variations. The detector still returns the same markers, ranges and labels.
+
+### Additional changed paths
+
+The author also replaced Spark's unanchored closing-mark suffix regex with a backward character scan, and Sections' trailing-whitespace regex with `trimEnd`. Both changes preserve their former character sets. No persisted shape or intended measurement output changes, and the repository's rule-fingerprint checks pass; retaining the measurement rule IDs is appropriate.
+
+These two changes were independently exercised at their owning production predicate/detector, with equal-length ordinary controls and isolated before/after children. In direct cloud Node 24.19.0, a Spark question with 96,000 internal spaces took **9,064.25 ms before / 1.38 ms after**; the ordinary corrected control took **1.26 ms**. The Sections detector's synthetic prose line with 96,000 internal spaces reached its production-start marker before the previous implementation's ten-second subprocess watchdog, while the corrected call completed in **0.037 ms** (ordinary control **0.039 ms**). The 24,000-space cases also completed with equivalent results and the expected improvement. These are synthetic, context-specific measurements, not native VS Code timings or verification of every unchanged regex in the author's broader audit.
+
+### Verification and retained clearances
+
+| Check | Independent result at `bdec17f05` |
+| --- | --- |
+| Full repository Jest, cloud Node 24.19.0 | **491 suites / 6,829 tests / 59 snapshots pass**, Jest 282.898 s |
+| Typecheck | **Pass**, shell 22.544 s |
+| Lint | **0 errors / 1,133 warnings**, exact per-file/rule/severity counts unchanged from the retained baseline |
+| Production build and `verify:bundle` | **Pass**, shell 40.082 s; existing webpack size warnings |
+| Retained independent regression/lifecycle/parser/frame controls and host builder | **85 tests pass**, Jest 6.408 s |
+| New independent equivalence, real-access-count and all-consumer controls | **8 tests pass**, Jest 3.976 s |
+| Retained direct curly-cut controls | **4 pass** |
+| Regenerated host evidence | Log byte-identical; the only changed scalar is the withheld-summary reason's recovery UUID |
+| Exact rebuilt production bundle in JSDOM | **51 checks pass** against freshly regenerated host states |
+| Whitespace and implementation scope | `git diff --check` passes; no implementation edits by the reviewer |
+| Correction-head Node 18.20.8 CI | **Both events pass**, including typecheck, **491 / 6,829 / 59**, lint and build |
+
+Correction-head workflows: [pull-request run 40000010824](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40000010824) and [push run 40000000133](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40000000133). Both job logs were independently inspected; their Jest durations were 254.388 s and 145 s respectively, separate from the direct-Node measurements above.
+
+Rebuilt hashes match the author evidence:
+
+- `webview.js`: `405f6cd140d856df49e48f46608b20dbe86bbce75c48b84fa3e0db9b327fbf5d` (unchanged).
+- `extension.js`: `1da47dcf24fb145d4773d4b8428eac235ec35cee7369951edf8cdfe32a0fd402`.
+
+F-01's full-anchor/fabricated-tail, semantic-tail, save/open/carry/Bring and identity controls remain passing; F-02/F-03's strict ordinary-stop, partial-frame/curly-token and content-preservation controls remain passing; F-04 stays green on the configured Node 18 runtime. All heavy work was serialized, dependencies remained disk-backed with an unchanged lockfile, and all inputs were public or synthetic. No private manuscript or live/paid provider call was used.
+
+This closes the implementation findings, not the separate native VS Code/accessibility or real-chapter/writer-acceptance checkpoint. Supplied pixels, unchanged webview bytes, regenerated host output and JSDOM retain their stated scope. Decisions 37–40 remain author design context, and the earlier price/product questions and acknowledged #164 tied-clock debt remain separate. This report is not a formal GitHub approval, merge instruction or extension-publication action.
