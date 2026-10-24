@@ -378,6 +378,14 @@ model). The writer asked for a setting of the Lightbox's own.
   estimate's model, its live window and prices, the fit check and the
   press's model all follow the Lightbox's scope. No Lightbox module names
   the assistant scope; the architecture witnesses pin both.
+- **A retired engine starts nothing new** (PR #169 F-01). A run keeps the
+  engine it started on for every call, the Opinion last. When the key is
+  removed or replaced, the manager detaches the provider of every
+  disposable engine it retires, so one a run still holds refuses its next
+  call as missing credentials, nothing sent; a request already sent
+  settles. Rebuilds that overlap (each webview refreshes on a key change)
+  are ordered: one overtaken while it read the key builds nothing, so an
+  old key's transports never replace the new ones.
 - **"Same as Workshop (…)"**, naming the Workshop's model, is how the
   Lightbox's picker, its model browser's first card and the Settings
   overlay's row show the unset state. Choosing it sends

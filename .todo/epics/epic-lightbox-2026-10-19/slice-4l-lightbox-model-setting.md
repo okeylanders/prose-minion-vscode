@@ -221,6 +221,48 @@ After `npm ci` into a real `node_modules`:
   `ee1ecf3159692348532db00428326439f71cbf6d2c0ada909eefdb215e5dc8c3`.
 - The diff's whitespace check is clean.
 
+## PR #169 review correction (2026-10-24)
+
+Astra's review ([report and author response](../../../docs/pr-reviews/pr-169-lightbox-model-setting-review.md))
+asked for one correction, now made.
+
+- **F-01 (P2): a deferred Opinion call could start after the key was
+  cleared.** A run keeps the engine it started on for every call, the
+  Opinion last. Moving the Lightbox to a disposable engine of its own
+  meant that clearing or replacing the key retired the bundle without
+  detaching its client (`dispose()` only clears a timer), so the held
+  engine could still start the Opinion's request after the clear was
+  acknowledged. On `cf7f260` the shared assistant engine's provider was
+  detached, and the Opinion was refused.
+  - **The fix, in `AIResourceManager`:** retiring a disposable bundle
+    detaches its engine's provider before disposing it, for every
+    disposable scope. A held engine then refuses a new call as missing
+    credentials ("Add an OpenRouter API key in Settings to run AI
+    analyses."), with nothing sent; a request already sent settles, and
+    landed readings and Stop are unchanged. On a key replacement the
+    Opinion fails the same way, and the next press runs on the new key.
+  - **Overlapping rebuilds are ordered.** Every webview refreshes on a key
+    change. A rebuild a newer one overtook while it read the key builds
+    nothing and settles with the newest, so an old key's transports never
+    replace the new ones.
+  - **Tests:** `LightboxKeyRetirement.test.ts` (5), through the production
+    key routes, reading handler, runner, manager and engines: the
+    reviewer's witness (A held, the clear acknowledged, A released, no
+    Opinion transport start, A landed, F failed), key replacement through
+    three refreshes at once (the held engine stays detached after a
+    hot-swap, the next Opinion press runs on the new key), and the
+    controls (the key kept: both start; Stop; a press with no key refused
+    before reserving, then run once a key is added).
+    `AIResourceManager.test.ts` (+2): every retired disposable engine
+    refuses a new call; an overtaken rebuild that read the old key leaves
+    the newer transports in place.
+  - **On the reviewed head** (`a2fc71f`'s sources): the witness, the
+    replacement case and both manager cases fail; the controls pass. **On
+    `cf7f260`**, type checks off: the witness and two controls pass (the
+    key kept, Stop). The replacement case fails there, since the shared
+    engine took the new key and sent the Opinion, and so does the no-key
+    control, since the offline assistant engine took the press.
+
 ## Visual evidence
 
 [`docs/pr-reviews/evidence/lightbox-slice-4l-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4l-visual/README.md),
