@@ -17,7 +17,10 @@
  * notice, its earlier reading's reason (decision 49: "Earlier reading · this
  * call failed"), or its block withheld by the cut. A reason that is not the
  * note's (an older call's, a block withheld for its own fault) is shown in
- * the widget as before. A call being read again has no note.
+ * the widget as before. A call being read again has no note. Calls that did
+ * not land for the same reason, in the same words (a whole board's run
+ * stopped, two calls rate-limited alike), share one note: "Calls A, B, C ·
+ * stopped".
  */
 
 import type { LightboxBoard, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
@@ -27,9 +30,10 @@ import { isLightboxCeilingReason, LIGHTBOX_CEILING_CUT_REASON } from '@shared/co
 export type LightboxCallNoteKind = 'failed' | 'stopped' | 'cut-off';
 
 export interface LightboxCallNote {
-  group: LightboxReadingGroupId;
+  /** The calls it says, in run order: one, or several that did not land in the same words. */
+  groups: LightboxReadingGroupId[];
   kind: LightboxCallNoteKind;
-  /** "Call E · failed". */
+  /** "Call E · failed", "Calls A, B · stopped". */
   label: string;
   /** The host's whole message, once. */
   message: string;
@@ -55,7 +59,7 @@ export function lightboxCallNoteOf(group: LightboxReadingGroup | undefined): Lig
     return undefined;
   }
   const note = (kind: LightboxCallNoteKind, message: string): LightboxCallNote => ({
-    group: group.group,
+    groups: [group.group],
     kind,
     label: `Call ${group.group} · ${KIND_WORDS[kind].label}`,
     message,
@@ -72,12 +76,25 @@ export function lightboxCallNoteOf(group: LightboxReadingGroup | undefined): Lig
   return reasons.length > 0 ? note('cut-off', reasons.sort((a, b) => cutFirst(a) - cutFirst(b))[0]) : undefined;
 }
 
-/** Every call's note, in run order. */
+/** Every call's note, in run order; calls that did not land in the same words share one. */
 export function lightboxCallNotes(board: Pick<LightboxBoard, 'readings'>): LightboxCallNote[] {
-  return LIGHTBOX_READING_GROUPS.flatMap((id) => {
+  const notes: LightboxCallNote[] = [];
+  for (const id of LIGHTBOX_READING_GROUPS) {
     const note = lightboxCallNoteOf(board.readings.find((group) => group.group === id));
-    return note ? [note] : [];
-  });
+    const same = note && notes.find((entry) => entry.kind === note.kind && entry.message === note.message);
+    if (same && note) {
+      same.groups.push(id);
+      same.label = `Calls ${same.groups.join(', ')} · ${KIND_WORDS[note.kind].label}`;
+    } else if (note) {
+      notes.push(note);
+    }
+  }
+  return notes;
+}
+
+/** The note that says call `group`, if it did not land. */
+export function lightboxBoardCallNote(board: Pick<LightboxBoard, 'readings'>, group: LightboxReadingGroupId): LightboxCallNote | undefined {
+  return lightboxCallNotes(board).find((note) => note.groups.includes(group));
 }
 
 /** Whether a widget's reason is the call note's own, so the widget points to it instead of repeating it. */
@@ -93,11 +110,15 @@ export function lightboxPointsToCallNote(note: LightboxCallNote | undefined, rea
  * Analyze to try again.", or, over an earlier reading, "Earlier reading ·
  * this call failed: see its note by the run line."
  */
-export function lightboxCallPointer(note: LightboxCallNote, earlier: boolean): { lead: string; link: string; after: string } {
+export function lightboxCallPointer(
+  group: LightboxReadingGroupId,
+  note: LightboxCallNote,
+  earlier: boolean
+): { lead: string; link: string; after: string } {
   const words = KIND_WORDS[note.kind];
   return earlier
     ? { lead: `${words.earlier}: `, link: 'see its note', after: ' by the run line.' }
-    : { lead: `Call ${note.group} ${words.short}: `, link: 'see its note', after: ' by the run line. Analyze to try again.' };
+    : { lead: `Call ${group} ${words.short}: `, link: 'see its note', after: ' by the run line. Analyze to try again.' };
 }
 
 function cutFirst(reason: string): number {

@@ -67,7 +67,7 @@ export const LightboxSparkLane: React.FC<LightboxSparkLaneProps> = ({ board, bin
       {view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
       <LightboxKeptNote view={view} />
-      {pointer && view.callNote && <LightboxCallLine note={view.callNote} />}
+      {pointer && view.callNote && <LightboxCallLine lens="spark" note={view.callNote} />}
       {view.notice && !view.callNote && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>{view.notice}</p>
       )}

@@ -255,8 +255,13 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
       {reading?.earlier && (
         <LightboxKeptNote
           view={reading.earlier.reanalyzing
-            ? { reanalyzing: true }
-            : { reanalyzing: false, earlier: reading.earlier.reason, ...(reading.earlier.callNote ? { callNote: reading.earlier.callNote } : {}) }}
+            ? { lens: reading.lens, reanalyzing: true }
+            : {
+              lens: reading.lens,
+              reanalyzing: false,
+              earlier: reading.earlier.reason,
+              ...(reading.earlier.callNote ? { callNote: reading.earlier.callNote } : {})
+            }}
           words={reading.tile.kind === 'opinion' ? LIGHTBOX_OPINION_KEEP : undefined}
         />
       )}

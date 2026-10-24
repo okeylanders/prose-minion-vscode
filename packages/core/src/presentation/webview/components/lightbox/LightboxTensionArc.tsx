@@ -52,7 +52,7 @@ export const LightboxTensionArc: React.FC<LightboxTileProps> = ({ board, bind })
   if (view.callNote) {
     return (
       <div className="pm-lb-tension-row">
-        <LightboxCallLine note={view.callNote} prefix="The tension arc did not come back." />
+        <LightboxCallLine lens="tension" note={view.callNote} prefix="The tension arc did not come back." />
         {analyze && <LightboxAnalyzeButton lens="tension" />}
       </div>
     );

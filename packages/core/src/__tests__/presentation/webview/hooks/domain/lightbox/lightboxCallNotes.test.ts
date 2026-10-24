@@ -54,11 +54,22 @@ describe('a lens view over an earlier reading (decision 49)', () => {
 describe('a call that did not land, said once (decision 52)', () => {
   it('notes a failed or stopped call by its error, and none for a call being read or landed', () => {
     expect(lightboxCallNoteOf({ ...emptyLightboxReadingGroup('B'), status: 'failed', error: FAILED })).toEqual({
-      group: 'B', kind: 'failed', label: 'Call B · failed', message: FAILED, id: 'pm-lb-call-note-B'
+      groups: ['B'], kind: 'failed', label: 'Call B · failed', message: FAILED, id: 'pm-lb-call-note-B'
     });
     expect(lightboxCallNoteOf({ ...emptyLightboxReadingGroup('B'), status: 'cancelled', error: 'Stopped.' })).toMatchObject({ kind: 'stopped', label: 'Call B · stopped' });
     expect(lightboxCallNoteOf(a)).toBeUndefined();
     expect(lightboxCallNoteOf({ ...a, status: 'running', pending: ['motif'], earlierLenses: [{ lens: 'motif', reason: FAILED }] })).toBeUndefined();
+  });
+
+  it('gathers calls that did not land in the same words into one note, each widget naming its own call', () => {
+    const stopped = (id: 'A' | 'B' | 'C'): LightboxReadingGroup => ({ ...emptyLightboxReadingGroup(id), status: 'cancelled', error: 'Stopped before this group came back.' });
+    const board: LightboxBoard = { ...read, readings: read.readings.map((group) => (['A', 'C'].includes(group.group) ? stopped(group.group as 'A' | 'C') : group)) };
+    expect(lightboxCallNotes(board)).toEqual([{
+      groups: ['A', 'C'], kind: 'stopped', label: 'Calls A, C · stopped', message: 'Stopped before this group came back.', id: 'pm-lb-call-note-A'
+    }]);
+    const note = lightboxLensView(board, 'genre').callNote as NonNullable<ReturnType<typeof lightboxLensView>['callNote']>;
+    expect(note.id).toBe('pm-lb-call-note-A');
+    expect(lightboxCallPointer('C', note, false).lead).toBe('Call C was stopped: ');
   });
 
   it('notes a cut-off call by the block it was cut inside, else the first it never reached', () => {
@@ -79,10 +90,10 @@ describe('a call that did not land, said once (decision 52)', () => {
     const failed = withA({ ...emptyLightboxReadingGroup('A'), status: 'failed', error: FAILED });
     const view = lightboxLensView(failed, 'motif');
     expect(view.callNote?.id).toBe('pm-lb-call-note-A');
-    expect(lightboxCallNotes(failed).map((note) => note.group)).toEqual(['A']);
-    expect(lightboxCallPointer(view.callNote as NonNullable<typeof view.callNote>, false))
+    expect(lightboxCallNotes(failed).map((note) => note.groups)).toEqual([['A']]);
+    expect(lightboxCallPointer('A', view.callNote as NonNullable<typeof view.callNote>, false))
       .toEqual({ lead: 'Call A failed: ', link: 'see its note', after: ' by the run line. Analyze to try again.' });
-    expect(lightboxCallPointer(view.callNote as NonNullable<typeof view.callNote>, true))
+    expect(lightboxCallPointer('A', view.callNote as NonNullable<typeof view.callNote>, true))
       .toEqual({ lead: 'this call failed: ', link: 'see its note', after: ' by the run line.' });
   });
 

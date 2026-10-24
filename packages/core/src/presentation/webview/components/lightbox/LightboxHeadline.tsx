@@ -80,7 +80,7 @@ export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) =
         <div className="pm-lb-headline-state" aria-label="Headline reading" aria-describedby={view.callNote?.id}>
           {view.stale && <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>}
           {kept && <LightboxKeptNote view={view} />}
-          {pointer && view.callNote && <LightboxCallLine note={view.callNote} prefix="The headline did not come back." />}
+          {pointer && view.callNote && <LightboxCallLine lens="headline" note={view.callNote} prefix="The headline did not come back." />}
           {failed && !pointer && <p className="pm-lb-reading-notice is-failed">The headline did not come back. {view.notice}</p>}
           {withheld && <LightboxWithheldBlocks blocks={blocks} label="Headline withheld" />}
           {withheld && <LightboxWithheldClaims claims={view.withheldClaims} />}

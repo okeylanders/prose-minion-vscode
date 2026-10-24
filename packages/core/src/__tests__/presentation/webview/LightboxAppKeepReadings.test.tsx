@@ -194,16 +194,17 @@ describe('LightboxApp: readings kept until replaced (Slice 4J)', () => {
       }
     });
 
-    it('treats a stopped call the same way, as a status, not an alert', () => {
+    it('treats a stopped call the same way, as a status, not an alert; calls stopped alike share one note', () => {
       const read = makeReadBoard();
       show(read);
       board(kept(firstFailed(read, 'B', 'cancelled', STOPPED), 'A', 'cancelled', STOPPED));
       const notes = document.querySelector('.pm-lb-call-notes') as HTMLElement;
-      expect(within(notes).getAllByRole('status').map((entry) => entry.textContent)).toEqual([`Call A · stopped ${STOPPED}`, `Call B · stopped ${STOPPED}`]);
+      expect(within(notes).getAllByRole('status').map((entry) => entry.textContent)).toEqual([`Calls A, B · stopped ${STOPPED}`]);
       expect(within(notes).queryByRole('alert')).toBeNull();
       expect(frame(MOTIFS).querySelector('.pm-lb-earlier-note')?.textContent).toBe('Earlier reading · this call was stopped: see its note by the run line.');
       expect(frame('Voice').querySelector('.pm-lb-call-line')?.textContent).toBe('Call B was stopped: see its note by the run line. Analyze to try again.');
-      expect(timesShown(STOPPED)).toBe(2);
+      expect(describedBy(frame('Voice'))).toContain(`Calls A, B · stopped ${STOPPED}`);
+      expect(timesShown(STOPPED)).toBe(1);
     });
 
     it('treats a cut-off call the same way: the cut said once, the lenses it touched pointing to it, one it finished replaced', () => {

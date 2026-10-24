@@ -17,6 +17,8 @@
  *   the note, so a screen reader hears the whole message with the frame.
  */
 import * as React from 'react';
+import type { LightboxLensId } from '@messages';
+import { lightboxLensGroup } from '@shared/constants/lightbox';
 import type { LightboxCallNote } from '@hooks/domain/lightbox/lightboxCallNotes';
 import { lightboxCallPointer } from '@hooks/domain/lightbox/lightboxCallNotes';
 
@@ -27,7 +29,7 @@ export const LightboxCallNotes: React.FC<{ notes: readonly LightboxCallNote[] }>
     <div className="pm-lb-call-notes">
       {notes.map((note) => (
         <p
-          key={note.group}
+          key={note.id}
           id={note.id}
           tabIndex={-1}
           className={`pm-lb-call-note is-${note.kind}`}
@@ -46,10 +48,10 @@ function showNote(id: string): void {
   note?.focus();
 }
 
-/** The short line that points a widget to its call's note; `earlier` over an earlier reading. */
+/** The short line that points a lens's widget to its call's note; `earlier` over an earlier reading. */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const LightboxCallPointer: React.FC<{ note: LightboxCallNote; earlier: boolean }> = ({ note, earlier }) => {
-  const words = lightboxCallPointer(note, earlier);
+export const LightboxCallPointer: React.FC<{ lens: LightboxLensId; note: LightboxCallNote; earlier: boolean }> = ({ lens, note, earlier }) => {
+  const words = lightboxCallPointer(lightboxLensGroup(lens), note, earlier);
   return (
     <>
       {words.lead}
@@ -68,9 +70,14 @@ export const LightboxCallPointer: React.FC<{ note: LightboxCallNote; earlier: bo
 
 /** A widget of a call that did not land, with no earlier reading to show: the short line, never the whole message. */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const LightboxCallLine: React.FC<{ note: LightboxCallNote; id?: string; prefix?: string }> = ({ note, id, prefix }) => (
+export const LightboxCallLine: React.FC<{ lens: LightboxLensId; note: LightboxCallNote; id?: string; prefix?: string }> = ({
+  lens,
+  note,
+  id,
+  prefix
+}) => (
   <p id={id} className={`pm-lb-reading-notice pm-lb-call-line${note.kind === 'stopped' ? '' : ' is-failed'}`}>
     {prefix && `${prefix} `}
-    <LightboxCallPointer note={note} earlier={false} />
+    <LightboxCallPointer lens={lens} note={note} earlier={false} />
   </p>
 );

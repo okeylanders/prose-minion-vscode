@@ -22,7 +22,7 @@ import type {
 } from '@messages';
 import { lightboxLensGroup } from '@shared/constants/lightbox';
 import { lightboxEarlierReason, lightboxLensHasReading } from '@shared/constants/lightboxProvenance';
-import { lightboxCallNoteOf, lightboxPointsToCallNote, type LightboxCallNote } from '@hooks/domain/lightbox/lightboxCallNotes';
+import { lightboxBoardCallNote, lightboxPointsToCallNote, type LightboxCallNote } from '@hooks/domain/lightbox/lightboxCallNotes';
 
 /** A group result for this board replaces its group; anything else leaves the board as it is. */
 export function mergeLightboxGroupResult(board: LightboxBoard, payload: LightboxGroupResultPayload): LightboxBoard {
@@ -109,7 +109,7 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
   const group = board.readings.find((candidate) => candidate.group === lightboxLensGroup(lens));
   const view = lensView(group, lens);
   // Decision 52: what the lens shows that is its call's note's message points there.
-  const note = lightboxCallNoteOf(group);
+  const note = group ? lightboxBoardCallNote(board, group.group) : undefined;
   const shown = view.phase === 'failed' || view.phase === 'cancelled' ? view.notice : view.earlier;
   const points = lightboxPointsToCallNote(note, shown) ||
     (view.tiles.length === 0 && view.withheldBlocks.some((block) => lightboxPointsToCallNote(note, block.reason)));

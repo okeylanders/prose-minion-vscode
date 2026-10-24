@@ -104,7 +104,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
       {!staleFirst && view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
       <LightboxKeptNote view={view} words={keep} id={noteId} />
-      {pointer && view.callNote && <LightboxCallLine note={view.callNote} id={noteId} />}
+      {pointer && view.callNote && <LightboxCallLine lens={view.lens} note={view.callNote} id={noteId} />}
       {view.notice && !view.callNote && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>
           {view.notice}
@@ -133,7 +133,7 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxKeptNote: React.FC<{
-  view: Pick<LightboxLensView, 'reanalyzing' | 'earlier' | 'callNote'>;
+  view: Pick<LightboxLensView, 'lens' | 'reanalyzing' | 'earlier' | 'callNote'>;
   words?: LightboxKeepWords;
   id?: string;
 }> = ({ view, words = LIGHTBOX_KEEP_WORDS, id }) => {
@@ -153,7 +153,7 @@ export const LightboxKeptNote: React.FC<{
     <p id={id} className="pm-lb-earlier-note">
       <b className="pm-lb-earlier-label">{LIGHTBOX_EARLIER_LABEL}</b>
       {view.callNote
-        ? <>{' · '}<LightboxCallPointer note={view.callNote} earlier /></>
+        ? <>{' · '}<LightboxCallPointer lens={view.lens} note={view.callNote} earlier /></>
         : ` ${words.kept} ${view.earlier}`}
     </p>
   );
