@@ -123,7 +123,10 @@ after, written out, must hold the same scalars in the same order
 same way on the texts: the slipped reply and the clean worked example hold
 the same scalars in the same order. The guard compares scalars, not
 grouping (PR #165's note), so what may move is held by the rule above and
-its tests.
+its tests. **A guard that cannot be checked moves nothing** (PR #168 N-01):
+a root holding a value nested too deep to write out makes the guard fail,
+not throw, so the frame reads as it came and only a block left without its
+member is withheld; the siblings stand.
 
 ### One table for the blocks
 
@@ -136,7 +139,27 @@ worked example's blocks, exactly.
 
 The salvage's finished root members go through the same rule: a headline
 closed before its friction is mended while the block the reply was cut
-inside is still withheld with `LIGHTBOX_CUT_OFF_REASON`.
+inside is still withheld with `LIGHTBOX_CUT_OFF_REASON`. Since PR #168's
+F-01:
+- **the member it was cut inside counts against the duplicate barrier.** A
+  salvage keeps only finished members, so a cut member repeating a kept
+  key (a second `summary`, even under an escaped key, or a second loose
+  `friction`) was hidden from the barrier, and the repair moved a member
+  anyway. The parser's `cutKey` now joins the kept keys in the check, and
+  nothing moves. When the cut fell inside a root key
+  (`ModelJsonSalvaged.cutInsideKey`, new), that key is not known, so
+  nothing moves either. A distinct cut member still allows the repair;
+- **the block it was cut inside is withheld as cut**, with where the paid
+  reply was saved, even when an earlier copy of it stands in the root:
+  that copy is not the reply's last word on the block;
+- **a block whose member the reply was cut inside** (a friction closed out
+  of the summary and cut mid-string, standing just after the summary,
+  which lacks it) did not finish, and is withheld as cut too
+  (`cutOff.cutBlock`);
+- **the log says where it stopped**: "cut inside summary"; "cut inside a
+  root member that is not a block" (never its key, which may be the
+  model's text); "cut inside a block the call did not ask for"; or "cut
+  between blocks" (`LightboxDecodeReport.cutWithin`).
 
 ### The Opinion's frame
 
@@ -179,9 +202,10 @@ withheld for a missing field of the same object.
 ## Implementation notes
 
 - **Modules.** New: `infrastructure/lightbox/LightboxBlockFormat.ts` (the
-  block table and `renestLightboxMembers`, 124 lines; it joins
-  `LIGHTBOX_MODULES`). Changed: `ModelJsonRepair.ts` (470 lines: the
-  `rootKeys` option) and `ModelJsonTokens.ts` (208: `modelJsonRootKeys`),
+  block table and `renestLightboxMembers`, 171 lines after PR #168's
+  corrections; it joins `LIGHTBOX_MODULES`). Changed: `ModelJsonRepair.ts`
+  (480 lines: the `rootKeys` option, and `cutInsideKey` from PR #168) and
+  `ModelJsonTokens.ts` (208: `modelJsonRootKeys`),
   still importing nothing outside `@parsers/*`; `LightboxReadingFields`
   (`replyObject`, `tallyLightboxDecode` in place of `countLightboxClips`;
   `strictObject` and `lightboxFieldCount` removed), `LightboxReadingFrame`,
@@ -222,7 +246,17 @@ New suites:
   block that is not an object; two blocks that could claim it; a salvage;
   the block table against every worked example.
 
-Changed: `ModelJsonRepair.test.ts` (5 cases for `rootKeys`), the codec,
+After PR #168's review, `LightboxMisnestedMemberEdges.test.ts` (15): the
+reviewer's truncated-duplicate witness, plain and under an escaped key, a
+cut duplicate friction and a cut inside a root key, each moving nothing,
+with the summary withheld as cut and the log saying where; the controls (a
+completed duplicate, a distinct cut member, a cut before the next key);
+a block whose closed-out member was cut, alone and after a run, and its
+control; a cut inside a block the call did not ask for; and the deep-field
+guard witness, its no-move control and the unit case.
+
+Changed: `ModelJsonRepair.test.ts` (5 cases for `rootKeys`; after PR #168,
+`cutInsideKey` on the three cuts inside a root key and a control), the codec,
 repair, frame-ending, runner, craft, story, plot, steering and Opinion
 reading suites (each "has 1 field the format does not define" case now
 reads the field as ignored, with its count; the runner's quarantined-root
@@ -272,6 +306,17 @@ the new reply fixture), copied onto an export of `cf7f260`:
   `LightboxMisnestedMember` (32) cannot load, its module being new. Every
   other test in those suites passes there.
 
+**After PR #168's corrections** (F-01 and N-01; see the [author
+response](../../../docs/pr-reviews/pr-168-lightbox-forgiven-fields-review.md#author-response-2026-10-24)):
+508 suites / 7,090 tests / 59 snapshots, all passing under Node 22.22.0
+and Node 18.20.8 (two workers); lint identical to `cf7f260`; typecheck
+passes; after `npm ci`, two builds give `webview.js` `1fe07246…`
+(unchanged) and `extension.js`
+`de712cc6a2eb37e8d3b446957005c351b3c3eb7bbdbaebe1857b99aa7ee471d6` both
+times. On an export of the reviewed head `8f50a2a`, the two new and
+changed suites fail as CI types them, and untyped 14 of their 70 tests
+fail, each an F-01 or N-01 case; every control passes there.
+
 ## For the writer to decide
 
 - **Show the count on the board?** An ignored field is only in Output now.
@@ -279,11 +324,11 @@ the new reply fixture), copied onto an export of `cf7f260`:
   quotes were checked.
 - **The block-to-item repair** (above): not built; the "ignored" count in
   Output will show whether it is needed.
-- **A reply cut off inside a member closed out of its block** (a friction
-  standing in the root, cut mid-string) withholds that block as naming no
-  friction, not as cut off at the ceiling, and does not name the recovery
-  file there. The cut-off reason could be given to the block just before a
-  cut root member its format defines.
+- **A block cut inside, beside an earlier copy of it**, is now withheld as
+  cut (PR #168 F-01), not read from the earlier copy, which a reply that
+  went on to write the block again had not meant as its last word. If the
+  earlier copy should be kept when it is whole, that is a one-line change
+  in `decodeBlocks`, at the cost of reading what the reply was replacing.
 - **No fuzzy matching.** A misspelled field is withheld for the field it
   stands in for, never guessed (`"frction"` is not taken for `friction`):
   a guess would put the model's text where the format expects something

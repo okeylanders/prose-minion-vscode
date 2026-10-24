@@ -1825,3 +1825,15 @@ lens, and adds its items to 4D's digest.
     types them (9 do not compile); untyped, 51 tests fail in the 12 that
     load, and `LightboxMisnestedMember` (32) cannot load. No live or
     billable call.
+  - **PR #168's review** (Astra: one P2, one P3), both fixed; see the
+    [author response](../../../docs/pr-reviews/pr-168-lightbox-forgiven-fields-review.md#author-response-2026-10-24).
+    F-01: in a reply cut off at the ceiling, the member it was cut inside
+    now counts against the re-nest's duplicate barrier, and a cut inside a
+    root key moves nothing; the block the reply was cut inside is withheld
+    as cut even beside an earlier copy, and so is a block whose closed-out
+    member was cut; the log says where it stopped, never naming a model's
+    key. N-01: a guard that cannot be checked (a value nested too deep to
+    write out) moves nothing instead of failing the group. 508 suites /
+    7,090 tests / 59 snapshots under Node 22 and Node 18.20.8; lint
+    identical; typecheck and both builds pass; `webview.js` `1fe07246…`
+    (unchanged), `extension.js` `de712cc6…`.

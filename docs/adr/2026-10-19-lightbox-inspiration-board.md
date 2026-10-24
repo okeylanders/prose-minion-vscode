@@ -593,6 +593,19 @@ above:
   first place): with a root key written twice, nothing moves. Each block's
   fields are one table (`LIGHTBOX_BLOCK_FIELDS`), which every block decoder
   reads its block through.
+- **A reply cut off at the output ceiling** (PR #168 F-01). The salvage
+  keeps only finished members, so the member it was cut inside counts
+  against the duplicate barrier too: a cut member repeating a kept key
+  moves nothing, and a cut inside a root key, whose key is not known,
+  moves nothing. A block the reply was cut inside is withheld as cut
+  (decision 40's reason, with where the paid reply was saved) even beside
+  an earlier copy of it, and so is a block whose closed-out member the
+  reply was cut inside. The log says where the reply stopped, naming a
+  block, or saying "a root member that is not a block", never a key of
+  the model's.
+- **A guard that cannot be checked moves nothing** (PR #168 N-01): a root
+  too deeply nested to write out fails the guard, and the frame reads as
+  it came. An optional repair never costs a sibling block.
 - **The content guard, applied.** Moving members that stood just after
   their block to its end moves one brace past them: the strings and other
   scalars, and their order, are exactly as before. The repair checks the

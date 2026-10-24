@@ -835,8 +835,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-24, Lightbox Slice 4K (fields the format does not define forgiven in model replies, and a member closed out of its block moved back), on `epic/lightbox-forgive-fields` from `epic/lightbox` at `cf7f260`, under Node 22 and Node 18):
-- 507 suites / 7,074 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-24, Lightbox Slice 4K (fields the format does not define forgiven in model replies, and a member closed out of its block moved back) with PR #168's review corrections, on `epic/lightbox-forgive-fields` from `epic/lightbox` at `cf7f260`, under Node 22 and Node 18):
+- 508 suites / 7,090 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1154,8 +1154,11 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   it reads where each root member stood from the parser's `rootKeys`, never
   the parsed object's key order, moves a member only into the block just
   before it that defines it and lacks it, never past a gap or with a root
-  key written twice, and checks the root before and after with
-  `modelJsonContentMatches`.
+  key written twice (in a salvage, the cut member's key counts, and a cut
+  inside a root key moves nothing: PR #168 F-01), and checks the root
+  before and after with `modelJsonContentMatches`; a guard that cannot be
+  checked moves nothing (N-01). A block the reply was cut inside is
+  withheld as cut, even beside an earlier copy of it.
 - **Lenses read together.** When one lens's reading names another's items
   (engagement names movements), the two are read in one call:
   `LIGHTBOX_READ_TOGETHER` in `shared/constants/lightbox.ts`, through

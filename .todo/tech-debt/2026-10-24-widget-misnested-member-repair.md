@@ -33,9 +33,12 @@ the same repair over its own schema:
 - ask the parser for `rootKeys`, and move a root member back only into the
   root member just before it, when that member is an object whose format
   defines the key and lacks it; a run of such members moves together;
-- never guess past a gap, and decline when a root key is written twice;
-- check the root before and after with `modelJsonContentMatches`, and log
-  the repair by its kind.
+- never guess past a gap, and decline when a root key is written twice,
+  counting a salvage's cut member (`cutKey`) and declining when the cut
+  fell inside a root key (`cutInsideKey`) (PR #168 F-01);
+- check the root before and after with `modelJsonContentMatches`, treat a
+  guard that cannot be checked as a refusal (PR #168 N-01), and log the
+  repair by its kind.
 
 The rule is the Lightbox's; the schema is each widget's. If two widgets
 want it, lift the walk out of `LightboxBlockFormat` into a feature-agnostic

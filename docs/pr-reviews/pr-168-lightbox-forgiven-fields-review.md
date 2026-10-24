@@ -92,3 +92,54 @@ The reviewed implementation head also has green GitHub CI under its Node 18 work
 Independent regression assertions for the two findings are held outside the implementation checkout; they are not silently added to the PR's passing suite. The focused typed Jest suite has **4 passing controls / 4 failing desired assertions**: three truncated-duplicate variants expose F-01, and the guard-no-throw assertion exposes N-01. These are additional review probes, not failures in the 507-suite repository gate. Direct Node scalar/depth probes and Jest VM assertions are reported separately; neither predicts native extension timing.
 
 Only this review report is authorized for publication. No implementation change, merge, formal review, PR comment, deployment, native VS Code interaction or real provider run was performed. The report commit's exact-head push and pull-request CI are checked separately after publication; a later author change or the actual Slice 4J merge requires review at that new head.
+
+## Author response (2026-10-24)
+
+**F-01 and N-01: fixed**, in the commit after your report's `6f1a52b`,
+followed by the commit that adds this response and records the
+corrections in the slice notes, the ADR's 2026-10-24 addendum, the agents
+guide, the tech debt and the epic. Nothing above this section was edited.
+
+With the new and changed test files copied onto an export of your reviewed
+head `8f50a2a`, both suites fail as CI types them (they read the new
+`cutInsideKey` and `cutWithin`); with type checking off, **14 of their 70
+tests fail there**, each an F-01 or N-01 case, and every control passes
+there: the completed duplicate, the cut before the next key began, the
+witness's own validity check, the deep field with the friction in its
+block, and the parser's cut-inside-a-block cases.
+
+### Resolution ledger
+
+| ID | Priority | Disposition | Fix | Regression tests |
+| --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **The cut member counts against the barrier.** `salvaged()` hands the re-nest the parser's `cutKey` beside the kept keys, and `renestLightboxMembers` checks the two together before any movement: a cut member repeating a kept key moves nothing. **A cut inside a root key** moves nothing either: the parser's salvage now says so (`ModelJsonSalvaged.cutInsideKey`, a structural fact with none of the key's text), since that key is not known and could be a repeat (your witness, cut a few characters earlier). A distinct cut member still allows the repair, and so does a cut before the next key began.<br>**The cut block is withheld as cut.** `decodeBlocks` withholds the lens the parser names as cut with decision 40's reason even when an earlier copy of it stands in the root, so your witness's summary is withheld with "The reply reached the output ceiling before this block finished." and the recovery file's place, as any ceiling cut. A cut member that stood just after a block defining it and lacking it (a friction closed out of the summary, cut mid-string) was that block's last member: the block is withheld as cut too (`cutOff.cutBlock`).<br>**The log says where it stopped:** "cut inside summary"; "cut inside a root member that is not a block" (a loose field: never its key, which may be the model's text); "cut inside a block the call did not ask for"; or "cut between blocks" (`LightboxDecodeReport.cutWithin`). No fuzzy matching, no regrouping beyond the rule. | `LightboxMisnestedMemberEdges.test.ts`:<br>• **Your witness**, a second `summary` cut mid-string, and the same under `summary`: nothing moves, three blocks read, the summary withheld as cut with its recovery notice, one capture, the log "3 blocks finished, cut inside summary", no `misnested-member`<br>• a second loose `friction` cut mid-string: nothing moves, the summary withheld for no friction, the log "cut inside a root member that is not a block"<br>• a cut inside a root key (`,"summ`): nothing moves<br>**Your controls:** a completed duplicate `summary` with the cut later moves nothing; a distinct cut member (`"note"`) and a cut just after a comma still repair, every block read<br>**Added:** a friction closed out of the summary and cut, alone and after a moved run, withholds the summary as cut, logged "cut inside summary"; its control (the summary holding its own friction) reads every block; a cut inside a block the call did not ask for is reported as such<br>`ModelJsonRepair.test.ts`: `cutInsideKey` on the three cuts inside a root key, and none for a cut before a key began or inside a block |
+| N-01 | P3 | **Fixed** | **A guard that cannot be checked moves nothing.** The guard (`sameScalars`) catches a failure to write the root out and answers no, so `renestLightboxMembers` returns the root as it came. A move is never made without the guard passing, and no sibling block is lost: your witness now reads template, pressure and artifacts and withholds only the summary that lacks its friction. | `LightboxMisnestedMemberEdges.test.ts`:<br>• **Your deep-field witness** (an ignored array in the template beside the summary/friction slip): the group lands, three blocks read, the summary withheld for no friction, `ignored` 2, nothing captured<br>• **Your no-move control:** the same field with the friction in its block reads all four blocks<br>• the witness's validity: under the 384,000-character ceiling, `JSON.parse` reads it, and writing it out throws<br>• the unit case: the root returned unchanged, `moved` 0 |
+
+**One change to your witness's depth.** At 5,000 levels it is not a
+witness under Node 18, which CI runs: measured at the top of a process,
+`JSON.stringify` first overflows at 4,174 levels under Node 22.22.0 and at
+6,978 under Node 18.20.8. The test nests 20,000 deep (about 45,000
+characters framed), which overflows under both and is still far under the
+response ceiling; `JSON.parse` reads 60,000 under both.
+
+**On the scope qualification.** Reading an earlier, complete copy of a
+block when a later copy was cut was older behavior, as you say. It now
+withholds that block as cut, so that the log, the notice and the board
+agree on what the parser found. The slice notes put the choice to the
+writer: keeping a whole earlier copy is a one-line change.
+
+### Verification at the correction head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 22.22.0 | **508 suites / 7,090 tests / 59 snapshots, all passing** (was 507 / 7,074 / 59) |
+| Full Jest, Node 18.20.8 (`npx -p node@18`, two workers) | **508 / 7,090 / 59, all passing** |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to `cf7f260` |
+| Typecheck | **Pass** |
+| `npm ci` into a real `node_modules`, then `npm run build` with `verify:bundle`, twice | **Pass**, the same hashes both times: `webview.js` `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15` (unchanged), `extension.js` `de712cc6a2eb37e8d3b446957005c351b3c3eb7bbdbaebe1857b99aa7ee471d6` |
+| `git diff --check` | **Clean** |
+| Visual evidence | **Not rerun**: no harness reply is cut off beside a duplicate or holds a deep field, and the webview bundle is unchanged |
+
+Module sizes: `ModelJsonRepair.ts` 480 lines, `LightboxBlockFormat.ts` 171,
+`LightboxReadingFrame.ts` 238, `LightboxReadingCodec.ts` 389. No live or
+billable call; *Alice* fixtures only.
