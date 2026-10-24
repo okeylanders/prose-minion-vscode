@@ -546,6 +546,66 @@ then just show it." The validation policy becomes:
   recovery, and every Lightbox recovery file now names its own group's
   sentinels and blocks.
 
+**Second addendum to D6 and D7 (2026-10-24): unknown fields are forgiven,
+and a member closed out of its block is moved back** (Slice 4K; epic
+decision 50). On long chapters, mostly with Anthropic Opus models, the
+writer kept losing whole groups to one structural slip. The real case:
+group E stopped normally and was well formed, except that the model closed
+its summary block one brace early, before that block's friction
+(`…"movements":[…]},"friction":"…"}}`, the last brace stray). The stray
+brace was already repaired, but `friction` then stood in the root, where
+the format does not define it, and the root's unknown key failed the
+group: "The group E response has 1 field the format does not define". All
+four blocks were lost, three of them complete. This amends the addendum
+above:
+
+- **A field the format does not define is ignored, at every level** of a
+  model's reply: the frame root, a block, an item, an object inside one,
+  in groups A–G and the Opinion (F). It is counted, never named (a field's
+  name is the model's text, PR #149 F-05), and logged as a count:
+  `[LightboxReadingRunner] Group E ignored 1 field the format does not
+  define`. It withholds nothing, and the decoders never see it
+  (`LightboxReadingFields.replyObject` leaves it out of the object it
+  returns). "An unknown key" leaves the addendum's list of real faults.
+- **Everything else still withholds**: a missing required field (so a
+  misspelled one is withheld for the field it stands in for, by the
+  format's own name), a wrong type or a value outside its vocabulary, fewer
+  items than a stated minimum, a quote the verifier cannot find, and the
+  structural rules. A wrong or missing `version` still fails the group. An
+  Opinion cite is still exactly one of its two shapes: a tile (with or
+  without one of its quotes) or a measured figure, never both.
+- **Ours stays strict.** The tolerance is the model replies' alone. A saved
+  board is our own format, and its codec still refuses a field it does not
+  read (`unknown-field`, D12); the Workshop's codecs keep
+  `persistedValidation.exactObject`. A boundary test pins which modules read
+  through `replyObject`.
+- **A member closed out of its block is moved back** (`misnested-member`,
+  `LightboxBlockFormat`), in the Lightbox's frame, not the shared parser,
+  since only the Lightbox knows its blocks. A root member moves into the
+  root member just before it, where the text puts it, only when that member
+  is a block whose format defines the field and lacks it; a run of such
+  members moves together (one misplaced brace). It never guesses past a
+  gap: a member after `version`, after a member the format does not define,
+  or after a block that holds the field already or does not define it,
+  stays put and is ignored. Where a member stood is the text's order, which
+  the shared parser reports (`rootKeys`), never the parsed object's
+  (`JSON.parse` lists index-like keys first, and keeps a repeated key at its
+  first place): with a root key written twice, nothing moves. Each block's
+  fields are one table (`LIGHTBOX_BLOCK_FIELDS`), which every block decoder
+  reads its block through.
+- **The content guard, applied.** Moving members that stood just after
+  their block to its end moves one brace past them: the strings and other
+  scalars, and their order, are exactly as before. The repair checks the
+  root before and after with `modelJsonContentMatches` and moves nothing if
+  they differ. The guard compares scalars, not grouping (see the addendum
+  above), so what may move is held by the rules here and by tests.
+- **Only the root is re-nested.** The same slip inside a block (the
+  Opinion's `blunt` view closed out of `views`, say) is not moved: with
+  unknown fields forgiven the block is read, and withheld only if a
+  required field is then missing. A block-to-item equivalent would need
+  each nested object's source order and schema; it is not built (Slice 4K
+  says when it would be worth it).
+
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 
 New `PROMPT_BUDGETS.lightbox` constants, pinned by the prompt-budget tests:

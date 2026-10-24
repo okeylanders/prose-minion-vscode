@@ -109,6 +109,7 @@ elsewhere.
 | Low | [Equal-millisecond board claims can recover older metadata after a failed rollback](2026-10-23-lightbox-board-claims-equal-millisecond.md) (PR #164 N-03, nonblocking) | Identified |
 | Low | [Offer to repair and read a Lightbox reply already in the recovery folder](2026-10-23-lightbox-repair-from-recovery.md) (Lightbox Slice 4H) | Identified |
 | Medium | [Workshop widgets should read their JSON through the shared model-JSON parser](2026-10-23-widget-model-json-repair-adoption.md) (Lightbox Slice 4H; four call sites) | Identified |
+| Low | [Offer the misnested-member repair to the Workshop widgets](2026-10-24-widget-misnested-member-repair.md) (Lightbox Slice 4K; after each adopts the shared parser) | Identified |
 
 ## Review Guidance
 
