@@ -61,8 +61,9 @@ drawn, in groups A–G: no block, item or field is withheld for a length or a
 count. What still withholds is a real fault: a missing required field, a
 wrong type, a value outside its vocabulary, fewer items than a stated
 minimum, a quote the verifier cannot find, an unknown key (counted, never
-named, as before), or a structural rule. Each maximum the codecs held,
-decided:
+named, as before; since [Slice 4K](slice-4k-forgive-fields.md), decision
+50, ignored and counted instead), or a structural rule. Each maximum the
+codecs held, decided:
 
 | Maximum | Where | Class | Why |
 |---|---|---|---|

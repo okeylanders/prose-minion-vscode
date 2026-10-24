@@ -81,11 +81,13 @@ describe('craft steering is its own call', () => {
 });
 
 describe('group G codec', () => {
-  it('withholds a figure holding a field the format does not define, by its label, counting it and never naming it', () => {
+  it('reads a figure holding a field the format does not define, ignoring it and never naming it (Slice 4K, decision 50)', () => {
     const extra = { ...figure('being-verbs'), severity: 'high' };
-    expect(withheld(body([extra]))).toEqual([
-      ['steering-reading', 'Being verbs', 'It broke the format: steering.figures[0] has 1 field the format does not define.']
-    ]);
+    const { decoded, assembled } = read(body([extra]));
+    expect(assembled.withheldClaims).toEqual([]);
+    expect(assembled.tiles).toEqual(read(body([figure('being-verbs')])).assembled.tiles);
+    expect(decoded.report?.ignored).toBe(1);
+    expect(JSON.stringify([decoded, assembled])).not.toMatch(/severity|high/);
   });
 
   it('titles a figure that names none of the three by its place, and withholds a second reading of one figure', () => {
@@ -137,16 +139,18 @@ describe('group G codec', () => {
       note(7, QUOTES.adverbs, 'overuses', why, 'A verb that holds the speed may be worth a look.'),
       note(7, QUOTES.adverbs, 'earns', why, 'A verb that holds the speed may be worth a look.'),
       note(7, QUOTES.adverbs, 'leans', why, null),
+      // A field the format does not define withholds nothing (Slice 4K): note IV is read, and stands.
       { ...note(7, QUOTES.adverbs, 'compensates', why, 'A verb that holds the speed may be worth a look.'), severity: 'high' }
     ];
     // The codec reads a leaning note with no nudge (the shape for dialogue, epic decision 26); its quote is narration,
     // so the gate withholds it once the quote is checked, after the notes the codec could not read.
-    expect(withheld(body([figure('adverbs', notes)])).filter(([kind]) => kind === 'steering-note')).toEqual([
+    const { assembled } = read(body([figure('adverbs', notes)]));
+    expect(assembled.withheldClaims.map((claim) => [claim.kind, claim.title, claim.reason]).filter(([kind]) => kind === 'steering-note')).toEqual([
       ['steering-note', 'Adverbs (-ly) · note I', 'It broke the format: steering.figures[0].notes[0].stance must be earns, leans or compensates'],
       ['steering-note', 'Adverbs (-ly) · note II', 'It earns its place, so it names no nudge, and this one does.'],
-      ['steering-note', 'Adverbs (-ly) · note IV', 'It broke the format: steering.figures[0].notes[3] has 1 field the format does not define.'],
       ['steering-note', 'Adverbs (-ly) · note III', 'It leans or compensates in narration, so it names the craft move worth a look, and this one names none.']
     ]);
+    expect(notesOf(assembled.tiles).map((tile) => tile.title)).toEqual(['Adverbs (-ly) · note IV']);
   });
 
   it('withholds a note whose why or nudge breaks a text rule, saying which, and keeps its siblings', () => {
@@ -247,6 +251,11 @@ describe('the one example', () => {
       .toEqual({ example: { before: 'it was too dark', after: 'the dark swallowed everything' }, withheld: undefined });
   });
 
+  it('shows an example holding a field the format does not define, leaving that field out (Slice 4K, decision 50)', () => {
+    expect(exampleOf({ before: 'it was too dark', after: 'the dark swallowed it', why: 'shorter' }))
+      .toEqual({ example: { before: 'it was too dark', after: 'the dark swallowed it' }, withheld: undefined });
+  });
+
   it('shows none when the reading gives none, as null or an empty list', () => {
     expect(exampleOf(null)).toEqual({ example: undefined, withheld: undefined });
     expect(exampleOf([])).toEqual({ example: undefined, withheld: undefined });
@@ -269,7 +278,6 @@ describe('the one example', () => {
 
   it.each([
     ['a missing part', { before: 'it was too dark' }, 'Its example broke the format, so it is not shown.'],
-    ['a field the format does not define', { before: 'it was too dark', after: 'the dark swallowed it', why: 'shorter' }, 'Its example broke the format, so it is not shown.'],
     ['a bare string', 'the dark swallowed everything', 'Its example broke the format, so it is not shown.'],
     ['a blank part', { before: 'it was too dark', after: '  ' }, 'Its example broke the format, so it is not shown.'],
     ['no change', { before: 'it was too dark', after: 'It  was too DARK' }, 'Its example shows no change: its second part is its first again.'],

@@ -45,6 +45,11 @@ closed), keep each widget's own sentinels and frame rules, and:
   that widget gains a salvage rule of its own (`salvageModelJson` reads a
   root object's finished members only).
 
+**Follow-up (Slice 4K):** once a widget reads through the parser, it can
+also be offered the Lightbox's repair for a member closed out of its block
+([Low](2026-10-24-widget-misnested-member-repair.md)), using the parser's
+`rootKeys`.
+
 ## Related Files
 
 - `packages/core/src/infrastructure/api/parsers/ModelJsonRepair.ts`

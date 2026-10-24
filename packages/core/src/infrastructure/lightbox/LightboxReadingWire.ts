@@ -376,8 +376,11 @@ export type LightboxDecodedBlock =
 /** How a reply ended: as the model chose (`stop`), or at the output ceiling (`ceiling`, `finishReason === 'length'`). */
 export type LightboxReplyEnd = 'stop' | 'ceiling';
 
-/** A structural repair the frame was given before its blocks were read (Slice 4H, epic decision 39). */
-export type LightboxFrameRepair = ModelJsonRepairKind | 'missing-closing-sentinel';
+/**
+ * A structural repair the frame was given before its blocks were read (Slice 4H, epic decision 39), or a member
+ * closed out of its block moved back into it (`misnested-member`, Slice 4K, epic decision 50).
+ */
+export type LightboxFrameRepair = ModelJsonRepairKind | 'missing-closing-sentinel' | 'misnested-member';
 
 /** Why the block a reply was cut inside is withheld (Slice 4H, epic decision 40): host words. */
 export const LIGHTBOX_CUT_OFF_REASON = 'The reply reached the output ceiling before this block finished.';
@@ -408,16 +411,28 @@ export interface LightboxDecodeReport {
   repairs: LightboxFrameRepair[];
   /** Fields clipped at the safety ceiling (`PROMPT_BUDGETS.lightbox.safetyMultiple` times their ask). */
   clipped: number;
+  /** Fields the format does not define, at any level, ignored: counted, never named (Slice 4K, epic decision 50). */
+  ignored: number;
   /** The reply reached the output ceiling before its frame closed: what it finished was read, the rest withheld. */
   cutOff: boolean;
+  /** Cut off inside a root member that is not a block the call asked for (PR #168 F-01); absent otherwise. */
+  cutWithin?: LightboxCutPlace;
 }
+
+/**
+ * Where a reply cut off at the output ceiling stopped, when not inside a
+ * block the call asked for nor between members: inside a root member that
+ * is no block (`root-member`), or inside a block of a lens the call did not
+ * ask for (`unrequested-block`). Host words only: never the member's key.
+ */
+export type LightboxCutPlace = 'root-member' | 'unrequested-block';
 
 /**
  * The frame or root failed: the whole group's response is unusable. The
  * message is host-owned (positions, counts, the protocol's own names) and is
- * logged and shown. `diagnostic` may quote the model (an unknown field's
- * name), so it goes only to the rejected-response recovery store, beside the
- * body it describes (PR #149 F-05).
+ * logged and shown. `diagnostic` may hold more than the message (why a
+ * repair was refused), so it goes only to the rejected-response recovery
+ * store, beside the body it describes (PR #149 F-05).
  */
 export class LightboxGroupFrameError extends Error {
   constructor(message: string, readonly diagnostic?: string) {

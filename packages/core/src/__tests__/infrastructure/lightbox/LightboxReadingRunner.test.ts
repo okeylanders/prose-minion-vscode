@@ -213,7 +213,7 @@ describe('LightboxReadingRunner', () => {
       }
     });
 
-    it('quarantines a reply with prose in its root keys, naming the keys only in the recovery store', async () => {
+    it('reads a reply with prose in its root keys, counting the keys in Output and naming them nowhere (Slice 4K)', async () => {
       const body = framedJson(examples.A.response);
       const raw = frame('A', { ...body, [`${PRIVATE}: she never told the Queen`]: 1 });
       const { start, outcomes, logged, capture } = setup((request) => ok(groupOf(request), groupOf(request) === 'A' ? { rawContent: raw } : {}));
@@ -221,21 +221,15 @@ describe('LightboxReadingRunner', () => {
       if (started.started) {
         await started.done;
       }
+      // A field the format does not define withholds nothing (decision 50): the group lands whole, and nothing is quarantined.
       const a = outcomes.find((outcome) => outcome.group === 'A');
-      expect(a?.error).toBe(
-        'The reading came back unusable (The group A response has 1 field the format does not define). ' +
-          'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt. ' +
-          'Press Finish or Analyze to try again.'
-      );
-      expect(logged()).toContain('Group A rejected: The group A response has 1 field the format does not define');
+      expect(a).toMatchObject({ status: 'ok', withheldBlocks: [] });
+      expect(a?.tiles.length).toBeGreaterThan(0);
+      expect(logged()).toContain('[LightboxReadingRunner] Group A ignored 1 field the format does not define');
+      expect(capture).not.toHaveBeenCalled();
       for (const surface of [logged(), JSON.stringify(outcomes)]) {
         expect(surface).not.toContain(PRIVATE);
       }
-      // The recovery store keeps the body and the names, behind its own boundary.
-      expect(capture).toHaveBeenCalledWith(expect.objectContaining({
-        rawResponse: raw,
-        rejection: `The group A response has 1 field the format does not define. Undefined root fields: "${PRIVATE}: she never told the Queen"`
-      }));
     });
   });
 

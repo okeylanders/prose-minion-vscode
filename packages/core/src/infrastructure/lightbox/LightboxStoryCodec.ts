@@ -21,8 +21,9 @@
  * - **Spark.** A spark names at least one term the host will count, quotes
  *   the chapter, and is phrased as a question that instructs nothing and
  *   states no number (`LightboxSparkPhrasing`).
- * Every block decodes with `strictObject`: a field the format does not
- * define is counted, never named, and every reason here is host-owned.
+ * Every block decodes with `replyObject`: a field the format does not
+ * define is ignored, counted and never named (Slice 4K, epic decision 50),
+ * and every reason here is host-owned.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -33,11 +34,12 @@ import {
   evidence,
   listAt,
   singleQuote,
-  strictObject,
+  replyObject,
   terms,
   prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import { lightboxSparkPhrasingFault } from '@/infrastructure/lightbox/LightboxSparkPhrasing';
 import type {
   LightboxDecodedLineageBlock,
@@ -53,7 +55,7 @@ const STANCES: readonly LightboxLineageStance[] = ['matches', 'departs', 'subver
 const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 export function decodeLineageBlock(value: unknown, path: string, friction: string): LightboxDecodedLineageBlock {
-  const block = strictObject(value, path, ['items', 'setAside', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.lineage);
   const setAside = decodeSetAside(block.setAside, `${path}.setAside`);
   const set = new Set(setAside.map((entry) => nameKey(entry.title)));
   const decoded = decodeItems(block.items, `${path}.items`, 'story', (item, itemPath) => {
@@ -77,19 +79,19 @@ export function decodeLineageBlock(value: unknown, path: string, friction: strin
 }
 
 export function decodeSubtextBlock(value: unknown, path: string, friction: string): LightboxDecodedSubtextBlock {
-  const block = strictObject(value, path, ['items', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.subtext);
   const { items, malformed } = decodeItems(block.items, `${path}.items`, 'pair', decodePair);
   return { lens: 'subtext', items, malformed, friction };
 }
 
 export function decodeSparkBlock(value: unknown, path: string, friction: string): LightboxDecodedSparkBlock {
-  const block = strictObject(value, path, ['items', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.spark);
   const { items, malformed } = decodeItems(block.items, `${path}.items`, 'spark', decodeSpark);
   return { lens: 'spark', items, malformed, friction };
 }
 
 function decodeStory(item: Record<string, unknown>, path: string): LightboxDecodedLineageStory {
-  const story = strictObject(item, path, ['title', 'source', 'stances', 'claim', 'evidence']);
+  const story = replyObject(item, path, ['title', 'source', 'stances', 'claim', 'evidence']);
   return {
     title: text(story.title, `${path}.title`),
     source: text(story.source, `${path}.source`),
@@ -105,7 +107,7 @@ function decodeStances(value: unknown, path: string): LightboxLineageStanceNote[
   const seen = new Set<LightboxLineageStance>();
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
-    const row = strictObject(entry, itemPath, ['stance', 'note']);
+    const row = replyObject(entry, itemPath, ['stance', 'note']);
     const stance = row.stance;
     if (typeof stance !== 'string' || !STANCES.includes(stance as LightboxLineageStance)) {
       shapeError(`${itemPath}.stance`, 'matches, departs or subverts');
@@ -118,13 +120,13 @@ function decodeStances(value: unknown, path: string): LightboxLineageStanceNote[
   });
 }
 
-/** Required as a key (`strictObject` withholds a block without it), possibly empty. */
+/** Required as a key (`replyObject` withholds a block without it), possibly empty. */
 function decodeSetAside(value: unknown, path: string): LightboxLineageSetAside[] {
   listAt(value, path, 0, 'stories set aside');
   const seen = new Set<string>();
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
-    const row = strictObject(entry, itemPath, ['title', 'reason']);
+    const row = replyObject(entry, itemPath, ['title', 'reason']);
     const title = text(row.title, `${itemPath}.title`);
     if (seen.has(nameKey(title))) {
       shapeError(`${itemPath}.title`, 'a story not already set aside');
@@ -135,7 +137,7 @@ function decodeSetAside(value: unknown, path: string): LightboxLineageSetAside[]
 }
 
 function decodePair(item: Record<string, unknown>, path: string): LightboxDecodedSubtextPair {
-  const pair = strictObject(item, path, ['speaker', 'said', 'meant', 'evidence']);
+  const pair = replyObject(item, path, ['speaker', 'said', 'meant', 'evidence']);
   return {
     speaker: text(pair.speaker, `${path}.speaker`),
     said: singleQuote(pair.said, `${path}.said`),
@@ -145,7 +147,7 @@ function decodePair(item: Record<string, unknown>, path: string): LightboxDecode
 }
 
 function decodeSpark(item: Record<string, unknown>, path: string): LightboxDecodedSpark {
-  const spark = strictObject(item, path, ['title', 'question', 'terms', 'evidence']);
+  const spark = replyObject(item, path, ['title', 'question', 'terms', 'evidence']);
   const question = text(spark.question, `${path}.question`);
   const fault = lightboxSparkPhrasingFault(question);
   if (fault) {

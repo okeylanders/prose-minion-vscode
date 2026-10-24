@@ -12,7 +12,9 @@
  * - **Repaired replies** (Slice 4H, epic decision 39). A frame given a
  *   structure-only repair is read as any other, and each repair is logged
  *   by its kind (`[LightboxReadingRunner] Group E repaired: <kind>`), never
- *   with any text; so is how many fields were clipped at the safety ceiling.
+ *   with any text; so is how many fields were clipped at the safety ceiling,
+ *   and how many fields the format does not define were ignored (Slice 4K,
+ *   epic decision 50), never their names.
  * - **Replies cut off at the output ceiling** (epic decision 40) keep the
  *   blocks they finished; the block they were cut inside is withheld with
  *   the host's reason, and the paid body is still saved for recovery, its
@@ -44,6 +46,7 @@ import {
   LIGHTBOX_READING_PROTOCOL_VERSION,
   LightboxGroupFrameError,
   lightboxGroupSentinels,
+  type LightboxCutPlace,
   type LightboxDecodedGroup,
   type LightboxGroupDecodeContext
 } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -164,6 +167,12 @@ export async function decodeLightboxReply(
       `[LightboxReadingRunner] Group ${call.group} clipped ${report.clipped} field${report.clipped === 1 ? '' : 's'} at the safety ceiling`
     );
   }
+  if (report && report.ignored > 0) {
+    // Counted, never named: a field's name is the model's text (Slice 4K, epic decision 50).
+    ports.outputChannel.appendLine(
+      `[LightboxReadingRunner] Group ${call.group} ignored ${report.ignored} field${report.ignored === 1 ? '' : 's'} the format does not define`
+    );
+  }
   if (!report?.cutOff) {
     return { decoded };
   }
@@ -171,7 +180,7 @@ export async function decodeLightboxReply(
   const cut = decoded.withheld.filter((entry) => entry.reason === LIGHTBOX_CUT_OFF_REASON).map((entry) => entry.lens);
   ports.outputChannel.appendLine(
     `[LightboxReadingRunner] Group ${call.group} reached the output ceiling: ${decoded.blocks.length} blocks finished, ` +
-      `${cut.length > 0 ? `cut inside ${cut.join(', ')}` : 'cut between blocks'}`
+      `${cut.length > 0 ? `cut inside ${cut.join(', ')}` : cutPlaceWords(report.cutWithin)}`
   );
   const receipt = await ports.recovery.capture({
     toolName: 'lightbox-readings',
@@ -235,6 +244,22 @@ export function lightboxRecoveryContract(call: { group: LightboxReadingGroupId; 
 
 function lightboxRecoverySummary(call: { group: LightboxReadingGroupId; lenses: readonly LightboxLensId[] }): string {
   return `Lightbox group ${call.group}: ${call.lenses.map(lightboxLensLabel).join(', ')}`;
+}
+
+/** Where a reply was cut, past its blocks, in host words: never a root member's key, which may be the model's text (PR #168 F-01). */
+function cutPlaceWords(place: LightboxCutPlace | undefined): string {
+  switch (place) {
+    case 'root-member':
+      return 'cut inside a root member that is not a block';
+    case 'unrequested-block':
+      return 'cut inside a block the call did not ask for';
+    case undefined:
+      return 'cut between blocks';
+    default: {
+      const unknown: never = place;
+      return unknown;
+    }
+  }
 }
 
 function ceilingMessage(): string {

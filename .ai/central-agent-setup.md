@@ -88,9 +88,9 @@ packages/core/src/
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
-│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing)
+│   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K)
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); each block's own fields and a member closed out of its block moved back into it (`LightboxBlockFormat`, Slice 4K)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -837,8 +837,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-24, Lightbox Slice 4L (the Lightbox's own model setting: a `lightbox` model scope and `proseMinion.lightboxModel`, following the Workshop's model until picked) on `epic/lightbox-model-setting`, from `epic/lightbox` at `cf7f260` (Slice 5A.2, PR #167)):
-- 508 suites / 7,053 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-24, Lightbox Slice 4L (the Lightbox's own model setting, with PR #169's F-01 correction) on `epic/lightbox-model-setting`, with `epic/lightbox` at `13aff89` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back) merged in, under Node 22 and Node 18):
+- SUITES suites / TESTS tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1115,8 +1115,8 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   field with `LightboxReadingFields.text(value, path, ask)` and a list with
   `listAt(value, path, minimum, noun)`, never a maximum. Withhold only a
   real fault (a missing field, a wrong type, a value outside its
-  vocabulary, fewer items than a stated minimum, an unknown key, a quote the
-  verifier cannot find) or a structural rule (one entry per ribbon column,
+  vocabulary, fewer items than a stated minimum, a quote the verifier
+  cannot find) or a structural rule (one entry per ribbon column,
   movements tiling the chapter, one example per note); check a structural
   count exactly with `boundedArrayAt`, and say why beside it. **Every rule
   reads the field whole** (PR #165 F-01): a quote, a term, a key, an
@@ -1131,6 +1131,18 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   its own clips there with `clipLightboxText`, after its anchors are
   checked whole: Bring holds a tile to `WORKSHOP_LIGHTBOX_TILE_LIMITS`,
   which stay as they are.
+- **Fields the format does not define are ignored** (Slice 4K; epic
+  decision 50; ADR D6/D7 second addendum of 2026-10-24). Read every object
+  of a model's reply with `LightboxReadingFields.replyObject(value, path,
+  required, optional?)`: a field it does not list is left out of what it
+  returns, counted for the reply's log line ("Group E ignored 1 field the
+  format does not define") and never named, and it withholds nothing; a
+  required field that is missing still withholds, by the format's name.
+  A block's own fields are `LIGHTBOX_BLOCK_FIELDS`, which its decoder
+  reads it through. The tolerance is the model replies' only: saved boards
+  (`LightboxBoardSchema`'s `unknown-field`) and the Workshop's codecs
+  (`exactObject`) stay strict, and `boundaries.test.ts` pins which modules
+  read through `replyObject`.
 - **A frame's JSON goes through the shared parser** (Slice 4H; decisions
   39 and 40). `LightboxReadingFrame` keeps the Lightbox's sentinels, a
   fence around the frame and the missing closing sentinel; the JSON itself
@@ -1139,7 +1151,16 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   cut one withheld with `LIGHTBOX_CUT_OFF_REASON`). Never add a JSON repair
   to a Lightbox module, and never let `@parsers/*` import a feature:
   `boundaries.test.ts` fails on either. Log each repair by its kind, never
-  with text.
+  with text. The one schema-aware repair, a member closed out of its block
+  (`misnested-member`, Slice 4K), is the Lightbox's (`LightboxBlockFormat`):
+  it reads where each root member stood from the parser's `rootKeys`, never
+  the parsed object's key order, moves a member only into the block just
+  before it that defines it and lacks it, never past a gap or with a root
+  key written twice (in a salvage, the cut member's key counts, and a cut
+  inside a root key moves nothing: PR #168 F-01), and checks the root
+  before and after with `modelJsonContentMatches`; a guard that cannot be
+  checked moves nothing (N-01). A block the reply was cut inside is
+  withheld as cut, even beside an earlier copy of it.
 - **Lenses read together.** When one lens's reading names another's items
   (engagement names movements), the two are read in one call:
   `LIGHTBOX_READ_TOGETHER` in `shared/constants/lightbox.ts`, through

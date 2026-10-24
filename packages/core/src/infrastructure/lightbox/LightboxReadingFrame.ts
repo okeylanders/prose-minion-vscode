@@ -20,13 +20,21 @@
  *   no bracket is added to it;
  * - a reply that reached the output ceiling before its frame closed keeps
  *   the root's finished members, and names the member it was cut inside
- *   (`cutOff.cutKey`), which is dropped, never trusted;
+ *   (`cutOff.cutKey`), which is dropped, never trusted, and the block that
+ *   member was closed out of, when it was (`cutOff.cutBlock`), which did
+ *   not finish either;
  * - a reply cut off at the output ceiling while it wrote its frame's ending
  *   (PR #165 F-02) has that part set aside first, only when the last line
  *   is a start of this group's closing sentinel, or of the closing fence
  *   of a fence the reply opened, around the frame or inside it. A reply
  *   that stopped normally gets no such allowance, and any other last line
- *   is read as it stands, and refused as before.
+ *   is read as it stands, and refused as before;
+ * - a member closed out of its block, standing in the root just after the
+ *   block that defines it and lacks it, is moved back into that block
+ *   (`misnested-member`, Slice 4K, epic decision 50), by the text's order
+ *   of the root's members, under the content guard
+ *   (`LightboxBlockFormat`). The writer's real case: group E's summary
+ *   closed one brace early, before its friction.
  * Every message is host-owned (PR #149 F-05): positions and the protocol's
  * own names, never the text. Why a repair was refused goes only into the
  * frame error's `diagnostic`, beside the body in the recovery store.
@@ -39,8 +47,14 @@ import {
   ModelJsonParseError,
   describeModelJsonRefusal,
   parseModelJson,
-  salvageModelJson
+  salvageModelJson,
+  type ModelJsonSalvaged
 } from '@parsers/ModelJsonRepair';
+import {
+  renestLightboxMembers,
+  type LightboxRenestedRoot,
+  type LightboxRootCut
+} from '@/infrastructure/lightbox/LightboxBlockFormat';
 import {
   LightboxGroupFrameError,
   lightboxGroupSentinels,
@@ -56,6 +70,8 @@ export interface LightboxFrame {
   cutOff?: {
     /** The root member it was cut inside, when that member's key had arrived whole. */
     cutKey?: string;
+    /** The block that member was closed out of: it stood just after the block, which defines it and lacks it (PR #168 F-01). */
+    cutBlock?: string;
   };
 }
 
@@ -109,21 +125,46 @@ export function readLightboxFrame(content: string, group: LightboxReadingGroupId
   } else if ('refused' in parsed) {
     throw parsed.refused;
   }
-  return { root: rootOf(parsed.value, group), repairs: [...repairs] };
+  const root = renested(rootOf(parsed.value, group), parsed.rootKeys, repairs).root;
+  return { root, repairs: [...repairs] };
 }
 
 function salvaged(jsonText: string, group: LightboxReadingGroupId, repairs: Set<LightboxFrameRepair>): LightboxFrame {
   repairs.add('missing-closing-sentinel');
+  let salvage: ModelJsonSalvaged;
   try {
-    const salvage = salvageModelJson(jsonText);
-    salvage.repairs.forEach((repair) => repairs.add(repair));
-    return { root: salvage.root, repairs: [...repairs], cutOff: salvage.cutKey !== undefined ? { cutKey: salvage.cutKey } : {} };
+    salvage = salvageModelJson(jsonText, { rootKeys: true });
   } catch (error) {
     throw new LightboxGroupFrameError(
       `The group ${group} reply reached the output ceiling and could not be read`,
       error instanceof ModelJsonParseError ? `A salvage was refused: ${describeModelJsonRefusal(error.refusal)}.` : undefined
     );
   }
+  salvage.repairs.forEach((repair) => repairs.add(repair));
+  // The cut member counts against the re-nest's duplicate barrier, though it is not kept (PR #168 F-01).
+  const renest = renested(salvage.root, salvage.rootKeys, repairs, { key: salvage.cutKey, insideKey: salvage.cutInsideKey === true });
+  return {
+    root: renest.root,
+    repairs: [...repairs],
+    cutOff: {
+      ...(salvage.cutKey !== undefined ? { cutKey: salvage.cutKey } : {}),
+      ...(renest.cutBlock !== undefined ? { cutBlock: renest.cutBlock } : {})
+    }
+  };
+}
+
+/** The root with each member closed out of its block moved back into it (`LightboxBlockFormat`), noted as a repair. */
+function renested(
+  root: Record<string, unknown>,
+  rootKeys: readonly string[] | undefined,
+  repairs: Set<LightboxFrameRepair>,
+  cut?: LightboxRootCut
+): LightboxRenestedRoot {
+  const renest = renestLightboxMembers(root, rootKeys ?? [], cut);
+  if (renest.moved > 0) {
+    repairs.add('misnested-member');
+  }
+  return renest;
 }
 
 /** The shared parser's reading, or the frame error it becomes: the parser's position, never its text. */
@@ -132,11 +173,11 @@ function readJson(
   group: LightboxReadingGroupId,
   repairs: Set<LightboxFrameRepair>,
   closeMissingBrackets: boolean
-): { value: unknown } | { refused: LightboxGroupFrameError } {
+): { value: unknown; rootKeys?: string[] } | { refused: LightboxGroupFrameError } {
   try {
-    const read = parseModelJson(jsonText, { closeMissingBrackets });
+    const read = parseModelJson(jsonText, { closeMissingBrackets, rootKeys: true });
     read.repairs.forEach((repair) => repairs.add(repair));
-    return { value: read.value };
+    return { value: read.value, ...(read.rootKeys ? { rootKeys: read.rootKeys } : {}) };
   } catch (error) {
     if (!(error instanceof ModelJsonParseError)) {
       throw error;
