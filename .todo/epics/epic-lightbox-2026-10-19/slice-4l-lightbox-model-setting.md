@@ -53,9 +53,11 @@ from "this model, kept".
   whose model changed: a Lightbox pick moves only the Lightbox engine; a
   Workshop pick moves the assistant engine, and the Lightbox's too only
   while it follows.
-- **Without an API key** there is no Lightbox engine (the press says "Add
-  an OpenRouter API key in Settings to run AI analyses."), but its model
-  still resolves, so the estimate shows its price.
+- **Without an API key** there is no Lightbox engine, so the host refuses a
+  press before reserving anything ("Add an OpenRouter API key in Settings
+  to run AI analyses."), where the assistant's offline engine used to take
+  it and fail its calls; the webview already disables the press then. Its
+  model still resolves, so the estimate shows its price.
 - **The runner.** `LightboxReadingRunner` and `LightboxReadingEngines` move
   from `'assistant'` to `'lightbox'`: `modelFacts()` (the estimate's model,
   live window and prices, so the fit check and the costs) and the engine a
@@ -123,7 +125,7 @@ As "Adding New Settings" lays out (AGENTS.md; ADR 2025-11-03):
 | `infrastructure/lightbox/LightboxReadingRunner.ts`, `LightboxReadingRunContracts.ts` | `'assistant'` → `'lightbox'` (498 lines, unchanged count) |
 | `LightboxReadingHandler.ts`, `LightboxRunEstimate.ts`, `LightboxPressSnapshot.ts`, `lightboxRunLine.ts`, `lightboxCallControls.ts`, `lightboxEstimate.ts`, `lightboxRuns.ts` | "the Lightbox model" in copy and comments |
 | `presentation/webview/hooks/domain/useModelsSettings.ts` | `followingModelScopes`, `followModelSelection` |
-| `components/shared/ModelSelector.tsx`, `ModelBrowserModal.tsx`, `modelFollowing.ts` (new) | The follow choice: the chip's words and the browser's first card |
+| `components/shared/ModelSelector.tsx`, `ModelBrowserModal.tsx`, `modelFollowing.ts` (new) | The follow choice: the chip's words and the browser's first card. The chip's tooltip now names the current model whole, as its accessible name does, since the header chip truncates "Same as Workshop (…)" |
 | `components/fulltab/FullTabHeaderStatus.tsx` | `modelScope` (`'assistant'` by default, `'lightbox'` for the Lightbox) |
 | `components/SettingsOverlay.tsx`, `App.tsx` | The Lightbox Model row and its wiring (716 → 728 lines) |
 | `LightboxApp.tsx`, `hooks/domain/useLightbox.ts` | The Lightbox's scope and selection (`useLightbox` 469 → 470 lines) |
@@ -201,6 +203,23 @@ The new and changed test files, copied into an export of `cf7f260`:
   - They pass there, as controls: the Workshop's chip keeping the assistant
     scope with no follow choice, and the overlay's other rows offering no
     "Same as" choice.
+
+## Verification
+
+After `npm ci` into a real `node_modules`:
+
+- **Tests:** 508 suites / 7,053 tests / 59 snapshots, all passing under
+  Node 22 and Node 18.20.8 (505 / 7,009 / 59 at `cf7f260`: 3 suites and 44
+  tests added).
+- **Lint:** 0 errors; warnings identical to `cf7f260` per file, rule and
+  severity (1,133 each).
+- **Typecheck** passes under each Node.
+- **Builds:** `npm run build` (with `verify:bundle`) twice under each
+  Node, all four with `webview.js`
+  `6a08cf5c82fb84691c7daba7dde3cef97fd87066e5bfe7144356a540f2b23f45` and
+  `extension.js`
+  `ee1ecf3159692348532db00428326439f71cbf6d2c0ada909eefdb215e5dc8c3`.
+- The diff's whitespace check is clean.
 
 ## Visual evidence
 

@@ -172,7 +172,7 @@ packages/core/src/presentation/webview/
 │       ├── useDictionary.ts            # Word/context state and tool name
 │       ├── useDictionaryHistory.ts     # Lookup history: host summaries, ‹ › cursor, draft slot (ADR 2026-10-14)
 │       ├── useMetrics.ts               # Per-subtool cache; source mode/path helpers
-│       ├── useModelsSettings.ts        # Model selection settings
+│       ├── useModelsSettings.ts        # Model selection settings, and which scopes follow another until picked (the Lightbox's; Slice 4L)
 │       ├── usePublishingSettings.ts    # Publishing presets and trim size
 │       ├── useSearch.ts                # Search results and targets
 │       ├── useSelection.ts             # Selected text + source metadata
@@ -837,8 +837,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review and re-review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
-- 505 suites / 7,009 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-24, Lightbox Slice 4L (the Lightbox's own model setting: a `lightbox` model scope and `proseMinion.lightboxModel`, following the Workshop's model until picked) on `epic/lightbox-model-setting`, from `epic/lightbox` at `cf7f260` (Slice 5A.2, PR #167)):
+- 508 suites / 7,053 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
