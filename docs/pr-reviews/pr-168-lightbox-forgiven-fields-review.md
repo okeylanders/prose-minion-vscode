@@ -143,3 +143,43 @@ writer: keeping a whole earlier copy is a one-line change.
 Module sizes: `ModelJsonRepair.ts` 480 lines, `LightboxBlockFormat.ts` 171,
 `LightboxReadingFrame.ts` 238, `LightboxReadingCodec.ts` 389. No live or
 billable call; *Alice* fixtures only.
+
+## Independent re-review — 2026-10-24, Astra
+
+**Reviewed correction head:** `6a8abb4fe7bd41d5b71745a0c495487b4de2137e` (implementation correction `ef65b95a601b982f7497a422c4135b62a22fd9b2`, followed by the author response/docs). Base remains `cf7f2607aceeb0fa107306870d35fb4066035b9b`. The correction delta is 14 files, +504 / −48. The initial review and the author's 51-line response above are preserved verbatim.
+
+**Disposition: F-01 and N-01 independently verified fixed. No open blocking finding remains from this review, and no new required change was identified.** This supersedes the initial request-changes disposition for this exact implementation head. It is not a formal GitHub approval, merge instruction, writer acceptance or combined clearance for the separate Slice 4J / PR #170 branch.
+
+### Finding closure
+
+| ID | Independent disposition | Verified result |
+| --- | --- | --- |
+| F-01 | **Closed** | The complete unfinished `cutKey` joins the duplicate check, and a cut inside an unknown root key disables movement. Plain and escaped duplicate-block witnesses now keep the three valid siblings, withhold summary as cut, attach its recovery location, capture once and log `cut inside summary`. A duplicate loose friction also prevents movement. Completed-duplicate, distinct-key and before-next-key controls keep their intended behavior. |
+| N-01 | **Closed** | A serialization failure is caught inside the scalar guard. Re-nesting returns the original root with `moved: 0`, without mutation. The exact original 5,000-level witness now lands its three valid sibling blocks, withholds only the missing-friction summary and does not quarantine. An independently exercised 20,000-level / 45,396-character witness proves `JSON.stringify` fails while parsing succeeds, yet frozen original root/block identities and sibling readings are preserved. The no-move control retains all four blocks. |
+
+The extra choice to withhold a cut block even when an earlier complete copy exists is conservative and matches the documented “cut block is never trusted” rule. It is a real behavior change beyond the original movement bug, not proof that the writer personally chose between retaining an earlier copy and withholding it. The generic parser remains schema-free; Lightbox owns the block attribution.
+
+### Added cutoff behavior and retained boundaries
+
+- **3,308 independent direct-Node assertions** across duplicate-cut blocks, partial root keys including escapes, member runs, asked/unasked lenses, unknown/index-like gaps, duplicate barriers and distinct-key controls pass. These inspect the production parser, frame and decoder rather than trusting the author's new tests.
+- A cut root member is attributed back only to the adjacent block/run that defines and lacks it. Intervening unknown keys and index-like keys remain barriers; already-held fields and unasked-block controls do not falsely withhold requested complete blocks. Direct cut blocks cannot be revived by an earlier copy. Logs classify known cuts in host-owned words and do not expose model-defined keys.
+- **Conservative combined fallback:** if a deep ignored value makes a proposed regrouping uncheckable, neither that regrouping nor its inferred `cutBlock` is retained. The affected incomplete summary is still withheld for missing friction, but does not receive the more specific cut-block recovery notice. This is not unsafe acceptance or another whole-group failure; the review does not claim every combined malformed/truncated response gets that notice.
+- The **69 legal suffix placements / 184 moved fields**, exact **384,000 / 384,001-character** boundary, all special-key sweeps, and **3,237 base/head mutation comparisons** were rerun successfully. Prototype/own-property controls, tally isolation, byte-identical board-v1 roundtrip and strict saved-board/Workshop unknown-field behavior remain intact.
+- The prior eight independent typed regression assertions **all pass unchanged (8/8)**, including the four desired assertions that failed on the initial head. Their witnesses remain outside the implementation checkout. Deep-stack observations are explicitly runtime-dependent: the earlier 5,000-level result was for cloud Node 24, not a Node 18 or native VS Code claim. The larger witness and CI provide separate coverage, not a shared stack-limit estimate.
+
+### Fresh gates at the correction head
+
+All gates ran freshly and serially under **cloud Node 24.19.0 / npm 11.9.0**, after re-verifying the identical lockfile and checkout-local workspace links:
+
+| Check | Independent result |
+| --- | --- |
+| `npm run lint` | Pass: 0 errors, 1,133 warnings |
+| `npm run typecheck` | Pass: host, webview and extension |
+| Full Jest, one worker and disk-backed cache | **508 suites / 7,090 tests / 59 snapshots**, all pass; 371.518 seconds |
+| `npm run build`, including `verify:bundle` | Pass |
+| Retained independent typed regression suite | **8/8 pass** |
+| `git diff --check` | Clean |
+
+The host bundle SHA-256 is `de712cc6a2eb37e8d3b446957005c351b3c3eb7bbdbaebe1857b99aa7ee471d6`; the webview remains `1fe072462cbcf8f410b8232ec2535a1f166d10cf9fd559e437445da914e6fe15`, byte-identical to the earlier verified build. The exact correction head also has green Node 18 GitHub [push CI 40138284172](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40138284172) and [pull-request CI 40138287542](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40138287542), independently checked before publication.
+
+No UI, prompt, price/output-token budget, saved-board format or Workshop implementation changed. No visual/native acceptance or real provider call was exercised. Only this append-only re-review is published; no implementation fix, merge, formal review, PR comment or deployment was performed. The report commit's own push and pull-request CI are tracked after publication. Any later source/base change, including actual integration with Slice 4J, remains a separate verification boundary.
