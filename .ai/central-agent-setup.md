@@ -838,7 +838,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-24, Lightbox Slice 4J (every run keeps each lens's reading until a usable new one replaces it, with its provenance and an earlier mark; a call's failure said once, under the run line) with PR #170's review corrections, on `epic/lightbox-keep-readings`, with `epic/lightbox` at `13aff89` (Slice 4K, PR #168: fields the format does not define forgiven, and a member closed out of its block moved back) merged in):
-- 513 suites / 7,172 tests / 59 snapshots
+- 515 suites / 7,196 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1330,6 +1330,12 @@ while it is read, or how a call's failure is said:
   `error` are its latest call's; anything that names the model of what is
   on screen reads `lightboxLensModel` / `lightboxBoardModels`, never the
   group's model alone. Usage stays summed per group over every call made.
+  Once a call settles, every reading its group shows has an entry: a
+  reading from a board read before Slice 4J takes `{ lens, model? }`, its
+  group's model then, before the group's model moves (PR #170 F-02). Never
+  invent a run or time for it; `run` and `at` come together or not at all.
+  A group with no provenance at all reads its group's model; a lens
+  without an entry in a group that has some names none.
 - **The Opinion is no exception.** It keeps its reading in every scope;
   its citation basis rule moves only when a new Opinion lands
   (`LightboxPressRun`'s `opinionLanded`).
@@ -1345,13 +1351,19 @@ while it is read, or how a call's failure is said:
   and `LightboxCallLine` itself. Ribbon lanes and counts read kept readings
   as they read fresh ones.
 - **A call's failure is said once** (decision 52). `lightboxCallNotes`
-  gathers each call that failed, was stopped or was cut off; its whole
-  message shows only in `LightboxCallNotes`, under the run line. A widget
-  whose state is that message points to it (`lightboxPointsToCallNote`)
-  and is described by it; never render a group's `error`, or a ceiling
-  reason, in a widget whose `callNote` is set. A reply cut off at the
-  ceiling names its never-reached blocks with `LIGHTBOX_CUT_BEFORE_REASON`
-  (`LightboxGroupReply`), so the cut gathers into one note.
+  gathers each call that failed or was stopped (its latest call, by its
+  whole message) and each cut reply (by the place it was saved,
+  `lightboxCutEvent`): one note per call or cut reply, never one per group,
+  since kept readings can carry several calls' reasons (PR #170 F-01). Its
+  whole message shows only in `LightboxCallNotes`, under the run line. A
+  widget points to the note its own reason is
+  (`lightboxBoardCallNote(board, group, reason)`) and is described by it;
+  never match a cut by its prefix alone, and never render a group's `error`,
+  or a ceiling reason, in a widget whose `callNote` is set. A lens the
+  failed call never asked for shows nothing of it (N-01). A reply cut off
+  at the ceiling names its never-reached blocks with
+  `LIGHTBOX_CUT_BEFORE_REASON` and the same place (`LightboxGroupReply`), so
+  the cut gathers into one note.
 
 ### Lightbox Passages
 

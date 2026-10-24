@@ -1880,3 +1880,28 @@ lens, and adds its items to 4D's digest.
     scope), and so are the codec, field and block decoders Slice 4K
     changes; this slice's one decoding change is `LightboxGroupReply`'s
     never-reached reason.
+  - **`epic/lightbox` at `13aff89` (Slice 4K, PR #168) merged in.** The
+    conflicts were this README (4K's decision 50 between this slice's 49
+    and 52, the slices table, the progress notes) and the agents guide's
+    Lightbox line and test inventory. After it: 513 suites / 7,172 tests /
+    59 snapshots under Node 22 (one wall-clock bound missed beside other
+    work, passing alone).
+  - **PR #170's review corrections (2026-10-24).** Astra's review asked for
+    changes: two P2 findings and one P3, all made. See the
+    [author response](../../../docs/pr-reviews/pr-170-lightbox-keep-readings-review.md).
+    - **F-01:** a call note is one failed or stopped call, or one cut reply
+      known by where it was saved; two cut lens reruns of one call are two
+      notes, and each widget points to its own reply's.
+    - **F-02:** a reading from a board saved before Slice 4J takes a
+      model-only provenance entry before its group's model moves, so the
+      inspector and the saved board's row name the model that read it.
+    - **N-01:** a lens a failed call never asked for says nothing of it.
+
+    On the reviewed head `bbbc47a`, all 6 new and changed suites fail as CI
+    types them (2 do not compile; 12 tests fail in the other 4), and every
+    control passes. After them: 515 suites / 7,196 tests / 59 snapshots
+    under Node 18.20.8; lint identical to `13aff89`; typecheck under each
+    Node; `npm run build` with `verify:bundle` under each Node,
+    `webview.js` `2ffd7bcd…` and `extension.js` `556346ba…`; the evidence's
+    states rebuild byte for byte and render the same facts, `errors.txt`
+    empty.

@@ -403,7 +403,14 @@ Opinion-only rule (decision 47). The run and reading model becomes:
   readings landed, so a board's cost is what was paid. The models a saved
   board's row and the inspector name are those of the readings on screen
   (`lightboxBoardModels`, `lightboxLensModel`), falling back to the group's
-  model on a board read before Slice 4J.
+  model on a board read before Slice 4J. *Corrected by PR #170's review
+  (F-02):* such a reading, still on the board when a later call of its
+  group settles, takes a provenance entry of the model only (`{ lens,
+  model? }`, its group's model then, before the group's model becomes the
+  new call's), never a run or time the board did not hold. So once a call
+  settles, every reading its group shows has an entry, the fallback is
+  only for a group with none at all, and a lens whose entry was lost names
+  no model rather than the latest call's.
 - **Stop and the text changing underneath.** A Stop marks each pending
   lens with a reading earlier with the stop's reason; a group set aside
   because the chapter changed while it was read is carried with its earlier
@@ -424,7 +431,11 @@ Opinion-only rule (decision 47). The run and reading model becomes:
 - **A call that did not land is said once** (epic decision 52). Its whole
   message, the place a paid reply was saved included, shows in one note per
   call under the run line; every widget of the call shows a short line
-  pointing there and is described by it. A reply cut off at the output
+  pointing there and is described by it. *Corrected by PR #170's review
+  (F-01, N-01):* a note is one failed or stopped call, or one cut reply,
+  known by where that reply was saved, since kept readings can carry the
+  reasons of several calls; each widget points to the note its own reason
+  is, and a lens the failed call never asked for shows nothing of it. A reply cut off at the output
   ceiling names the blocks it never reached in the cut's own words ("The
   reply reached the output ceiling before this block began."), with the
   same place as the block it was cut inside (amending decision 40's

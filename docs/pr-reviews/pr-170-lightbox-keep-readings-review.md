@@ -112,3 +112,68 @@ Both match the author's reported bundle prefixes. Passing gates and matching evi
 ## Publication scope
 
 Only this review report is to be published. The findings above refer to the implementation head, not the later report-only commit. Post-publication verification must establish that commit's sole parent, exact report bytes, single changed report path, and both exact-head push/pull-request CI runs. No formal review, comment, implementation change, merge or deployment is part of this report.
+
+## Author response (2026-10-24)
+
+**F-01, F-02 and N-01: fixed**, after merging `epic/lightbox` at `13aff89`
+(Slice 4K, PR #168) into the branch. Nothing above this section was edited.
+
+| Commit | What |
+| --- | --- |
+| `d3a464ec` | Merge of `epic/lightbox` at `13aff89` (a merge commit; the conflicts were the epic README and the agents guide only) |
+| `b868b4eb` | F-01 and N-01: one note per call or cut reply; a failure says nothing in lenses it never read |
+| `8341db94` | F-02: a reading from before Slice 4J keeps the model that read it; the host witnesses for all three |
+| this commit | This response, the slice notes, the ADR's 2026-10-24 addendum, the agents guide, the epic, and the evidence README |
+
+### Resolution ledger
+
+| ID | Priority | Disposition | Fix | Regression tests |
+| --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **A note is one event, not one group.** A cut is known by where its reply was saved, which every reason the cut wrote carries after its first sentence (`lightboxCutEvent`, in `lightboxCallNotes.ts`): one reply cut off is one note however many lenses it touched, and two replies are two notes, "Call A · cut off (Theme & motif)" and "Call A · cut off (Tension arc)", the second with its own id (`pm-lb-call-note-A-2`). A failure or a stop is still the group's latest call, matched by its whole message, and stands beside any older cut whose reasons the group still shows. A widget points to the note its own reason is (`lightboxBoardCallNote(board, group, reason)`; `lightboxPointsToCallNote` compares the cut's saved place, never just the prefix), so its link focuses its own reply's note, the frame is described by that note only, and the newer place stands on the board. An older retained lens keeps its own reply's note. A reason with no note (an older call's failure, a block withheld for its own fault) stays in the widget. Two cut replies that could not be saved say the same words, so they share one note, which says exactly what each would. | `LightboxKeptReadingSources.test.ts` (real host):<br>• **Your witness:** read A; Re-analyze the motif alone, cut inside the motifs (call-1); the tension alone, cut inside the tension (call-2); both reasons and both places through the autosave and a fresh host's restore, two notes, the motif pointing to call-1's and the tension to call-2's<br>• **Your control:** one whole-call cut is one note, and the motif, tension, gravity and palette all point to it<br>`LightboxAppCallNoteEvents.test.tsx` (the App, jsdom):<br>• **Focused pointer:** the tension line's "see its note" focuses the note holding call-2's place and not call-1's; the Motifs widget's focuses call-1's, and the frame is described by call-1's note only; each place stands once<br>• the same-event control: one note, every widget's link focusing it<br>`lightboxCallNotes.test.ts`: the cut's identity; two replies, two notes; the control; a failure beside an older cut |
+| F-02 | P2 | **Fixed** | **The old model is kept before the group's model moves.** `settleLightboxGroup` gives every reading its group shows a provenance entry when a call settles: a reading with none of its own (a board read before Slice 4J) takes `{ lens, model? }`, the model its group named then, before the group's `model` becomes the new call's (`carriedProvenance`). No run token or landing time is invented: the entry has none, or no model either when the group named none. The format's entry reads that shape explicitly (`run` and `at` both present or both absent; a half entry is dropped and counted). `lightboxLensModel` reads the group's model only for a group with no provenance at all; once a group has some, a lens without an entry has lost it and names no model, never the latest call's. The group's `model` (its latest call's) and summed `usage` keep their meaning. The inspector names the model alone where there is no time ("Read by model-v1"). | `LightboxKeptReadingSources.test.ts` (real host, store and reload):<br>• **Your witness:** the committed `board-v1.json`, only group A read, opened through `LIGHTBOX_OPEN_BOARD`; Run A under model-v2, cut inside the motifs; the headline replaced, the motif's tiles unchanged; after the autosave and a fresh host's restore, the motif, tension, gravity and palette each `{ lens, model: 'provider/model-v1' }`, the inspector "Read by model-v1" for the motif and "Read by model-v2 · …" for the headline, and the row's models `['provider/model-v2', 'provider/model-v1']`<br>• **Unsuccessful replacement:** Run A under model-v2 with an unusable reply: the group's model is v2, the inspector and the row name only v1<br>`LightboxKeepReadings.test.ts` (pure): a partial whole-call rerun, a headline-only rerun, a failed rerun naming another model, a group that named no model, a lost entry, and a native board gaining nothing<br>`LightboxBoardProvenance.test.ts` (codec): the model-only and empty entries read back whole and byte for byte; a run without its time and a time without its run are dropped, counted, and leave that lens's model unknown |
+| N-01 | P3 | **Fixed** | **A failure is its own lenses'.** `lensView` gives a failed or stopped group's notice only to a lens with nothing read (one the call left with nothing, or one never read), as a first read shows it; a lens with a reading shows its earlier mark when the call kept it, and nothing when the call never asked for it. So after a lens rerun on its own fails, its siblings say nothing of the failure: the message stands once, in the note. A lens the call left with nothing still points to the note. | `LightboxKeptReadingSources.test.ts`: the motif rerun alone, its reply unusable: one note holding the recovery place; the motif points to it; the headline, tension, gravity and palette show no notice, no earlier mark and no note<br>`LightboxAppCallNoteEvents.test.tsx`: the message once in the DOM after a single-lens failure, the siblings with no line and not described by the note; once after a whole-call failure too<br>`lightboxCallNotes.test.ts`: the siblings; a lens left with nothing still pointing to the note |
+
+**A changed test.** `lightboxReadings.test.ts`'s failed re-read case built
+a failed group with no earlier mark on the lens it kept, a shape Slice 4J
+never writes, and expected the group's notice on it. It now builds the
+board 4J writes (the kept lens marked earlier) and checks that the sibling
+the call never asked for says nothing.
+
+**One edge, stated.** A board saved between Slices 4I and 4J whose
+Opinion was kept after a failed Opinion call (decision 47) holds the
+Opinion with no earlier mark, so it now shows without the reason beside
+it; the reason still stands once in the call's note under the run line.
+Slice 4J writes the mark.
+
+### Which tests fail on `bbbc47a`
+
+The 2 new and 4 changed suites, copied onto an export of `bbbc47a`:
+
+- **As CI runs them (type-checked), all 6 fail.** `lightboxCallNotes.test.ts`
+  and `LightboxBoardProvenance.test.ts` do not compile (the per-event API;
+  a model-only entry). The other four fail 12 tests: the pure F-02
+  transitions (5), the host witnesses (4 of 5: F-01, both F-02 and N-01),
+  the failed re-read (1) and the App's F-01 and N-01 cases (2 of 4).
+- **With type checking off**, 21 tests fail in the 6: the 12 above, 6 in
+  `lightboxCallNotes` (2 of them earlier tests that now call the per-event
+  API) and 3 in `LightboxBoardProvenance`. **Every control passes there**:
+  the whole-call cut (host and App), the whole-call failure said once, a
+  lens left with nothing pointing to its note, and the codec's existing
+  cases.
+
+### Verification at the correction head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 18.20.8 (`npx -p node@18`) | **515 suites / 7,196 tests / 59 snapshots, all passing** |
+| Full Jest after the merge, before the corrections, Node 22 | 513 / 7,172 / 59; one wall-clock bound (`LightboxPassages`' linear-time case) missed beside other work and passed alone |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to `13aff89` |
+| Typecheck | **Pass** under Node 22 and Node 18.20.8 |
+| `npm run build` with `verify:bundle`, under Node 22 and Node 18.20.8 | **Pass**, the same hashes both times: `webview.js` `2ffd7bcd56493bdf5fa22fe93ff2c0e293c56ea3cca1c4d2b94c270255c99bb6`, `extension.js` `556346baf03cacf308b65f8cf6c70770e5b14423dcdf034008f246aa9c6dcb05` |
+| `git diff --check` | **Clean** |
+| Visual evidence | The states rebuild byte for byte. `checks.js` mirrors the new note rules; the corrected bundle gives the same `facts.json`, byte for byte, and an empty `errors.txt`. No evidence state holds two cut replies of one call or a lens rerun on its own, so the captures stand (a new render differs by at most 49 pixels a capture, as two renders of one bundle do) |
+
+Module sizes: `lightboxCallNotes.ts` 171 lines, `lightboxReadings.ts` 285,
+`LightboxReadingState.ts` 288, `LightboxBoardCodec.ts` 422,
+`useLightboxInspector.ts` 486. `LightboxReadingRunner` is untouched. No
+live or billable call; *Alice* fixtures only; model ids are placeholders.

@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 and D12, and their **addendum of 2026-10-24, keep, lens by lens, until replaced**
 **Writer decisions:** 49 (supersedes 42, generalizes 47) and 52 in the [epic table](README.md#writer-decisions-2026-10-19); decisions 50 and 51 are Slices 4K and 4L's
-**Status:** Built on `epic/lightbox-keep-readings`, from `epic/lightbox` at `cf7f260` (Slices 4H, 4I and 5A.2 merged). No PR yet.
+**Status:** Built on `epic/lightbox-keep-readings`, from `epic/lightbox` at `cf7f260` (Slices 4H, 4I and 5A.2 merged), with `epic/lightbox` at `13aff89` (Slice 4K, PR #168) merged in. PR #170 is open; its review's three findings are corrected.
 
 ## Why
 
@@ -85,7 +85,13 @@ A group gains two optional fields (`shared/types/messages/lightboxProvenance.ts`
   model?, at }`: the run's host-minted token, the provider-reported model of
   its call, and the ISO time it landed, from the service's clock
   (`LightboxService.clock()`). A lens a call replaces, or shows fresh, gets
-  the new entry; a kept lens keeps its own.
+  the new entry; a kept lens keeps its own. **A reading from a board read
+  before this slice** (no entry of its own) gets `{ lens, model? }` when a
+  later call of its group settles: the model its group named then, taken
+  before the group's model becomes the new call's, and never a run or time
+  the board did not hold; nothing at all when the group named no model
+  (PR #170 F-02). `run` and `at` are both present or both absent, and the
+  codec drops an entry with one and not the other.
 - **`earlierLenses`**: `{ lens, reason }` for each lens showing an earlier
   reading.
 
@@ -100,12 +106,16 @@ per-lens entries, so each lens keeps or takes its own.
 `shared/constants/lightboxProvenance.ts`): the Boards browser's row and the
 inspector. A call whose reading replaced nothing (it failed, was stopped, or
 every lens it read kept its earlier reading) is not named. A board read
-before this slice has no provenance, and its readings fall back to the
-group's model.
+before this slice has no provenance at all, and its readings are its
+group's model. Once a call of a group settles, every reading the group
+shows has an entry, so a lens without one has lost it (an entry that did not
+read): its model is unknown, never the group's latest call's (PR #170
+F-02).
 
 **The inspector** names the model and time of the pinned reading ("Read by
-model-v1 · Oct 24, 2026, 9:08 AM", in the viewer's zone), and says when it is
-an earlier one, or being read again.
+model-v1 · Oct 24, 2026, 9:08 AM", in the viewer's zone; "Read by model-v1"
+alone for a reading from before this slice), and says when it is an earlier
+one, or being read again.
 
 ## 3. Saved boards
 
@@ -163,7 +173,8 @@ run line counts them: "… · 5 earlier readings kept".
 | An empty block | The new reading came back with nothing to draw. |
 | Template and summary kept together | Summary & movements was not replaced, and the two are kept together, since engagement sits on the movements. |
 | The run line | … · 5 earlier readings kept |
-| The inspector | Read by model-v1 · Oct 24, 2026, 9:08 AM |
+| The inspector | Read by model-v1 · Oct 24, 2026, 9:08 AM (a reading from before this slice: Read by model-v1) |
+| Two notes of one call (two cut replies, or a failure and an older cut) | Call A · cut off (Theme & motif) / Call A · cut off (Tension arc) |
 
 "Earlier reading" keeps the register honest: it is still a reading, not a
 count, and its badge is neutral, never in the measured register's colors.
@@ -203,16 +214,39 @@ so the note gathers the cut once and each widget the cut touched points
 there. A block withheld for its own fault, and a reason an older call left
 (no note stands for it now), are still said in the widget.
 
+**A note is one call or one cut reply, never a group's every reason** (PR
+#170 F-01). Readings are kept until replaced, so one group can hold the
+reasons of several calls: the motif kept by one cut reply, the tension by
+the next, each saved in its own place. A cut is known by where its reply was
+saved, which every reason the cut wrote carries after its first sentence
+(`lightboxCutEvent`): one reply cut off is one note however many lenses it
+touched, and two replies are two notes, "Call A · cut off (Theme & motif)"
+and "Call A · cut off (Tension arc)", the second with its own id
+(`pm-lb-call-note-A-2`). Each widget points to the note its own reason is
+(`lightboxBoardCallNote(board, group, reason)`), so its link brings the focus
+to its own reply's place and the frame is described by that note only. A
+failure or a stop is the group's latest call, matched by its whole message,
+and stands beside any older cut whose reasons the group still shows. Two cut
+replies that could not be saved say the same words, so they share one note,
+which says exactly what each would.
+
+**A failure is its own lenses'** (PR #170 N-01). A lens the failed or stopped
+call kept says why in its earlier note, pointing to the call's note; a lens
+it left with nothing points to the note too. A lens the call never asked for
+(a sibling of a lens run on its own) says nothing of it: its reading is not
+an earlier one, and the message is the note's alone. A whole-call failure
+still says its message once.
+
 ## Implementation notes
 
 **New modules:**
-- `shared/types/messages/lightboxProvenance.ts` (36): `LightboxLensProvenance`, `LightboxEarlierLens`.
-- `shared/constants/lightboxProvenance.ts` (119): the keep words, the keep reasons, `LIGHTBOX_KEPT_TOGETHER`, and the per-lens and per-board readers (`lightboxLensHasReading`, `lightboxLensModel`, `lightboxEarlierReason`, `lightboxBoardModels`, `lightboxEarlierLensCount`, `lightboxLensWasRead`).
+- `shared/types/messages/lightboxProvenance.ts` (46): `LightboxLensProvenance` (a landing's, or a model-only one from before this slice), `LightboxEarlierLens`.
+- `shared/constants/lightboxProvenance.ts` (130): the keep words, the keep reasons, `LIGHTBOX_KEPT_TOGETHER`, and the per-lens and per-board readers (`lightboxLensHasReading`, `lightboxLensModel`, `lightboxEarlierReason`, `lightboxBoardModels`, `lightboxEarlierLensCount`, `lightboxLensWasRead`).
 - `shared/constants/lightboxCallNotes.ts` (26): the ceiling's words, shared by the host and the webview; a test pins the cut's to the reading wire's `LIGHTBOX_CUT_OFF_REASON`.
-- `presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts` (126, pure): each call's note, merged when alike, and the short lines.
+- `presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts` (171, pure): each call's failure or stop and each cut reply's note, merged when alike, the note a reason points to, and the short lines.
 - `presentation/webview/components/lightbox/LightboxCallNotes.tsx` (83): the notes, the pointer and the call line.
 
-**Changed:** `LightboxReadingState` (260; the rule, `cancelLightboxGroup`),
+**Changed:** `LightboxReadingState` (288; the rule, `cancelLightboxGroup`, a legacy reading's model carried),
 `LightboxPressRun` (the landing's provenance; the basis rule only for a new
 Opinion), `LightboxPressScope` (`lightboxPressLens`), `LightboxReadingHandler`
 (488, as before), `LightboxService` (495: `clock()`), `LightboxStaleReadings`
@@ -320,6 +354,64 @@ onto an export of `cf7f260` and run there:
   constant named `…_CEILING…` as a prompt budget, so the cut reply's
   words are `LIGHTBOX_CUT_REPLY_PREFIX`, `LIGHTBOX_CUT_INSIDE_REASON` and
   `LIGHTBOX_CUT_BEFORE_REASON`.
+
+## PR #170's review corrections (2026-10-24)
+
+Astra's review asked for changes: two P2 findings and one P3, all made,
+after `epic/lightbox` at `13aff89` (Slice 4K, PR #168) was merged in. See
+the [author response](../../../docs/pr-reviews/pr-170-lightbox-keep-readings-review.md).
+
+- **F-01: a note is one call or one cut reply** (section 5). Two lens
+  reruns of call A, each cut off and saved in its own place, used to share
+  the older reply's note: the tension's link focused it, and the newer
+  place was nowhere on the board. Each cut reply is now its own note, known
+  by where it was saved, and each widget points to the note its own reason
+  is.
+- **F-02: a reading from before this slice keeps its model** (section 2).
+  A format-1 board saved before per-lens provenance, partly re-read under
+  another model, named the new model for the readings it kept. Each such
+  reading now takes a model-only provenance entry before its group's model
+  moves on.
+- **N-01: a failure is its own lenses'** (section 5). After a lens run on
+  its own failed, its untouched siblings repeated the whole message. They
+  now say nothing of it.
+
+**Tests added:** `LightboxKeptReadingSources.test.ts` (5, through the real
+host: the two cut lens reruns through a save and a reload, and the
+whole-call control; the format-1 fixture opened, partly re-read under
+another model, saved and restored, its inspector and row naming both
+models, and the failed-rerun control; the single-lens failure's siblings),
+`LightboxAppCallNoteEvents.test.tsx` (4: each link focusing its own reply's
+note, both places once; the same-event control; a message once after a
+single-lens failure and after a whole-call one), and in the pure suites:
+`lightboxCallNotes.test.ts` (+6), `LightboxKeepReadings.test.ts` (+6, the
+model carried, with a failed rerun, a group that named none and a lost
+entry as controls), `LightboxBoardProvenance.test.ts` (+3, the model-only
+shapes and a half entry dropped). `lightboxReadings.test.ts`'s failed
+re-read case now builds the board 4J writes (the kept lens marked earlier).
+
+**Which tests fail on the reviewed head `bbbc47a`.** The 2 new and 4
+changed suites, copied onto an export of `bbbc47a`:
+- **As CI runs them, all 6 fail.** Two do not compile (`lightboxCallNotes`,
+  which reads the per-event API, and `LightboxBoardProvenance`, which writes
+  a model-only entry); the other four fail 12 tests: the pure model
+  transitions (5), the host witnesses (4 of 5: F-01, both F-02 and N-01;
+  the whole-call cut control passes), the failed re-read (1) and the App's
+  F-01 and N-01 cases (2 of 4; both controls pass).
+- **With type checking off**, 21 tests fail in the same 6 suites, the two
+  that did not compile adding 6 and 3 (two of the 6 are earlier tests that
+  now call the per-event API; the other 4 are F-01 and N-01 cases). Every
+  control passes there.
+
+**Verification:** 515 suites / 7,196 tests / 59 snapshots, all passing
+under Node 18.20.8 (513 / 7,172 / 59 after the merge, before the
+corrections, under Node 22, the one time-bound miss passing alone); lint
+0 errors and 1,133 warnings, identical per file, rule and severity to
+`13aff89`; typecheck under Node 22 and Node 18; `npm run build` with
+`verify:bundle` under each Node, `webview.js` `2ffd7bcd…` and
+`extension.js` `556346ba…` both times; `git diff --check` clean. The
+evidence's states rebuild byte for byte, and the corrected bundle gives the
+same `facts.json` and an empty `errors.txt`.
 
 ## Visual evidence
 

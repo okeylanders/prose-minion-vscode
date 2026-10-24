@@ -117,6 +117,17 @@ same empty `errors.txt`; their screenshots differ by at most 49 pixels a
 capture (scrollbar edges and text antialiasing). The states rebuild byte for
 byte from the final code.
 
+**After PR #170's corrections** (`epic/lightbox` at `13aff89` merged in;
+one note per call or cut reply, a failure kept to its own lenses, a
+reading from before Slice 4J keeping its model), `checks.js` mirrors the
+new note rules, the states rebuild byte for byte, and the corrected bundle
+(`webview.js` SHA-256 `2ffd7bcd…`, the same under Node 22 and Node 18)
+gives the same `facts.json`, byte for byte, and an empty `errors.txt`. No
+state here holds two cut replies of one call or a lens rerun on its own, so
+nothing drawn changes: the captures are the earlier render's, which differ
+from the new one by at most 49 pixels a capture, as two renders of one
+bundle do. The corrections' own witnesses are tests (see the slice notes).
+
 In every capture: each AI-read widget says what its call's state on the
 host's board says (the live note over an earlier reading, the earlier note
 and its reason, or the short line pointing to its call's note), with no
