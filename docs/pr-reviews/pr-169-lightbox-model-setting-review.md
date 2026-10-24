@@ -154,3 +154,58 @@ host-side only. The visual evidence is unchanged for the same reason.
 
 The writer's questions, seeding the Lightbox model on first open and the
 "Same as Workshop" wording, stay open with the coordinator.
+
+## Independent re-review — correction and actual 4K integration (2026-10-24)
+
+**Reviewer:** Astra. **Re-reviewed head:** `a16e14e031b007801f536c340a3a97cf6d75071d`. **Current base and verified merge-base:** `13aff8952f684916050414786003480478f1e9fa`.
+
+**F-01 is closed. No new blocking finding was established on this integrated head.** This disposition supersedes the initial request-changes recommendation above; the original review and author response are preserved unchanged. It is an independent code-review conclusion, not a formal GitHub approval or authorization to merge.
+
+### Resolution ledger
+
+| ID | Previous disposition | Independent disposition | Evidence |
+| --- | --- | --- | --- |
+| F-01 | P2, open | **Closed** by `1d0b9753`, retained in `a16e14e` | The unchanged production-default A → clear acknowledgment → deferred F witness now starts only A. A's already-sent response lands; F fails as `missing-credentials`, without invoking transport. The same witness rerun on `a2fc71f` still starts F and fails the assertion. |
+
+### Correction and lifecycle review
+
+The implementation correction is confined to [`AIResourceManager.ts`](https://github.com/okeylanders/prose-minion-vscode/blob/a16e14e031b007801f536c340a3a97cf6d75071d/packages/core/src/infrastructure/api/orchestration/AIResourceManager.ts): retirement detaches every disposable engine before disposal, and rebuild epochs prevent an older asynchronous key read from replacing newer resources. The runner and its per-call policy are unchanged by the correction. Detachment does not cancel the provider reference an already-started call captured, which is why A can finish while a later `runInitial` through the retired engine is refused.
+
+Independent, stub-only checks used the production manager, engines, key routes, Lightbox service/handlers/runner and **real `p-limit` at default concurrency**, not the repository test's immediate-execution limiter:
+
+- **Clear with overlapping refreshes:** after the no-key acknowledgment, A lands and the real Opinion digest is built, but no F transport starts. The digest contains five items from one landed reading.
+- **Replacement with three refreshes and a model hot-swap:** the held engine remains detached; A lands and F is refused without transport. A fresh Opinion press uses the replacement placeholder key and the newly selected model. This deliberately fails the remainder of the old run rather than switching that run to another credential; the missing-key wording describes its retired engine, not the new key's absence.
+- **Controls:** keeping the key permits A then F; a no-key press refuses before reservation and a subsequent add-key press runs; Stop, and clear followed by Stop, prevent F. F's transport in the dispatch controls intentionally returns a synthetic failure: those controls establish routing, not a successful live Opinion response.
+- **All retired scopes:** held Lightbox, dictionary, context, category and widget engines reject fresh calls after replacement; clearing detaches the assistant too; disposal detaches the current engines. Re-adding a key or changing models never reattaches a retired disposable engine. The assistant remains intentionally retained across ordinary key replacement.
+- **Seven manager-level race scenarios:** two stale reads completing after a new key; a stale key completing after a clear; an overtaken successful refresh waiting for the newest pending refresh; an overtaken failure not clearing the newer initialization promise; newest-failure retry without stale installation; retirement/re-add across all scopes; and dispose followed by reinitialization while an older read remains pending. All pass. These are controlled host promises, not a native SecretStorage timing guarantee.
+
+The retained four-test independent regression suite also passes, including the earlier serialized-queue clear/Stop/no-key controls. Its model-change control still demonstrates the pre-existing run-wide model-pinning limitation documented above; this correction does not claim to fix it.
+
+### Actual integration with PR #168
+
+Merge `36e71be4` has `13aff89` as its second parent. The 4K parser, frame, block-format, reply-reader and codec sources, together with their regression tests, are byte-identical to that merged base. The duplicate/truncated-root evidence barrier and the deep ignored-data serialization guard remain present. Required own fields, quote/citation validation, saved-board strictness and Workshop persistence boundaries are not relaxed by the model-scope changes. The runner still hands the same complete result and finish reason to the reply reader.
+
+The merged parser tests and architecture guards pass in the fresh full suite. This checks preservation and the integrated call path, rather than repeating or replacing PR #168's separate review. **4K is PR #168; the separate keep-readings work is 4J / PR #170, not included here.** A later integration with #170 must be checked as its actual tree.
+
+### Independent verification on `a16e14e`
+
+| Check | Result |
+| --- | --- |
+| Fresh full Jest, isolated cloud workspace, Node 24.19.0 | **512 suites / 7,141 tests / 59 snapshots pass**, 285.746 s reported by Jest |
+| Typecheck | **Pass** |
+| Lint | **0 errors / 1,133 warnings**; identical to the initial independently linted head by file/rule/severity, which matched `cf7f260` |
+| Production build, including `verify:bundle` | **Pass**; both bundle hashes match the author's merged-tree hashes |
+| Retained independent regression suite | **4 / 4 pass**, 4.386 s |
+| Production-host default-concurrency witness and six lifecycle/control scenarios | **Pass**; pre-fix witness remains a discriminating failure |
+| Independent manager retirement/rebuild matrix | **7 / 7 scenarios pass** |
+| Regenerated model-state evidence and exact production-bundle DOM | **Builder passes; 10 DOM checkpoints pass, zero runtime/assertion errors** |
+| Source/implementation whitespace check | **Pass**; whole historical-report diffs still flag their existing Markdown hard-break spaces, not implementation whitespace |
+| Implementation-head GitHub CI | **Push and pull-request runs both green**; PR job inspected at Node 18.20.8, **512 / 7,141 / 59**, 280.06 s |
+
+CI: [push 40141594188](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40141594188), [pull request 40141597555](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40141597555). The inspected PR job checked `f4b8526c6e45f1371212757d7c913a27becb67ec`, the merge of this head with the stated base.
+
+Rebuilt SHA-256: `webview.js` `6a08cf5c82fb84691c7daba7dde3cef97fd87066e5bfe7144356a540f2b23f45`; `extension.js` `17b0bf40eccca7d56f0be523937cf92de5849cdc04da34df3299bfd25b7e3227`.
+
+The webview bundle and supplied 24 current captures plus three base controls are unchanged from the initial review. The fresh DOM pass repeats pick/follow, cancellation/reopening, focus restoration, external-setting synchronization, Settings overlay and Workshop cache-indicator checks against regenerated host state. The original visual and environment limits still apply: no new native geometry, Chromium-floor, VS Code, screen-reader, live-provider or provider-cache claim. All keys/models are placeholders, all transport is stubbed, and text is public-domain Alice. Timings are test/CI context, not native UI latency. Dependency reuse was rechecked against the unchanged lockfile and this checkout's workspace links.
+
+**Recommendation:** F-01 no longer blocks this head. Preserve the passing isolation/following and lifecycle controls through later integration. First-open seeding and the “Same as Workshop” wording remain product questions, not decisions inferred by this review.
