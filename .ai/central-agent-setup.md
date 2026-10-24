@@ -90,7 +90,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing)
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); how a run's groups start, settle and stop, keeping each lens's reading until a usable new one replaces it, with its provenance and earlier mark (`LightboxReadingState`, Slice 4J)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -113,6 +113,7 @@ packages/core/src/
             ├── lightboxBarrel.ts # The Lightbox domain's own barrel (every lightbox*.ts below) and its parts of the routing unions; index.ts re-exports it (Slice 5A.1)
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, lenses and the estimate's shapes
+            ├── lightboxProvenance.ts # Per lens, the run, model and time of the reading on screen, and an earlier reading's mark (Slice 4J)
             ├── lightboxRuns.ts   # Lightbox run messages: scope (all, rest, one call by group, one lens), phases, progress, set lenses, estimate answer, run, cancel, group result
             ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
             ├── lightboxStoryTiles.ts # Lineage, subtext and spark tiles; spark set-aside request
@@ -186,7 +187,8 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure); a paragraph may carry the term it was reached from (`via`)
 │       │   ├── lightboxTerms.ts        # Counted terms as items: top word, part of speech, phrase, hapax word, style flag (pure; Slice 4E)
 │       │   ├── lightboxPassages.ts     # The inspector's wells as drawn: what a pin asks for, waiting, changed text, bounds, refusals (pure; Slice 4E)
-│       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
+│       │   ├── lightboxReadings.ts     # Lens views (re-analyzing over an earlier reading, earlier and why, the call note it points to; Slice 4J), tallies, withheld-quote wording, group merges (pure)
+│       │   ├── lightboxCallNotes.ts    # A call that failed, was stopped or was cut off, said once: its note, and each widget's short line (pure; Slice 4J, decision 52)
 │       │   ├── lightboxRunLine.ts      # The run line's press (Run AI analyses, Finish, Re-analyze), its cost and reason (pure)
 │       │   ├── lightboxCallControls.ts # Each call's own run: a widget's Analyze / Re-analyze / Analyzing…, a call's Run / Rerun in the Lenses panel, their prices, names and reasons (pure; Slice 4I)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
@@ -835,8 +837,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-23, Lightbox Slice 5A.2 (one file per board named by date and rewritten in place, every chapter's boards, "Open a board file…", and the Workshop's sessions menu and browser made the full tabs' shared saved-item menu and browser) with PR #167's review and re-review corrections, on `epic/lightbox-boards-browser`, with `epic/lightbox` at `fcf86ff` (Slice 4I, PR #166: run controls) merged in):
-- 505 suites / 7,009 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-24, Lightbox Slice 4J (every run keeps each lens's reading until a usable new one replaces it, with its provenance and an earlier mark; a call's failure said once, under the run line) on `epic/lightbox-keep-readings`, from `epic/lightbox` at `cf7f260` (Slice 5A.2, PR #167: saved boards in the Workshop's design language)):
+- 510 suites / 7,091 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1256,11 +1258,9 @@ adding a way to start a reading:
   are on, plus the lens named) through `lightboxPlannedCalls`, and checks
   the scope in `LightboxPressScope` before anything is reserved. A new way
   to run joins that union and that check, never a second planner.
-- **A call run on its own replaces its group**, cleared first, as a full
-  run does; only `lens`, and the Opinion's call on its own, keep their
-  reading until the new one lands (`lightboxPressKeptLens`; decision 47).
-  A failure or Stop leaves the kept reading as it was, and the Opinion's
-  frame shows it as the earlier one (`LightboxReadingFrame`'s `keep`).
+- **No run clears first** (Slice 4J, decision 49, superseding 4I's
+  clear-first): every scope keeps each lens's reading until a usable new
+  one replaces it. See **Lightbox Keep Readings** below.
 - **One verb for an AI run** (decision 48): "Analyze", "Re-analyze",
   "Re-analyze this tile". "Re-read" is only for reading the chapter file
   again ("Re-read file").
@@ -1286,6 +1286,51 @@ adding a way to start a reading:
   `LightboxAnalyzeButton` for its lens itself, and keeps it mounted, in
   the same place, while its call reads it, so a focused control keeps the
   focus through its own rerun (the headline's row; PR #166 N-02).
+
+### Lightbox Keep Readings
+
+Follow [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md)
+D6 and D12's addendum of 2026-10-24 (Slice 4J; epic decisions 49 and 52)
+when touching how a run's groups start, settle or stop, what a lens shows
+while it is read, or how a call's failure is said:
+
+- **One rule, lens by lens** (`LightboxReadingState`). Every scope keeps a
+  lens's reading (its tiles) while its call runs, replaces it only with a
+  usable new block (one that drew a tile), and otherwise keeps it with an
+  earlier mark and the host's reason: a failure, a Stop, a cut inside or
+  before its block, a withheld block, or no tile. A lens with no earlier
+  reading shows the new state as a first read does. Never add a scope or a
+  path that clears a group first, and never decide a lens by its group's
+  status alone: one call can replace one lens and keep another. Template
+  and summary are decided together (`LIGHTBOX_KEPT_TOGETHER`).
+- **Provenance is per lens.** A lens a call replaces records the run, the
+  provider-reported model and the landing time (`settleLightboxGroup`'s
+  landing, from `LightboxService.clock()`). The group's `model` and
+  `error` are its latest call's; anything that names the model of what is
+  on screen reads `lightboxLensModel` / `lightboxBoardModels`, never the
+  group's model alone. Usage stays summed per group over every call made.
+- **The Opinion is no exception.** It keeps its reading in every scope;
+  its citation basis rule moves only when a new Opinion lands
+  (`LightboxPressRun`'s `opinionLanded`).
+- **Format 1's optional fields.** `provenance` is droppable, `earlierLenses`
+  reads whole, like `staleLenses`. A carry keeps provenance, and an earlier
+  mark only on a lens that still holds a reading (`settledCarry`). A saved
+  board never holds a group `running` or a lens `pending`.
+- **The webview reads it from the lens view.** `lightboxLensView` gives
+  `reanalyzing` (its reading on show while its call reads it again: phase
+  `ok`, not `reading`), `earlier` (the reason) and `callNote` (its call's
+  note says what it would). A reading drawn outside `LightboxReadingFrame`
+  (the headline, the tension line, the Spark lane) draws `LightboxKeptNote`
+  and `LightboxCallLine` itself. Ribbon lanes and counts read kept readings
+  as they read fresh ones.
+- **A call's failure is said once** (decision 52). `lightboxCallNotes`
+  gathers each call that failed, was stopped or was cut off; its whole
+  message shows only in `LightboxCallNotes`, under the run line. A widget
+  whose state is that message points to it (`lightboxPointsToCallNote`)
+  and is described by it; never render a group's `error`, or a ceiling
+  reason, in a widget whose `callNote` is set. A reply cut off at the
+  ceiling names its never-reached blocks with `LIGHTBOX_CUT_BEFORE_REASON`
+  (`LightboxGroupReply`), so the cut gathers into one note.
 
 ### Lightbox Passages
 
@@ -1408,7 +1453,8 @@ records, when it saves, or how a saved one comes back:
   F-03), and never writes a file that does not read whole.
 - **A save writes the board it was owed (PR #167 F-01).** A save waits
   its turn in the store's queue, and another run may start in the
-  meantime, clear a group (decision 42) and be stopped with nothing back.
+  meantime, and be stopped with nothing back (since Slice 4J it keeps the
+  readings it touched, marked earlier, rather than clearing them).
   At its turn, `owedBoard` writes the readings and rules its own run
   settled, exactly as captured, never a later state of them. It takes
   from the board as it stands only the file, revision and name, and each
