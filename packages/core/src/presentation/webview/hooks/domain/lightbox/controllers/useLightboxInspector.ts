@@ -352,7 +352,8 @@ function readingSource(
   const landed = lightboxLensProvenance(group, tile.lens);
   const model = lightboxLensModel(group, tile.lens);
   const by = lightboxModelsNote(model ? [model] : []);
-  const when = landed ? lightboxWhenFormat(timeZone).format(Date.parse(landed.at)) : undefined;
+  // A reading from before Slice 4J names its model only: its board never held when it landed (PR #170 F-02).
+  const when = landed?.at ? lightboxWhenFormat(timeZone).format(Date.parse(landed.at)) : undefined;
   const provenance = by && when ? `${by} · ${when}` : by ?? (when ? `Read ${when}` : undefined);
   const reanalyzing = group?.status === 'running' && (group.pending?.includes(tile.lens) ?? false);
   const reason = lightboxEarlierReason(group, tile.lens);

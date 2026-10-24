@@ -17,7 +17,7 @@ import {
   lightboxBoardOfFile,
   writeLightboxBoardFile
 } from '@/infrastructure/storage/LightboxBoardCodec';
-import { lightboxBoardModels, lightboxLensWasRead } from '@shared/constants/lightboxProvenance';
+import { lightboxBoardModels, lightboxLensModel, lightboxLensWasRead } from '@shared/constants/lightboxProvenance';
 import { everyKindBoard } from '@/__tests__/infrastructure/lightbox/lightboxSavedBoardFixtures';
 
 const FIXTURES = path.resolve(__dirname, '../../fixtures');
@@ -84,6 +84,50 @@ describe('format 1 with per-lens provenance and earlier marks (Slice 4J)', () =>
     expect(decoded.dropped).toBe(1);
     expect(decoded.droppedAt).toEqual(['file.board.readings[0].provenance[1]']);
     expect(decoded.file.board.readings[0].provenance?.map((entry) => entry.lens)).toEqual(['headline']);
+  });
+
+  it('reads a reading from before Slice 4J back whole: its model only, or nothing, never a run or time it never had (PR #170 F-02)', async () => {
+    const { board, text } = await keptBoard();
+    const carried: LightboxBoard = {
+      ...board,
+      readings: board.readings.map((group) => (group.group !== 'A' ? group : {
+        ...group,
+        provenance: [
+          { lens: 'headline', run: 'run-2-token', model: 'provider/model-b', at: '2026-10-24T09:08:00.000Z' },
+          { lens: 'motif', model: 'provider/model-a' },
+          { lens: 'tension' }
+        ]
+      }))
+    };
+    const json = encodeLightboxBoardFile({ board: carried, text, savedAt: SAVED_AT });
+    const decoded = decodeLightboxBoardFile(json);
+    if (decoded.kind !== 'board') {
+      throw new Error(decoded.reason);
+    }
+    expect(decoded.dropped).toBe(0);
+    const held = lightboxBoardOfFile(decoded.file);
+    expect(held.kind === 'board' && held.board).toEqual(carried);
+    expect(writeLightboxBoardFile(decoded.file)).toBe(json);
+    const a = decoded.file.board.readings[0];
+    expect([lightboxLensModel(a, 'headline'), lightboxLensModel(a, 'motif'), lightboxLensModel(a, 'tension')])
+      .toEqual(['provider/model-b', 'provider/model-a', undefined]);
+  });
+
+  it.each([
+    ['a run without its time', { lens: 'motif', run: 'run-1-token', model: 'provider/model-a' }],
+    ['a time without its run', { lens: 'motif', model: 'provider/model-a', at: '2026-10-24T09:00:00.000Z' }]
+  ])('leaves out %s, counted, and names no model for that lens rather than its group\'s latest', async (_what, entry) => {
+    const { board, text } = await keptBoard();
+    const raw = JSON.parse(encodeLightboxBoardFile({ board, text, savedAt: SAVED_AT }));
+    raw.board.readings[0].provenance[1] = entry;
+    const decoded = decodeLightboxBoardFile(JSON.stringify(raw));
+    if (decoded.kind !== 'board') {
+      throw new Error(decoded.reason);
+    }
+    expect(decoded.droppedAt).toEqual(['file.board.readings[0].provenance[1]']);
+    const a = decoded.file.board.readings[0];
+    expect(lightboxLensModel(a, 'motif')).toBeUndefined();
+    expect(lightboxLensModel(a, 'headline')).toBe('provider/model-b');
   });
 
   it('does not read a file whose earlier mark does not read, as with a stale mark', async () => {

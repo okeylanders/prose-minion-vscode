@@ -11,15 +11,25 @@
 
 import type { LightboxLensId } from './lightboxReadings';
 
-/** The run, model and time that produced a lens's reading on the board. */
+/**
+ * The run, model and time that produced a lens's reading on the board.
+ *
+ * Two shapes. A reading a call landed since Slice 4J records all three
+ * (`run` and `at` together, `model` when the provider reported one). A
+ * reading from a board read before it, still on the board when a later
+ * call of its group settles, records only the model its group named then,
+ * or nothing when the group named none (PR #170 F-02): never a run or a
+ * time the board did not hold. `run` and `at` are both present or both
+ * absent.
+ */
 export interface LightboxLensProvenance {
   lens: LightboxLensId;
-  /** The host-minted token of the run whose call read it. */
-  run: string;
-  /** The provider-reported model of that call, when the provider reported one. */
+  /** The host-minted token of the run whose call read it; absent for a reading from before Slice 4J. */
+  run?: string;
+  /** The provider-reported model of that call; absent when none was reported or known. */
   model?: string;
-  /** ISO 8601: when that call's reading landed on the board. */
-  at: string;
+  /** ISO 8601: when that call's reading landed on the board; absent with `run`. */
+  at?: string;
 }
 
 /**
