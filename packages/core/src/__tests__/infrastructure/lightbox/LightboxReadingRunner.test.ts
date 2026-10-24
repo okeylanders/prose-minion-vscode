@@ -1,6 +1,6 @@
 /**
  * LightboxReadingRunner (ADR 2026-10-19 D6, D7): the groups fan out on the
- * assistant engine, fail alone, stop on request keeping what landed, drop
+ * Lightbox's own engine (Slice 4L), fail alone, stop on request keeping what landed, drop
  * stale results, fail a `length` finish, quarantine unusable paid bodies,
  * and sum usage. Every engine here is a mock: no provider is called.
  */
@@ -118,14 +118,15 @@ function listenerOf(outcomes: LightboxGroupOutcome[]): LightboxRunListener {
 }
 
 describe('LightboxReadingRunner', () => {
-  it('runs every group on the assistant engine, without resources, under the group output ceiling', async () => {
+  it('runs every group on the Lightbox engine, never the assistant one, without resources, under the group output ceiling', async () => {
     const { start, runInitial, getEngine, outcomes, finished } = setup((request) => ok(groupOf(request)));
     const started = await start();
     expect(started.started).toBe(true);
     if (started.started) {
       await started.done;
     }
-    expect(getEngine).toHaveBeenCalledWith('assistant');
+    expect(getEngine).toHaveBeenCalledWith('lightbox');
+    expect(getEngine).not.toHaveBeenCalledWith('assistant');
     expect(runInitial).toHaveBeenCalledTimes(3);
     for (const [request] of runInitial.mock.calls) {
       expect(request.policy).toBe(AGENT_RUN_POLICIES.assistantWithoutResources);

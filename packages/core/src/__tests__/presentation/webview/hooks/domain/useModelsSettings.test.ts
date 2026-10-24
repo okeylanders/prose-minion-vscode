@@ -272,11 +272,91 @@ describe('useModelsSettings', () => {
 
       const firstHandleSettingsData = result.current.handleSettingsData;
       const firstUpdateSetting = result.current.updateSetting;
+      const firstFollow = result.current.followModelSelection;
 
       rerender();
 
       expect(result.current.handleSettingsData).toBe(firstHandleSettingsData);
       expect(result.current.updateSetting).toBe(firstUpdateSetting);
+      expect(result.current.followModelSelection).toBe(firstFollow);
+    });
+  });
+
+  /** The Lightbox's own model (Slice 4L): placeholder ids for the Workshop's and the Lightbox's. */
+  describe('the Lightbox model scope (Slice 4L)', () => {
+    const WORKSHOP = 'placeholder/workshop-model';
+    const LIGHTBOX = 'placeholder/lightbox-model';
+    const modelData = (selections: Record<string, string>, following?: unknown) => ({
+      type: MessageType.MODEL_DATA,
+      source: 'extension.handler',
+      timestamp: 1,
+      payload: { options: [], selections, ...(following !== undefined ? { following } : {}) }
+    });
+
+    it('follows until the host says otherwise, since unset is the setting’s default', () => {
+      const { result } = renderHook(() => useModelsSettings());
+      expect(result.current.followingModelScopes).toEqual(['lightbox']);
+      expect(result.current.persistedState.followingModelScopes).toEqual(['lightbox']);
+    });
+
+    it('takes which scopes follow from MODEL_DATA, and keeps what it knew when a message omits it', () => {
+      const { result } = renderHook(() => useModelsSettings());
+
+      act(() => result.current.handleModelData(modelData({ assistant: WORKSHOP, lightbox: LIGHTBOX }, []) as never));
+      expect(result.current.followingModelScopes).toEqual([]);
+      expect(result.current.modelSelections).toMatchObject({ assistant: WORKSHOP, lightbox: LIGHTBOX });
+
+      act(() => result.current.handleModelData(modelData({ assistant: WORKSHOP }) as never));
+      expect(result.current.followingModelScopes).toEqual([]);
+
+      act(() => result.current.handleModelData(modelData({ lightbox: WORKSHOP }, ['lightbox', 'assistant', 7]) as never));
+      expect(result.current.followingModelScopes).toEqual(['lightbox']);
+    });
+
+    it('restores which scopes follow from saved state, ignoring anything that is not one', () => {
+      mockPersistedState.followingModelScopes = ['widget', 'lightbox', 'lightbox'];
+      expect(renderHook(() => useModelsSettings()).result.current.followingModelScopes).toEqual(['lightbox']);
+
+      mockPersistedState.followingModelScopes = [];
+      expect(renderHook(() => useModelsSettings()).result.current.followingModelScopes).toEqual([]);
+    });
+
+    it('a Lightbox pick is the Lightbox’s own: posted on the lightbox scope, and it stops following', () => {
+      const { result } = renderHook(() => useModelsSettings());
+      act(() => result.current.handleModelData(modelData({ assistant: WORKSHOP, lightbox: WORKSHOP }, ['lightbox']) as never));
+
+      act(() => result.current.setModelSelection('lightbox', LIGHTBOX));
+
+      expect(mockVSCode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SET_MODEL_SELECTION,
+        payload: { scope: 'lightbox', modelId: LIGHTBOX }
+      }));
+      expect(result.current.modelSelections).toMatchObject({ assistant: WORKSHOP, lightbox: LIGHTBOX });
+      expect(result.current.followingModelScopes).toEqual([]);
+    });
+
+    it('"Same as Workshop" posts null for the lightbox scope and shows the Workshop’s model at once', () => {
+      const { result } = renderHook(() => useModelsSettings());
+      act(() => result.current.handleModelData(modelData({ assistant: WORKSHOP, lightbox: LIGHTBOX }, []) as never));
+
+      act(() => result.current.followModelSelection('lightbox'));
+
+      expect(mockVSCode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SET_MODEL_SELECTION,
+        payload: { scope: 'lightbox', modelId: null }
+      }));
+      expect(result.current.modelSelections).toMatchObject({ assistant: WORKSHOP, lightbox: WORKSHOP });
+      expect(result.current.followingModelScopes).toEqual(['lightbox']);
+    });
+
+    it('an assistant pick never touches the Lightbox’s own model', () => {
+      const { result } = renderHook(() => useModelsSettings());
+      act(() => result.current.handleModelData(modelData({ assistant: WORKSHOP, lightbox: LIGHTBOX }, []) as never));
+
+      act(() => result.current.setModelSelection('assistant', 'placeholder/workshop-model-next'));
+
+      expect(result.current.modelSelections).toMatchObject({ assistant: 'placeholder/workshop-model-next', lightbox: LIGHTBOX });
+      expect(result.current.followingModelScopes).toEqual([]);
     });
   });
 });

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { ModelScope, ModelOption, MessageType } from '@shared/types';
+import { ModelScope, ModelOption, MessageType, FollowingModelScope, MODEL_SCOPE_FOLLOWS, isFollowingModelScope } from '@shared/types';
+import { modelFollowLabel } from '@components/shared/modelFollowing';
 import { UseModelsSettingsReturn } from '../hooks/domain/useModelsSettings';
 import { UseTokensSettingsReturn } from '../hooks/domain/useTokensSettings';
 import { UseTokenTrackingReturn } from '../hooks/domain/useTokenTracking';
@@ -24,6 +25,9 @@ type SettingsOverlayProps = {
   modelOptions: ModelOption[];
   modelSelections: Partial<Record<ModelScope, string>>;
   onModelChange: (scope: ModelScope, modelId: string) => void;
+  /** Following scopes with no model of their own (Lightbox Slice 4L), and the way back to that. */
+  followingModelScopes: FollowingModelScope[];
+  onFollowModel: (scope: FollowingModelScope) => void;
   // Keep publishing and apiKey
   publishing: {
     preset: string;
@@ -54,6 +58,8 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
   modelOptions,
   modelSelections,
   onModelChange,
+  followingModelScopes,
+  onFollowModel,
   publishing,
   apiKey
 }) => {
@@ -73,19 +79,24 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
       ? CATEGORY_MODELS.map(m => ({ id: m.id, label: m.name }))
       : modelOptions;
 
-    // Detect if current model is custom (not in available models)
-    const currentModel = modelSelections[scope] || '';
+    // A following scope with no model of its own shows its "Same as Workshop (…)" choice, value ''.
+    const follows = isFollowingModelScope(scope) ? scope : undefined;
+    const currentModel = follows && followingModelScopes.includes(follows) ? '' : modelSelections[scope] || '';
     const modelList = isCategory ? CATEGORY_MODELS : RECOMMENDED_MODELS;
     const isCustomModel = currentModel && !modelList.find(m => m.id === currentModel);
+    const choose = (modelId: string) => (follows && modelId === '' ? onFollowModel(follows) : onModelChange(scope, modelId));
 
     return (
       <label className="settings-label">
         <div className="settings-label-title">{label}</div>
         <select
           value={currentModel}
-          onChange={(e) => onModelChange(scope, e.target.value)}
+          onChange={(e) => choose(e.target.value)}
           className="settings-input"
         >
+          {follows && (
+            <option value="">{modelFollowLabel(follows, modelSelections[MODEL_SCOPE_FOLLOWS[follows]], modelOptions)}</option>
+          )}
           {/* Show current custom model if exists */}
           {isCustomModel && (
             <option value={currentModel}>
@@ -182,6 +193,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         {renderModelSelect('context', 'Context Assistant Model', 'Powers the context assistant for project-aware insights and resources.')}
         {renderModelSelect('category', 'Category Search Model', 'Powers semantic word matching for category search.')}
         {renderModelSelect('widget', 'Widget Model', 'Controls generation for Conversation Widgets such as Gesture Playground.')}
+        {renderModelSelect('lightbox', 'Lightbox Model', 'Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own.')}
       </section>
 
       {/* General */}

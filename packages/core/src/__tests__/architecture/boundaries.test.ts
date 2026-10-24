@@ -2018,6 +2018,29 @@ describe('architectural boundaries', () => {
     expect(constructions(/\bnew\s+LightboxBoardsHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
+  it('reads the Lightbox on its own model scope, whose engine only the AI resource manager builds (Slice 4L)', () => {
+    const read = (file: string) => fs.readFileSync(path.join(SRC_ROOT, file), 'utf8');
+    const constructions = (pattern: RegExp) => collectSourceFiles(SRC_ROOT)
+      .filter((file) => pattern.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    // Every scope's engine and client, the Lightbox's included, come from the one manager;
+    // core never builds the manager: the composition root does (the app's own witness pins it).
+    expect(constructions(/\bnew\s+AgentRunEngine\s*\(/)).toEqual(['infrastructure/api/orchestration/AIResourceManager.ts']);
+    expect(constructions(/\bnew\s+OpenRouterClient\s*\(/)).toEqual(['infrastructure/api/orchestration/AIResourceManager.ts']);
+    expect(constructions(/\bnew\s+AIResourceManager\s*\(/)).toEqual([]);
+    expect(read('infrastructure/api/orchestration/AIResourceManager.ts'))
+      .toMatch(/this\.createResourceBundle\(apiKey!, 'lightbox', lightboxModel\)/);
+    // No Lightbox module asks for the assistant scope's engine or model, so no Lightbox
+    // pick or run can move the Workshop's; the runner's engine surface names only its own.
+    const assistantScope = /\b(?:getEngine|getResolvedModel)\(\s*['"]assistant['"]/;
+    expect(LIGHTBOX_MODULES.filter((file) => assistantScope.test(read(file)))).toEqual([]);
+    const contracts = read('infrastructure/lightbox/LightboxReadingRunContracts.ts');
+    expect(contracts).toMatch(/getEngine\(scope: 'lightbox'\)/);
+    expect(contracts).toMatch(/getResolvedModel\(scope: 'lightbox'\)/);
+    expect(read('presentation/webview/LightboxApp.tsx')).toMatch(/modelScope="lightbox"/);
+  });
+
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {
     const transportReference = /(?:useVSCodeApi|MessageType|postMessage)/;
     expect(LIGHTBOX_TRANSPORT_FREE_MODULES

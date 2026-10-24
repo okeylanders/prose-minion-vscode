@@ -21,10 +21,13 @@ import type { LightboxGroupRequest, LightboxReadingMaterial } from '@/infrastruc
 import type { LightboxModelFacts, LightboxModelPricing } from '@/infrastructure/lightbox/LightboxRunEstimate';
 import type { LightboxOpinionDigest } from '@/infrastructure/lightbox/LightboxOpinionDigest';
 
-/** The engine surface the runner uses. */
+/**
+ * The engine surface the runner uses: the Lightbox's own model scope (Slice
+ * 4L), never the assistant's, so a Lightbox model never moves the Workshop's.
+ */
 export interface LightboxReadingEngines {
-  getEngine(scope: 'assistant'): Pick<AgentRunEngine, 'runInitial'> | undefined;
-  getResolvedModel(scope: 'assistant'): string | undefined;
+  getEngine(scope: 'lightbox'): Pick<AgentRunEngine, 'runInitial'> | undefined;
+  getResolvedModel(scope: 'lightbox'): string | undefined;
 }
 
 /** The live model catalog, as the estimate reads it. */

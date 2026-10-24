@@ -251,6 +251,12 @@
           "description": "AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID.",
           "order": 5
         },
+        "proseMinion.lightboxModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI model for the Lightbox's analyses. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here, or in the Lightbox's model picker, gives the Lightbox its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
+          "order": 5.1
+        },
         "proseMinion.categoryModel": {
           "type": "string",
           "default": "openai/gpt-oss-120b:nitro",

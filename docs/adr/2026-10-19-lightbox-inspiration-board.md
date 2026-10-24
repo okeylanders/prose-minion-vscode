@@ -153,7 +153,8 @@ Slice 1 extracts the frame both tabs share:
   header actions, banners, the rail, the main area, and an optional right
   aside.
 - **`FullTabHeaderStatus`**, the generic cluster: model selector (assistant
-  scope), processed chip, OpenRouter balance chip.
+  scope; from Slice 4L, the tab's own: the Lightbox's is `lightbox`), processed
+  chip, OpenRouter balance chip.
 - **`ProviderPausedBanner`**, with its copy passed in.
 - **`FullTabRail`**, the `aside` with its error boundary, label passed in.
 - **`useFullTabChrome`**, a hook that owns the generic state the Workshop
@@ -276,7 +277,8 @@ A lens the writer turns off is left out of its group's prompt. A group with no
 lenses on is not called.
 
 - **Model:** the existing **assistant** model scope (writer decision 6), through
-  `aiResourceManager.getEngine('assistant')`, with the
+  `aiResourceManager.getEngine('assistant')` (*superseded by the addendum of
+  2026-10-24 below: the Lightbox's own `lightbox` scope*), with the
   `assistantWithoutResources` policy. Token usage flows through the existing
   fan-out to the processed chip. Each group records the provider-reported
   model.
@@ -352,6 +354,47 @@ rerun that call. The press model becomes:
   as "≈ $…". Group F's input is priced at its digest's whole bound, and its
   control says so apart from the price ("· input at digest limit"), not by
   calling the total a bound. No budget is enforced.
+
+**Addendum to D6 (2026-10-24): the Lightbox's own model** (Slice 4L; epic
+decision 51, which amends decision 6). The model above was "the existing
+**assistant** model scope". The writer found what that cost: choosing a
+model in the Lightbox's header wrote `proseMinion.assistantModel`, so the
+Workshop's model moved too, and its composer's cache estimate disappeared
+(it shows only while the cache's request model is the selected assistant
+model). The writer asked for a setting of the Lightbox's own.
+
+- **A `lightbox` model scope** and a setting, `proseMinion.lightboxModel`,
+  empty by default. It is a *following* scope (`FollowingModelScope`,
+  `MODEL_SCOPE_FOLLOWS = { lightbox: 'assistant' }`): while its setting is
+  empty it runs on the assistant model, after that model's own default, and
+  moves when that one does, so nothing changes for a writer who never picks
+  one. Picked, it is the Lightbox's own, and no Workshop pick changes it.
+  One pure rule resolves every scope (`ModelScopeSelections`); the other
+  five resolve exactly as before.
+- **Its own engine and client**, built like every scope's by the one
+  `AIResourceManager` the composition root constructs and carries in
+  `CoreServices`, and hot-swapped in place. The runner reads
+  `getEngine('lightbox')` and `getResolvedModel('lightbox')`, so the
+  estimate's model, its live window and prices, the fit check and the
+  press's model all follow the Lightbox's scope. No Lightbox module names
+  the assistant scope; the architecture witnesses pin both.
+- **A retired engine starts nothing new** (PR #169 F-01). A run keeps the
+  engine it started on for every call, the Opinion last. When the key is
+  removed or replaced, the manager detaches the provider of every
+  disposable engine it retires, so one a run still holds refuses its next
+  call as missing credentials, nothing sent; a request already sent
+  settles. Rebuilds that overlap (each webview refreshes on a key change)
+  are ordered: one overtaken while it read the key builds nothing, so an
+  old key's transports never replace the new ones.
+- **"Same as Workshop (…)"**, naming the Workshop's model, is how the
+  Lightbox's picker, its model browser's first card and the Settings
+  overlay's row show the unset state. Choosing it sends
+  `SET_MODEL_SELECTION` with `modelId: null`, which only a following scope
+  accepts: the setting is removed and the scope follows again. `MODEL_DATA`
+  says which scopes follow (`following`).
+- **Unchanged:** the `assistantWithoutResources` policy, the token fan-out
+  to the processed chip, and saved boards, which record the
+  provider-reported model per group.
 
 ### D7. Every reading is anchored, verified and allowed to strain
 
@@ -633,7 +676,8 @@ New `PROMPT_BUDGETS.lightbox` constants, pinned by the prompt-budget tests:
 - **Context-window fit, checked once per board.** Before the press is
   enabled, the host estimates each group's request with the engine's own
   estimator (`estimateTextTokens`, `measureContextWindow`) against the
-  assistant model's cached context length. If a group cannot fit, the button
+  Lightbox model's cached context length (the assistant model's until Slice
+  4L). If a group cannot fit, the button
   is disabled with the reason and the largest size that would fit. If the
   context length is unknown, the press is allowed and the cost line says so,
   matching the engine's own rule. The engine's per-call preflight still
@@ -1201,4 +1245,5 @@ of them. The format is fixed so that 5B needs no change to it.
   in the Genre Relationship Explorer.
 - Image generation for the mood board. Swatches and type carry the mood.
 - A dedicated `lightboxModel` setting (writer decision 6). Revisit if the
-  assistant model proves the wrong default.
+  assistant model proves the wrong default. *Revisited 2026-10-24: it did
+  (epic decision 51; the addendum to D6 of that date).*

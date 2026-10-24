@@ -6,7 +6,7 @@
  * reads and sends.
  *
  * - **Sync.** The webview sends its lens toggles on mount, on a toggle, when
- *   the board, the assistant model, its catalog or the context list changes.
+ *   the board, the Lightbox model, its catalog or the context list changes.
  *   Each `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
  *   estimate (fit and cost) echoing its `requestId`, plus the board's run
  *   while one is active. The estimate is only ever an answer (PR #149 F-03):
@@ -21,7 +21,7 @@
  *   window, or there is no API key.
  * - **A press owns what it was priced (PR #149 F-02).** A press names the key
  *   of the estimate it was shown (`LightboxRunEstimate.key`: the board and
- *   its text, the lenses on, the context shelf's revision, the assistant
+ *   its text, the lenses on, the context shelf's revision, the Lightbox
  *   model with its window and prices). Its snapshot is captured, and its
  *   board reserved under a minted token, before anything is awaited. After
  *   the prompt files load, it starts only if this tab is still open, its
@@ -103,7 +103,7 @@ const STOPPED = 'Stopped before this group came back.';
 const BOARD_CHANGED = 'The board changed. Read the board on screen.';
 const ESTIMATE_CHANGED = 'The estimate changed since it was shown (the model, its prices, the lenses or the context). ' +
   'Check the new estimate, then press again.';
-const MODEL_NOT_IN_USE = 'The model this press names is not the assistant model in use yet. ' +
+const MODEL_NOT_IN_USE = 'The model this press names is not the Lightbox model in use yet. ' +
   'Wait for the model change to finish saving, then press again.';
 
 type LightboxContextPicker = Pick<ShellService, 'pickFile'>;

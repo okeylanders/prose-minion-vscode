@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) merged (PR #165; `epic/lightbox` at `08b0d22`). **4I** (run controls: "Run AI analyses", a widget's Analyze, each call's Run; decisions 41–45, 47 and 48) merged (PR #166; `epic/lightbox` at `fcf86ff`). The writer then asked for saved boards in the Workshop's design language (decision 46): **5A.2** (one file per board, a Boards menu and a shared browser of every chapter's boards, "Open a board file…") is built on `epic/lightbox-boards-browser`, with 4H and 4I merged in; PR #167 is open, and its review's seven findings (F-01 to F-03, N-01 to N-04) are corrected. 5B (Compare) follows it.
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), Slice 3 merged (PR #150), Slice 4 merged (PR #151), and the launch entry points and shared project picker merged (PRs #152–#154). The writer's real-chapter checkpoint passed on 2026-10-20; Slices 4B–4D (new lenses) come before Slice 5: 4B merged (PR #155), 4C merged (PR #156) and 4D merged (PR #157). Slices 4E (PR #159), 4F (PR #160), the sentence rule (PR #161) and 4G (PR #162) merged, with PR #158's VS Code 1.82 floor; Slice 5 is split: 5A (saved boards) merged (PR #163; `epic/lightbox` at `3e5c3a1`). The writer then made four calls on it (decisions 33–36): **5A.1** (board names, the changed-file notice above the board, a spark set aside saved at once) merged (PR #164; `epic/lightbox` at `a57a5cd`). **4H** (reading tolerance: asks, not gates; the output ceiling; JSON repair; truncation salvage; decisions 37–40) merged (PR #165; `epic/lightbox` at `08b0d22`). **4I** (run controls: "Run AI analyses", a widget's Analyze, each call's Run; decisions 41–45, 47 and 48) merged (PR #166; `epic/lightbox` at `fcf86ff`). The writer then asked for saved boards in the Workshop's design language (decision 46): **5A.2** (one file per board, a Boards menu and a shared browser of every chapter's boards, "Open a board file…") is built on `epic/lightbox-boards-browser`, with 4H and 4I merged in; PR #167 is open, and its review's seven findings (F-01 to F-03, N-01 to N-04) are corrected. 5B (Compare) follows it. The writer then found that choosing a model in the Lightbox cleared the Workshop's prompt-cache timer and approved a model setting of the Lightbox's own (decision 51): **4L** is built on `epic/lightbox-model-setting`, from `epic/lightbox` at `cf7f260`; PR #169 is open, its review's F-01 is corrected, and `epic/lightbox` at `13aff89` (4K, PR #168) is merged in.
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -42,7 +42,7 @@ carried into the Workshop.
 | 3 | Shell | **Extract** the Workshop header and rail into a shared full-tab shell first |
 | 4 | Order | Counted board and first readings, then lexical gravity and palette, then the rest and Bring to Workshop |
 | 5 | Saved boards | **Yes, but as the last slice**, so the output can be reviewed before the file format is fixed |
-| 6 | Model | The **existing assistant model** setting |
+| 6 | Model | The **existing assistant model** setting. *Amended 2026-10-24 (decision 51): the Lightbox has a model setting of its own, which follows the assistant model until the writer picks one* |
 | 7 | Input | **One file or excerpt per board** for now, with a word ceiling (ADR D8) |
 | 8 | Launch entry points (2026-10-20) | **All three**: a Lightbox button beside Workshop in the sidebar, **Open File in Lightbox** in the Explorer and editor context menus, and an editor-title icon, each for **Markdown and plain text** |
 | 9 | Choosing a source and context (2026-10-20) | **The Workshop's "Choose from project" modal**, shared: the source panel opens it to pick one file, and the Context list opens it in attach mode, as the Workshop does |
@@ -86,6 +86,7 @@ carried into the Workshop.
 | 47 | The Opinion keeps its reading until a new one lands (2026-10-23) | **The writer: keep the old Opinion until the new one lands.** When the Opinion's call runs on its own (its Analyze or Re-analyze, Run F or Rerun F), the old Opinion is not cleared when it starts: it stays in view, said to be the earlier one ("Analyzing… This is the earlier Opinion until the new one lands."), until the new one replaces it whole. If the call fails or is stopped, the old Opinion stays exactly as it was, standing and stale marks included, with the reason beside it, and the board saved after a failure still holds it. The host takes the per-lens re-read's path (`lightboxPressKeptLens`). Only the Opinion: every other call run on its own is still cleared first, and a run of several calls still clears the Opinion with the rest (Slice 4I; PR #166) |
 | 48 | One verb for an AI run (2026-10-23) | **The writer: rename "Re-read this tile" to "Re-analyze this tile".** The inspector's button, its disabled reasons and the copy that sends the writer to it say "re-analyze", so the verb for an AI run is the same everywhere. "Re-read file" keeps its words: it reads the chapter file, not the model (Slice 4I; PR #166) |
 | 50 | Forgive extra fields, and repair a misplaced brace (2026-10-24) | **On long chapters, mostly with Anthropic Opus models, whole groups were lost to one slip**: group E's summary closed one brace early, before its friction (`…"movements":[…]},"friction":"…"}}`), so `friction` stood in the root and the root's field the format does not define failed all four blocks. **A field the format does not define is ignored, at every level** of a model's reply (the root, a block, an item, an object inside one; groups A–G and F): counted and logged as a count ("Group E ignored 1 field the format does not define"), never named, never withheld for. Everything else still withholds: a missing required field (so a misspelled one is withheld for the field it stands in for), a wrong type or vocabulary, a minimum, a quote, a structural rule, the version. Saved boards and the Workshop's codecs stay strict. **A member closed out of its block is moved back** (`misnested-member`): a root member goes into the block just before it, where the text puts it, only when that block's format defines it and lacks it; a run moves together; nothing guesses past a gap or with a root key written twice; the content guard holds the root's scalars and their order. Only the root is re-nested (ADR D6/D7 second addendum, 2026-10-24; Slice 4K). 49 is Slice 4J's |
+| 51 | The Lightbox's own model (2026-10-24) | **The writer noticed that changing the model in the Lightbox cleared the Workshop's prompt-cache timer, and approved giving the Lightbox its own model setting.** The Lightbox read with the shared assistant scope (decision 6), so its picker changed the Workshop's model too. It now has a scope of its own, `lightbox`, and a setting, `proseMinion.lightboxModel`. **Unset (the default), it follows the Workshop:** it runs on the assistant model and moves when that one does, and its header picker, its model browser's first card and the Settings overlay's Lightbox Model row say **"Same as Workshop (…)"** with the Workshop's model named. **Picked, it is its own:** a Lightbox pick never writes `assistantModel`, and a Workshop pick never changes a Lightbox model that has been set. Choosing "Same as Workshop" removes the setting, and it follows again. Its runs use their own engine and client, built by the AI resource manager the composition root owns; the resolved model, estimates, prices, fit check and context window all follow it. Saved boards need no change: they record the provider-reported model per group. Not seeded: a first open does not copy the assistant model into it (Slice 4L) |
 
 ## Slices
 
@@ -109,6 +110,7 @@ carried into the Workshop.
 | 4I | [Run controls](slice-4i-run-controls.md) | The run line's "Run AI analyses", "Finish" and "Re-analyze", all orange; a `group` run scope the host resolves (a call's checked lenses plus the widget's own); every AI-read widget's Analyze / Re-analyze / Analyzing…; the Opinion's Analyze, disabled with its own reason until a call has landed; one Run / Rerun per call in the Lenses panel (decisions 41–45) | Merged (PR #166, at `fcf86ff`) |
 | 5A.2 | [Saved boards in the Workshop's design language](slice-5-saved-boards-and-compare.md#slice-5a2-saved-boards-in-the-workshops-design-language) | One file per board, named by date at its first save and rewritten in place; the Boards menu and the Workshop's session browser, made shared, over every chapter's boards; "Open a board file…"; the Boards panel removed (decision 46) | Built on `epic/lightbox-boards-browser`, with 4H and 4I merged in; PR #167 open, its review's seven findings corrected |
 | 4K | [Forgive extra fields, and repair a misplaced brace](slice-4k-forgive-fields.md) | Fields the format does not define ignored at every level of a model's reply, counted and never named, and never withheld for; a member closed out of its block moved back by the text's order, under the content guard; saved boards and the Workshop stay strict (decision 50) | Built on `epic/lightbox-forgive-fields`, from `epic/lightbox` at `cf7f260`; no PR yet |
+| 4L | [The Lightbox's own model setting](slice-4l-lightbox-model-setting.md) | A `lightbox` model scope and `proseMinion.lightboxModel`, following the assistant model until picked ("Same as Workshop (…)"); its own engine and client from the composition root's AI resource manager; sync between the Settings overlay, VS Code settings and the Lightbox's picker; a Lightbox pick never moves the Workshop's model or its cache estimate (decision 51) | Built on `epic/lightbox-model-setting`, from `epic/lightbox` at `cf7f260`; PR #169 open, its review's F-01 corrected, with `epic/lightbox` at `13aff89` (4K, PR #168) merged in |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source (two boards are two text versions, decision 46): measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A.2) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1837,3 +1839,46 @@ lens, and adds its items to 4D's digest.
     7,090 tests / 59 snapshots under Node 22 and Node 18.20.8; lint
     identical; typecheck and both builds pass; `webview.js` `1fe07246…`
     (unchanged), `extension.js` `de712cc6…`.
+- **2026-10-24. Slice 4L (the Lightbox's own model setting) is built** on
+  `epic/lightbox-model-setting`, from `epic/lightbox` at `cf7f260`,
+  awaiting its PR. The writer noticed that changing the model in the
+  Lightbox cleared the Workshop's prompt-cache timer: the Lightbox read with
+  the shared assistant scope, so its picker moved the Workshop's model and
+  the composer's cache estimate disappeared. See the
+  [slice notes](slice-4l-lightbox-model-setting.md).
+  - **A `lightbox` scope and `proseMinion.lightboxModel` (decision 51):**
+    empty by default, so the Lightbox follows the Workshop's model and moves
+    with it; picked, it is its own. "Same as Workshop (…)" in the Lightbox's
+    picker, its browser's first card, and the Settings overlay's new
+    Lightbox Model row; choosing it removes the setting. One rule resolves
+    every scope (`ModelScopeSelections`).
+  - **Its own engine and client,** built by the composition root's
+    `AIResourceManager`; the runner, the estimate, prices, fit check and the
+    press's model read the lightbox scope.
+  - **No cross-talk:** a Lightbox pick never writes `assistantModel`; a
+    Workshop pick never changes a Lightbox model that has been set. The
+    writer's symptom has a regression test that fails on `cf7f260`.
+  - **Verification**, after `npm ci` into a real `node_modules`: 508
+    suites / 7,053 tests / 59 snapshots (505 / 7,009 / 59 at
+    `cf7f260`), all passing under Node 22 and Node 18.20.8. Lint identical
+    to `cf7f260` per file, rule and severity; typecheck and two builds under
+    each Node, `webview.js` `6a08cf5c…` and `extension.js` `ee1ecf31…` all
+    four times (`cf7f260`'s: `dcf1b091…`, `66e2bf3a…`). Evidence in
+    [`docs/pr-reviews/evidence/lightbox-slice-4l-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4l-visual/README.md):
+    24 captures and three of `cf7f260`'s, `errors.txt` empty, and 36
+    errors against `cf7f260`'s bundle, among them the writer's symptom.
+  - **PR #169's review (2026-10-24).** Astra asked for one correction,
+    F-01 (P2): a run keeps its engine for every call, and clearing or
+    replacing the key retired the Lightbox's bundle without detaching its
+    client, so the deferred Opinion could start a new request after the
+    clear was acknowledged. Retiring a disposable bundle now detaches its
+    provider, so a held engine refuses a new call as missing credentials
+    while a request already sent settles; overlapping rebuilds are
+    ordered, so one that read the old key never replaces the new
+    transports. Her witness and the replacement case fail on the reviewed
+    head and pass now; see the
+    [author response](../../../docs/pr-reviews/pr-169-lightbox-model-setting-review.md).
+    `epic/lightbox` at `13aff89` (Slice 4K, PR #168) is merged in: 512
+    suites / 7,141 tests / 59 snapshots under Node 22 and Node 18.20.8;
+    lint identical; typecheck and two builds under each Node,
+    `webview.js` `6a08cf5c…` and `extension.js` `17b0bf40…` all four times.

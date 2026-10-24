@@ -172,7 +172,7 @@ packages/core/src/presentation/webview/
 │       ├── useDictionary.ts            # Word/context state and tool name
 │       ├── useDictionaryHistory.ts     # Lookup history: host summaries, ‹ › cursor, draft slot (ADR 2026-10-14)
 │       ├── useMetrics.ts               # Per-subtool cache; source mode/path helpers
-│       ├── useModelsSettings.ts        # Model selection settings
+│       ├── useModelsSettings.ts        # Model selection settings, and which scopes follow another until picked (the Lightbox's; Slice 4L)
 │       ├── usePublishingSettings.ts    # Publishing presets and trim size
 │       ├── useSearch.ts                # Search results and targets
 │       ├── useSelection.ts             # Selected text + source metadata
@@ -479,7 +479,7 @@ usePersistence({
    - HTTP client for OpenRouter API
    - Reads the API key host-side from SecretStorage (via the `SecretStore` port)
    - Supports multiple AI models (Claude, GPT-4, Gemini)
-   - Instantiated per model scope (assistant, dictionary, context)
+   - Instantiated per model scope (assistant, dictionary, context, category, widget, lightbox) by the one `AIResourceManager` the composition root builds; `ModelScopeSelections` resolves each scope's model
 
 5. **Prompt System** ([prompts.ts](packages/core/src/tools/shared/prompts.ts))
    - Loads system prompts from `packages/core/resources/system-prompts/`
@@ -549,6 +549,8 @@ usePersistence({
 6. **Test bidirectional sync**: Settings Overlay ↔ VSCode settings panel ↔ Webview state
 
 **Reference Implementation**: See `usePublishingSettings.ts` for clean example.
+
+**A model setting** (a new scope, as the Lightbox's `lightboxModel` in Lightbox Slice 4L) follows the same steps through the model path: `ModelScope` (`shared/types/messages/configuration.ts`), its key in `MODEL_SCOPE_SETTING_KEYS` and its default or followed scope in `ModelScopeSelections`, its bundle in `AIResourceManager` (never a handler; retiring a bundle detaches its transport, so an engine a run still holds starts no new call after a key change: PR #169 F-01), `MODEL_KEYS` in `MessageHandler`'s watcher, and a row in the Settings overlay. Model ids reach the webview through `MODEL_DATA` (`selections`, and `following` for a scope that follows another until picked), not `SETTINGS_DATA`; `useModelsSettings` holds them.
 
 #### Modifying AI Behavior
 
@@ -835,8 +837,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-24, Lightbox Slice 4K (fields the format does not define forgiven in model replies, and a member closed out of its block moved back) with PR #168's review corrections, on `epic/lightbox-forgive-fields` from `epic/lightbox` at `cf7f260`, under Node 22 and Node 18):
-- 508 suites / 7,090 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-24, Lightbox Slice 4L (the Lightbox's own model setting, with PR #169's F-01 correction) on `epic/lightbox-model-setting`, with `epic/lightbox` at `13aff89` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back) merged in, under Node 22 and Node 18):
+- 512 suites / 7,141 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -883,7 +885,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel` with legacy fallback `model`
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, and `lightboxModel`, the Lightbox's own: empty by default, it follows `assistantModel` (the Workshop's) until the writer picks one, and neither ever writes the other ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons

@@ -34,7 +34,8 @@
  * board's own spark and answers with the board; nothing about a dismissal is
  * kept here.
  *
- * **The selected, confirmed model (PR #149 F-03 re-review).** The shared
+ * **The selected, confirmed model (PR #149 F-03 re-review).** The model is
+ * the Lightbox's own scope (Slice 4L), never the Workshop's. The header's
  * model picker updates its selection at once, while the host saves it and
  * only then confirms it with `MODEL_DATA`. An estimate is usable only when
  * it priced the model the writer has selected, and that selection is the one
@@ -124,7 +125,7 @@ export interface LightboxActions {
   handleContextFiles: (message: LightboxContextFilesMessage) => void;
   /**
    * The host confirmed the model configuration (`MODEL_DATA`): record the
-   * confirmed assistant model, and ask for a fresh estimate.
+   * confirmed Lightbox model, and ask for a fresh estimate.
    */
   handleModelData: (message: ModelDataMessage) => void;
   requestBoard: () => void;
@@ -166,8 +167,8 @@ interface LightboxEstimateRequest {
 }
 
 export interface UseLightboxOptions {
-  /** The assistant model the writer has selected (the shared picker's, possibly not yet saved). */
-  assistantModel?: string;
+  /** The Lightbox model the writer has selected (the header picker's, possibly not yet saved). */
+  lightboxModel?: string;
 }
 
 type LightboxRequestType =
@@ -183,7 +184,7 @@ type LightboxRequestType =
   | MessageType.LIGHTBOX_SET_SPARK_DISMISSED;
 
 export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn {
-  const selectedModel = options.assistantModel;
+  const selectedModel = options.lightboxModel;
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<Partial<Record<keyof LightboxPersistence, unknown>>>();
 
@@ -205,7 +206,7 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
   const [runs, setRuns] = React.useState<LightboxRunsByBoard>(NO_LIGHTBOX_RUNS);
   const [awaitingStartFor, setAwaitingStartFor] = React.useState<string | null>(null);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
-  // The assistant model as the host last confirmed it, and how many confirmations have arrived.
+  // The Lightbox model as the host last confirmed it, and how many confirmations have arrived.
   const [confirmedModel, setConfirmedModel] = React.useState<string | undefined>(undefined);
   const [confirmations, setConfirmations] = React.useState(0);
 
@@ -279,9 +280,9 @@ export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn
   }, []);
 
   const handleModelData = React.useCallback((message: ModelDataMessage) => {
-    const assistant = message.payload?.selections?.assistant;
-    if (assistant !== undefined) {
-      setConfirmedModel(assistant);
+    const confirmed = message.payload?.selections?.lightbox;
+    if (confirmed !== undefined) {
+      setConfirmedModel(confirmed);
     }
     setConfirmations((count) => count + 1);
   }, []);

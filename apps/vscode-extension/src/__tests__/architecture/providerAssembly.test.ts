@@ -160,6 +160,33 @@ describe('app-shell provider assembly', () => {
     expect(extensionSource).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\blightboxService\b[\s\S]*?\};/);
   });
 
+  it('builds the Lightbox\'s own model engine only here, through the one AI resource manager (Slice 4L)', () => {
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    // One manager builds every scope's engine and client, the Lightbox's included, and rides in the bundle.
+    expect(extensionSource.match(/\bnew\s+AIResourceManager\s*\(/g)).toHaveLength(1);
+    expect(extensionSource).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\baiResourceManager,[\s\S]*?\};/);
+    // The Lightbox's runner reads its engine from that manager.
+    const start = extensionSource.indexOf('new LightboxReadingRunner(');
+    expect(start).toBeGreaterThan(-1);
+    expect(extensionSource.slice(start, extensionSource.indexOf(');', start)))
+      .toMatch(/^new LightboxReadingRunner\(\s*aiResourceManager,/);
+    // No app module builds an engine, a client or a second manager of its own.
+    const offenders = collectSourceFiles(APP_SRC_ROOT)
+      .filter((file) => /\bnew\s+(?:AgentRunEngine|OpenRouterClient)\s*\(/.test(fs.readFileSync(file, 'utf8')) ||
+        (file !== EXTENSION_ENTRY && /\bnew\s+AIResourceManager\s*\(/.test(fs.readFileSync(file, 'utf8'))))
+      .map((file) => path.relative(APP_SRC_ROOT, file));
+    expect(offenders).toEqual([]);
+  });
+
+  it('declares the Lightbox model setting, unset by default so the Lightbox follows the Workshop (Slice 4L)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown; markdownDescription?: string }> } };
+    };
+    const setting = manifest.contributes.configuration.properties['proseMinion.lightboxModel'];
+    expect(setting).toMatchObject({ type: 'string', default: '' });
+    expect(setting.markdownDescription).toMatch(/Leave empty to use the same model as the Workshop/);
+  });
+
   it('registers one Lightbox panel serializer that reuses the normal attachment path', () => {
     const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');

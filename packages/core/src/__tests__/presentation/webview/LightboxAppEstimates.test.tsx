@@ -44,8 +44,8 @@ const fromHost = (type: MessageType, payload: object) =>
   });
 
 /** The host's model confirmation, which the real chrome asks for on mount (PR #149 F-03 re-review). */
-const confirmModel = (assistant = 'provider/model-v1') =>
-  fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant } });
+const confirmModel = (lightbox = 'provider/model-v1') =>
+  fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox } });
 
 const A = makeBoard(8);
 const B: LightboxBoard = {
@@ -129,12 +129,12 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
     render(<LightboxApp />);
     confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
     answer(lastRequest(), estimateFor(A));
     expect(press().disabled).toBe(false);
     const beforeSwitch = lastRequest();
 
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v2' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v2' } });
     const afterSwitch = lastRequest();
     expect(afterSwitch?.payload.requestId).not.toBe(beforeSwitch?.payload.requestId);
     expect(press().disabled).toBe(true);

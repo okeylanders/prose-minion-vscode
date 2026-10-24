@@ -3,7 +3,7 @@
  * LightboxService (over the real measurement services), LightboxReadingRunner
  * and LightboxContextShelf. Only the provider engine, the prompt files, the
  * file picker and the context file reads are stand-ins. The prompt files can
- * be held open, the assistant model and its prices switched, and a second tab
+ * be held open, the Lightbox model and its prices switched, and a second tab
  * opened over the same shared services, so a test can order a press's
  * preparation against a close, a reopen or an input change exactly. No
  * provider is called.
@@ -160,7 +160,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
     promptGate = undefined;
   };
 
-  // The assistant model and its live prices, switchable mid-test.
+  // The Lightbox model and its live prices, switchable mid-test.
   let model = 'provider/model-v1';
   let pricing: LightboxModelPricing = { promptUsdPerToken: 0.000003, completionUsdPerToken: 0.000015 };
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };

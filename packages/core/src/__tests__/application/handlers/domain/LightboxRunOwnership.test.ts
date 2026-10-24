@@ -109,7 +109,7 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     ['every lens turned off', ESTIMATE_CHANGED, async (_host: Host, tab: Tab) => {
       void tab.route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: ALL_LENSES_OFF });
     }],
-    ['the assistant model switched', ESTIMATE_CHANGED, async (host: Host) => {
+    ['the Lightbox model switched', ESTIMATE_CHANGED, async (host: Host) => {
       host.setModel('provider/model-v2');
     }],
     ['the model\'s price changed', ESTIMATE_CHANGED, async (host: Host) => {
@@ -154,7 +154,7 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS)[0].payload).toMatchObject({
       phase: 'refused',
       reestimate: true,
-      message: expect.stringMatching(/^The model this press names is not the assistant model in use yet/)
+      message: expect.stringMatching(/^The model this press names is not the Lightbox model in use yet/)
     });
   });
 

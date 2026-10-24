@@ -105,7 +105,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
   /** The board on screen with the host's estimate, the model confirmed. */
   const show = (board: LightboxBoard, value: LightboxRunEstimate | null = estimate()) => {
     render(<LightboxApp />);
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     estimateFromHost(value);
   };
@@ -118,7 +118,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
   describe('the run line', () => {
     it('says Run AI analyses before any run, waiting and then pressable, in the primary style with the sparkle', () => {
       render(<LightboxApp />);
-      fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+      fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
       fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(8), refusal: null });
       expect(runPress().textContent).toBe('Run AI analyses');
       expect(runPress().disabled).toBe(true);
@@ -213,7 +213,7 @@ describe('LightboxApp: run controls (Slice 4I)', () => {
 
     it('waits for the estimate, with the reason, and offers nothing to press', () => {
       render(<LightboxApp />);
-      fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+      fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
       fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(8), refusal: null });
       const analyze = within(head(tile('Motifs · where they recur'))).getByRole('button', { name: /^Analyze, call A:/ });
       expect(analyze.getAttribute('aria-disabled')).toBe('true');
