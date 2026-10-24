@@ -71,11 +71,28 @@ describe('the Opinion, read on the board it weighs (Slice 4D)', () => {
       expect(withheldView(read, 'blunt')).toMatch(/^It broke the format: opinion\.views\.blunt\.why must be an array of 1 or more points/);
     });
 
-    it('counts fields the format does not define, never naming them', () => {
-      const read = readOpinion(board, edited((body) => { body.observations[0].mood = 'secret word'; body.views.neutral.tone = 'x'; }));
-      expect(withheldObservation(read, 'O1')).toBe('It broke the format: opinion.observations[0] has 1 field the format does not define.');
-      expect(withheldView(read, 'neutral')).toBe('It broke the format: opinion.views.neutral has 1 field the format does not define.');
-      expect(JSON.stringify(read.tile)).not.toContain('secret word');
+    it('ignores fields the format does not define, counting them and never naming them (Slice 4K, decision 50)', () => {
+      const clean = readOpinion(board);
+      const read = readOpinion(board, edited((body) => {
+        body.observations[0].mood = 'secret word';
+        body.observations[0].cites[0].weight = 'secret word';
+        body.views.neutral.tone = 'secret word';
+        body.views.neutral.why[0].certainty = 'secret word';
+        body.views.gentle = { headline: 'secret word' };
+      }));
+      // Nothing is withheld for them, and the Opinion is the one the clean reply gives.
+      expect(read.tile?.withheldObservations).toEqual([]);
+      expect(read.tile?.withheldViews).toEqual([]);
+      expect(read.tile).toEqual(clean.tile);
+      expect(read.decoded.report?.ignored).toBe(5);
+      expect(JSON.stringify([read.tile, read.decoded])).not.toContain('secret word');
+    });
+
+    it('still holds a cite to one of its two shapes: a measured figure beside a tile\'s quote is withheld', () => {
+      const read = readOpinion(board, edited((body) => { body.observations[0].cites = [{ measured: 'headline', quote: 0 }]; }));
+      expect(withheldObservation(read, 'O1')).toBe(
+        'It broke the format: opinion.observations[0].cites[0] must be one cite: a tile, with or without one of its quotes, or a measured figure, never both'
+      );
     });
 
     it('withholds an observation with a malformed id by its position, and a second O1 as a duplicate', () => {

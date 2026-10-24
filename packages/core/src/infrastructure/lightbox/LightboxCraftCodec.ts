@@ -31,8 +31,9 @@
  *   listed word passes ("It would read better shorter."), as does a figure
  *   in words ("twice as often"); a listed word used to describe ("the cut
  *   of her coat") is withheld, the safe failure. Tests pin each.
- * Every object decodes with `strictObject`: a field the format does not
- * define is counted, never named, and every reason is host-owned.
+ * Every object decodes with `replyObject`: a field the format does not
+ * define is ignored, counted and never named (Slice 4K, epic decision 50),
+ * and every reason is host-owned.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -44,10 +45,11 @@ import {
   oneOf,
   paragraphNumber,
   singleQuote,
-  strictObject,
+  replyObject,
   prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import {
   LIGHTBOX_FAMILIAR_KINDS,
   LIGHTBOX_HANDOFF_EFFECTS,
@@ -79,10 +81,10 @@ const DIRECTIVE = new RegExp(`\\b(?:${LIGHTBOX_NUMBERS_DIRECTIVE_WORDS.join('|')
 const LIKELIHOOD = /%|\bper\s?cent\b/i;
 
 export function decodeStockBlock(value: unknown, path: string, friction: string): LightboxDecodedStockBlock {
-  const block = strictObject(value, path, ['economy', 'signature', 'familiar', 'airLocks', 'echoes', 'friction']);
-  const economy = strictObject(block.economy, `${path}.economy`, ['note', 'beats']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.stock);
+  const economy = replyObject(block.economy, `${path}.economy`, ['note', 'beats']);
   const beats = decodeItems(economy.beats, `${path}.economy.beats`, 'beat', (item, itemPath) => {
-    const beat = strictObject(item, itemPath, ['para', 'quote', 'tier']);
+    const beat = replyObject(item, itemPath, ['para', 'quote', 'tier']);
     return {
       para: paragraphNumber(beat.para, `${itemPath}.para`),
       quote: text(beat.quote, `${itemPath}.quote`),
@@ -117,7 +119,7 @@ export function decodeRhythmBlock(
   friction: string,
   columnCount: number
 ): LightboxDecodedRhythmBlock {
-  const block = strictObject(value, path, ['endings', 'movement', 'evidence', 'handoffs', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.rhythm);
   // One ending per ribbon column: a structural rule, so the count is exact.
   boundedArrayAt(block.endings, `${path}.endings`, columnCount, columnCount, 'endings, one per ribbon column');
   const endings = block.endings.map((ending, index) =>
@@ -135,7 +137,7 @@ export function decodeRhythmBlock(
 }
 
 export function decodeNumbersBlock(value: unknown, path: string, friction: string): LightboxDecodedNumbersBlock {
-  const block = strictObject(value, path, ['items', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.numbers);
   // At most one reading per figure: held by the figure, a repeat withheld by its title, never by the list's length.
   const decoded = decodeItems(block.items, `${path}.items`, 'reading', decodeNumberReading);
   const seen = new Set<string>();
@@ -151,7 +153,7 @@ export function decodeNumbersBlock(value: unknown, path: string, friction: strin
 }
 
 function notedLine(item: Record<string, unknown>, path: string): LightboxDecodedNotedLine {
-  const line = strictObject(item, path, ['title', 'note', 'evidence']);
+  const line = replyObject(item, path, ['title', 'note', 'evidence']);
   return {
     title: text(line.title, `${path}.title`),
     note: prose(line.note, `${path}.note`, B.noteCharacters),
@@ -160,7 +162,7 @@ function notedLine(item: Record<string, unknown>, path: string): LightboxDecoded
 }
 
 function decodeFamiliar(item: Record<string, unknown>, path: string): LightboxDecodedFamiliar {
-  const familiar = strictObject(item, path, ['phrase', 'kind', 'note', 'evidence']);
+  const familiar = replyObject(item, path, ['phrase', 'kind', 'note', 'evidence']);
   return {
     phrase: text(familiar.phrase, `${path}.phrase`),
     kind: oneOf(familiar.kind, `${path}.kind`, LIGHTBOX_FAMILIAR_KINDS, 'idiom, cliche, stock or weighted'),
@@ -170,7 +172,7 @@ function decodeFamiliar(item: Record<string, unknown>, path: string): LightboxDe
 }
 
 function decodeEcho(item: Record<string, unknown>, path: string): LightboxDecodedEcho {
-  const echo = strictObject(item, path, ['title', 'reminiscentOf', 'note', 'evidence']);
+  const echo = replyObject(item, path, ['title', 'reminiscentOf', 'note', 'evidence']);
   const title = text(echo.title, `${path}.title`);
   const reminiscentOf = text(echo.reminiscentOf, `${path}.reminiscentOf`);
   const note = text(echo.note, `${path}.note`);
@@ -186,7 +188,7 @@ function decodeEcho(item: Record<string, unknown>, path: string): LightboxDecode
 }
 
 function decodeHandoff(item: Record<string, unknown>, path: string): LightboxDecodedHandoff {
-  const handoff = strictObject(item, path, ['from', 'to', 'carried', 'changes', 'effect']);
+  const handoff = replyObject(item, path, ['from', 'to', 'carried', 'changes', 'effect']);
   return {
     from: singleQuote(handoff.from, `${path}.from`),
     to: singleQuote(handoff.to, `${path}.to`),
@@ -197,7 +199,7 @@ function decodeHandoff(item: Record<string, unknown>, path: string): LightboxDec
 }
 
 function decodeNumberReading(item: Record<string, unknown>, path: string): LightboxDecodedNumberReading {
-  const reading = strictObject(item, path, ['stat', 'usage', 'claim', 'evidence']);
+  const reading = replyObject(item, path, ['stat', 'usage', 'claim', 'evidence']);
   if (!isLightboxNumberStat(reading.stat) || !LIGHTBOX_NUMBERS_READ_STATS.includes(reading.stat)) {
     shapeError(`${path}.stat`, 'one of the figures the task lists');
   }

@@ -1,10 +1,20 @@
 /**
  * Field decoders for Lightbox reading blocks (ADR 2026-10-19 D7). Pure: no
  * host, no I/O. Every block codec (`LightboxReadingCodec` and its siblings)
- * reads a quote, a term, a list or a bounded string through these, so the
- * rules are the same in every lens. Each throws a shape error naming the
- * field's path (a host path, never a model's field name); the caller decides
- * whether that withholds an item or a block.
+ * reads an object, a quote, a term, a list or a bounded string through
+ * these, so the rules are the same in every lens. Each throws a shape error
+ * naming the field's path (a host path, never a model's field name); the
+ * caller decides whether that withholds an item or a block.
+ *
+ * **Fields the format does not define are ignored (Slice 4K, epic decision
+ * 50).** Every object of a model's reply is read with `replyObject`: a
+ * field the format does not define, at any level, is left out, counted
+ * (`tallyLightboxDecode`) for the reply's log line, and never named, since
+ * a field's name is the model's text. It withholds nothing. A required
+ * field that is missing still does, so a misspelled field is withheld for
+ * the one it stands in for. This tolerance is the model replies' alone:
+ * saved boards (`LightboxBoardSchema`) and the Workshop's codecs
+ * (`persistedValidation.exactObject`) keep their strict readers.
  *
  * **Asks, not gates (Slice 4H, epic decision 37).** A number a prompt
  * states (`PROMPT_BUDGETS.lightbox`) is what it asks for. A field longer
@@ -21,7 +31,7 @@
  * claim, gist, note, friction, description or reason) is read with `prose`,
  * which clips a runaway one at the one safety ceiling, `safetyMultiple`
  * times its ask, with an ellipsis; each clip is counted
- * (`countLightboxClips`) so the reply's log line can say how many, and none
+ * (`tallyLightboxDecode`) so the reply's log line can say how many, and none
  * withholds anything. A clip is display: nothing ever checks a clipped
  * value against the chapter, so its ellipsis is never taken for the
  * chapter's text. A quote needs no ceiling: the verifier holds it to the
@@ -31,7 +41,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { clipLightboxText } from '@shared/constants/lightboxClip';
 import type { LightboxMalformedItem, LightboxWireQuote } from '@/infrastructure/lightbox/LightboxReadingWire';
-import { exactObject, objectAt, shapeError, stringAt } from '@/application/services/workshop/persistedValidation';
+import { objectAt, shapeError, stringAt } from '@/application/services/workshop/persistedValidation';
 
 const B = PROMPT_BUDGETS.lightbox;
 
@@ -81,22 +91,29 @@ export function lightboxHasBareDigit(text: string, work?: { steps: number }): bo
   return false;
 }
 
-/**
- * The fields clipped at the safety ceiling while one decode runs. Decoding
- * is synchronous, so a decode's clips are exactly those counted between its
- * start and its end; nesting keeps each its own.
- */
-let clips: { count: number } | undefined;
+/** What one decode counted: fields clipped at the safety ceiling, and fields the format does not define, ignored. */
+export interface LightboxDecodeTally {
+  clipped: number;
+  ignored: number;
+}
 
-/** Run `decode`, counting the fields it clips at the safety ceiling. */
-export function countLightboxClips<T>(decode: () => T): { value: T; clipped: number } {
-  const outer = clips;
-  const own = { count: 0 };
-  clips = own;
+/**
+ * The tally of the decode running now. Decoding is synchronous, so a
+ * decode's counts are exactly those made between its start and its end;
+ * nesting keeps each its own.
+ */
+let tally: LightboxDecodeTally | undefined;
+
+/** Run `decode`, counting the fields it clips at the safety ceiling and the fields the format does not define it ignores. */
+export function tallyLightboxDecode<T>(decode: () => T): { value: T } & LightboxDecodeTally {
+  const outer = tally;
+  const own: LightboxDecodeTally = { clipped: 0, ignored: 0 };
+  tally = own;
   try {
-    return { value: decode(), clipped: own.count };
+    const value = decode();
+    return { value, clipped: own.clipped, ignored: own.ignored };
   } finally {
-    clips = outer;
+    tally = outer;
   }
 }
 
@@ -109,8 +126,8 @@ export function lightboxFieldAtCeiling(value: string, ask: number): string {
   if (value.length <= ceiling) {
     return value;
   }
-  if (clips) {
-    clips.count += 1;
+  if (tally) {
+    tally.clipped += 1;
   }
   return clipLightboxText(value, ceiling);
 }
@@ -165,27 +182,42 @@ export function evidence(value: unknown, path: string, minimum: number): Lightbo
 
 /** One `{para, quote}` pair, its quote whole: the verifier holds it to the paragraph it names (PR #165 F-01). */
 export function singleQuote(value: unknown, path: string): LightboxWireQuote {
-  const pair = strictObject(value, path, ['para', 'quote']);
+  const pair = replyObject(value, path, ['para', 'quote']);
   return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`) };
 }
 
 /**
- * `exactObject`, except that fields the format does not define are counted,
- * never named: a field name is the model's, and this reason reaches the board
- * (PR #149 F-05).
+ * An object of a model's reply (Slice 4K, epic decision 50): a plain object
+ * holding every `required` key, and maybe the `optional` ones. A field the
+ * format does not define is ignored: counted for the reply's log line
+ * (`tallyLightboxDecode`), never named (a field's name is the model's text,
+ * PR #149 F-05), never withholding anything, and left out of the object
+ * returned, so no decoder can read it. A required field that is missing
+ * throws, naming the format's own key. Only for a model's reply.
  */
-export function strictObject(value: unknown, path: string, keys: readonly string[]): Record<string, unknown> {
+export function replyObject(
+  value: unknown,
+  path: string,
+  required: readonly string[],
+  optional: readonly string[] = []
+): Record<string, unknown> {
   const object = objectAt(value, path);
-  const undefinedFields = Object.keys(object).filter((key) => !keys.includes(key)).length;
-  if (undefinedFields > 0) {
-    throw new Error(`${path} has ${lightboxFieldCount(undefinedFields)} the format does not define.`);
+  if (tally) {
+    tally.ignored += Object.keys(object).filter((key) => !required.includes(key) && !optional.includes(key)).length;
   }
-  return exactObject(object, path, keys);
-}
-
-/** "1 field", "3 fields". */
-export function lightboxFieldCount(count: number): string {
-  return `${count} field${count === 1 ? '' : 's'}`;
+  const kept: Record<string, unknown> = {};
+  for (const key of required) {
+    if (!Object.prototype.hasOwnProperty.call(object, key) || object[key] === undefined) {
+      throw new Error(`${path} is missing required field ${key}.`);
+    }
+    kept[key] = object[key];
+  }
+  for (const key of optional) {
+    if (Object.prototype.hasOwnProperty.call(object, key)) {
+      kept[key] = object[key];
+    }
+  }
+  return kept;
 }
 
 /** Whether the paragraph was declared is the verifier's question, not the codec's. */

@@ -23,14 +23,16 @@
  *   view that breaks the format is withheld alone.
  * - **No counts.** No field carries one: an Opinion states only figures the
  *   items it cites hold, checked against them afterwards.
- * Every object decodes with `strictObject`: a field the format does not
- * define is counted, never named, and every reason is host-owned.
+ * Every object decodes with `replyObject`: a field the format does not
+ * define is ignored, counted and never named (Slice 4K, epic decision 50),
+ * and every reason is host-owned.
  */
 
 import type { LightboxOpinionViewId } from '@messages';
 import { LIGHTBOX_OPINION_VIEWS, LIGHTBOX_OPINION_WEIGHTS } from '@shared/constants/lightboxOpinion';
-import { exactObject, objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
-import { listAt, strictObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { objectAt, shapeError } from '@/application/services/workshop/persistedValidation';
+import { listAt, replyObject, text } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import {
   LIGHTBOX_OPINION_MINIMUM_OBSERVATIONS,
   LIGHTBOX_OPINION_OBSERVATION_ID,
@@ -45,9 +47,9 @@ import {
 const KEY_CHARACTERS = 120;
 
 export function decodeOpinionBlock(value: unknown, path: string, friction: string): LightboxDecodedOpinionBlock {
-  const block = strictObject(value, path, ['observations', 'views', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.opinion);
   const observations = decodeObservations(block.observations, `${path}.observations`);
-  const views = strictObject(block.views, `${path}.views`, LIGHTBOX_OPINION_VIEWS);
+  const views = replyObject(block.views, `${path}.views`, LIGHTBOX_OPINION_VIEWS);
   const decoded = Object.fromEntries(LIGHTBOX_OPINION_VIEWS.map((view) => [view, lenient(() => decodeView(views[view], `${path}.views.${view}`))]));
   return {
     lens: 'opinion',
@@ -85,7 +87,7 @@ function decodeObservations(
 }
 
 function decodeObservation(item: Record<string, unknown>, path: string): LightboxDecodedObservation {
-  const observation = strictObject(item, path, ['id', 'text', 'cites']);
+  const observation = replyObject(item, path, ['id', 'text', 'cites']);
   listAt(observation.cites, `${path}.cites`, 1, 'cites');
   return {
     id: observationId(observation.id, `${path}.id`),
@@ -94,18 +96,23 @@ function decodeObservation(item: Record<string, unknown>, path: string): Lightbo
   };
 }
 
-/** A tile (maybe with a quote by index) or a measured ref: exactly one of the two shapes. */
+/**
+ * A tile (maybe with a quote by index) or a measured ref: exactly one of the
+ * two shapes, a structural rule, so a cite that names a measured figure and
+ * a tile or a tile's quote is withheld. A field neither shape defines is
+ * ignored (Slice 4K, epic decision 50).
+ */
 function decodeCite(value: unknown, path: string): LightboxDecodedOpinionCite {
   const object = objectAt(value, path);
-  const undefinedFields = Object.keys(object).filter((key) => !['tile', 'quote', 'measured'].includes(key)).length;
-  if (undefinedFields > 0) {
-    throw new Error(`${path} has ${undefinedFields} field${undefinedFields === 1 ? '' : 's'} the format does not define.`);
-  }
-  if ('measured' in object) {
-    const cite = exactObject(object, path, ['measured']);
+  const has = (field: string) => Object.prototype.hasOwnProperty.call(object, field);
+  if (has('measured')) {
+    if (has('tile') || has('quote')) {
+      shapeError(path, 'one cite: a tile, with or without one of its quotes, or a measured figure, never both');
+    }
+    const cite = replyObject(object, path, ['measured']);
     return { measured: key(cite.measured, `${path}.measured`) };
   }
-  const cite = exactObject(object, path, ['tile'], ['quote']);
+  const cite = replyObject(object, path, ['tile'], ['quote']);
   if (cite.quote !== undefined && (!Number.isSafeInteger(cite.quote) || (cite.quote as number) < 0)) {
     shapeError(`${path}.quote`, 'a quote number (a whole number from 0)');
   }
@@ -113,7 +120,7 @@ function decodeCite(value: unknown, path: string): LightboxDecodedOpinionCite {
 }
 
 function decodeView(value: unknown, path: string): LightboxDecodedOpinionView {
-  const view = strictObject(value, path, ['headline', 'body', 'why']);
+  const view = replyObject(value, path, ['headline', 'body', 'why']);
   listAt(view.why, `${path}.why`, 1, 'points');
   return {
     headline: text(view.headline, `${path}.headline`),
@@ -123,7 +130,7 @@ function decodeView(value: unknown, path: string): LightboxDecodedOpinionView {
 }
 
 function decodeWhy(value: unknown, path: string): LightboxDecodedWhy {
-  const point = strictObject(value, path, ['weight', 'text', 'observations']);
+  const point = replyObject(value, path, ['weight', 'text', 'observations']);
   if (typeof point.weight !== 'string' || !(LIGHTBOX_OPINION_WEIGHTS as readonly string[]).includes(point.weight)) {
     shapeError(`${path}.weight`, 'strength, even or concern');
   }
