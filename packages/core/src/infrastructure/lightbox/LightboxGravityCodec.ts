@@ -28,11 +28,12 @@ import {
   decodeItems,
   evidence,
   listAt,
-  strictObject,
+  replyObject,
   terms,
   prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import type {
   LightboxDecodedCluster,
   LightboxDecodedCollision,
@@ -50,7 +51,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 export function decodeGravityBlock(value: unknown, path: string, friction: string): LightboxDecodedGravityBlock {
-  const block = strictObject(value, path, ['fields', 'collisions', 'literal', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.gravity);
   const decodedFields = decodeItems(block.fields, `${path}.fields`, 'field', decodeField);
   const fields = unique(decodedFields.items, decodedFields.malformed, (field) => field.name, 'field');
 
@@ -76,7 +77,7 @@ export function decodeGravityBlock(value: unknown, path: string, friction: strin
 }
 
 export function decodePaletteBlock(value: unknown, path: string, friction: string): LightboxDecodedPaletteBlock {
-  const block = strictObject(value, path, ['clusters', 'swatches', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.palette);
   const clusters = decodeItems(block.clusters, `${path}.clusters`, 'cluster', decodeCluster);
   const swatches = decodeItems(block.swatches, `${path}.swatches`, 'swatch', decodeSwatch);
   return {
@@ -89,7 +90,7 @@ export function decodePaletteBlock(value: unknown, path: string, friction: strin
 }
 
 function decodeField(item: Record<string, unknown>, path: string): LightboxDecodedGravityField {
-  const field = strictObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
+  const field = replyObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
   const termList = decodeTermList(field.terms, `${path}.terms`);
   return {
     name: text(field.name, `${path}.name`),
@@ -105,7 +106,7 @@ function decodeTermList(value: unknown, path: string): LightboxDecodedGravityTer
   listAt(value, path, 1, 'terms');
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
-    const term = strictObject(entry, itemPath, ['term', 'degree']);
+    const term = replyObject(entry, itemPath, ['term', 'degree']);
     return { term: text(term.term, `${itemPath}.term`), degree: degreeAt(term.degree, `${itemPath}.degree`) };
   });
 }
@@ -118,7 +119,7 @@ function degreeAt(value: unknown, path: string): LightboxGravityDegree {
 }
 
 function decodeCollision(item: Record<string, unknown>, path: string, drawn: ReadonlySet<string>): LightboxDecodedCollision {
-  const collision = strictObject(item, path, ['fields', 'claim', 'evidence']);
+  const collision = replyObject(item, path, ['fields', 'claim', 'evidence']);
   // Two fields meet: a structural rule, so the count is exact.
   boundedArrayAt(collision.fields, `${path}.fields`, 2, 2, 'terms');
   const names = terms(collision.fields, `${path}.fields`, 2);
@@ -138,7 +139,7 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
 }
 
 function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDecodedLiteral {
-  const literal = strictObject(item, path, ['name', 'reason', 'terms', 'evidence']);
+  const literal = replyObject(item, path, ['name', 'reason', 'terms', 'evidence']);
   return {
     name: text(literal.name, `${path}.name`),
     reason: prose(literal.reason, `${path}.reason`, B.noteCharacters),
@@ -148,7 +149,7 @@ function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDec
 }
 
 function decodeCluster(item: Record<string, unknown>, path: string): LightboxDecodedCluster {
-  const cluster = strictObject(item, path, ['name', 'claim', 'words', 'evidence']);
+  const cluster = replyObject(item, path, ['name', 'claim', 'words', 'evidence']);
   return {
     name: text(cluster.name, `${path}.name`),
     claim: prose(cluster.claim, `${path}.claim`, B.claimCharacters),
@@ -158,7 +159,7 @@ function decodeCluster(item: Record<string, unknown>, path: string): LightboxDec
 }
 
 function decodeSwatch(item: Record<string, unknown>, path: string): LightboxDecodedSwatch {
-  const swatch = strictObject(item, path, ['name', 'words', 'hex', 'note', 'evidence']);
+  const swatch = replyObject(item, path, ['name', 'words', 'hex', 'note', 'evidence']);
   const hex = typeof swatch.hex === 'string' ? swatch.hex.trim() : swatch.hex;
   if (typeof hex !== 'string' || !HEX.test(hex)) {
     shapeError(`${path}.hex`, 'a color as #RRGGBB');

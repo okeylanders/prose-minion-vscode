@@ -30,8 +30,9 @@
  *   key unique in the block, a title, a range, a gist and a boundary quote;
  *   one that breaks the format is withheld by title, which withholds the
  *   set, since the rest no longer tile the chapter.
- * Every object decodes with `strictObject`: a field the format does not
- * define is counted, never named, and every reason is host-owned. The model
+ * Every object decodes with `replyObject`: a field the format does not
+ * define is ignored, counted and never named (Slice 4K, epic decision 50),
+ * and every reason is host-owned. The model
  * never supplies a count: no field carries one.
  */
 
@@ -44,11 +45,12 @@ import {
   oneOf,
   paragraphNumber,
   singleQuote,
-  strictObject,
+  replyObject,
   terms,
   prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import type { LightboxWireQuote } from '@/infrastructure/lightbox/LightboxReadingWire';
 import {
   LIGHTBOX_ENGAGEMENT_READINGS,
@@ -71,8 +73,8 @@ import {
 const B = PROMPT_BUDGETS.lightbox;
 
 export function decodeTemplateBlock(value: unknown, path: string, friction: string): LightboxDecodedTemplateBlock {
-  const block = strictObject(value, path, ['name', 'description', 'evidence', 'beats', 'freshness', 'engagement', 'friction']);
-  const freshness = strictObject(block.freshness, `${path}.freshness`, ['level', 'note']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.template);
+  const freshness = replyObject(block.freshness, `${path}.freshness`, ['level', 'note']);
   const beats = decodeItems(block.beats, `${path}.beats`, 'template beat', decodeBeat);
   const engagement = lenient(() => decodeEngagement(block.engagement, `${path}.engagement`));
   return {
@@ -93,19 +95,19 @@ export function decodeTemplateBlock(value: unknown, path: string, friction: stri
 }
 
 export function decodePressureBlock(value: unknown, path: string, friction: string): LightboxDecodedPressureBlock {
-  const block = strictObject(value, path, ['threads', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.pressure);
   const threads = decodeItems(block.threads, `${path}.threads`, 'thread', decodeThread);
   return { lens: 'pressure', threads: threads.items, malformed: threads.malformed, friction };
 }
 
 export function decodeArtifactsBlock(value: unknown, path: string, friction: string): LightboxDecodedArtifactsBlock {
-  const block = strictObject(value, path, ['objects', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.artifacts);
   const objects = decodeItems(block.objects, `${path}.objects`, 'object', decodeArtifact);
   return { lens: 'artifacts', objects: objects.items, malformed: objects.malformed, friction };
 }
 
 export function decodeSummaryBlock(value: unknown, path: string, friction: string): LightboxDecodedSummaryBlock {
-  const block = strictObject(value, path, ['synopsis', 'movements', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.summary);
   const synopsis = lenient(() => decodeSynopsis(block.synopsis, `${path}.synopsis`));
   const decoded = decodeItems(block.movements, `${path}.movements`, 'movement', decodeMovement, 1);
   // A key names one movement: a second movement under the same key is malformed.
@@ -130,7 +132,7 @@ export function decodeSummaryBlock(value: unknown, path: string, friction: strin
 }
 
 function decodeBeat(item: Record<string, unknown>, path: string): LightboxDecodedTemplateBeat {
-  const beat = strictObject(item, path, ['stance', 'note', 'evidence']);
+  const beat = replyObject(item, path, ['stance', 'note', 'evidence']);
   return {
     stance: oneOf(beat.stance, `${path}.stance`, LIGHTBOX_TEMPLATE_STANCES, 'aligns, subverts or departs'),
     note: prose(beat.note, `${path}.note`, B.noteCharacters),
@@ -143,7 +145,7 @@ function decodeEngagement(value: unknown, path: string): LightboxDecodedEngageme
   listAt(value, path, 0, 'engagement entries, one per movement');
   return value.map((item, index) => {
     const entryPath = `${path}[${index}]`;
-    const entry = strictObject(item, entryPath, ['movement', 'level']);
+    const entry = replyObject(item, entryPath, ['movement', 'level']);
     return {
       movement: movementId(entry.movement, `${entryPath}.movement`),
       level: oneOf(entry.level, `${entryPath}.level`, LIGHTBOX_ENGAGEMENT_READINGS, 'low, medium or high')
@@ -152,7 +154,7 @@ function decodeEngagement(value: unknown, path: string): LightboxDecodedEngageme
 }
 
 function decodeThread(item: Record<string, unknown>, path: string): LightboxDecodedThread {
-  const thread = strictObject(item, path, ['question', 'planted', 'escalations', 'resolution', 'dormant']);
+  const thread = replyObject(item, path, ['question', 'planted', 'escalations', 'resolution', 'dormant']);
   listAt(thread.escalations, `${path}.escalations`, 0, 'escalations');
   const escalations = thread.escalations.map((quote, index) => singleQuote(quote, `${path}.escalations[${index}]`));
   const resolution = thread.resolution === null ? null : singleQuote(thread.resolution, `${path}.resolution`);
@@ -173,7 +175,7 @@ function decodeThread(item: Record<string, unknown>, path: string): LightboxDeco
 }
 
 function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDecodedArtifact {
-  const artifact = strictObject(item, path, ['name', 'terms', 'arc', 'plantedUnused']);
+  const artifact = replyObject(item, path, ['name', 'terms', 'arc', 'plantedUnused']);
   listAt(artifact.arc, `${path}.arc`, 1, 'steps');
   if (typeof artifact.plantedUnused !== 'boolean') {
     shapeError(`${path}.plantedUnused`, 'true or false');
@@ -183,7 +185,7 @@ function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDe
     terms: terms(artifact.terms, `${path}.terms`),
     arc: artifact.arc.map((entry, index) => {
       const stepPath = `${path}.arc[${index}]`;
-      const step = strictObject(entry, stepPath, ['step', 'para', 'quote']);
+      const step = replyObject(entry, stepPath, ['step', 'para', 'quote']);
       return {
         step: text(step.step, `${stepPath}.step`),
         para: paragraphNumber(step.para, `${stepPath}.para`),
@@ -195,14 +197,14 @@ function decodeArtifact(item: Record<string, unknown>, path: string): LightboxDe
 }
 
 function decodeSynopsis(value: unknown, path: string): { text: string; evidence: LightboxWireQuote[] } {
-  const synopsis = strictObject(value, path, ['text', 'evidence']);
+  const synopsis = replyObject(value, path, ['text', 'evidence']);
   // Its characters and sentences are asks: a longer synopsis is shown whole (Slice 4H).
   const body = prose(synopsis.text, `${path}.text`, B.claimCharacters);
   return { text: body, evidence: evidence(synopsis.evidence, `${path}.evidence`, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES) };
 }
 
 function decodeMovement(item: Record<string, unknown>, path: string): LightboxDecodedMovement {
-  const movement = strictObject(item, path, ['id', 'title', 'from', 'to', 'gist', 'boundary']);
+  const movement = replyObject(item, path, ['id', 'title', 'from', 'to', 'gist', 'boundary']);
   return {
     id: movementId(movement.id, `${path}.id`),
     title: text(movement.title, `${path}.title`),

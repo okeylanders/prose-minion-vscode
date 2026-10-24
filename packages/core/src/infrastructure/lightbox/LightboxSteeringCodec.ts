@@ -7,13 +7,13 @@
  * quotes than asked, and a longer claim, why, nudge or example, are read
  * and shown; Bring clips them to a Workshop tile.
  * - **Figures.** Each one of `LIGHTBOX_STEERING_STATS` at most once (a
- *   repeat is withheld by its label), each exactly
+ *   repeat is withheld by its label), each holding
  *   `{stat, claim, evidence, notes}`. A figure that breaks its
  *   shape is withheld whole, by its host label. A claim that breaks a text
  *   rule (`LightboxSteeringPhrasing`) withholds the figure's reading alone;
  *   its notes are read on their own.
  * - **Notes.** Any number per figure (the prompt asks for at most
- *   `steeringNotes`), each exactly `{para, quote,
+ *   `steeringNotes`), each holding `{para, quote,
  *   stance, why, nudge, example}`, withheld by its host title when it breaks
  *   a rule: the stance is earns, leans or compensates; the why and the
  *   nudge pass the text rules; a note that earns has `"nudge": null`. One
@@ -32,8 +32,9 @@
  *   holds the instance is the chapter's question, answered at assembly
  *   (`LightboxSteeringTiles`), which holds the pair as the chapter has it to
  *   a change between its parts again (PR #160 F-02).
- * Every object decodes with `strictObject`: a field the format does not
- * define is counted, never named, and every reason is host-owned.
+ * Every object decodes with `replyObject`: a field the format does not
+ * define is ignored, counted and never named (Slice 4K, epic decision 50),
+ * and every reason is host-owned.
  */
 
 import type { LightboxSteeringExample, LightboxSteeringStance, LightboxSteeringStatId } from '@messages';
@@ -45,9 +46,10 @@ import {
   evidence,
   listAt,
   paragraphNumber,
-  strictObject,
+  replyObject,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import type { LightboxMalformedItem } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { lightboxSteeringTextFault } from '@/infrastructure/lightbox/LightboxSteeringPhrasing';
 import {
@@ -88,7 +90,7 @@ export function lightboxSteeringExampleShowsNoChange(example: LightboxSteeringEx
 }
 
 export function decodeSteeringBlock(value: unknown, path: string, friction: string): LightboxDecodedSteeringBlock {
-  const block = strictObject(value, path, ['figures', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.steering);
   // At most one reading per figure: held by the figure, a repeat withheld by its label, never by the list's length.
   listAt(block.figures, `${path}.figures`, 0, 'figures');
   const figures: LightboxDecodedSteeringFigure[] = [];
@@ -112,7 +114,7 @@ export function decodeSteeringBlock(value: unknown, path: string, friction: stri
 }
 
 function decodeFigure(item: Record<string, unknown>, path: string): LightboxDecodedSteeringFigure {
-  const figure = strictObject(item, path, ['stat', 'claim', 'evidence', 'notes']);
+  const figure = replyObject(item, path, ['stat', 'claim', 'evidence', 'notes']);
   if (!isLightboxSteeringStat(figure.stat)) {
     shapeError(`${path}.stat`, 'one of the figures the task lists');
   }
@@ -144,7 +146,7 @@ function decodeFigure(item: Record<string, unknown>, path: string): LightboxDeco
 }
 
 function decodeNote(item: Record<string, unknown>, path: string, ordinal: number): LightboxDecodedSteeringNote {
-  const note = strictObject(item, path, ['para', 'quote', 'stance', 'why', 'nudge', 'example']);
+  const note = replyObject(item, path, ['para', 'quote', 'stance', 'why', 'nudge', 'example']);
   const stance = note.stance;
   if (typeof stance !== 'string' || !LIGHTBOX_STEERING_STANCES.includes(stance as LightboxSteeringStance)) {
     shapeError(`${path}.stance`, 'earns, leans or compensates');
@@ -204,7 +206,7 @@ function decodeExample(
 function exampleOf(value: unknown, path: string): { example: LightboxSteeringExample } | { fault: string } {
   let pair: Record<string, unknown>;
   try {
-    pair = strictObject(value, path, ['before', 'after']);
+    pair = replyObject(value, path, ['before', 'after']);
   } catch {
     return { fault: LIGHTBOX_STEERING_EXAMPLE_REASONS.shape };
   }

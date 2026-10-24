@@ -1,8 +1,8 @@
 /**
  * Group E's rules, fresh (ADR 2026-10-19 D7 and its 2026-10-20 addendum;
  * Slice 4C), through the production codec, verifier, counter and assembly:
- * - the codec: strict objects whose undefined fields are counted, never
- *   named; friction required; closed vocabularies; a dormant thread with a
+ * - the codec: objects whose undefined fields are ignored, counted and
+ *   never named (Slice 4K); friction required; closed vocabularies; a dormant thread with a
  *   later quote; a synopsis or an engagement list that breaks the format
  *   withholding itself alone;
  * - the movements as a set: contiguous, a gap, an overlap, not covering,
@@ -83,21 +83,38 @@ describe('group E, read fresh (Slice 4C)', () => {
   });
 
   describe('the codec', () => {
-    it('counts a field the format does not define, never naming it, and withholds only that block', () => {
+    it('ignores a field the format does not define, counting it and never naming it (Slice 4K, decision 50)', () => {
       const body = storyBody();
-      body.template.score = 9;
-      body.pressure.threads[0].urgency = 'high';
+      body.template.canaryScore = 9;
+      body.template.freshness.canaryConfidence = 'canary words';
+      body.pressure.threads[0].canaryUrgency = 'canary words';
+      body.summary.movements[0].boundary.canaryMood = 'canary words';
+      const clean = readStory();
       const { decoded, assembled } = readStory(body);
-      expect(decoded.withheld).toEqual([{ lens: 'template', reason: 'The template block broke the format: template has 1 field the format does not define.' }]);
-      expect(JSON.stringify(decoded.withheld)).not.toContain('score');
-      // The thread with an undefined field is withheld by its noun and position; its siblings stand.
-      expect(claimsOf(assembled.withheldClaims, 'pressure-thread')).toEqual([
-        ['Thread 1', 'It broke the format: pressure.threads[0] has 1 field the format does not define.']
-      ]);
-      expect(JSON.stringify(assembled.withheldClaims)).not.toContain('urgency');
-      expect(tilesOf(assembled, 'pressure-thread')).toHaveLength(3);
-      // The movements survive the template's loss; engagement goes with the template.
+      // Nothing is withheld for them: the template, its freshness, the thread and the movement are read as the clean reply's.
+      expect(decoded.withheld).toEqual([]);
+      expect(decoded.blocks).toEqual(clean.decoded.blocks);
+      expect(assembled.tiles).toEqual(clean.assembled.tiles);
+      expect(claimsOf(assembled.withheldClaims, 'pressure-thread')).toEqual([]);
+      expect(tilesOf(assembled, 'pressure-thread')).toHaveLength(4);
       expect(tilesOf(assembled, 'movement')).toHaveLength(3);
+      expect(decoded.report?.ignored).toBe(4);
+      expect(JSON.stringify([decoded, assembled])).not.toMatch(/canary/i);
+    });
+
+    it('withholds a misspelled required field for the field it stands in for, by the format\'s own name', () => {
+      const body = storyBody();
+      body.summary.movments = body.summary.movements;
+      delete body.summary.movements;
+      body.template.freshness.levl = body.template.freshness.level;
+      delete body.template.freshness.level;
+      const { decoded } = readStory(body);
+      expect(decoded.withheld).toEqual([
+        { lens: 'template', reason: 'The template block broke the format: template.freshness is missing required field level.' },
+        { lens: 'summary', reason: 'The summary block broke the format: summary is missing required field movements.' }
+      ]);
+      expect(JSON.stringify(decoded.withheld)).not.toMatch(/movments|levl/);
+      expect(decoded.report?.ignored).toBe(2);
     });
 
     it('requires friction of every block', () => {

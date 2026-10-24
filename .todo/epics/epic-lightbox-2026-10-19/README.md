@@ -85,6 +85,7 @@ carried into the Workshop.
 | 46 | Saved boards in the Workshop's design language (2026-10-23) | **The writer: "match the user experience in workshop so we speak the same design language across tabs", without a `current.json`, and not a side panel that grows with every file analyzed.** **One file per board:** its first save names it `<source file name> - <M/D/YYYY h:mm AM/PM>` (local time, "Chapter 6 - 10/23/2026 9:08 AM") and its later saves (readings, a spark set aside, a rename) rewrite that file in place, atomically, and only at the revision the window last read or wrote; "Read the current text" starts a new board, file and dated name. A file that cannot be rewritten (changed or held by another window, a part left out, gone, or a failed write) is left as it is, and the board saves to a new file and follows it. A file saved before names shows the default its source and time give, unrewritten. **The Boards side panel is gone.** A **Boards menu** in the header, the Workshop's sessions menu made shared: Rename board…, Board another chapter…, Open prior board…, the five newest boards of every chapter, Browse all boards…. The Workshop's session browser, made shared, lists **every chapter's** boards (name, chapter, saved time, lenses, cost, models, On screen), searched by name and chapter path and grouped by date or by chapter, with inline rename and delete with a confirm. **Open a board file…** opens any `*.board.json` through the system picker: the store's own by its id; any other as a snapshot that is never written, whose next save writes a new file in the store, keeping its id and name. The changed-file notice stays above the board; session-only is said in the menu and the browser. Two text versions of a chapter are two boards, which Compare (5B) reads (Slice 5A.2) |
 | 47 | The Opinion keeps its reading until a new one lands (2026-10-23) | **The writer: keep the old Opinion until the new one lands.** When the Opinion's call runs on its own (its Analyze or Re-analyze, Run F or Rerun F), the old Opinion is not cleared when it starts: it stays in view, said to be the earlier one ("Analyzing… This is the earlier Opinion until the new one lands."), until the new one replaces it whole. If the call fails or is stopped, the old Opinion stays exactly as it was, standing and stale marks included, with the reason beside it, and the board saved after a failure still holds it. The host takes the per-lens re-read's path (`lightboxPressKeptLens`). Only the Opinion: every other call run on its own is still cleared first, and a run of several calls still clears the Opinion with the rest (Slice 4I; PR #166) |
 | 48 | One verb for an AI run (2026-10-23) | **The writer: rename "Re-read this tile" to "Re-analyze this tile".** The inspector's button, its disabled reasons and the copy that sends the writer to it say "re-analyze", so the verb for an AI run is the same everywhere. "Re-read file" keeps its words: it reads the chapter file, not the model (Slice 4I; PR #166) |
+| 50 | Forgive extra fields, and repair a misplaced brace (2026-10-24) | **On long chapters, mostly with Anthropic Opus models, whole groups were lost to one slip**: group E's summary closed one brace early, before its friction (`…"movements":[…]},"friction":"…"}}`), so `friction` stood in the root and the root's field the format does not define failed all four blocks. **A field the format does not define is ignored, at every level** of a model's reply (the root, a block, an item, an object inside one; groups A–G and F): counted and logged as a count ("Group E ignored 1 field the format does not define"), never named, never withheld for. Everything else still withholds: a missing required field (so a misspelled one is withheld for the field it stands in for), a wrong type or vocabulary, a minimum, a quote, a structural rule, the version. Saved boards and the Workshop's codecs stay strict. **A member closed out of its block is moved back** (`misnested-member`): a root member goes into the block just before it, where the text puts it, only when that block's format defines it and lacks it; a run moves together; nothing guesses past a gap or with a root key written twice; the content guard holds the root's scalars and their order. Only the root is re-nested (ADR D6/D7 second addendum, 2026-10-24; Slice 4K). 49 is Slice 4J's |
 
 ## Slices
 
@@ -107,6 +108,7 @@ carried into the Workshop.
 | 4H | [Reading tolerance](slice-4h-reading-tolerance.md) | Asks raised and overruns shown, not withheld (one safety ceiling; Bring clips at the Workshop's bounds); a 12,000-token output ceiling; a structure-only JSON repair with a content guard, in a shared parser; a reply cut off at the ceiling salvaged; the recovery file names its group's own contract (decisions 37–40) | Merged (PR #165, at `08b0d22`) |
 | 4I | [Run controls](slice-4i-run-controls.md) | The run line's "Run AI analyses", "Finish" and "Re-analyze", all orange; a `group` run scope the host resolves (a call's checked lenses plus the widget's own); every AI-read widget's Analyze / Re-analyze / Analyzing…; the Opinion's Analyze, disabled with its own reason until a call has landed; one Run / Rerun per call in the Lenses panel (decisions 41–45) | Merged (PR #166, at `fcf86ff`) |
 | 5A.2 | [Saved boards in the Workshop's design language](slice-5-saved-boards-and-compare.md#slice-5a2-saved-boards-in-the-workshops-design-language) | One file per board, named by date at its first save and rewritten in place; the Boards menu and the Workshop's session browser, made shared, over every chapter's boards; "Open a board file…"; the Boards panel removed (decision 46) | Built on `epic/lightbox-boards-browser`, with 4H and 4I merged in; PR #167 open, its review's seven findings corrected |
+| 4K | [Forgive extra fields, and repair a misplaced brace](slice-4k-forgive-fields.md) | Fields the format does not define ignored at every level of a model's reply, counted and never named, and never withheld for; a member closed out of its block moved back by the text's order, under the content guard; saved boards and the Workshop stay strict (decision 50) | Built on `epic/lightbox-forgive-fields`, from `epic/lightbox` at `cf7f260`; no PR yet |
 | 5B | [Draft compare](slice-5-saved-boards-and-compare.md#slice-5b-draft-compare-a-later-pr) | Compare two saved boards of one source (two boards are two text versions, decision 46): measured deltas, tension ticks, what appeared or vanished, a drift line; labelled approximate across paragraph counts and rule ids. No format change | Planned (after 5A.2) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
 
@@ -1789,3 +1791,49 @@ lens, and adds its items to 4D's digest.
     Node, with `webview.js` `1fe07246…` (unchanged) and `extension.js`
     `d3c51bdb…` all four times. The evidence's states rebuild byte for
     byte.
+- **2026-10-24. Slice 4K (forgive extra fields, and repair a misplaced
+  brace) is built** on `epic/lightbox-forgive-fields`, from `epic/lightbox`
+  at `cf7f260`, beside Slice 4J (keep readings until replaced, decision
+  49) on its own branch; 4K stays in the decoding layer and the shared
+  parser. See the [slice notes](slice-4k-forgive-fields.md).
+  - **The case:** group E's summary closed one brace early, before its
+    friction; the friction stood in the root, and the root's field the
+    format does not define failed all four blocks. Rebuilt from group E's
+    worked example.
+  - **Forgiven fields (decision 50):** a field the format does not define
+    is ignored at every level of a model's reply, groups A–G and F,
+    counted in one log line and never named; everything else still
+    withholds. `replyObject` replaces `strictObject`; saved boards and the
+    Workshop's codecs stay strict, pinned by a boundary test.
+  - **The misplaced brace:** a root member closed out of the block just
+    before it is moved back when that block's format defines it and lacks
+    it (`misnested-member`, `LightboxBlockFormat`), by the text's order of
+    the root's members (the parser's new `rootKeys`), never past a gap or
+    with a root key written twice, under the content guard. Only the
+    root; a block-to-item repair is not built.
+  - **Verification**, after `npm ci` into a real `node_modules`: 507
+    suites / 7,074 tests / 59 snapshots (505 / 7,009 / 59 at `cf7f260`),
+    all passing under Node 22.22.0 and Node 18.20.8 (a first Node 18 run
+    beside other sessions, load average about 14, timed out three tests
+    in suites this slice does not touch; they passed alone and on a full
+    rerun with two workers). Lint 0 errors / 1,133 warnings, identical per
+    file, rule and severity to `cf7f260`; typecheck passes; two builds with
+    `verify:bundle` give `webview.js` `1fe07246…` (unchanged) and
+    `extension.js` `26138b1b…` both times; `git diff --check` clean. No
+    host state a harness draws changed, so the visual evidence was not
+    rerun. On `cf7f260`, the 13 new and changed suites all fail as CI
+    types them (9 do not compile); untyped, 51 tests fail in the 12 that
+    load, and `LightboxMisnestedMember` (32) cannot load. No live or
+    billable call.
+  - **PR #168's review** (Astra: one P2, one P3), both fixed; see the
+    [author response](../../../docs/pr-reviews/pr-168-lightbox-forgiven-fields-review.md#author-response-2026-10-24).
+    F-01: in a reply cut off at the ceiling, the member it was cut inside
+    now counts against the re-nest's duplicate barrier, and a cut inside a
+    root key moves nothing; the block the reply was cut inside is withheld
+    as cut even beside an earlier copy, and so is a block whose closed-out
+    member was cut; the log says where it stopped, never naming a model's
+    key. N-01: a guard that cannot be checked (a value nested too deep to
+    write out) moves nothing instead of failing the group. 508 suites /
+    7,090 tests / 59 snapshots under Node 22 and Node 18.20.8; lint
+    identical; typecheck and both builds pass; `webview.js` `1fe07246…`
+    (unchanged), `extension.js` `de712cc6…`.

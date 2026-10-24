@@ -50,26 +50,28 @@ describe('group D codec', () => {
     ]);
   });
 
-  it('withholds a block holding a field the format does not define, counting it and never naming it', () => {
+  it('reads a block holding a field the format does not define, ignoring it and never naming it (Slice 4K, decision 50)', () => {
     const body = exampleBody();
+    const clean = read(['stock'], { version: 1, stock: exampleBody().stock });
     body.stock.confidence = 'high';
+    body.stock.economy.mood = 'idle';
     const { decoded } = read(['stock'], { version: 1, stock: body.stock });
-    expect(decoded.blocks).toEqual([]);
-    expect(decoded.withheld).toHaveLength(1);
-    expect(decoded.withheld[0].reason).toContain('1 field the format does not define');
-    expect(decoded.withheld[0].reason).not.toContain('confidence');
+    expect(decoded.withheld).toEqual([]);
+    expect(decoded.blocks).toEqual(clean.decoded.blocks);
+    expect(decoded.report?.ignored).toBe(2);
+    expect(JSON.stringify(decoded)).not.toMatch(/confidence|idle/);
   });
 
   it('withholds a beat or a phrase that breaks its vocabulary, by a host title, and keeps the rest', () => {
     const body = exampleBody();
     body.stock.economy.beats[2].tier = 'tired';
+    // A field the format does not define withholds nothing (Slice 4K): the fourth beat is read.
     body.stock.economy.beats[3].mood = 'idle';
     body.stock.familiar[0].kind = 'proverb';
     const { decoded, assembled } = read(['stock'], { version: 1, stock: body.stock });
     expect(malformedOf(decoded, 'stock')).toEqual({
       beats: [
-        { title: 'Beat 3', reason: expect.stringContaining('functional, decorated, weighted or signature') },
-        { title: 'Beat 4', reason: expect.stringContaining('1 field the format does not define') }
+        { title: 'Beat 3', reason: expect.stringContaining('functional, decorated, weighted or signature') }
       ],
       signature: [],
       familiar: [{ title: 'Familiar phrase 1', reason: expect.stringContaining('idiom, cliche, stock or weighted') }],
@@ -77,7 +79,8 @@ describe('group D codec', () => {
       echoes: []
     });
     const mix = assembled.tiles.find((tile) => tile.kind === 'stock-tiers');
-    expect(mix?.kind === 'stock-tiers' && mix.classified).toBe(14);
+    // Beat 3 alone is withheld, so 15 of the example's 16 beats are classified.
+    expect(mix?.kind === 'stock-tiers' && mix.classified).toBe(15);
     expect(drawn(assembled.tiles)).not.toContain('familiar-phrase:In another moment');
   });
 

@@ -150,11 +150,22 @@ describe('salvageModelJson', () => {
     });
   });
 
-  it('names no cut member when the reply stopped between members, inside the next key', () => {
+  it('names no cut member when the reply stopped between members, inside the next key, and says it was cut inside a key', () => {
     expect(salvageModelJson('{"version":1,"template":{"name":"Portal descent"},\n  "press')).toEqual({
+      root: { version: 1, template: { name: 'Portal descent' } },
+      repairs: ['missing-closing-bracket'],
+      cutInsideKey: true
+    });
+  });
+
+  it('says nothing was cut inside a key when the reply stopped before the next key began, or inside a block', () => {
+    expect(salvageModelJson('{"version":1,"template":{"name":"Portal descent"},')).toEqual({
       root: { version: 1, template: { name: 'Portal descent' } },
       repairs: ['missing-closing-bracket']
     });
+    // A key cut inside a block is that block's: the root member it stands in is the one cut, and named.
+    expect(salvageModelJson('{"version":1,"template":{"na')).toEqual({ root: { version: 1 }, repairs: ['missing-closing-bracket'], cutKey: 'template' });
+    expect(salvageModelJson('{"version":1,"template":{"name":"Portal').cutInsideKey).toBeUndefined();
   });
 
   it('names the member whose key arrived whole, even before its value began', () => {
@@ -194,7 +205,11 @@ describe('salvageModelJson', () => {
       ['a cut token holding marks a completed one may not', '{"version":1,"a":{"x":"complete"},"b":{"y":“she said "unfin\nish', 'b']
     ])('keeps the finished siblings when cut inside %s, and nothing of the cut one', (_case, text, cutKey) => {
       const salvaged = salvageModelJson(text);
-      expect(salvaged).toEqual({ root: finished, repairs: ['missing-closing-bracket'], ...(cutKey ? { cutKey } : {}) });
+      expect(salvaged).toEqual({
+        root: finished,
+        repairs: ['missing-closing-bracket'],
+        ...(cutKey ? { cutKey } : { cutInsideKey: true })
+      });
       expect(JSON.stringify(salvaged)).not.toMatch(/unfin|she said/);
     });
 
@@ -224,5 +239,42 @@ describe('salvageModelJson', () => {
     ['a root that is a list', '[{"a":1},', { reason: 'no-root-object' }]
   ])('refuses %s', (_case, text, expected) => {
     expect(refusedBy(() => salvageModelJson(text)).refusal).toEqual(expected);
+  });
+});
+
+describe('where each root member stood (Lightbox Slice 4K)', () => {
+  it('reports the root\'s keys in the text\'s order only when asked, nested keys left out', () => {
+    const text = '{"version":1,"summary":{"movements":[{"id":"I"}]},"friction":"Thin ground."}';
+    expect(parseModelJson(text)).toEqual({ value: JSON.parse(text), repairs: [] });
+    expect(parseModelJson(text, { rootKeys: true }).rootKeys).toEqual(['version', 'summary', 'friction']);
+  });
+
+  it('keeps the text\'s order where the parsed object does not: a key like an index, and a key written twice', () => {
+    // `JSON.parse` lists "7" first, and keeps "a" at its first place with its last value.
+    const text = '{"summary":{"x":1},"7":"seven","friction":"f","a":1,"b":2,"a":3}';
+    expect(Object.keys(JSON.parse(text))).toEqual(['7', 'summary', 'friction', 'a', 'b']);
+    expect(parseModelJson(text, { rootKeys: true }).rootKeys).toEqual(['summary', '7', 'friction', 'a', 'b', 'a']);
+  });
+
+  it('reports the repaired text\'s keys after a repair, a stray closing brace dropped', () => {
+    const read = parseModelJson('{"version":1,“summary”:{"movements":[]},"friction":"f",}}', { rootKeys: true });
+    expect(read.repairs).toEqual(['curly-quote-delimiters', 'trailing-comma', 'stray-closing-bracket']);
+    expect(read.rootKeys).toEqual(['version', 'summary', 'friction']);
+  });
+
+  it('reports none for a root that is not an object', () => {
+    expect(parseModelJson('[{"a":1},{"b":2}]', { rootKeys: true }).rootKeys).toEqual([]);
+    expect(parseModelJson('"a"', { rootKeys: true }).rootKeys).toEqual([]);
+  });
+
+  it('reports a salvage\'s kept members only, never the one it was cut inside', () => {
+    const text = '{"version":1,"template":{"name":"Portal descent"},"pressure":{"threads":[{"q":"Where';
+    expect(salvageModelJson(text).rootKeys).toBeUndefined();
+    expect(salvageModelJson(text, { rootKeys: true })).toEqual({
+      root: { version: 1, template: { name: 'Portal descent' } },
+      repairs: ['missing-closing-bracket'],
+      cutKey: 'pressure',
+      rootKeys: ['version', 'template']
+    });
   });
 });

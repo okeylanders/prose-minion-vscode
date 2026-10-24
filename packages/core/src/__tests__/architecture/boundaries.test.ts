@@ -1049,6 +1049,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxReadingFields.ts',
   // Slice 4H: a group's frame, its sentinels and a reply cut off at the output ceiling; its JSON goes through `@parsers/ModelJsonRepair`.
   'infrastructure/lightbox/LightboxReadingFrame.ts',
+  // Slice 4K: each block's own fields, and a member closed out of its block moved back (epic decision 50).
+  'infrastructure/lightbox/LightboxBlockFormat.ts',
   'infrastructure/lightbox/LightboxGravityCodec.ts',
   'infrastructure/lightbox/LightboxGravityCounts.ts',
   'infrastructure/lightbox/LightboxGravityTiles.ts',
@@ -1948,6 +1950,34 @@ describe('architectural boundaries', () => {
     // And no Lightbox module keeps a JSON repair of its own: the frame reads its JSON through the shared parser.
     expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'lightbox', 'LightboxReadingFrame.ts'), 'utf8'))
       .toMatch(/from '@parsers\/ModelJsonRepair'/);
+  });
+
+  it('keeps the tolerant reader to model replies: saved boards and the Workshop keep their strict readers (Lightbox Slice 4K)', () => {
+    const files = collectSourceFiles(SRC_ROOT);
+    const importersOf = (module: string) => files
+      .filter((file) => moduleImports(file, fs.readFileSync(file, 'utf8')).some((entry) => entry.module === module))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    const codecs = [
+      'infrastructure/lightbox/LightboxCraftCodec.ts',
+      'infrastructure/lightbox/LightboxGravityCodec.ts',
+      'infrastructure/lightbox/LightboxOpinionCodec.ts',
+      'infrastructure/lightbox/LightboxPlotCodec.ts',
+      'infrastructure/lightbox/LightboxReadingCodec.ts',
+      'infrastructure/lightbox/LightboxSteeringCodec.ts',
+      'infrastructure/lightbox/LightboxStoryCodec.ts'
+    ];
+    // `replyObject` ignores a field the format does not define; only the model-reply codecs read through it.
+    const readers = importersOf('@/infrastructure/lightbox/LightboxReadingFields')
+      .filter((file) => /\breplyObject\b/.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
+    expect(readers).toEqual(codecs);
+    // The block table and its repair: the same codecs, and the frame that moves a member back.
+    expect(importersOf('@/infrastructure/lightbox/LightboxBlockFormat'))
+      .toEqual([...codecs, 'infrastructure/lightbox/LightboxReadingFrame.ts'].sort());
+    // A saved board is our own format: its schema refuses a field it does not read, and the Workshop's codecs stay exact.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'storage', 'LightboxBoardSchema.ts'), 'utf8')).toMatch(/'unknown-field'/);
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'application', 'services', 'workshop', 'persistedValidation.ts'), 'utf8'))
+      .toMatch(/contains unknown field/);
   });
 
   it('lists every Lightbox module, each under 500 lines (ADR 2026-10-19 D13)', () => {
