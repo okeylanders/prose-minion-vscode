@@ -52,6 +52,8 @@ export class AIResourceManager {
   private assistantEngine?: AgentRunEngine;
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private generation = 0;
+  /** Rebuilds started, in order: only the newest builds, since it read the key last (PR #169 F-01). */
+  private rebuilds = 0;
   private initialized = false;
   private initialization?: Promise<void>;
   private statusCallback?: StatusCallback;
@@ -164,8 +166,11 @@ export class AIResourceManager {
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
   private startRebuild(): Promise<void> {
-    return this.rebuildResources().catch(error => {
-      this.initialization = undefined;
+    const rebuild = ++this.rebuilds;
+    return this.rebuildResources(rebuild).catch(error => {
+      if (rebuild === this.rebuilds) {
+        this.initialization = undefined;
+      }
       this.outputChannel?.appendLine(
         `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -173,11 +178,18 @@ export class AIResourceManager {
     });
   }
 
-  private async rebuildResources(): Promise<void> {
+  private async rebuildResources(rebuild: number): Promise<void> {
     // Get API key from SecretStorage (fallback to settings for backward compatibility)
     let apiKey = await this.secretsService.getApiKey();
     if (!apiKey) {
       apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
+    }
+    // Every webview refreshes on a key change, so rebuilds overlap. One that a
+    // newer rebuild overtook while it read the key builds nothing: its key may
+    // be the old one, and its transports would replace the newer ones. It
+    // settles with the newest instead.
+    if (rebuild !== this.rebuilds) {
+      return this.initialization;
     }
 
     // Non-conversational scopes remain disposable. The assistant engine owns
@@ -453,6 +465,11 @@ export class AIResourceManager {
   private disposeDisposableResources(): void {
     for (const [scope, resource] of Object.entries(this.aiResources)) {
       if (scope !== 'assistant') {
+        // A retired engine may still be held by a run in progress (a Lightbox
+        // run keeps its engine for every call, the Opinion last): it starts no
+        // new provider call after its key is removed or replaced, failing it as
+        // missing credentials. A request already sent settles (PR #169 F-01).
+        resource?.engine.detachProvider();
         resource?.engine.dispose();
       }
     }

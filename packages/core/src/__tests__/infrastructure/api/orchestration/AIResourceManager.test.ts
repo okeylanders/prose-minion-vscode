@@ -263,6 +263,47 @@ describe('AIResourceManager, the lightbox scope (Slice 4L)', () => {
     manager.dispose();
   });
 
+  it('retires every disposable engine\'s transport when its bundle is rebuilt, so a held engine starts no new call (PR #169 F-01)', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP });
+    const retired = (['lightbox', 'dictionary', 'context', 'category', 'widget'] as const)
+      .map((scope) => manager.getEngine(scope));
+    expect(retired.every((engine) => engine?.isProviderAvailable())).toBe(true);
+
+    await manager.refreshConfiguration();
+
+    expect(retired.map((engine) => engine?.isProviderAvailable())).toEqual([false, false, false, false, false]);
+    await expect(retired[0]!.runInitial({} as never)).rejects.toMatchObject({ reason: 'missing-credentials' });
+    expect(manager.getEngine('lightbox')).not.toBe(retired[0]);
+    expect(manager.getEngine('lightbox')?.isProviderAvailable()).toBe(true);
+  });
+
+  it('never lets a rebuild that read the old key replace a newer one\'s transports (PR #169 F-01)', async () => {
+    const keys: Array<(key: string | undefined) => void> = [];
+    const getApiKey = jest.fn(() => new Promise<string | undefined>((resolve) => keys.push(resolve)));
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey } as never,
+      { get: jest.fn((_section, key, fallback) => ({ assistantModel: WORKSHOP } as Record<string, string>)[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never
+    );
+    built.push(manager);
+    const keyOf = (engine: unknown) => Reflect.get(Reflect.get(engine as object, 'openRouterClient') as object, 'apiKey');
+
+    // Two webviews refresh at once: the first reads the key before it changed, and answers last.
+    const stale = manager.refreshConfiguration();
+    const fresh = manager.refreshConfiguration();
+    keys[1]('sk-placeholder-next');
+    await fresh;
+    const current = { lightbox: manager.getEngine('lightbox'), assistant: manager.getEngine('assistant') };
+    keys[0]('sk-placeholder-first');
+    await stale;
+
+    expect(manager.getEngine('lightbox')).toBe(current.lightbox);
+    expect(current.lightbox?.isProviderAvailable()).toBe(true);
+    expect(keyOf(current.lightbox)).toBe('sk-placeholder-next');
+    expect(keyOf(manager.getEngine('assistant'))).toBe('sk-placeholder-next');
+  });
+
   it('has no Lightbox engine without an API key, but still resolves its model for estimates', async () => {
     const manager = await managerWith({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }, null);
 
