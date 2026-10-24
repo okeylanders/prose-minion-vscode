@@ -2844,6 +2844,16 @@ select:focus {
   padding: 14px;
 }
 
+/* A following scope's first card (Lightbox Slice 4L): "Same as Workshop",
+   above the models and only as tall as its words. */
+.mb-follow {
+  margin-top: 18px;
+}
+
+.mb-follow .mb-card {
+  min-height: 0;
+}
+
 .mb-card.selected {
   background: var(--pm-inset);
   border-color: var(--pm-accent);

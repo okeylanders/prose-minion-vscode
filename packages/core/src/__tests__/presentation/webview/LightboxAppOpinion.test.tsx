@@ -199,7 +199,7 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
 
   it('prices its Analyze "≈", its input at the digest limit said apart, in its header, and runs the Opinion alone (Slice 4I; PR #166 F-01)', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board: BOARD, refusal: null });
     const opinionCall = {
       group: 'F' as const, lenses: ['opinion' as const], inputTokens: 9_400, expectedOutputTokens: 1_400,

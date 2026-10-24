@@ -2,8 +2,8 @@
  * LightboxApp — the `lightbox` surface's React root (ADR 2026-10-19 D1, D2).
  *
  * The Lightbox renders on the shared FullTabShell: the generic chrome from
- * `useFullTabChrome` (assistant model, processed and balance chips, the
- * provider-paused banner), the source and lenses in the rail, the board in
+ * `useFullTabChrome` (the Lightbox's own model, processed and balance chips,
+ * the provider-paused banner), the source and lenses in the rail, the board in
  * the main column, and the inspector in the aside. Its own state is the
  * `useLightbox` domain hook (the board is host truth; only UI preferences
  * persist) plus two presentation controllers: focus (what the ribbon
@@ -107,7 +107,8 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 export const LightboxApp: React.FC = () => {
   const vscode = useVSCodeApi();
   const chrome = useFullTabChrome({ source: 'webview.lightbox' });
-  const lightbox = useLightbox({ assistantModel: chrome.modelsSettings.modelSelections.assistant });
+  // The Lightbox's own model scope (Slice 4L): picking it never moves the Workshop's.
+  const lightbox = useLightbox({ lightboxModel: chrome.modelsSettings.modelSelections.lightbox });
   const board = lightbox.board ?? null;
   const handoffs = useLightboxHandoff({ boardId: board?.boardId });
   const projectFiles = useLightboxProjectFiles();
@@ -336,6 +337,7 @@ export const LightboxApp: React.FC = () => {
           />
           <FullTabHeaderStatus
             models={chrome.modelsSettings}
+            modelScope="lightbox"
             tokens={chrome.tokenTracking}
             balance={chrome.accountBalance}
           />

@@ -93,7 +93,7 @@ const chrome = [
     type: 'model_data', source: 'extension.configuration', timestamp: 1,
     payload: {
       options: [{ id: 'provider/model-v1', label: 'Reader model (stub)', description: '' }],
-      selections: { assistant: 'provider/model-v1', widget: 'provider/model-v1' }
+      selections: { assistant: 'provider/model-v1', widget: 'provider/model-v1', lightbox: 'provider/model-v1' }
     }
   },
   {

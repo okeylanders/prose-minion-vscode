@@ -107,7 +107,7 @@ describe('LightboxApp: readings kept until replaced (Slice 4J)', () => {
   };
   const show = (board: LightboxBoard) => {
     render(<LightboxApp />);
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     estimateFromHost();
   };

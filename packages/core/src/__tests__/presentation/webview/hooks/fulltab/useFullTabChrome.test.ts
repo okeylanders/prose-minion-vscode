@@ -92,11 +92,11 @@ describe('useFullTabChrome', () => {
     }));
   });
 
-  it('persists the same keys the Workshop stored for these hooks before the extraction', () => {
+  it('persists the same keys the Workshop stored for these hooks before the extraction, and which scopes follow (Slice 4L)', () => {
     const { result } = renderHook(() => useFullTabChrome({ source: 'webview.workshop' }));
 
     expect(Object.keys(result.current.persistedState).sort())
-      .toEqual(['modelSelections', 'modelsSettings', 'tokenTracking']);
+      .toEqual(['followingModelScopes', 'modelSelections', 'modelsSettings', 'tokenTracking']);
     expect(result.current.persistedState).toEqual({
       ...result.current.modelsSettings.persistedState,
       ...result.current.tokenTracking.persistedState,

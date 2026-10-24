@@ -1,0 +1,413 @@
+{
+  "lightbox-unset@1440": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": null,
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-unset-browser@1440": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": true,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": []
+    },
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-set@1440": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": null,
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "lightbox-set-browser@1440": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": false,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": [
+        "Lightbox placeholder"
+      ]
+    },
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "settings-unset@1440": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "",
+      "selected": "Same as Workshop (Workshop placeholder)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "settings-set@1440": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "placeholder/lightbox-model",
+      "selected": "placeholder/lightbox-model (Custom)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "placeholder/lightbox-model (Custom)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-before@1440": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-after@1440": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-unset@1000": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": null,
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-unset-browser@1000": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": true,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": []
+    },
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-set@1000": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": null,
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "lightbox-set-browser@1000": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": false,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": [
+        "Lightbox placeholder"
+      ]
+    },
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "settings-unset@1000": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "",
+      "selected": "Same as Workshop (Workshop placeholder)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "settings-set@1000": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "placeholder/lightbox-model",
+      "selected": "placeholder/lightbox-model (Custom)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "placeholder/lightbox-model (Custom)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-before@1000": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-after@1000": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-unset@500": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": null,
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-unset-browser@500": {
+    "chip": "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)",
+    "chipText": "Same as Workshop (Workshop placeholder)",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": true,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": []
+    },
+    "runLine": "7 calls · est. $0.33 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "lightbox-set@500": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": null,
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "lightbox-set-browser@500": {
+    "chip": "Browse lightbox model options. Current model: Lightbox placeholder",
+    "chipText": "Lightbox placeholder",
+    "browser": {
+      "title": "Lightbox Model",
+      "follow": {
+        "label": "Same as Workshop (Workshop placeholder)",
+        "selected": false,
+        "description": "The Lightbox reads with the Workshop’s model and follows it when it changes. Pick a model to give the Lightbox its own; the Workshop keeps its model either way."
+      },
+      "selectedModels": [
+        "Lightbox placeholder"
+      ]
+    },
+    "runLine": "7 calls · est. $0.09 · the Opinion up to its digest boundRun AI analyses",
+    "row": null,
+    "cache": null,
+    "workshopChip": null,
+    "picks": [
+      {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      }
+    ],
+    "horizontalOverflow": false
+  },
+  "settings-unset@500": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "",
+      "selected": "Same as Workshop (Workshop placeholder)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "settings-set@500": {
+    "chip": null,
+    "chipText": null,
+    "browser": null,
+    "runLine": null,
+    "row": {
+      "value": "placeholder/lightbox-model",
+      "selected": "placeholder/lightbox-model (Custom)",
+      "options": [
+        "Same as Workshop (Workshop placeholder)",
+        "placeholder/lightbox-model (Custom)",
+        "Workshop placeholder",
+        "Lightbox placeholder",
+        "Other placeholder"
+      ],
+      "help": "Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own."
+    },
+    "cache": null,
+    "workshopChip": null,
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-before@500": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  },
+  "workshop-after@500": {
+    "chip": "Browse assistant model options. Current model: Workshop placeholder",
+    "chipText": "Workshop placeholder",
+    "browser": null,
+    "runLine": null,
+    "row": null,
+    "cache": "Est. Cache Time Remaining: 4 min",
+    "workshopChip": "Browse assistant model options. Current model: Workshop placeholder",
+    "picks": [],
+    "horizontalOverflow": false
+  }
+}

@@ -3,7 +3,7 @@
  * shared services it reads.
  *
  * A press reads the current board's paragraphs, the context shelf's files
- * and the lenses that are on, and is priced on the assistant model's window
+ * and the lenses that are on, and is priced on the Lightbox model's window
  * and prices. The snapshot holds all of it, with the key that names it
  * (`lightboxEstimateKey`). It is read synchronously, so a press captures it
  * whole before its first await, and an estimate is priced on one snapshot,
@@ -27,7 +27,7 @@ export interface LightboxPressSnapshot {
   board: LightboxBoard;
   /** What a run of it reads. */
   source: LightboxRunSource;
-  /** The assistant model's facts, read once. */
+  /** The Lightbox model's facts, read once. */
   facts: LightboxModelFacts;
   /** `LightboxRunEstimate.key` of exactly these inputs. */
   key: string;

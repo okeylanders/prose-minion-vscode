@@ -78,7 +78,7 @@ describe('LightboxApp: each call note is its own call or cut (PR #170)', () => {
   const posted = (type: MessageType) => vscode.postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
   const show = (board: LightboxBoard) => {
     render(<LightboxApp />);
-    fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
+    fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox: 'provider/model-v1' } });
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     const request = posted(MessageType.LIGHTBOX_SET_LENSES).at(-1);
     fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { requestId: request?.payload.requestId, estimate: estimate() });

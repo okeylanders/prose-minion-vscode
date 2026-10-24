@@ -7,6 +7,18 @@ type ModelBrowserPivot = 'provider' | 'family' | 'release-date';
 
 const RELEASE_DATE_UNAVAILABLE = 'Release date unavailable';
 
+/**
+ * A following scope's first card (Lightbox Slice 4L): no model of its own,
+ * the model of the scope it follows instead. Checked while it follows.
+ */
+export interface ModelBrowserFollow {
+  /** The choice with the followed model's name: "Same as Workshop (the Workshop's model)". */
+  label: string;
+  description: string;
+  following: boolean;
+  onFollow: () => void;
+}
+
 interface ModelBrowserModalProps {
   open: boolean;
   scope: ModelScope;
@@ -15,6 +27,7 @@ interface ModelBrowserModalProps {
   label: string;
   onClose: () => void;
   onSelect: (scope: ModelScope, modelId: string) => void;
+  follow?: ModelBrowserFollow;
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -167,6 +180,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
   label,
   onClose,
   onSelect,
+  follow,
 }) => {
   const [query, setQuery] = React.useState('');
   const [pivot, setPivot] = React.useState<ModelBrowserPivot>('provider');
@@ -209,6 +223,11 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
 
   const selectModel = (modelId: string) => {
     onSelect(scope, modelId);
+    onClose();
+  };
+
+  const chooseFollow = () => {
+    follow?.onFollow();
     onClose();
   };
 
@@ -287,6 +306,25 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
         </div>
 
         <div className="mb-list">
+          {follow && (
+            <div className="mb-grid mb-follow">
+              <button
+                type="button"
+                className={`tm-card mb-card ${follow.following ? 'selected' : ''}`}
+                onClick={chooseFollow}
+              >
+                {follow.following && (
+                  <span className="mb-selected" aria-hidden="true">
+                    <Icon name="check" size={13} />
+                  </span>
+                )}
+                <span className="mb-card-head">
+                  <span className="tm-n">{follow.label}</span>
+                </span>
+                <span className="tm-d mb-desc">{follow.description}</span>
+              </button>
+            </div>
+          )}
           {visibleGroups.length === 0 && (
             <div className="mb-empty">No models match that search.</div>
           )}

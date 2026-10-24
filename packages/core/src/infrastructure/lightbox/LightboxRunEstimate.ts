@@ -3,7 +3,7 @@
  *
  * Each prospective call is measured with the engine's own estimator
  * (`measureContextWindow` over the exact system and user messages the call
- * would send) against the assistant model's cached context length, reserving
+ * would send) against the Lightbox model's cached context length, reserving
  * the call's output ceiling and the preflight's headroom, so "fits" here
  * means the engine's per-call preflight would pass. An unknown context length
  * (no live catalog) is `unknown`, and the press stays allowed, matching the
@@ -259,7 +259,7 @@ function tooLargeReason(
   largestWords: number,
   contextWords: number
 ): string {
-  const model = facts.model ?? 'the assistant model';
+  const model = facts.model ?? 'the Lightbox model';
   const window = (facts.contextLength ?? 0).toLocaleString('en-US');
   const sent = `Group ${call.group} would send about ${call.inputTokens.toLocaleString('en-US')} tokens and ` +
     `reserve ${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ${model}'s ` +

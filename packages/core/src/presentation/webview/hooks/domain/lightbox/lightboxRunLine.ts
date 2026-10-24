@@ -152,7 +152,7 @@ export function lightboxRereadAvailability(input: LightboxRereadInput): { note?:
     return {
       reason: `Re-analyzing this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
         `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
-        `${estimate?.model ?? 'the assistant model'}'s ${window}-token window allows.`
+        `${estimate?.model ?? 'the Lightbox model'}'s ${window}-token window allows.`
     };
   }
   return { note: lightboxCallsNote([call]) };

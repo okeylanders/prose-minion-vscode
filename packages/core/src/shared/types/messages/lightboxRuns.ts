@@ -111,7 +111,7 @@ export interface LightboxRunPayload {
   /** `LightboxRunEstimate.key` of the estimate the press was shown. */
   estimateKey: string;
   /**
-   * The assistant model the writer has selected, as the host last confirmed
+   * The Lightbox model the writer has selected, as the host last confirmed
    * it (`MODEL_DATA`). The host starts a run only on that model (PR #149
    * F-03 re-review).
    */

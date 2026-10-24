@@ -4,14 +4,17 @@
  * Reading waits for the selected model to be saved and confirmed (PR #149
  * F-03 re-review), end to end through the real parts that meet there:
  *
- * - the real Lightbox root, with the shared header's actual model picker;
+ * - the real Lightbox root, with the shared header's actual model picker, on
+ *   the Lightbox's own model scope (Slice 4L);
  * - the real `ConfigurationHandler`, whose settings write can be held open,
  *   which then sends `MODEL_DATA` as it does in the extension;
  * - the real `LightboxHandler`, `LightboxReadingHandler`, `LightboxService`
  *   and `LightboxReadingRunner`, pricing from the real `OpenRouterModels`
  *   catalog, served by a stubbed `fetch`;
  * - the config watcher's model hot-swap when the write lands, as
- *   `MessageHandler.handleConfigurationChange` applies it.
+ *   `MessageHandler.handleConfigurationChange` applies it, resolved by the
+ *   real `resolveModelScopeSelections`: the Lightbox follows the assistant
+ *   model until it has one of its own.
  *
  * Messages cross between the webview and the host asynchronously, as in the
  * panel. Only the provider is played: its engine records the model each call
@@ -42,6 +45,7 @@ import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import { OpenRouterModels, type OpenRouterModel } from '@providers/OpenRouterModels';
+import { resolveModelScopeSelections } from '@orchestration/ModelScopeSelections';
 import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
 import { ProseStatsService } from '@services/measurement/ProseStatsService';
 import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
@@ -100,12 +104,10 @@ const settle = () => act(async () => {
 });
 
 async function createHost() {
-  // Settings: the assistant model, with a write that can be held open.
+  // Settings: the assistant model, the Lightbox's following it, with a write that can be held open.
   const values: Record<string, unknown> = { assistantModel: CHEAP };
   const heldWrites: Array<() => void> = [];
   let holdWrites = false;
-  // The resolved models, hot-swapped when a model write lands (the config watcher's refreshModelSelections).
-  const resolved: Record<string, string> = { assistant: CHEAP };
   const settings = {
     get: (_section: string, key: string, fallback?: unknown) => (key in values ? values[key] : fallback),
     update: async (_section: string, key: string, value: unknown) => {
@@ -113,11 +115,12 @@ async function createHost() {
         await new Promise<void>((resume) => heldWrites.push(resume));
       }
       values[key] = value;
-      if (key === 'assistantModel') {
-        resolved.assistant = String(value);
-      }
+      // The config watcher's refreshModelSelections: every scope's model resolved again.
+      resolved = resolveModelScopeSelections(settings as never);
     }
   };
+  // The resolved models, hot-swapped when a model write lands.
+  let resolved: Record<string, string> = resolveModelScopeSelections(settings as never);
 
   // The live catalog, served to the real OpenRouterModels by a stubbed fetch.
   let catalog: OpenRouterModel[] = [
@@ -135,17 +138,22 @@ async function createHost() {
   let promptGate: Promise<void> | undefined;
   let openPrompts: (() => void) | undefined;
   const runInitial = jest.fn(async (request: InitialRunRequest): Promise<ExecutionResult> => {
-    models.push(resolved.assistant);
+    models.push(resolved.lightbox);
     const group = request.toolName.slice(-1).toUpperCase() as LightboxReadingGroupId;
     return {
       content: '', rawContent: examples[group].response, usedGuides: [], requestedResources: [], artifacts: [],
-      finishReason: 'stop', modelId: resolved.assistant
+      finishReason: 'stop', modelId: resolved.lightbox
     };
   });
+  // Only the Lightbox's engine runs readings; the assistant's must never be asked for.
+  const enginesAsked: string[] = [];
   const resources = {
     getResolvedModelSelections: () => ({ ...resolved }),
     getResolvedModel: (scope: string) => resolved[scope],
-    getEngine: () => ({ runInitial })
+    getEngine: (scope: string) => {
+      enginesAsked.push(scope);
+      return { runInitial };
+    }
   };
 
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
@@ -201,6 +209,8 @@ async function createHost() {
   return {
     runInitial,
     models,
+    values,
+    enginesAsked,
     sent,
     answers,
     posted,
@@ -217,7 +227,7 @@ async function createHost() {
 
 const press = () => screen.getByRole('button', { name: /Run AI analyses/ }) as HTMLButtonElement;
 const lensCost = () => screen.getByLabelText('Lenses').querySelector('.pm-lb-meta')?.textContent;
-const openPicker = () => fireEvent.click(screen.getByRole('button', { name: /^Browse assistant model options/ }));
+const openPicker = () => fireEvent.click(screen.getByRole('button', { name: /^Browse lightbox model options/ }));
 const pick = (label: string) => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: new RegExp(label) }));
 
 describe('reading waits for the selected model to be saved and confirmed (PR #149 F-03 re-review)', () => {
@@ -263,6 +273,9 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     expect(host.models).toEqual(Array(7).fill(EXPENSIVE));
     expect(host.sent(MessageType.LIGHTBOX_RUN).map((message) => (message.payload as { model: string }).model)).toEqual([EXPENSIVE]);
     expect(host.posted.some((message) => message.type === MessageType.LIGHTBOX_RUN_PROGRESS && message.payload.phase === 'refused')).toBe(false);
+    // The pick was the Lightbox's own (Slice 4L): the Workshop's assistant model never moved.
+    expect(host.values).toMatchObject({ assistantModel: CHEAP, lightboxModel: EXPENSIVE });
+    expect(new Set(host.enginesAsked)).toEqual(new Set(['lightbox']));
   });
 
   it('refuses an old-model answer even when it answers the latest request', async () => {
@@ -306,7 +319,7 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     await eventually(() => expect(host.posted.filter((message) => message.type === MessageType.MODEL_DATA).length).toBeGreaterThan(confirmations));
     await settle();
     expect(host.posted.filter((message) => message.type === MessageType.MODEL_DATA).at(-1)?.payload)
-      .toMatchObject({ selections: { assistant: CHEAP } });
+      .toMatchObject({ selections: { assistant: CHEAP, lightbox: CHEAP }, following: ['lightbox'] });
     expect(press().disabled).toBe(true);
     expect(lensCost()).toBe('Estimating…');
 

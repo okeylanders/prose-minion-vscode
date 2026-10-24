@@ -6,7 +6,13 @@
  */
 
 import { LogSink, SettingsStore, ShellService } from '@/platform';
-import { AIResourceManager, DEFAULT_WIDGET_MODEL } from '@orchestration/AIResourceManager';
+import { AIResourceManager } from '@orchestration/AIResourceManager';
+import {
+  DEFAULT_WIDGET_MODEL,
+  MODEL_SCOPE_SETTING_KEYS,
+  followingModelScopes,
+  resolveFollowingModels
+} from '@orchestration/ModelScopeSelections';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
@@ -19,6 +25,7 @@ import {
   ModelDataMessage,
   ModelScope,
   ModelOption,
+  isFollowingModelScope,
   RequestApiKeyMessage,
   ApiKeyStatusMessage,
   UpdateApiKeyMessage,
@@ -257,6 +264,12 @@ export class ConfigurationHandler {
         `[ConfigurationHandler] handleSetModelSelection received: scope=${scope}, modelId=${modelId}`
       );
       const configKey = this.getConfigKeyForScope(scope);
+      // `null` gives a following scope's own model up (Slice 4L): the setting is
+      // removed, so it reads blank and the scope follows again. No other scope has
+      // anything to follow, so none accepts it.
+      if (modelId === null && !isFollowingModelScope(scope)) {
+        throw new Error(`The ${scope} model cannot follow another scope`);
+      }
       this.outputChannel.appendLine(
         `[ConfigurationHandler] Config key for scope: ${configKey}`
       );
@@ -265,9 +278,9 @@ export class ConfigurationHandler {
       this.markWebviewOriginatedUpdate(`proseMinion.${configKey}`);
 
 
-      await this.settings.update('proseMinion', configKey, modelId);
+      await this.settings.update('proseMinion', configKey, modelId ?? undefined);
       this.outputChannel.appendLine(
-        `[ConfigurationHandler] Config saved: ${configKey} = ${modelId}`
+        `[ConfigurationHandler] Config saved: ${configKey} = ${modelId ?? '(follows)'}`
       );
 
       // Wait a moment for config to be readable (VSCode's config system is async)
@@ -346,6 +359,7 @@ export class ConfigurationHandler {
           options: modelOptions,
           categoryOptions,
           selections,
+          following: followingModelScopes(this.settings),
           ui: {
             showTokenWidget: this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true
           }
@@ -454,13 +468,14 @@ export class ConfigurationHandler {
   private getEffectiveModelSelections(): Partial<Record<ModelScope, string>> {
     const fallback = 'anthropic/claude-sonnet-5';
 
-    const selections: Partial<Record<ModelScope, string>> = {
+    const own = {
       assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,
       dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
       context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
       category: this.settings.get<string>('proseMinion', 'categoryModel') || DEFAULT_CATEGORY_MODEL,
       widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL
     };
+    const selections: Partial<Record<ModelScope, string>> = { ...own, ...resolveFollowingModels(this.settings, own) };
 
     // SPRINT 05: Get resolved model selections from AIResourceManager
     try {
@@ -477,21 +492,11 @@ export class ConfigurationHandler {
   }
 
   private getConfigKeyForScope(scope: ModelScope): string {
-    switch (scope) {
-      case 'assistant':
-        return 'assistantModel';
-      case 'dictionary':
-        return 'dictionaryModel';
-      case 'context':
-        return 'contextModel';
-      case 'category':
-        return 'categoryModel';
-      case 'widget':
-        return 'widgetModel';
-      default:
-        const exhaustiveCheck: never = scope;
-        throw new Error(`Unknown model scope: ${exhaustiveCheck}`);
+    // The scope arrives from a webview: only a scope of the table names a setting.
+    if (!Object.prototype.hasOwnProperty.call(MODEL_SCOPE_SETTING_KEYS, scope)) {
+      throw new Error(`Unknown model scope: ${String(scope)}`);
     }
+    return MODEL_SCOPE_SETTING_KEYS[scope];
   }
 
   private async refreshServiceConfiguration(): Promise<void> {

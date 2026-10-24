@@ -1,7 +1,11 @@
 /**
  * FullTabHeaderStatus — the generic right end of a full-tab header
- * (ADR 2026-10-19 D2): the assistant-model chip, the processed-traffic chip
- * and the OpenRouter balance chip, in that order.
+ * (ADR 2026-10-19 D2): the model chip, the processed-traffic chip and the
+ * OpenRouter balance chip, in that order.
+ *
+ * The chip picks the tab's own model scope (Lightbox Slice 4L): the
+ * Workshop's is the assistant model; the Lightbox's is its own, which
+ * follows the Workshop's until the writer picks one ("Same as Workshop (…)").
  *
  * Renders a fragment so the three chips stay direct children of the
  * header's actions row, after whatever tab-specific actions precede them.
@@ -10,15 +14,31 @@
 import * as React from 'react';
 import type { OpenRouterBalance } from '@messages';
 import { ModelSelector } from '@components/shared/ModelSelector';
+import { MODEL_FOLLOW_COPY, modelFollowLabel } from '@components/shared/modelFollowing';
 import type { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
 import type { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
 import type { UseTokenTrackingReturn } from '@hooks/domain/useTokenTracking';
 
+/** The model scope a full tab's chip picks. */
+export type FullTabModelScope = 'assistant' | 'lightbox';
+
+const CHIP_LABELS: Readonly<Record<FullTabModelScope, string>> = {
+  assistant: 'Assistant Model',
+  lightbox: 'Lightbox Model'
+};
+
 export interface FullTabHeaderStatusProps {
   models: Pick<
     UseModelsSettingsReturn,
-    'modelOptions' | 'modelSelections' | 'setModelSelection' | 'requestModelData'
+    | 'modelOptions'
+    | 'modelSelections'
+    | 'followingModelScopes'
+    | 'setModelSelection'
+    | 'followModelSelection'
+    | 'requestModelData'
   >;
+  /** The Workshop's assistant model unless named. */
+  modelScope?: FullTabModelScope;
   tokens: Pick<UseTokenTrackingReturn, 'usage' | 'lastRequestCostUsd'>;
   balance: Pick<UseAccountBalanceReturn, 'openrouter'>;
 }
@@ -48,24 +68,34 @@ export function fullTabBalanceTitle(
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const FullTabHeaderStatus: React.FC<FullTabHeaderStatusProps> = ({
   models,
+  modelScope = 'assistant',
   tokens,
   balance
 }) => {
   const openrouter = balance.openrouter;
   const remaining = openrouter?.credits?.remaining;
+  const follow = modelScope === 'lightbox'
+    ? {
+        label: modelFollowLabel('lightbox', models.modelSelections.assistant, models.modelOptions),
+        description: MODEL_FOLLOW_COPY.lightbox.description,
+        following: models.followingModelScopes.includes('lightbox'),
+        onFollow: () => models.followModelSelection('lightbox')
+      }
+    : undefined;
 
   return (
     <>
       {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
-          sidebar uses (assistant scope, same MODEL_DATA rails); only the
+          sidebar uses (the tab's scope, same MODEL_DATA rails); only the
           trigger is reskinned to the header chip via the full-tab styles. */}
       <ModelSelector
-        scope="assistant"
+        scope={modelScope}
         options={models.modelOptions}
-        value={models.modelSelections.assistant}
+        value={models.modelSelections[modelScope]}
         onChange={models.setModelSelection}
         onOpenBrowser={() => models.requestModelData(true)}
-        label="Assistant Model"
+        label={CHIP_LABELS[modelScope]}
+        follow={follow}
       />
       {/* Cumulative processed traffic is cost/activity, not context size. */}
       <div
