@@ -32,7 +32,7 @@ import type { LightboxLensId, LightboxReadingGroupId, RejectedModelResponseContr
 import type { LogSink } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { lightboxLensLabel } from '@shared/constants/lightbox';
-import { LIGHTBOX_CEILING_UNREACHED_REASON } from '@shared/constants/lightboxCallNotes';
+import { LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
   persistRejectedWidgetResponse,
@@ -195,7 +195,7 @@ export async function decodeLightboxReply(
       ...decoded,
       withheld: decoded.withheld.map((entry) => (cut.includes(entry.lens)
         ? { ...entry, reason: `${entry.reason} ${notice}` }
-        : unreached(entry.lens, entry.reason) ? { ...entry, reason: `${LIGHTBOX_CEILING_UNREACHED_REASON} ${notice}` } : entry))
+        : unreached(entry.lens, entry.reason) ? { ...entry, reason: `${LIGHTBOX_CUT_BEFORE_REASON} ${notice}` } : entry))
     }
   };
 }

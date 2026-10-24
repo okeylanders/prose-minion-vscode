@@ -31,7 +31,7 @@ import { MessageType, type LightboxBoard, type LightboxReadingGroup, type Lightb
 import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
 import { decodeLightboxBoardFile, lightboxBoardOfFile } from '@/infrastructure/storage/LightboxBoardCodec';
 import { LIGHTBOX_KEEP_REASONS, lightboxEarlierReason, lightboxLensModel, lightboxLensProvenance } from '@shared/constants/lightboxProvenance';
-import { LIGHTBOX_CEILING_CUT_REASON, LIGHTBOX_CEILING_UNREACHED_REASON } from '@shared/constants/lightboxCallNotes';
+import { LIGHTBOX_CUT_INSIDE_REASON, LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import { LIGHTBOX_OPINION_BASIS_RULE_ID } from '@shared/constants/lightboxOpinionBasis';
 import { lightboxOpinionStanding, lightboxOpinionTile } from '@shared/constants/lightboxOpinion';
 import { deferred } from './lightboxHandlerHarness';
@@ -142,7 +142,7 @@ const SCOPES: Array<[string, LightboxRunScope | 'lens']> = [
 const KEEPS: Array<[Mode, string, (reason: string | undefined) => void]> = [
   ['fail', 'the call fails', (reason) => expect(reason).toBe(FAILED)],
   ['hold', 'the run is stopped', (reason) => expect(reason).toBe(STOPPED)],
-  ['cut', 'the reply is cut off inside the motif block', (reason) => expect(reason?.startsWith(LIGHTBOX_CEILING_CUT_REASON)).toBe(true)],
+  ['cut', 'the reply is cut off inside the motif block', (reason) => expect(reason?.startsWith(LIGHTBOX_CUT_INSIDE_REASON)).toBe(true)],
   ['withhold', 'the motif block is withheld', (reason) => expect(reason).toBe('The motifs block names no friction; every lens must say where it strains.')],
   ['noTile', 'the motif block draws no usable tile', (reason) => expect(reason).toBe(LIGHTBOX_KEEP_REASONS.noTile(3))]
 ];
@@ -201,7 +201,7 @@ describe('one call\'s lenses are decided on their own', () => {
       expect(lensIds(after, lens)).toEqual(lensIds(before, lens));
     }
     expect(lightboxEarlierReason(after, 'headline')).toBeUndefined();
-    expect(lightboxEarlierReason(after, 'tension')?.startsWith(LIGHTBOX_CEILING_UNREACHED_REASON)).toBe(true);
+    expect(lightboxEarlierReason(after, 'tension')?.startsWith(LIGHTBOX_CUT_BEFORE_REASON)).toBe(true);
     // Each lens names the run, model and time on screen; the group's model is its latest call's.
     expect(lightboxLensProvenance(after, 'headline')).toEqual({ lens: 'headline', run: 'run-2-token', model: 'provider/model-b', at: new Date(SECOND_AT).toISOString() });
     expect(lightboxLensProvenance(after, 'motif')).toEqual({ lens: 'motif', run: 'run-1-token', model: 'provider/model-v1', at: new Date(FIRST_AT).toISOString() });

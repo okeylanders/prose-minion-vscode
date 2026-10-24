@@ -24,7 +24,7 @@ import {
   lightboxEarlierReason,
   lightboxLensModel
 } from '@shared/constants/lightboxProvenance';
-import { LIGHTBOX_CEILING_CUT_REASON } from '@shared/constants/lightboxCallNotes';
+import { LIGHTBOX_CUT_INSIDE_REASON } from '@shared/constants/lightboxCallNotes';
 import { LIGHTBOX_CUT_OFF_REASON } from '@/infrastructure/lightbox/LightboxReadingWire';
 
 const FIRST = { run: 'run-1-token', at: '2026-10-24T09:00:00.000Z' };
@@ -271,7 +271,7 @@ describe('template and summary are kept or replaced together (engagement sits on
 
 describe('the cut-off words are the wire\'s', () => {
   it('shares the reading wire\'s reason for a block cut inside', () => {
-    expect(LIGHTBOX_CEILING_CUT_REASON).toBe(LIGHTBOX_CUT_OFF_REASON);
+    expect(LIGHTBOX_CUT_INSIDE_REASON).toBe(LIGHTBOX_CUT_OFF_REASON);
   });
 });
 

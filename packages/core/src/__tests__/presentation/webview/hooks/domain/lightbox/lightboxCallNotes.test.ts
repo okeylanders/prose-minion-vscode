@@ -7,7 +7,7 @@
  */
 import type { LightboxBoard, LightboxReadingGroup } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
-import { LIGHTBOX_CEILING_CUT_REASON, LIGHTBOX_CEILING_UNREACHED_REASON } from '@shared/constants/lightboxCallNotes';
+import { LIGHTBOX_CUT_INSIDE_REASON, LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import {
   lightboxCallNoteOf,
   lightboxCallNotes,
@@ -73,8 +73,8 @@ describe('a call that did not land, said once (decision 52)', () => {
   });
 
   it('notes a cut-off call by the block it was cut inside, else the first it never reached', () => {
-    const cut = `${LIGHTBOX_CEILING_CUT_REASON} Complete response saved for recovery at /r/c.txt.`;
-    const unreached = `${LIGHTBOX_CEILING_UNREACHED_REASON} Complete response saved for recovery at /r/c.txt.`;
+    const cut = `${LIGHTBOX_CUT_INSIDE_REASON} Complete response saved for recovery at /r/c.txt.`;
+    const unreached = `${LIGHTBOX_CUT_BEFORE_REASON} Complete response saved for recovery at /r/c.txt.`;
     const c: LightboxReadingGroup = {
       ...emptyLightboxReadingGroup('C'), status: 'ok', lenses: ['genre', 'lineage', 'spark'],
       withheldBlocks: [{ kind: 'spark', lens: 'spark', reason: unreached }],
@@ -98,7 +98,7 @@ describe('a call that did not land, said once (decision 52)', () => {
   });
 
   it('keeps a lens\'s own withheld block, and the cut its call notes once, apart', () => {
-    const cut = `${LIGHTBOX_CEILING_CUT_REASON} Saved at /r/c.txt.`;
+    const cut = `${LIGHTBOX_CUT_INSIDE_REASON} Saved at /r/c.txt.`;
     const own = { kind: 'motif' as const, lens: 'motif' as const, reason: 'The motifs block broke the format: items.' };
     const board = withA({ ...a, tiles: a.tiles.filter((tile) => tile.lens !== 'motif' && tile.lens !== 'tension'), withheldBlocks: [own, { kind: 'tension-arc', lens: 'tension', reason: cut }] });
     expect(lightboxLensView(board, 'tension').callNote?.kind).toBe('cut-off');

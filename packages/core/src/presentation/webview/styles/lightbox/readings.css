@@ -221,9 +221,11 @@
   color: var(--pm-text-2);
   margin-right: 6px;
 }
-[data-pm-surface="lightbox"] .pm-lb-earlier-badge {
+/* Neutral, not the measured register's colors: an earlier reading is still a reading. */
+[data-pm-surface="lightbox"] .pm-lb-badge.pm-lb-earlier-badge {
   color: var(--pm-text-2);
-  border-style: dashed;
+  background: transparent;
+  border: 1px dashed var(--pm-border-2);
 }
 /* The tension line's kept note sits under its row, aligned with it. */
 [data-pm-surface="lightbox"] .pm-lb-tension-kept {

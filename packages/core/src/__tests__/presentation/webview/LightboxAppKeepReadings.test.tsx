@@ -25,7 +25,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { LightboxBoard, LightboxLensId, LightboxReadingGroup, LightboxReadingGroupId, LightboxRunEstimate, MessageType } from '@messages';
 import { emptyLightboxReadingGroup, LIGHTBOX_READING_GROUPS, lightboxGroupLenses } from '@shared/constants/lightbox';
 import { LIGHTBOX_KEEP_WORDS } from '@shared/constants/lightboxProvenance';
-import { LIGHTBOX_CEILING_CUT_REASON, LIGHTBOX_CEILING_UNREACHED_REASON } from '@shared/constants/lightboxCallNotes';
+import { LIGHTBOX_CUT_INSIDE_REASON, LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
@@ -211,11 +211,11 @@ describe('LightboxApp: readings kept until replaced (Slice 4J)', () => {
       const read = makeReadBoard();
       const c = groupOf(read, 'C');
       show(withGroup(read, { ...c, tiles: c.tiles.filter((tile) => tile.lens === 'genre'), lenses: ['genre'] }));
-      const cut = `${LIGHTBOX_CEILING_CUT_REASON} ${SAVED}`;
+      const cut = `${LIGHTBOX_CUT_INSIDE_REASON} ${SAVED}`;
       board(withGroup(read, {
         ...c,
         tiles: c.tiles.filter((tile) => tile.lens !== 'spark'),
-        withheldBlocks: [{ kind: 'spark', lens: 'spark', reason: `${LIGHTBOX_CEILING_UNREACHED_REASON} ${SAVED}` }],
+        withheldBlocks: [{ kind: 'spark', lens: 'spark', reason: `${LIGHTBOX_CUT_BEFORE_REASON} ${SAVED}` }],
         earlierLenses: [{ lens: 'lineage', reason: cut }]
       }));
       expect(document.querySelector('.pm-lb-call-notes')?.textContent).toBe(`Call C · cut off ${cut}`);

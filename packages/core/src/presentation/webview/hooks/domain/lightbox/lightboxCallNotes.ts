@@ -12,7 +12,7 @@
  *   (`error`);
  * - **cut off**: its reply reached the output ceiling (decision 40), and the
  *   lenses the cut touched say so with the place the reply was saved
- *   (`isLightboxCeilingReason`).
+ *   (`isLightboxCutReplyReason`).
  * A widget whose state carries the note's message points to it: its group's
  * notice, its earlier reading's reason (decision 49: "Earlier reading · this
  * call failed"), or its block withheld by the cut. A reason that is not the
@@ -25,7 +25,7 @@
 
 import type { LightboxBoard, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
-import { isLightboxCeilingReason, LIGHTBOX_CEILING_CUT_REASON } from '@shared/constants/lightboxCallNotes';
+import { isLightboxCutReplyReason, LIGHTBOX_CUT_INSIDE_REASON } from '@shared/constants/lightboxCallNotes';
 
 export type LightboxCallNoteKind = 'failed' | 'stopped' | 'cut-off';
 
@@ -72,7 +72,7 @@ export function lightboxCallNoteOf(group: LightboxReadingGroup | undefined): Lig
   const reasons = [
     ...group.withheldBlocks.map((block) => block.reason),
     ...(group.earlierLenses ?? []).map((mark) => mark.reason)
-  ].filter(isLightboxCeilingReason);
+  ].filter(isLightboxCutReplyReason);
   return reasons.length > 0 ? note('cut-off', reasons.sort((a, b) => cutFirst(a) - cutFirst(b))[0]) : undefined;
 }
 
@@ -102,7 +102,7 @@ export function lightboxPointsToCallNote(note: LightboxCallNote | undefined, rea
   if (!note || reason === undefined) {
     return false;
   }
-  return reason === note.message || (note.kind === 'cut-off' && isLightboxCeilingReason(reason));
+  return reason === note.message || (note.kind === 'cut-off' && isLightboxCutReplyReason(reason));
 }
 
 /**
@@ -122,5 +122,5 @@ export function lightboxCallPointer(
 }
 
 function cutFirst(reason: string): number {
-  return reason.startsWith(LIGHTBOX_CEILING_CUT_REASON) ? 0 : 1;
+  return reason.startsWith(LIGHTBOX_CUT_INSIDE_REASON) ? 0 : 1;
 }
