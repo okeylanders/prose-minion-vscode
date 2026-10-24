@@ -108,13 +108,17 @@ describe('lineage', () => {
     }]);
   });
 
-  it('counts a field the format does not define without naming it', () => {
-    const block = lineage((body) => {
+  it('ignores a field the format does not define, counting it without naming it (Slice 4K, decision 50)', () => {
+    const clean = lineage(() => undefined);
+    const { decoded, assembled } = lineage((body) => {
       body.lineage.items[0].mood = 'wistful';
-    }).decoded.blocks[0];
-    const reason = block.lens === 'lineage' ? block.malformed[0].reason : '';
-    expect(reason).toBe('It broke the format: lineage.items[0] has 1 field the format does not define.');
-    expect(reason).not.toContain('mood');
+      body.lineage.items[0].stances[0].mood = 'wistful';
+      body.lineage.setAside[0].mood = 'wistful';
+    });
+    expect(decoded.blocks).toEqual(clean.decoded.blocks);
+    expect(assembled.tiles).toEqual(clean.assembled.tiles);
+    expect(decoded.report?.ignored).toBe(3);
+    expect(JSON.stringify([decoded, assembled])).not.toMatch(/mood|wistful/);
   });
 });
 
@@ -304,12 +308,16 @@ describe('Spark', () => {
     })]);
   });
 
-  it('never takes a count from the model: a count field is withheld as undefined', () => {
-    const block = spark((body) => {
+  it('never takes a count from the model: a count field is ignored, and the support is the host\'s (Slice 4K)', () => {
+    const clean = sparks(spark(() => undefined).assembled.tiles);
+    const { decoded, assembled } = spark((body) => {
       body.spark.items[0].count = 3;
-    }).decoded.blocks[0];
-    expect(block.lens === 'spark' && block.malformed[0].reason)
-      .toBe('It broke the format: spark.items[0] has 1 field the format does not define.');
+    });
+    const block = decoded.blocks[0];
+    expect(block.lens === 'spark' && block.malformed).toEqual([]);
+    expect(decoded.report?.ignored).toBe(1);
+    // The spark is drawn on the host's own count of its words, as the clean reply's is.
+    expect(sparks(assembled.tiles)).toEqual(clean);
   });
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */

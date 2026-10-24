@@ -164,6 +164,31 @@ function curlyString(text: string, start: number, partialEnd: boolean): ModelJso
   return { kind: 'string', value: inner, curly: true, start, end: close + 1, complete: true };
 }
 
+/**
+ * The root object's member keys, in the order the tokens give them, a key
+ * written twice listed twice: the strings directly inside the root that a
+ * colon follows. Empty when the root is not an object. For tokens of text
+ * that parses, so every string a colon follows is a key.
+ */
+export function modelJsonRootKeys(tokens: readonly ModelJsonToken[]): string[] {
+  const keys: string[] = [];
+  if (tokens[0]?.kind !== 'punct' || tokens[0].value !== '{') {
+    return keys;
+  }
+  let depth = 0;
+  tokens.forEach((token, index) => {
+    if (token.kind === 'punct') {
+      depth += token.value === '{' || token.value === '[' ? 1 : token.value === '}' || token.value === ']' ? -1 : 0;
+      return;
+    }
+    const next = tokens[index + 1];
+    if (depth === 1 && token.kind === 'string' && next?.kind === 'punct' && next.value === ':') {
+      keys.push(token.value);
+    }
+  });
+  return keys;
+}
+
 export function modelJsonScalars(tokens: readonly ModelJsonToken[]): ModelJsonScalar[] {
   return tokens.flatMap((token): ModelJsonScalar[] => {
     if (token.kind === 'string') {

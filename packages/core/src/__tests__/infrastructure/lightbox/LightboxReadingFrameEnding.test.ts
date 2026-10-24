@@ -73,7 +73,7 @@ describe('a reply cut off inside the closing fence of a fence it opened', () => 
     const cut = decodeLightboxGroup(`\`\`\`json\n${response}\n${partial}`, atCeiling('E'));
     expect(cut.blocks).toEqual(whole.blocks);
     // Its sentinel was written whole, so nothing else is missing: only the fence is set aside.
-    expect(cut.report).toEqual({ repairs: ['code-fence'], clipped: 0, cutOff: false });
+    expect(cut.report).toEqual({ repairs: ['code-fence'], clipped: 0, ignored: 0, cutOff: false });
   });
 
   it.each([['two', '``'], ['one', '`']])('reads JSON fenced inside the sentinels, cut %s backtick(s) into its closing fence', (_count, partial) => {

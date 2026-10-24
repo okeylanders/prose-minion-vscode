@@ -29,6 +29,14 @@
  * cut inside (never trusted, however much of it arrived), and closes the
  * root, naming that member's key when it had arrived whole.
  *
+ * **Where each root member stood** (Lightbox Slice 4K). Asked with
+ * `rootKeys: true`, either reports the root object's member keys in the
+ * order the text gives them, a key written twice listed twice. `JSON.parse`
+ * keeps a repeated key's last value at its first place, and lists keys that
+ * look like array indexes first, so the parsed object's own key order is not
+ * always the text's. A caller with a schema of its own can use the order to
+ * know which member stood beside which; the parser knows no schema.
+ *
  * **The content guard.** A repair may change only structure: brackets,
  * commas, whitespace, fences and string delimiters. The original and the
  * repaired text are each tokenized on their own, and their sequences of
@@ -48,6 +56,7 @@
 import {
   guardModelJsonContent,
   ModelJsonRefused,
+  modelJsonRootKeys,
   modelJsonScalars,
   tokenizeModelJson,
   unfenceModelJson,
@@ -68,6 +77,12 @@ export interface ModelJsonParsed {
   value: unknown;
   /** The repairs made, each kind once, in the order first made; empty when the text parsed as it stood. */
   repairs: ModelJsonRepairKind[];
+  /**
+   * Asked with `rootKeys: true`: the root object's member keys in the order
+   * the text gives them, a key written twice listed twice; empty when the
+   * root is not an object.
+   */
+  rootKeys?: string[];
 }
 
 export interface ModelJsonSalvaged {
@@ -75,6 +90,13 @@ export interface ModelJsonSalvaged {
   repairs: ModelJsonRepairKind[];
   /** The key of the root member the reply was cut inside, when its key had arrived whole. */
   cutKey?: string;
+  /** Asked with `rootKeys: true`: the kept members' keys in the order the text gives them, as `ModelJsonParsed.rootKeys`. */
+  rootKeys?: string[];
+}
+
+export interface ModelJsonReadOptions {
+  /** Report where each root member stood (`rootKeys`). */
+  rootKeys?: boolean;
 }
 
 export interface ModelJsonRefusal {
@@ -160,12 +182,13 @@ export function jsonParseErrorPosition(message: string): number | undefined {
 }
 
 /** `JSON.parse`, or the structure-only repair under its content guard; throws `ModelJsonParseError`. */
-export function parseModelJson(jsonText: string, options: { closeMissingBrackets?: boolean } = {}): ModelJsonParsed {
-  let position: number | undefined;
-  try {
-    return { value: JSON.parse(jsonText), repairs: [] };
-  } catch (error) {
-    position = jsonParseErrorPosition(error instanceof Error ? error.message : '');
+export function parseModelJson(
+  jsonText: string,
+  options: ModelJsonReadOptions & { closeMissingBrackets?: boolean } = {}
+): ModelJsonParsed {
+  const asWritten = parsedAsWritten(jsonText);
+  if ('value' in asWritten) {
+    return { value: asWritten.value, repairs: [], ...rootKeysAsked(options, () => tokenizeModelJson(jsonText, { partialEnd: false })) };
   }
   try {
     const fence = unfenceModelJson(jsonText);
@@ -173,15 +196,20 @@ export function parseModelJson(jsonText: string, options: { closeMissingBrackets
     const walk = walkTokens(tokens, { closeOpen: options.closeMissingBrackets === true, salvage: false });
     const repaired = rebuild(fence.text, tokens, walk.drops, walk.keepUntil, walk.closers);
     const value = parseOrRefuse(repaired);
-    guardModelJsonContent(modelJsonScalars(tokenizeModelJson(repaired, { partialEnd: false })), modelJsonScalars(tokens));
-    return { value, repairs: [...(fence.fenced ? ['code-fence' as const] : []), ...walk.repairs] };
+    const repairedTokens = tokenizeModelJson(repaired, { partialEnd: false });
+    guardModelJsonContent(modelJsonScalars(repairedTokens), modelJsonScalars(tokens));
+    return {
+      value,
+      repairs: [...(fence.fenced ? ['code-fence' as const] : []), ...walk.repairs],
+      ...rootKeysAsked(options, () => repairedTokens)
+    };
   } catch (error) {
-    throw new ModelJsonParseError(position, refusalOf(error));
+    throw new ModelJsonParseError(asWritten.position, refusalOf(error));
   }
 }
 
 /** A reply cut off at its output ceiling: its finished root members, the cut one dropped, the root closed. */
-export function salvageModelJson(jsonText: string): ModelJsonSalvaged {
+export function salvageModelJson(jsonText: string, options: ModelJsonReadOptions = {}): ModelJsonSalvaged {
   try {
     const fence = unfenceModelJson(jsonText);
     const tokens = tokenizeModelJson(fence.text, { partialEnd: true });
@@ -193,15 +221,31 @@ export function salvageModelJson(jsonText: string): ModelJsonSalvaged {
     }
     // Every scalar before the cut is kept exactly; only the cut member's are dropped.
     const kept = tokens.filter((token) => token.end <= walk.keepUntil);
-    guardModelJsonContent(modelJsonScalars(tokenizeModelJson(repaired, { partialEnd: false })), modelJsonScalars(kept));
+    const repairedTokens = tokenizeModelJson(repaired, { partialEnd: false });
+    guardModelJsonContent(modelJsonScalars(repairedTokens), modelJsonScalars(kept));
     return {
       root: value as Record<string, unknown>,
       repairs: [...(fence.fenced ? ['code-fence' as const] : []), ...walk.repairs],
-      ...(walk.cutKey !== undefined ? { cutKey: walk.cutKey } : {})
+      ...(walk.cutKey !== undefined ? { cutKey: walk.cutKey } : {}),
+      ...rootKeysAsked(options, () => repairedTokens)
     };
   } catch (error) {
     throw new ModelJsonParseError(undefined, refusalOf(error));
   }
+}
+
+/** `JSON.parse` on the text as written: its value, or the position it stopped at. */
+function parsedAsWritten(jsonText: string): { value: unknown } | { position: number | undefined } {
+  try {
+    return { value: JSON.parse(jsonText) as unknown };
+  } catch (error) {
+    return { position: jsonParseErrorPosition(error instanceof Error ? error.message : '') };
+  }
+}
+
+/** The root's keys in the text's order, only when asked: tokenizing text that parsed cannot refuse it. */
+function rootKeysAsked(options: ModelJsonReadOptions, tokens: () => readonly ModelJsonToken[]): { rootKeys?: string[] } {
+  return options.rootKeys ? { rootKeys: modelJsonRootKeys(tokens()) } : {};
 }
 
 /**

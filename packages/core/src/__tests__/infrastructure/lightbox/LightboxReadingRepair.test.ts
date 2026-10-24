@@ -38,8 +38,8 @@ describe('the real case: one closing brace too many after the last block (group 
     const repaired = decodeLightboxGroup(EXTRA_BRACE, contextOf('E'));
     expect(repaired.blocks).toEqual(clean.blocks);
     expect(repaired.withheld).toEqual([]);
-    expect(repaired.report).toEqual({ repairs: ['stray-closing-bracket'], clipped: 0, cutOff: false });
-    expect(clean.report).toEqual({ repairs: [], clipped: 0, cutOff: false });
+    expect(repaired.report).toEqual({ repairs: ['stray-closing-bracket'], clipped: 0, ignored: 0, cutOff: false });
+    expect(clean.report).toEqual({ repairs: [], clipped: 0, ignored: 0, cutOff: false });
   });
 
   it('logs the repair by its kind, with no text, and lands every lens', async () => {
@@ -100,7 +100,7 @@ describe('a reply cut off at the output ceiling (decision 40)', () => {
     const decoded = decodeLightboxGroup(cut, { ...contextOf('E'), end: 'ceiling' });
     expect(decoded.blocks.map((block) => block.lens)).toEqual(['template', 'pressure', 'artifacts']);
     expect(decoded.withheld).toEqual([{ lens: 'summary', reason: LIGHTBOX_CUT_OFF_REASON }]);
-    expect(decoded.report).toEqual({ repairs: ['missing-closing-sentinel', 'missing-closing-bracket'], clipped: 0, cutOff: true });
+    expect(decoded.report).toEqual({ repairs: ['missing-closing-sentinel', 'missing-closing-bracket'], clipped: 0, ignored: 0, cutOff: true });
   });
 
   it('reports the lenses it never reached as missing, as any missing lens is', () => {

@@ -42,41 +42,37 @@ describe('LightboxReadingCodec', () => {
       ['commentary before the frame', (text: string) => `Here are the readings:\n${text}`],
       ['another group\'s sentinels', (text: string) => text.replace(/_A_V1/g, '_B_V1')],
       ['invalid JSON', (text: string) => text.replace('{"version":1', '{"version":1,,')],
-      ['a wrong version', (text: string) => text.replace('{"version":1', '{"version":2')],
-      ['an unknown root field', (text: string) => text.replace('{"version":1', '{"version":1,"score":9')]
+      ['a wrong version', (text: string) => text.replace('{"version":1', '{"version":2')]
     ])('%s', (_label, breakIt) => {
       expect(() => decodeLightboxGroup(breakIt(exampleA.response), contextA)).toThrow(LightboxGroupFrameError);
     });
 
-    it('counts fields the format does not define, and names them only in the recovery diagnostic (PR #149 F-05)', () => {
+    it('ignores root fields the format does not define, counting them and naming them nowhere (Slice 4K, decision 50; PR #149 F-05)', () => {
       // A model can copy chapter or context prose into a field name.
       const prose = 'Synthetic private note: she never told the Queen';
       const long = 'x'.repeat(200);
       const text = exampleA.response.replace('{"version":1', `{"version":1,"${prose}":1,"${long}":1,"b":1`);
-      let caught: unknown;
-      try {
-        decodeLightboxGroup(text, contextA);
-      } catch (error) {
-        caught = error;
-      }
-      expect(caught).toBeInstanceOf(LightboxGroupFrameError);
-      const frameError = caught as LightboxGroupFrameError;
-      expect(frameError.message).toBe('The group A response has 3 fields the format does not define');
-      expect(frameError.message).not.toContain('Synthetic');
-      expect(frameError.diagnostic).toBe(`Undefined root fields: ${JSON.stringify(prose)}, "${'x'.repeat(120)}", "b"`);
+      const decoded = decodeLightboxGroup(text, contextA);
+      const clean = decodeLightboxGroup(exampleA.response, contextA);
+      expect(decoded.blocks).toEqual(clean.blocks);
+      expect(decoded.withheld).toEqual([]);
+      expect(decoded.report).toEqual({ repairs: [], clipped: 0, ignored: 3, cutOff: false });
+      expect(JSON.stringify(decoded)).not.toMatch(/Synthetic|xxxx/);
     });
 
-    it('counts, never names, an undefined field inside a block or an item', () => {
+    it('ignores, never names, an undefined field inside a block or an item (Slice 4K, decision 50)', () => {
+      const clean = decodeLightboxGroup(exampleA.response, contextA);
       const block = body(exampleA);
       block.tension['Synthetic private note'] = 'copied prose';
       const item = body(exampleA);
       item.motifs.items[0]['Synthetic private note'] = 'copied prose';
-      const blockReason = decodeLightboxGroup(frame('A', block), contextA).withheld[0].reason;
-      const motifs = decodeLightboxGroup(frame('A', item), contextA).blocks.find((entry) => entry.lens === 'motif');
-      const itemReason = motifs && motifs.lens === 'motif' ? motifs.malformed[0].reason : '';
-      expect(blockReason).toBe('The tension block broke the format: tension has 1 field the format does not define.');
-      expect(itemReason).toBe('It broke the format: motifs.items[0] has 1 field the format does not define.');
-      expect(`${blockReason} ${itemReason}`).not.toContain('Synthetic');
+      for (const edited of [block, item]) {
+        const decoded = decodeLightboxGroup(frame('A', edited), contextA);
+        expect(decoded.blocks).toEqual(clean.blocks);
+        expect(decoded.withheld).toEqual([]);
+        expect(decoded.report?.ignored).toBe(1);
+        expect(JSON.stringify(decoded)).not.toMatch(/Synthetic|copied prose/);
+      }
     });
 
     it('reads a response past the characters it asks for, and refuses one only past the safety ceiling (Slice 4H)', () => {
@@ -94,7 +90,7 @@ describe('LightboxReadingCodec', () => {
     it('accepts a reply with no closing sentinel whose JSON is complete as it stands, as a repair (Slice 4H)', () => {
       const decoded = decodeLightboxGroup(exampleA.response.replace('\n===END_LIGHTBOX_GROUP_A_V1===', ''), contextA);
       expect(decoded.blocks).toHaveLength(contextA.lenses.length);
-      expect(decoded.report).toEqual({ repairs: ['missing-closing-sentinel'], clipped: 0, cutOff: false });
+      expect(decoded.report).toEqual({ repairs: ['missing-closing-sentinel'], clipped: 0, ignored: 0, cutOff: false });
     });
 
     it('accepts CRLF line endings and surrounding whitespace', () => {

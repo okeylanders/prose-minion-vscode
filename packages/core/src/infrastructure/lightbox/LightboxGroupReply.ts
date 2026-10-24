@@ -12,7 +12,9 @@
  * - **Repaired replies** (Slice 4H, epic decision 39). A frame given a
  *   structure-only repair is read as any other, and each repair is logged
  *   by its kind (`[LightboxReadingRunner] Group E repaired: <kind>`), never
- *   with any text; so is how many fields were clipped at the safety ceiling.
+ *   with any text; so is how many fields were clipped at the safety ceiling,
+ *   and how many fields the format does not define were ignored (Slice 4K,
+ *   epic decision 50), never their names.
  * - **Replies cut off at the output ceiling** (epic decision 40) keep the
  *   blocks they finished; the block they were cut inside is withheld with
  *   the host's reason, and the paid body is still saved for recovery, its
@@ -162,6 +164,12 @@ export async function decodeLightboxReply(
   if (report && report.clipped > 0) {
     ports.outputChannel.appendLine(
       `[LightboxReadingRunner] Group ${call.group} clipped ${report.clipped} field${report.clipped === 1 ? '' : 's'} at the safety ceiling`
+    );
+  }
+  if (report && report.ignored > 0) {
+    // Counted, never named: a field's name is the model's text (Slice 4K, epic decision 50).
+    ports.outputChannel.appendLine(
+      `[LightboxReadingRunner] Group ${call.group} ignored ${report.ignored} field${report.ignored === 1 ? '' : 's'} the format does not define`
     );
   }
   if (!report?.cutOff) {

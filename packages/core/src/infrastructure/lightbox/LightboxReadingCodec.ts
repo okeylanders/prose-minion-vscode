@@ -1,11 +1,12 @@
 /**
- * The strict provider-response boundary for Lightbox readings (ADR 2026-10-19
- * D6, D7). Pure: no host, no I/O.
+ * The provider-response boundary for Lightbox readings (ADR 2026-10-19 D6,
+ * D7). Pure: no host, no I/O.
  *
  * A group's response is one sentinel-framed JSON object. The frame and the
  * root are all-or-nothing: a frame that cannot be read even after its
- * structural repairs (`LightboxReadingFrame`), a wrong version or an unknown
- * key fails the whole group, which the runner quarantines. Below the root,
+ * structural repairs (`LightboxReadingFrame`, a member closed out of its
+ * block moved back included) or a wrong version fails the whole group,
+ * which the runner quarantines. Below the root,
  * validation is per lens block: a block that breaks its rules (a missing
  * `friction` included) is withheld by lens while its siblings survive, and
  * an item that breaks its rules inside a valid block (one motif, one
@@ -17,6 +18,13 @@
  * or mistyped field, a value outside its vocabulary, fewer items than a
  * stated minimum, or a structural rule (one tension score per ribbon
  * column).
+ *
+ * **Fields the format does not define are ignored (Slice 4K, epic decision
+ * 50)**, at every level: the root, a block, an item, an object inside one.
+ * Each is counted for the reply's log line (`LightboxDecodeReport.ignored`)
+ * and never named, and none withholds anything. A required field that is
+ * missing still withholds, so a misspelled one is withheld for the field it
+ * stands in for.
  *
  * **A reply cut off at the output ceiling** (epic decision 40) is read for
  * the blocks it finished; the one it was cut inside is withheld with
@@ -31,8 +39,7 @@
  * Every reason is host-owned (PR #149 F-05): it names the protocol's paths,
  * counts and positions, never a field name or a value the model wrote,
  * because reasons are logged and shown on the board. A field the format does
- * not define is counted, not named; the names go only into the frame error's
- * `diagnostic`, which the runner hands to the recovery store with the body.
+ * not define is counted, never named, anywhere.
  */
 
 import type { LightboxLensId } from '@messages';
@@ -63,17 +70,17 @@ import {
   stringAt
 } from '@/application/services/workshop/persistedValidation';
 import {
-  countLightboxClips,
   decodeItems,
   evidence,
-  lightboxFieldCount,
   listAt,
   paragraphNumber,
-  strictObject,
+  replyObject,
+  tallyLightboxDecode,
   terms,
   prose,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
+import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
 import { readLightboxFrame } from '@/infrastructure/lightbox/LightboxReadingFrame';
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
@@ -88,9 +95,6 @@ import { decodeOpinionBlock } from '@/infrastructure/lightbox/LightboxOpinionCod
 import { decodeSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
-/** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
-const DIAGNOSTIC_FIELD_NAMES = 10;
-const DIAGNOSTIC_NAME_CHARACTERS = 120;
 
 // ---------------------------------------------------------------------------
 // The root
@@ -99,24 +103,17 @@ const DIAGNOSTIC_NAME_CHARACTERS = 120;
 export function decodeLightboxGroup(content: string, context: LightboxGroupDecodeContext): LightboxDecodedGroup {
   const frame = readLightboxFrame(content, context.group, context.end ?? 'stop');
   const root = frame.root;
-  const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
-  const unknown = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key));
-  if (unknown.length > 0) {
-    // Field names are the model's: the reason counts them, and only the recovery diagnostic names them.
-    const named = unknown.slice(0, DIAGNOSTIC_FIELD_NAMES).map((key) => JSON.stringify(key.slice(0, DIAGNOSTIC_NAME_CHARACTERS)));
-    throw new LightboxGroupFrameError(
-      `The group ${context.group} response has ${lightboxFieldCount(unknown.length)} the format does not define`,
-      `Undefined root fields: ${named.join(', ')}${unknown.length > named.length ? `, and ${unknown.length - named.length} more` : ''}`
-    );
-  }
   if (root.version !== LIGHTBOX_READING_PROTOCOL_VERSION) {
     throw new LightboxGroupFrameError(
       `The group ${context.group} response must carry "version": ${LIGHTBOX_READING_PROTOCOL_VERSION}`
     );
   }
+  // A root field the format does not define is ignored and counted, never named: its name is the model's (decision 50).
+  const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
+  const rootIgnored = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key)).length;
 
-  const { value, clipped } = countLightboxClips(() => decodeBlocks(root, context, frame.cutOff?.cutKey));
-  return { ...value, report: { repairs: frame.repairs, clipped, cutOff: frame.cutOff !== undefined } };
+  const { value, clipped, ignored } = tallyLightboxDecode(() => decodeBlocks(root, context, frame.cutOff?.cutKey));
+  return { ...value, report: { repairs: frame.repairs, clipped, ignored: rootIgnored + ignored, cutOff: frame.cutOff !== undefined } };
 }
 
 function decodeBlocks(
@@ -163,7 +160,7 @@ function decodeBlock(
   const friction = requireFriction(value, path);
   switch (lens) {
     case 'headline': {
-      const block = strictObject(value, path, ['sentence', 'terms', 'evidence', 'friction']);
+      const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.headline);
       return {
         lens,
         sentence: prose(block.sentence, `${path}.sentence`, B.noteCharacters),
@@ -173,12 +170,12 @@ function decodeBlock(
       };
     }
     case 'motif': {
-      const block = strictObject(value, path, ['items', 'friction']);
+      const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.motif);
       const { items, malformed } = decodeItems(block.items, `${path}.items`, 'motif', decodeMotif);
       return { lens, items, malformed, friction };
     }
     case 'tension': {
-      const block = strictObject(value, path, ['scores', 'claim', 'peaks', 'friction']);
+      const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.tension);
       return {
         lens,
         scores: scores(block.scores, `${path}.scores`, context.columnCount),
@@ -188,13 +185,13 @@ function decodeBlock(
       };
     }
     case 'characters': {
-      const block = strictObject(value, path, ['items', 'friction']);
+      const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.characters);
       const { items, malformed } = decodeItems(block.items, `${path}.items`, 'character', decodeCharacter);
       return { lens, items, malformed, friction };
     }
     case 'voice': {
       const keys = LIGHTBOX_VOICE_TRAITS.map(([key]) => key);
-      const block = strictObject(value, path, [...keys, 'claim', 'evidence', 'friction']);
+      const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.voice);
       return {
         lens,
         traits: keys.map((key) => ({ key, value: prose(block[key], `${path}.${key}`, B.noteCharacters) })),
@@ -247,7 +244,7 @@ function requireFriction(value: unknown, path: string): string {
 }
 
 function decodeGenre(value: unknown, path: string, friction: string): LightboxDecodedBlock {
-  const block = strictObject(value, path, ['neighbors', 'promise', 'friction']);
+  const block = replyObject(value, path, LIGHTBOX_BLOCK_FIELDS.genre);
   const { items, malformed } = decodeItems(
     block.neighbors, `${path}.neighbors`, 'neighbor', decodeNeighbor, LIGHTBOX_MINIMUM_GENRE_NEIGHBORS
   );
@@ -260,7 +257,7 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
         `${LIGHTBOX_NEAR_MISS_AFFINITY.toFixed(2)} or below.`
     );
   }
-  const promise = strictObject(block.promise, `${path}.promise`, ['text', 'evidence']);
+  const promise = replyObject(block.promise, `${path}.promise`, ['text', 'evidence']);
   return {
     lens: 'genre',
     neighbors: items,
@@ -278,7 +275,7 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
 // ---------------------------------------------------------------------------
 
 function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecodedMotif {
-  const motif = strictObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
+  const motif = replyObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
   return {
     title: text(motif.title, `${path}.title`),
     gist: prose(motif.gist, `${path}.gist`, B.noteCharacters),
@@ -289,7 +286,7 @@ function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecod
 }
 
 function decodeCharacter(item: Record<string, unknown>, path: string): LightboxDecodedCharacter {
-  const character = strictObject(item, path, [
+  const character = replyObject(item, path, [
     'name', 'aliases', 'archetype', 'energy', 'wants', 'hides', 'claim', 'evidence'
   ]);
   listAt(character.aliases, `${path}.aliases`, 0, 'aliases');
@@ -314,7 +311,7 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
  * near miss only for a low-affinity neighbor.
  */
 function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDecodedNeighbor {
-  const neighbor = strictObject(item, path, ['genre', 'affinity', 'claim', 'nearMiss', 'evidence']);
+  const neighbor = replyObject(item, path, ['genre', 'affinity', 'claim', 'nearMiss', 'evidence']);
   numberAt(neighbor.affinity, `${path}.affinity`);
   const claimed = neighbor.affinity as number;
   if (claimed < 0 || claimed > 1) {
@@ -342,7 +339,7 @@ function peaks(value: unknown, path: string): LightboxWirePeak[] {
   listAt(value, path, 1, 'peaks');
   return value.map((item, index) => {
     const itemPath = `${path}[${index}]`;
-    const peak = strictObject(item, itemPath, ['para', 'quote', 'note']);
+    const peak = replyObject(item, itemPath, ['para', 'quote', 'note']);
     return {
       para: paragraphNumber(peak.para, `${itemPath}.para`),
       quote: text(peak.quote, `${itemPath}.quote`),
