@@ -121,9 +121,11 @@ describe('FullTabHeaderStatus, the Lightbox model chip (Slice 4L)', () => {
       followingModelScopes: ['lightbox']
     })} />);
 
-    expect(screen.getByRole('button', {
+    const chip = screen.getByRole('button', {
       name: 'Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)'
-    })).not.toBeNull();
+    });
+    // The header chip truncates a long choice; its tooltip names it whole.
+    expect(chip.getAttribute('title')).toBe(chip.getAttribute('aria-label'));
     openBrowser();
     const browser = screen.getByRole('dialog', { name: 'Lightbox Model browser' });
     const follow = within(browser).getByRole('button', { name: /^Same as Workshop \(Workshop placeholder\)/ });

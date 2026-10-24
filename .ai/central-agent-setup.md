@@ -479,7 +479,7 @@ usePersistence({
    - HTTP client for OpenRouter API
    - Reads the API key host-side from SecretStorage (via the `SecretStore` port)
    - Supports multiple AI models (Claude, GPT-4, Gemini)
-   - Instantiated per model scope (assistant, dictionary, context)
+   - Instantiated per model scope (assistant, dictionary, context, category, widget, lightbox) by the one `AIResourceManager` the composition root builds; `ModelScopeSelections` resolves each scope's model
 
 5. **Prompt System** ([prompts.ts](packages/core/src/tools/shared/prompts.ts))
    - Loads system prompts from `packages/core/resources/system-prompts/`
@@ -549,6 +549,8 @@ usePersistence({
 6. **Test bidirectional sync**: Settings Overlay ↔ VSCode settings panel ↔ Webview state
 
 **Reference Implementation**: See `usePublishingSettings.ts` for clean example.
+
+**A model setting** (a new scope, as the Lightbox's `lightboxModel` in Lightbox Slice 4L) follows the same steps through the model path: `ModelScope` (`shared/types/messages/configuration.ts`), its key in `MODEL_SCOPE_SETTING_KEYS` and its default or followed scope in `ModelScopeSelections`, its bundle in `AIResourceManager` (never a handler), `MODEL_KEYS` in `MessageHandler`'s watcher, and a row in the Settings overlay. Model ids reach the webview through `MODEL_DATA` (`selections`, and `following` for a scope that follows another until picked), not `SETTINGS_DATA`; `useModelsSettings` holds them.
 
 #### Modifying AI Behavior
 
@@ -883,7 +885,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel` with legacy fallback `model`
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, and `lightboxModel`, the Lightbox's own: empty by default, it follows `assistantModel` (the Workshop's) until the writer picks one, and neither ever writes the other ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons

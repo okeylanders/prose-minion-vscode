@@ -217,7 +217,8 @@ describe('the Lightbox model never moves the Workshopâ€™s (Slice 4L, the writerâ
     const broadcasts = host.inboxes.workshop.slice(workshopBefore);
     broadcasts.forEach(dispatch);
 
-    // The symptom: the expiry stays, because the Workshop's model did not move.
+    // The symptom: the expiry stays, because the Workshop's model did not move (on cf7f260 it is gone here).
+    expect(cacheIndicator()).not.toBeNull();
     expect(cacheIndicator()?.textContent).toMatch(/Est\. Cache Time Remaining: \d+ min/);
     expect(screen.getByRole('button', { name: /^Browse assistant model options\. Current model: Workshop placeholder$/ })).not.toBeNull();
     expect(host.values.assistantModel).toBe(WORKSHOP);

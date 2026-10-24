@@ -27,12 +27,20 @@ import {
 export const MODEL_SETTINGS_SURFACES = ['sidebar', 'lightbox', 'workshop'] as const;
 export type ModelSettingsSurface = typeof MODEL_SETTINGS_SURFACES[number];
 
-/** Serve these placeholder models as the live catalog and the curated list; each label is its entry in `labels`, else its id. */
-export function stubModelCatalog(ids: readonly string[], labels: Readonly<Record<string, string>> = {}): void {
+/**
+ * Serve these placeholder models as the live catalog and the curated list;
+ * each label is its entry in `labels`, else its id, and each price per token
+ * its entry in `prices`, else $1 and $2 per million.
+ */
+export function stubModelCatalog(
+  ids: readonly string[],
+  labels: Readonly<Record<string, string>> = {},
+  prices: Readonly<Record<string, { prompt: string; completion: string }>> = {}
+): void {
   OpenRouterModels.clearCache();
   const catalog: OpenRouterModel[] = ids.map((id) => ({
     id, name: labels[id] ?? id, description: `${labels[id] ?? id} (stub)`, family: 'Placeholder',
-    pricing: { prompt: '0.000001', completion: '0.000002' },
+    pricing: prices[id] ?? { prompt: '0.000001', completion: '0.000002' },
     // eslint-disable-next-line @typescript-eslint/naming-convention -- the catalog's wire field.
     context_length: 100_000
   }));
@@ -129,5 +137,5 @@ export async function createModelSettingsHosts(
   const latestModelData = (surface: ModelSettingsSurface): ModelDataPayload | undefined => modelData(surface).at(-1);
   const errors = (surface: ModelSettingsSurface) => inboxes[surface].filter((message) => message.type === MessageType.ERROR);
 
-  return { values, writes, manager, handlers, inboxes, select, editSettingsExternally, modelData, latestModelData, errors };
+  return { values, writes, log, manager, handlers, inboxes, select, editSettingsExternally, modelData, latestModelData, errors };
 }

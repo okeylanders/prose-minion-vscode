@@ -1,0 +1,65 @@
+[AIResourceManager] Initialized dictionary model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized context model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized category model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized widget model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized lightbox model: placeholder/workshop-model (generation 1)
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] handleSetModelSelection received: scope=lightbox, modelId=placeholder/lightbox-model
+[ConfigurationHandler] Config key for scope: lightboxModel
+[ConfigurationHandler] Marking proseMinion.lightboxModel as webview-originated (will clear in 100ms)
+[ConfigurationHandler] Config saved: lightboxModel = placeholder/lightbox-model
+[AIResourceManager] Hot-swapped lightbox model: placeholder/workshop-model → placeholder/lightbox-model (generation 1; conversations preserved)
+[ConfigurationHandler] Blocking broadcast for proseMinion.lightboxModel (exact match in webview-originated set)
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sent MODEL_DATA after model selection change
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Cleared webview-originated flag for proseMinion.lightboxModel
+[ConfigurationHandler] handleSetModelSelection received: scope=lightbox, modelId=null
+[ConfigurationHandler] Config key for scope: lightboxModel
+[ConfigurationHandler] Marking proseMinion.lightboxModel as webview-originated (will clear in 100ms)
+[ConfigurationHandler] Config saved: lightboxModel = (follows)
+[AIResourceManager] Hot-swapped lightbox model: placeholder/lightbox-model → placeholder/workshop-model (generation 1; conversations preserved)
+[ConfigurationHandler] Blocking broadcast for proseMinion.lightboxModel (exact match in webview-originated set)
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sent MODEL_DATA after model selection change
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Cleared webview-originated flag for proseMinion.lightboxModel
+[AIResourceManager] Initialized dictionary model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized context model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized category model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized widget model: placeholder/other-model (generation 1)
+[AIResourceManager] Initialized lightbox model: placeholder/workshop-model (generation 1)
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/workshop-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/workshop-model"}
+[ConfigurationHandler] handleSetModelSelection received: scope=assistant, modelId=placeholder/lightbox-model
+[ConfigurationHandler] Config key for scope: assistantModel
+[ConfigurationHandler] Marking proseMinion.assistantModel as webview-originated (will clear in 100ms)
+[ConfigurationHandler] Config saved: assistantModel = placeholder/lightbox-model
+[AIResourceManager] Hot-swapped assistant model: placeholder/workshop-model → placeholder/lightbox-model (generation 1; conversations preserved)
+[AIResourceManager] Hot-swapped lightbox model: placeholder/workshop-model → placeholder/lightbox-model (generation 1; conversations preserved)
+[ConfigurationHandler] Blocking broadcast for proseMinion.assistantModel (exact match in webview-originated set)
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sent MODEL_DATA after model selection change
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] sendModelData: selections = {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Sending MODEL_DATA with 3 options and selections: {"assistant":"placeholder/lightbox-model","dictionary":"placeholder/other-model","context":"placeholder/other-model","category":"placeholder/other-model","widget":"placeholder/other-model","lightbox":"placeholder/lightbox-model"}
+[ConfigurationHandler] Cleared webview-originated flag for proseMinion.assistantModel

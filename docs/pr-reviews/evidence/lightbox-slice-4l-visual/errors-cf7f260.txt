@@ -1,0 +1,36 @@
+lightbox-unset@1440: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@1440: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@1440: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Workshop placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":true},"selectedModels":[]}
+lightbox-set@1440: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set@1440: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+lightbox-set-browser@1440: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set-browser@1440: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Lightbox placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":false},"selectedModels":["Lightbox placeholder"]}
+lightbox-set-browser@1440: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+settings-unset@1440: the Lightbox Model row null, not {"value":"","selected":"Same as Workshop (Workshop placeholder)"}
+settings-set@1440: the Lightbox Model row null, not {"value":"placeholder/lightbox-model","selected":"placeholder/lightbox-model (Custom)"}
+workshop-after@1440: the composer's cache estimate is "null", not "Est. Cache Time Remaining: 4 min"
+workshop-after@1440: the Workshop's chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse assistant model options. Current model: Workshop placeholder"
+lightbox-unset@1000: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@1000: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@1000: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Workshop placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":true},"selectedModels":[]}
+lightbox-set@1000: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set@1000: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+lightbox-set-browser@1000: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set-browser@1000: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Lightbox placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":false},"selectedModels":["Lightbox placeholder"]}
+lightbox-set-browser@1000: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+settings-unset@1000: the Lightbox Model row null, not {"value":"","selected":"Same as Workshop (Workshop placeholder)"}
+settings-set@1000: the Lightbox Model row null, not {"value":"placeholder/lightbox-model","selected":"placeholder/lightbox-model (Custom)"}
+workshop-after@1000: the composer's cache estimate is "null", not "Est. Cache Time Remaining: 4 min"
+workshop-after@1000: the Workshop's chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse assistant model options. Current model: Workshop placeholder"
+lightbox-unset@500: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@500: the chip says "Browse assistant model options. Current model: Workshop placeholder", not "Browse lightbox model options. Current model: Same as Workshop (Workshop placeholder)"
+lightbox-unset-browser@500: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Workshop placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":true},"selectedModels":[]}
+lightbox-set@500: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set@500: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+lightbox-set-browser@500: the chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse lightbox model options. Current model: Lightbox placeholder"
+lightbox-set-browser@500: the browser {"title":"Assistant Model","follow":null,"selectedModels":["Lightbox placeholder"]}, not {"follow":{"label":"Same as Workshop (Workshop placeholder)","selected":false},"selectedModels":["Lightbox placeholder"]}
+lightbox-set-browser@500: the picker posted {"scope":"assistant","modelId":"placeholder/lightbox-model"}, not the Lightbox's own scope
+settings-unset@500: the Lightbox Model row null, not {"value":"","selected":"Same as Workshop (Workshop placeholder)"}
+settings-set@500: the Lightbox Model row null, not {"value":"placeholder/lightbox-model","selected":"placeholder/lightbox-model (Custom)"}
+workshop-after@500: the composer's cache estimate is "null", not "Est. Cache Time Remaining: 4 min"
+workshop-after@500: the Workshop's chip says "Browse assistant model options. Current model: Lightbox placeholder", not "Browse assistant model options. Current model: Workshop placeholder"

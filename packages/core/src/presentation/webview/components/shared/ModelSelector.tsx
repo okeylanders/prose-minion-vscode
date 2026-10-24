@@ -66,7 +66,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         onClick={openBrowser}
         disabled={disabled || options.length === 0}
         aria-label={`Browse ${label.toLowerCase()} options. Current model: ${selectedLabel}`}
-        title={`Browse ${label.toLowerCase()} options`}
+        // Whole on hover: a header chip truncates a long choice ("Same as Workshop (…)").
+        title={`Browse ${label.toLowerCase()} options. Current model: ${selectedLabel}`}
       >
         <span className="model-selector-current">{selectedLabel}</span>
         <Icon name="chevDown" size={15} />
