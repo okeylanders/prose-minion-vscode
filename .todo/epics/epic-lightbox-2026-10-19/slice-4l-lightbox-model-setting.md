@@ -262,6 +262,11 @@ asked for one correction, now made.
     key kept, Stop). The replacement case fails there, since the shared
     engine took the new key and sent the Opinion, and so does the no-key
     control, since the offline assistant engine took the press.
+  - **After the merge of `epic/lightbox` at `13aff89`** (Slice 4K, PR #168):
+    512 suites / 7,141 tests / 59 snapshots, all passing under Node 22 and
+    Node 18.20.8; lint identical to `13aff89` and `cf7f260`; typecheck and
+    two builds under each Node, `webview.js` `6a08cf5c…` (unchanged) and
+    `extension.js` `17b0bf40…` all four times.
 
 ## Visual evidence
 

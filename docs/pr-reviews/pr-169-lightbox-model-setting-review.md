@@ -82,3 +82,75 @@ The supplied pixels show the intended following/explicit selections and unchange
 ## Merge recommendation
 
 Fix F-01 and re-run its discriminating lifecycle witness before merging. Preserve the passing isolated/following model behavior and cache regression coverage. Keep the seeding/wording choices explicit as product questions, and recheck any later base integration rather than assuming parallel README conflicts are data loss or integration clearance.
+
+## Author response (2026-10-24)
+
+**F-01 is fixed** in `1d0b9753`, on top of your report's commit
+`d13377e`. After it:
+- `b53232d0`: the correction recorded in the slice notes, the
+  ADR's D6 addendum and the agents guide;
+- `36e71be4`: the merge of `epic/lightbox` at `13aff89` (Slice 4K, PR
+  #168), which merged first. Its conflicts were only the epic README
+  (4K's decision 50 and slice row before this slice's 51 and row) and the
+  agents guide's test inventory. The ADR's addenda do not overlap;
+- the commit that adds this response.
+
+Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **A retired engine starts no new provider call.** `AIResourceManager.disposeDisposableResources()` now detaches each retired disposable engine's provider before disposing it, for every disposable scope (the Lightbox's, and the dictionary, context, category and widget engines, which a service can also hold across a call). It runs whenever a bundle is retired: a key removed or replaced, any rebuild, and disposal. An engine a run still holds then refuses its next call in `requireProvider()` as `missing-credentials`, the same failure `cf7f260` gave through the detached assistant engine: the Opinion fails with "Add an OpenRouter API key in Settings to run AI analyses.", and nothing is sent. A request already sent keeps the provider it took at its start, so it settles; landed readings and Stop are unchanged. The runner is not changed: the fix holds for anything that keeps an engine, not only `getEngine('lightbox')` being absent.<br>**Overlapping rebuilds are ordered.** Each webview's handler refreshes the manager on a key change, so rebuilds overlap. Each now takes a number; one that a newer rebuild overtook while it read the key builds nothing and settles with the newest, so a rebuild that read the old key can never replace the new key's transports. A failed overtaken rebuild no longer clears the newer one's promise | `LightboxKeyRetirement.test.ts` (new, 5), through the production `ConfigurationHandler` key routes, `LightboxReadingHandler`, `LightboxService`, `LightboxReadingRunner`, `AIResourceManager` and `AgentRunEngine`, with real `OpenRouterClient`s whose streaming transport records each start and holds group A; the p-limit mock runs every chapter call at once, as the default concurrency does:<br>• **Your witness:** A started and held, `DELETE_API_KEY` acknowledged (`API_KEY_STATUS { hasSavedKey: false }`, no Lightbox engine), A released: one transport start only, A `ok`, F `failed` with the missing-key words<br>• **Key replacement and several refresh listeners:** `UPDATE_API_KEY` beside two more `refreshConfiguration()` calls at once, then a hot-swap. The held engine stays detached, the current engine is new and carries the new key, F is refused with nothing sent, and an Opinion pressed again runs on the new engine and key<br>**Controls:** the key kept, A and F both start; Stop keeps F from starting; a press with no key is refused before anything is reserved, then runs once a key is added<br>`AIResourceManager.test.ts` (+2): every retired disposable engine refuses a new call as `missing-credentials` while the new one is attached; a rebuild that read the old key and answers last leaves the newer engines, and the assistant engine's new key, in place | `1d0b9753` |
+
+### What fails where
+
+The new and changed tests, run against other source trees:
+
+- **Your reviewed head** (`a2fc71f`'s sources, at `d13377e`): 4 of 19
+  fail. They are the witness (two transport starts, both on the first
+  key), the replacement case (the held engine is still attached), and
+  both manager cases. The three controls pass.
+- **`cf7f260`**, type checks off since the file names the `lightbox`
+  scope: the witness passes there, as your base probe found, and so do
+  the key-kept and Stop controls. Two fail, as they should:
+  - **The replacement case:** the shared assistant engine took the new
+    key and sent the Opinion on it.
+  - **The no-key control:** the offline assistant engine accepted the
+    press. That refusal before reserving is this slice's own positive
+    change, which you noted.
+
+### On the behavior a writer sees
+
+- **Key removed during a run:** the Opinion fails with the missing-key
+  words, as on `cf7f260`.
+- **Key replaced during a run:** the Opinion also fails with those words,
+  where `cf7f260` would have sent it on the new key. A run that began on
+  one credential does not continue on another. Finish or the Opinion's
+  Analyze runs it on the new key, as the replacement test's second press
+  shows. Under 4J's keep-readings rule, the earlier Opinion stays beside
+  that failure on that branch; here, F simply fails cleanly.
+- **Other features:** a dictionary fan-out or widget step that has not
+  started when the key changes now fails the same way instead of using
+  the retired client. This is the same policy, and no test needed to
+  change.
+
+### Verification
+
+On the merge, `36e71be4`, after `npm ci` into the worktree's own
+`node_modules` (the commit that adds this response changes only docs):
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 22 | 512 suites / 7,141 tests / 59 snapshots, all passing (the fix alone, before the merge: 509 / 7,060 / 59) |
+| Full Jest, Node 18.20.8 | The same counts, all passing |
+| Lint | 0 errors, 1,133 warnings, identical to `13aff89` and to `cf7f260` per file, rule and severity |
+| Typecheck | Passes under Node 22 and Node 18 |
+| `npm run build` (with `verify:bundle`), twice under each Node | `webview.js` `6a08cf5c82fb84691c7daba7dde3cef97fd87066e5bfe7144356a540f2b23f45`; `extension.js` `17b0bf40eccca7d56f0be523937cf92de5849cdc04da34df3299bfd25b7e3227`, all four times |
+| `git diff --check` | Clean |
+
+`webview.js` is unchanged from your reviewed head, since the fix is
+host-side only. The visual evidence is unchanged for the same reason.
+
+The writer's questions, seeding the Lightbox model on first open and the
+"Same as Workshop" wording, stay open with the coordinator.

@@ -1867,3 +1867,18 @@ lens, and adds its items to 4D's digest.
     [`docs/pr-reviews/evidence/lightbox-slice-4l-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-4l-visual/README.md):
     24 captures and three of `cf7f260`'s, `errors.txt` empty, and 36
     errors against `cf7f260`'s bundle, among them the writer's symptom.
+  - **PR #169's review (2026-10-24).** Astra asked for one correction,
+    F-01 (P2): a run keeps its engine for every call, and clearing or
+    replacing the key retired the Lightbox's bundle without detaching its
+    client, so the deferred Opinion could start a new request after the
+    clear was acknowledged. Retiring a disposable bundle now detaches its
+    provider, so a held engine refuses a new call as missing credentials
+    while a request already sent settles; overlapping rebuilds are
+    ordered, so one that read the old key never replaces the new
+    transports. Her witness and the replacement case fail on the reviewed
+    head and pass now; see the
+    [author response](../../../docs/pr-reviews/pr-169-lightbox-model-setting-review.md).
+    `epic/lightbox` at `13aff89` (Slice 4K, PR #168) is merged in: 512
+    suites / 7,141 tests / 59 snapshots under Node 22 and Node 18.20.8;
+    lint identical; typecheck and two builds under each Node,
+    `webview.js` `6a08cf5c…` and `extension.js` `17b0bf40…` all four times.

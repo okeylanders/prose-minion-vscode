@@ -838,7 +838,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-24, Lightbox Slice 4L (the Lightbox's own model setting, with PR #169's F-01 correction) on `epic/lightbox-model-setting`, with `epic/lightbox` at `13aff89` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back) merged in, under Node 22 and Node 18):
-- SUITES suites / TESTS tests / 59 snapshots
+- 512 suites / 7,141 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
