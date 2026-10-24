@@ -20,7 +20,9 @@
  *   no bracket is added to it;
  * - a reply that reached the output ceiling before its frame closed keeps
  *   the root's finished members, and names the member it was cut inside
- *   (`cutOff.cutKey`), which is dropped, never trusted;
+ *   (`cutOff.cutKey`), which is dropped, never trusted, and the block that
+ *   member was closed out of, when it was (`cutOff.cutBlock`), which did
+ *   not finish either;
  * - a reply cut off at the output ceiling while it wrote its frame's ending
  *   (PR #165 F-02) has that part set aside first, only when the last line
  *   is a start of this group's closing sentinel, or of the closing fence
@@ -48,7 +50,11 @@ import {
   salvageModelJson,
   type ModelJsonSalvaged
 } from '@parsers/ModelJsonRepair';
-import { renestLightboxMembers } from '@/infrastructure/lightbox/LightboxBlockFormat';
+import {
+  renestLightboxMembers,
+  type LightboxRenestedRoot,
+  type LightboxRootCut
+} from '@/infrastructure/lightbox/LightboxBlockFormat';
 import {
   LightboxGroupFrameError,
   lightboxGroupSentinels,
@@ -64,6 +70,8 @@ export interface LightboxFrame {
   cutOff?: {
     /** The root member it was cut inside, when that member's key had arrived whole. */
     cutKey?: string;
+    /** The block that member was closed out of: it stood just after the block, which defines it and lacks it (PR #168 F-01). */
+    cutBlock?: string;
   };
 }
 
@@ -117,7 +125,7 @@ export function readLightboxFrame(content: string, group: LightboxReadingGroupId
   } else if ('refused' in parsed) {
     throw parsed.refused;
   }
-  const root = renested(rootOf(parsed.value, group), parsed.rootKeys, repairs);
+  const root = renested(rootOf(parsed.value, group), parsed.rootKeys, repairs).root;
   return { root, repairs: [...repairs] };
 }
 
@@ -133,17 +141,30 @@ function salvaged(jsonText: string, group: LightboxReadingGroupId, repairs: Set<
     );
   }
   salvage.repairs.forEach((repair) => repairs.add(repair));
-  const root = renested(salvage.root, salvage.rootKeys, repairs);
-  return { root, repairs: [...repairs], cutOff: salvage.cutKey !== undefined ? { cutKey: salvage.cutKey } : {} };
+  // The cut member counts against the re-nest's duplicate barrier, though it is not kept (PR #168 F-01).
+  const renest = renested(salvage.root, salvage.rootKeys, repairs, { key: salvage.cutKey, insideKey: salvage.cutInsideKey === true });
+  return {
+    root: renest.root,
+    repairs: [...repairs],
+    cutOff: {
+      ...(salvage.cutKey !== undefined ? { cutKey: salvage.cutKey } : {}),
+      ...(renest.cutBlock !== undefined ? { cutBlock: renest.cutBlock } : {})
+    }
+  };
 }
 
 /** The root with each member closed out of its block moved back into it (`LightboxBlockFormat`), noted as a repair. */
-function renested(root: Record<string, unknown>, rootKeys: readonly string[] | undefined, repairs: Set<LightboxFrameRepair>): Record<string, unknown> {
-  const renest = renestLightboxMembers(root, rootKeys ?? []);
+function renested(
+  root: Record<string, unknown>,
+  rootKeys: readonly string[] | undefined,
+  repairs: Set<LightboxFrameRepair>,
+  cut?: LightboxRootCut
+): LightboxRenestedRoot {
+  const renest = renestLightboxMembers(root, rootKeys ?? [], cut);
   if (renest.moved > 0) {
     repairs.add('misnested-member');
   }
-  return renest.root;
+  return renest;
 }
 
 /** The shared parser's reading, or the frame error it becomes: the parser's position, never its text. */

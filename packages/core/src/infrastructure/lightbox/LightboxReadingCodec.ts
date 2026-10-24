@@ -54,6 +54,7 @@ import {
   LIGHTBOX_TENSION_TOP_SCORE,
   LIGHTBOX_VOICE_TRAITS,
   LightboxGroupFrameError,
+  type LightboxCutPlace,
   type LightboxDecodedBlock,
   type LightboxDecodedCharacter,
   type LightboxDecodedGroup,
@@ -81,7 +82,7 @@ import {
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
 import { LIGHTBOX_BLOCK_FIELDS } from '@/infrastructure/lightbox/LightboxBlockFormat';
-import { readLightboxFrame } from '@/infrastructure/lightbox/LightboxReadingFrame';
+import { readLightboxFrame, type LightboxFrame } from '@/infrastructure/lightbox/LightboxReadingFrame';
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 import { decodeLineageBlock, decodeSparkBlock, decodeSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryCodec';
 import { decodeNumbersBlock, decodeRhythmBlock, decodeStockBlock } from '@/infrastructure/lightbox/LightboxCraftCodec';
@@ -112,22 +113,33 @@ export function decodeLightboxGroup(content: string, context: LightboxGroupDecod
   const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
   const rootIgnored = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key)).length;
 
-  const { value, clipped, ignored } = tallyLightboxDecode(() => decodeBlocks(root, context, frame.cutOff?.cutKey));
-  return { ...value, report: { repairs: frame.repairs, clipped, ignored: rootIgnored + ignored, cutOff: frame.cutOff !== undefined } };
+  const cut = frame.cutOff;
+  const { value, clipped, ignored } = tallyLightboxDecode(() => decodeBlocks(root, context, cut));
+  return {
+    ...value,
+    report: { repairs: frame.repairs, clipped, ignored: rootIgnored + ignored, cutOff: cut !== undefined, ...cutWithin(cut, context) }
+  };
 }
 
 function decodeBlocks(
   root: Record<string, unknown>,
   context: LightboxGroupDecodeContext,
-  cutKey: string | undefined
+  cut: LightboxFrame['cutOff']
 ): Omit<LightboxDecodedGroup, 'report'> {
   const blocks: LightboxDecodedBlock[] = [];
   const withheld: LightboxDecodedGroup['withheld'] = [];
+  // The block the reply was cut inside is never trusted (decision 40): not beside an earlier copy of it, and not when
+  // the member it was cut inside had been closed out of it (PR #168 F-01).
+  const cutKeys = new Set([cut?.cutKey, cut?.cutBlock].filter((key): key is string => key !== undefined));
   for (const lens of context.lenses) {
     const key = LIGHTBOX_LENS_KEYS[lens];
+    if (cutKeys.has(key)) {
+      withheld.push({ lens, reason: LIGHTBOX_CUT_OFF_REASON });
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(root, key)) {
-      // The block the reply was cut inside is never trusted; a lens it never reached is missing.
-      withheld.push({ lens, reason: key === cutKey ? LIGHTBOX_CUT_OFF_REASON : `The reading returned no ${key} block.` });
+      // A lens the reply never reached is missing.
+      withheld.push({ lens, reason: `The reading returned no ${key} block.` });
       continue;
     }
     try {
@@ -140,6 +152,23 @@ function decodeBlocks(
     (lens) => !context.lenses.includes(lens) && Object.prototype.hasOwnProperty.call(root, LIGHTBOX_LENS_KEYS[lens])
   );
   return { blocks, withheld, ignored };
+}
+
+/**
+ * Where a reply cut off at the output ceiling stopped, when that was inside
+ * a root member but not a block the call asked for: for its log line, in
+ * host words, never the member's key, which may be the model's text.
+ */
+function cutWithin(cut: LightboxFrame['cutOff'], context: LightboxGroupDecodeContext): { cutWithin?: LightboxCutPlace } {
+  const key = cut?.cutBlock ?? cut?.cutKey;
+  if (key === undefined) {
+    return {};
+  }
+  const lens = (Object.keys(LIGHTBOX_LENS_KEYS) as LightboxLensId[]).find((candidate) => LIGHTBOX_LENS_KEYS[candidate] === key);
+  if (lens === undefined) {
+    return { cutWithin: 'root-member' };
+  }
+  return context.lenses.includes(lens) ? {} : { cutWithin: 'unrequested-block' };
 }
 
 function blockReason(key: string, error: unknown): string {

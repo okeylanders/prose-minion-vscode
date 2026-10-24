@@ -415,7 +415,17 @@ export interface LightboxDecodeReport {
   ignored: number;
   /** The reply reached the output ceiling before its frame closed: what it finished was read, the rest withheld. */
   cutOff: boolean;
+  /** Cut off inside a root member that is not a block the call asked for (PR #168 F-01); absent otherwise. */
+  cutWithin?: LightboxCutPlace;
 }
+
+/**
+ * Where a reply cut off at the output ceiling stopped, when not inside a
+ * block the call asked for nor between members: inside a root member that
+ * is no block (`root-member`), or inside a block of a lens the call did not
+ * ask for (`unrequested-block`). Host words only: never the member's key.
+ */
+export type LightboxCutPlace = 'root-member' | 'unrequested-block';
 
 /**
  * The frame or root failed: the whole group's response is unusable. The

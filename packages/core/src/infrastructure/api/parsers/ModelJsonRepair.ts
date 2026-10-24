@@ -27,7 +27,8 @@
  * `salvageModelJson(jsonText)` reads a reply cut off at its output ceiling:
  * it keeps the root object's members that finished, drops the one it was
  * cut inside (never trusted, however much of it arrived), and closes the
- * root, naming that member's key when it had arrived whole.
+ * root, naming that member's key when it had arrived whole, or saying it
+ * was cut inside that key (`cutInsideKey`), whose text is never kept.
  *
  * **Where each root member stood** (Lightbox Slice 4K). Asked with
  * `rootKeys: true`, either reports the root object's member keys in the
@@ -90,6 +91,8 @@ export interface ModelJsonSalvaged {
   repairs: ModelJsonRepairKind[];
   /** The key of the root member the reply was cut inside, when its key had arrived whole. */
   cutKey?: string;
+  /** The reply was cut inside the key of the root member after the kept ones, so that member's key is not known. */
+  cutInsideKey?: true;
   /** Asked with `rootKeys: true`: the kept members' keys in the order the text gives them, as `ModelJsonParsed.rootKeys`. */
   rootKeys?: string[];
 }
@@ -227,6 +230,7 @@ export function salvageModelJson(jsonText: string, options: ModelJsonReadOptions
       root: value as Record<string, unknown>,
       repairs: [...(fence.fenced ? ['code-fence' as const] : []), ...walk.repairs],
       ...(walk.cutKey !== undefined ? { cutKey: walk.cutKey } : {}),
+      ...(walk.cutInsideKey ? { cutInsideKey: true as const } : {}),
       ...rootKeysAsked(options, () => repairedTokens)
     };
   } catch (error) {
@@ -292,6 +296,7 @@ interface Walk {
   keepUntil: number;
   closers: string;
   cutKey?: string;
+  cutInsideKey?: boolean;
 }
 
 function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boolean; salvage: boolean }): Walk {
@@ -302,6 +307,8 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
   // A salvage: where the root's last finished member ends, and the key of the member after it.
   let lastFinished = -1;
   let memberKey: string | undefined;
+  // A salvage: cut inside the root's next key, so which member it began is not known.
+  let cutInsideKey = false;
   const top = (): Container | undefined => stack[stack.length - 1];
   const valueDone = (end: number) => {
     const container = top();
@@ -330,6 +337,8 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
     if (token.kind === 'string' || token.kind === 'scalar') {
       // A token cut off at the end is never trusted, and never counted as a repair: its member is dropped.
       if (!token.complete) {
+        cutInsideKey = token.kind === 'string' && stack.length === 1 && container?.kind === 'object' &&
+          (container.state === 'start' || container.state === 'key');
         return;
       }
       if (token.kind === 'string' && token.curly) {
@@ -405,7 +414,8 @@ function walkTokens(tokens: readonly ModelJsonToken[], options: { closeOpen: boo
       repairs: [...repairs],
       keepUntil: lastFinished >= 0 ? lastFinished : (opening?.end ?? 0),
       closers: '}',
-      ...(memberKey !== undefined ? { cutKey: memberKey } : {})
+      ...(memberKey !== undefined ? { cutKey: memberKey } : {}),
+      cutInsideKey
     };
   }
   const innermost = top();

@@ -150,11 +150,22 @@ describe('salvageModelJson', () => {
     });
   });
 
-  it('names no cut member when the reply stopped between members, inside the next key', () => {
+  it('names no cut member when the reply stopped between members, inside the next key, and says it was cut inside a key', () => {
     expect(salvageModelJson('{"version":1,"template":{"name":"Portal descent"},\n  "press')).toEqual({
+      root: { version: 1, template: { name: 'Portal descent' } },
+      repairs: ['missing-closing-bracket'],
+      cutInsideKey: true
+    });
+  });
+
+  it('says nothing was cut inside a key when the reply stopped before the next key began, or inside a block', () => {
+    expect(salvageModelJson('{"version":1,"template":{"name":"Portal descent"},')).toEqual({
       root: { version: 1, template: { name: 'Portal descent' } },
       repairs: ['missing-closing-bracket']
     });
+    // A key cut inside a block is that block's: the root member it stands in is the one cut, and named.
+    expect(salvageModelJson('{"version":1,"template":{"na')).toEqual({ root: { version: 1 }, repairs: ['missing-closing-bracket'], cutKey: 'template' });
+    expect(salvageModelJson('{"version":1,"template":{"name":"Portal').cutInsideKey).toBeUndefined();
   });
 
   it('names the member whose key arrived whole, even before its value began', () => {
@@ -194,7 +205,11 @@ describe('salvageModelJson', () => {
       ['a cut token holding marks a completed one may not', '{"version":1,"a":{"x":"complete"},"b":{"y":“she said "unfin\nish', 'b']
     ])('keeps the finished siblings when cut inside %s, and nothing of the cut one', (_case, text, cutKey) => {
       const salvaged = salvageModelJson(text);
-      expect(salvaged).toEqual({ root: finished, repairs: ['missing-closing-bracket'], ...(cutKey ? { cutKey } : {}) });
+      expect(salvaged).toEqual({
+        root: finished,
+        repairs: ['missing-closing-bracket'],
+        ...(cutKey ? { cutKey } : { cutInsideKey: true })
+      });
       expect(JSON.stringify(salvaged)).not.toMatch(/unfin|she said/);
     });
 

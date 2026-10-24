@@ -46,6 +46,7 @@ import {
   LIGHTBOX_READING_PROTOCOL_VERSION,
   LightboxGroupFrameError,
   lightboxGroupSentinels,
+  type LightboxCutPlace,
   type LightboxDecodedGroup,
   type LightboxGroupDecodeContext
 } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -179,7 +180,7 @@ export async function decodeLightboxReply(
   const cut = decoded.withheld.filter((entry) => entry.reason === LIGHTBOX_CUT_OFF_REASON).map((entry) => entry.lens);
   ports.outputChannel.appendLine(
     `[LightboxReadingRunner] Group ${call.group} reached the output ceiling: ${decoded.blocks.length} blocks finished, ` +
-      `${cut.length > 0 ? `cut inside ${cut.join(', ')}` : 'cut between blocks'}`
+      `${cut.length > 0 ? `cut inside ${cut.join(', ')}` : cutPlaceWords(report.cutWithin)}`
   );
   const receipt = await ports.recovery.capture({
     toolName: 'lightbox-readings',
@@ -243,6 +244,22 @@ export function lightboxRecoveryContract(call: { group: LightboxReadingGroupId; 
 
 function lightboxRecoverySummary(call: { group: LightboxReadingGroupId; lenses: readonly LightboxLensId[] }): string {
   return `Lightbox group ${call.group}: ${call.lenses.map(lightboxLensLabel).join(', ')}`;
+}
+
+/** Where a reply was cut, past its blocks, in host words: never a root member's key, which may be the model's text (PR #168 F-01). */
+function cutPlaceWords(place: LightboxCutPlace | undefined): string {
+  switch (place) {
+    case 'root-member':
+      return 'cut inside a root member that is not a block';
+    case 'unrequested-block':
+      return 'cut inside a block the call did not ask for';
+    case undefined:
+      return 'cut between blocks';
+    default: {
+      const unknown: never = place;
+      return unknown;
+    }
+  }
 }
 
 function ceilingMessage(): string {
