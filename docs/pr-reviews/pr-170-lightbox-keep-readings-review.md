@@ -177,3 +177,74 @@ Module sizes: `lightboxCallNotes.ts` 171 lines, `lightboxReadings.ts` 285,
 `LightboxReadingState.ts` 288, `LightboxBoardCodec.ts` 422,
 `useLightboxInspector.ts` 486. `LightboxReadingRunner` is untouched. No
 live or billable call; *Alice* fixtures only; model ids are placeholders.
+
+## Independent re-review — 2026-10-24, Astra
+
+**Reviewed correction/integration head:** `bc3ab1cfc185c6c04c0db38c17c70cfec9c79f10`. **Integrated base and merge-base:** `13aff8952f684916050414786003480478f1e9fa` (the corrected #168). The delta from the first report commit `3a2ef12` is 55 files, +3,277 / −405, including that integration and its documentation. The original report and the author's response above are preserved verbatim.
+
+**Disposition: request changes remains, narrowed to F-02's handling of unknown origins. F-01 and N-01 are independently closed.** The ordinary legacy-board attribution witness is fixed, but a missing or codec-dropped origin in an already-provenanced group is subsequently converted into a false known model and saved that way. This is a remaining boundary of F-02, not another provider-selection defect.
+
+### Resolution ledger
+
+| ID | Independent disposition | Result |
+| --- | --- | --- |
+| F-01, P2 | **Closed** | Both distinct cut-off receipts survive the real save/reload. The rebuilt bundle shows both paths once; each lens's link focuses its own note, and the motif frame is described by its own receipt only. Same-event grouping still produces one note. Removing the older event leaves the remaining pointer attached to the correct, renumbered note; navigation/deletion clears obsolete notes and links. |
+| F-02, P2 | **Partially fixed; open** | A genuinely legacy group with absent provenance now carries its original model, without invented run/time, through partial whole-group and headline-only reruns, autosave, reload, inspector and row. However, an origin deliberately left unknown by the new decoder/getter does not stay unknown through the next unrelated settlement. Details below. |
+| N-01, P3 | **Closed** | A failed motif-only rerun now displays the full failure once. Untouched sibling readings stay silent; the affected motif points to the note. The whole-group failure and shared Stop controls retain their intended behavior. |
+
+### F-02 remaining: do not turn a missing modern origin into legacy model provenance
+
+**Locations:** [`LightboxReadingState.ts:197–199`](https://github.com/okeylanders/prose-minion-vscode/blob/bc3ab1cfc185c6c04c0db38c17c70cfec9c79f10/packages/core/src/infrastructure/lightbox/LightboxReadingState.ts#L197-L199), called at [line 123](https://github.com/okeylanders/prose-minion-vscode/blob/bc3ab1cfc185c6c04c0db38c17c70cfec9c79f10/packages/core/src/infrastructure/lightbox/LightboxReadingState.ts#L123); related fallback [`lightboxProvenance.ts:87`](https://github.com/okeylanders/prose-minion-vscode/blob/bc3ab1cfc185c6c04c0db38c17c70cfec9c79f10/packages/core/src/shared/constants/lightboxProvenance.ts#L87).
+
+`carriedProvenance` treats **every** missing lens entry as legacy, even when other provenance already establishes a modern mixed-history group. It copies `group.model`, which identifies the latest call, not that missing origin. This contradicts both the new getter's immediate behavior and the correction's explicit rule that a lost entry names no model.
+
+Independent reproduction, through the real codec, handlers, runner, store, library and a fresh host, using only the public-domain fixture and stub replies:
+
+1. Produce correct mixed history using the production transitions: original motif tiles from model-v1, a newer headline from model-v2, and group model-v2. The ordinary legacy snapshot succeeds here first.
+2. Change only the motif's saved provenance to a half-entry: give its model-only entry a `run` but no `at`. The codec drops/counts exactly **one** entry, retaining all motif tile data. Headline provenance survives. On open, the motif's model and inspector model line are correctly **unknown/absent**.
+3. Re-analyze **headline only** with a response reporting model-v3. No motif is requested or replaced.
+4. `carriedProvenance` inserts `{ lens: 'motif', model: 'provider/model-v2' }`. The original motif IDs/data are unchanged, but its unknown origin has acquired the unrelated preceding headline model.
+5. Autosave and restore with a fresh host. The new saved file decodes with **zero drops** and retains that false model-only entry. Clicking the motif in the exact rebuilt production bundle now shows **“Read by model-v2”**; the saved-board row lists **v3 and v2**. Correct behavior is headline v3 with the motif origin still unknown, not recovery of v1 from information that was discarded.
+
+A well-shaped partial provenance list with only the motif entry omitted, and therefore **zero initial codec drops**, reproduces the same unknown → false-known transition. A third control makes both entries malformed: the decoder retains `provenance: []`, but the getter's `length > 0` check mistakes that present-empty list for absent legacy provenance and immediately reports v2; later settlement persists it too.
+
+The all-dropped fallback alone is not presented as a newly introduced regression: the previous fallback already had that weakness. The actionable correction delta is the newly added `carriedProvenance` writing a false, valid origin after the new getter has correctly made a partially missing origin unknown. The original review explicitly requested missing/dropped-provenance controls; the added author tests stop at the immediate getter/decode and do not perform the next settlement. All three independent witnesses collect complete saved/reloaded evidence before failing their expected-behavior assertions.
+
+**Required correction:** distinguish genuinely absent legacy provenance from a modern group whose entry was absent/dropped. Only the former may inherit the old group model. Preserve unknown origins through subsequent runs, failed/partial outcomes, save/reload and transitions that clear empty lenses; a present-empty provenance list must not silently regain legacy fallback through field omission. Explicit `{ lens }` entries already provide a truthful unknown representation. Do not infer a model, run or time that is no longer known. Keep the ordinary legacy controls passing while adding the missing/dropped → unrelated rerun → save/reload controls.
+
+This finding concerns persistent attribution metadata and its visible model lines. It is **not** a claim that the motif was rerun, its text was lost, a provider was selected incorrectly, or a recovery file was deleted.
+
+### Actual #168 integration and retained behavior
+
+- The integrated parser, token reader, block re-nester, frame and decoding modules match the corrected `13aff895` base. The eight retained independent #168 repair-boundary assertions pass unchanged, including plain/escaped unfinished duplicates, the deep optional-guard witness and safe-movement controls.
+- An additional **combined production-host witness** reads group E, then receives the duplicate-summary cut from #168. No unsafe re-nesting occurs; summary is withheld as cut with its recovery receipt. This slice keeps the old template/summary together with v1 provenance while valid pressure/artifact readings replace under v2. Real save/reload preserves that mixture. A later safely re-nested reply replaces both paired readings under v3, clearing their earlier marks, without another recovery capture.
+- The original nine #170 reviewer tests now all pass: distinct cut receipts, same-event grouping, single-lens suppression, both ordinary legacy attribution paths, off/on during held runs through landing and Stop, source refresh rejecting a late reply while carrying stale provenance, and malformed provenance versus earlier-mark decoding. These are separate from the three newly failing unknown-origin sequences above.
+- Model-only entries and explicit unknown `{ lens }` entries are legitimate persisted shapes; `run`/`at` must occur together. Existing full provenance is not replaced merely because another lens settles. Opinion basis/freshness, withheld/empty-result retention, source carry and the owed-save capture/queue controls were re-inspected and included in the full gate. No additional owed-save regression was established.
+- The author's older 4I–4J kept-Opinion limitation was exercised as a valid legacy-shaped board: the Opinion body remains readable and the failed call's reason remains in the central alert, but the widget has no local earlier label/reason without an earlier mark. That is a compatibility presentation limitation, not loss of the Opinion or suppression of the failure everywhere. No additional blocking finding is assigned to it; this is not writer acceptance of that presentation.
+
+### Fresh verification and boundaries
+
+Local work used the isolated cloud workspace under **Node 24.19.0 / npm 11.9.0**, with serial compile-heavy gates, a 2 GiB Node heap, one Jest worker with a 1,000 MB idle limit, and disk-backed caches. The unchanged lockfile and checkout-local workspace links were re-verified. No live/billable provider call, private manuscript or implementation edit was used.
+
+| Check | Independent result at `bc3ab1c` |
+| --- | --- |
+| Full repository Jest | Pass: **515 suites / 7,196 tests / 59 snapshots**, 387.503 s in this cloud single-worker run |
+| Typecheck | Pass: core host, webview and VS Code adapter |
+| Lint | Pass: 0 errors / 1,133 warnings |
+| Build and `verify:bundle` | Pass; webpack's three bundle-size/performance warnings |
+| Retained independent tests | **17/17 pass**: nine #170 controls/witnesses and eight #168 repair-boundary assertions |
+| Added combined parser/paired-retention host witness | **1/1 pass**, including actual save/reload |
+| Unknown-origin host regressions | **3/3 fail at the documented expected-behavior assertions**, after successful host/save/reload execution |
+| Host evidence builder | Pass; all eight moments regenerate `keep-readings.json` byte-for-byte |
+| Exact production-bundle DOM | **21 cases**, zero execution/DOM errors; includes observed defect assertions, not 21 claims of correct behavior |
+| `git diff --check` | Clean |
+| Correction-head push / pull-request CI | Both success: [push 40142255160](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40142255160), [pull_request 40142258036](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40142258036) |
+
+The three failing tests are external reviewer regressions, not failures in the repository suite. An initial external-module-resolution failure was corrected before their behavioral execution. The DOM evidence checks message rendering, focus targets and descriptions; it is not Chromium layout, native VS Code or screen-reader acceptance. Supplied screenshot bytes are unchanged by this correction; they were not regenerated as reviewer browser captures. No timing claim from this cloud execution is a native-host benchmark.
+
+Rebuilt SHA-256 values match the author's correction hashes:
+
+- `webview.js`: `2ffd7bcd56493bdf5fa22fe93ff2c0e293c56ea3cca1c4d2b94c270255c99bb6`
+- `extension.js`: `556346baf03cacf308b65f8cf6c70770e5b14423dcdf034008f246aa9c6dcb05`
+
+This appendix reviews actual #168 integration at the named head/base, not separate #169 model-setting integration or any later merge. Decisions 49/52 and the empty-answer/pairing questions are still not independently accepted on the writer's behalf. Only this append-only report is published; the report commit's exact bytes, sole parent, single changed path and both exact-head CI events are verified separately. No formal review, PR comment, implementation change, merge or deployment is authorized by this report.
