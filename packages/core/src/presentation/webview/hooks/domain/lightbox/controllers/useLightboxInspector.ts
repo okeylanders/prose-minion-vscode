@@ -13,6 +13,11 @@
  * transient and belongs to the current pin: it never changes the pin, a new
  * pin starts on the first page, and a rebuilt board keeps the page (clamped).
  *
+ * A reading also says where it came from (Slice 4J, epic decision 49): the
+ * model that read it and when, from its lens's provenance, and, when it is
+ * an earlier reading a later call did not replace, that and the host's
+ * reason, or that it is being read again.
+ *
  * A presentation controller: the pin itself is owned by `useLightbox` and
  * changed through the injected callback; paging is its only state.
  */
@@ -27,7 +32,8 @@ import {
   paragraphCountLabel,
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
-import { lightboxLensIsStale, lightboxWithheldQuoteText, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxLensIsStale, lightboxLensView, lightboxWithheldQuoteText, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import type { LightboxCallNote } from '@hooks/domain/lightbox/lightboxCallNotes';
 import { isLightboxTermRef } from '@hooks/domain/lightbox/lightboxTerms';
 import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 import { lightboxEndingTally, lightboxNumberValue, lightboxTierShares } from '@hooks/domain/lightbox/lightboxCraft';
@@ -35,12 +41,15 @@ import { lightboxPlotDetails } from '@hooks/domain/lightbox/lightboxPlot';
 import { lightboxOpinionDetails } from '@hooks/domain/lightbox/lightboxOpinion';
 import { lightboxSteeringDetails } from '@hooks/domain/lightbox/lightboxSteering';
 import { lightboxOpinionStanding } from '@shared/constants/lightboxOpinion';
+import { lightboxEarlierReason, lightboxLensModel, lightboxLensProvenance } from '@shared/constants/lightboxProvenance';
+import { lightboxModelsNote, lightboxWhenFormat } from '@hooks/domain/lightbox/lightboxBoardsView';
 import {
   LIGHTBOX_ECHO_ACCURACY,
   LIGHTBOX_FAMILIAR_KIND_LABELS,
   LIGHTBOX_HANDOFF_EFFECT_LABELS,
   LIGHTBOX_LINEAGE_STANCE_LABELS,
-  LIGHTBOX_NUMBER_USAGE_LABELS
+  LIGHTBOX_NUMBER_USAGE_LABELS,
+  lightboxLensGroup
 } from '@shared/constants/lightbox';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
@@ -169,6 +178,14 @@ export interface LightboxInspectorReading {
   /** A borrowed field's terms by degree, with the host's hits at each (Slice 3). */
   degrees: LightboxDegreeRow[];
   friction: string;
+  /** Who read it and when: "Read by model-v1 · Oct 24, 2026, 9:08 AM" (Slice 4J); absent when the board says neither. */
+  provenance?: string;
+  /**
+   * It is an earlier reading: being read again, or kept by a call that did
+   * not replace it, with the host's reason, or the note of its call that
+   * says it once (Slice 4J, decisions 49 and 52).
+   */
+  earlier?: { reanalyzing: true } | { reanalyzing: false; reason: string; callNote?: LightboxCallNote };
 }
 
 export interface LightboxInspectorView {
@@ -304,7 +321,7 @@ function readingIsStale(board: LightboxBoard, tile: LightboxReadingTile): boolea
   return lightboxLensIsStale(board, tile.lens) || (tile.kind === 'opinion' && lightboxOpinionStanding(tile, board).stale);
 }
 
-function readingView(tile: LightboxReadingTile, stale: boolean, board: LightboxBoard): LightboxInspectorReading {
+function readingView(tile: LightboxReadingTile, stale: boolean, board: LightboxBoard, timeZone?: string): LightboxInspectorReading {
   const staleNote = tile.kind === 'opinion' ? lightboxOpinionStanding(tile, board).note : undefined;
   return {
     tile,
@@ -320,14 +337,38 @@ function readingView(tile: LightboxReadingTile, stale: boolean, board: LightboxB
     withheld: tile.withheldQuotes.map((quote) => ({ paragraph: quote.paragraph, text: lightboxWithheldQuoteText(quote) })),
     details: readingDetails(tile, board),
     degrees: tile.kind === 'gravity-field' ? lightboxDegreeRows(tile) : [],
-    friction: tile.friction
+    friction: tile.friction,
+    ...readingSource(tile, board, timeZone)
   };
+}
+
+/** Where a reading came from, and whether it is an earlier one (Slice 4J). */
+function readingSource(
+  tile: LightboxReadingTile,
+  board: LightboxBoard,
+  timeZone: string | undefined
+): Pick<LightboxInspectorReading, 'provenance' | 'earlier'> {
+  const group = board.readings.find((candidate) => candidate.group === lightboxLensGroup(tile.lens));
+  const landed = lightboxLensProvenance(group, tile.lens);
+  const model = lightboxLensModel(group, tile.lens);
+  const by = lightboxModelsNote(model ? [model] : []);
+  const when = landed ? lightboxWhenFormat(timeZone).format(Date.parse(landed.at)) : undefined;
+  const provenance = by && when ? `${by} · ${when}` : by ?? (when ? `Read ${when}` : undefined);
+  const reanalyzing = group?.status === 'running' && (group.pending?.includes(tile.lens) ?? false);
+  const reason = lightboxEarlierReason(group, tile.lens);
+  const callNote = reason !== undefined ? lightboxLensView(board, tile.lens).callNote : undefined;
+  const earlier = reanalyzing
+    ? { reanalyzing: true as const }
+    : reason !== undefined ? { reanalyzing: false as const, reason, ...(callNote ? { callNote } : {}) } : undefined;
+  return { ...(provenance ? { provenance } : {}), ...(earlier ? { earlier } : {}) };
 }
 
 /** The view model for a pinned reference, or null when nothing (resolvable) is pinned. */
 export function buildLightboxInspectorView(
   board: LightboxBoard | null,
-  ref: LightboxItemRef | null
+  ref: LightboxItemRef | null,
+  /** The zone a reading's time is told in; the viewer's own when absent (tests pin one). */
+  timeZone?: string
 ): LightboxInspectorView | null {
   if (!board || !ref) {
     return null;
@@ -353,7 +394,7 @@ export function buildLightboxInspectorView(
           .slice(0, TOUCHING_SHOWN)
           .map((touch) => ({ ref: touch.ref, label: touch.title }))
       : [],
-    ...(item.reading ? { reading: readingView(item.reading, readingIsStale(board, item.reading), board) } : {})
+    ...(item.reading ? { reading: readingView(item.reading, readingIsStale(board, item.reading), board, timeZone) } : {})
   };
 }
 

@@ -24,6 +24,10 @@
  * Slice 4E: a pinned paragraph shows its whole text under the claim, and a
  * pinned counted term lists the sentences it stands in at the bottom, both
  * in `LightboxPassageWell`, from the host's passage.
+ *
+ * Slice 4J: a pinned reading names the model that read it and when, and an
+ * earlier reading says so ("Earlier reading", with the host's reason), or
+ * that it is being read again, as its frame does.
  */
 import * as React from 'react';
 import type { LightboxGravityFieldTile, LightboxLensId, LightboxReadingTile } from '@messages';
@@ -38,6 +42,8 @@ import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/use
 import { Icon } from '@components/shared/Icon';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxPassageWell } from '@components/lightbox/LightboxPassageWell';
+import { LightboxKeptNote } from '@components/lightbox/LightboxReadingFrame';
+import { LIGHTBOX_OPINION_KEEP } from '@components/lightbox/LightboxOpinion';
 import type { LightboxPassageWellView } from '@hooks/domain/lightbox/lightboxPassages';
 
 /** What "Re-analyze this tile" says and does (epic decision 48; "Re-read this tile" before). */
@@ -245,6 +251,15 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
       <h3 className="pm-lb-inspector-title">{view.title}</h3>
       {view.claim && <p className={`pm-lb-inspector-claim${reading ? ' is-read' : ''}`}>{view.claim}</p>}
       <p className="pm-lb-inspector-note">{view.registerNote}</p>
+      {reading?.provenance && <p className="pm-lb-inspector-note pm-lb-inspector-provenance">{reading.provenance}</p>}
+      {reading?.earlier && (
+        <LightboxKeptNote
+          view={reading.earlier.reanalyzing
+            ? { reanalyzing: true }
+            : { reanalyzing: false, earlier: reading.earlier.reason, ...(reading.earlier.callNote ? { callNote: reading.earlier.callNote } : {}) }}
+          words={reading.tile.kind === 'opinion' ? LIGHTBOX_OPINION_KEEP : undefined}
+        />
+      )}
       {reading?.stale && (
         <p className="pm-lb-stale-note">
           <b>Stale</b> {reading.staleNote ?? 'Read against an earlier version of this chapter. The quotes below were checked again ' +

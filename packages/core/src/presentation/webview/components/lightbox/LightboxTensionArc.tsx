@@ -10,12 +10,18 @@
  * Beside the line sits call A's Analyze (Slice 4I, epic decision 43), in
  * place of the "read" badge the line carried; it is a button of its own,
  * outside the line's pin.
+ *
+ * An arc read again stays drawn until the new one lands, and one a call did
+ * not replace stays with an "earlier" badge; its note under the line says
+ * which, with the host's reason (Slice 4J, epic decision 49).
  */
 import * as React from 'react';
 import type { LightboxTileProps } from '@components/lightbox/LightboxTiles';
 import { lightboxLensView, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxAnalyzeButton, useLightboxHasCallControls } from '@components/lightbox/LightboxCallButton';
+import { LightboxKeptNote } from '@components/lightbox/LightboxReadingFrame';
+import { LightboxCallLine } from '@components/lightbox/LightboxCallNotes';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxTensionArc: React.FC<LightboxTileProps> = ({ board, bind }) => {
@@ -23,16 +29,30 @@ export const LightboxTensionArc: React.FC<LightboxTileProps> = ({ board, bind })
   const [arc] = lightboxTilesOfKind(board, 'tension-arc');
   const analyze = useLightboxHasCallControls();
   if (arc && view.phase === 'ok') {
+    const kept = view.reanalyzing || view.earlier !== undefined;
+    return (
+      <>
+        <div className="pm-lb-tension-row">
+          <LightboxItemButton binding={bind({ kind: 'reading', tileId: arc.id })} className="pm-lb-ribbon-note pm-lb-tension-note">
+            {!analyze && <span className="pm-lb-badge pm-lb-reg-read">read</span>}
+            {view.stale && <span className="pm-lb-badge pm-lb-stale-badge">stale</span>}
+            {kept && <span className="pm-lb-badge pm-lb-earlier-badge">earlier</span>}
+            <span>
+              {view.stale ? 'Tension, as read on an earlier version (scores stand only on unchanged paragraphs): ' : 'Tension, as read: '}
+              {arc.claim}
+            </span>
+          </LightboxItemButton>
+          {analyze && <LightboxAnalyzeButton lens="tension" />}
+        </div>
+        {kept && <div className="pm-lb-tension-kept"><LightboxKeptNote view={view} /></div>}
+      </>
+    );
+  }
+  // Decision 52: the call's own failure or cut is said once, in its note under the run line; the line points there.
+  if (view.callNote) {
     return (
       <div className="pm-lb-tension-row">
-        <LightboxItemButton binding={bind({ kind: 'reading', tileId: arc.id })} className="pm-lb-ribbon-note pm-lb-tension-note">
-          {!analyze && <span className="pm-lb-badge pm-lb-reg-read">read</span>}
-          {view.stale && <span className="pm-lb-badge pm-lb-stale-badge">stale</span>}
-          <span>
-            {view.stale ? 'Tension, as read on an earlier version (scores stand only on unchanged paragraphs): ' : 'Tension, as read: '}
-            {arc.claim}
-          </span>
-        </LightboxItemButton>
+        <LightboxCallLine note={view.callNote} prefix="The tension arc did not come back." />
         {analyze && <LightboxAnalyzeButton lens="tension" />}
       </div>
     );

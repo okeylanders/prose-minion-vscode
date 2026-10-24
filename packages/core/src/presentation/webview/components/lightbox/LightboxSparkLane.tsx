@@ -8,24 +8,28 @@
  * the host, which marks the board's own spark (`LightboxSparkLane`): the lane
  * draws what the board says and keeps no dismissal of its own. The lane
  * shows the honesty states every reading frame does: not read, reading,
- * failed, stale, withheld, and an empty answer with its friction. Its head
- * carries call C's Analyze (Slice 4I, epic decision 43).
+ * failed, stale, withheld, and an empty answer with its friction; and its
+ * earlier sparks stay on show while call C reads them again, and after a
+ * call that did not replace them, said to be the earlier ones (Slice 4J).
+ * Its head carries call C's Analyze (Slice 4I, epic decision 43).
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxSparkTile } from '@messages';
 import type { LightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { supportLabel } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
-import { lightboxLensView, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxLensView, lightboxOwnWithheldBlocks, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 import { lightboxSparkLane } from '@hooks/domain/lightbox/lightboxSparks';
 import { LightboxItemButton, lightboxItemClassName } from '@components/lightbox/LightboxItemButton';
 import {
+  LightboxKeptNote,
   LightboxStaleNote,
   LightboxWithheldBlocks,
   LightboxWithheldClaims
 } from '@components/lightbox/LightboxReadingFrame';
 import { LightboxReadingPlaceholder } from '@components/lightbox/LightboxReadingPlaceholder';
 import { LightboxAnalyzeButton } from '@components/lightbox/LightboxCallButton';
+import { LightboxCallLine } from '@components/lightbox/LightboxCallNotes';
 
 /** What a spark's Bring button shows; absent when the board offers no Bring. */
 export interface LightboxSparkBring {
@@ -49,9 +53,12 @@ export const LightboxSparkLane: React.FC<LightboxSparkLaneProps> = ({ board, bin
   const view = lightboxLensView(board, 'spark');
   const lane = lightboxSparkLane(board);
   const read = view.phase === 'ok';
-  const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
+  const blocks = lightboxOwnWithheldBlocks(view);
+  const nothing = read && !view.callNote && view.tiles.length === 0 && blocks.length === 0 && view.withheldClaims.length === 0;
+  // Decision 52: the call's own failure is said once, in its note under the run line; the lane points there.
+  const pointer = view.callNote && !view.reanalyzing && view.earlier === undefined;
   return (
-    <section className="pm-lb-spark-lane" aria-label="Spark lane">
+    <section className="pm-lb-spark-lane" aria-label="Spark lane" aria-describedby={view.callNote?.id}>
       <div className="pm-lb-spark-head">
         <p className="pm-lb-tile-eyebrow">Spark · open doors</p>
         <span className="pm-lb-spark-note">Offers, not fixes. Nothing here grades the chapter.</span>
@@ -59,10 +66,12 @@ export const LightboxSparkLane: React.FC<LightboxSparkLaneProps> = ({ board, bin
       </div>
       {view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
-      {view.notice && (
+      <LightboxKeptNote view={view} />
+      {pointer && view.callNote && <LightboxCallLine note={view.callNote} />}
+      {view.notice && !view.callNote && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>{view.notice}</p>
       )}
-      <LightboxWithheldBlocks blocks={view.withheldBlocks} />
+      <LightboxWithheldBlocks blocks={blocks} />
       {nothing && (
         <div className="pm-lb-empty-reading">
           <p>No open door: the reading found no question these paragraphs leave open.</p>

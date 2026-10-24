@@ -14,10 +14,12 @@
  *   hovering one lights its cited items' paragraphs, a click pins it;
  * - its standing: stale when anything it cites changed since it was read
  *   (`lightboxOpinionStanding`);
- * - its earlier reading kept while it is analyzed again (epic decision 47):
- *   the old Opinion stays in view, said to be the earlier one, until the new
- *   one lands; after a failed or stopped call it stays, standing and all,
- *   with the reason;
+ * - its earlier reading kept while it is analyzed again (epic decision 47,
+ *   for every run since Slice 4J's decision 49): the old Opinion stays in
+ *   view, said to be the earlier one, until the new one lands; after a call
+ *   that did not replace it (failed, stopped, or withheld) it stays,
+ *   standing and all, under the quiet "Earlier reading" label with the
+ *   reason;
  * - its Analyze in the header (Slice 4I, epic decision 44): group F alone,
  *   on the board as it stands, priced "≈" like every call, its name adding
  *   that its input is counted at the digest limit (PR #166 F-01), and
@@ -36,6 +38,7 @@ import { lightboxLensView, lightboxTilesOfKind } from '@hooks/domain/lightbox/li
 import { lightboxOpinionTileView, type LightboxOpinionTileView } from '@hooks/domain/lightbox/lightboxOpinion';
 import { LIGHTBOX_BOARD_GROUP } from '@shared/constants/lightbox';
 import { LIGHTBOX_OPINION_CHIP, LIGHTBOX_OPINION_RULE } from '@shared/constants/lightboxOpinion';
+import type { LightboxKeepWords } from '@shared/constants/lightboxProvenance';
 import { Icon } from '@components/shared/Icon';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxReadingFrame } from '@components/lightbox/LightboxReadingFrame';
@@ -53,11 +56,11 @@ export interface LightboxOpinionActions {
 }
 
 const WAITING = 'Runs last: it waits for the other readings of this run to land, then weighs the checked board.';
-/** What the frame says beside the earlier Opinion while a new one is weighed, and before a failure's reason (decision 47). */
-export const LIGHTBOX_OPINION_KEEP = {
+/** What the frame says beside the earlier Opinion while a new one is weighed, and before the host's reason (decision 47). */
+export const LIGHTBOX_OPINION_KEEP: LightboxKeepWords = {
   reading: 'Analyzing… This is the earlier Opinion until the new one lands.',
   kept: 'The new Opinion did not land, so the earlier one stays.'
-} as const;
+};
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, actions }) => {
@@ -65,7 +68,7 @@ export const LightboxOpinion: React.FC<LightboxTileProps> = ({ board, bind, acti
   const [tile] = lightboxTilesOfKind(board, 'opinion');
   const opinion = actions?.opinion;
   const model = tile ? lightboxOpinionTileView(board, tile, opinion?.chosen) : undefined;
-  const waiting = lens.phase === 'reading' &&
+  const waiting = (lens.phase === 'reading' || lens.reanalyzing) &&
     board.readings.some((group) => group.group !== LIGHTBOX_BOARD_GROUP && group.status === 'running');
   return (
     <LightboxReadingFrame

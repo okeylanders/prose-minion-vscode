@@ -260,7 +260,13 @@ describe('LightboxReadingRunner', () => {
         reason: 'The reply reached the output ceiling before this block finished. ' +
           'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt.'
       },
-      { kind: 'spark', lens: 'spark', reason: 'The reading returned no spark block.' }
+      // Slice 4J (decision 52): a block it never reached says so, with the same place, so the board says the cut once.
+      {
+        kind: 'spark',
+        lens: 'spark',
+        reason: 'The reply reached the output ceiling before this block began. ' +
+          'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt.'
+      }
     ]);
     // Still saved, with the group's own contract; no warning, since the reply was read.
     expect(capture).toHaveBeenCalledWith(expect.objectContaining({

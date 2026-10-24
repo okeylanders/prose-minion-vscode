@@ -240,12 +240,23 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     expect(within(opinionFrame()).getByRole('button', { name: /^Analyzing…, call F:/ }).getAttribute('aria-disabled')).toBe('true');
     expect(within(opinionFrame()).getByRole('group', { name: 'Choose a view' })).not.toBeNull();
 
-    // Failed, then stopped: the earlier one stays, with the reason after saying so.
+    // Failed, then stopped: the earlier one stays, under the quiet label (Slice 4J's mark); the call's reason is
+    // said once, in call F's note under the run line, which the frame points to and is described by (decision 52).
     const failure = 'The call failed before a reading came back. Press Finish or Analyze to try again.';
-    for (const [status, error] of [['failed', failure], ['cancelled', 'Stopped before this group came back.']] as const) {
-      fromHost(MessageType.LIGHTBOX_BOARD, { board: withF((group) => ({ ...group, status, error })), refusal: null });
+    for (const [status, error, said] of [
+      ['failed', failure, 'this call failed'],
+      ['cancelled', 'Stopped before this group came back.', 'this call was stopped']
+    ] as const) {
+      fromHost(MessageType.LIGHTBOX_BOARD, {
+        board: withF((group) => ({ ...group, status, error, earlierLenses: [{ lens: 'opinion', reason: error }] })),
+        refusal: null
+      });
       expect(opinionFrame().textContent).toContain(headline);
-      expect(within(opinionFrame()).getByText(`${LIGHTBOX_OPINION_KEEP.kept} ${error}`)).not.toBeNull();
+      const note = opinionFrame().querySelector('.pm-lb-earlier-note');
+      expect(note?.textContent).toBe(`Earlier reading · ${said}: see its note by the run line.`);
+      expect(opinionFrame().getAttribute('aria-describedby')).toBe(`${note?.id} pm-lb-call-note-F`);
+      expect(document.getElementById('pm-lb-call-note-F')?.textContent).toContain(error);
+      expect(opinionFrame().textContent).not.toContain(error);
       expect(within(opinionFrame()).queryByText(LIGHTBOX_OPINION_KEEP.reading)).toBeNull();
       expect(within(opinionFrame()).getByRole('button', { name: /^Re-analyze, call F:/ })).not.toBeNull();
     }
@@ -266,7 +277,10 @@ describe('LightboxApp: the Opinion (Slice 4D)', () => {
     expect(opinionFrame().textContent).not.toContain(LIGHTBOX_OPINION_KEEP.reading);
     const failure = 'The call failed before a reading came back. Press Finish or Analyze to try again.';
     fromHost(MessageType.LIGHTBOX_BOARD, { board: none('failed', { error: failure }), refusal: null });
-    expect(within(opinionFrame()).getByRole('alert').textContent).toBe(failure);
+    // Decision 52: the failure is call F's note, once, an alert; the frame says so in a short line.
+    expect(screen.getAllByRole('alert').map((alert) => alert.textContent)).toContain(`Call F · failed ${failure}`);
+    expect(opinionFrame().textContent).toContain('Call F failed: see its note by the run line. Analyze to try again.');
+    expect(opinionFrame().textContent).not.toContain(failure);
   });
 
   it('changes nothing else: every other frame is drawn exactly as on the board with no Opinion', () => {
