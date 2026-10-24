@@ -6,8 +6,8 @@
  *   (`LightboxReadingPrompts`) and serve both the fit and cost estimate and
  *   the call, so the estimate measures what is sent.
  * - **Execution.** The `generateParallelDictionary` pattern: the groups fan
- *   out under bounded concurrency on the **assistant** engine with the
- *   `assistantWithoutResources` policy, each with its own timeout. One group
+ *   out under bounded concurrency on the **Lightbox** engine (Slice 4L) with
+ *   the `assistantWithoutResources` policy, each with its own timeout. One group
  *   failing never sinks another, and usage is summed. Token usage reaches the
  *   processed chip through the engine's own fan-out.
  * - **Lifecycle.** The widget handlers' pattern, per board: one active
@@ -157,9 +157,9 @@ export class LightboxReadingRunner {
     }));
   }
 
-  /** The assistant model as the estimate sees it: its id, live window and live prices. */
+  /** The Lightbox model as the estimate sees it: its id, live window and live prices. */
   modelFacts(): LightboxModelFacts {
-    const model = this.engines.getResolvedModel('assistant');
+    const model = this.engines.getResolvedModel('lightbox');
     if (!model) {
       return {};
     }
@@ -218,7 +218,7 @@ export class LightboxReadingRunner {
     if (this.active.has(boardId)) {
       return { reserved: false, message: ALREADY_READING };
     }
-    if (!this.engines.getEngine('assistant')) {
+    if (!this.engines.getEngine('lightbox')) {
       return { reserved: false, message: NO_API_KEY };
     }
     const run: LightboxActiveRun = {
@@ -289,7 +289,7 @@ export class LightboxReadingRunner {
     // The run names the groups it was reserved for; the calls must be exactly those.
     const reservedCalls = calls.length === state.run.groups.length &&
       calls.every((call, index) => call.group === state.run.groups[index]);
-    const engine = this.engines.getEngine('assistant');
+    const engine = this.engines.getEngine('lightbox');
     if (calls.length === 0 || !reservedCalls || !engine) {
       this.release(reservation);
       const message = calls.length === 0 ? NOTHING_TO_READ : !reservedCalls ? 'The prepared calls are not the ones this press reserved.' : NO_API_KEY;

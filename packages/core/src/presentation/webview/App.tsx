@@ -249,6 +249,8 @@ export const App: React.FC = () => {
           modelOptions={modelsSettings.modelOptions}
           modelSelections={modelsSettings.modelSelections}
           onModelChange={modelsSettings.setModelSelection}
+          followingModelScopes={modelsSettings.followingModelScopes}
+          onFollowModel={modelsSettings.followModelSelection}
           publishing={{
             preset: publishingSettings.publishingPreset,
             trimKey: publishingSettings.publishingTrimKey,

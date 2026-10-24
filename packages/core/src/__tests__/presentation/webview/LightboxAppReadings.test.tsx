@@ -46,8 +46,8 @@ const fromHost = (type: MessageType, payload: object) =>
   });
 
 /** The host's model confirmation, which the real chrome asks for on mount (PR #149 F-03 re-review). */
-const confirmModel = (assistant = 'provider/model-v1') =>
-  fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant } });
+const confirmModel = (lightbox = 'provider/model-v1') =>
+  fromHost(MessageType.MODEL_DATA, { options: [], selections: { lightbox } });
 
 const board = makeBoard(8);
 const running = {

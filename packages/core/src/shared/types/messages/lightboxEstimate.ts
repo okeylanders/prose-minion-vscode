@@ -35,14 +35,14 @@ export interface LightboxRunEstimate {
   boardId: string;
   /**
    * The identity of every input this estimate priced: the board and its
-   * text, the lenses that are on, the context files, and the assistant model
+   * text, the lenses that are on, the context files, and the Lightbox model
    * with its window and prices (PR #149 F-02). Host-computed and opaque. A
    * press names the key of the estimate it was shown, and the host runs it
    * only while that key is still the current one, so a press never inherits
    * another model's price or another input's call count.
    */
   key: string;
-  /** The assistant model the press would use. */
+  /** The Lightbox model the press would use (Slice 4L). */
   model?: string;
   /** The model's live context length; absent when unknown. */
   contextLength?: number;

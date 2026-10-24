@@ -175,3 +175,99 @@ describe('AIResourceManager lifecycle', () => {
     manager.dispose();
   });
 });
+
+/**
+ * The Lightbox's own model scope (Slice 4L): its engine and client are its
+ * own, built by the manager the composition root owns, so a Lightbox model
+ * never moves the assistant engine the Workshop's conversations live on.
+ * Model ids are placeholders; no provider is called.
+ */
+describe('AIResourceManager, the lightbox scope (Slice 4L)', () => {
+  const WORKSHOP = 'placeholder/workshop-model';
+  const WORKSHOP_NEXT = 'placeholder/workshop-model-next';
+  const LIGHTBOX = 'placeholder/lightbox-model';
+  // Disposed even when an expectation fails first, so no engine's cleanup timer outlives its test.
+  const built: AIResourceManager[] = [];
+  afterEach(() => built.splice(0).forEach((manager) => manager.dispose()));
+
+  async function managerWith(configured: Record<string, string | undefined>, apiKey: string | null = 'key') {
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn().mockResolvedValue(apiKey ?? undefined) } as never,
+      { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never
+    );
+    built.push(manager);
+    await manager.ensureInitialized();
+    return manager;
+  }
+
+  it('builds the Lightbox its own engine, on the assistant model while it has none of its own', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP });
+
+    const lightbox = manager.getEngine('lightbox');
+    expect(lightbox).toBeDefined();
+    expect(lightbox).not.toBe(manager.getEngine('assistant'));
+    expect(lightbox?.getModel()).toBe(WORKSHOP);
+    expect(manager.getResolvedModel('lightbox')).toBe(WORKSHOP);
+    manager.dispose();
+  });
+
+  it('hot-swaps only the Lightbox engine when its model is picked, never the assistant engine', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP };
+    const manager = await managerWith(configured);
+    const engines = { assistant: manager.getEngine('assistant'), lightbox: manager.getEngine('lightbox') };
+    const assistantSetModel = jest.spyOn(engines.assistant!, 'setModel');
+
+    configured.lightboxModel = LIGHTBOX;
+    await manager.refreshModelSelections();
+
+    expect(manager.getEngine('lightbox')).toBe(engines.lightbox);
+    expect(engines.lightbox?.getModel()).toBe(LIGHTBOX);
+    expect(manager.getResolvedModel('lightbox')).toBe(LIGHTBOX);
+    expect(assistantSetModel).not.toHaveBeenCalled();
+    expect(engines.assistant?.getModel()).toBe(WORKSHOP);
+    expect(manager.getResolvedModel('assistant')).toBe(WORKSHOP);
+    manager.dispose();
+  });
+
+  it('keeps a Lightbox model that has been set when the assistant model changes', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP, lightboxModel: LIGHTBOX };
+    const manager = await managerWith(configured);
+
+    configured.assistantModel = WORKSHOP_NEXT;
+    await manager.refreshModelSelections();
+
+    expect(manager.getEngine('assistant')?.getModel()).toBe(WORKSHOP_NEXT);
+    expect(manager.getEngine('lightbox')?.getModel()).toBe(LIGHTBOX);
+    expect(manager.getResolvedModel('lightbox')).toBe(LIGHTBOX);
+    manager.dispose();
+  });
+
+  it('follows the assistant model while unset, and again once its own model is cleared', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP };
+    const manager = await managerWith(configured);
+
+    configured.assistantModel = WORKSHOP_NEXT;
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('lightbox')?.getModel()).toBe(WORKSHOP_NEXT);
+
+    configured.lightboxModel = LIGHTBOX;
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('lightbox')?.getModel()).toBe(LIGHTBOX);
+
+    configured.lightboxModel = undefined;
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('lightbox')?.getModel()).toBe(WORKSHOP_NEXT);
+    expect(manager.getResolvedModel('lightbox')).toBe(WORKSHOP_NEXT);
+    manager.dispose();
+  });
+
+  it('has no Lightbox engine without an API key, but still resolves its model for estimates', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }, null);
+
+    expect(manager.getEngine('lightbox')).toBeUndefined();
+    expect(manager.getResolvedModel('lightbox')).toBe(LIGHTBOX);
+    manager.dispose();
+  });
+});

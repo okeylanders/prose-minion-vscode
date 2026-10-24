@@ -1,4 +1,5 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
+import { ConfigurationHandler } from '@/application/handlers/domain/ConfigurationHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -602,7 +603,9 @@ describe('MessageHandler assembly', () => {
     'proseMinion.dictionaryModel',
     'proseMinion.contextModel',
     'proseMinion.categoryModel',
-    'proseMinion.widgetModel'
+    'proseMinion.widgetModel',
+    // Lightbox Slice 4L: the Lightbox's own model, watched like the other five.
+    'proseMinion.lightboxModel'
   ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
@@ -621,6 +624,26 @@ describe('MessageHandler assembly', () => {
     expect(assembly.log.appendLine).toHaveBeenCalledWith(
       '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
     );
+  });
+
+  it('sends MODEL_DATA when the Lightbox model changes in VS Code settings, and not for its own write (Slice 4L)', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const sendModelData = jest.spyOn(ConfigurationHandler.prototype, 'sendModelData').mockResolvedValue(undefined);
+    const lightboxKey = (section: string) => section === 'proseMinion.lightboxModel';
+
+    // A Settings UI edit: no webview wrote it, so this webview hears the new model.
+    handler.handleConfigurationChange(lightboxKey);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    expect(sendModelData).toHaveBeenCalledTimes(1);
+
+    // This webview's own pick: its handler answers it, so the watcher stays quiet.
+    jest.spyOn(ConfigurationHandler.prototype, 'shouldBroadcastConfigChange').mockReturnValue(false);
+    handler.handleConfigurationChange(lightboxKey);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    expect(sendModelData).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshModelSelections).toHaveBeenCalledTimes(2);
+    jest.restoreAllMocks();
   });
 
   it.each([

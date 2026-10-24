@@ -6,7 +6,7 @@
 import * as React from 'react';
 import { ModelScope, ModelOption } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
-import { ModelBrowserModal } from '@components/shared/ModelBrowserModal';
+import { ModelBrowserModal, type ModelBrowserFollow } from '@components/shared/ModelBrowserModal';
 
 interface ModelSelectorProps {
   scope: ModelScope;
@@ -18,6 +18,12 @@ interface ModelSelectorProps {
   label: string;
   helperText?: string;
   disabled?: boolean;
+  /**
+   * A following scope's way back to no model of its own (Lightbox Slice 4L).
+   * While it follows, the trigger names the choice ("Same as Workshop (…)")
+   * and the browser checks that choice, not the model it resolves to.
+   */
+  follow?: ModelBrowserFollow;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -29,13 +35,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onBrowserOpenChange,
   label,
   helperText,
-  disabled = false
+  disabled = false,
+  follow
 }) => {
   const [browserOpen, setBrowserOpen] = React.useState(false);
 
   const selectedValue = value ?? (options.length > 0 ? options[0].id : '');
   const selectedOption = options.find(option => option.id === selectedValue);
-  const selectedLabel = selectedOption?.label ?? selectedValue ?? 'Choose a model';
+  const selectedLabel = follow?.following ? follow.label : selectedOption?.label ?? selectedValue ?? 'Choose a model';
 
   const openBrowser = () => {
     onOpenBrowser?.();
@@ -71,10 +78,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         open={browserOpen}
         scope={scope}
         options={options}
-        value={selectedValue}
+        value={follow?.following ? undefined : selectedValue}
         label={label}
         onClose={closeBrowser}
         onSelect={onChange}
+        follow={follow}
       />
     </div>
   );

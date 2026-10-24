@@ -1,6 +1,14 @@
 import React from 'react';
 import { MessageType, ModelScope, ModelOption } from '@shared/types';
-import { SettingsDataMessage, ModelDataMessage, ClaudeCacheTtl, coerceClaudeCacheTtl } from '@messages';
+import {
+  SettingsDataMessage,
+  ModelDataMessage,
+  ClaudeCacheTtl,
+  coerceClaudeCacheTtl,
+  FollowingModelScope,
+  MODEL_SCOPE_FOLLOWS,
+  isFollowingModelScope
+} from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { CATEGORY_MODELS, DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
@@ -32,11 +40,18 @@ export interface ModelsSettingsState {
   categoryModelOptions: ModelOption[];                  // Category models (curated list)
   categoryOptionsReady: boolean;                        // True once live category options have arrived
   modelSelections: Partial<Record<ModelScope, string>>; // Current selections by scope
+  /**
+   * Following scopes with no model of their own (Lightbox Slice 4L): each
+   * one's `modelSelections` entry is the model of the scope it follows.
+   */
+  followingModelScopes: FollowingModelScope[];
 }
 
 export interface ModelsSettingsActions {
   updateSetting: (key: keyof ModelsSettings, value: any) => void;
   setModelSelection: (scope: ModelScope, modelId: string) => void;
+  /** Give a following scope's own model up, so it follows again ("Same as Workshop"). */
+  followModelSelection: (scope: FollowingModelScope) => void;
   requestModelData: (refresh?: boolean) => void;
   handleSettingsData: (message: SettingsDataMessage) => void;
   handleModelData: (message: ModelDataMessage) => void;
@@ -45,6 +60,7 @@ export interface ModelsSettingsActions {
 export interface ModelsSettingsPersistence {
   modelsSettings: ModelsSettings;
   modelSelections: Partial<Record<ModelScope, string>>;
+  followingModelScopes: FollowingModelScope[];
 }
 
 export type UseModelsSettingsReturn =
@@ -107,6 +123,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     // Support both legacy and standardized persisted keys
     modelsSettings?: ModelsSettings;
     modelSelections?: Partial<Record<ModelScope, string>>;
+    followingModelScopes?: unknown;
   }>();
 
   const defaults: ModelsSettings = {
@@ -147,6 +164,10 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   const [liveCategoryModelOptions, setLiveCategoryModelOptions] = React.useState<ModelOption[]>([]);
   const [modelSelections, setModelSelections] = React.useState<Partial<Record<ModelScope, string>>>(
     persisted?.modelSelections ?? {}
+  );
+  // Unset is the following scopes' default, so a first open follows until the host says otherwise.
+  const [followingModelScopes, setFollowingModelScopes] = React.useState<FollowingModelScope[]>(() =>
+    readFollowingScopes(persisted?.followingModelScopes) ?? defaultFollowingScopes()
   );
 
   // Handle SETTINGS_DATA messages and extract model/agent behavior settings
@@ -220,6 +241,11 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
           return next;
         });
       }
+
+      const following = readFollowingScopes(message.payload.following);
+      if (following) {
+        setFollowingModelScopes(following);
+      }
     }
   }, []);
 
@@ -261,6 +287,10 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
       ...prev,
       [scope]: modelId,
     }));
+    if (isFollowingModelScope(scope)) {
+      // A model picked for a following scope is its own from now on.
+      setFollowingModelScopes(prev => prev.filter(following => following !== scope));
+    }
 
     // Send to backend to persist
     vscode.postMessage({
@@ -276,20 +306,50 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     // Backend will send MODEL_DATA with the updated value after saving
   }, [vscode]);
 
+  // Follow again: optimistically the followed scope's model, until the host confirms it.
+  const followModelSelection = React.useCallback((scope: FollowingModelScope) => {
+    setModelSelections(prev => ({
+      ...prev,
+      [scope]: prev[MODEL_SCOPE_FOLLOWS[scope]],
+    }));
+    setFollowingModelScopes(prev => (prev.includes(scope) ? prev : [...prev, scope]));
+    vscode.postMessage({
+      type: MessageType.SET_MODEL_SELECTION,
+      source: 'webview.hooks.useModelsSettings',
+      payload: {
+        scope,
+        modelId: null,
+      },
+      timestamp: Date.now(),
+    });
+  }, [vscode]);
+
   return {
     settings,
     modelOptions,
     categoryModelOptions: liveCategoryModelOptions.length > 0 ? liveCategoryModelOptions : categoryModelOptions,
     categoryOptionsReady: liveCategoryModelOptions.length > 0,
     modelSelections,
+    followingModelScopes,
     updateSetting,
     setModelSelection,
+    followModelSelection,
     requestModelData,
     handleSettingsData,
     handleModelData,
     persistedState: {
       modelsSettings: settings,
       modelSelections,
+      followingModelScopes,
     }
   };
 };
+
+function defaultFollowingScopes(): FollowingModelScope[] {
+  return Object.keys(MODEL_SCOPE_FOLLOWS) as FollowingModelScope[];
+}
+
+/** A list of following scopes as a message or saved state holds it; undefined when it is not one. */
+function readFollowingScopes(value: unknown): FollowingModelScope[] | undefined {
+  return Array.isArray(value) ? [...new Set(value.filter(isFollowingModelScope))] : undefined;
+}
