@@ -108,12 +108,17 @@ export function lightboxOwnWithheldBlocks(view: Pick<LightboxLensView, 'withheld
 export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): LightboxLensView {
   const group = board.readings.find((candidate) => candidate.group === lightboxLensGroup(lens));
   const view = lensView(group, lens);
-  // Decision 52: what the lens shows that is its call's note's message points there.
-  const note = group ? lightboxBoardCallNote(board, group.group) : undefined;
+  if (!group) {
+    return view;
+  }
+  // Decision 52: what the lens shows that is a note's message points to that note, the note of the very call or cut
+  // its reason came from (PR #170 F-01), never another of its group's.
   const shown = view.phase === 'failed' || view.phase === 'cancelled' ? view.notice : view.earlier;
-  const points = lightboxPointsToCallNote(note, shown) ||
-    (view.tiles.length === 0 && view.withheldBlocks.some((block) => lightboxPointsToCallNote(note, block.reason)));
-  return points && note ? { ...view, callNote: note } : view;
+  const blocks = view.tiles.length === 0 ? view.withheldBlocks.map((block) => block.reason) : [];
+  const note = [shown, ...blocks]
+    .map((reason) => lightboxBoardCallNote(board, group.group, reason))
+    .find((candidate) => candidate !== undefined);
+  return note ? { ...view, callNote: note } : view;
 }
 
 function lensView(group: LightboxReadingGroup | undefined, lens: LightboxLensId): LightboxLensView {
@@ -146,9 +151,11 @@ function lensView(group: LightboxReadingGroup | undefined, lens: LightboxLensId)
       return { ...base, phase: read ? 'ok' : 'not-run', ...kept };
     case 'failed':
     case 'cancelled':
-      // A kept reading says why in its earlier note; a lens the call did not read keeps the group's notice, as before.
+      // A reading the call kept says why in its earlier note. A reading the call never asked for (a sibling of a
+      // lens run on its own) says nothing of it: the call's message is its own lenses' and its note's (PR #170 N-01).
+      // A lens with nothing to show takes the call's failure or stop, as a first read does.
       return read
-        ? { ...base, phase: 'ok', ...(earlier !== undefined ? kept : group.error ? { notice: group.error } : {}) }
+        ? { ...base, phase: 'ok', ...kept }
         : { ...base, phase: group.status, ...(group.error ? { notice: group.error } : {}) };
     case 'not-run':
       return { ...base, phase: 'not-run' };

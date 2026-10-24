@@ -9,9 +9,10 @@ import type { LightboxBoard, LightboxReadingGroup } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import { LIGHTBOX_CUT_INSIDE_REASON, LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import {
-  lightboxCallNoteOf,
   lightboxCallNotes,
+  lightboxCallNotesOf,
   lightboxCallPointer,
+  lightboxCutEvent,
   lightboxPointsToCallNote
 } from '@hooks/domain/lightbox/lightboxCallNotes';
 import { lightboxLensView, lightboxOwnWithheldBlocks } from '@hooks/domain/lightbox/lightboxReadings';
@@ -53,12 +54,12 @@ describe('a lens view over an earlier reading (decision 49)', () => {
 
 describe('a call that did not land, said once (decision 52)', () => {
   it('notes a failed or stopped call by its error, and none for a call being read or landed', () => {
-    expect(lightboxCallNoteOf({ ...emptyLightboxReadingGroup('B'), status: 'failed', error: FAILED })).toEqual({
+    expect(lightboxCallNotesOf({ ...emptyLightboxReadingGroup('B'), status: 'failed', error: FAILED })).toEqual([{
       groups: ['B'], kind: 'failed', label: 'Call B · failed', message: FAILED, id: 'pm-lb-call-note-B'
-    });
-    expect(lightboxCallNoteOf({ ...emptyLightboxReadingGroup('B'), status: 'cancelled', error: 'Stopped.' })).toMatchObject({ kind: 'stopped', label: 'Call B · stopped' });
-    expect(lightboxCallNoteOf(a)).toBeUndefined();
-    expect(lightboxCallNoteOf({ ...a, status: 'running', pending: ['motif'], earlierLenses: [{ lens: 'motif', reason: FAILED }] })).toBeUndefined();
+    }]);
+    expect(lightboxCallNotesOf({ ...emptyLightboxReadingGroup('B'), status: 'cancelled', error: 'Stopped.' })).toMatchObject([{ kind: 'stopped', label: 'Call B · stopped' }]);
+    expect(lightboxCallNotesOf(a)).toEqual([]);
+    expect(lightboxCallNotesOf({ ...a, status: 'running', pending: ['motif'], earlierLenses: [{ lens: 'motif', reason: FAILED }] })).toEqual([]);
   });
 
   it('gathers calls that did not land in the same words into one note, each widget naming its own call', () => {
@@ -80,10 +81,10 @@ describe('a call that did not land, said once (decision 52)', () => {
       withheldBlocks: [{ kind: 'spark', lens: 'spark', reason: unreached }],
       earlierLenses: [{ lens: 'lineage', reason: cut }]
     };
-    expect(lightboxCallNoteOf(c)).toMatchObject({ kind: 'cut-off', label: 'Call C · cut off', message: cut });
-    expect(lightboxCallNoteOf({ ...c, earlierLenses: undefined })).toMatchObject({ message: unreached });
-    expect(lightboxPointsToCallNote(lightboxCallNoteOf(c), unreached)).toBe(true);
-    expect(lightboxPointsToCallNote(lightboxCallNoteOf(c), 'The spark block broke the format: x.')).toBe(false);
+    expect(lightboxCallNotesOf(c)).toMatchObject([{ kind: 'cut-off', label: 'Call C · cut off', message: cut }]);
+    expect(lightboxCallNotesOf({ ...c, earlierLenses: undefined })).toMatchObject([{ message: unreached }]);
+    expect(lightboxPointsToCallNote(lightboxCallNotesOf(c)[0], unreached)).toBe(true);
+    expect(lightboxPointsToCallNote(lightboxCallNotesOf(c)[0], 'The spark block broke the format: x.')).toBe(false);
   });
 
   it('points a lens to the note when what it shows is the note\'s message, and words its short line', () => {
@@ -112,6 +113,78 @@ describe('a call that did not land, said once (decision 52)', () => {
     expect(lightboxCallNotes(board)).toEqual([]);
     expect(lightboxLensView(board, 'motif')).toMatchObject({ earlier: FAILED });
     expect(lightboxLensView(board, 'motif').callNote).toBeUndefined();
+  });
+});
+
+describe('a note is one call or one cut, and a failure is its own lenses\' (PR #170)', () => {
+  const CALL_1 = 'Complete response saved for recovery at /workspace/recovery/call-1.response.txt.';
+  const CALL_2 = 'Complete response saved for recovery at /workspace/recovery/call-2.response.txt.';
+  const inside = (saved: string) => `${LIGHTBOX_CUT_INSIDE_REASON} ${saved}`;
+  const before = (saved: string) => `${LIGHTBOX_CUT_BEFORE_REASON} ${saved}`;
+
+  it('F-01: knows a cut by the place its reply was saved', () => {
+    expect(lightboxCutEvent(inside(CALL_1))).toBe(CALL_1);
+    expect(lightboxCutEvent(before(CALL_1))).toBe(CALL_1);
+    expect(lightboxCutEvent(FAILED)).toBeUndefined();
+  });
+
+  it('F-01: two cut replies, each kept by its own lens, are two notes, and each lens points to its own reply\'s', () => {
+    const board = withA({ ...a, earlierLenses: [{ lens: 'motif', reason: inside(CALL_1) }, { lens: 'tension', reason: inside(CALL_2) }] });
+    const notes = lightboxCallNotes(board);
+    expect(notes.map((note) => [note.id, note.label, note.message])).toEqual([
+      ['pm-lb-call-note-A', 'Call A · cut off (Theme & motif)', inside(CALL_1)],
+      ['pm-lb-call-note-A-2', 'Call A · cut off (Tension arc)', inside(CALL_2)]
+    ]);
+    expect(lightboxLensView(board, 'motif').callNote?.id).toBe('pm-lb-call-note-A');
+    expect(lightboxLensView(board, 'tension').callNote?.id).toBe('pm-lb-call-note-A-2');
+    expect(lightboxPointsToCallNote(notes[0], inside(CALL_2))).toBe(false);
+    expect(lightboxPointsToCallNote(notes[1], before(CALL_2))).toBe(true);
+  });
+
+  it('F-01 control: one cut reply that touched several lenses is one note, and every lens it touched points to it', () => {
+    const board = withA({
+      ...a,
+      earlierLenses: [
+        { lens: 'motif', reason: inside(CALL_1) },
+        { lens: 'tension', reason: before(CALL_1) },
+        { lens: 'gravity', reason: before(CALL_1) },
+        { lens: 'palette', reason: before(CALL_1) }
+      ]
+    });
+    expect(lightboxCallNotes(board)).toEqual([{ groups: ['A'], kind: 'cut-off', label: 'Call A · cut off', message: inside(CALL_1), id: 'pm-lb-call-note-A' }]);
+    for (const lens of ['motif', 'tension', 'gravity', 'palette'] as const) {
+      expect(lightboxLensView(board, lens).callNote?.id).toBe('pm-lb-call-note-A');
+    }
+  });
+
+  it('F-01: a failed call\'s note and an older cut\'s stand apart, each lens pointing to the one its reason is', () => {
+    const board = withA({ ...a, status: 'failed', error: FAILED, earlierLenses: [{ lens: 'motif', reason: inside(CALL_1) }, { lens: 'tension', reason: FAILED }] });
+    expect(lightboxCallNotes(board).map((note) => note.label)).toEqual(['Call A · failed', 'Call A · cut off (Theme & motif)']);
+    expect(lightboxLensView(board, 'tension').callNote?.kind).toBe('failed');
+    expect(lightboxLensView(board, 'motif').callNote?.message).toBe(inside(CALL_1));
+  });
+
+  it('N-01: a lens run on its own fails, and its siblings, never asked for, say nothing of it', () => {
+    const board = withA({ ...a, status: 'failed', error: FAILED, earlierLenses: [{ lens: 'motif', reason: FAILED }] });
+    expect(lightboxLensView(board, 'motif')).toMatchObject({ phase: 'ok', earlier: FAILED, callNote: { id: 'pm-lb-call-note-A' } });
+    for (const lens of ['headline', 'tension', 'gravity', 'palette'] as const) {
+      const view = lightboxLensView(board, lens);
+      expect(view.phase).toBe('ok');
+      expect([view.notice, view.earlier, view.callNote]).toEqual([undefined, undefined, undefined]);
+    }
+    expect(lightboxCallNotes(board).map((note) => note.message)).toEqual([FAILED]);
+  });
+
+  it('N-01 control: a lens the call left with nothing points to the note; a sibling with its reading does not', () => {
+    const board = withA({
+      ...a,
+      tiles: a.tiles.filter((tile) => tile.lens !== 'motif'),
+      lenses: a.lenses.filter((lens) => lens !== 'motif'),
+      status: 'cancelled',
+      error: 'Stopped before this group came back.'
+    });
+    expect(lightboxLensView(board, 'motif')).toMatchObject({ phase: 'cancelled', callNote: { kind: 'stopped' } });
+    expect(lightboxLensView(board, 'gravity').callNote).toBeUndefined();
   });
 });
 

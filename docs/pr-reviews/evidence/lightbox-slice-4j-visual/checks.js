@@ -10,7 +10,10 @@
  * Decision 52: each call that failed, was stopped or was cut off is said
  * once, in a note under the run line, its whole message there and nowhere
  * else on the board; a widget of the call whose state is that message
- * points to the note in a short line.
+ * points to the note in a short line. A note is one call's failure or stop,
+ * or one cut reply (known by where it was saved), never every reason of a
+ * group (PR #170 F-01); a lens the failed call never read says nothing of
+ * it (N-01).
  *
  * The words are read from the code that says them: the keep words and the
  * label from `lightboxProvenance.ts`, the Opinion's from `LightboxOpinion.tsx`,
@@ -41,28 +44,60 @@ const KINDS = {
 const groupOf = (board, id) => board.readings.find((group) => group.group === id);
 const hasReading = (group, lens) => group.tiles.some((tile) => tile.lens === lens);
 
-/** Each call that did not land, in run order; calls that did not land in the same words share one note. */
-function callNotes(board) {
+/** Which cut a reason says: what follows its first sentence, the place its reply was saved (PR #170 F-01). */
+function cutEvent(reason) {
+  if (!reason.startsWith(CEILING_PREFIX)) { return undefined; }
+  const lead = [`${CEILING_PREFIX} finished.`, `${CEILING_PREFIX} began.`].find((sentence) => reason.startsWith(sentence));
+  return lead ? reason.slice(lead.length).trim() : reason;
+}
+
+/**
+ * Each note, in run order: a group's latest call that failed or stopped, then
+ * each cut reply whose reasons it still shows (one note per saved reply, PR
+ * #170 F-01); notes in the same words share one.
+ */
+function callNotes(board, lenses) {
+  const order = Object.keys(lenses);
   const notes = [];
   for (const id of GROUPS) {
     const group = groupOf(board, id);
-    let note;
-    if (group.status === 'failed' || group.status === 'cancelled') {
-      note = group.error ? { kind: group.status === 'failed' ? 'failed' : 'stopped', message: group.error } : undefined;
-    } else if (group.status === 'ok') {
-      const reasons = [...group.withheldBlocks.map((block) => block.reason), ...(group.earlierLenses || []).map((mark) => mark.reason)]
-        .filter((reason) => reason.startsWith(CEILING_PREFIX));
-      note = reasons.length > 0 ? { kind: 'cut-off', message: reasons.sort((a, b) => (a.includes(' finished.') ? 0 : 1) - (b.includes(' finished.') ? 0 : 1))[0] } : undefined;
+    if (group.status === 'running' || group.status === 'not-run') { continue; }
+    const found = [];
+    if ((group.status === 'failed' || group.status === 'cancelled') && group.error) {
+      found.push({ kind: group.status === 'failed' ? 'failed' : 'stopped', message: group.error, lenses: [] });
     }
-    if (!note) { continue; }
-    const same = notes.find((entry) => entry.kind === note.kind && entry.message === note.message);
-    if (same) { same.groups.push(id); } else { notes.push({ ...note, groups: [id] }); }
+    const cuts = new Map();
+    [...group.withheldBlocks, ...(group.earlierLenses || [])]
+      .filter((entry) => entry.reason.startsWith(CEILING_PREFIX))
+      .map((entry, index) => ({ entry, index }))
+      .sort((x, y) => order.indexOf(x.entry.lens) - order.indexOf(y.entry.lens) || x.index - y.index)
+      .forEach(({ entry }) => {
+        const event = cutEvent(entry.reason);
+        const cut = cuts.get(event) || { reasons: [], lenses: [] };
+        cut.reasons.push(entry.reason);
+        if (!cut.lenses.includes(entry.lens)) { cut.lenses.push(entry.lens); }
+        cuts.set(event, cut);
+      });
+    for (const cut of cuts.values()) {
+      found.push({ kind: 'cut-off', message: cut.reasons.find((reason) => reason.includes(' finished.')) || cut.reasons[0], lenses: cut.lenses });
+    }
+    for (const note of found) {
+      const label = `Call ${id} · ${KINDS[note.kind].label}${found.length > 1 && note.lenses.length > 0 ? ` (${note.lenses.map((lens) => lenses[lens].label).join(', ')})` : ''}`;
+      const same = notes.find((entry) => entry.kind === note.kind && entry.message === note.message);
+      if (same) {
+        same.groups.push(id);
+        same.label = `Calls ${same.groups.join(', ')} · ${KINDS[note.kind].label}`;
+      } else {
+        notes.push({ kind: note.kind, message: note.message, groups: [id], label });
+      }
+    }
   }
-  return notes.map((note) => ({
-    ...note,
-    label: `${note.groups.length > 1 ? 'Calls' : 'Call'} ${note.groups.join(', ')} · ${KINDS[note.kind].label}`
-  }));
+  return notes;
 }
+
+/** Whether a reason is a note's: the same message, or for a cut, the same saved reply. */
+const pointsTo = (note, reason) => reason !== undefined
+  && (note.kind === 'cut-off' ? cutEvent(reason) === cutEvent(note.message) : reason === note.message);
 
 /** What a lens's widget must say, from the host's board. */
 function expectedLens(board, lenses, lens) {
@@ -70,20 +105,22 @@ function expectedLens(board, lenses, lens) {
   const group = groupOf(board, id);
   const reading = hasReading(group, lens);
   const words = lens === 'opinion' ? OPINION_KEEP : KEEP;
-  const note = callNotes(board).find((entry) => entry.groups.includes(id));
-  const points = (reason) => note && reason !== undefined && (reason === note.message || (note.kind === 'cut-off' && reason.startsWith(CEILING_PREFIX)));
+  const noteFor = (reason) => callNotes(board, lenses).find((entry) => entry.groups.includes(id) && pointsTo(entry, reason));
   if (group.status === 'running' && (group.pending || []).includes(lens)) {
     return reading ? { state: 'reanalyzing', text: words.reading } : { state: 'reading' };
   }
   const mark = reading ? (group.earlierLenses || []).find((entry) => entry.lens === lens) : undefined;
   if (mark) {
+    const note = noteFor(mark.reason);
     return {
       state: 'earlier',
-      text: points(mark.reason) ? `${LABEL} · ${KINDS[note.kind].earlier}: see its note by the run line.` : `${LABEL} ${words.kept} ${mark.reason}`,
-      note: points(mark.reason) ? note : undefined
+      text: note ? `${LABEL} · ${KINDS[note.kind].earlier}: see its note by the run line.` : `${LABEL} ${words.kept} ${mark.reason}`,
+      note
     };
   }
-  if (!reading && note && (group.status === 'failed' || group.status === 'cancelled') && !group.lenses.includes(lens)) {
+  // A lens the failed or stopped call left with nothing points to its note; a sibling it never read says nothing of it (PR #170 N-01).
+  const note = !reading && (group.status === 'failed' || group.status === 'cancelled') && !group.lenses.includes(lens) ? noteFor(group.error) : undefined;
+  if (note) {
     return { state: 'pointer', text: `Call ${id} ${KINDS[note.kind].short}: see its note by the run line. Analyze to try again.`, note };
   }
   return { state: reading ? 'latest' : 'none' };
@@ -138,7 +175,7 @@ function widgetProbe() {
 function keepFaults(probe, board, lenses) {
   const out = [];
   const count = (text, part) => text.split(part).length - 1;
-  const notes = callNotes(board);
+  const notes = callNotes(board, lenses);
   const shown = probe.notes.map((note) => note.text);
   const want = notes.map((note) => `${note.label} ${note.message}`);
   if (JSON.stringify(shown) !== JSON.stringify(want)) { out.push(`the call notes are ${JSON.stringify(shown)}, not ${JSON.stringify(want)}`); }
