@@ -184,10 +184,14 @@ export interface DocumentTextEdit {
   readonly label: string;          // Refactor Preview grouping
 }
 
+// Amended 2026-10-25 (Slice 2): no version (the applier reads it from its
+// watch), and a closed document or a refusal is said.
 export type DocumentApplyOutcome =
-  | { kind: 'submitted'; version: number }   // the host accepted the edit (possibly a preview subset)
+  | { kind: 'submitted' }                    // the host made the edit, or the subset the writer ticked
   | { kind: 'declined' }                     // the writer discarded the preview
-  | { kind: 'stale'; version: number };      // the buffer moved past expectedVersion
+  | { kind: 'stale' }                        // the buffer moved past expectedVersion
+  | { kind: 'closed' }
+  | { kind: 'failed'; message: string };
 
 export interface DocumentEditor {
   // Amended 2026-10-25 (PR #171 F-03, F-04): the read half is a watch on one
@@ -208,6 +212,8 @@ export interface DocumentAnnotation {
   readonly severity: 'info' | 'warning';
   readonly code: string;           // e.g. 'proofread.tense'
   readonly message: string;
+  // Amended 2026-10-25 (Slice 2): the quick fix's replacement, routed back to core by id.
+  readonly fix?: { readonly replacement: string; readonly preferred: boolean };
 }
 
 export interface IssueAnnotator {
@@ -216,6 +222,8 @@ export interface IssueAnnotator {
   /** Withdraw some annotations (Dismiss), wherever the writer's edits have since moved them. */
   remove(uri: string, ids: readonly string[]): void;
   clear(uri?: string): void;
+  /** Amended 2026-10-25 (Slice 2): where shown annotations sit now, for a quick fix. */
+  current(uri: string): { version: number; annotations: readonly DocumentAnnotation[] } | undefined;
 }
 ```
 
@@ -710,7 +718,9 @@ Slices follow the feature's sequencing:
    D4, D5 (gesture), and D8 (Fix).
    - Spike first: confirm how `applyEdit` resolves when the preview is
      discarded, and what VS Code does when the buffer changes while the
-     preview is open. D4's reconciliation must hold either way.
+     preview is open. D4's reconciliation must hold either way. Done from
+     VS Code's source: see [Amendment 2026-10-25: Slice 2, the write
+     side](#amendment-2026-10-25-slice-2-the-write-side).
 3. **Polish:** submenu, spelling convention, cost in the summary.
 4. **Workshop Proofread button:** D5 (confined path), D9.
 5. **Apply to Draft:** D11, each pass a new row.
@@ -763,6 +773,76 @@ decision above:
 | F-04: a reply could draw flags after the document closed | D3: the read half is a watch bound to one document lifetime. A run whose document closed returns `closed` and shows nothing; one whose document moved before it started returns `changed` and sends nothing. |
 | F-05: a call with no usage record made a partial cost look whole | A cost or cache total needs every call's record; `requestCount` counts every call (`utils/tokenUsage.ts`). |
 | F-06: a failed recovery save was called saved | A rejected chunk carries whether its capture was saved; the outcome counts `saved` and `unsaved`, and the summary says which. D4's outcome sketch's `rejectedChunks` is that pair. |
+
+## Amendment 2026-10-25: Slice 2, the write side
+
+### The spike: what `workspace.applyEdit` does
+
+No VS Code could be downloaded in the build environment (its network policy
+denies the update host), so the spike read VS Code's own source instead. It
+read the bulk-edit service, the Refactor Preview pane and contribution, the
+conflict detector and the text-edit task, at `main` (`4f383697`) and at
+`1.82.0`, this extension's engine floor. Both read the same:
+
+| Question | What VS Code does | Source |
+|---|---|---|
+| The writer discards the preview | The pane resolves with nothing, no edit is made, and `applyEdit` resolves `false` | [`bulkEditPane.ts` `_done`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPane.ts), [`bulkEditService.ts` `apply`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/bulkEditService.ts) |
+| The writer applies the preview | Only the ticked entries are made; `true` when any was | the same, `isApplied: edits.length > 0` |
+| The buffer changes while the preview is open | A conflict: Apply shows "Cannot apply refactoring because … has changed in the meantime", nothing is made, `false` | [`conflicts.ts`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/conflicts.ts), `bulkEditPane.ts` `accept` |
+| The buffer moves after the extension's own check | Each text edit carries the document's version from the extension host; VS Code refuses a stale one ("has changed in the meantime"), `false` | [`extHostTypeConverters.ts`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/api/common/extHostTypeConverters.ts), [`bulkTextEdits.ts`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/bulkTextEdits.ts) |
+| Entries marked `needsConfirmation` | They open **unticked**; Apply stays disabled until one is ticked. It is the only way an extension can open the preview | [`bulkEditPreview.ts` `_init`](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPreview.ts) ([1.82.0](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPreview.ts)) |
+| An edit to the active editor's document | VS Code may make it "more minimal" first: one replacement can arrive as smaller changes inside its range (at 1.82.0 always; at `main` unless the entry carries metadata) | `bulkTextEdits.ts` `_createEditsTasks` |
+
+### What changed in the decisions above
+
+- **D3, the outcome.** `DocumentApplyOutcome` is `submitted`, `declined`,
+  `stale`, `closed` or `failed`, with no version: the applier reads the live
+  version from its own watch. `false` is told apart by the document: closed,
+  moved (`stale`), or neither (`declined` in review, `failed` direct).
+- **D3, the annotator.** `DocumentAnnotation` carries an optional `fix`
+  (replacement, and whether it is preferred), and `IssueAnnotator.current`
+  says where a document's shown annotations sit now. A quick fix asks it
+  before core writes, because the annotator moves shown flags as the writer
+  types (D3), and core never writes from a stale range (D6).
+- **D4 step 5, retry.** A `stale` direct apply follows its edits through the
+  writer's typing and asks once more. A reviewed one never does: the writer
+  was editing during review, and a second preview would be a surprise.
+- **D4 step 7, reconcile.** What landed is read by following each edit's
+  range through every change since the edits' version
+  (`utils/draftEdit/reconcileEdits.ts`), never by searching for its words. A
+  change inside a range, edges included, is taken into it: that is where
+  VS Code's smaller edits land. A change across an edge breaks it. Then the
+  replacement standing there reads as `applied`, the original as
+  `not-applied`, anything else as `unknown`. Edits that touch are joined
+  into one before asking, so every change belongs to exactly one of them.
+- **D4, the refusals.** The applier refuses, and counts, an edit whose text
+  is no longer its original, one inside a protected region of the live text,
+  one that would change a line break (`utils/draftEdit/lineBreaks.ts`: the
+  changed text, between the common prefix and suffix, holds none; counting
+  them was not enough, PR #171), and one overlapping an earlier edit.
+- **D6, the guard.** A fix that adds or removes a Markdown markup character
+  (a backtick, `|`, `<`, `>`, `*`, `_`, `~`, `[`, `]`, `#`, or a backslash)
+  is flagged instead (`markup-change`). Letters unchanged is not enough once
+  Fix writes: a backtick turns prose into code, a pipe splits a table cell.
+  Anchoring refuses a normalized match that ends inside one character's
+  expansion, so `Wait.` never anchors on `Wait…` (PR #171).
+- **D7, review, decided 2026-10-25 by the writer.** Fix goes through Refactor
+  Preview by default, its entries unticked as VS Code opens them: nothing
+  changes until the writer ticks the file (all fixes) or single fixes, then
+  Apply. The progress line says so while the preview is open. A Discard, an
+  untick, or a refusal flags the fix where its text stands after; a fix the
+  writer rewrote during review is left as they wrote it.
+  `proseMinion.proofread.fixReview: apply` applies at once instead. *Fix
+  all* honors the setting; a single *Replace with '…'* applies at once,
+  since choosing it is the review. It is preferred only for a fix Proofread
+  would make itself; a judgment call's suggestion is offered, never
+  preferred, and never applied by Fix or *Fix all*.
+- **The setting** is a VS Code setting, read at the gesture, with no
+  Settings Overlay row, like the Workshop's settings: it governs an editor
+  command, not a sidebar tool.
+- **Known limit.** Once the preview is open, the progress notification's
+  Cancel cannot close it: the extension API has no call for that. The writer
+  applies or discards in the preview.
 
 ## Out of scope (follow-ups)
 

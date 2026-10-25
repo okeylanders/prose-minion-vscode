@@ -39,8 +39,8 @@ Core defines host-agnostic ports in `packages/core/src/platform/`. The VS Code a
 | `Workspace` | Workspace folder + glob discovery |
 | `ShellService` | Subprocess execution (future MCP) |
 | `EditorContext` | Active editor selection + source metadata |
-| `DocumentEditor` | A watch on one lifetime of an open document: its edits and live buffer, or closed (Draft Edit; writes arrive with Proofread and Fix) |
-| `IssueAnnotator` | Draft Edit's flags on a document, without changing it (diagnostics in VS Code) |
+| `DocumentEditor` | A watch on one lifetime of an open document (its edits and live buffer, or closed), and one reviewed or direct change to it (Draft Edit) |
+| `IssueAnnotator` | Draft Edit's flags on a document, without changing it, and where they sit now for a quick fix (diagnostics and code actions in VS Code) |
 
 All ports are composed into a single `Platform` bundle at the composition root.
 
@@ -459,7 +459,7 @@ host and webview independence tests.
 
 Draft Edit turns intent into anchored, reviewable edits on the writer's own
 document ([ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md)).
-Proofread is its first pass; in Slice 1 it only flags.
+Proofread is its first pass: it flags (Slice 1) or fixes (Slice 2).
 
 - **Passes are policies.** `DRAFT_EDIT_PASS_POLICIES` is an exhaustive
   `Record` over `DraftEditPass['kind']`. A new pass adds a union member, a
@@ -472,12 +472,19 @@ Proofread is its first pass; in Slice 1 it only flags.
   boundaries, and anchors each quote deterministically, failing closed on
   ambiguity. The Proofread guard (`utils/proofread/`) decides fix vs. flag
   by category and edit size.
-- **One run, one door.** `DraftEditUseCase` alone reaches the
-  `DocumentEditor` and `IssueAnnotator` ports, and a boundary test enforces
-  it. A run watches its open document from the version it read: each flag
-  follows its own occurrence through the writer's edits, the live text's
-  protected regions are found again, and a document that closed shows
-  nothing, so a flag is never drawn on moved, protected, or reopened text.
+- **One run, one door.** `DraftEditUseCase` and `DraftEditApplier` alone
+  reach the `DocumentEditor` and `IssueAnnotator` ports, and only the
+  applier writes (`applyEdits`); boundary tests enforce both. A run watches
+  its open document from the version it read: each flag follows its own
+  occurrence through the writer's edits, the live text's protected regions
+  are found again, and a document that closed shows nothing, so a flag is
+  never drawn on moved, protected, or reopened text.
+- **Writes are read back.** The applier makes one change (one undo step,
+  through Refactor Preview by default), never saves, and reads what landed
+  by following each edit's range through the document's changes, never from
+  the host's answer. A fix that did not land is flagged where its text
+  stands. The quick fixes (*Replace with*, *Fix all*) are commands into core
+  that ask the annotator where their flag sits, then go through the applier.
 - **Its own model scope.** `proofread` is an own scope in
   `ModelScopeSelections` with an inexpensive default. `ProofreadService` calls
   it at temperature 0, reads replies with the shared `parseModelJson`, and

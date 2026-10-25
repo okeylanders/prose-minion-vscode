@@ -105,7 +105,7 @@ export type ProofreadCommandOutcome =
   | { readonly kind: 'ran'; readonly outcome: DraftEditOutcome };
 
 /** Refactor Preview's own words: VS Code lists the fixes unticked. */
-export const REVIEW_HINT = 'Review the fixes in Refactor Preview: tick the file to take them all, then Apply (or Discard).';
+export const REVIEW_HINT = 'Review the fixes in Refactor Preview: tick the file to take them all, or tick them one by one, then Apply. Discard keeps them as flags.';
 
 export function proofreadAndFlag(host: ProofreadCommandHost, runner: ProofreadRunner): Promise<ProofreadCommandOutcome> {
   return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'flag' });

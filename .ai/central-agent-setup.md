@@ -1548,9 +1548,27 @@ writer's own document:
 - **Quotes, not offsets.** A model returns quoted text with context; host code
   anchors it (`utils/draftEdit/anchorEdits.ts`) and fails closed on
   ambiguity. Never ask a model for offsets or line numbers.
-- **One door.** Only `DraftEditUseCase` (and, from Slice 2, its applier) may
-  reach `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
-  members; `boundaries.test.ts` enforces it. Widgets stay write-free.
+- **One door.** Only `DraftEditUseCase` and `DraftEditApplier` may reach
+  `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
+  members, and only the applier calls `applyEdits`; `boundaries.test.ts`
+  enforces both. Widgets stay write-free. Never build a `WorkspaceEdit` for
+  the writer's text anywhere else: a quick fix is a command into core.
+- **A write is read back, never trusted** (Slice 2; the ADR's Slice 2
+  amendment). The applier makes one change (one undo step), never saves, and
+  reads what landed by following each edit's range through the document's
+  changes (`reconcileEdits`). VS Code's boolean only says something landed:
+  the writer ticks entries in Refactor Preview (they open unticked), and
+  VS Code may split a replacement into smaller edits. Edits that touch are
+  joined first. A fix that did not land is flagged where its text stands;
+  one the writer rewrote is left alone. A quick fix asks
+  `IssueAnnotator.current` where its flag sits now, then goes through the
+  applier.
+- **What a fix may change.** Never a line break (`changesLineBreaks`: the
+  changed text between the common prefix and suffix holds none), and never a
+  Markdown markup character (the guard's `markup-change`). An anchor never
+  ends inside a normalized expansion (`Wait.` is not `Wait…`). Tense and
+  agreement are only ever flagged; a judgment call's suggestion is applied
+  only by its own *Replace with*.
 - **Live text wins, one lifetime.** A run watches its open document from
   the version it read (`DocumentEditor.watch`). Findings follow their own
   occurrence through the writer's edits, never a fresh search; what an edit

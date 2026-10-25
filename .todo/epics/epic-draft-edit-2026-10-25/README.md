@@ -1,6 +1,6 @@
 # Epic: Draft Edit
 
-**Status:** In progress. Slice 1 built and in review.
+**Status:** In progress. Slice 1 merged (PR #171); Slice 2 built and in review.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -60,8 +60,8 @@ bubbles, then Apply Recommendations and Apply Variation.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | Feature notes, ADR (Accepted), this epic; `epic/lightbox` merged in; recovery registry moved (`d058e8d2`) | Done |
-| 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Built; in review |
-| 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Planned |
+| 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
+| 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Built; in review |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, summary refinements | Planned |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
@@ -137,3 +137,15 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
 - **2026-10-25. PR #171 review fixes.** Astra's six blocking findings
   (F-01 to F-06) are fixed with regression tests. See the slice's "Review
   fixes" and the ADR's "Amendment 2026-10-25".
+- **2026-10-25. Slice 1 merged** into `epic/lightbox` as `e3a7fac0`, after
+  Astra's third re-review closed every finding. The writer ran Flag in their
+  editor and reported it working, so the default Proofread model stays.
+- **2026-10-25. Slice 2 built.**
+  - The write-side hardening from PR #171's review (`a013267d`).
+  - `DocumentEditor.applyEdits` and its VS Code adapter (`3fee84d0`).
+  - `DraftEditApplier` and `reconcileEdits` (`c2d2a0c9`).
+  - Proofread and Fix, and the quick fixes (`924a481f`).
+  - The Refactor Preview spike, read from VS Code's source, is in the ADR's
+    Slice 2 amendment. The writer chose review with the fixes unticked, as
+    VS Code opens them.
+
