@@ -301,3 +301,57 @@ pass there**, the ordinary legacy cases included.
 Module sizes: `LightboxReadingState.ts` 299 lines,
 `lightboxProvenance.ts` (constants) 130, (types) 51. No live or billable
 call; *Alice* fixtures only; model ids are placeholders.
+
+## Final independent re-review — provenance presence and actual 4L integration (2026-10-25)
+
+**Reviewer:** Astra. **Reviewed head:** `2f4ec86fb60122417dbc7af2b2533af8062a93c8`. **Base and verified merge-base:** `f75ed80f55bd6c8a99ab4f1a967edefe75109606`. Merge `a18150ce` integrates the corrected #169; `214be5d2` fixes the remaining provenance boundary. The complete delta from the preceding report commit `f2caad2b` is 122 files, +8,433 / −227, including the integration's evidence and documentation. All preceding review text and both author responses remain unchanged.
+
+**F-02 is closed. No new blocking finding was established on this integrated head.** This supersedes the preceding request-changes disposition. F-01 and N-01 remain closed. This is an independent code-review conclusion, not a formal GitHub approval or permission to merge.
+
+### Provenance correction
+
+The correction now distinguishes a genuinely legacy **absent** `provenance` field from a modern field that is present, even as `[]`. Only the former may supply its old group model to a retained reading. A missing modern origin becomes `{ lens }`, which truthfully records an unknown model without inventing a run/time. Both settlement and clearing a no-tile lens preserve an existing empty field. The getter, codec and subsequent transitions agree on that distinction.
+
+Independent evidence:
+
+- **All three retained failing host witnesses now pass:** a well-shaped partial list missing the motif, one malformed half-entry dropped by the codec, and every entry malformed/dropped. Each runs the real codec, handlers, runner, store and fresh-host reload. The untouched motif keeps exactly its original tile data; its origin is unknown on open and remains unknown after a headline-only v3 rerun and save/reload. The saved motif entry is `{ lens: 'motif' }`, the inspector has no false model line, and the isolated saved-board row lists only v3. No attempt is made to recover discarded v1 metadata.
+- **Both ordinary legacy controls remain green:** an absent-field format-1 board snapshots the old model before the group's model advances, through partial group and headline-only reruns, save/reload, inspector and saved row. Model-only origins retain no invented run/time. Existing full provenance remains untouched for kept readings.
+- **Two additional transition controls pass:** clearing the only surviving entry while an unknown sibling still has tiles retains `[]` through Stop, codec roundtrip and a later successful rerun; a running source carry followed by an older owed save preserves its captured present-empty origins despite a later known landing.
+- The source audit also followed failed settlement, ordinary/Opinion carry, same-text measurement filtering, spark edits and `owedBoard`. Their group copies preserve field presence. Repository failure, repeated-rerun, codec/empty-array and earlier-mark validation controls pass in the full suite. No remaining false-origin transition was established.
+
+### Combined #169 and retained #168 behavior
+
+The actual integrated manager, model-scope resolver and runner are byte-identical to the corrected `f75ed80f` base. The shared handler and UI changes retain 4J's keep-until-replaced semantics while using the `lightbox` selection for engine access, confirmed estimates and controls. Landing provenance continues to use the engine's provider-reported outcome model, not the picker label.
+
+- Reran the retained **seven manager lifecycle/race scenarios** and **six production-host scenarios with real `p-limit` at default concurrency**, transport stubbed: clear, replacement with overlapping refreshes, kept key, no-key then add, Stop, and clear plus Stop. Already-sent A may land; a retired engine starts no deferred Opinion transport; a fresh press after replacement uses the replacement placeholder credential and newly selected model. The retired engine stays detached.
+- Added the same **six combined scenarios with prior A and Opinion readings already present**. The prior Opinion and its provenance survive failed/refused/stopped replacement, with its earlier reason. Disabled A siblings retain their exact tiles and origins. Stop preserves the earlier A reading too. Each resulting board passes the actual persistence codec roundtrip without drops. These probes exercise host/manager/runner behavior, not a live provider or native SecretStorage timing guarantee.
+- Regenerated the model-scope host states and exercised the exact rebuilt bundle's Lightbox picker/follow choice, cancellation/reopening, focus return, external setting synchronization, Settings row and Workshop cache indicator. Picking Lightbox does not change the Workshop model or clear that indicator. This is application-state/cache-indicator isolation, not proof of a provider-side cache hit. The prior documented per-call model-hot-swap behavior remains unchanged; this review does not claim run-wide model pinning.
+- The repaired #168 parser, token reader, block re-nester, frame and decoder still match the integrated base. The **eight retained repair-boundary assertions** and the combined duplicate-summary cut → paired template/summary retention → save/reload → safe re-nested replacement witness pass. No repaired parser guard was lost in integration.
+- F-01/N-01 controls remain green: separate cut replies retain distinct receipt links after real save/reload, a single cut groups once, single-lens failure is not repeated by untouched siblings, each pointer focuses/describes its own note, and note replacement/navigation/deletion removes obsolete references. Off/on, held-run Stop and changed-source late-reply controls pass. No new owed-save regression was established.
+
+### Fresh verification
+
+Local verification used the isolated cloud workspace under **Node 24.19.0 / npm 11.9.0**. Dependency reuse was checked against the unchanged lockfile and checkout-local workspace links. Compile-heavy stages ran serially; full Jest used a 2 GiB heap, one worker, a 1,000 MB idle limit and a disk-backed cache.
+
+| Check | Independent result at `2f4ec86` |
+| --- | --- |
+| Full repository Jest | Pass: **519 suites / 7,257 tests / 59 snapshots**, 387.1 s in this cloud single-worker run |
+| Typecheck | Pass: core host, core webview and VS Code adapter |
+| Lint | Pass: 0 errors / 1,133 warnings |
+| Production build and `verify:bundle` | Pass; webpack's three size/performance warnings |
+| Retained/extended independent Jest probes | **27/27 pass**: 22 earlier #170/#168/#169 controls plus the three formerly failing origins and two new presence-transition edges |
+| Default-concurrency production-host and manager checks | **6 retained + 6 combined retention scenarios**, and **7 manager scenarios**, pass |
+| Keep-readings host-state builder | Pass; all eight moments regenerate the committed `keep-readings.json` byte-for-byte |
+| Model-scope host-state builder | Pass; matches committed state after normalizing its one live source `capturedAt` timestamp |
+| Exact production-bundle DOM | **21 reading cases + 10 model/UI checkpoints**, zero runtime/assertion errors |
+| `git diff --check` | Clean |
+| Implementation-head GitHub CI | Both success: [push 40146044430](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40146044430), [pull_request 40146046588](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40146046588) |
+
+Both independent rebuilt bundle hashes match the author's:
+
+- `webview.js`: `55feaac0fa5d28704817228a25991d3cce331c1e2f8e38d292e88b531c49c56d`
+- `extension.js`: `e060a4725fa5cebd54d7d04d41deaa88786d22379d56ff418e9baf06df9ef745`
+
+The supplied re-rendered pixels were inspected directly at representative 500, 1000 and 1440 px states, including retained/failed/stopped readings, Opinion and the model header. The reviewer regenerated host states and tested the exact bundle in JSDOM, not Chromium screenshots or native VS Code. DOM focus/ARIA checks are not screen-reader or geometry acceptance. The older 4I–4J kept-Opinion local-label limitation remains as described in the preceding appendix; no additional blocking finding is assigned to it.
+
+No live/billable provider call, private manuscript, implementation change, formal review, comment, merge or deployment was used. Decisions 49/52, empty-answer/pairing choices and #169's first-open/wording questions are not independently accepted on the writer's behalf. This report covers the actual named combined tree; later changes require their own delta check. Only this append-only report is published, with its exact remote bytes, sole parent, single report path and exact-head CI checked separately.
