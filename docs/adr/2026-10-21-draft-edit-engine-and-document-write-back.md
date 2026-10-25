@@ -1,9 +1,11 @@
 # ADR 2026-10-21: Draft Edit Engine and Document Write-Back
 
-**Status:** Proposed (2026-10-21)
+**Status:** Accepted (2026-10-25). Proposed 2026-10-21; reconciled on 2026-10-25 with the Lightbox epic it now builds on ([Reconciliation](#reconciliation-2026-10-25-building-on-epiclightbox)).
 **Date:** 2026-10-21
 **Deciders:** Okey Landers, Ada Forge (Claude Code)
+**Epic:** [Draft Edit](../../.todo/epics/epic-draft-edit-2026-10-25/README.md)
 **Realizes:** [Feature: Proofread](../../.todo/features/feature-proofread/README.md); the foundation for [Feature: Workshop Apply to Draft](../../.todo/features/feature-workshop-apply-to-draft/README.md)
+**Follows the precedents of:** [ADR 2026-10-19 — Lightbox Inspiration Board](2026-10-19-lightbox-inspiration-board.md) (a non-Workshop model scope, the shared JSON repair parser, a non-Workshop recovery caller)
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md); [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md); [ADR 2026-07-11 — Workshop Excerpt Revision and Room Memory](2026-07-11-workshop-excerpt-revision-and-room-memory.md)
 **Preserves:** the write-free widget boundary of [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 
@@ -64,13 +66,26 @@ These facts in the current code shape the design:
    Markdown sections including creative variations. It inherits the
    writing-tools base prompt's instruction to sample from the p<0.10 tails.
    `OpenRouterClient` defaults to `temperature ?? 0.7` and has no JSON mode.
-   Structured model output elsewhere uses sentinel-framed JSON, a strict
-   codec, and `RejectedModelResponseRecovery`.
-8. **VS Code 1.75 supplies the review UI.** `WorkspaceEditEntryMetadata.needsConfirmation`
+   Structured model output elsewhere uses sentinel-framed JSON, a codec, and
+   `RejectedModelResponseRecovery`. The Lightbox added a shared,
+   schema-free JSON repair parser (`parsers/ModelJsonRepair.ts`:
+   `parseModelJson`, `salvageModelJson`), guarded so that no repair changes,
+   adds, or drops a value.
+8. **VS Code supplies the review UI.** `WorkspaceEditEntryMetadata.needsConfirmation`
    opens the Refactor Preview, with a checkbox per edit grouped by `label`.
    Diagnostics and code actions (`CodeActionKind.QuickFix`, `SourceFixAll`,
    `isPreferred`) cover non-destructive flags. (Checked against
-   `@types/vscode@1.75.1`, the manifest's `engines.vscode` floor.)
+   `@types/vscode@1.75.1`. The manifest's `engines.vscode` floor is now
+   `^1.82.0`, so all of these are available.)
+9. **Model scopes have one selection rule, and engines can be retired
+   mid-run.** `ModelScopeSelections.ts` resolves every
+   `proseMinion.*Model` setting. *Own* scopes read their own setting with a
+   built-in default. *Following* scopes (the Lightbox) run on another scope's
+   model until the writer picks one. Only the single `AIResourceManager`
+   built in `extension.ts` and carried in `CoreServices` builds engines. When
+   the API key is removed or replaced, it detaches every retired engine's
+   provider before disposing it. A run still holding that engine fails its
+   next call as missing credentials, and sends nothing (PR #169 F-01).
 
 ## Decision
 
@@ -186,18 +201,18 @@ export interface DocumentEditor {
 // packages/core/src/platform/IssueAnnotator.ts
 export interface DocumentAnnotation {
   readonly id: string;             // the issue id; the code action's handle back to core
-  readonly start: number;
+  readonly start: number;          // offsets into the snapshot at `version`
   readonly end: number;
-  readonly version: number;        // the snapshot version the offsets belong to
   readonly severity: 'info' | 'warning';
   readonly code: string;           // e.g. 'proofread.tense'
   readonly message: string;
-  readonly suggestion?: { newText: string; preferred: boolean };
 }
 
 export interface IssueAnnotator {
-  /** Replace every annotation this engine owns for `uri`. */
-  show(uri: string, annotations: readonly DocumentAnnotation[]): void;
+  /** Replace every annotation this engine owns for `uri`; offsets belong to `version`. */
+  show(uri: string, version: number, annotations: readonly DocumentAnnotation[]): void;
+  /** Withdraw some annotations (Dismiss), wherever the writer's edits have since moved them. */
+  remove(uri: string, ids: readonly string[]): void;
   clear(uri?: string): void;
 }
 ```
@@ -215,9 +230,15 @@ adapters live in `apps/vscode-extension/src/platform/vscode/`:
 - **`VsCodeIssueAnnotator`:**
   - It owns a `DiagnosticCollection` named `prose-minion.draftEdit` and a
     `CodeActionProvider` for `markdown` and `plaintext`.
+  - It refuses a `show` whose `version` is no longer the document's, so
+    flags are never drawn on moved text.
   - On `onDidChangeTextDocument` it shifts annotation ranges by the change
-    deltas, and drops any annotation an edit overlaps.
+    deltas (a pure core helper does the arithmetic), and drops any
+    annotation an edit overlaps. It is the source of truth for where a shown
+    flag sits, which is why Dismiss calls `remove` rather than re-`show`.
   - It clears a URI's annotations on close.
+  - A replacement suggestion is part of the message in Slice 1; it becomes a
+    quick fix in Slice 2, when there is a write path.
 
 Options rejected:
 
@@ -241,10 +262,16 @@ annotations in its own way, or not at all, without any change to core.
    (D2). Re-anchoring at apply time, not proposal time, absorbs the writer's
    typing during the model call. A quote that no longer matches is dropped as
    `stale`.
-2. **Protected regions.** Drop any edit that touches front matter, fenced or
-   indented code (`utils/markdownFences.ts`), inline code, link and image
-   targets, autolinks, HTML comments, or reference definitions. Plain-text
-   documents have none.
+2. **Protected regions.** Drop any edit that touches any of these:
+   - front matter;
+   - fenced code (`utils/markdownFences.ts`) or inline code;
+   - link and image targets, autolinks, or reference definitions;
+   - HTML comments or tags.
+
+   Plain-text documents have none. *Indented* code blocks are deliberately
+   **not** protected. Fiction writers routinely indent paragraphs with a tab
+   or four spaces, which Markdown reads as code, so protecting them would
+   silently skip prose (amended 2026-10-25).
 3. **The pass guard** (D6 for Proofread) downgrades or drops edits by policy.
 4. **Overlaps** are resolved by keeping the earlier-starting edit and dropping
    the rest as `overlapping`.
@@ -290,21 +317,31 @@ refused with "already proofreading *chapter-03.md*". Every run takes an
   snapshot, and again immediately before `applyEdits`, the target must
   satisfy a **write-confinement policy** that is stricter than re-read:
   - `file:` scheme only;
-  - inside an open workspace folder, with every workspace-relative ancestor
-    non-symlinked (reusing the re-read path validation);
+  - inside an open workspace folder (`isPathWithinRoot`,
+    `infrastructure/storage/pathContainment`), with every workspace-relative
+    ancestor non-symlinked. That check moves out of the Workshop's re-read
+    validation into a shared helper, so reads and writes cannot drift;
   - **never** a configured external resource, even though re-reads allow
     them. Reference material is read-only.
   - A refusal leaves the document and session untouched.
 
 ### D6. The Proofread pass
 
-- **Model scope.** `proofread` joins `ModelScope`, configured by
-  `proseMinion.proofreadModel` (default `anthropic/claude-haiku-5.5`, to be
-  confirmed on a fixture set during delivery). It follows every site the
-  `widget` scope touched (`AIResourceManager`, `ConfigurationHandler`,
-  `MessageHandler.MODEL_KEYS`, `useModelsSettings`, `SettingsOverlay`, the
-  manifest). Without an API key, `getEngine('proofread')` is `undefined`,
-  and the command offers *Open Settings* instead of failing.
+- **Model scope: an own scope, with a cheap default.** `proofread` joins
+  `ModelScope` as an *own* scope in `ModelScopeSelections.ts`, not a
+  following one (Context 9).
+  - Its key is `MODEL_SCOPE_SETTING_KEYS.proofread = 'proofreadModel'`, and
+    its default is `DEFAULT_PROOFREAD_MODEL = 'anthropic/claude-haiku-5.5'`.
+  - Proofreading wants precision and speed, not the Workshop's
+    quality-first model, so it does not follow `assistantModel` the way the
+    Lightbox does.
+  - The setting, the Settings Overlay row, and the hot-swap go through the
+    same sites as the other own scopes (`MessageHandler`'s model keys,
+    `useModelsSettings`, `SettingsOverlay`, the manifest).
+  - Only the `AIResourceManager` in `CoreServices` builds the engine; no
+    handler or service constructs one.
+  - Without an API key, `getEngine('proofread')` is `undefined`, and the
+    command offers *Open Settings* instead of failing.
 - **Run policy.** Add `AGENT_RUN_POLICIES.proofread` (capability-free,
   `retention: 'discard'`, engine cleanup), plus a
   `ProofreadService chunks` row in `AGENT_RUN_ROUTE_MATRIX`. Run logs then
@@ -313,12 +350,13 @@ refused with "already proofreading *chapter-03.md*". Every run takes an
   contract, rules, and one worked example. It does **not** load the
   writing-tools base prompt: no tail sampling, no creative variations. Every
   call sets `temperature: 0`.
-- **Chunking.** The target is split on paragraph boundaries at about
-  `PROMPT_BUDGETS.proofread.chunkWords` (≈1,200), and chunks run through
-  `p-limit` at `PROMPT_BUDGETS.proofread.concurrency` (≈3). Protected regions
-  are replaced by opaque placeholders before sending. Writer text and hints
-  travel only as JSON string values, with the same "quoted task data, never
-  instructions" framing as the widget services.
+- **Chunking.** The target is split on paragraph boundaries at
+  `PROMPT_BUDGETS.proofread.chunkWords`, and chunks run through `p-limit` at
+  `PROMPT_BUDGETS.proofread.concurrency` (starting values in
+  [Thresholds](#thresholds)). Protected regions are replaced by opaque
+  placeholders before sending. Writer text and hints travel only as JSON
+  string values, with the same "quoted task data, never instructions"
+  framing as the widget services.
 - **Contract.** The response is sentinel-framed JSON, matching the recovery
   registry's conventions:
 
@@ -333,6 +371,31 @@ refused with "already proofreading *chapter-03.md*". Every run takes an
   - `fromHint` appears only when hints were supplied.
   - `outOfScopeHints` lists hints that are about flow or clarity, not
     proofreading.
+- **Decoding.** A small Proofread frame reader cuts the JSON out from
+  between its sentinels. It accepts the same tolerances as the Lightbox's
+  frame: a code fence around the whole frame, and a missing closing sentinel
+  when the JSON is complete. It then reads the JSON with `parseModelJson`,
+  never raw `JSON.parse`, and the shared repairs apply under their content
+  guard. The frame reader is Proofread's own. Generalizing the Lightbox's
+  into `parsers/` waits for a third caller, so as not to churn Lightbox code
+  while its slices are in review.
+- **Reply policy: forgiving per chunk, fail-closed per issue.**
+  - A field the format does not define, at the root or on an issue, is
+    ignored and counted, never named: the Lightbox's rule (Slice 4K). A
+    model adding `confidence` must not cost a paid chunk.
+  - An issue missing a required field, or with a `category` outside the
+    closed set, is dropped and counted. Its category drives policy, so it is
+    never guessed.
+  - Only a frame or JSON failure, or a root of the wrong shape, rejects the
+    whole chunk.
+  - Saved files and Workshop codecs stay strict. This rule covers model
+    replies only.
+- **No salvage of cut-off replies.** `salvageModelJson` keeps finished
+  *root* members, but Proofread's issues live in one array under a single
+  root key. A cut-off reply would keep nothing useful, and a partial list
+  would read as "no more errors". A reply that stops on `length` is rejected
+  and counted. The output budget is sized so a chunk's issues fit with room
+  to spare.
 - **Category policy, in code.** `FIXABLE = {spelling, homophone, punctuation,
   capitalization, spacing}` and `FLAG_ONLY = {agreement, tense}`. A flag-only
   issue's `replacement` is a suggestion: a non-preferred quick fix, never
@@ -360,16 +423,28 @@ refused with "already proofreading *chapter-03.md*". Every run takes an
   - Apply `proseMinion.proofread.spellingConvention`
     (`auto | american | british | canadian | australian`).
 - **Failure isolation.**
-  - Each chunk decodes independently. A malformed or `finishReason: 'length'`
-    response is captured through `RejectedModelResponseRecovery`, counted in
-    `rejectedChunks`, and dropped without failing the run.
+  - Each chunk decodes independently. A rejected chunk is captured through
+    `persistRejectedModelResponse`, under a `proofread` entry in
+    `RECOVERABLE_RESPONSE_CONTRACTS`. It is counted in `rejectedChunks` and
+    dropped without failing the run.
   - The recovery presenter runs at most once per run, so failed chunks do
     not open a pile of editors.
-  - A non-Workshop caller now uses the recovery registry, so it moves out of
-    `shared/types/messages/workshop/recovery.ts` to
-    `shared/types/messages/recovery.ts`. It is renamed
-    `RECOVERABLE_RESPONSE_CONTRACTS` / `RecoverableToolName`. Pre-1.0
-    renames are free.
+  - The registry moved out of the Workshop and was renamed (commit
+    `d058e8d2`): from `shared/types/messages/workshop/recovery.ts` to
+    `shared/types/messages/recovery.ts`, with `RECOVERABLE_RESPONSE_CONTRACTS`,
+    `RecoverableToolName`, `RejectedModelResponseInput`, and
+    `persistRejectedModelResponse`.
+- **The key changing mid-run.** A run holds its engine for every chunk. If
+  the key is removed or replaced during a run, the next call fails as
+  missing credentials, and nothing is sent (Context 9).
+  - The run then stops starting chunks, keeps the issues from chunks that
+    finished, and reports "the API key changed during the run; N of M
+    chunks proofread".
+  - It is not counted as rejected chunks, and nothing is captured for
+    recovery.
+  - The test follows the Lightbox's `LightboxKeyRetirement.test.ts`: real
+    `OpenRouterClient`s whose transport is the only stand-in, with the first
+    request held.
 - **The last run's issues, in memory.** The use case keeps each URI's last
   Proofread issues for the session only, with no persistence (feature
   decision 3). Quick fixes, "Fix all", and Dismiss refer to issues by id.
@@ -383,6 +458,24 @@ Options rejected:
 - **Reuse the `dictionary` or `widget` scope.** Proofread's cost and latency
   profile is its own, and the writer should be able to choose its model
   independently.
+- **A following scope** (blank follows the Workshop's or the Dictionary's
+  model, as the Lightbox follows the Workshop's). Following the Workshop
+  would put an expensive, quality-first model on a precision task.
+  Following the Dictionary would couple two unrelated choices. Decided
+  2026-10-25: an own scope with a cheap default.
+
+#### Thresholds
+
+Starting values, decided 2026-10-25. Each lives in one constant so the
+Slice 1 fixtures can tune it without touching logic.
+
+| Threshold | Starting value | Lives in |
+|---|---|---|
+| Chunk size | ≈1,200 words, cut on paragraph boundaries | `PROMPT_BUDGETS.proofread.chunkWords` |
+| Chunk concurrency | 3 | `PROMPT_BUDGETS.proofread.concurrency` |
+| Output budget per chunk | 4,000 tokens | `PROMPT_BUDGETS.proofread.outputTokens` |
+| Spelling / homophone edit size | ≤ max(2, 30% of the token's length) characters | the Proofread guard |
+| Whole-file confirmation | > 15,000 words (D8) | `PROMPT_BUDGETS.proofread.confirmWholeFileWords` |
 
 ### D7. Flags are diagnostics, never inline markup, and last only the session
 
@@ -426,6 +519,11 @@ correction, and a note without colliding with Markdown (see Out of scope).
   `editorLangId == markdown || editorLangId == plaintext`, with **no**
   `editorHasSelection`. A non-empty selection narrows the target; otherwise
   the whole document is proofread.
+- **Long files confirm first.** A whole-file run over
+  `PROMPT_BUDGETS.proofread.confirmWholeFileWords` (15,000 words) shows a
+  modal naming the word count and the number of model calls before anything
+  is sent. *Cancel* sends nothing. A selection never confirms, however long.
+  Typical chapters never see the modal.
 - **Wiring.** `DraftEditUseCase` is constructed at the composition root and
   joins `CoreServices`. Command handlers in `extension.ts` call it directly,
   not through a webview `MessageHandler` (Context 3).
@@ -542,8 +640,9 @@ changing the applier.
   new door.
 - **Two more ports** for every host. `IssueAnnotator` may be a no-op where a
   host has no diagnostics surface.
-- **A sixth model scope.** The Settings Overlay gains a row; the scope tests
-  that pin the set (`MessageHandler.test.ts`, `useModelsSettings.test.ts`,
+- **A seventh model scope.** The Settings Overlay gains a row; the tests
+  that pin the scope set (`ModelScopeSelections.test.ts`,
+  `MessageHandler.test.ts`, `useModelsSettings.test.ts`,
   `SettingsOverlay.test.tsx`) are updated.
 - **Cost scales with chunks.** A whole-chapter proofread is several small
   calls. The cost is shown on every run, and appears in the sidebar's token
@@ -566,11 +665,22 @@ changing the applier.
 
 Slices follow the feature's sequencing:
 
-1. **Read side + Proofread and Flag:** D1, D2, D3 (`IssueAnnotator`), D6,
-   D7, and D8 (Flag and Clear), plus D10. Measure precision on a fixture set
-   of real chapters with seeded errors before Fix ships.
-2. **Write side + Proofread and Fix:** D3 (`DocumentEditor`), D4, D5
-   (gesture), and D8 (Fix).
+1. **Read side + Proofread and Flag:** D1, D2, D3 (`IssueAnnotator`, and
+   `DocumentEditor.snapshot` only), D6, D7, and D8 (Flag and Clear), plus
+   D10.
+   - Flag needs the live buffer: the writer may type during the model calls,
+     so flags are re-anchored against a fresh snapshot before they are
+     shown. The read half of `DocumentEditor` therefore lands here, and
+     `applyEdits` lands in Slice 2 (amended 2026-10-25).
+   - Automated tests never call a provider. Provider clients run on mocked
+     transport, and fixtures are public-domain text (*Alice's Adventures in
+     Wonderland*) with seeded errors.
+   - Before Fix ships, the writer runs Flag in the Extension Development Host
+     on the same seeded public-domain fixtures, with their own key, and
+     records the false-positive rate. That run confirms or replaces the
+     default model.
+2. **Write side + Proofread and Fix:** D3 (`DocumentEditor.applyEdits`),
+   D4, D5 (gesture), and D8 (Fix).
    - Spike first: confirm how `applyEdit` resolves when the preview is
      discarded, and what VS Code does when the buffer changes while the
      preview is open. D4's reconciliation must hold either way.
@@ -578,15 +688,40 @@ Slices follow the feature's sequencing:
 4. **Workshop Proofread button:** D5 (confined path), D9.
 5. **Apply to Draft:** D11, each pass a new row.
 
-## Open Questions (to settle before Accepted)
+## Resolved Questions (2026-10-25)
 
-1. **Name.** "Draft Edit" ties Proofread to Apply to Draft. It also avoids a
-   fifth thing called "editor": the *Editor* focus, the Workshop `editor`
-   tool, Wren the line editor, and the `EditorContext` port already exist.
-2. **Whole-file cost.** Should a whole-file run over a threshold (≈15k
-   words) ask for confirmation first?
-3. **Guard thresholds.** The edit-distance bound and chunk size above are
-   starting values, to be tuned against the Slice 1 fixtures.
+1. **Name: "Draft Edit".** It ties Proofread to Apply to Draft, and avoids a
+   fifth thing called "editor" (the *Editor* focus, the Workshop `editor`
+   tool, Wren the line editor, and the `EditorContext` port already exist).
+2. **Whole-file cost: confirm above 15,000 words** (D8). Selections never
+   confirm.
+3. **Thresholds: the starting values in [Thresholds](#thresholds)**, each
+   in one constant, tuned against the manual fixture run.
+4. **Proofread's model when unset: an own scope with a cheap default**
+   (`anthropic/claude-haiku-5.5`), not a following scope (D6).
+
+## Reconciliation 2026-10-25: building on epic/lightbox
+
+The ADR was proposed against `main`. Draft Edit now branches from
+`epic/lightbox`, which by then had set precedents this ADR adopts rather than
+re-inventing:
+
+| Area | Lightbox precedent | What changed here |
+|---|---|---|
+| Model scope | `'lightbox'` in `ModelScope`; one selection rule in `ModelScopeSelections.ts`; engines only from the `CoreServices` manager | D6: `proofread` is an own scope in that rule, with `DEFAULT_PROOFREAD_MODEL`. |
+| Engine retirement | PR #169 F-01: retired engines are detached before disposal, so a held engine sends nothing | D6: a key change stops the run, keeps finished chunks, and is reported. Tested like `LightboxKeyRetirement.test.ts`. |
+| JSON | `parseModelJson` / `salvageModelJson`, with a content guard | D6: decode through `parseModelJson` in a Proofread frame reader. No salvage, for the stated reason. |
+| Undefined fields | Slice 4K: ignored, counted, never named | D6: same rule for Proofread replies. Issues stay fail-closed. |
+| Recovery registry | `'lightbox-readings'` added in place under `workshop/` | Moved and renamed in `d058e8d2`, Lightbox imports included. Proofread adds a `proofread` entry. |
+| Path containment | `infrastructure/storage/pathContainment` (`isPathWithinRoot`) | D5 names it, and extracts the symlinked-ancestor check to sit beside it. |
+| Host floor | `engines.vscode` raised to `^1.82.0` | Context 8 updated; every API used here is available. |
+
+Project rules adopted from the epic:
+
+- no live or billable provider calls in tests or anywhere else;
+- public-domain fixtures only;
+- the full suite passes under Node 18 (CI's version) before every push, with
+  no assertions on V8-specific error wording.
 
 ## Out of scope (follow-ups)
 

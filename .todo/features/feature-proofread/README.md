@@ -2,9 +2,10 @@
 
 **Date Identified**: 2026-10-19
 **Source**: User request (Okey)
-**Status**: Planned. ADR proposed:
-[ADR 2026-10-21 — Draft Edit Engine and Document Write-Back](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
-Where this note and the ADR differ, the ADR wins.
+**Status**: In progress. Tracked by the [Draft Edit epic](../../epics/epic-draft-edit-2026-10-25/README.md);
+decided by [ADR 2026-10-21 — Draft Edit Engine and Document Write-Back](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md) (Accepted).
+Where this note and the ADR differ, the ADR wins. Where this note and the
+epic differ on sequencing, the epic wins.
 **Priority**: Medium
 **Estimated Effort**: Medium–Large (four slices; Workshop actions follow)
 
@@ -34,6 +35,10 @@ This feature builds the foundation both passes share.
 | 2 | Workshop Proofread button | Full excerpt scan, with the agent's notes passed as advisory hints. |
 | 3 | Persist flags across reloads | No. Flags are diagnostics for the current session only. |
 | 4 | Engine modes | Passes: **Proofread** takes suggestions and does the full pass. **Apply Recommendations** does strictly what the agent instructs. |
+| 5 | Engine name (2026-10-25) | **Draft Edit**. |
+| 6 | Long whole-file runs (2026-10-25) | Confirm above 15,000 words. Selections never confirm. |
+| 7 | `proofreadModel` when unset (2026-10-25) | An own scope with a cheap default (`anthropic/claude-haiku-5.5`), not following the Workshop's model. |
+| 8 | Integration branch (2026-10-25) | Built off `epic/lightbox`; PRs target it, never `main`. |
 
 ## Recommendation
 
@@ -475,8 +480,10 @@ always opens in Refactor Preview.
    scope + setting; `DraftEdit` types and pass-policy table; masking,
    chunking, and anchoring; the Proofread prompt, codec, and guard;
    `DraftEditUseCase` (flag only); the `IssueAnnotator` port + diagnostics
-   adapter; the Flag command and menu. Measure precision on a fixture set of
-   real chapters with seeded errors. Pick the default model.
+   adapter; the Flag command and menu. Before Fix ships, the writer runs Flag
+   by hand on seeded public-domain fixtures and records the false-positive
+   rate; that run confirms the default model. (Automated tests never call a
+   provider.)
 2. **Slice 2: Foundation (write side) + Proofread and Fix.** The
    `DocumentEditor` port + adapter (version guard, `needsConfirmation`), the
    shared applier, quick fixes, the "Fix all" code action, and the
