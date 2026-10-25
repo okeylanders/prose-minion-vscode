@@ -190,7 +190,9 @@ export type DocumentApplyOutcome =
   | { kind: 'stale'; version: number };      // the buffer moved past expectedVersion
 
 export interface DocumentEditor {
-  snapshot(uri: string): Promise<DocumentSnapshot | undefined>;
+  // Amended 2026-10-25 (PR #171 F-03, F-04): the read half is a watch on one
+  // lifetime of an open document, not a snapshot that may reopen a closed one.
+  watch(uri: string, version: number): DocumentWatch | undefined;
   applyEdits(
     uri: string,
     edits: readonly DocumentTextEdit[],
@@ -221,8 +223,12 @@ Both ports join `Platform` as `documents` and `annotations`. Their VS Code
 adapters live in `apps/vscode-extension/src/platform/vscode/`:
 
 - **`VsCodeDocumentEditor`:**
-  - `snapshot` reads the live buffer through `openTextDocument`, never the
-    disk.
+  - `watch` follows one open document from the version a run read: it
+    collects each change event's replacements and settles to the live
+    buffer and those edits, or to `closed` once the document closes. A
+    language change (VS Code closes and reopens the document) or a reopen
+    is another lifetime, and a closed document is never reopened to place a
+    late reply (amended 2026-10-25, PR #171 F-04).
   - `applyEdits` checks `document.version` synchronously, builds one
     `WorkspaceEdit` (with `needsConfirmation` when `review === 'preview'`),
     and calls `workspace.applyEdit`.
@@ -258,15 +264,23 @@ annotations in its own way, or not at all, without any change to core.
 `DraftEditApplier` (`application/services/draftEdit/`) turns a pass's
 `ProposedEdit`s into a document change:
 
-1. **Re-snapshot** the target and anchor every edit against the *live* text
-   (D2). Re-anchoring at apply time, not proposal time, absorbs the writer's
-   typing during the model call. A quote that no longer matches is dropped as
-   `stale`.
+1. **Follow the target** from the version the run read (D3's watch). Each
+   edit moves through the writer's edits during the model call, as the
+   annotator moves shown flags; one an edit touched is dropped as `stale`,
+   never searched for again, so it can never land on another occurrence of
+   its words. Protected regions are found again on the live text, and an
+   edit now inside one is dropped as `protected` (amended 2026-10-25, PR #171
+   F-03).
 2. **Protected regions.** Drop any edit that touches any of these:
    - front matter;
-   - fenced code (`utils/markdownFences.ts`) or inline code;
+   - fenced code or inline code;
    - link and image targets, autolinks, or reference definitions;
    - HTML comments or tags.
+
+   Constructs are read whole, wherever Markdown's containers put them: block
+   structure from `marked`'s block lexer, inline constructs from one
+   CommonMark-precedence pass (`utils/draftEdit/markdownBlockRegions.ts`,
+   `markdownInlineRegions.ts`; amended 2026-10-25, PR #171 F-02).
 
    Plain-text documents have none. *Indented* code blocks are deliberately
    **not** protected. Fiction writers routinely indent paragraphs with a tab
@@ -340,6 +354,10 @@ refused with "already proofreading *chapter-03.md*". Every run takes an
     `useModelsSettings`, `SettingsOverlay`, the manifest).
   - Only the `AIResourceManager` in `CoreServices` builds the engine; no
     handler or service constructs one.
+  - The manager's key and model subscriptions belong to `AIResourceRefresh`,
+    built once at the composition root, because the editor command uses the
+    engine with no webview open. A key change rebuilds the manager once,
+    however many surfaces hear it (amended 2026-10-25, PR #171 F-01).
   - Without an API key, `getEngine('proofread')` is `undefined`, and the
     command offers *Open Settings* instead of failing.
 - **Run policy.** Add `AGENT_RUN_POLICIES.proofread` (capability-free,
@@ -677,9 +695,10 @@ Slices follow the feature's sequencing:
    `DocumentEditor.snapshot` only), D6, D7, and D8 (Flag and Clear), plus
    D10.
    - Flag needs the live buffer: the writer may type during the model calls,
-     so flags are re-anchored against a fresh snapshot before they are
-     shown. The read half of `DocumentEditor` therefore lands here, and
-     `applyEdits` lands in Slice 2 (amended 2026-10-25).
+     so flags follow the writer's edits through a watch on the open document
+     before they are shown. The read half of `DocumentEditor` therefore lands
+     here, and `applyEdits` lands in Slice 2 (amended 2026-10-25; the watch
+     replaced a snapshot after PR #171 F-03 and F-04).
    - Automated tests never call a provider. Provider clients run on mocked
      transport, and fixtures are public-domain text (*Alice's Adventures in
      Wonderland*) with seeded errors.
@@ -730,6 +749,20 @@ Project rules adopted from the epic:
 - public-domain fixtures only;
 - the full suite passes under Node 18 (CI's version) before every push, with
   no assertions on V8-specific error wording.
+
+## Amendment 2026-10-25: PR #171 review (Slice 1)
+
+Astra's review of Slice 1 found six blocking defects. Each changed a
+decision above:
+
+| Finding | Decision |
+|---|---|
+| F-01: the editor command could miss a model or key change when no webview was open | D6: `AIResourceRefresh` owns the shared manager's subscriptions for the extension's lifetime. Every surface asks it to refresh for a key change, and it rebuilds once per key, so a run that began after the change is not retired by a second rebuild. Model changes hot-swap in place, idempotently. |
+| F-02: valid protected Markdown reached the payload | D4 step 2: complete constructs. Fences, definitions and raw `<script>`/`<style>` blocks inside block quotes and list items; balanced, escaped, angle-bracketed and line-broken destinations; definitions on several lines; email autolinks; maximal backtick runs; quoted attributes holding `>`. Every block is checked line by line against the source; anything that does not line up, or a document nested past any manuscript's depth, is protected whole. Indented paragraphs stay prose. |
+| F-03: the live re-anchor could move a finding to another occurrence, or into code | D4 step 1: findings follow their own occurrence through the recorded edits, and the live text's protected regions are found again. |
+| F-04: a reply could draw flags after the document closed | D3: the read half is a watch bound to one document lifetime. A run whose document closed returns `closed` and shows nothing; one whose document moved before it started returns `changed` and sends nothing. |
+| F-05: a call with no usage record made a partial cost look whole | A cost or cache total needs every call's record; `requestCount` counts every call (`utils/tokenUsage.ts`). |
+| F-06: a failed recovery save was called saved | A rejected chunk carries whether its capture was saved; the outcome counts `saved` and `unsaved`, and the summary says which. D4's outcome sketch's `rejectedChunks` is that pair. |
 
 ## Out of scope (follow-ups)
 

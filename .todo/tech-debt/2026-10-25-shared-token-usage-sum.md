@@ -14,8 +14,10 @@ Three fan-out callers sum provider usage, each with its own copy of the rule:
 
 They have already drifted. The Lightbox counts a missing `costUsd` as zero,
 which understates a run's cost when one call reported none. `sumTokenUsage`
-makes the total unknown instead, so the summary shows "—", the honesty rule
-the Dictionary history ADR states for a single request.
+makes the total unknown instead, so the summary shows nothing rather than a
+low figure, the honesty rule the Dictionary history ADR states for a single
+request. Since PR #171 F-05 it also treats a call whose reply carried no
+usage record at all as unknown, and counts it in `requestCount`.
 
 Proofread did not adopt or move the Lightbox's copy: Lightbox PR #170 was in
 review, and the helper is feature-owned.
@@ -35,5 +37,7 @@ honesty rule.
 
 ## Completion criteria
 
-- One summing helper. Every fan-out caller uses it.
-- A test pins the unknown-cost rule.
+- One summing helper. Every fan-out caller uses it, passing `undefined` for
+  a call that came back without usage, never dropping it.
+- A test pins the unknown-cost rule (`__tests__/utils/tokenUsage.test.ts`
+  pins it for the helper today).

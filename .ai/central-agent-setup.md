@@ -1551,14 +1551,24 @@ writer's own document:
 - **One door.** Only `DraftEditUseCase` (and, from Slice 2, its applier) may
   reach `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
   members; `boundaries.test.ts` enforces it. Widgets stay write-free.
-- **Live text wins.** Re-read the live buffer and re-anchor before showing or
-  applying anything; drop what no longer matches as stale.
+- **Live text wins, one lifetime.** A run watches its open document from
+  the version it read (`DocumentEditor.watch`). Findings follow their own
+  occurrence through the writer's edits, never a fresh search; what an edit
+  touched is stale, what the live text now protects is protected, and a
+  document that closed (or reopened, or changed language) shows nothing and
+  is never reopened (PR #171 F-03, F-04).
 - **Protected regions.** Front matter, fenced and inline code, link targets,
   URLs, reference definitions, HTML comments, and tags are never sent or
-  edited. Indented code is deliberately prose.
+  edited, read as whole constructs wherever Markdown's containers put them
+  (`markdownBlockRegions` over `marked`'s block lexer, `markdownInlineRegions`
+  in CommonMark precedence; PR #171 F-02). Where a scanner is unsure it
+  protects more, never less. Indented code is deliberately prose.
 - **Proofread's model** is an own scope with an inexpensive default; calls run
   at temperature 0, replies go through `parseModelJson`, and a key change
-  mid-run stops starting chunks (PR #169 F-01).
+  mid-run stops starting chunks (PR #169 F-01). The shared manager's key and
+  model subscriptions are `AIResourceRefresh`'s, built in `extension.ts`, not
+  a webview's: a surface that hears a key change asks it to refresh, and it
+  rebuilds once per key (PR #171 F-01).
 
 ### Operational Tips
 

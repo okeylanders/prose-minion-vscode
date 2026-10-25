@@ -1,7 +1,7 @@
 # Slice 1: Read Side + Proofread and Flag
 
 **Epic:** [Draft Edit](README.md)
-**Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D1, D2, D3 (`IssueAnnotator`, `DocumentEditor.snapshot`), D6, D7, D8 (Flag, Clear), D10
+**Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D1, D2, D3 (`IssueAnnotator`, `DocumentEditor.watch`; planned as `snapshot`, changed after PR #171 F-03/F-04), D6, D7, D8 (Flag, Clear), D10
 **Status:** Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, `f1a6e79f`). In review. The writer's manual Flag run on seeded public-domain fixtures is pending.
 
 ## Outcome
@@ -198,6 +198,37 @@ Where the build departed from the plan above, and why:
 - **A shared `sumTokenUsage`** (`utils/tokenUsage.ts`) treats an unreported
   cost as unknown. Adopting it in the Lightbox and the Dictionary is tracked
   in `.todo/tech-debt/2026-10-25-shared-token-usage-sum.md`.
+
+## Review fixes (PR #171, Astra, 2026-10-25)
+
+Astra's review found six blocking defects. Each fix is in the ADR's
+"Amendment 2026-10-25" and has regression tests:
+
+- **F-01. Model and key changes with no webview open.** `AIResourceRefresh`
+  (`orchestration/AIResourceRefresh.ts`), built in `extension.ts`, owns the
+  shared manager's key and model subscriptions. Every surface that hears a
+  key change asks it to refresh: the owner itself, each webview's
+  `MessageHandler`. It rebuilds once per key, so no second rebuild retires a
+  run that began after the change. The overlay's own Save and Clear still
+  rebuild directly before they answer, as the Lightbox's key retirement
+  depends on.
+- **F-02. Complete protected constructs.** `markdownBlockRegions.ts` reads
+  block structure with `marked`'s block lexer: fences, definitions and raw
+  script or style blocks inside block quotes and list items, each checked
+  line by line against the source, failing closed.
+  `markdownInlineRegions.ts` reads inline constructs in one
+  CommonMark-precedence pass.
+- **F-03 and F-04. One document lifetime.** `DocumentEditor.snapshot`
+  became `watch(uri, version)`. A run follows each finding through the
+  recorded edits and finds protected regions again on the live text. A
+  closed document (or a reopened one, or a language change) shows nothing
+  (`closed`); one that moved before the run started sends nothing
+  (`changed`).
+- **F-05.** `sumTokenUsage` keeps a call with no usage record in the
+  completeness check and in `requestCount`.
+- **F-06.** A rejected chunk carries whether its recovery capture was
+  saved. The summary says "saved for recovery" only for those, and points
+  to the output channel otherwise.
 
 ## Verification
 

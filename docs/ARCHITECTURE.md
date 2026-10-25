@@ -39,7 +39,7 @@ Core defines host-agnostic ports in `packages/core/src/platform/`. The VS Code a
 | `Workspace` | Workspace folder + glob discovery |
 | `ShellService` | Subprocess execution (future MCP) |
 | `EditorContext` | Active editor selection + source metadata |
-| `DocumentEditor` | A document's live buffer by URI (Draft Edit; writes arrive with Proofread and Fix) |
+| `DocumentEditor` | A watch on one lifetime of an open document: its edits and live buffer, or closed (Draft Edit; writes arrive with Proofread and Fix) |
 | `IssueAnnotator` | Draft Edit's flags on a document, without changing it (diagnostics in VS Code) |
 
 All ports are composed into a single `Platform` bundle at the composition root.
@@ -465,18 +465,25 @@ Proofread is its first pass; in Slice 1 it only flags.
   `Record` over `DraftEditPass['kind']`. A new pass adds a union member, a
   row, and a producer, never a branch in the code that places edits.
 - **Quotes, not offsets.** Only a pass calls a model, and a model returns
-  quotes with context. `utils/draftEdit/` masks protected Markdown regions,
-  chunks on paragraph boundaries, and anchors each quote deterministically,
-  failing closed on ambiguity. The Proofread guard (`utils/proofread/`)
-  decides fix vs. flag by category and edit size.
+  quotes with context. `utils/draftEdit/` masks protected Markdown regions
+  (block structure from `marked`'s block lexer, container-aware; inline
+  constructs from one CommonMark-precedence pass), chunks on paragraph
+  boundaries, and anchors each quote deterministically, failing closed on
+  ambiguity. The Proofread guard (`utils/proofread/`) decides fix vs. flag
+  by category and edit size.
 - **One run, one door.** `DraftEditUseCase` alone reaches the
   `DocumentEditor` and `IssueAnnotator` ports, and a boundary test enforces
-  it. It re-anchors against the live buffer before showing anything, so a
-  flag is never drawn on moved text.
+  it. A run watches its open document from the version it read: each flag
+  follows its own occurrence through the writer's edits, the live text's
+  protected regions are found again, and a document that closed shows
+  nothing, so a flag is never drawn on moved, protected, or reopened text.
 - **Its own model scope.** `proofread` is an own scope in
   `ModelScopeSelections` with an inexpensive default. `ProofreadService` calls
   it at temperature 0, reads replies with the shared `parseModelJson`, and
   stops starting chunks when the API key changes mid-run.
+  `AIResourceRefresh`, built at the composition root, owns the shared
+  manager's key and model subscriptions, so the command sees every change
+  with no webview open, and one key change is one rebuild.
 - **Host commands.** `apps/vscode-extension/src/application/commands/proofreadCommands.ts`
   holds the editor commands behind a host port, so their rules are tested
   without a VS Code mock.

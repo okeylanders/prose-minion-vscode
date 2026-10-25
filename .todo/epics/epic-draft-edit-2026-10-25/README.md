@@ -45,8 +45,8 @@ bubbles, then Apply Recommendations and Apply Variation.
     sentinel-framed JSON contract read with `parseModelJson`, and the
     mechanical guard.
   - `DraftEditUseCase` in `CoreServices`.
-- **Ports:** `IssueAnnotator` (Slice 1) and `DocumentEditor` (Slice 2), both
-  `vscode`-free.
+- **Ports:** `IssueAnnotator` and `DocumentEditor`'s watch (Slice 1), and
+  `DocumentEditor.applyEdits` (Slice 2), all `vscode`-free.
 - **Adapter:**
   - Context-menu commands in `extension.ts`.
   - `VsCodeIssueAnnotator` (diagnostics and code actions).
@@ -134,3 +134,6 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   - CI green under Node 18; the full suite also passes under Node 22.
   - See the slice's "As built" for the departures from plan, each mirrored
     in the ADR.
+- **2026-10-25. PR #171 review fixes.** Astra's six blocking findings
+  (F-01 to F-06) are fixed with regression tests. See the slice's "Review
+  fixes" and the ADR's "Amendment 2026-10-25".
