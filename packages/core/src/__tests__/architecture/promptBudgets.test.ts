@@ -45,7 +45,11 @@ const NON_PROMPT_LIMITS = new Set([
   'utils/draftEdit/markdownBlockRegions.ts:MAX_CONTAINER_DEPTH',
   'utils/draftEdit/markdownBlockRegions.ts:MAX_LIST_INDENT',
   // How deeply a link destination's parentheses may nest before the inline scanner stops reading it; no prompt sees it.
-  'utils/draftEdit/markdownInlineRegions.ts:MAX_LINK_PAREN_DEPTH'
+  'utils/draftEdit/markdownInlineRegions.ts:MAX_LINK_PAREN_DEPTH',
+  // How long a block Draft Edit's structure check lexes before it refuses the block's fixes (PR #172 F-03); no prompt sees it.
+  'utils/draftEdit/markdownStructure.ts:MAX_VERIFIED_BLOCK_LENGTH',
+  // How many readings of one cluster of changes reconciliation keeps before it calls the cluster unknown (PR #172 F-04); no prompt sees it.
+  'utils/draftEdit/reconcileEdits.ts:MAX_READINGS'
 ]);
 
 function collectTypeScriptFiles(dir: string, acc: string[] = []): string[] {
