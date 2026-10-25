@@ -4,19 +4,16 @@
  * `jest.mock('vscode', () => jest.requireActual(…).createVsCodeDouble(), { virtual: true })`.
  *
  * - **The pane.** Refactor Preview holds `workspace.applyEdit` until the
- *   writer acts.
- *   - A request made while the pane is free takes it. One made while
- *     another preview holds it waits until the writer agrees to replace that
- *     one, or refuses (`bulkEdit.contribution.ts` `_previewEdit`).
- *   - A preview holding the pane opens its copy of each file it edits, and
- *     closes them when it ends (`bulkEditPreview.ts`, `asPreviewUri`).
+ *   writer acts. A request made while the pane is free takes it. One made
+ *   while another preview holds it waits until the writer agrees to replace
+ *   that one, or refuses (`bulkEdit.contribution.ts` `_previewEdit`).
  * - **Apply** writes the entries if the document's version has not moved. A
  *   language change does not move it.
- * - **Discard** (`refactorPreview.discard`) ends whatever preview holds the
- *   pane with nothing applied (`BulkEditPane.discard`), and does nothing when
- *   none does.
  * - **A language change** fires the document's close event (then open),
  *   leaving the same document open (`extHostDocuments.$acceptModelLanguageChanged`).
+ * - **Documents opening** fire as VS Code fires them for any synced model,
+ *   a preview's copy of a file included, whenever a suite says so.
+ * - **Commands** are a spy only: Draft Edit sends none (PR #172 F-06).
  *
  * Text is public-domain *Alice*.
  */
@@ -54,10 +51,6 @@ export function createVsCodeDouble() {
   const diagnostics = new Map<string, unknown[]>();
   let sessions = 0;
 
-  const copyOf = (session: PreviewSession, file: string) => ({
-    uri: { scheme: 'vscode-bulkeditpreview', authority: session.id, query: file, toString: () => `vscode-bulkeditpreview://${session.id}/?${file}` }
-  });
-
   const pane = {
     current: undefined as PreviewSession | undefined,
     waiting: undefined as PreviewSession | undefined,
@@ -74,15 +67,13 @@ export function createVsCodeDouble() {
     },
     take(session: PreviewSession): void {
       pane.current = session;
-      session.edit.files.forEach((file) => opens.fire(copyOf(session, file)));
     },
-    /** The preview holding the pane leaves it, as VS Code ends a session; its copies close. */
+    /** The preview holding the pane leaves it, as VS Code ends a session. */
     release(session: PreviewSession): void {
       session.done = true;
       if (pane.current === session) {
         pane.current = undefined;
       }
-      session.edit.files.forEach((file) => closes.fire(copyOf(session, file)));
     },
     end(session: PreviewSession, applied: boolean): void {
       pane.release(session);
@@ -103,11 +94,6 @@ export function createVsCodeDouble() {
       pane.waiting = undefined;
       waiting.done = true;
       waiting.settle(false);
-    },
-    discard(): void {
-      if (pane.current) {
-        pane.end(pane.current, false);
-      }
     }
   };
 
@@ -138,13 +124,7 @@ export function createVsCodeDouble() {
       onDidCloseTextDocument: closes.event,
       applyEdit: jest.fn((edit: RecordedEdit) => pane.request(edit))
     },
-    commands: {
-      executeCommand: jest.fn(async (command: string) => {
-        if (command === 'refactorPreview.discard') {
-          pane.discard();
-        }
-      })
-    },
+    commands: { executeCommand: jest.fn() },
     languages: {
       createDiagnosticCollection: () => ({
         set: (uri: unknown, list: unknown[]) => diagnostics.set(String(uri), list),
@@ -161,7 +141,7 @@ export function createVsCodeDouble() {
     DiagnosticSeverity: { Warning: 1, Information: 2 },
     CodeActionKind: { QuickFix: 'quickfix' },
     CodeAction: class {},
-    mockHost: { changes, closes, diagnostics, pane }
+    mockHost: { changes, opens, closes, diagnostics, pane }
   };
 }
 

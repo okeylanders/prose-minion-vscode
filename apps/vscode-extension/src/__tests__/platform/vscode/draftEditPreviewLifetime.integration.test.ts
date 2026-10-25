@@ -2,11 +2,13 @@
  * PR #172 F-02 and F-06, through the production `VsCodeDocumentEditor`,
  * `VsCodeIssueAnnotator`, `DraftEditApplier` and `DraftEditUseCase`, on the
  * controlled VS Code of `refactorPreviewHost.ts`:
- * - F-02: a held review is discarded, best effort, when its document's
- *   lifetime ends. The writer accepted the gap that leaves; one case pins it.
- * - F-06: the discard never ends a preview the review does not own: another
- *   extension's, or another chapter's, shown while this review waits to
- *   replace it.
+ * - F-02, the writer's accepted limit: VS Code's preview commits inside
+ *   `applyEdit`, so an Apply after a close or a language change during
+ *   review still writes. The run then reports the document closed and
+ *   shows nothing, and the writer is asked to check a quick fix's file.
+ * - F-06: nothing ends a preview on the writer's behalf. VS Code's Discard
+ *   ends whichever preview is shown, and no public API ties a preview to
+ *   the request that opened it, so Draft Edit sends no command at all.
  *
  * Text is public-domain *Alice*; nothing reaches a provider.
  */
@@ -24,13 +26,13 @@ jest.mock('@prose-minion/core', () => ({
 
 import * as vscode from 'vscode';
 import { DraftEditApplier, DraftEditUseCase, type DraftEditOutcome, type DraftEditQuickFixOutcome } from '@prose-minion/core';
-import { REFACTOR_PREVIEW_DISCARD_COMMAND, VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor';
+import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor';
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 import { reviewHarness, type FakeDocument } from '@app/__tests__/platform/vscode/refactorPreviewHost';
 
 type Finding = { anchor: { quote: string }; category: 'spelling' | 'tense'; replacement: string; explanation: string };
 
-const { host, commands, openDocument, write, writerApplies, changeLanguage, asked, reset } = reviewHarness(vscode);
+const { host, commands, openDocument, writerApplies, changeLanguage, asked, reset } = reviewHarness(vscode);
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister, who is reading.';
 const FIXED = 'Alice was beginning to get very tired of sitting by her sister, who is reading.';
 const SECOND = 'file:///workspace/chapter-02.md';
@@ -73,76 +75,31 @@ const flaggedText = (document: FakeDocument) =>
   (host.diagnostics.get(document.uri.toString()) as Array<{ range: { start: { offset: number }; end: { offset: number } } }> | undefined ?? [])
     .map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
 
-/** Another extension's preview, of a file Proofread never touches, holding the pane. */
-function anotherExtensionsPreview(): { settled(): boolean } {
+/** Another extension's preview holding the pane: of a file Proofread never touches, unless told. */
+function anotherExtensionsPreview(file = NOTES): { settled(): boolean } {
   let settled = false;
-  void host.pane.request({ files: [NOTES], replacements: [] }).then(() => {
+  void host.pane.request({ files: [file], replacements: [] }).then(() => {
     settled = true;
   });
   return { settled: () => settled };
 }
 
-describe('A held review is discarded, best effort, when its document\'s lifetime ends (PR #172 F-02)', () => {
-  it('writes nothing when Markdown becomes JavaScript during review, even if the writer then presses Apply', async () => {
+describe('The accepted limit: an Apply after the document\'s lifetime ends during review still writes (PR #172 F-02)', () => {
+  it('writes the fixes when Markdown becomes JavaScript during review and the writer then presses Apply, and shows nothing', async () => {
     const document = openDocument(TEXT, 'markdown');
     const run = proofreader().fix(document);
     await asked();
 
     changeLanguage(document, 'javascript');
-    const pressed = writerApplies(document);
+    expect(writerApplies(document)).toBe(true);
 
     await expect(run).resolves.toMatchObject({ kind: 'closed' });
-    expect(document.text).toBe(TEXT);
-    expect(pressed).toBe(false);
-    expect(commands.executeCommand).toHaveBeenCalledWith(REFACTOR_PREVIEW_DISCARD_COMMAND);
+    expect(document.text).toBe(FIXED);
     expect(flaggedText(document)).toEqual([]);
+    expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  describe('plain text whose fence becomes code when it turns Markdown', () => {
-    const fenced = '~~~text\nAlice saw teh rabbit.\n~~~\n';
-    const teh: Finding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'A typo.' };
-
-    it('writes nothing into the fence', async () => {
-      const document = openDocument(fenced, 'plaintext');
-      const run = proofreader([teh]).fix(document);
-      await asked();
-
-      changeLanguage(document, 'markdown');
-      const pressed = writerApplies(document);
-
-      await expect(run).resolves.toMatchObject({ kind: 'closed' });
-      expect(document.text).toBe(fenced);
-      expect(pressed).toBe(false);
-    });
-
-    it('control: with no language change, the writer\'s Apply writes the fix', async () => {
-      const document = openDocument(fenced, 'plaintext');
-      const run = proofreader([teh]).fix(document);
-      await asked();
-
-      expect(writerApplies(document)).toBe(true);
-
-      await expect(run).resolves.toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 1 } });
-      expect(document.text).toBe('~~~text\nAlice saw the rabbit.\n~~~\n');
-      expect(commands.executeCommand).not.toHaveBeenCalled();
-    });
-  });
-
-  it('writes nothing when the document closes during review', async () => {
-    const document = openDocument(TEXT, 'markdown');
-    const run = proofreader().fix(document);
-    await asked();
-
-    document.isClosed = true;
-    host.closes.fire(document);
-    const pressed = writerApplies(document);
-
-    await expect(run).resolves.toMatchObject({ kind: 'closed' });
-    expect(document.text).toBe(TEXT);
-    expect(pressed).toBe(false);
-  });
-
-  it('writes nothing through Fix all when the language changes during its review', async () => {
+  it('reports a Fix all whose document changed language during review as closed', async () => {
     const document = openDocument(TEXT, 'markdown');
     const proofread = proofreader();
     await expect(proofread.flag(document)).resolves.toMatchObject({ kind: 'completed', flagged: 3 });
@@ -150,49 +107,68 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
     await asked();
 
     changeLanguage(document, 'javascript');
-    const pressed = writerApplies(document);
+    expect(writerApplies(document)).toBe(true);
 
     await expect(fixAll).resolves.toEqual({ kind: 'closed' });
-    expect(document.text).toBe(TEXT);
-    expect(pressed).toBe(false);
+    expect(document.text).toBe(FIXED);
+    expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  it('the stated limit: an Apply that lands before the close event reaches the extension host is reported closed, with nothing shown', async () => {
+  it('control: with no change, the writer\'s Apply writes the fixes and the tense flag stays on its text', async () => {
     const document = openDocument(TEXT, 'markdown');
     const run = proofreader().fix(document);
-    const shown = await asked();
+    await asked();
 
-    // In VS Code the language changed, then the writer pressed Apply, before the extension host heard of the change:
-    // the pane is already free when the discard arrives.
-    host.pane.current = undefined;
-    shown.done = true;
-    changeLanguage(document, 'javascript');
-    write(document, shown.edit);
-    host.pane.release(shown);
-    shown.settle(true);
+    expect(writerApplies(document)).toBe(true);
 
-    await expect(run).resolves.toMatchObject({ kind: 'closed' });
-    expect(document.text).toBe(FIXED);
-    expect(flaggedText(document)).toEqual([]);
+    await expect(run).resolves.toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 2 } });
+    expect(flaggedText(document)).toEqual(['is reading']);
   });
 });
 
-describe('The discard never ends a preview the review does not own (PR #172 F-06)', () => {
-  it('leaves another extension\'s preview, shown while the review waits to replace it, when the review\'s document changes language', async () => {
+describe('Nothing ends a preview on the writer\'s behalf (PR #172 F-06)', () => {
+  it('leaves another extension\'s preview shown while the review waits, and the writer\'s refusal leaves the review closed', async () => {
     const theirs = anotherExtensionsPreview();
     const document = openDocument(TEXT, 'markdown');
     const run = proofreader().fix(document);
     await asked('waiting');
 
     changeLanguage(document, 'javascript');
+    host.pane.refuse();
 
+    await expect(run).resolves.toMatchObject({ kind: 'closed' });
     expect(commands.executeCommand).not.toHaveBeenCalled();
     expect(host.pane.current?.edit.files).toEqual([NOTES]);
-    host.pane.refuse(); // The writer keeps the preview shown.
-    await expect(run).resolves.toMatchObject({ kind: 'closed' });
     expect(theirs.settled()).toBe(false);
     expect(document.text).toBe(TEXT);
   });
+
+  it.each(['before', 'after'])(
+    'leaves another extension\'s preview of the same document, whose copy arrives late, when the review\'s document changes language %s it (the re-review\'s witness)',
+    async (order) => {
+      const document = openDocument(TEXT, 'markdown');
+      const theirs = anotherExtensionsPreview(document.uri.toString());
+      const run = proofreader().fix(document);
+      await asked('waiting');
+      const theirCopy = () => host.opens.fire({
+        uri: { scheme: 'vscode-bulkeditpreview', authority: 'theirs', query: document.uri.toString(), toString: () => 'vscode-bulkeditpreview://theirs/x' }
+      });
+
+      if (order === 'before') {
+        changeLanguage(document, 'javascript');
+        theirCopy();
+      } else {
+        theirCopy();
+        changeLanguage(document, 'javascript');
+      }
+      host.pane.refuse();
+
+      await expect(run).resolves.toMatchObject({ kind: 'closed' });
+      expect(commands.executeCommand).not.toHaveBeenCalled();
+      expect(theirs.settled()).toBe(false);
+      expect(document.text).toBe(TEXT);
+    }
+  );
 
   it('leaves another chapter\'s review shown, and its fixes still go in when the writer applies them', async () => {
     const first = openDocument(TEXT, 'markdown');
@@ -204,29 +180,12 @@ describe('The discard never ends a preview the review does not own (PR #172 F-06
     await asked('waiting');
 
     changeLanguage(second, 'javascript');
-
-    expect(commands.executeCommand).not.toHaveBeenCalled();
     host.pane.refuse();
+
     await expect(secondRun).resolves.toMatchObject({ kind: 'closed' });
     expect(writerApplies(first)).toBe(true);
     await expect(firstRun).resolves.toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 2 } });
     expect([first.text, second.text]).toEqual([FIXED, TEXT]);
-  });
-
-  it('discards the review as its preview opens, if the writer then lets it replace the one shown', async () => {
-    const theirs = anotherExtensionsPreview();
-    const document = openDocument(TEXT, 'markdown');
-    const run = proofreader().fix(document);
-    await asked('waiting');
-    changeLanguage(document, 'javascript');
-
-    host.pane.replace(); // The writer chose to replace theirs; ours then holds the pane, for a lifetime that has ended.
-    const pressed = writerApplies(document);
-
-    await expect(run).resolves.toMatchObject({ kind: 'closed' });
-    expect(commands.executeCommand).toHaveBeenCalledTimes(1);
-    expect(pressed).toBe(false);
-    expect(document.text).toBe(TEXT);
-    expect(theirs.settled()).toBe(true);
+    expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 });

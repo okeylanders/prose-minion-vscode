@@ -23,9 +23,12 @@
  * applier calls it, and it never trusts the result alone: it reads what
  * landed from a watch (ADR D4 step 7). A review belongs to one lifetime of
  * the document: if the document closes, reopens or changes language while
- * the writer reviews, the host ends the review without writing and answers
- * `closed` (PR #172 F-02). A host that cannot stop its own commit in every
- * case states how close it comes, as the VS Code adapter does.
+ * the writer reviews, a host that can end the review without writing does,
+ * and answers `closed`. One that cannot says so: VS Code's preview commits
+ * inside `applyEdit`, and its Discard ends whichever preview is shown, so
+ * its adapter lets the writer's Apply stand (PR #172 F-02, F-06). Whatever
+ * the host does, the applier's watch reads the lifetime as ended, so
+ * nothing more is shown.
  */
 
 export interface DocumentSnapshot {

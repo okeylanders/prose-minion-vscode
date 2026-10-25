@@ -135,7 +135,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   context.subscriptions.push(issueAnnotator);
   // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04);
-  // a review it is holding is discarded then (PR #172 F-02).
+  // a review held when its document closes is logged, since VS Code gives no way to end it (PR #172 F-02, F-06).
   const documentEditor = new VsCodeDocumentEditor(outputChannel);
   context.subscriptions.push(documentEditor);
   const platform: Platform = {

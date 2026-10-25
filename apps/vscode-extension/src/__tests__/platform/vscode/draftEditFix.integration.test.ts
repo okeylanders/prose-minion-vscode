@@ -41,7 +41,6 @@ jest.mock('vscode', () => {
     workspace: {
       textDocuments: [] as unknown[],
       onDidChangeTextDocument: changes.event,
-      onDidOpenTextDocument: () => ({ dispose: () => undefined }),
       onDidCloseTextDocument: closes.event,
       applyEdit: jest.fn()
     },
