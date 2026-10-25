@@ -74,6 +74,83 @@ describe('findProtectedRegions', () => {
   });
 });
 
+describe('findProtectedRegions: complete constructs (PR #171 F-02)', () => {
+  const masked = (text: string) => maskProtectedRegions(text, findProtectedRegions(text, 'markdown')).text;
+  const P = PROTECTED_PLACEHOLDER;
+
+  it('protects a fence inside a block quote or a list item, to its container\'s end', () => {
+    expect(masked('> ~~~txt\n> teh\n> ~~~')).toBe(P);
+    expect(masked('- ~~~txt\n  teh\n  ~~~')).toBe(P);
+    expect(masked('1. Alice\n\n   ```js\n   teh\n   ```\n2. Rabbit')).toBe(`1. Alice\n\n${P}\n2. Rabbit`);
+    expect(masked('* > ~~~\n  > teh\n  > ~~~\n\nAlice.')).toBe(`${P}\n\nAlice.`);
+    // An unclosed fence in a quote ends with the quote, not the document.
+    expect(masked('> ~~~\n> teh\n\nAlice fell.')).toBe(`${P}\n\nAlice fell.`);
+  });
+
+  it('protects a fence in a list item indented with a tab', () => {
+    expect(masked('-\tAlice\n\t~~~\n\tteh\n\t~~~')).toBe(`-\tAlice\n${P}`);
+  });
+
+  it('protects a destination with balanced or escaped parentheses, or on the next line', () => {
+    expect(masked('[chapter](chap(one)/teh.md)')).toBe(`[chapter]${P}`);
+    expect(masked('[chapter](chap\\)teh.md)')).toBe(`[chapter]${P}`);
+    expect(masked('[chapter](\n  secret/teh.md\n)')).toBe(`[chapter]${P}`);
+    expect(masked('[chapter](<secret/teh one.md>)')).toBe(`[chapter]${P}`);
+    expect(masked('> [a](\n> secret/teh.md "T\n> itle") b')).toBe(`> [a]${P} b`);
+    // A blank line ends it: not a link, so prose.
+    expect(masked('[chapter](\n\nteh.md)')).toBe('[chapter](\n\nteh.md)');
+  });
+
+  it('keeps a link\'s visible text as prose', () => {
+    expect(masked('[teh](chapter.md)')).toBe(`[teh]${P}`);
+  });
+
+  it('protects a reference definition on several lines, and inside a block quote', () => {
+    expect(masked('[chapter]:\n  secret/teh.md\n\nA chapter.')).toBe(`${P}\n\nA chapter.`);
+    expect(masked('[chapter]: secret/teh.md\n  "The teh title"\n\nA chapter.')).toBe(`${P}\n\nA chapter.`);
+    expect(masked('> [x]: secret/teh.md\n> "Title"\n\nAfter.')).toBe(`${P}\n\nAfter.`);
+  });
+
+  it('protects email autolinks, any scheme\'s autolink, and bare emails and www. links', () => {
+    expect(masked('Contact <teh@example.invalid>.')).toBe(`Contact ${P}.`);
+    expect(masked('Open <irc://example.invalid/teh>.')).toBe(`Open ${P}.`);
+    expect(masked('Mail teh@example.invalid or www.example.invalid/teh now.')).toBe(`Mail ${P} or ${P} now.`);
+  });
+
+  it('reads backtick runs whole: a run nothing closes is literal, and never steals a later span\'s opener', () => {
+    expect(masked('A `` b `teh` c')).toBe(`A \`\` b ${P} c`);
+    expect(masked('An escaped \\` tick, then `teh`.')).toBe(`An escaped \\\` tick, then ${P}.`);
+    // Two list items: no span runs from one into the other.
+    expect(masked('- a `b\n- teh` c')).toBe('- a `b\n- teh` c');
+    // A line that only looks like a list item continues the paragraph, and the span.
+    expect(masked('Prose `a\n1999. teh` more')).toBe(`Prose ${P} more`);
+  });
+
+  it('reads a tag\'s quoted attributes whole, even holding `>`, and a backtick inside one opens nothing', () => {
+    expect(masked('See <a title="x>y" href="teh.html">link</a> now.')).toBe(`See ${P}link${P} now.`);
+    expect(masked('<a title="`">x</a> then `teh`')).toBe(`${P}x${P} then ${P}`);
+    expect(masked('<!-- ` --> then `teh`')).toBe(`${P} then ${P}`);
+  });
+
+  it('protects a raw script or style block, but not a writer\'s HTML block of prose', () => {
+    expect(masked('<script>\nvar teh;\n</script>\n\nAlice.')).toBe(`${P}\n\nAlice.`);
+    expect(masked('<div class="note">\nAlice fell.\n</div>')).toBe(`${P}\nAlice fell.\n${P}`);
+  });
+
+  it('protects a document nested deeper than any manuscript whole, rather than read it', () => {
+    const deepQuote = `${'> '.repeat(33)}teh`;
+    expect(masked(deepQuote)).toBe(P);
+    const deepList = Array.from({ length: 40 }, (_, level) => `${' '.repeat(level * 2)}- teh`).join('\n');
+    expect(masked(deepList)).toBe(P);
+    // Ordinary nesting is read.
+    expect(masked(`${'> '.repeat(3)}Alice fell.`)).toBe(`${'> '.repeat(3)}Alice fell.`);
+  });
+
+  it('still reads indented paragraphs as prose, protecting the inline constructs inside them', () => {
+    expect(masked('\tIndented teh with `code` and <https://example.invalid/teh>.')).toBe(`\tIndented teh with ${P} and ${P}.`);
+  });
+});
+
 describe('mergeRanges', () => {
   it('sorts, and merges ranges that overlap or touch', () => {
     expect(mergeRanges([{ start: 5, end: 8 }, { start: 0, end: 2 }, { start: 2, end: 3 }, { start: 7, end: 10 }]))

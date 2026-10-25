@@ -286,6 +286,42 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
   });
 });
 
+describe('DraftEditUseCase.run: protected Markdown never reaches the payload or a flag (PR #171 F-02)', () => {
+  const PROSE = 'Alice was beginning to get very tired.';
+  const TEH: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
+  const CONSTRUCTS: ReadonlyArray<[string, string]> = [
+    ['a fence in a block quote', '> ~~~txt\n> teh\n> ~~~'],
+    ['a fence in a list item', '- ~~~txt\n  teh\n  ~~~'],
+    ['a destination with balanced parentheses', '[chapter](chap(one)/teh.md)'],
+    ['a destination on the next line', '[chapter](\n  secret/teh.md\n)'],
+    ['a reference definition on two lines', '[chapter]:\n  secret/teh.md'],
+    ['an email autolink', 'Contact <teh@example.invalid>.'],
+    ['a code span after an unmatched backtick run', 'A `` b `teh` c'],
+    ['a tag whose quoted attribute holds >', 'See <a title="x>y" href="teh.html">link</a>.']
+  ];
+
+  it.each(CONSTRUCTS)('a whole-document run: %s', async (_name, construct) => {
+    const text = `${construct}\n\n${PROSE}`;
+    const { useCase, requests, shown } = setup({ result: read(TEH), live: { text, languageId: 'markdown' } });
+    const outcome = await useCase.run(target({ text, languageId: 'markdown' }), FLAG);
+
+    expect(requests[0].chunks.join('\n')).not.toContain('teh');
+    expect(shown[0].annotations).toEqual([]);
+    expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, unanchored: 1 } });
+  });
+
+  it.each(CONSTRUCTS)('a selection of the protected word alone: %s', async (_name, construct) => {
+    const text = `${construct}\n\n${PROSE}`;
+    const start = text.indexOf('teh');
+    const { useCase, pass, annotations } = setup({ result: read(TEH) });
+    const outcome = await useCase.run(target({ text, languageId: 'markdown', range: { start, end: start + 3 } }), FLAG);
+
+    expect(outcome).toEqual({ kind: 'empty' });
+    expect(pass.proofread).not.toHaveBeenCalled();
+    expect(annotations.show).not.toHaveBeenCalled();
+  });
+});
+
 describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live text (PR #171 F-03)', () => {
   const TWICE = 'Alice saw teh rabbit. Elsewhere teh bird sang.';
   const FIRST_TEH: ProofreadFinding = { anchor: { quote: 'teh', before: 'Alice saw', after: 'rabbit.' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
