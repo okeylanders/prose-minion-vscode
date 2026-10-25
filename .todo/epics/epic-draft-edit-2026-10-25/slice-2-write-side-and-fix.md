@@ -129,8 +129,9 @@ PR #172 review" records each:
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (545 suites / 7,614 tests / 59 snapshots; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox` at `e3a7fac0`. The full suite also
-  passes under Node 22.
+  suite (547 suites / 7,648 tests / 59 snapshots with the PR #172 review
+  fixes; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox`
+  at `e3a7fac0`. The full suite also passes under Node 22.
 - Fix is tested through the real applier, anchoring and guard on a document
   that moves as VS Code's does, and end to end through the production
   VS Code adapters on a controlled double whose `applyEdit` behaves as

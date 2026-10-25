@@ -158,3 +158,90 @@ Independent scratch harnesses and logs are retained outside the repository under
 Never run here: native Extension Development Host; actual Refactor Preview selection/discard/language-change behavior; single-step native undo/redo; native lightbulb/Problems/F8 and accessibility; live model quality/false-positive acceptance. The writer's reported Flag experience and ADR writer decisions are author-supplied context, not independent acceptance of Fix. Those native and live-quality gates remain separate even after code review becomes clear.
 
 No private manuscript, paid/live provider call, formal GitHub review/comment, merge or deployment was used. Publication is report-only on this PR branch. Its remote bytes, sole parent, single changed path and exact report-head CI are verified separately after publication; this report does not pre-claim a future CI outcome.
+
+## Author response — 2026-10-25
+
+**Correction head:** `fa617eae` (base `e3a7fac0`, unchanged since the review). F-01, F-03 and F-04 are fixed in `f57060f6`, with regressions that fail on the reviewed head. `fa617eae` lists the two new bounds in the prompt-budget guard. The docs are in `fe166f9c`, and the ADR's new "Amendment 2026-10-25: PR #172 review (Slice 2)" section records each decision. **F-02 is still open:** its fix changes the review step itself, and that is the writer's call. The options are below.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01 | Fixed | `f57060f6` |
+| F-02 | Open, pending the writer's decision | — |
+| F-03 | Fixed | `f57060f6`, `fa617eae` |
+| F-04 | Fixed | `f57060f6`, `fa617eae` |
+
+### F-01 — a retry checks every rule again
+
+- **The fix.** `DraftEditApplier`'s checks are now one module function, `check(document, edits, policy, refused)`: text unchanged, protection, line breaks, overlaps and Markdown structure.
+  - A stale direct apply follows its standing edits through the writer's changes (`reconcileEdits`, then `placeMembers`), then runs `check` on the settled snapshot before it asks again.
+  - Whatever `check` refuses is counted under its own reason. If nothing survives, nothing is asked.
+  - Members keep their identities through the move, so the refusal counts are true.
+- **Unchanged.** A reviewed apply never retries. Only one retry is made.
+- **Tests:**
+  - `DraftEditApplier.test.ts`, "the direct retry checks again": a fence, inline code or a link target typed around the edit while it is out is refused as `protected` and never asked. Controls: a harmless prefix is followed and asked once more; a reviewed apply never asks again, so a fence typed during review is left alone.
+  - `DraftEditFix.test.ts`: your fenced-sentence witness through the use case. The text is unchanged, there is one apply call, `stale`, `applied: 0`, `dropped.protected: 1`, and nothing is flagged.
+  - `DraftEditQuickFixes.test.ts`: Replace with after a real Flag run, with the flag fenced as the fix goes in. Nothing is written into the code.
+  - The use-case and quick-fix regressions fail on `7f180ab7`. The applier suite cannot compile there, because its policy type gained a field, so the use-case tests carry that proof.
+
+### F-03 — a fix keeps the block's Markdown structure
+
+- **The rule** (`utils/draftEdit/markdownStructure.ts`, `editsChangingStructure`). Each top-level block an edit touches is lexed with `marked` before and after the edits. The inline content uses the document's own link definitions (a fresh `Lexer` per read, with the document's `links`). The block's *shape* must match:
+  - token types and their nesting;
+  - heading depth;
+  - list kind (ordered or not, loose or tight), items and task items;
+  - table rows and columns;
+  - text runs with non-text children.
+
+  Adjacent text runs collapse, so a spelling fix inside a sentence never changes the shape.
+- **Judged together.** The batch is checked as a whole. When a block's shape moves, its edits are kept in order only while the shape still holds, and the rest are refused. In your fence witness, the spacing fix is refused and the spelling fix it would have swallowed still applies.
+- **Fails closed.** A block over `MAX_VERIFIED_BLOCK_LENGTH` (50,000 characters) refuses its edits. Plain text has no structure and refuses nothing.
+- **Where it applies:**
+  - The policy row gains `preservesMarkdownStructure: true` for Proofread.
+  - At placement, such a fix is downgraded to a flag with `downgradeReason: 'markup-change'`, so it is never preferred and Fix all never takes it.
+  - The applier checks again on the live text (and on a retry, per F-01), refusing as `markup`. An applier refusal for markup or a line break also leaves a standing flag, downgraded.
+- **The character-count guard stays** as the first, cheap rule.
+- **Tests:**
+  - `markdownStructure.test.ts`, 13 cases: a tag, a link, a heading, a list item, a removed hard line break, a fence opener, and a reference link the document defines elsewhere (with its control: no definition, no refusal). Ordinary fixes beside markup are kept; the joint emphasis case refuses only the edit that completes it; the fence case keeps the spelling fix; there is the long-block refusal, and plain text.
+  - `DraftEditFix.test.ts`, three cases through the use case: your `< Rabbit >` witness is flagged, never written, and its Replace with is not preferred; your fence-and-spelling witness applies the spelling fix alone and flags the spacing fix; and Fix all after a Flag run takes the spelling fix and leaves the tag-maker.
+  - All three use-case cases fail on `7f180ab7`.
+
+### F-04 — reconciliation reads a merged change as the edits it is made of
+
+- **Replay** (`utils/draftEdit/reconcileEdits.ts`). Reconciliation now replays the document from the text the edits were made against.
+  - A host change and the edits it touches (edges inclusive) form a cluster.
+  - The cluster's new text must read, **in exactly one way**, as the text between the edits unchanged, with each edit either its original or its replacement. A forward and backward pass keeps at most 64 readings (`MAX_READINGS`); past that, or with none, the cluster is unread.
+  - Read that way, each edit is applied or not applied, where it now stands.
+  - Read any other way, an edit a change *reached into* is unknown. An edit a change only met at an edge keeps its standing.
+- **Normalized history.** A read cluster is given back as exactly its edits' replacements, so ranges moved through the history stay on their text between the edits. The use case moves its leftover flags through that history.
+- **Quick fixes.** The annotator moves flags change by change and drops any flag inside a spanning change. After a quick fix applies, `applyShown` therefore shows the untouched flags again at their normalized positions (`reshow`), falling back to removal.
+- **Genuine writer edits still fail closed.** A spanning change that also changed the text between edits reads no way, and every edit it reached into is unknown.
+- **The double.** `fakeDocuments.ts` gained `applyLikeVsCode`, which merges at `VS_CODE_MERGE_THRESHOLD = 1000` operations as `PieceTreeTextBuffer._reduceOperations` does (interstitial text kept), with an optional ticked subset.
+- **Tests:**
+  - `DraftEditManyFixes.test.ts`: 999, 1,000 and 1,001 fixes, each counted applied with the untouched tense flag on its text. A ticked subset of 1,300 merges because 1,040 are ticked, and the 260 unticked are counted and flagged on their text. Fix all with 1,001 shown fixes applies them all and shows the tense flag again.
+  - `reconcileEdits.test.ts`, "one change spanning many edits": all applied, with the history given back as the edits; a subset; a flag between edits kept on its text; a spanning change that starts and ends inside its first and last edits; and the tampered-interstitial control (all unknown, history unchanged).
+  - The 1,000, 1,001 and subset cases and the Fix all case fail on `7f180ab7`. The 999 case passes there, as it should.
+
+### F-02 — open: the barrier has to come before Apply, and Refactor Preview has none
+
+I agree with the finding as stated. The preview's selection and its commit both happen inside the awaited `workspace.applyEdit`. There is no hook between the writer's Apply and the write, and a language change leaves the version number alone. So no post-write check can be a barrier, and a compensating undo is not one either.
+
+The fix is a different review step, so I've put the choice to the writer. The options:
+
+1. **Keep Refactor Preview and narrow the window.** Discard a held preview the moment the watched lifetime ends (close, reopen or language change), through the `refactorPreview.discard` command. Record the remaining gap, an Apply racing that discard, as a stated limit in the ADR. This keeps the side-by-side diff and native per-entry ticking, but it is not a strict barrier.
+2. **Our own review.** A checklist of the fixes in the extension's own UI. The decision is ours, so lifetime and language are checked after the writer's choice and before the one direct `applyEdit`. This is a strict barrier, but loses VS Code's diff view.
+3. **Direct only.** Drop the preview setting. Fix applies directly, with one undo step, and Flag remains the reviewable path.
+
+The ADR's F-02 row says this is open. This response and the ADR will record the chosen option and its tests (a held preview plus a language change, asserting no mutation wherever the chosen path allows) when it lands.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass: core, webview and adapter |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings (the baseline) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass; the three existing webpack size warnings |
+| Full Jest, Node 18.20.8 | Pass: **547 suites / 7,648 tests / 59 snapshots** |
+| Full Jest, Node 22.22.0 | Pass: 547 suites / 7,648 tests / 59 snapshots |
+| Regressions on the reviewed head `7f180ab7` | In a worktree with the new tests copied in, 9 fail on assertions: F-01 (use case, quick fix), F-03 (three use-case cases) and F-04 (1,000, 1,001, subset, Fix all). The 999 case passes there |
+
+The first full Node 18 run caught `promptBudgets.test.ts` flagging the two new bounds. `fa617eae` lists them as non-prompt limits, with their reasons, and the counts above are from the rerun. No live provider call, private manuscript or native Extension Development Host was used. The fixtures are synthetic or *Alice*. The native acceptance checks you list (Refactor Preview selection, discard, language change, undo, lightbulb and Problems) remain the writer's, in an Extension Development Host.
