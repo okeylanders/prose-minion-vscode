@@ -351,6 +351,11 @@ export class LightboxService {
     return this.retained.current()?.board;
   }
 
+  /** The service's clock, in epoch milliseconds: a board's capture, and a reading's landing (Slice 4J). */
+  clock(): number {
+    return this.now();
+  }
+
   /** A retained board and its paragraph texts, by board id (Slice 2B readings). */
   readingSource(boardId: string): LightboxReadingSourceText | undefined {
     const entry = this.retained.byId(boardId);

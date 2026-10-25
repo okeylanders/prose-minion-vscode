@@ -36,6 +36,9 @@ function withoutTheDrop(paragraphs: readonly string[]): string[] {
     : paragraph));
 }
 
+/** A landing a test's settled call records (Slice 4J). */
+const LANDED = { run: 'run-2-token', at: '2026-10-24T09:08:00.000Z' };
+
 describe('carrying readings onto a changed text (D4)', () => {
   const read = readGroup('A');
 
@@ -114,8 +117,8 @@ describe('carrying readings onto a changed text (D4)', () => {
     ]));
   });
 
-  it('sets aside a group still being read, and leaves a group never read as it was', () => {
-    const [running] = startLightboxGroups([read], [{ group: 'A', lenses: ['motif'] }], 'motif');
+  it('sets aside a group still being read, keeping its earlier readings, and leaves a group never read as it was', () => {
+    const [running] = startLightboxGroups([read], [{ group: 'A', lenses: ['motif'] }]);
     const notRun: LightboxReadingGroup = {
       group: 'B', status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []
     };
@@ -123,6 +126,9 @@ describe('carrying readings onto a changed text (D4)', () => {
     expect(carried).toMatchObject({ status: 'cancelled', error: LIGHTBOX_CHANGED_WHILE_READING });
     expect(carried.pending).toBeUndefined();
     expect(carried.tiles.length).toBe(read.tiles.length);
+    // Slice 4J: the lens being read again keeps its earlier reading, said to be the earlier one, and stale.
+    expect(carried.earlierLenses).toEqual([{ lens: 'motif', reason: LIGHTBOX_CHANGED_WHILE_READING }]);
+    expect(carried.staleLenses?.map((mark) => mark.lens)).toContain('motif');
     expect(untouched).toBe(notRun);
   });
 
@@ -138,18 +144,20 @@ describe('carrying readings onto a changed text (D4)', () => {
     const fresh = settleLightboxGroup(carried, {
       group: 'A', lenses: ['motif'], status: 'ok', tiles: motif, withheldBlocks: [], withheldClaims: [], frictions: [],
       quoteChecks: [{ lens: 'motif', checked: 1, withheld: 0 }]
-    }, 'motif');
+    }, LANDED);
     expect(fresh.staleLenses?.map((mark) => mark.lens)).not.toContain('motif');
     expect(fresh.staleLenses?.length).toBe((carried.staleLenses?.length ?? 0) - 1);
 
     const failed = settleLightboxGroup(carried, {
       group: 'A', lenses: ['motif'], status: 'failed', tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [],
       error: 'nope', quoteChecks: []
-    }, 'motif');
+    }, LANDED);
     expect(failed.staleLenses).toEqual(carried.staleLenses);
 
+    // Slice 4J: a run of the whole call keeps its stale readings, marks and all, until new ones land.
     const [restarted] = startLightboxGroups([carried], [{ group: 'A', lenses: read.lenses }]);
-    expect(restarted.staleLenses).toBeUndefined();
+    expect(restarted.staleLenses).toEqual(carried.staleLenses);
+    expect(restarted.tiles).toEqual(carried.tiles);
   });
 });
 

@@ -15,19 +15,31 @@
  * decision 43), when the board gives its controls: it runs this lens's
  * call, and stands in for the bare "read" badge.
  *
- * A frame given `keep` (the Opinion, epic decision 47) keeps its earlier
- * reading in view while its call reads it again, with `keep.reading` beside
- * it in place of the skeleton; after a failed or stopped call the earlier
- * reading stays, the reason said after `keep.kept`.
+ * Every frame keeps a lens's earlier reading in view while its call reads
+ * it again (Slice 4J, epic decision 49, generalizing the Opinion's decision
+ * 47): "Analyzing… This is the earlier reading until the new one lands." in
+ * place of the skeleton. After a call that did not replace it (failed,
+ * stopped, cut off, withheld, or no tile), the earlier reading stays with a
+ * quiet **Earlier reading** label and the host's reason. The note is the
+ * frame's description, so a screen reader hears it with the frame's name.
+ * `keep` gives a frame its own words (the Opinion's).
+ *
+ * A call that did not land is said once, in its note under the run line
+ * (Slice 4J, epic decision 52): a frame whose state is that note's message
+ * shows a short line pointing there instead ("Call E failed: see its note by
+ * the run line. Analyze to try again.", or "Earlier reading · this call
+ * failed: …" over its earlier reading), and is described by the note.
  */
 import * as React from 'react';
 import type { LightboxReadingTileKind, LightboxWithheldBlock, LightboxWithheldClaim } from '@messages';
 import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import type { LightboxLensView } from '@hooks/domain/lightbox/lightboxReadings';
-import { lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxOwnWithheldBlocks, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { LightboxCallLine, LightboxCallPointer } from '@components/lightbox/LightboxCallNotes';
 import { LightboxTileFrame } from '@components/lightbox/LightboxTileFrame';
 import { LightboxReadingPlaceholder } from '@components/lightbox/LightboxReadingPlaceholder';
 import { LightboxAnalyzeButton, useLightboxHasCallControls } from '@components/lightbox/LightboxCallButton';
+import { LIGHTBOX_EARLIER_LABEL, LIGHTBOX_KEEP_WORDS, type LightboxKeepWords } from '@shared/constants/lightboxProvenance';
 
 export interface LightboxReadingFrameProps {
   kind: LightboxReadingTileKind;
@@ -46,8 +58,8 @@ export interface LightboxReadingFrameProps {
   /** The frame's own chip and class (the Opinion, Slice 4D). */
   chip?: React.ReactNode;
   frameClass?: string;
-  /** Its earlier reading stays while its call reads it again: what to say then, and before a failure's reason. */
-  keep?: { reading: string; kept: string };
+  /** Its own words for an earlier reading kept while its call reads it again, and after (the Opinion's, decision 47). */
+  keep?: LightboxKeepWords;
   children: React.ReactNode;
 }
 
@@ -64,14 +76,18 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   staleFirst,
   chip,
   frameClass,
-  keep,
+  keep = LIGHTBOX_KEEP_WORDS,
   children
 }) => {
-  // Read again, its earlier reading still on the board: shown, said to be the earlier one (decision 47).
-  const keeping = keep !== undefined && view.phase === 'reading' && view.tiles.length > 0;
-  const read = view.phase === 'ok' || keeping;
-  const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
+  const read = view.phase === 'ok';
+  const blocks = lightboxOwnWithheldBlocks(view);
+  const nothing = read && !view.callNote && view.tiles.length === 0 && blocks.length === 0 && view.withheldClaims.length === 0;
   const analyze = useLightboxHasCallControls() ? <LightboxAnalyzeButton lens={LIGHTBOX_TILE_LENS[kind]} /> : undefined;
+  const noteId = React.useId();
+  const kept = view.reanalyzing || view.earlier !== undefined;
+  // Decision 52: a frame whose state is its call's note points there, and is described by it.
+  const pointer = view.callNote && !kept;
+  const describedBy = [kept || pointer ? noteId : undefined, view.callNote?.id].filter(Boolean).join(' ');
   return (
     <LightboxTileFrame
       kind={kind}
@@ -79,25 +95,22 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
       title={title}
       footnote={read && view.tiles.length > 0 ? footnote : undefined}
       chip={chip}
-      className={frameClass}
+      className={`${frameClass ?? ''}${kept ? ' is-earlier' : ''}`.trim() || undefined}
       action={analyze}
+      describedBy={describedBy || undefined}
     >
       {staleFirst && view.stale && <LightboxStaleNote />}
       {aside}
       {!staleFirst && view.stale && <LightboxStaleNote />}
-      {(view.phase === 'not-run' || (view.phase === 'reading' && !keeping)) && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
-      {keeping && (
-        <p className="pm-lb-reading-notice is-live" role="status">
-          <span className="pm-lb-spin is-small" aria-hidden="true" />
-          {keep.reading}
-        </p>
-      )}
-      {view.notice && (
+      {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
+      <LightboxKeptNote view={view} words={keep} id={noteId} />
+      {pointer && view.callNote && <LightboxCallLine lens={view.lens} note={view.callNote} id={noteId} />}
+      {view.notice && !view.callNote && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>
-          {keep && read && view.tiles.length > 0 ? `${keep.kept} ${view.notice}` : view.notice}
+          {view.notice}
         </p>
       )}
-      <LightboxWithheldBlocks blocks={view.withheldBlocks} />
+      <LightboxWithheldBlocks blocks={blocks} />
       {nothing && (
         <div className="pm-lb-empty-reading">
           <p>{empty}</p>
@@ -108,6 +121,41 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
       {read && after}
       <LightboxWithheldClaims claims={view.withheldClaims} />
     </LightboxTileFrame>
+  );
+};
+
+/**
+ * An earlier reading on show (Slice 4J, epic decision 49): while its call
+ * reads it again, the live note beside the spinner; after a call that did
+ * not replace it, the quiet **Earlier reading** label and the host's reason.
+ * Nothing for a lens whose reading is its latest. Every reading's frame,
+ * the headline, the tension line and the Spark lane draw it.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+export const LightboxKeptNote: React.FC<{
+  view: Pick<LightboxLensView, 'lens' | 'reanalyzing' | 'earlier' | 'callNote'>;
+  words?: LightboxKeepWords;
+  id?: string;
+}> = ({ view, words = LIGHTBOX_KEEP_WORDS, id }) => {
+  if (view.reanalyzing) {
+    return (
+      <p id={id} className="pm-lb-reading-notice is-live" role="status">
+        <span className="pm-lb-spin is-small" aria-hidden="true" />
+        {words.reading}
+      </p>
+    );
+  }
+  if (view.earlier === undefined) {
+    return null;
+  }
+  // Decision 52: a reason that is its call's note's is said there once; this line points to it.
+  return (
+    <p id={id} className="pm-lb-earlier-note">
+      <b className="pm-lb-earlier-label">{LIGHTBOX_EARLIER_LABEL}</b>
+      {view.callNote
+        ? <>{' · '}<LightboxCallPointer lens={view.lens} note={view.callNote} earlier /></>
+        : ` ${words.kept} ${view.earlier}`}
+    </p>
   );
 };
 

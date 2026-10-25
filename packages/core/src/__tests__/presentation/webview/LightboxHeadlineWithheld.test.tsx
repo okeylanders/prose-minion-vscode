@@ -95,9 +95,11 @@ describe('a withheld headline is shown, not hidden (PR #149 F-04)', () => {
     });
 
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('One chapter, held up to the light.');
-    expect(within(screen.getByLabelText('Headline reading')).getByText(
-      'The headline did not come back. The provider refused the call (HTTP 400). Press Finish or Analyze to try again.'
-    )).not.toBeNull();
+    // Decision 52: the failure is said once, in call A's note under the run line; the headline points there.
+    const state = screen.getByLabelText('Headline reading');
+    expect(state.textContent).toBe('The headline did not come back. Call A failed: see its note by the run line. Analyze to try again.');
+    const note = document.getElementById(state.getAttribute('aria-describedby') as string);
+    expect(note?.textContent).toBe('Call A · failed The provider refused the call (HTTP 400). Press Finish or Analyze to try again.');
   });
 
   it('shows the plain heading alone before any reading', () => {

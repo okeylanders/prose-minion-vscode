@@ -49,17 +49,20 @@ const landed: LightboxReadingGroup = {
   usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, costUsd: 0.5 }
 };
 
+/** The landing a settled call records on each lens it replaces (Slice 4J). */
+const LANDED = { run: 'run-2-token', at: '2026-10-24T09:08:00.000Z' };
+
 describe('reading-group transitions', () => {
-  it('clears a group for a full run and marks every lens it reads pending', () => {
+  it('keeps a group\'s readings through a run of the whole call, every lens it reads pending (Slice 4J)', () => {
     const [a, b] = startLightboxGroups([landed, emptyLightboxReadingGroup('B')], [{ group: 'A', lenses: ['headline', 'motif'] }]);
-    expect(a).toMatchObject({ status: 'running', tiles: [], lenses: [], pending: ['headline', 'motif'], usage: landed.usage });
+    expect(a).toMatchObject({ status: 'running', tiles: landed.tiles, lenses: ['headline', 'motif'], pending: ['headline', 'motif'], usage: landed.usage });
     expect(b.status).toBe('not-run');
   });
 
   it('re-reads one lens: the others stay, only that lens is replaced, usage accumulates', () => {
-    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }], 'motif');
+    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }]);
     expect(running).toMatchObject({ status: 'running', pending: ['motif'], tiles: landed.tiles });
-    const settled = settleLightboxGroup(running, outcome({ lenses: ['motif'], tiles: [tile('m2', 'motif', 'motif')] }), 'motif');
+    const settled = settleLightboxGroup(running, outcome({ lenses: ['motif'], tiles: [tile('m2', 'motif', 'motif')] }), LANDED);
     expect(settled.tiles.map((entry) => entry.id)).toEqual(['h1', 'm2']);
     expect(settled.status).toBe('ok');
     expect(settled.pending).toBeUndefined();
@@ -68,18 +71,23 @@ describe('reading-group transitions', () => {
 
   it('replaces only the re-read lens\'s quote checks, and keeps them all when the re-read fails (PR #149 F-07)', () => {
     const counted = { ...landed, quoteChecks: [{ lens: 'headline' as const, checked: 1, withheld: 0 }, { lens: 'motif' as const, checked: 5, withheld: 1 }] };
-    const [running] = startLightboxGroups([counted], [{ group: 'A', lenses: ['motif'] }], 'motif');
-    const reread = settleLightboxGroup(running, outcome({ lenses: ['motif'], quoteChecks: [{ lens: 'motif', checked: 2, withheld: 0 }] }), 'motif');
+    const [running] = startLightboxGroups([counted], [{ group: 'A', lenses: ['motif'] }]);
+    const reread = settleLightboxGroup(
+      running,
+      outcome({ lenses: ['motif'], tiles: [tile('m2', 'motif', 'motif')], quoteChecks: [{ lens: 'motif', checked: 2, withheld: 0 }] }),
+      LANDED
+    );
     expect(reread.quoteChecks).toEqual([{ lens: 'headline', checked: 1, withheld: 0 }, { lens: 'motif', checked: 2, withheld: 0 }]);
-    const failed = settleLightboxGroup(running, outcome({ status: 'failed', quoteChecks: [] }), 'motif');
+    const failed = settleLightboxGroup(running, outcome({ lenses: ['motif'], status: 'failed', quoteChecks: [] }), LANDED);
     expect(failed.quoteChecks).toEqual(counted.quoteChecks);
-    expect(startLightboxGroups([counted], [{ group: 'A', lenses: ['headline', 'motif'] }])[0].quoteChecks).toEqual([]);
+    // Slice 4J: a run of the whole call keeps them too, until new ones land.
+    expect(startLightboxGroups([counted], [{ group: 'A', lenses: ['headline', 'motif'] }])[0].quoteChecks).toEqual(counted.quoteChecks);
   });
 
   it('keeps the earlier readings when a re-read fails', () => {
-    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }], 'motif');
-    const settled = settleLightboxGroup(running, outcome({ status: 'failed', error: 'Rate limited.', tiles: [] }), 'motif');
-    expect(settled).toMatchObject({ status: 'failed', error: 'Rate limited.', tiles: landed.tiles });
+    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }]);
+    const settled = settleLightboxGroup(running, outcome({ lenses: ['motif'], status: 'failed', error: 'Rate limited.', tiles: [] }), LANDED);
+    expect(settled).toMatchObject({ status: 'failed', error: 'Rate limited.', tiles: landed.tiles, earlierLenses: [{ lens: 'motif', reason: 'Rate limited.' }] });
   });
 
   it('cancels only the stopped run\'s groups that were still running', () => {

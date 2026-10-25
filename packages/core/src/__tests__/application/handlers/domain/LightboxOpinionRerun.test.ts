@@ -10,8 +10,9 @@
  *   marks included, with the failure's reason; the board then saved holds
  *   it, and a reload restores it;
  * - **the writer stops it**, and it stays as it was; nothing is saved.
- * Every other call run on its own is still cleared first, as is the Opinion
- * in a run of every call. The press, adoption and observation guards hold.
+ * Since Slice 4J (decision 49) every call keeps its readings this way, and
+ * so does the Opinion in a run of every call: decision 47 is its special
+ * case. The press, adoption and observation guards hold.
  *
  * Real handlers, service, runner, store and library
  * (`lightboxBoardsHarness`); only the engine's replies are stand-ins, held
@@ -211,22 +212,25 @@ describe('the Opinion run on its own keeps the old one until the new one lands (
     expect(savedBoard(host, saved.at(-1) as string).readings.find((group) => group.group === 'F')?.tiles).toEqual(before?.tiles);
   });
 
-  it('control: another call run on its own is still cleared first, and so is the Opinion in a run of every call', async () => {
+  it('decision 49 generalizes it: another call run on its own keeps its readings too, and so does the Opinion in a run of every call', async () => {
     const { host, tab, engine } = await readBoard();
     const boards = tab.boards().length;
+    const b = groupOn(host, 'B');
     await tab.run({ mode: 'group', group: 'B' });
     await quiet();
-    expect(posted(tab, 'B').slice(boards)[0]).toMatchObject({ status: 'running', tiles: [], lenses: [] });
+    expect(posted(tab, 'B').slice(boards)[0]).toMatchObject({ status: 'running', tiles: b?.tiles, lenses: b?.lenses });
 
     const again = tab.boards().length;
+    const f = groupOn(host, 'F');
     engine.holdF = deferred<void>();
     await tab.run({ mode: 'all' });
     await quiet();
-    expect(posted(tab, 'F').slice(again)[0]).toMatchObject({ status: 'running', tiles: [], lenses: [] });
+    expect(posted(tab, 'F').slice(again)[0]).toMatchObject({ status: 'running', tiles: f?.tiles, lenses: ['opinion'], pending: ['opinion'] });
     engine.holdF.resolve();
     engine.holdF = undefined;
     await quiet();
     expect(groupOn(host, 'F')).toMatchObject({ status: 'ok', lenses: ['opinion'] });
+    expect(groupOn(host, 'F')?.tiles.some((tile) => f?.tiles.some((old) => old.id === tile.id))).toBe(false);
   });
 
   it('the guards hold: a saved board opened while the new Opinion is weighed is refused, and the new one lands on its own board', async () => {

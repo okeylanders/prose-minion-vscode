@@ -7,7 +7,8 @@
  * two come and go together), the board header (with the headline once it is
  * read), any refusal (naming the refused source and, over a retained board,
  * the source still shown), the toolbar (tile filter, register legend, and
- * the run line), the sticky paragraph ribbon and the tension arc's line, the
+ * the run line), each call that did not land, said once under it (Slice
+ * 4J, epic decision 52), the sticky paragraph ribbon and the tension arc's line, the
  * counted tiles, then the readings, the Spark lane under them, and the
  * Opinion last, all through the exhaustive renderer map. A lens that is off
  * is not drawn.
@@ -31,6 +32,8 @@ import { lightboxEngagementLane, lightboxMovementsLane, lightboxPressureLaneView
 import { Icon } from '@components/shared/Icon';
 import { LightboxRibbon } from '@components/lightbox/LightboxRibbon';
 import { LightboxRunLine } from '@components/lightbox/LightboxRunLine';
+import { LightboxCallNotes } from '@components/lightbox/LightboxCallNotes';
+import { lightboxCallNotes } from '@hooks/domain/lightbox/lightboxCallNotes';
 import { LIGHTBOX_PLAIN_HEADLINE } from '@components/lightbox/LightboxHeadline';
 import {
   LIGHTBOX_MEASURED_LAYOUT,
@@ -205,6 +208,8 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         </div>
         {runLine && <LightboxRunLine view={runLine} onRun={onRun} onStop={onStop} />}
       </div>
+      {/* Each call that did not land, said once (Slice 4J, decision 52); its widgets point here. */}
+      <LightboxCallNotes notes={lightboxCallNotes(board)} />
 
       <LightboxRibbon
         board={board}

@@ -15,6 +15,7 @@ export * from './lightboxEstimate';
 export * from './lightboxStoryTiles';
 export * from './lightboxGravity';
 export * from './lightboxStale';
+export * from './lightboxProvenance';
 export * from './lightboxHandoff';
 export * from './lightboxProjectFiles';
 export * from './lightboxContextFiles';

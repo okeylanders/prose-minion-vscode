@@ -29,9 +29,10 @@
 
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
-import type { LightboxLensId, LightboxReadingGroup, LightboxSource } from '@messages';
+import type { LightboxLensId, LightboxSource } from '@messages';
 import { FileType, type FileSystem, type LogSink } from '@/platform';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
+import { lightboxBoardModels, lightboxLensWasRead } from '@shared/constants/lightboxProvenance';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
 import { isPathWithinRoot } from '@/infrastructure/storage/pathContainment';
 import { LIGHTBOX_BOARD_CLAIM } from '@/infrastructure/storage/LightboxBoardClaims';
@@ -328,9 +329,7 @@ export function lightboxBoardRevision(bytes: Uint8Array): string {
 function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardEntry {
   const { board } = file;
   const source = board.sources[0];
-  const read = (lens: LightboxLensId, group: LightboxReadingGroup) => group.lenses.includes(lens)
-    && (group.tiles.some((tile) => tile.lens === lens) || group.frictions.some((friction) => friction.lens === lens));
-  const lenses = LIGHTBOX_LENSES.map((lens) => lens.id).filter((lens) => board.readings.some((group) => read(lens, group)));
+  const lenses = LIGHTBOX_LENSES.map((lens) => lens.id).filter((lens) => board.readings.some((group) => lightboxLensWasRead(group, lens)));
   const stale = new Set(board.readings.flatMap((group) => group.staleLenses?.map((mark) => mark.lens) ?? []));
   const costs = board.readings.flatMap((group) => (group.usage?.costUsd !== undefined ? [group.usage.costUsd] : []));
   return {
@@ -350,8 +349,8 @@ function summarise(fileId: string, file: LightboxBoardFile): LightboxSavedBoardE
     staleLenses: lenses.filter((lens) => stale.has(lens)),
     // Summed to the micro-dollar: the rail shows an approximate cost.
     ...(costs.length > 0 ? { costUsd: Math.round(costs.reduce((sum, cost) => sum + cost, 0) * 1e6) / 1e6 } : {}),
-    // The provider-reported model of each group that has one, once each.
-    models: [...new Set(board.readings.flatMap((group) => (group.model ? [group.model] : [])))]
+    // The provider-reported model of each reading on the board, once each (Slice 4J: a kept reading names its own run's).
+    models: lightboxBoardModels(board.readings)
   };
 }
 

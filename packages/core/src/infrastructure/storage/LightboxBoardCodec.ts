@@ -15,6 +15,13 @@
  *   measured layer (`LightboxBoardMeasuredCodec`), and each group's withheld
  *   claims and blocks, frictions, quote checks and stale marks. Not a
  *   webview preference.
+ * - **Per lens, where its reading came from (Slice 4J).** Optional, so a
+ *   file saved before it reads unchanged: each lens's provenance (the run,
+ *   model and time that read it, or, for a reading from before Slice 4J,
+ *   only the model its group named: PR #170 F-02), dropped and counted when
+ *   it does not read, and its earlier mark (a reading the latest call did
+ *   not replace, with why), read whole like a stale mark, since a dropped
+ *   one would show an earlier reading as the latest.
  * - **Sources are a list, each with its text.** Paragraph numbers stay the
  *   board's own, 1 to N, so no reading changes shape; each paragraph names
  *   its source and its offsets into that source's text. A source's
@@ -46,7 +53,9 @@
 
 import type {
   LightboxBoard,
+  LightboxEarlierLens,
   LightboxLensFriction,
+  LightboxLensProvenance,
   LightboxLensQuoteChecks,
   LightboxMeasureRules,
   LightboxParagraphMetric,
@@ -184,6 +193,29 @@ const boardName: Decoder<string> = (value, at, context) => {
 const lens = oneOf(LIGHTBOX_BOARD_LENSES);
 const tileKind = oneOf(LIGHTBOX_BOARD_TILE_KINDS);
 
+/** An ISO 8601 time, as a reading's landing is recorded (Slice 4J). */
+const instant: Decoder<string> = (value, at, context) => {
+  const read = bounded(40)(value, at, context);
+  if (!Number.isFinite(Date.parse(read))) {
+    throw new LightboxBoardShapeError(at, 'a time');
+  }
+  return read;
+};
+
+/**
+ * A lens's provenance (Slice 4J): a landing's run, model and time, or (a
+ * reading from a board read before Slice 4J, PR #170 F-02) only the model
+ * its group named, or nothing. A run without its time, or a time without
+ * its run, is no shape a board writes.
+ */
+const provenanceEntry: Decoder<LightboxLensProvenance> = (value, at, context) => {
+  const read = object<LightboxLensProvenance>({ lens, run: optional(bounded(200)), model: optional(text), at: optional(instant) })(value, at, context);
+  if ((read.run === undefined) !== (read.at === undefined)) {
+    throw new LightboxBoardShapeError(at, 'a run and its time together');
+  }
+  return read;
+};
+
 const usage = object<TokenUsage>({
   promptTokens: whole,
   completionTokens: whole,
@@ -215,7 +247,10 @@ const group = object<LightboxReadingGroup>({
   quoteChecks: droppable(object<LightboxLensQuoteChecks>({ lens, checked: whole, withheld: whole })),
   error: optional(text),
   // Whole: a stale mark dropped would show a stale reading as current.
-  staleLenses: optional(list(object<LightboxStaleLens>({ lens, readAgainst: text })))
+  staleLenses: optional(list(object<LightboxStaleLens>({ lens, readAgainst: text }))),
+  // Slice 4J: where each lens's reading came from (droppable), and which are earlier ones (whole, as a stale mark is).
+  provenance: optional(droppable(provenanceEntry)),
+  earlierLenses: optional(list(object<LightboxEarlierLens>({ lens, reason: text })))
 });
 
 const savedSource = object<LightboxSavedSource>({

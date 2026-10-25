@@ -37,6 +37,8 @@ export type LightboxTileFrameProps = {
   className?: string;
   /** A reading's call control (its Analyze), drawn in place of the read badge (Slice 4I). */
   action?: React.ReactNode;
+  /** The id of what describes the tile beyond its name: an earlier reading's note (Slice 4J). */
+  describedBy?: string;
   children: React.ReactNode;
 } & ({ kind: LightboxTileKind; register?: never } | { kind?: never; register: LightboxRegister });
 
@@ -48,6 +50,7 @@ export const LightboxTileFrame: React.FC<LightboxTileFrameProps> = ({
   chip,
   className,
   action,
+  describedBy,
   children,
   ...registerSource
 }) => {
@@ -64,6 +67,7 @@ export const LightboxTileFrame: React.FC<LightboxTileFrameProps> = ({
     <section
       className={`pm-lb-tile pm-lb-span${span} pm-lb-reg-${register}${className ? ` ${className}` : ''}`}
       aria-label={title}
+      aria-describedby={describedBy}
       data-register={register}
     >
       <div className="pm-lb-tile-head">

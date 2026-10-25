@@ -320,7 +320,9 @@ rerun that call. The press model becomes:
 - **A call run on its own is a full run of its group**: cleared first and
   replaced whole when it lands, as in a full run, so a re-run never mixes
   two calls' readings; the other calls keep theirs. Only a tile's re-read
-  keeps its group's other lenses' tiles.
+  keeps its group's other lenses' tiles. *Superseded by the addendum of
+  2026-10-24 (epic decision 49): no run clears first; every run keeps each
+  lens's reading until a new one replaces it.*
 - **The Opinion keeps its reading until a new one lands** (epic decision
   47, the writer's). Group F run on its own (its Analyze, Run F) takes the
   tile re-read's path (`lightboxPressKeptLens`): its old tiles stay on the
@@ -331,7 +333,9 @@ rerun that call. The press model becomes:
   board saved after it holds the old Opinion; a Stop lands nothing and
   saves nothing. The digest leaves group F out, so the old Opinion is never
   weighed by the new one. Every other call run on its own, and a run of
-  several calls, still clears first.
+  several calls, still clears first. *Generalized by the addendum of
+  2026-10-24 (epic decision 49): every call keeps its readings this way,
+  the Opinion included in every scope, and `lightboxPressKeptLens` is gone.*
 - **Group F alone reads the board as it stands.** It is refused, with
   nothing reserved or sent, while nothing on the board is read and current,
   in the Opinion's own words; the rule (`lightboxOpinionNothingToWeigh`,
@@ -354,6 +358,96 @@ rerun that call. The press model becomes:
   as "≈ $…". Group F's input is priced at its digest's whole bound, and its
   control says so apart from the price ("· input at digest limit"), not by
   calling the total a bound. No budget is enforced.
+
+**Addendum to D6 and D12 (2026-10-24): keep, lens by lens, until
+replaced** (Slice 4J; epic decisions 49 and 52). The writer: "every re-run
+keeps the old readings until the new ones land. A failed or stopped run must
+never cost a reading the writer already paid for." This supersedes the
+2026-10-23 addendum's clear-first (decision 42) and generalizes its
+Opinion-only rule (decision 47). The run and reading model becomes:
+
+- **One rule for every scope.** `all`, `rest`, `group` (with or without a
+  widget's lens) and a tile's `lens` differ only in which calls run and
+  which lenses each reads. `LightboxReadingState` applies the same rule to
+  each lens a call reads:
+  - **while it runs**, a lens with a reading (at least one tile) keeps it on
+    the board, `pending`; a lens without one is cleared of what an earlier
+    call left (a withheld block, its friction, its quote checks), so it
+    shows as a first read does;
+  - **a usable new block** (one that drew a tile) replaces the lens's
+    tiles, withheld blocks and claims, friction and quote checks, clears
+    its stale and earlier marks, and records its provenance;
+  - **otherwise the earlier reading stays**, exactly as it was, with its
+    standing, stale mark and provenance: the call failed, it was stopped,
+    the reply was cut off inside or before the lens's block, the block was
+    withheld, or it drew no tile (every claim withheld, or none given). The
+    lens gains an **earlier mark** with the host's reason. A lens with no
+    earlier reading takes the new state as before: nothing after a failure
+    or a stop, the withheld block or empty answer otherwise.
+- **Each lens is decided on its own**, so one call can replace one lens
+  and keep another. One unit is decided together: template and summary
+  (`LIGHTBOX_KEPT_TOGETHER`), since engagement in the template block sits
+  on the movements of the same reply. When one of them keeps its earlier
+  reading, so does the other, if it has one; a partner with none takes the
+  new block, whose engagement then sits on no earlier movements.
+- **The Opinion follows the same rule in every scope**, in a run of every
+  call and in Finish as when run on its own. Its citation basis rule moves
+  to this build's only when a new Opinion lands; a call that kept the
+  earlier Opinion leaves the board's rule as it was, so an Opinion cited
+  under an earlier rule stays stale for that reason. While the other calls
+  of a run are read, its standing reads them as they stand: a cited reading
+  that is pending, or was replaced, makes it stale, as before.
+- **Provenance, per lens.** A group gains two optional fields:
+  `provenance` (each lens's run token, provider-reported model and ISO
+  landing time, from the service's clock) and `earlierLenses` (`{ lens,
+  reason }`). The group's `model` and `error` stay its latest call's;
+  `usage` still sums every call the group made on the board, whichever
+  readings landed, so a board's cost is what was paid. The models a saved
+  board's row and the inspector name are those of the readings on screen
+  (`lightboxBoardModels`, `lightboxLensModel`), falling back to the group's
+  model on a board read before Slice 4J. *Corrected by PR #170's review
+  (F-02):* such a reading, still on the board when a later call of its
+  group settles, takes a provenance entry of the model only (`{ lens,
+  model? }`, its group's model then, before the group's model becomes the
+  new call's), never a run or time the board did not hold. So once a call
+  settles, every reading its group shows has an entry, the fallback is
+  only for a group with none at all, and a lens whose entry was lost names
+  no model rather than the latest call's. *And by its re-review:* only a
+  group whose `provenance` field is absent is from before Slice 4J; a
+  group with the field, even empty, gives a reading whose entry did not
+  read or was left out an entry of the lens alone, unknown through every
+  later call, never the group's model. The field, once present, stays
+  present, and an empty list is written and read back as one.
+- **Stop and the text changing underneath.** A Stop marks each pending
+  lens with a reading earlier with the stop's reason; a group set aside
+  because the chapter changed while it was read is carried with its earlier
+  readings, stale, marked earlier with that reason. A carry keeps
+  provenance, and an earlier mark only on a lens that still holds a reading.
+- **Guards are unchanged.** The press, adoption and observation checks, one
+  run of a board at a time, and the runner's "a result for a run that is no
+  longer the board's active one is dropped" hold, so a late reply of an
+  older run never replaces a newer reading.
+- **Format 1 gains the two optional fields** (D12 addendum). It has not
+  shipped, so no version moves: a file saved before them reads unchanged,
+  byte for byte. A provenance entry that does not read is left out and
+  counted; an earlier mark that does not read leaves the file unread, as a
+  stale mark does, because dropping it would show an earlier reading as the
+  latest. A save writes what its run landed (`owedBoard`, unchanged): since
+  no run clears first, the board a later landing run saves holds every kept
+  reading, which closes the boundary PR #167 stated.
+- **A call that did not land is said once** (epic decision 52). Its whole
+  message, the place a paid reply was saved included, shows in one note per
+  call under the run line; every widget of the call shows a short line
+  pointing there and is described by it. *Corrected by PR #170's review
+  (F-01, N-01):* a note is one failed or stopped call, or one cut reply,
+  known by where that reply was saved, since kept readings can carry the
+  reasons of several calls; each widget points to the note its own reason
+  is, and a lens the failed call never asked for shows nothing of it. A reply cut off at the output
+  ceiling names the blocks it never reached in the cut's own words ("The
+  reply reached the output ceiling before this block began."), with the
+  same place as the block it was cut inside (amending decision 40's
+  "reported as any missing lens is"), so the board can gather the cut into
+  its note.
 
 **Addendum to D6 (2026-10-24): the Lightbox's own model** (Slice 4L; epic
 decision 51, which amends decision 6). The model above was "the existing

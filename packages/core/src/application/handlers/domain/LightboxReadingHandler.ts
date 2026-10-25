@@ -95,7 +95,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
 import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
 import { lightboxOpinionPort, lightboxPressRun } from '@handlers/domain/LightboxPressRun';
-import { lightboxEstimateCalls, lightboxPressCalls, lightboxPressKeptLens, parseLightboxRunScope } from '@handlers/domain/LightboxPressScope';
+import { lightboxEstimateCalls, lightboxPressCalls, lightboxPressLens, parseLightboxRunScope } from '@handlers/domain/LightboxPressScope';
 import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 
 const SOURCE = 'extension.lightbox';
@@ -213,8 +213,8 @@ export class LightboxReadingHandler {
       return;
     }
     const { scope } = parsed;
-    // A tile's re-read, and the Opinion run on its own (decision 47), keep their reading until the new one lands.
-    const lens = lightboxPressKeptLens(scope);
+    // Every press keeps its lenses' readings until new ones land (decision 49); a tile's re-read names its lens.
+    const lens = lightboxPressLens(scope);
     // The press's snapshot, and its board's reservation, before the first await.
     const press = this.pressSnapshot(boardId);
     if (!press) {
@@ -308,7 +308,7 @@ export class LightboxReadingHandler {
     const started = start.run;
     pressRun.bind(started);
     this.ownRuns.set(started.token, started);
-    this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls, lens));
+    this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls));
     this.postProgress({ boardId, token: started.token, phase: 'started', groups, groupsBack: 0, outputCharacters: 0, ...lensField(lens) });
   }
 

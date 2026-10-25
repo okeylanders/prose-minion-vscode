@@ -12,6 +12,7 @@ import type {
   LightboxBoard,
   LightboxGroupResultPayload,
   LightboxLensId,
+  LightboxReadingGroup,
   LightboxLineageSetAside,
   LightboxReadingTile,
   LightboxReadingTileKind,
@@ -20,6 +21,8 @@ import type {
   LightboxWithheldQuote
 } from '@messages';
 import { lightboxLensGroup } from '@shared/constants/lightbox';
+import { lightboxEarlierReason, lightboxLensHasReading } from '@shared/constants/lightboxProvenance';
+import { lightboxBoardCallNote, lightboxPointsToCallNote, type LightboxCallNote } from '@hooks/domain/lightbox/lightboxCallNotes';
 
 /** A group result for this board replaces its group; anything else leaves the board as it is. */
 export function mergeLightboxGroupResult(board: LightboxBoard, payload: LightboxGroupResultPayload): LightboxBoard {
@@ -55,8 +58,10 @@ export function findLightboxTile(board: LightboxBoard, id: string): LightboxRead
 /**
  * Where a lens stands:
  * - `not-run`: nothing read yet (or the lens was off when its group ran);
- * - `reading`: the call in flight reads it;
- * - `ok`: its readings are on the board (possibly empty);
+ * - `reading`: the call in flight reads it, and it has no earlier reading
+ *   to show;
+ * - `ok`: its readings are on the board (possibly empty), and, with
+ *   `reanalyzing`, the call in flight reads it again (Slice 4J);
  * - `failed` / `cancelled`: its group's latest call failed or stopped, and it
  *   has no earlier reading to show.
  */
@@ -76,10 +81,47 @@ export interface LightboxLensView {
   notice?: string;
   /** Read against an earlier version of the text; its quotes were checked again against this one (D4). */
   stale: boolean;
+  /**
+   * Its reading stays on show while the call in flight reads it again: the
+   * earlier one, until the new one lands (Slice 4J, epic decision 49).
+   */
+  reanalyzing: boolean;
+  /**
+   * Its reading is an earlier one: the latest call that read it did not
+   * replace it, for this reason (host words). Absent while it is read again.
+   */
+  earlier?: string;
+  /**
+   * The note of its call that did not land, when what this lens shows is
+   * that note's message (its failure, its stop, its earlier reading's
+   * reason, or its block withheld by a cut): the widget points to the note
+   * instead of repeating it (Slice 4J, epic decision 52).
+   */
+  callNote?: LightboxCallNote;
+}
+
+/** The lens's withheld blocks that are its own, not the cut its call's note says once (decision 52). */
+export function lightboxOwnWithheldBlocks(view: Pick<LightboxLensView, 'withheldBlocks' | 'callNote'>): LightboxWithheldBlock[] {
+  return view.callNote ? view.withheldBlocks.filter((block) => !lightboxPointsToCallNote(view.callNote, block.reason)) : view.withheldBlocks;
 }
 
 export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): LightboxLensView {
   const group = board.readings.find((candidate) => candidate.group === lightboxLensGroup(lens));
+  const view = lensView(group, lens);
+  if (!group) {
+    return view;
+  }
+  // Decision 52: what the lens shows that is a note's message points to that note, the note of the very call or cut
+  // its reason came from (PR #170 F-01), never another of its group's.
+  const shown = view.phase === 'failed' || view.phase === 'cancelled' ? view.notice : view.earlier;
+  const blocks = view.tiles.length === 0 ? view.withheldBlocks.map((block) => block.reason) : [];
+  const note = [shown, ...blocks]
+    .map((reason) => lightboxBoardCallNote(board, group.group, reason))
+    .find((candidate) => candidate !== undefined);
+  return note ? { ...view, callNote: note } : view;
+}
+
+function lensView(group: LightboxReadingGroup | undefined, lens: LightboxLensId): LightboxLensView {
   const tiles = group?.tiles.filter((tile) => tile.lens === lens) ?? [];
   const withheldBlocks = group?.withheldBlocks.filter((block) => block.lens === lens) ?? [];
   const withheldClaims = group?.withheldClaims.filter((claim) => claim.lens === lens) ?? [];
@@ -87,7 +129,7 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
   const friction = notes?.friction;
   const stale = group?.staleLenses?.some((mark) => mark.lens === lens) ?? false;
   const base = {
-    lens, tiles, withheldBlocks, withheldClaims, stale,
+    lens, tiles, withheldBlocks, withheldClaims, stale, reanalyzing: false,
     ...(friction ? { friction } : {}),
     ...(notes?.setAside ? { setAside: notes.setAside } : {})
   };
@@ -95,15 +137,25 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
     return { ...base, phase: 'not-run' };
   }
   const read = group.lenses.includes(lens);
+  // Slice 4J: an earlier reading the latest call did not replace says so, with the host's reason.
+  const earlier = lightboxEarlierReason(group, lens);
+  const kept = earlier !== undefined ? { earlier } : {};
   switch (group.status) {
     case 'running':
-      return { ...base, phase: group.pending?.includes(lens) ? 'reading' : read ? 'ok' : 'not-run' };
+      if (group.pending?.includes(lens)) {
+        // Read again: its reading stays on show, the earlier one, until the new one lands (decision 49).
+        return lightboxLensHasReading(group, lens) ? { ...base, phase: 'ok', reanalyzing: true } : { ...base, phase: 'reading' };
+      }
+      return { ...base, phase: read ? 'ok' : 'not-run', ...kept };
     case 'ok':
-      return { ...base, phase: read ? 'ok' : 'not-run' };
+      return { ...base, phase: read ? 'ok' : 'not-run', ...kept };
     case 'failed':
     case 'cancelled':
+      // A reading the call kept says why in its earlier note. A reading the call never asked for (a sibling of a
+      // lens run on its own) says nothing of it: the call's message is its own lenses' and its note's (PR #170 N-01).
+      // A lens with nothing to show takes the call's failure or stop, as a first read does.
       return read
-        ? { ...base, phase: 'ok', ...(group.error ? { notice: group.error } : {}) }
+        ? { ...base, phase: 'ok', ...kept }
         : { ...base, phase: group.status, ...(group.error ? { notice: group.error } : {}) };
     case 'not-run':
       return { ...base, phase: 'not-run' };

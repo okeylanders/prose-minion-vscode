@@ -121,7 +121,8 @@ function analyzeControl(input: LightboxCallControlsInput, lens: LightboxLensId, 
   const group = lightboxLensGroup(lens);
   const lenses = lightboxGroupCallLenses(group, input.lensesOff, lens);
   const view = lightboxLensView(input.board, lens);
-  const inFlight = view.phase === 'reading';
+  // In flight whether its lens shows nothing yet or its earlier reading (Slice 4J).
+  const inFlight = view.phase === 'reading' || view.reanalyzing;
   const again = !inFlight && read(groupOf(input.board, group), lens);
   return control(input, {
     group,
