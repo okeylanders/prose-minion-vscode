@@ -28,8 +28,8 @@
  * Depth. `marked`'s work grows with how deeply containers nest. A document
  * nesting block quotes and list items deeper than any manuscript does (a
  * line opening more than `MAX_CONTAINER_DEPTH` of them, in any mix, or a
- * list marker past `MAX_LIST_INDENT` columns) is not read, and is protected
- * whole, as is one `marked` fails on.
+ * list marker indented past `MAX_LIST_INDENT` columns, inside block quotes or
+ * not) is not read, and is protected whole, as is one `marked` fails on.
  */
 
 import { Lexer, getDefaults, type Token, type Tokens } from 'marked';
@@ -68,6 +68,7 @@ const MAX_LIST_INDENT = 64;
 /** One container marker opening a line: a block quote's `>`, or a list item's. */
 const CONTAINER_MARKER = /[ \t]*(?:>|(?:[-+*]|\d{1,9}[.)])(?=[ \t]|$))/y;
 const LIST_MARKER = /^([ \t]*)(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)/;
+const QUOTE_MARKERS = /^(?:[ \t]*>)*/;
 
 /** Raw HTML blocks whose content is code, not text. */
 const RAW_CODE_BLOCK = /^ {0,3}<(?:script|style)(?=[\s/>]|$)/i;
@@ -276,20 +277,28 @@ function contentLines(raw: string): string[] {
   return raw.replace(/\n+$/, '').split('\n');
 }
 
-/** A table row's cells, as column ranges, split on pipes no backslash escapes; empty edge cells are dropped. */
+/**
+ * A table row's cells, as column ranges, split on pipes no backslash
+ * escapes; empty edge cells are dropped. The last cell is taken however the
+ * row ends, a trailing backslash included (the second re-review).
+ */
 function tableCellStretches(row: string): Array<{ from: number; to: number }> {
   const cells: Array<{ from: number; to: number }> = [];
+  const take = (from: number, to: number) => {
+    if (row.slice(from, to).trim() !== '') {
+      cells.push({ from, to });
+    }
+  };
   let from = 0;
-  for (let index = 0; index <= row.length; index++) {
+  for (let index = 0; index < row.length; index++) {
     if (row[index] === '\\') {
       index += 1;
-    } else if (index === row.length || row[index] === '|') {
-      if (row.slice(from, index).trim() !== '') {
-        cells.push({ from, to: index });
-      }
+    } else if (row[index] === '|') {
+      take(from, index);
       from = index + 1;
     }
   }
+  take(from, row.length);
   return cells;
 }
 
@@ -310,7 +319,9 @@ function lastAtOrBefore(sorted: readonly number[], value: number): number {
 
 function nestsTooDeeply(lines: readonly SourceLine[]): boolean {
   return lines.some((line) => {
-    const indent = LIST_MARKER.exec(line.content)?.[1];
+    // A list's indentation counts inside block quotes too (the second re-review).
+    const quotes = QUOTE_MARKERS.exec(line.content)![0];
+    const indent = LIST_MARKER.exec(line.content.slice(quotes.length))?.[1];
     return containerMarkers(line.content) > MAX_CONTAINER_DEPTH
       || (indent !== undefined && indent.replace(/\t/g, '    ').length > MAX_LIST_INDENT);
   });

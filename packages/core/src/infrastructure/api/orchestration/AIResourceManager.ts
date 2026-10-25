@@ -194,6 +194,8 @@ export class AIResourceManager {
     if (!observed && !apiKey) {
       apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
     }
+    // Trimmed, as `apiKeyFingerprint` reads it: the key sent is the key compared (the second re-review).
+    apiKey = apiKey?.trim() || undefined;
     // Every webview refreshes on a key change, so rebuilds overlap. One that a
     // newer rebuild overtook while it read the key builds nothing: its key may
     // be the old one, and its transports would replace the newer ones. It

@@ -175,6 +175,28 @@ describe('findProtectedRegions: inline constructs stay inside their block (PR #1
     expect(masked('> <a\n> href="teh.html">label</a>')).toBe(`> ${P}label${P}`);
   });
 
+  it.each<[string, string, string]>([
+    ['no trailing pipe', 'Column | Other\n--- | ---\nplain | `teh` \\', `Column | Other\n--- | ---\nplain | ${P} \\`],
+    ['a final newline', 'Column | Other\n--- | ---\nplain | `teh` \\\n', `Column | Other\n--- | ---\nplain | ${P} \\\n`],
+    ['a trailing pipe', 'Column | Other\n--- | ---\nplain | `teh` \\|', `Column | Other\n--- | ---\nplain | ${P} \\|`],
+    ['two trailing backslashes', 'Column | Other\n--- | ---\nplain | `teh` \\\\', `Column | Other\n--- | ---\nplain | ${P} \\\\`],
+    ['a link target', 'Column | Other\n--- | ---\nplain | [x](teh.md) \\', `Column | Other\n--- | ---\nplain | [x]${P} \\`],
+    ['a tag attribute', 'Column | Other\n--- | ---\nplain | <a href="teh.html">x</a> \\', `Column | Other\n--- | ---\nplain | ${P}x${P} \\`]
+  ])('reads a row\'s last cell however the row ends: %s (second re-review)', (_name, text, expected) => {
+    expect(masked(text)).toBe(expected);
+  });
+
+  it.each<[number, string]>([
+    [31, 'link'],
+    [32, 'link'],
+    [33, 'past the bound']
+  ])('protects a destination nested %i deep (%s), never reading it as prose (second re-review)', (depth) => {
+    const text = `[chapter](${'('.repeat(depth)}teh${')'.repeat(depth)}) after`;
+    const result = masked(text);
+    expect(result).not.toContain('teh');
+    expect(result.startsWith(`[chapter]${P}`)).toBe(true);
+  });
+
   it('protects an empty destination before a title', () => {
     expect(masked('[label]( "hidden title")')).toBe(`[label]${P}`);
   });
@@ -197,12 +219,17 @@ describe('findProtectedRegions: inline constructs stay inside their block (PR #1
   it('protects a document nesting quotes and list items, mixed, deeper than any manuscript', () => {
     expect(masked(`${'> - '.repeat(65)}Prose sentinel`)).toBe(P);
     expect(masked(`${'> - '.repeat(8)}Prose sentinel`)).toBe(`${'> - '.repeat(8)}Prose sentinel`);
+    // Lists nested line by line inside a block quote count their indentation too (second re-review).
+    const quotedLists = (levels: number) => Array.from({ length: levels }, (_, level) => `> ${'  '.repeat(level)}- prose`).join('\n');
+    expect(masked(quotedLists(40))).toBe(P);
+    expect(masked(quotedLists(8))).toBe(quotedLists(8));
   });
 
-  it('reads unmatched destinations in bounded work', () => {
+  it('reads unmatched destinations in bounded work, protecting what nests past the bound', () => {
     const adversarial = '](x'.repeat(20000);
     const started = Date.now();
-    expect(masked(adversarial)).toBe(adversarial);
+    // The 33rd nested `(` is past the bound: from the first `(` on, nothing is read as prose.
+    expect(masked(adversarial)).toBe(`]${P}`);
     // Generous: linear work takes a few milliseconds; a rescan per opener takes seconds.
     expect(Date.now() - started).toBeLessThan(1500);
   });

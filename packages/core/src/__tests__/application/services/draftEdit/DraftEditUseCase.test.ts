@@ -301,7 +301,17 @@ describe('DraftEditUseCase.run: protected Markdown never reaches the payload or 
     // The re-review: an unmatched backtick never takes the next block's code opener, and a quote's `>` never closes a tag.
     ['code in the next numbered item', '1. One `unclosed\n2. `teh` end'],
     ['code in a block quote that interrupts the paragraph', 'Before ` unclosed\n> `teh` after'],
-    ['a tag continued in a block quote', '> <a\n> href="teh.html">label</a>']
+    ['a tag continued in a block quote', '> <a\n> href="teh.html">label</a>'],
+    // The second re-review: a row's last cell after a trailing backslash, and a destination past the depth bound.
+    ['code in a table row\'s last cell, ending in a backslash', 'Column | Other\n--- | ---\nplain | `teh` \\'],
+    ['code in a table row\'s last cell, a backslash and a final newline', 'Column | Other\n--- | ---\nplain | `teh` \\\n'],
+    ['code in a table row\'s last cell, an escaped trailing pipe', 'Column | Other\n--- | ---\nplain | `teh` \\|'],
+    ['a link target in a table row\'s last cell, ending in a backslash', 'Column | Other\n--- | ---\nplain | [x](teh.md) \\'],
+    ['a tag attribute in a table row\'s last cell, ending in a backslash', 'Column | Other\n--- | ---\nplain | <a href="teh.html">x</a> \\'],
+    ...[31, 32, 33].map((depth): [string, string] => [
+      `a destination nested ${depth} deep (the bound is 32)`,
+      `[chapter](${'('.repeat(depth)}teh${')'.repeat(depth)})`
+    ])
   ];
 
   it.each(CONSTRUCTS)('a whole-document run: %s', async (_name, construct) => {

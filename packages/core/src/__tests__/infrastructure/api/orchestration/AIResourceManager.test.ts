@@ -1,6 +1,7 @@
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { DEFAULT_PROOFREAD_MODEL } from '@orchestration/ModelScopeSelections';
+import { apiKeyFingerprint } from '@orchestration/apiKeyFingerprint';
 
 describe('AIResourceManager lifecycle', () => {
   it('keeps the assistant engine stable across explicit configuration rebuilds', async () => {
@@ -337,6 +338,18 @@ describe('AIResourceManager, the proofread scope (Draft Edit Slice 1)', () => {
     await manager.ensureInitialized();
     return manager;
   }
+
+  it('adopts a key trimmed, so the key it sends is the key its fingerprint names (second re-review)', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP }, '\nsk-placeholder ');
+    const keyOf = (engine: unknown) => Reflect.get(Reflect.get(engine as object, 'openRouterClient') as object, 'apiKey');
+
+    expect(keyOf(manager.getEngine('proofread'))).toBe('sk-placeholder');
+    expect(manager.adoptedKeyFingerprint()).toBe(apiKeyFingerprint('sk-placeholder'));
+    await manager.refreshConfiguration({ apiKey: ' sk-placeholder\n' });
+    expect(keyOf(manager.getEngine('proofread'))).toBe('sk-placeholder');
+    await manager.refreshConfiguration({ apiKey: '  ' });
+    expect(manager.getEngine('proofread')).toBeUndefined();
+  });
 
   it('builds Proofread its own engine on the inexpensive default, not the assistant model', async () => {
     const manager = await managerWith({ assistantModel: WORKSHOP });

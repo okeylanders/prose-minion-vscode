@@ -243,6 +243,18 @@ Astra's re-review closed F-03 to F-06 and kept two open, both now fixed:
   title, a bound on destination parentheses, mixed quote and list nesting in
   the depth guard, and a long list counted in linear work.
 
+Astra's second re-review closed F-01 and F-03 to F-06 and kept two F-02
+cases open, both now fixed, with her nonblocking notes:
+
+- **A row's last cell.** A row ending in a backslash dropped its last cell
+  from the inline scopes. The last cell is now taken however the row ends.
+- **Past a bound is not prose.** A destination nested past
+  `MAX_LINK_PAREN_DEPTH` parentheses was read as prose. It now protects the
+  rest of its scope.
+- **Nonblocking.** The depth guard counts a list's indentation inside block
+  quotes too, and the manager adopts the key trimmed, as the fingerprint
+  compares it.
+
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full

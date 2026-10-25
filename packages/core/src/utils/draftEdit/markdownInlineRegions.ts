@@ -16,9 +16,10 @@
  * - A code span is a maximal backtick run closed by the next run of the same
  *   length, never across a blank line (indented code, read as prose, can
  *   hold one); an unmatched run is literal.
- * - A link destination may hold balanced or escaped parentheses, at most
- *   `MAX_LINK_PAREN_DEPTH` deep, or be `<…>`, or be empty before a title. It
- *   and its title may follow a line break.
+ * - A link destination may hold balanced or escaped parentheses, or be
+ *   `<…>`, or be empty before a title. It and its title may follow a line
+ *   break. Past `MAX_LINK_PAREN_DEPTH` nested parentheses it is not read,
+ *   and the rest of the scope is protected instead.
  * - A tag's attribute values may hold `>` when quoted.
  * GFM's bare links pair with nothing, so they have their own pass.
  *
@@ -287,12 +288,19 @@ function linkDestinationEnd(s: string, open: number): number | undefined {
     return undefined;
   }
   const destination = linkDestination(s, start);
+  if (destination === TOO_DEEP) {
+    // Past the bound it cannot be classified, so it is not prose: protect the rest of the scope (the second re-review).
+    return s.length;
+  }
   return (destination !== undefined ? linkTail(s, destination, false) : undefined)
     // `marked` also reads an empty destination before a title, `[label]( "title")`: protect that reading too.
     ?? linkTail(s, start, true);
 }
 
-/** Where a destination starting at `at` ends, `<…>` or bare; undefined when none does. */
+/** A destination nested past `MAX_LINK_PAREN_DEPTH`: not read, and not prose either. */
+const TOO_DEEP = -1;
+
+/** Where a destination starting at `at` ends, `<…>` or bare; undefined when none does; `TOO_DEEP` past the bound. */
 function linkDestination(s: string, start: number): number | undefined {
   let at = start;
   if (s[at] === '<') {
@@ -314,7 +322,7 @@ function linkDestination(s: string, start: number): number | undefined {
     }
     if (char === '(') {
       if (++depth > MAX_LINK_PAREN_DEPTH) {
-        return undefined;
+        return TOO_DEEP;
       }
     } else if (char === ')') {
       if (depth === 0) {
