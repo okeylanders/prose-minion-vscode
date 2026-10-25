@@ -21,7 +21,11 @@
  * checked against the version the edits were placed in, as one undo step,
  * through the writer's review when asked. It never saves. Only Draft Edit's
  * applier calls it, and it never trusts the result alone: it reads what
- * landed from a watch (ADR D4 step 7).
+ * landed from a watch (ADR D4 step 7). A review belongs to one lifetime of
+ * the document: if the document closes, reopens or changes language while
+ * the writer reviews, the host ends the review without writing and answers
+ * `closed` (PR #172 F-02). A host that cannot stop its own commit in every
+ * case states how close it comes, as the VS Code adapter does.
  */
 
 export interface DocumentSnapshot {
@@ -85,7 +89,7 @@ export type DocumentApplyOutcome =
   | { readonly kind: 'declined' }
   /** The document moved past `expectedVersion`, before the edit or during its review: nothing changed. */
   | { readonly kind: 'stale' }
-  /** The document is not open. */
+  /** The document is not open, or its lifetime ended during review: nothing changed. */
   | { readonly kind: 'closed' }
   /** The host refused the edits for another reason. */
   | { readonly kind: 'failed'; readonly message: string };

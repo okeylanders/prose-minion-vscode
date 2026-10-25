@@ -142,7 +142,7 @@ function start(document: FakeDocument) {
       return { kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings: [TEH], malformed: 0 }] };
     })
   };
-  const documentEditor = new VsCodeDocumentEditor();
+  const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
   const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const target: DraftEditTarget = { uri: URI, version: document.version, text: document.getText(), languageId: document.languageId, relativePath: 'chapter-01.md' };

@@ -142,7 +142,7 @@ const FINDINGS = [
 
 function proofreadAndFix(document: FakeDocument, review: 'preview' | 'direct'): { run: Promise<DraftEditOutcome>; dispose(): void } {
   const pass = { proofread: jest.fn(async () => ({ kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings: FINDINGS, malformed: 0 }] })) };
-  const documentEditor = new VsCodeDocumentEditor();
+  const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
   const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const run = useCase.run(

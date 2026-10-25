@@ -80,11 +80,11 @@ describe('describeDraftEditOutcome', () => {
       'a.md'
     )).toEqual({
       level: 'warning',
-      message: 'a.md was closed before Proofread finished, so no flags were shown · 1 part unreadable, saved for recovery · $0.0020.',
+      message: 'a.md was closed or changed language before Proofread finished, so no flags were shown · 1 part unreadable, saved for recovery · $0.0020.',
       hasFlags: false
     });
     expect(describeDraftEditOutcome({ kind: 'closed', rejectedChunks: { saved: 0, unsaved: 0 } }, 'a.md'))
-      .toMatchObject({ message: 'a.md was closed before Proofread finished, so no flags were shown.' });
+      .toMatchObject({ message: 'a.md was closed or changed language before Proofread finished, so no flags were shown.' });
   });
 
   it('words the runs that send nothing', () => {

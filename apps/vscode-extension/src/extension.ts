@@ -134,8 +134,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fixAll: PROOFREAD_FIX_ALL_COMMAND
   });
   context.subscriptions.push(issueAnnotator);
-  // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04).
-  const documentEditor = new VsCodeDocumentEditor();
+  // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04);
+  // a review it is holding is discarded then (PR #172 F-02).
+  const documentEditor = new VsCodeDocumentEditor(outputChannel);
   context.subscriptions.push(documentEditor);
   const platform: Platform = {
     log: outputChannel,

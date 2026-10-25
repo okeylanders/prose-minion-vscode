@@ -32,7 +32,7 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return { level: 'info', message: `Proofread cancelled. No flags changed${cost ? ` (spent ${cost})` : ''}.`, hasFlags: false };
     }
     case 'closed': {
-      const parts = [`${documentLabel} was closed before Proofread finished, so no flags were shown`];
+      const parts = [`${documentLabel} was closed or changed language before Proofread finished, so no flags were shown`];
       const rejected = rejectedPart(outcome.rejectedChunks);
       if (rejected) {
         parts.push(rejected);
@@ -117,7 +117,7 @@ export function describeQuickFixOutcome(outcome: DraftEditQuickFixOutcome, docum
     case 'nothing':
       return say('info', 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.');
     case 'closed':
-      return say('warning', `${documentLabel} was closed, so nothing was changed.`);
+      return say('warning', `${documentLabel} was closed or changed language, so nothing was changed.`);
     case 'done': {
       switch (outcome.answer) {
         case 'submitted': {
