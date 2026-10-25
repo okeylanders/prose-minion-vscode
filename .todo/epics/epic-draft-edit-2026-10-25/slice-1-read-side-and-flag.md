@@ -266,6 +266,9 @@ cases open, both now fixed, with her nonblocking notes:
 - After the re-review fixes (`3441e185`), the same four steps under Node
   18.20.8: 537 suites / 7,475 tests / 59 snapshots; lint at the baseline.
   The full suite also passes under Node 22.
+- After the second re-review fixes (`96418bfe`), the same four steps under
+  Node 18.20.8: 537 suites / 7,501 tests / 59 snapshots; lint at the
+  baseline. The full suite also passes under Node 22.
 - No live provider calls. The key-retirement test runs real
   `OpenRouterClient`s with only the transport stubbed. Fixtures are
   public-domain *Alice*.
