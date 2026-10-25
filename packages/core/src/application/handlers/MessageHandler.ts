@@ -265,6 +265,7 @@ export class MessageHandler {
 
     this.configurationHandler = new ConfigurationHandler(
       aiResourceManager,
+      this.services.aiResourceRefresh,
       assistantToolService,
       dictionaryService,
       contextAssistantService,

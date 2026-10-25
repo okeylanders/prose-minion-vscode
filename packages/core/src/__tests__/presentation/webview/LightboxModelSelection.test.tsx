@@ -183,7 +183,7 @@ async function createHost() {
   const picker = { pickFile: jest.fn(async () => undefined) };
   const router = new MessageRouter();
   new ConfigurationHandler(
-    resources as never, {} as never, {} as never, {} as never,
+    resources as never, {} as never, {} as never, {} as never, {} as never,
     { getApiKey: async () => 'sk-test' } as never,
     settings as never, {} as never, deliver, log
   ).registerRoutes(router);

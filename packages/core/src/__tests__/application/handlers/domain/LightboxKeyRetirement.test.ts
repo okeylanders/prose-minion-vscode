@@ -32,6 +32,7 @@ import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { ConfigurationHandler } from '@/application/handlers/domain/ConfigurationHandler';
 import { LightboxReadingHandler } from '@/application/handlers/domain/LightboxReadingHandler';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
 import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
@@ -126,8 +127,10 @@ async function createHost() {
   );
   const router = new MessageRouter();
   const refreshes = { refreshConfiguration: jest.fn(async () => undefined) };
+  // The overlay's Save and Clear refresh through the extension-lifetime owner (PR #171 F-01).
   new ConfigurationHandler(
-    manager, refreshes as never, refreshes as never, refreshes as never, secrets, settings as never,
+    manager, new AIResourceRefresh(manager, secrets, settings as never, log), refreshes as never, refreshes as never, refreshes as never,
+    secrets, settings as never,
     { showInformationMessage: jest.fn(async () => undefined) } as never, deliver, log
   ).registerRoutes(router);
   const projectFiles = { catalog: { openCatalog: jest.fn() }, workspace: { workspaceFolders: () => [] } };

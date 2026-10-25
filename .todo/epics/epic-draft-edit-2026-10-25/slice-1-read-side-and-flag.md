@@ -208,10 +208,10 @@ Astra's review found six blocking defects. Each fix is in the ADR's
   (`orchestration/AIResourceRefresh.ts`), built in `extension.ts`, owns the
   shared manager's key and model subscriptions. Every surface that hears a
   key change asks it to refresh: the owner itself, each webview's
-  `MessageHandler`. It rebuilds once per key, so no second rebuild retires a
-  run that began after the change. The overlay's own Save and Clear still
-  rebuild directly before they answer, as the Lightbox's key retirement
-  depends on.
+  `MessageHandler`, and the Settings overlay's Save and Clear
+  (`ConfigurationHandler`, which still awaits the rebuild before it answers,
+  as the Lightbox's key retirement depends on). It rebuilds once per key, so
+  no second rebuild retires a run that began after the change.
 - **F-02. Complete protected constructs.** `markdownBlockRegions.ts` reads
   block structure with `marked`'s block lexer: fences, definitions and raw
   script or style blocks inside block quotes and list items, each checked

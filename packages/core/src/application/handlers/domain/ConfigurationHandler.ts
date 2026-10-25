@@ -7,6 +7,7 @@
 
 import { LogSink, SettingsStore, ShellService } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import {
   DEFAULT_PROOFREAD_MODEL,
   DEFAULT_WIDGET_MODEL,
@@ -57,6 +58,7 @@ export class ConfigurationHandler {
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
+    private readonly aiResourceRefresh: AIResourceRefresh,
     private readonly assistantToolService: AssistantToolService,
     private readonly dictionaryService: DictionaryService,
     private readonly contextAssistantService: ContextAssistantService,
@@ -505,7 +507,8 @@ export class ConfigurationHandler {
     this.outputChannel.appendLine(`[ConfigurationHandler] refreshServiceConfiguration called`);
     // SPRINT 05: Refresh configuration on all services that need it
     try {
-      await this.aiResourceManager.refreshConfiguration();
+      // Through the extension-lifetime owner, so this save and the change event it raises are one rebuild (PR #171 F-01).
+      await this.aiResourceRefresh.refreshKey();
       await this.assistantToolService.refreshConfiguration();
       await this.dictionaryService.refreshConfiguration();
       await this.contextAssistantService.refreshConfiguration();
