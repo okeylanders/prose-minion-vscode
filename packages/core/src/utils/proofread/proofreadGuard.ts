@@ -9,10 +9,12 @@
  *     punctuation, whitespace, or case.
  *   Anything larger is downgraded to a flag, so the model cannot slip a
  *   stylistic rewrite in as a "correction".
- * - A fix never adds or removes a line break, unless the pass allows it.
+ * - A fix never adds, removes or moves a line break, unless the pass allows
+ *   it (`changesLineBreaks`: counting them is not enough).
  */
 
 import type { DraftEditPassPolicy } from '@/domain/models/DraftEdit';
+import { changesLineBreaks } from '@/utils/draftEdit/lineBreaks';
 import {
   proofreadCategoryDisposition,
   type ProofreadCategory,
@@ -45,7 +47,7 @@ export function judgeProofreadFinding(
   if (replacement === undefined) {
     return { kind: 'keep', disposition: 'flag', downgradeReason: 'no-replacement' };
   }
-  const small = (policy.allowsNewlineChanges || lineBreaks(original) === lineBreaks(replacement))
+  const small = (policy.allowsNewlineChanges || !changesLineBreaks(original, replacement))
     && isMechanicalEdit(category, original, replacement);
   return small
     ? { kind: 'keep', disposition: 'fix' }
@@ -80,10 +82,6 @@ const REPEATED_WORD = /(?<![\p{L}\p{N}])([\p{L}\p{N}’']+)(?:[ \t]+\1)+(?![\p{L
 
 function collapseRepeatedWords(text: string): string {
   return text.replace(REPEATED_WORD, '$1');
-}
-
-function lineBreaks(text: string): number {
-  return text.split('\n').length - 1;
 }
 
 /** The text's letters and digits, case-folded: what punctuation, spacing, and case edits must leave alone. */

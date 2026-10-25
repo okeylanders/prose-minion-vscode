@@ -75,6 +75,17 @@ describe('judgeProofreadFinding', () => {
     });
   });
 
+  it('downgrades a fix that moves a line break without changing how many there are (PR #171 hardening)', () => {
+    // Letters unchanged, one line break each side: the count rule let this through as a spacing fix.
+    expect(judge('spacing', 'the\nquick', 'th\nequick')).toMatchObject({
+      disposition: 'flag', downgradeReason: 'non-mechanical-edit'
+    });
+  });
+
+  it('keeps a fix that leaves every line break where it stands', () => {
+    expect(judge('spacing', 'end of\n line', 'end of\nline')).toEqual({ kind: 'keep', disposition: 'fix' });
+  });
+
   it('allows line breaks only for a pass whose policy does', () => {
     expect(judgeProofreadFinding({ category: 'spacing', original: 'a b', replacement: 'a\nb' }, { allowsNewlineChanges: true }))
       .toEqual({ kind: 'keep', disposition: 'fix' });
