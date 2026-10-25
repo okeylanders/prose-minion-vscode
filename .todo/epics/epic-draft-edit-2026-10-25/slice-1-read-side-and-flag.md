@@ -251,6 +251,9 @@ Astra's re-review closed F-03 to F-06 and kept two open, both now fixed:
 - After the PR #171 review fixes (`ad33ecbd`), the same four steps under Node
   18.20.8: 537 suites / 7,452 tests / 59 snapshots; lint 0 errors / 1,133
   warnings (the baseline). The full suite also passes under Node 22.
+- After the re-review fixes (`3441e185`), the same four steps under Node
+  18.20.8: 537 suites / 7,475 tests / 59 snapshots; lint at the baseline.
+  The full suite also passes under Node 22.
 - No live provider calls. The key-retirement test runs real
   `OpenRouterClient`s with only the transport stubbed. Fixtures are
   public-domain *Alice*.
