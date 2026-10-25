@@ -333,3 +333,103 @@ At this reviewed head the adapter's language/lifetime behavior is unchanged: the
 The full local Jest run used the same one-worker/memory-bounded command recorded above. Dependencies remain reused from the prior checkout against an identical lockfile; this is not a fresh `npm ci`. Node 22 was author-reported, not independently rerun. Scratch evidence and logs are retained outside the repository at `pr172-review-evidence/rereview/{applier,adapter,core}`; no test or implementation file is published. The report's own resulting remote commit and CI are checked after publication, not assumed from the implementation-head runs.
 
 **Not approved for merge into `epic/lightbox` on `3914c103`.** Correct F-03 and F-05 and independently re-review the resulting delta. F-02 may remain as the explicitly accepted limitation. Native VS Code UI/undo/accessibility acceptance and live proofreading quality remain separate, never-run stages; all review writes used synthetic in-memory documents and controlled provider stubs. No live provider call, manuscript, implementation edit, formal GitHub review/comment, merge or deployment was used.
+
+## Author response to the re-review — 2026-10-25
+
+**Correction head:** `6f025ba7` (base `e3a7fac0`, unchanged). This answers your re-review of `3914c103`.
+- **F-03 and F-05** are fixed in `3e2d0a25`; their docs are in `6f025ba7`.
+- **F-02's mitigation** reached the branch after your re-review head: `e4c353b9` (code) and `8803b521` (docs).
+- **F-02's wording.** You asked that any mitigation be tested and described as best effort, never as a guaranteed pre-commit barrier. `3e2d0a25` (the adapter) and `6f025ba7` (the ADR, the agent guide and the Slice 2 doc) reword it to say so.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01 | Closed in your re-review | — |
+| F-02 | Accepted limit (the writer's decision), with a best-effort discard | `e4c353b9`, `8803b521`, `3e2d0a25`, `6f025ba7` |
+| F-03 | Fixed: table cells now in the fingerprint | `3e2d0a25`, `6f025ba7` |
+| F-04 | Closed in your re-review | — |
+| F-05 | Fixed | `3e2d0a25`, `6f025ba7` |
+
+### F-03 — every table cell's inline shape is fingerprinted
+
+- **The fix.** `describeToken` gives a table's column alignment and each header and body cell's inline shape (`cell(…)`, through the same `describe`). A table nested in a quote or a list item reaches it by the same recursion. Task items now also record whether they are ticked.
+- **Both places.** Placement's downgrade and the applier's live check both call `editsChangingStructure`, so both refuse such a fix.
+- **Tests:**
+  - `markdownStructure.test.ts`:
+    - refused: a tag made in a body cell, in a header cell, in a table inside a quote, and in a table inside a list item; a reference link made in a cell (its definition elsewhere); a column's alignment changed; a task ticked;
+    - kept: ordinary cell fixes beside markup they leave alone.
+
+    All seven refusals fail on `3914c103`'s fingerprint; the control passes on both.
+  - `DraftEditFix.test.ts`, through the use case:
+    - direct Fix flags the tag-maker in a body cell and in a header cell, with a non-preferred *Replace with*, and writes nothing;
+    - Flag → Fix all takes only the spelling fix beside it;
+    - the reference-link fix in a cell is flagged;
+    - control: an ordinary spelling fix in a cell applies.
+
+    The first four fail on `3914c103`.
+  - `DraftEditApplier.test.ts`: the applier refuses as `markup` a tag made in prose and one made in a table cell. This is the live check a writer's explicit *Replace with* reaches.
+- **Your availability note** (a run of paragraphs whose edits touch their edges, joined past the 50,000-character bound) is recorded in the ADR's F-03 row as a conservative limit. The rule stays as it is.
+
+### F-05 — a Clear is for good
+
+- **Cause, as you found.** `applyShown` captured the document's inner issue map before awaiting the write. Clear deleted the outer entry, and the captured map never saw that.
+- **The fix.** When the write lands, `reshow` runs only while `shownIssues.get(uri)` is still the captured map.
+  - Clear this file deletes the entry and Clear all empties the map, so nothing comes back and the annotator stays cleared.
+  - A Dismiss deletes from the captured map itself, so it is kept, as before.
+  - Nothing else replaces the map meanwhile, since a new run is refused while the document is in flight.
+- **Tests:**
+  - `DraftEditQuickFixes.test.ts`, with Fix all held in review:
+    - Clear this file, or Clear all, then release the write. Two fixes are applied, nothing is flagged, and a later Fix all finds nothing to fix, so no quick-fix state came back.
+    - A Dismiss during the write is kept.
+    - Control: with neither, the untouched tense flag comes back.
+
+    Both Clear cases fail on `3914c103`; the Dismiss case and the control pass on both.
+  - `draftEditPreviewLifetime.integration.test.ts`, through the production adapters, with one use case and annotator over two flagged chapters:
+    - Clear the first chapter while its Fix all is held, then the writer applies: the first stays cleared, and the second keeps its three flags.
+    - Clear all: both stay empty.
+    - Control: clearing the other chapter brings back the first's untouched flag, and leaves the second cleared.
+
+    The two Clear cases fail with `3914c103`'s use case.
+
+### F-02 — an accepted limit, with a best-effort discard
+
+The writer kept Refactor Preview and accepted its lifetime race, as your re-review records. The mitigation narrows the race without closing it:
+
+- **What it does.**
+  - While a review is held, `VsCodeDocumentEditor` answers the document's close event by running VS Code's own Discard, `refactorPreview.discard`. A close, a reopen or a language change fires that event; for a language change it is close, then open, through `$acceptModelLanguageChanged`.
+  - The command (`bulkEdit.contribution.ts`, the same at 1.82.0 and at `4f383697`) settles the held preview with nothing applied (`BulkEditPane.discard` → `_done(false)`). `registerAction2` registers `action.run` as its handler, so `executeCommand` runs it; the `refactorPreview.enabled` precondition only gates the menu and the palette.
+  - The adapter then answers `closed`, even when the document stayed open at its version (a language change). The run, or Fix all, shows nothing.
+  - It is sent only while a review of ours is held: with none open, Discard would open an empty Refactor Preview panel. A discard VS Code refuses is logged; the adapter now takes the extension's `LogSink`.
+- **What it does not do** (the stated limit). The discard is sent when the close event reaches the extension host. Two cases fall outside it:
+  - an Apply the writer makes in that interval;
+  - a preview VS Code is still opening when the discard arrives.
+
+  Either way the run still reports the document closed and shows nothing. VS Code gives the extension no way to stop its own commit, so this is a mitigation, not a barrier.
+- **The port** says a review belongs to one lifetime of its document, and that a host which cannot always stop its own commit states how close it comes.
+- **The wording.** A closed run now says the document "was closed or changed language".
+- **A correction.** Slice 2 said the extension API had no call to close an open preview; Discard is that call. The progress notification's Cancel does not use it yet.
+- **Tests:**
+  - `draftEditPreviewLifetime.integration.test.ts` runs the production use case, applier and both adapters on a double built from VS Code's source: a held preview whose Apply writes at an unmoved version, a language change that fires close and leaves the version alone, and a Discard that settles the preview with nothing applied.
+  - The writer presses Apply right after each change:
+    1. **Markdown → JavaScript:** no mutation, `closed`, nothing flagged, the discard sent.
+    2. **Plain text with a `~~~text` fence → Markdown:** the fenced sentence is unchanged.
+    3. **A close during review:** no mutation.
+    4. **Fix all after a Flag run, then a language change:** `closed`, no mutation.
+  - **Controls:** with no change, the plain-text fix is in the preview and Apply writes it. The stated limit is pinned: an Apply that lands before the close event arrives is reported `closed`, with nothing shown.
+  - `VsCodeDocumentEditor.applyEdits.test.ts` adds close, language change (answered `closed`, not `declined`), another document's close, a direct apply, a settled review, and a refused discard (logged).
+  - **On `3914c103`'s adapter** (given an ignored constructor argument and the command's name, so the suites compile): the four witnesses and the adapter's three discard cases fail, each witness on its text assertion. The controls and the stated-limit case pass there.
+
+### Verification
+
+| Check | Result on `6f025ba7` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings (the baseline) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 18.20.8 | Pass: **548 suites / 7,681 tests / 59 snapshots** |
+| Full Jest, Node 22.22.0 | Pass: 548 suites / 7,681 tests / 59 snapshots |
+
+No live provider call, private manuscript or native Extension Development Host was used. The native checks remain the writer's. For F-02:
+- change a file's language while its review is open, and confirm the preview closes and nothing is written;
+- close it while its review is open, and confirm the same.
+
+For F-05: Clear this file, then Clear all, each while a Fix all is open in review, and confirm the cleared flags stay gone after Apply.
