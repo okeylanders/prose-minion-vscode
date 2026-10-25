@@ -245,3 +245,91 @@ The ADR's F-02 row says this is open. This response and the ADR will record the 
 | Regressions on the reviewed head `7f180ab7` | In a worktree with the new tests copied in, 9 fail on assertions: F-01 (use case, quick fix), F-03 (three use-case cases) and F-04 (1,000, 1,001, subset, Fix all). The 999 case passes there |
 
 The first full Node 18 run caught `promptBudgets.test.ts` flagging the two new bounds. `fa617eae` lists them as non-prompt limits, with their reasons, and the counts above are from the rerun. No live provider call, private manuscript or native Extension Development Host was used. The fixtures are synthetic or *Alice*. The native acceptance checks you list (Refactor Preview selection, discard, language change, undo, lightbulb and Problems) remain the writer's, in an Extension Development Host.
+
+## Astra independent re-review — 2026-10-25, correction head `3914c103`
+
+**Reviewed head:** `3914c103922068bf59474946877a6a9ca3f555d5`, including `f57060f6`, `fe166f9c`, `fa617eae` and the author response above. **Delta from the published review:** 21 files, +1,238 / −237; base remains `e3a7fac0`.
+
+**Request changes. Two P2 blockers remain: F-03 and F-05.** F-01 and F-04 are independently closed. F-02 is **an explicitly accepted native-preview limitation, not a corrected defect**; it is no longer a merge blocker under the writer's decision. This re-review supersedes the original disposition and the author's claimed closure where they differ; both earlier accounts are retained above as history.
+
+| ID | Re-review disposition | Evidence |
+| --- | --- | --- |
+| F-01 | Closed | Every surviving stale direct candidate is checked against the settled snapshot before the single retry; newly fenced/inline-code/link-target candidates are refused |
+| F-02 | Accepted risk, not fixed | Writer explicitly chose to retain VS Code's native preview despite its disclosed lifetime race on 2026-10-25; the same controlled language-change witnesses still reproduce on this head |
+| F-03 | Open, blocking | Original paragraph/fence witnesses are corrected, but table-cell token contents are omitted from the new structure fingerprint |
+| F-04 | Closed | Native coalescing, selected subsets, normalized history and untouched leftover flags reconcile correctly in independently executed controls |
+| F-05 | New, P2, blocking | Completing a pending Fix all restores leftover flags after Clear this file or Clear all |
+
+### F-01 closure — retry protection is checked again
+
+The retry runs the same `check` function on the settled snapshot. Independent applier/use-case controls confirm that new fences, inline code and link targets prevent the second ask; direct Fix reports the protection refusal truthfully and Replace with performs no write. A harmless prefix still follows the original occurrence, and a reviewed apply still never retries. No repeat-text search or replacement-occurrence substitution was added. This closes the reported retry hole; it does not assert that every other check is correct (F-03 remains separate).
+
+### F-03 remains open — table cells are absent from the Markdown fingerprint
+
+**Location:** [`markdownStructure.ts:157–160`](https://github.com/okeylanders/prose-minion-vscode/blob/3914c103922068bf59474946877a6a9ca3f555d5/packages/core/src/utils/draftEdit/markdownStructure.ts#L157-L160).
+
+`describeToken` reduces a table to its column and row counts. Unlike paragraphs and other nested tokens, it never describes the header/body cells' inline tokens. Therefore any inline syntax transformation that keeps the table dimensions is invisible to both placement-time downgrade and the applier's final structure check.
+
+Independent production-use-case reproduction:
+
+```markdown
+| Note |
+| --- |
+| Alice wrote < Rabbit > here. |
+```
+
+Return the synthetic `spacing` finding `< Rabbit >` → `<Rabbit>`. The original occurrence is unprotected prose. Direct **Proofread and Fix** applies it, reports one applied fix and no flag; the repository's actual `marked` renderer changes escaped literal text into a raw `<Rabbit>` tag. The same result occurs in a header cell and a quoted table. A real Flag run labels the proposal preferred, and **Fix all** applies it as well.
+
+A second witness uses `See [Alcie] go.` in a cell with `[alice]: https://example.invalid` defined elsewhere. Correcting `Alcie` → `Alice` creates a reference link, also accepted automatically. This is not merely a formatting disagreement or the writer's explicit non-preferred Replace-with choice.
+
+Controls confirm the original paragraph tag-maker is now downgraded, and the combined fence/typo witness refuses only the fence-maker while safely applying the spelling fix. The correction is effective outside the uncovered table path, but does not yet close F-03.
+
+**Requested correction:** include all table header/body inline structure in the fingerprint (including table nodes nested under other tokens), while retaining ordinary cell spelling corrections. Add full-use-case direct Fix and Flag→Fix all regressions for syntax creation in header/body cells, plus reference-link and unchanged-markup controls. Apply the same fail-closed rule to the live applier check.
+
+### F-04 closure — coalesced edits and untouched leftovers
+
+The replacement-aware cluster reader reconstructs unchanged interstitial text, accepts only an unambiguous original/replacement reading, and returns normalized edit history. Independent execution through production core and both VS Code adapters confirms:
+
+- **30 actual chunks / 1,020 spelling fixes:** all 1,020 reported applied, zero unknown, untouched tense flag retained.
+- **40 chunks / 1,360 proposals / 1,088 ticked:** Proofread and Fix in preview mode and real Flag→Fix all each retain the 272 unticked fixes plus the tense flag, report the correct applied/not-applied counts and preserve their live ranges. The accepted count remains above the native 1,000-operation merge threshold.
+- Generated variable-length/deletion/subset/CRLF/prefix-movement controls preserve normalized-history equivalence. Genuine writer changes to interstitial text still fail closed rather than being relabeled as accepted fixes.
+
+The old large-file fixture began each paragraph with a typo. Because affected block spans include their edges and merge when touching, this can join many paragraphs into a span exceeding the new 50,000-character verification bound; those fixes are conservatively downgraded. Adding harmless `Alice ` before each paragraph's first typo isolates coalescing from that separate bound. The whole-document refusal is recorded as a conservative availability limitation, not a safety blocker or evidence that reconciliation failed.
+
+### F-05 — Clear is undone when a pending quick fix re-shows leftovers
+
+**Locations:** [`DraftEditUseCase.ts:164–187`](https://github.com/okeylanders/prose-minion-vscode/blob/3914c103922068bf59474946877a6a9ca3f555d5/packages/core/src/application/services/draftEdit/DraftEditUseCase.ts#L164-L187), [`DraftEditUseCase.ts:203–237`](https://github.com/okeylanders/prose-minion-vscode/blob/3914c103922068bf59474946877a6a9ca3f555d5/packages/core/src/application/services/draftEdit/DraftEditUseCase.ts#L203-L237).
+
+The F-04 repair captures the old per-document `issues` map before awaiting the write, then `reshow` uses it to restore untouched flags. `clear(uri)` deletes the outer map entry, and `clear()` clears the outer map, but neither invalidates that captured map. Completing the pending write repopulates annotations and retained issues from stale state.
+
+Independent witnesses at both the use case and production adapters:
+
+1. Run Flag on a synthetic sentence with a safe spelling fix and a tense judgment flag.
+2. Start **Fix all** and hold its preview.
+3. Invoke **Clear this file** (repeat with **Clear all**); verify all flags disappear immediately.
+4. Accept the already-pending spelling fix. The cleared tense flag reappears, with its quick-fix state restored.
+
+Dismiss is a discriminating passing control: it deletes from the captured inner map and therefore is respected. Normal no-clear coalesced leftovers are also preserved correctly. This is a new correction regression, not a reopening of Slice 1's prior Clear behavior and not part of the writer's F-02 risk acceptance.
+
+**Requested correction:** give pending quick-fix re-show an ownership/invalidation check so a later Clear cannot be undone. Retain restoration for unchanged interstitial flags when no Clear occurred. Cover document-only/global Clear, Dismiss, and unrelated documents' flags across the awaited write.
+
+### F-02 writer decision and acceptance boundary
+
+On 2026-10-25 the writer explicitly chose to keep the VS Code preview screen and accept the disclosed edge risk. Accordingly no replacement review UI is required for this review. The acceptance is scoped to native preview's lifetime/language race; it does **not** waive table syntax safety, Clear behavior, or unrelated/new defects.
+
+At this reviewed head the adapter's language/lifetime behavior is unchanged: the language-change witnesses still modify the synthetic buffer before the run reports `closed`. No best-effort discard mitigation has landed here, and none is claimed verified. If such mitigation is added, it must be tested as best effort, not described as a guaranteed pre-commit barrier. The same-version reopen probe remains port-level evidence only, not a claim about native tab-close/model retention.
+
+### Independent re-review verification
+
+| Check | Independent result on `3914c103` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass: core, webview and adapter |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings (unchanged baseline) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass; three existing webpack size warnings |
+| Full Jest, Node 18.20.8 | **547 suites / 7,648 tests / 59 snapshots pass** |
+| Independent scratch re-review | **7 suites / 47 tests pass**, including 1,040 generated reconciliation cases; defect-witness assertions are not successful product acceptance |
+| Exact implementation-head CI | [Push 40210638865](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40210638865) and [PR 40210643924](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40210643924): completed, success |
+
+The full local Jest run used the same one-worker/memory-bounded command recorded above. Dependencies remain reused from the prior checkout against an identical lockfile; this is not a fresh `npm ci`. Node 22 was author-reported, not independently rerun. Scratch evidence and logs are retained outside the repository at `pr172-review-evidence/rereview/{applier,adapter,core}`; no test or implementation file is published. The report's own resulting remote commit and CI are checked after publication, not assumed from the implementation-head runs.
+
+**Not approved for merge into `epic/lightbox` on `3914c103`.** Correct F-03 and F-05 and independently re-review the resulting delta. F-02 may remain as the explicitly accepted limitation. Native VS Code UI/undo/accessibility acceptance and live proofreading quality remain separate, never-run stages; all review writes used synthetic in-memory documents and controlled provider stubs. No live provider call, manuscript, implementation edit, formal GitHub review/comment, merge or deployment was used.
