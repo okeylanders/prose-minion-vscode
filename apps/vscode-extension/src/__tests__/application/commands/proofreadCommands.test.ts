@@ -28,7 +28,7 @@ import {
 const TEXT = 'Alice was beginning to get very tired of sitting by her sister on the bank.';
 const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
 const COMPLETED: DraftEditOutcome = {
-  kind: 'completed', flagged: 2, judgmentCalls: 1, dropped: NONE, rejectedChunks: 0, chunks: { total: 1, completed: 1 }
+  kind: 'completed', flagged: 2, judgmentCalls: 1, dropped: NONE, rejectedChunks: { saved: 0, unsaved: 0 }, chunks: { total: 1, completed: 1 }
 };
 
 const editor = (overrides: Partial<ProofreadEditorSnapshot> = {}): ProofreadEditorSnapshot => ({

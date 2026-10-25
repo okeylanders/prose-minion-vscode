@@ -376,7 +376,8 @@ describe('app-shell provider assembly', () => {
       expect(extensionSource).toContain(`registerCommand(${command},`);
     }
     // Both ports are the composition root's adapters, threaded through Platform.
-    expect(extensionSource).toMatch(/documents: new VsCodeDocumentEditor\(\)/);
+    expect(extensionSource).toMatch(/const documentEditor = new VsCodeDocumentEditor\(\);\s+context\.subscriptions\.push\(documentEditor\);/);
+    expect(extensionSource).toMatch(/documents: documentEditor/);
     expect(extensionSource).toMatch(/annotations: issueAnnotator/);
   });
 

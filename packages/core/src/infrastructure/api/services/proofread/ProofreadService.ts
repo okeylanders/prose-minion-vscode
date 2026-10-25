@@ -5,8 +5,8 @@
  * engine that only the shared `AIResourceManager` builds. Chunks fan out
  * through `p-limit`. Each reply is read independently:
  * - a reply that reached the output ceiling, or whose frame or root cannot
- *   be read, is rejected, captured for recovery, and counted; the run goes
- *   on;
+ *   be read, is rejected and counted, with whether its capture for recovery
+ *   was saved (PR #171 F-06); the run goes on;
  * - when the API key is removed or replaced mid-run, the retired engine
  *   starts no new call and fails it as missing credentials (PR #169 F-01).
  *   The run then starts no more chunks and keeps what finished;
@@ -52,7 +52,8 @@ export interface ProofreadRunRequest {
 
 export type ProofreadChunkResult =
   | { readonly kind: 'read'; readonly findings: readonly ProofreadFinding[]; readonly malformed: number }
-  | { readonly kind: 'rejected' }
+  /** Unreadable. `saved`: its capture for recovery has a receipt; false when the save failed. */
+  | { readonly kind: 'rejected'; readonly saved: boolean }
   /** Never sent: the run was stopped or cancelled first. */
   | { readonly kind: 'unsent' };
 
@@ -171,14 +172,14 @@ export class ProofreadService {
       }
     }
     this.log.appendLine(`[Proofread] ${label}: chunk ${index + 1} rejected: ${rejection}`);
-    await persistRejectedModelResponse(this.recovery, presenter, {
+    const receipt = await persistRejectedModelResponse(this.recovery, presenter, {
       toolName: 'proofread',
       requestSummary: `Proofread ${label}, chunk ${index + 1}`,
       rawResponse: content,
       rejection,
       result
     });
-    return { kind: 'rejected' };
+    return { kind: 'rejected', saved: receipt !== undefined };
   }
 }
 

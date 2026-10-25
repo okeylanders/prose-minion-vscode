@@ -143,10 +143,10 @@ export function createFakeEditorContext(overrides: Partial<EditorContext> = {}):
   };
 }
 
-/** A DocumentEditor that can open nothing by default; override `snapshot` to serve a live document. */
+/** A DocumentEditor with no open documents by default; override `watch` to follow one. */
 export function createFakeDocumentEditor(overrides: Partial<DocumentEditor> = {}): DocumentEditor {
   return {
-    snapshot: async () => undefined,
+    watch: () => undefined,
     ...overrides,
   };
 }

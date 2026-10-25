@@ -7,7 +7,7 @@
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { DraftEditTarget } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
-import type { DocumentAnnotation, DocumentSnapshot } from '@/platform';
+import type { DocumentAnnotation, DocumentTextChange } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 import { PROTECTED_PLACEHOLDER } from '@/utils/draftEdit/protectedRegions';
@@ -50,9 +50,14 @@ function target(overrides: Partial<DraftEditTarget> = {}): DraftEditTarget {
   return { uri: URI, version: 1, text: TEXT, languageId: 'plaintext', relativePath: 'chapter-01.txt', ...overrides };
 }
 
+/** The document as the run's watch settles to it: its live text and the edits that made it, or closed. */
+type Live = { readonly version?: number; readonly text: string; readonly languageId?: string; readonly edits?: DocumentTextChange[][] } | 'closed';
+
 function setup(options: {
   result?: ProofreadRunResult | Promise<ProofreadRunResult>;
-  live?: DocumentSnapshot | null;
+  live?: Live;
+  /** False: the document is not open at the gesture's version when the run starts. */
+  watchable?: boolean;
   shows?: boolean;
 } = {}) {
   const requests: ProofreadRunRequest[] = [];
@@ -71,14 +76,30 @@ function setup(options: {
     remove: jest.fn(),
     clear: jest.fn()
   };
+  const disposed = jest.fn();
   const documents = {
-    snapshot: jest.fn(async (uri: string) => (options.live === null
-      ? undefined
-      : options.live ?? { uri, version: 1, text: TEXT, languageId: 'plaintext' }))
+    watch: jest.fn((uri: string, version: number) => {
+      if (options.watchable === false) {
+        return undefined;
+      }
+      return {
+        settle: () => {
+          const live = options.live ?? { text: TEXT };
+          return live === 'closed'
+            ? { kind: 'closed' as const }
+            : {
+                kind: 'open' as const,
+                snapshot: { uri, version: live.version ?? version, text: live.text, languageId: live.languageId ?? 'plaintext' },
+                edits: live.edits ?? []
+              };
+        },
+        dispose: disposed
+      };
+    })
   };
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
   const useCase = new DraftEditUseCase(pass, documents, annotations, log);
-  return { useCase, pass, requests, shown, annotations, documents };
+  return { useCase, pass, requests, shown, annotations, documents, disposed };
 }
 
 const FLAG = { kind: 'proofread', output: 'flag' } as const;
@@ -107,7 +128,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
       flagged: 3,
       judgmentCalls: 1,
       dropped: NONE,
-      rejectedChunks: 0,
+      rejectedChunks: { saved: 0, unsaved: 0 },
       chunks: { total: 1, completed: 1 },
       usage: USAGE
     });
@@ -124,7 +145,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
   });
 
   it('never sends protected regions, and places a quote at its prose occurrence only', async () => {
-    const live = { uri: URI, version: 1, text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' };
+    const live = { text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' };
     const teh: ProofreadFinding = { anchor: { quote: 'teh', before: 'for', after: 'rest.' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
     const { useCase, requests, shown } = setup({ result: read(teh), live });
     await useCase.run(target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' }), FLAG);
@@ -140,7 +161,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
   });
 
   it('drops a quote that touches a protected placeholder', async () => {
-    const live = { uri: URI, version: 1, text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' };
+    const live = { text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' };
     // Unique in the masked text, and straddling the link destination's placeholder.
     const intoLink: ProofreadFinding = { anchor: { quote: `text]${PROTECTED_PLACEHOLDER} for` }, category: 'spacing', replacement: 'x', explanation: 'x' };
     const { useCase } = setup({ result: read(intoLink), live });
@@ -182,24 +203,40 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     expect(outcome).toMatchObject({ flagged: 1, dropped: NONE });
   });
 
-  it('places flags again when the writer typed during the run, dropping one whose text changed', async () => {
-    const edited = `Oh dear! ${TEXT.replace('weather', 'whether')}`;
-    const live = { uri: URI, version: 2, text: edited, languageId: 'plaintext' };
-    const { useCase, shown } = setup({ result: read(WEATHER, RUNS), live });
+  it('moves flags through the writer\'s edits during the run, dropping one an edit touched', async () => {
+    const prefix = 'Oh dear! ';
+    const weather = TEXT.indexOf('weather');
+    const edits = [
+      [{ offset: 0, length: 0, text: prefix }],
+      [{ offset: weather + prefix.length, length: 'weather'.length, text: 'whether' }]
+    ];
+    const edited = `${prefix}${TEXT.replace('weather', 'whether')}`;
+    const { useCase, shown } = setup({ result: read(WEATHER, RUNS), live: { version: 3, text: edited, edits } });
     const outcome = await useCase.run(target(), FLAG);
 
-    expect(shown[0].version).toBe(2);
+    expect(shown[0].version).toBe(3);
     expect(shown[0].annotations.map((annotation) => edited.slice(annotation.start, annotation.end))).toEqual(['runs']);
-    expect(shown[0].annotations[0].start).toBe(TEXT.indexOf('runs') + 'Oh dear! '.length);
+    expect(shown[0].annotations[0].start).toBe(TEXT.indexOf('runs') + prefix.length);
     expect(outcome).toMatchObject({ flagged: 1, dropped: { ...NONE, stale: 1 } });
   });
 
-  it('shows nothing and counts everything stale when the document can no longer be read', async () => {
-    const { useCase, annotations } = setup({ result: read(WEATHER, RUNS), live: null });
+  it('shows nothing when the document closed during the run, and says so (PR #171 F-04)', async () => {
+    const { useCase, annotations, disposed } = setup({
+      result: { kind: 'completed', chunks: [{ kind: 'read', findings: [WEATHER, RUNS], malformed: 0 }, { kind: 'rejected', saved: false }], usage: USAGE },
+      live: 'closed'
+    });
     const outcome = await useCase.run(target(), FLAG);
 
     expect(annotations.show).not.toHaveBeenCalled();
-    expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 2 } });
+    expect(outcome).toEqual({ kind: 'closed', rejectedChunks: { saved: 0, unsaved: 1 }, usage: USAGE });
+    expect(disposed).toHaveBeenCalled();
+  });
+
+  it('sends nothing when the document is no longer open at the gesture\'s version', async () => {
+    const { useCase, pass, annotations } = setup({ watchable: false });
+    expect(await useCase.run(target(), FLAG)).toEqual({ kind: 'changed' });
+    expect(pass.proofread).not.toHaveBeenCalled();
+    expect(annotations.show).not.toHaveBeenCalled();
   });
 
   it('counts everything stale when the host refuses the version', async () => {
@@ -217,8 +254,8 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     const malformed = setup({ result: { kind: 'completed', chunks: [{ kind: 'read', findings: [], malformed: 2 }] } });
     expect(await malformed.useCase.run(target(), FLAG)).toMatchObject({ dropped: { ...NONE, malformed: 2 } });
 
-    const rejected = setup({ result: { kind: 'completed', chunks: [{ kind: 'rejected' }] } });
-    expect(await rejected.useCase.run(target(), FLAG)).toMatchObject({ rejectedChunks: 1, chunks: { total: 1, completed: 1 } });
+    const rejected = setup({ result: { kind: 'completed', chunks: [{ kind: 'rejected', saved: true }, { kind: 'rejected', saved: false }, { kind: 'rejected', saved: true }] } });
+    expect(await rejected.useCase.run(target(), FLAG)).toMatchObject({ rejectedChunks: { saved: 2, unsaved: 1 }, chunks: { total: 3, completed: 3 } });
 
     const interrupted = { cause: 'key-changed' as const, message: 'The API key changed.' };
     const unsent = setup({ result: { kind: 'completed', chunks: [{ kind: 'unsent' }], interrupted } });
@@ -246,6 +283,59 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     await expect(first).resolves.toMatchObject({ kind: 'completed' });
     await expect(other).resolves.toMatchObject({ kind: 'completed' });
     expect(await useCase.run(target(), FLAG)).toMatchObject({ kind: 'completed' });
+  });
+});
+
+describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live text (PR #171 F-03)', () => {
+  const TWICE = 'Alice saw teh rabbit. Elsewhere teh bird sang.';
+  const FIRST_TEH: ProofreadFinding = { anchor: { quote: 'teh', before: 'Alice saw', after: 'rabbit.' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
+  const ONCE = 'Alice saw teh rabbit.';
+  const ONLY_TEH: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
+  const mdTarget = (text: string) => target({ text, languageId: 'markdown' });
+
+  it('control: a harmless prefix moves the flag with its text', async () => {
+    const live = { version: 2, text: `One day, ${ONCE}`, languageId: 'markdown', edits: [[{ offset: 0, length: 0, text: 'One day, ' }]] };
+    const { useCase, shown } = setup({ result: read(ONLY_TEH), live });
+    const outcome = await useCase.run(mdTarget(ONCE), FLAG);
+
+    expect(shown[0].annotations.map((annotation) => [annotation.start, annotation.end])).toEqual([[19, 22]]);
+    expect(outcome).toMatchObject({ flagged: 1, dropped: NONE });
+  });
+
+  it('drops the finding when the writer corrected its occurrence, never moving it to the other one', async () => {
+    const at = TWICE.indexOf('teh');
+    const live = { version: 2, text: TWICE.replace('teh', 'the'), languageId: 'markdown', edits: [[{ offset: at, length: 3, text: 'the' }]] };
+    const { useCase, shown } = setup({ result: read(FIRST_TEH), live });
+    const outcome = await useCase.run(mdTarget(TWICE), FLAG);
+
+    expect(shown[0].annotations).toEqual([]);
+    expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 1 } });
+  });
+
+  it('drops the finding when the writer fenced its text as code during the run', async () => {
+    const fenced = `\`\`\`text\n${ONCE}\n\`\`\``;
+    const live = {
+      version: 3,
+      text: fenced,
+      languageId: 'markdown',
+      edits: [[{ offset: 0, length: 0, text: '```text\n' }], [{ offset: '```text\n'.length + ONCE.length, length: 0, text: '\n```' }]]
+    };
+    const { useCase, shown } = setup({ result: read(ONLY_TEH), live });
+    const outcome = await useCase.run(mdTarget(ONCE), FLAG);
+
+    expect(shown[0].annotations).toEqual([]);
+    expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, protected: 1 } });
+  });
+
+  it('never moves a corrected finding into an occurrence already inside code', async () => {
+    const text = `${ONCE}\n\n\`\`\`text\nteh\n\`\`\``;
+    const live = { version: 2, text: text.replace('teh', 'the'), languageId: 'markdown', edits: [[{ offset: text.indexOf('teh'), length: 3, text: 'the' }]] };
+    const { useCase, shown, requests } = setup({ result: read(ONLY_TEH), live });
+    const outcome = await useCase.run(mdTarget(text), FLAG);
+
+    expect(requests[0].chunks.join('\n')).not.toContain('\nteh\n');
+    expect(shown[0].annotations).toEqual([]);
+    expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 1 } });
   });
 });
 

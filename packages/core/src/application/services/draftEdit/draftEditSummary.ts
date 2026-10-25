@@ -4,7 +4,7 @@
  * the same way, and so the wording is tested without a host.
  */
 
-import type { DraftEditOutcome } from '@/domain/models/DraftEdit';
+import type { DraftEditOutcome, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 
 export interface DraftEditSummary {
   readonly level: 'info' | 'warning';
@@ -24,9 +24,23 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return { level: 'warning', message: 'Proofread needs an OpenRouter API key.', hasFlags: false };
     case 'busy':
       return { level: 'info', message: `Proofread is already running on ${documentLabel}.`, hasFlags: false };
+    case 'changed':
+      return { level: 'warning', message: `${documentLabel} changed before Proofread could start, so nothing was sent. Run it again.`, hasFlags: false };
     case 'cancelled': {
       const cost = costOf(outcome.usage?.costUsd);
       return { level: 'info', message: `Proofread cancelled. No flags changed${cost ? ` (spent ${cost})` : ''}.`, hasFlags: false };
+    }
+    case 'closed': {
+      const parts = [`${documentLabel} was closed before Proofread finished, so no flags were shown`];
+      const rejected = rejectedPart(outcome.rejectedChunks);
+      if (rejected) {
+        parts.push(rejected);
+      }
+      const cost = costOf(outcome.usage?.costUsd);
+      if (cost) {
+        parts.push(cost);
+      }
+      return { level: 'warning', message: `${parts.join(' · ')}.`, hasFlags: false };
     }
     case 'completed': {
       const { dropped } = outcome;
@@ -40,8 +54,9 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       if (unplaced > 0) {
         parts.push(`${unplaced} not placed`);
       }
-      if (outcome.rejectedChunks > 0) {
-        parts.push(`${plural(outcome.rejectedChunks, 'part')} unreadable, saved for recovery`);
+      const rejected = rejectedPart(outcome.rejectedChunks);
+      if (rejected) {
+        parts.push(rejected);
       }
       const cost = costOf(outcome.usage?.costUsd);
       if (cost) {
@@ -52,7 +67,7 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
         message += `. ${outcome.interrupted.message} (${outcome.chunks.completed} of ${plural(outcome.chunks.total, 'part')} proofread.)`;
       }
       return {
-        level: outcome.interrupted || outcome.rejectedChunks > 0 ? 'warning' : 'info',
+        level: outcome.interrupted || rejected ? 'warning' : 'info',
         message,
         hasFlags: outcome.flagged > 0
       };
@@ -62,6 +77,25 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return unknown;
     }
   }
+}
+
+/**
+ * Unreadable parts, saying only what is true of their recovery copies: a
+ * failed save is never called saved (PR #171 F-06). The output channel holds
+ * the store's reason.
+ */
+function rejectedPart({ saved, unsaved }: DraftEditRejectedChunks): string {
+  const total = saved + unsaved;
+  if (total === 0) {
+    return '';
+  }
+  if (unsaved === 0) {
+    return `${plural(total, 'part')} unreadable, saved for recovery`;
+  }
+  if (saved === 0) {
+    return `${plural(total, 'part')} unreadable and not saved for recovery (see the Prose Minion output)`;
+  }
+  return `${plural(total, 'part')} unreadable: ${saved} saved for recovery, ${unsaved} not saved (see the Prose Minion output)`;
 }
 
 /** A cost the provider reported, or '' when it is unknown (never a made-up $0). */

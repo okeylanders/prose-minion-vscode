@@ -120,6 +120,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Draft Edit's flags (ADR 2026-10-21 D7): diagnostics whose code actions call back into the commands below.
   const issueAnnotator = new VsCodeIssueAnnotator({ dismiss: PROOFREAD_DISMISS_COMMAND, clear: PROOFREAD_CLEAR_COMMAND });
   context.subscriptions.push(issueAnnotator);
+  // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04).
+  const documentEditor = new VsCodeDocumentEditor();
+  context.subscriptions.push(documentEditor);
   const platform: Platform = {
     log: outputChannel,
     secrets: context.secrets,
@@ -129,7 +132,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),
     editor: editorContext,
-    documents: new VsCodeDocumentEditor(),
+    documents: documentEditor,
     annotations: issueAnnotator
   };
 

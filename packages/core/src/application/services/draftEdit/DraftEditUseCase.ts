@@ -7,26 +7,32 @@
  * 1. masks the target's protected regions (found over the whole document,
  *    so a selection inside a fenced block is still protected), and chunks
  *    it on paragraph boundaries;
- * 2. hands the chunks to the pass (the only step that calls a model);
- * 3. places each finding by its quote in its own chunk; refuses one that
+ * 2. starts watching the open document at the version the gesture read,
+ *    before anything is awaited;
+ * 3. hands the chunks to the pass (the only step that calls a model);
+ * 4. places each finding by its quote in its own chunk; refuses one that
  *    touches a placeholder; applies the Proofread guard; and keeps the
  *    earlier of two overlapping issues;
- * 4. re-reads the live document. When the writer typed during the run, each
- *    issue is placed again by its quoted text, and one whose text changed is
- *    dropped as stale, never drawn on moved text;
- * 5. shows the issues as annotations, replacing the document's earlier ones.
+ * 5. settles the watch. Each issue follows its own occurrence through the
+ *    writer's edits: one an edit touched is dropped as stale, never moved to
+ *    another occurrence of its words (PR #171 F-03). The live text's
+ *    protected regions are found again, and an issue now inside one is
+ *    dropped. A document that closed shows nothing, even if it opened again
+ *    (F-04);
+ * 6. shows the issues as annotations, replacing the document's earlier ones.
  *
  * One run per document at a time. Everything dropped is counted, never
  * guessed.
  */
 
 import type { LogSink } from '@/platform';
-import type { DocumentEditor, DocumentSnapshot } from '@/platform/DocumentEditor';
+import type { DocumentEditor, DocumentWatch, DocumentWatchResult } from '@/platform/DocumentEditor';
 import type { DocumentAnnotation, IssueAnnotator } from '@/platform/IssueAnnotator';
 import {
   DRAFT_EDIT_PASS_POLICIES,
   type DraftEditOutcome,
   type DraftEditPass,
+  type DraftEditRejectedChunks,
   type DraftEditTarget,
   type TextRange
 } from '@/domain/models/DraftEdit';
@@ -42,6 +48,7 @@ import {
   maskProtectedRegions,
   type MaskedText
 } from '@/utils/draftEdit/protectedRegions';
+import { shiftRanges } from '@/utils/draftEdit/shiftRanges';
 import { judgeProofreadFinding } from '@/utils/proofread/proofreadGuard';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 
@@ -58,9 +65,6 @@ export interface DraftEditRunPlan {
   /** A whole-file run over `PROMPT_BUDGETS.proofread.confirmWholeFileWords`; a selection never needs it. */
   readonly needsConfirmation: boolean;
 }
-
-/** Context taken either side of an issue, to place it again after the writer types. */
-const REANCHOR_CONTEXT_CHARACTERS = 40;
 
 interface Prepared {
   readonly region: TextRange;
@@ -101,10 +105,15 @@ export class DraftEditUseCase {
     if (prepared.chunks.length === 0) {
       return { kind: 'empty' };
     }
+    const watch = this.documents.watch(target.uri, target.version);
+    if (!watch) {
+      return { kind: 'changed' };
+    }
     this.inFlight.add(target.uri);
     try {
-      return await this.proofread(target, pass, prepared, signal);
+      return await this.proofread(target, pass, prepared, watch, signal);
     } finally {
+      watch.dispose();
       this.inFlight.delete(target.uri);
     }
   }
@@ -136,6 +145,7 @@ export class DraftEditUseCase {
     target: DraftEditTarget,
     pass: DraftEditPass,
     prepared: Prepared,
+    watch: DocumentWatch,
     signal?: AbortSignal
   ): Promise<DraftEditOutcome> {
     const label = runLabel(target);
@@ -151,20 +161,24 @@ export class DraftEditUseCase {
       return { kind: 'cancelled', ...(result.usage ? { usage: result.usage } : {}) };
     }
 
+    const rejectedChunks: DraftEditRejectedChunks = {
+      saved: result.chunks.filter((chunk) => chunk.kind === 'rejected' && chunk.saved).length,
+      unsaved: result.chunks.filter((chunk) => chunk.kind === 'rejected' && !chunk.saved).length
+    };
     const dropped: Drops = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
     const placed = this.place(target, pass, prepared, result, dropped);
-    const live = await this.documents.snapshot(target.uri);
+    const settled = watch.settle();
+    if (settled.kind === 'closed') {
+      this.log.appendLine(`[DraftEdit] Proofread ${label}: the document closed during the run; nothing shown`);
+      return { kind: 'closed', rejectedChunks, ...(result.usage ? { usage: result.usage } : {}) };
+    }
     let shown: ProofreadIssue[] = [];
-    if (!live) {
-      dropped.stale += placed.length;
+    const current = this.follow(settled, placed, dropped);
+    // Nothing is awaited between settling and `show`, so the version still holds unless the host refuses it.
+    if (this.annotations.show(target.uri, settled.snapshot.version, current.map(toAnnotation))) {
+      shown = current;
     } else {
-      const current = this.reanchor(target, live, placed, dropped);
-      // No await between the snapshot and `show`, so the version still holds unless the host refuses it.
-      if (this.annotations.show(target.uri, live.version, current.map(toAnnotation))) {
-        shown = current;
-      } else {
-        dropped.stale += current.length;
-      }
+      dropped.stale += current.length;
     }
 
     const answered = result.chunks.filter((chunk) => chunk.kind !== 'unsent').length;
@@ -178,7 +192,7 @@ export class DraftEditUseCase {
       flagged: shown.length,
       judgmentCalls: shown.filter((issue) => proofreadCategoryDisposition(issue.category) === 'flag').length,
       dropped,
-      rejectedChunks: result.chunks.filter((chunk) => chunk.kind === 'rejected').length,
+      rejectedChunks,
       chunks: { total: result.chunks.length, completed: answered },
       ...(result.interrupted ? { interrupted: result.interrupted } : {}),
       ...(result.usage ? { usage: result.usage } : {})
@@ -248,30 +262,29 @@ export class DraftEditUseCase {
     return kept;
   }
 
-  /** The issues at their place in the live text; an issue whose quoted text changed is dropped as stale. */
-  private reanchor(
-    target: DraftEditTarget,
-    live: DocumentSnapshot,
+  /**
+   * The issues where the live text now holds them. Each follows its own
+   * occurrence through the writer's edits, in order: an edit that touches it
+   * drops it as stale (its text is no longer what was read), and nothing is
+   * ever searched for again. The live text's protected regions are found
+   * anew, and an issue inside one (the writer fenced it, say) is dropped as
+   * protected.
+   */
+  private follow(
+    settled: Extract<DocumentWatchResult, { kind: 'open' }>,
     issues: readonly ProofreadIssue[],
     dropped: Drops
   ): ProofreadIssue[] {
-    if (live.version === target.version) {
-      return [...issues];
-    }
-    const moved: ProofreadIssue[] = [];
-    for (const issue of issues) {
-      const anchored = anchorQuote(live.text, {
-        quote: issue.original,
-        before: target.text.slice(Math.max(0, issue.start - REANCHOR_CONTEXT_CHARACTERS), issue.start),
-        after: target.text.slice(issue.end, issue.end + REANCHOR_CONTEXT_CHARACTERS)
-      });
-      if (anchored.kind !== 'anchored' || live.text.slice(anchored.start, anchored.end) !== issue.original) {
-        dropped.stale += 1;
-        continue;
-      }
-      moved.push({ ...issue, start: anchored.start, end: anchored.end });
-    }
-    return moved;
+    const live = settled.snapshot;
+    const moved = settled.edits
+      .reduce<ProofreadIssue[]>((current, changes) => shiftRanges(current, changes), [...issues])
+      // Every edit is in the list, so this holds; a host that missed one cannot move a flag onto other text.
+      .filter((issue) => live.text.slice(issue.start, issue.end) === issue.original);
+    dropped.stale += issues.length - moved.length;
+    const protectedNow = findProtectedRegions(live.text, live.languageId);
+    const eligible = moved.filter((issue) => !protectedNow.some((range) => range.start < issue.end && issue.start < range.end));
+    dropped.protected += moved.length - eligible.length;
+    return eligible;
   }
 }
 

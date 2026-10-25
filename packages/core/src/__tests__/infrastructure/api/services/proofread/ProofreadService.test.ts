@@ -106,7 +106,7 @@ describe('ProofreadService', () => {
     ]);
     const result = await service.proofread({ chunks, label: 'chapter-01.md' });
 
-    expect(result).toMatchObject({ kind: 'completed', chunks: [{ kind: 'rejected' }, { kind: 'rejected' }] });
+    expect(result).toMatchObject({ kind: 'completed', chunks: [{ kind: 'rejected', saved: true }, { kind: 'rejected', saved: true }] });
     expect(recovery.capture).toHaveBeenCalledTimes(2);
     expect(recovery.capture.mock.calls.map((call: unknown[]) => (call[0] as { toolName: string; requestSummary: string; rejection: string })))
       .toEqual([

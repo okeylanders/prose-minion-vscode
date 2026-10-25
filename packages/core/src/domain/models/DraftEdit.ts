@@ -64,14 +64,20 @@ export interface DraftEditTarget {
 export interface DraftEditDropCounts {
   /** The quote was not found, or was found more than once. */
   readonly unanchored: number;
-  /** The quote touched front matter, code, a link target, or markup. */
+  /** The quote touched front matter, code, a link target, or markup, as sent or as the live text now stands. */
   readonly protected: number;
   /** The quote overlapped one already placed. */
   readonly overlapping: number;
-  /** The writer changed the quoted text while the run was in flight. */
+  /** The writer edited the quoted text while the run was in flight. */
   readonly stale: number;
   /** The reply's issue was malformed: a missing field or an unknown category. */
   readonly malformed: number;
+}
+
+/** Chunks whose reply could not be read: those whose capture for recovery was saved, and those whose save failed (PR #171 F-06). */
+export interface DraftEditRejectedChunks {
+  readonly saved: number;
+  readonly unsaved: number;
 }
 
 /** What a run did, for the host to present (the adapter's summary, a Workshop result). */
@@ -79,7 +85,11 @@ export type DraftEditOutcome =
   | { readonly kind: 'empty' }
   | { readonly kind: 'unconfigured' }
   | { readonly kind: 'busy' }
+  /** The document was no longer open at the version the gesture read, so nothing was sent. */
+  | { readonly kind: 'changed' }
   | { readonly kind: 'cancelled'; readonly usage?: TokenUsage }
+  /** The document closed while the model worked, so nothing was shown (PR #171 F-04). */
+  | { readonly kind: 'closed'; readonly rejectedChunks: DraftEditRejectedChunks; readonly usage?: TokenUsage }
   | {
       readonly kind: 'completed';
       /** Issues shown. */
@@ -87,8 +97,7 @@ export type DraftEditOutcome =
       /** Of those, the judgment calls (tense, agreement). */
       readonly judgmentCalls: number;
       readonly dropped: DraftEditDropCounts;
-      /** Chunks whose reply could not be read, each captured for recovery. */
-      readonly rejectedChunks: number;
+      readonly rejectedChunks: DraftEditRejectedChunks;
       /** Chunks requested, and chunks answered (read or rejected). */
       readonly chunks: { readonly total: number; readonly completed: number };
       /** Why later chunks were never sent: the API key changed mid-run, or the provider refused. */
