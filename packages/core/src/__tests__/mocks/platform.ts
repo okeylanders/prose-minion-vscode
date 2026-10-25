@@ -158,6 +158,7 @@ export function createFakeIssueAnnotator(overrides: Partial<IssueAnnotator> = {}
     show: () => true,
     remove: () => undefined,
     clear: () => undefined,
+    current: () => undefined,
     ...overrides,
   };
 }

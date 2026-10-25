@@ -86,6 +86,22 @@ describe('judgeProofreadFinding', () => {
     expect(judge('spacing', 'end of\n line', 'end of\nline')).toEqual({ kind: 'keep', disposition: 'fix' });
   });
 
+  it.each([
+    ['a backtick, which would make code', 'punctuation', 'the rabbit', 'the `rabbit'],
+    ['a pipe, which would split a table cell', 'punctuation', 'Alice, Dinah', 'Alice | Dinah'],
+    ['an angle bracket, which would open a tag', 'punctuation', 'a hint', 'a <hint'],
+    ['an asterisk, which would open emphasis', 'punctuation', 'very tired', 'very* tired'],
+    ['an escape the text had', 'punctuation', 'cost \\*3', 'cost *3']
+  ])('downgrades a fix that adds or removes %s (Slice 2)', (_name, category, original, replacement) => {
+    expect(judge(category as (typeof PROOFREAD_CATEGORIES)[number], original, replacement)).toEqual({
+      kind: 'keep', disposition: 'flag', downgradeReason: 'markup-change'
+    });
+  });
+
+  it('keeps a fix beside markup it leaves alone', () => {
+    expect(judge('spelling', 'teh *White* Rabbit', 'the *White* Rabbit')).toEqual({ kind: 'keep', disposition: 'fix' });
+  });
+
   it('allows line breaks only for a pass whose policy does', () => {
     expect(judgeProofreadFinding({ category: 'spacing', original: 'a b', replacement: 'a\nb' }, { allowsNewlineChanges: true }))
       .toEqual({ kind: 'keep', disposition: 'fix' });

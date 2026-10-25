@@ -69,6 +69,7 @@ import {
   LightboxBoardLibrary,
   ProofreadService,
   DraftEditUseCase,
+  DraftEditApplier,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -88,11 +89,18 @@ import { OpenFileInLightboxHost, openFileInLightbox } from './application/comman
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
+  PROOFREAD_FIX_ALL_COMMAND,
+  PROOFREAD_FIX_COMMAND,
   PROOFREAD_FLAG_COMMAND,
+  PROOFREAD_REPLACE_COMMAND,
   ProofreadCommandHost,
+  ProofreadEditorSnapshot,
   clearProofreadFlags,
   dismissProofreadIssue,
-  proofreadAndFlag
+  fixAllProofreadIssues,
+  proofreadAndFix,
+  proofreadAndFlag,
+  replaceProofreadIssue
 } from './application/commands/proofreadCommands';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
@@ -119,7 +127,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const editorContext = new VsCodeEditorContext();
   context.subscriptions.push(editorContext);
   // Draft Edit's flags (ADR 2026-10-21 D7): diagnostics whose code actions call back into the commands below.
-  const issueAnnotator = new VsCodeIssueAnnotator({ dismiss: PROOFREAD_DISMISS_COMMAND, clear: PROOFREAD_CLEAR_COMMAND });
+  const issueAnnotator = new VsCodeIssueAnnotator({
+    dismiss: PROOFREAD_DISMISS_COMMAND,
+    clear: PROOFREAD_CLEAR_COMMAND,
+    replace: PROOFREAD_REPLACE_COMMAND,
+    fixAll: PROOFREAD_FIX_ALL_COMMAND
+  });
   context.subscriptions.push(issueAnnotator);
   // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04).
   const documentEditor = new VsCodeDocumentEditor();
@@ -427,7 +440,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push({ dispose: () => lightboxBoardLibrary.dispose() });
 
   // Draft Edit (ADR 2026-10-21): the Proofread pass on the manager-owned
-  // `proofread` scope, and the one run per document that places its flags.
+  // `proofread` scope, the applier (the one door to the writer's document),
+  // and the one run per document that places its flags or makes its fixes.
   // Built here and used by the editor commands below; it joins CoreServices
   // when a webview handler first needs it (the Workshop, Slice 4).
   const proofreadService = new ProofreadService(
@@ -437,7 +451,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
-  const draftEdit = new DraftEditUseCase(proofreadService, platform.documents, platform.annotations, outputChannel);
+  const draftEdit = new DraftEditUseCase(
+    proofreadService,
+    platform.documents,
+    platform.annotations,
+    new DraftEditApplier(platform.documents),
+    outputChannel
+  );
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -686,33 +706,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxPanelProvider?.seedSource(payload);
   };
 
-  // Proofread (Draft Edit Slice 1): the target is captured at the gesture, in
-  // one synchronous read of the active editor (ADR 2026-10-21 D5).
+  // Proofread (Draft Edit Slices 1 and 2): the target is captured at the
+  // gesture, in one synchronous read of the editor (ADR 2026-10-21 D5).
+  const readProofreadDocument = (document: vscode.TextDocument, selection?: vscode.Selection): ProofreadEditorSnapshot => ({
+    uri: document.uri.toString(),
+    version: document.version,
+    text: document.getText(),
+    languageId: document.languageId,
+    label: document.isUntitled ? document.fileName : vscode.workspace.asRelativePath(document.uri, false),
+    ...(!selection || selection.isEmpty ? {} : { selection: { start: document.offsetAt(selection.start), end: document.offsetAt(selection.end) } })
+  });
   const proofreadCommandHost: ProofreadCommandHost = {
     activeEditor: () => {
       const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        return undefined;
-      }
-      const document = editor.document;
-      const selection = editor.selection;
-      return {
-        uri: document.uri.toString(),
-        version: document.version,
-        text: document.getText(),
-        languageId: document.languageId,
-        label: document.isUntitled ? document.fileName : vscode.workspace.asRelativePath(document.uri, false),
-        ...(selection.isEmpty ? {} : { selection: { start: document.offsetAt(selection.start), end: document.offsetAt(selection.end) } })
-      };
+      return editor ? readProofreadDocument(editor.document, editor.selection) : undefined;
     },
+    document: (uri) => {
+      const document = vscode.workspace.textDocuments.find((each) => each.uri.toString() === uri);
+      return document && !document.isClosed ? readProofreadDocument(document) : undefined;
+    },
+    fixReview: () =>
+      vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply' ? 'apply' : 'preview',
     confirm: async (message, action) =>
       (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
     withProgress: (title, task) => vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title, cancellable: true },
-      (_progress, token) => {
+      (progress, token) => {
         const controller = new AbortController();
         token.onCancellationRequested(() => controller.abort());
-        return task(controller.signal);
+        return task(controller.signal, (message) => progress.report({ message }));
       }
     ),
     showInformation: (message, ...actions) => vscode.window.showInformationMessage(message, ...actions),
@@ -751,6 +773,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('prose-minion.lightboxSelection', handleLightboxSelection),
     vscode.commands.registerCommand('prose-minion.openFileInLightbox', handleOpenFileInLightbox),
     vscode.commands.registerCommand(PROOFREAD_FLAG_COMMAND, () => proofreadAndFlag(proofreadCommandHost, draftEdit)),
+    vscode.commands.registerCommand(PROOFREAD_FIX_COMMAND, () => proofreadAndFix(proofreadCommandHost, draftEdit)),
+    vscode.commands.registerCommand(PROOFREAD_REPLACE_COMMAND, (uri?: unknown, issueId?: unknown) =>
+      replaceProofreadIssue(proofreadCommandHost, draftEdit, uri, issueId)),
+    vscode.commands.registerCommand(PROOFREAD_FIX_ALL_COMMAND, (uri?: unknown) =>
+      fixAllProofreadIssues(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_CLEAR_COMMAND, (uri?: unknown) => clearProofreadFlags(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId))
   );

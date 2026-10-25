@@ -11,6 +11,9 @@
  *   stylistic rewrite in as a "correction".
  * - A fix never adds, removes or moves a line break, unless the pass allows
  *   it (`changesLineBreaks`: counting them is not enough).
+ * - A fix never adds or removes a character that makes Markdown: a backtick
+ *   would turn prose into code, a pipe would split a table cell, `<` would
+ *   open a tag. Letters unchanged is not enough once Fix writes (Slice 2).
  */
 
 import type { DraftEditPassPolicy } from '@/domain/models/DraftEdit';
@@ -47,11 +50,22 @@ export function judgeProofreadFinding(
   if (replacement === undefined) {
     return { kind: 'keep', disposition: 'flag', downgradeReason: 'no-replacement' };
   }
+  if (changesMarkup(original, replacement)) {
+    return { kind: 'keep', disposition: 'flag', downgradeReason: 'markup-change' };
+  }
   const small = (policy.allowsNewlineChanges || !changesLineBreaks(original, replacement))
     && isMechanicalEdit(category, original, replacement);
   return small
     ? { kind: 'keep', disposition: 'fix' }
     : { kind: 'keep', disposition: 'flag', downgradeReason: 'non-mechanical-edit' };
+}
+
+/** Characters that make Markdown structure: code, tags, tables, emphasis, links, headings, escapes. */
+const MARKUP_CHARACTERS = ['`', '<', '>', '|', '*', '_', '~', '[', ']', '#', '\\'] as const;
+
+function changesMarkup(original: string, replacement: string): boolean {
+  const count = (text: string, char: string) => text.split(char).length - 1;
+  return MARKUP_CHARACTERS.some((char) => count(original, char) !== count(replacement, char));
 }
 
 function isMechanicalEdit(category: ProofreadCategory, original: string, replacement: string): boolean {

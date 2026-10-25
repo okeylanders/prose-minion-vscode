@@ -23,7 +23,10 @@ import { DRAFT_EDIT_LANGUAGE_IDS } from '@prose-minion/core';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
-  PROOFREAD_FLAG_COMMAND
+  PROOFREAD_FIX_ALL_COMMAND,
+  PROOFREAD_FIX_COMMAND,
+  PROOFREAD_FLAG_COMMAND,
+  PROOFREAD_REPLACE_COMMAND
 } from '@app/application/commands/proofreadCommands';
 
 // __dirname = apps/vscode-extension/src/__tests__/architecture -> app src root.
@@ -379,6 +382,41 @@ describe('app-shell provider assembly', () => {
     expect(extensionSource).toMatch(/const documentEditor = new VsCodeDocumentEditor\(\);\s+context\.subscriptions\.push\(documentEditor\);/);
     expect(extensionSource).toMatch(/documents: documentEditor/);
     expect(extensionSource).toMatch(/annotations: issueAnnotator/);
+  });
+
+  it('offers Proofread and Fix wherever it offers Flag, and keeps the quick fixes out of the palette (Draft Edit Slice 2)', () => {
+    const manifest = readManifest();
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const menu = manifest.contributes.menus['editor/context'] ?? [];
+    const flag = menu.find((entry) => entry.command === PROOFREAD_FLAG_COMMAND);
+
+    expect(menu.filter((entry) => entry.command === PROOFREAD_FIX_COMMAND)).toEqual([{
+      command: PROOFREAD_FIX_COMMAND,
+      group: 'prose-minion@5',
+      when: flag?.when
+    }]);
+    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+      { command: PROOFREAD_FIX_COMMAND, title: 'Prose Minion: Proofread and Fix' }
+    ]));
+    const contributed = manifest.contributes.commands.map((entry) => entry.command);
+    for (const quickFix of [PROOFREAD_REPLACE_COMMAND, PROOFREAD_FIX_ALL_COMMAND]) {
+      expect(contributed).not.toContain(quickFix);
+    }
+    for (const command of ['PROOFREAD_FIX_COMMAND', 'PROOFREAD_REPLACE_COMMAND', 'PROOFREAD_FIX_ALL_COMMAND']) {
+      expect(extensionSource).toContain(`registerCommand(${command},`);
+    }
+    // The applier is the composition root's: the one door to the writer's document.
+    expect(extensionSource).toMatch(/new DraftEditApplier\(platform\.documents\)/);
+  });
+
+  it('declares how Fix reviews its fixes, Refactor Preview by default, under the key the host reads (Draft Edit Slice 2)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; enum?: string[]; default?: unknown }> } };
+    };
+    expect(manifest.contributes.configuration.properties['proseMinion.proofread.fixReview'])
+      .toMatchObject({ type: 'string', enum: ['preview', 'apply'], default: 'preview' });
+    expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
+      .toContain(`getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply'`);
   });
 
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {

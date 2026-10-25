@@ -4,7 +4,8 @@
  * the same way, and so the wording is tested without a host.
  */
 
-import type { DraftEditOutcome, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
+import type { DraftEditFixReport, DraftEditOutcome, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
+import type { DraftEditQuickFixOutcome } from '@/application/services/draftEdit/DraftEditUseCase';
 
 export interface DraftEditSummary {
   readonly level: 'info' | 'warning';
@@ -43,14 +44,17 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return { level: 'warning', message: `${parts.join(' · ')}.`, hasFlags: false };
     }
     case 'completed': {
-      const { dropped } = outcome;
+      const { dropped, fix } = outcome;
       const unplaced = dropped.unanchored + dropped.protected + dropped.overlapping + dropped.stale + dropped.malformed;
-      const parts = [
-        outcome.flagged === 0
-          ? `Proofread ${documentLabel}: no issues found`
-          : `Proofread ${documentLabel}: ${plural(outcome.flagged, 'issue')} flagged`
-            + (outcome.judgmentCalls > 0 ? ` (${outcome.judgmentCalls} tense or agreement)` : '')
-      ];
+      const flagged = outcome.flagged === 0
+        ? ''
+        : `${plural(outcome.flagged, 'issue')} flagged`
+          + (outcome.judgmentCalls > 0 ? ` (${outcome.judgmentCalls} tense or agreement)` : '');
+      const lead = [fix ? fixLead(fix) : '', flagged].filter(Boolean).join(' · ') || 'no issues found';
+      const parts = [`Proofread ${documentLabel}: ${lead}`];
+      if (fix && fix.unknown > 0) {
+        parts.push(`${plural(fix.unknown, 'fix', 'fixes')} you edited during review left as you wrote ${fix.unknown === 1 ? 'it' : 'them'}`);
+      }
       if (unplaced > 0) {
         parts.push(`${unplaced} not placed`);
       }
@@ -67,10 +71,70 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
         message += `. ${outcome.interrupted.message} (${outcome.chunks.completed} of ${plural(outcome.chunks.total, 'part')} proofread.)`;
       }
       return {
-        level: outcome.interrupted || rejected ? 'warning' : 'info',
+        level: outcome.interrupted || rejected || fix?.answer === 'stale' || fix?.answer === 'failed' ? 'warning' : 'info',
         message,
         hasFlags: outcome.flagged > 0
       };
+    }
+    default: {
+      const unknown: never = outcome;
+      return unknown;
+    }
+  }
+}
+
+/** What a Fix run did with its fixes, as the lead of its line; '' when it had none to offer. */
+function fixLead(fix: DraftEditFixReport): string {
+  switch (fix.answer) {
+    case 'submitted':
+      return `${plural(fix.applied, 'fix', 'fixes')} applied`
+        + (fix.notApplied > 0 ? ` (${fix.notApplied} ${fix.review === 'preview' ? 'left unticked' : 'not applied'}, flagged)` : '');
+    case 'declined':
+      return 'fixes discarded, nothing changed';
+    case 'stale':
+      return 'the file changed during review, so no fixes were applied';
+    case 'failed':
+      return `the editor did not apply the fixes${fix.failure ? ` (${fix.failure})` : ''}`;
+    case 'none':
+      return '';
+    default: {
+      const unknown: never = fix.answer;
+      return unknown;
+    }
+  }
+}
+
+/** The words for a quick fix (Replace with, Fix all); `quiet` when a single fix simply landed, and nothing needs saying. */
+export function describeQuickFixOutcome(outcome: DraftEditQuickFixOutcome, documentLabel: string): DraftEditSummary & { readonly quiet: boolean } {
+  const say = (level: 'info' | 'warning', message: string, quiet = false) => ({ level, message, hasFlags: false, quiet });
+  switch (outcome.kind) {
+    case 'busy':
+      return say('info', `Proofread is already working on ${documentLabel}.`);
+    case 'changed':
+      return say('warning', `${documentLabel} changed since the fix was offered, so nothing was changed.`);
+    case 'nothing':
+      return say('info', 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.');
+    case 'closed':
+      return say('warning', `${documentLabel} was closed, so nothing was changed.`);
+    case 'done': {
+      switch (outcome.answer) {
+        case 'submitted': {
+          const left = outcome.notApplied > 0 ? ` · ${outcome.notApplied} left as flags` : '';
+          return say('info', `Proofread ${documentLabel}: ${plural(outcome.applied, 'fix', 'fixes')} applied${left}.`, left === '' && outcome.applied === 1);
+        }
+        case 'declined':
+          return say('info', 'Proofread fixes discarded; nothing changed.');
+        case 'stale':
+          return say('warning', `${documentLabel} changed during review, so no fixes were applied.`);
+        case 'failed':
+          return say('warning', `The editor did not apply the fix${outcome.failure ? ` (${outcome.failure})` : ''}.`);
+        case 'none':
+          return say('warning', 'That fix was not applied: its text has changed, or it would change a line break.');
+        default: {
+          const unknown: never = outcome.answer;
+          return unknown;
+        }
+      }
     }
     default: {
       const unknown: never = outcome;

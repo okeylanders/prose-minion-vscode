@@ -5,6 +5,8 @@
  * Code's own `applyEdit` does in each case is in the ADR's Slice 2
  * amendment; these behaviors mirror it.
  */
+import type { DocumentAnnotation, IssueAnnotator, ShownAnnotations } from '@/platform/IssueAnnotator';
+import { shiftRanges } from '@/utils/draftEdit/shiftRanges';
 import type {
   DocumentApplyOutcome,
   DocumentEditor,
@@ -26,6 +28,7 @@ export class FakeDocuments implements DocumentEditor {
   open = true;
   readonly applyCalls: Array<{ edits: readonly DocumentTextEdit[]; expectedVersion: number; review: DocumentEditReview }> = [];
   private readonly watches = new Set<{ edits: DocumentTextChange[][]; closed: boolean }>();
+  private readonly listeners: Array<(changes: readonly DocumentTextChange[]) => void> = [];
 
   constructor(
     public text: string,
@@ -44,6 +47,12 @@ export class FakeDocuments implements DocumentEditor {
     }
     this.version += 1;
     this.watches.forEach((watch) => watch.edits.push([...changes]));
+    this.listeners.forEach((listener) => listener(changes));
+  }
+
+  /** Hear each change event, as an annotator does. */
+  onEdit(listener: (changes: readonly DocumentTextChange[]) => void): void {
+    this.listeners.push(listener);
   }
 
   close(): void {
@@ -141,4 +150,52 @@ export function writerTypes(changes: readonly DocumentTextChange[]): HostBehavio
     document.edit(changes);
     return { kind: 'stale' };
   };
+}
+
+/**
+ * An annotator that does what `VsCodeIssueAnnotator` does: refuses a `show`
+ * for a version the document has moved past, and moves its flags through
+ * every change, dropping one a change touched.
+ */
+export class FakeAnnotations implements IssueAnnotator {
+  shown: DocumentAnnotation[] = [];
+  private cleared = false;
+  readonly shows: Array<{ version: number; annotations: readonly DocumentAnnotation[] }> = [];
+
+  constructor(private readonly document: FakeDocuments) {
+    document.onEdit((changes) => {
+      this.shown = shiftRanges(this.shown, changes);
+    });
+  }
+
+  show(uri: string, version: number, annotations: readonly DocumentAnnotation[]): boolean {
+    if (uri !== this.document.uri || !this.document.open || version !== this.document.version) {
+      return false;
+    }
+    this.shown = [...annotations];
+    this.cleared = false;
+    this.shows.push({ version, annotations });
+    return true;
+  }
+
+  remove(_uri: string, ids: readonly string[]): void {
+    this.shown = this.shown.filter((annotation) => !ids.includes(annotation.id));
+  }
+
+  clear(): void {
+    this.shown = [];
+    this.cleared = true;
+  }
+
+  current(uri: string): ShownAnnotations | undefined {
+    // As the adapter does: a cleared document shows nothing, so it has nothing to report.
+    return uri === this.document.uri && this.document.open && !this.cleared
+      ? { version: this.document.version, annotations: [...this.shown] }
+      : undefined;
+  }
+
+  /** The flagged text, as the writer sees it now. */
+  flaggedText(): string[] {
+    return this.shown.map((annotation) => this.document.text.slice(annotation.start, annotation.end));
+  }
 }
