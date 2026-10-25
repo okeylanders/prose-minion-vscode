@@ -1,0 +1,28 @@
+{
+  "board": {
+    "paragraph": {
+      "index": 17,
+      "start": 1878,
+      "end": 2016,
+      "words": 31,
+      "sentences": 3,
+      "avgWordsPerSentence": 10.3,
+      "dialogueWords": 28,
+      "dialogueShare": 0.903,
+      "sentenceWords": [
+        6,
+        3,
+        22
+      ]
+    }
+  },
+  "page": {
+    "title": "¶17",
+    "where": "Chapter · Paragraph",
+    "claim": "31 words in 3 sentences · 10.3 words per sentence · 90% dialogue.",
+    "region": "Text of ¶17",
+    "text": "“Not the same thing a bit!” said the Hatter. “You might just as well say that ‘I see what I eat’ is the same thing as ‘I eat what I see’!”",
+    "horizontalOverflow": false,
+    "missing": []
+  }
+}

@@ -84,7 +84,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_REWIND_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_BRANCH_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_EXPORT_SESSION)).toBe(true);
-    expect(router.handlerCount).toBe(56);
+    // 56 until Lightbox Slice 3 added WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD; Slice 4 added
+    // WORKSHOP_STAGE_LIGHTBOX_TILE and WORKSHOP_ACCEPT_LIGHTBOX_TILE.
+    expect(router.handlerCount).toBe(59);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {

@@ -1,0 +1,1928 @@
+{
+  "menu@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": [
+      "# Board",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "alice-1 - 10/23/2026 9:08 AM — Drafts/alice-1.md · on screen (disabled)",
+      "alice-3 - 10/22/2026 1:15 PM — Drafts/alice-3.md · Yesterday · 1:15 PM",
+      "alice-2 - 10/21/2026 11:20 AM — Drafts/alice-2.md · Wed · Oct 21",
+      "alice-2 - second pass — Drafts/alice-2.md · Mon · Oct 19",
+      "alice-3 - 10/14/2026 10:00 AM — Drafts/alice-3.md · Oct 14",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ykazt7bh-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-date@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-mj8mab1j-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-mj8mab1j-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-chapter@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Chapter",
+      "search": "",
+      "groups": [
+        {
+          "label": "Drafts/alice-1.md 2",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-3.md 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-2.md 2",
+          "rows": [
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Chapter",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-njdhzfc3-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-njdhzfc3-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-search@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "pass",
+      "groups": [
+        {
+          "label": "This week 1",
+          "rows": [
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 1",
+          "rows": [
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-71hhbzdb-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-71hhbzdb-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 12,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-rename@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - after the change",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": {
+      "label": "Rename board",
+      "value": "alice-2 - after the change",
+      "focused": true,
+      "error": null
+    },
+    "confirm": null,
+    "focused": "Rename board",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fno90ysp-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fno90ysp-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-delete@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": {
+      "buttons": [
+        "Confirm delete alice-3 - 10/14/2026 10:00 AM",
+        "Keep alice-3 - 10/14/2026 10:00 AM"
+      ]
+    },
+    "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-h81bs4n2-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-h81bs4n2-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-menu@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": [
+      "# Board",
+      "~ Boards are kept for this session only: no folder is open. Open one folder to save them.",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "~ No saved boards yet.",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-jguj3rv3-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-browser@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [
+        "Boards are kept for this session only: no folder is open. Open one folder to save them."
+      ],
+      "grouping": "Date",
+      "search": "",
+      "groups": [],
+      "empty": "Boards are kept for this session only, so there are none to open here.",
+      "footer": "Open one folder, and boards save themselves there. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Close saved boards",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-afu0oo27-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-afu0oo27-2\",\"boardId\":\"board-7\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 12, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-blid4mjl-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-blid4mjl-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-blid4mjl-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "outside@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Not saved yet",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from a board file outside the boards folder, saved Oct 12, 2026, 2:06 PM. Its next save writes it there, as a file of its own.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7ynhcgp4-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7ynhcgp4-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-7ynhcgp4-3\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ja5ohrpc-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-ja5ohrpc-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 13,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "menu@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": [
+      "# Board",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "alice-1 - 10/23/2026 9:08 AM — Drafts/alice-1.md · on screen (disabled)",
+      "alice-3 - 10/22/2026 1:15 PM — Drafts/alice-3.md · Yesterday · 1:15 PM",
+      "alice-2 - 10/21/2026 11:20 AM — Drafts/alice-2.md · Wed · Oct 21",
+      "alice-2 - second pass — Drafts/alice-2.md · Mon · Oct 19",
+      "alice-3 - 10/14/2026 10:00 AM — Drafts/alice-3.md · Oct 14",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-9l6njoc1-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-date@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2apoe19z-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2apoe19z-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-chapter@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Chapter",
+      "search": "",
+      "groups": [
+        {
+          "label": "Drafts/alice-1.md 2",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-3.md 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-2.md 2",
+          "rows": [
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Chapter",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2yhw0py5-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2yhw0py5-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-search@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "pass",
+      "groups": [
+        {
+          "label": "This week 1",
+          "rows": [
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 1",
+          "rows": [
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-izv7o81q-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-izv7o81q-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 12,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-rename@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - after the change",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": {
+      "label": "Rename board",
+      "value": "alice-2 - after the change",
+      "focused": true,
+      "error": null
+    },
+    "confirm": null,
+    "focused": "Rename board",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-av0es7nc-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-av0es7nc-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-delete@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": {
+      "buttons": [
+        "Confirm delete alice-3 - 10/14/2026 10:00 AM",
+        "Keep alice-3 - 10/14/2026 10:00 AM"
+      ]
+    },
+    "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hhlmt29w-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hhlmt29w-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-menu@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": [
+      "# Board",
+      "~ Boards are kept for this session only: no folder is open. Open one folder to save them.",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "~ No saved boards yet.",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-z0j9w7pu-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-browser@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [
+        "Boards are kept for this session only: no folder is open. Open one folder to save them."
+      ],
+      "grouping": "Date",
+      "search": "",
+      "groups": [],
+      "empty": "Boards are kept for this session only, so there are none to open here.",
+      "footer": "Open one folder, and boards save themselves there. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Close saved boards",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hemy3zdo-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hemy3zdo-2\",\"boardId\":\"board-7\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 12, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-6s16yl61-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-6s16yl61-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-6s16yl61-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "outside@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Not saved yet",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from a board file outside the boards folder, saved Oct 12, 2026, 2:06 PM. Its next save writes it there, as a file of its own.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-66i7mqs8-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-66i7mqs8-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-66i7mqs8-3\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-fb8e9528-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-fb8e9528-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 14,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "menu@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": [
+      "# Board",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "alice-1 - 10/23/2026 9:08 AM — Drafts/alice-1.md · on screen (disabled)",
+      "alice-3 - 10/22/2026 1:15 PM — Drafts/alice-3.md · Yesterday · 1:15 PM",
+      "alice-2 - 10/21/2026 11:20 AM — Drafts/alice-2.md · Wed · Oct 21",
+      "alice-2 - second pass — Drafts/alice-2.md · Mon · Oct 19",
+      "alice-3 - 10/14/2026 10:00 AM — Drafts/alice-3.md · Oct 14",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-1xicvvuw-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-date@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xbuduq4a-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xbuduq4a-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-chapter@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Chapter",
+      "search": "",
+      "groups": [
+        {
+          "label": "Drafts/alice-1.md 2",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-3.md 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Drafts/alice-2.md 2",
+          "rows": [
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Chapter",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-bb19c7w5-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-bb19c7w5-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-search@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "pass",
+      "groups": [
+        {
+          "label": "This week 1",
+          "rows": [
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 1",
+          "rows": [
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Search board names and chapters",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-o58cm1vd-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-o58cm1vd-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 12,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-rename@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - after the change",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": {
+      "label": "Rename board",
+      "value": "alice-2 - after the change",
+      "focused": true,
+      "error": null
+    },
+    "confirm": null,
+    "focused": "Rename board",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-01rh8eub-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-01rh8eub-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "browser-delete@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - 10/23/2026 9:08 AM",
+    "status": "Saved",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [],
+      "grouping": "Date",
+      "search": "",
+      "groups": [
+        {
+          "label": "Today 1",
+          "rows": [
+            {
+              "title": "alice-1 - 10/23/2026 9:08 AM",
+              "meta": "Drafts/alice-1.md·Oct 23, 2026, 9:08 AM·Every lens read·≈ $0.07",
+              "models": "Read by model-v1",
+              "badge": "On screen",
+              "open": "Open (disabled)"
+            }
+          ]
+        },
+        {
+          "label": "This week 3",
+          "rows": [
+            {
+              "title": "alice-3 - 10/22/2026 1:15 PM",
+              "meta": "Drafts/alice-3.md·Oct 22, 2026, 1:15 PM·7 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - 10/21/2026 11:20 AM",
+              "meta": "Drafts/alice-2.md·Oct 21, 2026, 11:20 AM·18 lenses read·18 stale·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-2 - second pass",
+              "meta": "Drafts/alice-2.md·Oct 19, 2026, 4:41 PM·18 lenses read·≈ $0.07",
+              "models": "Read by model-b",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        },
+        {
+          "label": "Earlier 2",
+          "rows": [
+            {
+              "title": "alice-3 - 10/14/2026 10:00 AM",
+              "meta": "Drafts/alice-3.md·Oct 14, 2026, 10:00 AM·Measured only",
+              "models": null,
+              "badge": null,
+              "open": "Open"
+            },
+            {
+              "title": "alice-1 - first pass",
+              "meta": "Drafts/alice-1.md·Oct 12, 2026, 2:06 PM·8 lenses read·≈ $0.02",
+              "models": "Read by model-v1",
+              "badge": null,
+              "open": "Open"
+            }
+          ]
+        }
+      ],
+      "empty": null,
+      "footer": "Saved in prose-minion/boards, one file per board. \"Read the current text\" starts a new one. Nothing is deleted unless you delete it. Open a board file…"
+    },
+    "field": null,
+    "confirm": {
+      "buttons": [
+        "Confirm delete alice-3 - 10/14/2026 10:00 AM",
+        "Keep alice-3 - 10/14/2026 10:00 AM"
+      ]
+    },
+    "focused": "Keep alice-3 - 10/14/2026 10:00 AM",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-uv6674q7-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-uv6674q7-2\",\"boardId\":\"board-6\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-menu@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": [
+      "# Board",
+      "~ Boards are kept for this session only: no folder is open. Open one folder to save them.",
+      "Rename board…",
+      "Board another chapter…",
+      "—",
+      "Open prior board…",
+      "# Recent",
+      "~ No saved boards yet.",
+      "—",
+      "Browse all boards…"
+    ],
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "Rename board…",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-in4nv0pi-1\",\"boardId\":null}"
+    ],
+    "savedStates": 9,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "session-browser@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1",
+    "status": "This session only",
+    "menu": null,
+    "browser": {
+      "title": "Open a prior board",
+      "notes": [
+        "Boards are kept for this session only: no folder is open. Open one folder to save them."
+      ],
+      "grouping": "Date",
+      "search": "",
+      "groups": [],
+      "empty": "Boards are kept for this session only, so there are none to open here.",
+      "footer": "Open one folder, and boards save themselves there. Open a board file…"
+    },
+    "field": null,
+    "confirm": null,
+    "focused": "Close saved boards",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ivef0sgk-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ivef0sgk-2\",\"boardId\":\"board-7\"}"
+    ],
+    "savedStates": 11,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "changed@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 12, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-nl8bd4ws-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-nl8bd4ws-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-nl8bd4ws-3\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-12T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "outside@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - first pass",
+    "status": "Not saved yet",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - first pass",
+    "boardNotice": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from a board file outside the boards folder, saved Oct 12, 2026, 2:06 PM. Its next save writes it there, as a file of its own.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "boardNoticeFirst": true,
+    "outcome": null,
+    "renames": [],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-0j7wtrfj-1\",\"boardId\":null}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-0j7wtrfj-2\",\"boardId\":\"board-6\"}",
+      "lightbox_open_board_file {\"requestId\":\"lbx-brd-0j7wtrfj-3\"}"
+    ],
+    "savedStates": 15,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  },
+  "kept@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "trigger": "alice-1 - morning read",
+    "status": "Name not saved",
+    "menu": null,
+    "browser": null,
+    "field": null,
+    "confirm": null,
+    "focused": "alice-1 - morning read",
+    "boardNotice": null,
+    "boardNoticeFirst": null,
+    "outcome": {
+      "role": "alert",
+      "text": "Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.",
+      "dismiss": true
+    },
+    "renames": [
+      {
+        "boardId": "board-6",
+        "fileId": null,
+        "name": "alice-1 - morning read",
+        "adoption": 2
+      }
+    ],
+    "boardsPanel": false,
+    "offscreen": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ihqyysrd-1\",\"boardId\":null}",
+      "lightbox_rename_board {\"requestId\":\"lbx-brd-ihqyysrd-2\",\"boardId\":\"board-6\",\"fileId\":null,\"name\":\"alice-1 - morning read\",\"adoption\":2}"
+    ],
+    "savedStates": 12,
+    "savedStateNamesAFile": false,
+    "savedStateHoldsAName": false
+  }
+}

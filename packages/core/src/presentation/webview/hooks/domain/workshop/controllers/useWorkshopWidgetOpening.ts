@@ -1,14 +1,17 @@
 /** Presentation owner for opening and reopening Workshop widget authoring surfaces. */
 
 import * as React from 'react';
+import { isAnyOverlayOpen } from '@hooks/useOverlayDismiss';
 import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopCreativeVariationsRecommendationSeed,
+  WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopPersonaId,
+  WorkshopSeedAnswer,
   WorkshopShowVsTellRecommendationSeed,
   WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary,
@@ -24,10 +27,16 @@ export type WorkshopGesturePlaygroundOpening =
   | { kind: 'seed'; seed: WorkshopGesturePlaygroundRecommendationSeed; personaLabel: string }
   | { kind: 'clone'; config: WorkshopGesturePlaygroundWidgetConfigSnapshot };
 
+/**
+ * `build`: another tab handed over a Build lens subject (the Lightbox's
+ * "Build as a lens", ADR 2026-10-19 D11). It prefills Build lens and builds
+ * nothing on its own.
+ */
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }
   | { kind: 'seed'; seed: WorkshopLexicalGravityRecommendationSeed; personaLabel: string }
-  | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot };
+  | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot }
+  | { kind: 'build'; seed: WorkshopLexicalGravityBuildSeedPayload };
 
 export type WorkshopCreativeVariationsOpening =
   | { kind: 'new' }
@@ -64,8 +73,19 @@ export interface WorkshopWidgetOpeningHost {
   consumeRestoredWidgetConfig: () => void;
 }
 
+/**
+ * A Build lens subject whose claim the host granted (PR #150 F-03), until
+ * this controller opens or refuses it, and answers.
+ */
+export interface WorkshopLexicalGravityBuildSeedHost {
+  lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
+  answerLexicalGravityBuildSeed: (answer: WorkshopSeedAnswer) => void;
+}
+
 export interface UseWorkshopWidgetOpeningOptions {
   host: WorkshopWidgetOpeningHost;
+  /** Absent where nothing can hand a subject over. */
+  lexicalGravityBuild?: WorkshopLexicalGravityBuildSeedHost;
   standingDirectives: WorkshopStandingDirectiveSummary[];
   onError: (message: string) => void;
   onCloseGesturePlayground: () => void;
@@ -107,6 +127,7 @@ export type UseWorkshopWidgetOpeningReturn = WorkshopWidgetOpeningState &
 
 export function useWorkshopWidgetOpening({
   host,
+  lexicalGravityBuild,
   standingDirectives,
   onError,
   onCloseGesturePlayground,
@@ -144,6 +165,49 @@ export function useWorkshopWidgetOpening({
   React.useEffect(() => {
     requestRestoredWidgetConfig();
   }, [requestRestoredWidgetConfig]);
+
+  // A Build lens subject handed over from another tab reaches this controller
+  // only once the host granted its claim, so a seed that timed out or was
+  // replaced never gets here (PR #150 F-03). It opens the sheet once, unless
+  // a sheet, editor or browser is already open: the seed never covers or
+  // replaces the writer's work there (PR #150 F-02). Every Workshop overlay
+  // registers with the overlay stack, so none is missed. Either way the host
+  // hears the answer, so the Lightbox never claims an opening that did not
+  // happen.
+  const buildSeed = lexicalGravityBuild?.lexicalGravityBuildSeed ?? null;
+  const answerBuildSeed = lexicalGravityBuild?.answerLexicalGravityBuildSeed;
+  const openLexicalGravityBuildSeed = React.useCallback(() => {
+    if (!buildSeed || !answerBuildSeed) {
+      return;
+    }
+    if (
+      isAnyOverlayOpen()
+      || pendingWidgetConfigId
+      || gesturePlaygroundOpening
+      || lexicalGravityOpening
+      || creativeVariationsOpening
+      || showVsTellOpening
+    ) {
+      answerBuildSeed({ deliveryId: buildSeed.seedId, opened: false, reason: 'busy' });
+      onError('A field from the Lightbox did not open over your open sheet. Close it, then build the field from the Lightbox again.');
+      return;
+    }
+    answerBuildSeed({ deliveryId: buildSeed.seedId, opened: true });
+    setLexicalGravityOpening({ kind: 'build', seed: buildSeed });
+  }, [
+    answerBuildSeed,
+    buildSeed,
+    creativeVariationsOpening,
+    gesturePlaygroundOpening,
+    lexicalGravityOpening,
+    onError,
+    pendingWidgetConfigId,
+    showVsTellOpening
+  ]);
+
+  React.useEffect(() => {
+    openLexicalGravityBuildSeed();
+  }, [openLexicalGravityBuildSeed]);
 
   const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     if (widgetId === 'gesture-playground') {

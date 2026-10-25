@@ -35,13 +35,13 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   StreamStartedMessage,
-  WorkshopConfiguredResourceRef,
+  ConfiguredResourceRef,
   WorkshopContextAttachmentContentMessage,
   WorkshopContextAttachmentSnapshot,
-  WorkshopContextCatalogEntry,
+  ConfiguredResourceEntry,
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
-  WorkshopContextSearchResultsPayload,
+  ConfiguredResourceSearchResults,
   WorkshopConversationDegradation,
   WorkshopConversationBehavior,
   WorkshopExcerptSnapshot,
@@ -129,9 +129,9 @@ export interface WorkshopRoomState {
   standingDirectives: WorkshopStandingDirectiveSummary[];
   contextPending: boolean;
   /** Configured resource catalog for the Context Selector; null until requested. */
-  contextCatalog: WorkshopContextCatalogEntry[] | null;
+  contextCatalog: ConfiguredResourceEntry[] | null;
   /** Latest content-search results for the Context Selector, if any. */
-  contextSearch: WorkshopContextSearchResultsPayload | null;
+  contextSearch: ConfiguredResourceSearchResults | null;
   /** True while the Context wizard streams under 'workshop-context'. */
   wizardRunning: boolean;
   turns: WorkshopTurn[];
@@ -210,11 +210,11 @@ export interface WorkshopRoomActions {
   requestContextCatalog: () => void;
   searchContextResources: (query: string) => void;
   clearContextSearch: () => void;
-  addContextResources: (items: WorkshopConfiguredResourceRef[]) => void;
-  attachMessageResources: (items: WorkshopConfiguredResourceRef[]) => void;
+  addContextResources: (items: ConfiguredResourceRef[]) => void;
+  attachMessageResources: (items: ConfiguredResourceRef[]) => void;
   attachMessageFile: () => void;
   removeMessageAttachment: (id: string) => void;
-  setExcerptResource: (item: WorkshopConfiguredResourceRef) => void;
+  setExcerptResource: (item: ConfiguredResourceRef) => void;
   runContextWizard: () => void;
   cancelContextWizard: () => void;
   handleContextCatalog: (message: WorkshopContextCatalogMessage) => void;
@@ -301,9 +301,9 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [standingDirectives, setStandingDirectives] =
     React.useState<WorkshopStandingDirectiveSummary[]>([]);
   const [contextPending, setContextPending] = React.useState(false);
-  const [contextCatalog, setContextCatalog] = React.useState<WorkshopContextCatalogEntry[] | null>(null);
+  const [contextCatalog, setContextCatalog] = React.useState<ConfiguredResourceEntry[] | null>(null);
   const [wizardRun, setWizardRun] = React.useState<string | null>(null);
-  const [contextSearch, setContextSearch] = React.useState<WorkshopContextSearchResultsPayload | null>(null);
+  const [contextSearch, setContextSearch] = React.useState<ConfiguredResourceSearchResults | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
   const [turnRewindability, setTurnRewindability] =
     React.useState<Readonly<Record<string, WorkshopTurnRewindability>>>({});
@@ -430,17 +430,17 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     setContextSearch(null);
   }, []);
 
-  const addContextResources = React.useCallback((items: WorkshopConfiguredResourceRef[]) => {
+  const addContextResources = React.useCallback((items: ConfiguredResourceRef[]) => {
     if (items.length > 0) {
       post(MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES, { items });
     }
   }, [post]);
 
-  const setExcerptResource = React.useCallback((item: WorkshopConfiguredResourceRef) => {
+  const setExcerptResource = React.useCallback((item: ConfiguredResourceRef) => {
     post(MessageType.WORKSHOP_SET_EXCERPT_RESOURCE, item);
   }, [post]);
 
-  const attachMessageResources = React.useCallback((items: WorkshopConfiguredResourceRef[]) => {
+  const attachMessageResources = React.useCallback((items: ConfiguredResourceRef[]) => {
     if (items.length > 0) {
       post(MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES, { items });
     }

@@ -1,0 +1,17 @@
+[LightboxHandler] Board built for Drafts/alice-chapter-1.md: 2186 words, 31 paragraphs
+[LightboxReadingRunner] Run run-1-evidence started: groups B, C
+[LightboxReadingRunner] Group B read (characters, voice, subtext): 7 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-evidence finished: B ok, C ok
+[LightboxReadingHandler] Run run-1-evidence finished: 2 groups, 0 tokens
+[LightboxReadingHandler] Spark set aside
+[LightboxReadingHandler] Spark brought back
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 2 quotes, 1 points
+[WorkshopLightboxTileHandler] Tile staged above the composer (ta-1, 58 words)
+[LightboxHandler] The Workshop staged a tile: 2 quotes carried, 2 of 2 quotes found again
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 1 quotes, 0 points
+[WorkshopLightboxTileHandler] Tile staged above the composer (ta-2, 61 words)
+[LightboxHandler] The Workshop staged a tile: 1 quotes carried, 1 of 1 quotes found again
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 2 quotes, 2 points
+[WorkshopLightboxTileHandler] Tile refused: a response is running
+[LightboxHandler] Handoff refused: The Workshop is busy: a response is running, or the session is being saved or replaced. Bring the tile again when it finishes.

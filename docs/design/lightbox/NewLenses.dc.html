@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lightbox · seven new sections (draft)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15110d}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+.lb{--surface:#221a13;--surface-2:#2b2017;--surface-3:#36281b;--inset:#1b150f;--border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;--text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--faint:#5c5044;--accent:#e0673a;--accent-hi:#ee7d49;--accent-soft:rgba(224,103,58,.14);--read:#9db8f2;--read-soft:rgba(157,184,242,.10);--read-line:rgba(157,184,242,.42);--green:#6fc98a;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;--display:"Space Grotesk",-apple-system,"Segoe UI",sans-serif;--serif:"Newsreader",Georgia,serif;min-height:100vh;background:#15110d;background-image:linear-gradient(180deg,#211910 0%,#15110d 280px);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:14px}
+.lb *{box-sizing:border-box}
+.lb button{font-family:inherit;color:inherit}
+.lb :focus-visible{outline:2px solid var(--read);outline-offset:2px}
+.wrap{max-width:1380px;margin:0 auto;padding:28px 26px 60px}
+.serif{font-family:var(--serif);font-style:italic;font-weight:400}
+.mono{font-family:var(--mono)}
+
+/* header */
+.hd{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;padding-bottom:20px;border-bottom:2px solid transparent;border-image:linear-gradient(90deg,#e8763f 0%,#d2592f 48%,rgba(210,89,47,0) 100%) 1}
+.hd-eb{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.hd-h{font-family:var(--display);font-weight:600;font-size:40px;line-height:1.08;letter-spacing:-.025em;margin:0}
+.hd-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px}
+.lg{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.lg i{display:block;width:22px;height:12px;border-radius:3px}
+.lg-m{background:var(--accent-soft);border:1px solid var(--accent)}
+.lg-r{background:var(--read-soft);border:1px dashed var(--read)}
+.lg-h{background:var(--surface-2);border:1px solid var(--border-2)}
+
+/* lens strip */
+.lenses{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:20px 0 14px;padding:12px 14px;border:1px solid var(--border-soft);background:var(--inset);border-radius:12px}
+.lg-grp{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.grp-l{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.tog{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 11px;border-radius:8px;border:1px dashed var(--read-line);background:var(--read-soft);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
+.tog i{display:block;width:8px;height:8px;border-radius:50%;background:var(--read)}
+.tog.is-new{border-style:solid;border-color:var(--read)}
+.cost{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right;line-height:1.5}
+.cost b{color:var(--text);font-weight:500}
+
+/* ribbon */
+.rb{border:1px solid var(--border);border-radius:12px;padding:12px 14px 10px;margin-bottom:16px;background:rgba(21,17,13,.95)}
+.rb-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:10px;flex-wrap:wrap}
+.rb-eb{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-hi)}
+.rb-note{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.rb-wrap{display:flex;gap:10px}
+.rb-labels{flex:0 0 96px;display:flex;flex-direction:column;gap:5px}
+.rb-lab{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rb-lab i{width:8px;height:8px;border-radius:2px;flex:none;display:block}
+.rb-lab .im{background:var(--accent)}
+.rb-lab .ir{border:1px dashed var(--read)}
+.rb-lab .ih{background:var(--surface-3);border:1px solid var(--border-2)}
+.rb-cols{flex:1;min-width:0;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px}
+.rb-col{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ln-sec{height:14px;border-radius:2px;border-bottom:1px dashed var(--faint);display:block}
+.ln-mv{height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--text);border:1px dashed var(--read);background:repeating-linear-gradient(135deg,rgba(157,184,242,.30) 0 4px,rgba(157,184,242,.10) 4px 8px)}
+.ln-mv.mv-b{background:repeating-linear-gradient(135deg,rgba(157,184,242,.16) 0 4px,rgba(157,184,242,.04) 4px 8px)}
+.ln-pr{height:30px;display:flex;align-items:flex-end}
+.ln-pr i{display:block;width:100%;background:var(--surface-3);border:1px solid var(--border-2);border-bottom:0;border-radius:2px 2px 0 0}
+.ln-en{height:30px;display:flex;align-items:flex-end}
+.ln-en i{display:block;width:100%;border:1px dashed var(--read);border-bottom:0;border-radius:2px 2px 0 0;background:rgba(157,184,242,.16)}
+.ln-idx{height:12px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;display:block;line-height:12px}
+.h14{height:14px}.h22{height:22px}.h30{height:30px}.h12{height:12px}
+
+/* tiles */
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.span3{grid-column:span 3}.span6{grid-column:span 6}
+@media (max-width: 1100px){.span3{grid-column:span 6}}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px 18px 16px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.tile.is-read{border-style:dashed;border-color:var(--read-line)}
+.tile.is-hybrid{border-color:var(--border-2)}
+.th{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.eb{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-hi);margin:0}
+.eb.rd{color:var(--read)}
+.eb.hy{color:var(--text-2)}
+.eb .num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid currentColor;font-size:10px;letter-spacing:0}
+.regs{display:flex;gap:6px;flex-wrap:wrap}
+.reg{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap}
+.reg-m{color:var(--accent-hi);background:var(--accent-soft);border:1px solid rgba(224,103,58,.42)}
+.reg-r{color:var(--read);border:1px dashed var(--read-line);background:var(--read-soft)}
+.reg-h{color:var(--text-2);border:1px solid var(--border-2)}
+.from{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin:-8px 0 0}
+.sub-h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sub-h .reg{font-size:8.5px;padding:2px 5px}
+.big{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:-.015em;line-height:1.2;margin:0;color:var(--text)}
+.body{font-size:13.5px;line-height:1.55;color:var(--text-2);margin:0}
+.q{font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.5}
+.q .p{color:var(--muted);margin-right:6px}
+.chk{color:var(--green);font-family:var(--mono);font-size:10.5px;margin-left:6px}
+.inset{background:var(--inset);border:1px solid var(--border-soft);border-radius:10px;padding:12px 13px}
+.inset.rd{border:1px dashed var(--read-line)}
+.foot{font-size:12px;color:var(--muted);line-height:1.55;margin:0;padding-top:12px;border-top:1px solid var(--border-soft)}
+.foot b{color:var(--text-2);font-weight:600}
+.stk{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.cols2{grid-template-columns:minmax(0,1fr)}}
+
+/* stance chips */
+.stc{flex:none;min-width:66px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:2px 6px;border-radius:4px}
+.stc-al{color:var(--text-2);border:1px solid var(--border-2)}
+.stc-sv{color:#15110d;background:var(--read);font-weight:600}
+.stc-dp{color:var(--muted);border:1px dashed var(--border-2)}
+.stance{display:flex;gap:10px;align-items:flex-start}
+.stance-b{display:flex;flex-direction:column;gap:3px;min-width:0}
+.stance-t{font-size:13px;color:var(--text);line-height:1.4}
+
+/* engagement steps */
+.eng{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}
+.eng-c{display:flex;flex-direction:column;gap:6px}
+.eng-bar{display:block;border:1px dashed var(--read);border-bottom:0;border-radius:4px 4px 0 0;background:repeating-linear-gradient(135deg,rgba(157,184,242,.40) 0 4px,rgba(157,184,242,.12) 4px 8px)}
+.eng-l{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.35}
+.eng-l b{display:block;color:var(--text);font-weight:500;font-size:11px}
+.eng-base{height:1px;background:var(--border-2)}
+
+/* tier bar */
+.tier{display:flex;height:16px;border-radius:5px;overflow:hidden;border:1px solid var(--border-2)}
+.tier i{display:block;height:100%}
+.t1{background:#4a3a2b}.t2{background:#7a5a3c}.t3{background:#b8694a}.t4{background:repeating-linear-gradient(135deg,rgba(157,184,242,.85) 0 4px,rgba(157,184,242,.45) 4px 8px)}
+.tkey{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px}
+.tk{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.tk i{display:block;width:10px;height:10px;border-radius:2px}
+.tk b{color:var(--text);font-weight:500}
+
+/* fresh scale */
+.scale{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:6px}
+.scale span{display:block;height:10px;border-radius:3px;background:var(--surface-2)}
+.scale span.on{background:repeating-linear-gradient(135deg,rgba(157,184,242,.85) 0 4px,rgba(157,184,242,.4) 4px 8px)}
+.scale-l{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:5px}
+.scale-l span:nth-child(2){text-align:center}.scale-l span:nth-child(3){text-align:right}
+
+/* tags */
+.tag{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.tag-sig{color:#15110d;background:var(--read);font-weight:600}
+.tag-fam{color:var(--text-2);border:1px solid var(--border-2)}
+.tag-air{color:var(--read);border:1px dashed var(--read-line)}
+.tag-wt{color:var(--accent-hi);border:1px solid rgba(224,103,58,.42)}
+.tag-ok{color:var(--green);border:1px solid rgba(111,201,138,.45)}
+.cnt{font-family:var(--mono);font-size:11px;color:var(--accent-hi)}
+
+/* rhythm */
+.rh{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;align-items:end;height:64px}
+.rh-c{display:flex;align-items:flex-end;gap:1px;height:100%}
+.rh-c i{display:block;flex:1;background:var(--accent);border-radius:1px 1px 0 0;opacity:.85}
+.land{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;margin-top:6px}
+.land span{display:block;height:12px;border-radius:50%;margin:0 auto;width:12px}
+.ld-l{background:var(--read)}
+.ld-h{background:linear-gradient(90deg,var(--read) 50%,transparent 50%);border:1px solid var(--read)}
+.ld-o{border:1px dashed var(--read)}
+.hand{display:flex;flex-direction:column;gap:8px}
+.hand-pair{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:8px;align-items:center}
+.hand-arr{font-family:var(--mono);color:var(--read);text-align:center}
+.kv{display:grid;grid-template-columns:118px minmax(0,1fr);gap:4px 10px;font-size:12.5px;line-height:1.45}
+.kv dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.kv dd{margin:0;color:var(--text-2)}
+
+/* pressure */
+.pr{display:flex;flex-direction:column;gap:9px}
+.pr-row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px;align-items:center}
+.pr-name{font-size:12.5px;color:var(--text);line-height:1.35}
+.pr-name span{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+.pr-track{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:2px;height:14px}
+.pr-track i{display:block;height:100%;border-radius:2px;background:transparent}
+.pr-track i.run{background:rgba(157,184,242,.22);border-top:1px dashed var(--read-line);border-bottom:1px dashed var(--read-line)}
+.pr-track i.plant{background:var(--read);border-radius:7px 2px 2px 7px}
+.pr-track i.esc{background:var(--accent);}
+.pr-track i.res{background:var(--green);border-radius:2px 7px 7px 2px}
+.pr-track i.open{background:transparent;border:1px dashed var(--read);border-radius:2px 7px 7px 2px}
+.pr-key{display:flex;flex-wrap:wrap;gap:6px 14px}
+
+/* artifacts */
+.art{width:100%;border-collapse:collapse;font-size:12.5px}
+.art th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;text-align:left;padding:0 8px 8px 0;border-bottom:1px solid var(--border-soft)}
+.art td{padding:9px 8px 9px 0;border-bottom:1px solid var(--border-soft);color:var(--text-2);vertical-align:top;line-height:1.4}
+.art td.o{color:var(--text);font-weight:600}
+.art td.n{font-family:var(--mono);color:var(--accent-hi);white-space:nowrap}
+.art td.p{font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.arc{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--text-2)}
+.arc em{font-style:normal;color:var(--read)}
+
+/* numbers */
+.nm{display:flex;flex-direction:column;gap:12px}
+.nm-row{display:grid;grid-template-columns:170px minmax(0,1fr) 92px;gap:12px;align-items:center}
+.nm-k{font-size:13px;color:var(--text)}
+.nm-k span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.nm-bar{position:relative;height:12px;border-radius:6px;background:var(--surface-2)}
+.nm-band{position:absolute;top:0;bottom:0;border-radius:6px;background:rgba(201,187,171,.16);border:1px solid var(--border-2)}
+.nm-dot{position:absolute;top:-3px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--accent);border:2px solid #15110d}
+.nm-dot.in{background:var(--text-2)}
+.nm-v{font-family:var(--mono);font-size:11px;color:var(--accent-hi);text-align:right}
+.nm-v.in{color:var(--muted)}
+.nm-read{margin:-2px 0 0 182px;padding:10px 12px;border:1px dashed var(--read-line);border-radius:9px;background:var(--read-soft);display:flex;flex-direction:column;gap:5px}
+@media (max-width: 1100px){.nm-read{margin-left:0}.nm-row{grid-template-columns:minmax(0,1fr) 80px}.nm-bar{grid-column:1 / -1;grid-row:2}}
+
+/* movements */
+.mvs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.mvs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mv{display:flex;flex-direction:column;gap:7px;padding:13px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset)}
+.mv-n{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--read)}
+.mv-t{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text)}
+.mv-r{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.mv-d{font-size:13px;line-height:1.45;color:var(--text-2);margin:0}
+.summary{font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.45;color:var(--text);margin:0;max-width:980px}
+/* opinion */
+.tile.is-opinion{border-color:#7a5a3c;background:linear-gradient(180deg,#261d15 0%,var(--surface) 140px)}
+.eb.op{color:#e9c08f}
+.reg-o{color:#e9c08f;border:1px solid rgba(233,192,143,.45);background:rgba(233,192,143,.08)}
+.op-top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.op-tabs{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:8px;flex:0 1 640px}
+.op-tab{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:56px;padding:9px 13px;border-radius:10px;border:1px solid var(--border-2);background:var(--inset);cursor:pointer;text-align:left}
+.op-tab:hover{border-color:#a4937f}
+.op-tab.is-on{border-color:#e9c08f;background:rgba(233,192,143,.10);box-shadow:inset 0 0 0 1px #e9c08f}
+.op-tab-l{font-size:14px;font-weight:700;color:var(--text)}
+.op-tab-s{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.op-rule{flex:1;min-width:240px;margin:0}
+.op-body{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border-radius:11px;border:1px solid var(--border-soft);background:var(--inset)}
+.op-head{font-family:var(--display);font-size:24px;font-weight:600;letter-spacing:-.015em;line-height:1.25;margin:0;color:var(--text);max-width:980px}
+.op-why{display:flex;flex-direction:column;gap:10px}
+.op-w{display:flex;gap:12px;align-items:flex-start}
+.op-ev{font-family:var(--mono);font-size:10.5px;color:var(--read)}
+.wt{flex:none;min-width:84px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:2px 6px;border-radius:4px}
+.wt-s{color:#15110d;background:var(--green);font-weight:600}
+.wt-c{color:#15110d;background:var(--accent-hi);font-weight:600}
+.wt-n{color:var(--text-2);border:1px solid var(--border-2)}
+.op-obs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width: 1100px){.op-obs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.op-o{display:flex;flex-direction:column;gap:6px;padding:10px 11px;border:1px solid var(--border-soft);border-radius:9px}
+.op-oid{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.illus{margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.6;padding:12px 14px;border:1px solid var(--border-soft);border-radius:10px}
+</style>
+</helmet>
+<div class="lb">
+<div class="wrap">
+
+<header class="hd">
+<div>
+<p class="hd-eb">Lightbox · draft lenses · not built</p>
+<h1 class="hd-h">Seven new sections</h1>
+<p class="hd-sub">Drawn on a public-domain fixture, <span class="serif" style="font-size:14px;color:var(--text-2)">Alice's Adventures in Wonderland</span>, ch. I · 24 paragraphs · counts are stub figures</p>
+</div>
+<div class="legend">
+<span class="lg"><i class="lg-m"></i>Measured · code counts it</span>
+<span class="lg"><i class="lg-h"></i>Counted read · model names it, code counts it</span>
+<span class="lg"><i class="lg-r"></i>Read · a claim with checked quotes</span>
+</div>
+</header>
+
+<div class="lenses" role="group" aria-label="New lenses">
+<div class="lg-grp">
+<span class="grp-l">Group D · Craft</span>
+<button type="button" class="tog is-new"><i></i>Stock &amp; signature</button>
+<button type="button" class="tog is-new"><i></i>Rhythm</button>
+<button type="button" class="tog is-new"><i></i>The numbers</button>
+</div>
+<div class="lg-grp">
+<span class="grp-l">Group E · Story</span>
+<button type="button" class="tog is-new"><i></i>Template</button>
+<button type="button" class="tog is-new"><i></i>Pressure</button>
+<button type="button" class="tog is-new"><i></i>Artifacts</button>
+<button type="button" class="tog is-new"><i></i>Summary &amp; movements</button>
+</div>
+<p class="cost"><b>+2 calls</b> beside A–C · est. +$0.07 (stub price)<br>Each lens toggles on its own; the estimate follows.</p>
+</div>
+
+<section class="rb" aria-label="Ribbon with new lanes">
+<div class="rb-top">
+<span class="rb-eb">Ribbon · new lanes</span>
+<span class="rb-note">24 ¶ · fits as paragraphs · sections would take over above 96 ¶</span>
+</div>
+<div class="rb-wrap">
+<div class="rb-labels">
+<span class="rb-lab h14"><i class="im"></i>Sections</span>
+<span class="rb-lab h22"><i class="ir"></i>Movements</span>
+<span class="rb-lab h30"><i class="ih"></i>Pressure</span>
+<span class="rb-lab h30"><i class="ir"></i>Engagement</span>
+<span class="rb-lab h12"></span>
+</div>
+<div class="rb-cols">
+<sc-for list="{{cols}}" as="c" hint-placeholder-count="24">
+<div class="rb-col">
+<span class="ln-sec"></span>
+<span class="{{c.mvCls}}">{{c.mvLabel}}</span>
+<span class="ln-pr"><i style="height: {{c.pr}}px"></i></span>
+<span class="ln-en"><i style="height: {{c.en}}px"></i></span>
+<span class="ln-idx">{{c.n}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<p class="rb-note" style="margin:8px 0 0">Sections: no headings or scene breaks found. Movements and engagement are readings, drawn hatched. Pressure counts the open threads in each paragraph.</p>
+</section>
+
+<div class="grid">
+
+<!-- 7 · Summary & movements -->
+<section class="tile is-read span6" aria-label="Summary and movements">
+<div class="th">
+<p class="eb rd"><span class="num">7</span>Summary &amp; movements</p>
+<div class="regs"><span class="reg reg-r">Read</span><span class="reg reg-m">Sections: measured</span></div>
+</div>
+<p class="summary">Bored on the riverbank, Alice follows a White Rabbit with a watch down a rabbit-hole. The fall is long enough to be dull. She lands in a hall of locked doors, finds a key to a door too small, and starts changing size to reach a garden she can see but cannot enter.</p>
+<div class="mvs">
+<div class="mv">
+<span class="mv-n">I · ¶1–4</span>
+<span class="mv-t">The bank</span>
+<p class="mv-d">Boredom tips into pursuit.</p>
+<span class="q"><span class="p">¶4</span>“In another moment down went Alice after it”<span class="chk">✓ verbatim</span></span>
+</div>
+<div class="mv">
+<span class="mv-n">II · ¶5–10</span>
+<span class="mv-t">The well</span>
+<p class="mv-d">A fall slow enough for talking to herself.</p>
+<span class="q"><span class="p">¶5</span>“The rabbit-hole went straight on like a tunnel for some way”<span class="chk">✓</span></span>
+</div>
+<div class="mv">
+<span class="mv-n">III · ¶11–14</span>
+<span class="mv-t">The hall</span>
+<p class="mv-d">Locked doors, a key, a garden glimpsed.</p>
+<span class="q"><span class="p">¶11</span>“Alice was not a bit hurt”<span class="chk">✓</span></span>
+</div>
+<div class="mv">
+<span class="mv-n">IV · ¶15–24</span>
+<span class="mv-t">Drink me, eat me</span>
+<p class="mv-d">The trial becomes size, not courage.</p>
+<span class="q"><span class="p">¶15</span>“There seemed to be no use in waiting by the little door”<span class="chk">✓</span></span>
+</div>
+</div>
+<p class="foot"><b>Where it strains:</b> the landing could close II or open III. The boundary is drawn at ¶11 because the fall ends inside ¶10. <b>Sections</b> come from code only: Markdown headings, scene breaks (*** · #) and chapter lines. This chapter has none, so the ribbon stays in paragraphs.</p>
+</section>
+
+<!-- 1 · Template & freshness -->
+<section class="tile is-read span3" aria-label="Template and freshness">
+<div class="th">
+<p class="eb rd"><span class="num">1</span>Template &amp; freshness</p>
+<div class="regs"><span class="reg reg-r">Read</span><span class="reg reg-h">Counted read</span></div>
+</div>
+<p class="from">From the Fresh and Stock &amp; Signature tools</p>
+<div>
+<p class="sub-h">Template</p>
+<p class="big">Portal descent</p>
+<p class="body" style="margin-top:6px">An idle afternoon, a herald who won't stop, a fall across a threshold, and a locked door to the place she wants.</p>
+</div>
+<div class="stk">
+<div class="stance"><span class="stc stc-al">Aligns</span><div class="stance-b"><span class="stance-t">The herald appears.</span><span class="q"><span class="p">¶2</span>“a White Rabbit with pink eyes ran close by her”<span class="chk">✓</span></span></div></div>
+<div class="stance"><span class="stc stc-al">Aligns</span><div class="stance-b"><span class="stance-t">Gate and key.</span><span class="q"><span class="p">¶13</span>“there was nothing on it except a tiny golden key”<span class="chk">✓</span></span></div></div>
+<div class="stance"><span class="stc stc-sv">Subverts</span><div class="stance-b"><span class="stance-t">The descent bores her instead of frightening her.</span><span class="q"><span class="p">¶7</span>“I shall think nothing of tumbling down stairs!”<span class="chk">✓</span></span></div></div>
+<div class="stance"><span class="stc stc-sv">Subverts</span><div class="stance-b"><span class="stance-t">The threshold tests size, not courage.</span><span class="q"><span class="p">¶18</span>“I must be shutting up like a telescope.”<span class="chk">✓</span></span></div></div>
+</div>
+<div>
+<p class="sub-h">Engagement by movement <span class="reg reg-r">Read</span></p>
+<div class="eng">
+<sc-for list="{{eng}}" as="e" hint-placeholder-count="4">
+<div class="eng-c">
+<span class="eng-bar" style="height: {{e.h}}px"></span>
+<span class="eng-base"></span>
+<span class="eng-l"><b>{{e.level}}</b>{{e.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div>
+<p class="sub-h">Cognitive economy <span class="reg reg-h">Counted read</span></p>
+<div class="tier" role="img" aria-label="51 beats: 31 functional stock, 6 decorated, 2 stock carrying weight, 12 signature">
+<i class="t1" style="width:61%"></i><i class="t2" style="width:12%"></i><i class="t3" style="width:4%"></i><i class="t4" style="width:23%"></i>
+</div>
+<div class="tkey">
+<span class="tk"><i class="t1"></i>Functional stock <b>31</b></span>
+<span class="tk"><i class="t2"></i>Decorated <b>6</b></span>
+<span class="tk"><i class="t3"></i>Stock carrying weight <b>2</b></span>
+<span class="tk"><i class="t4"></i>Signature <b>12</b></span>
+</div>
+</div>
+<div class="inset rd">
+<p class="sub-h" style="margin-bottom:4px">Freshness <span class="reg reg-r">A reading, not a grade</span></p>
+<p class="stance-t" style="font-size:15px">Fresh, on a familiar spine.</p>
+<div class="scale" role="img" aria-label="Freshness reading: fresh"><span></span><span></span><span class="on"></span></div>
+<div class="scale-l"><span>Familiar</span><span>Mixed</span><span>Fresh</span></div>
+<p class="eng-l" style="margin-top:8px">Basis, counted: 12 of 51 beats signature (24%) · 2 of 4 template beats subverted.</p>
+</div>
+<p class="foot"><b>Where it strains:</b> engagement is a reading of pull, not the tension score. The two diverge in II, where tension is low and curiosity high.</p>
+</section>
+
+<!-- 2 · Stock & signature -->
+<section class="tile is-read span3" aria-label="Stock and signature">
+<div class="th">
+<p class="eb rd"><span class="num">2</span>Stock &amp; signature</p>
+<div class="regs"><span class="reg reg-r">Read</span><span class="reg reg-h">Counts by code</span></div>
+</div>
+<p class="from">From the Stock &amp; Signature tool</p>
+<div class="stk">
+<p class="sub-h" style="margin:0">Signature phrases</p>
+<div class="stance"><span class="tag tag-sig">Signature</span><div class="stance-b"><span class="q"><span class="p">¶10</span>“Do cats eat bats? Do cats eat bats?”<span class="chk">✓</span></span><span class="body" style="font-size:12.5px">The sleepy inversion that follows is the chapter's own.</span></div></div>
+<div class="stance"><span class="tag tag-sig">Signature</span><div class="stance-b"><span class="q"><span class="p">¶6</span>“it was labelled ‘ORANGE MARMALADE’, but to her great disappointment it was empty”<span class="chk">✓</span></span></div></div>
+<div class="stance"><span class="tag tag-sig">Signature</span><div class="stance-b"><span class="q"><span class="p">¶14</span>“Oh, how I wish I could shut up like a telescope!”<span class="chk">✓</span></span></div></div>
+</div>
+<div class="stk">
+<p class="sub-h" style="margin:0">Familiar phrasing <span class="reg reg-m">Counted</span></p>
+<div class="row"><span class="tag tag-fam">Idiom</span><span class="q">“in another moment”</span><span class="cnt">×1 · ¶4</span></div>
+<div class="row"><span class="tag tag-fam">Idiom</span><span class="q">“how in the world”</span><span class="cnt">×1 · ¶4</span></div>
+<div class="row"><span class="tag tag-wt">Stock carrying weight</span><span class="q">“the loveliest garden you ever saw”</span><span class="cnt">×1 · ¶14</span></div>
+<p class="body" style="font-size:12.5px">A stock superlative sits at the chapter's peak of longing.</p>
+</div>
+<div class="stk">
+<p class="sub-h" style="margin:0">Air-lock passages <span class="reg reg-r">Craft signal, not risk</span></p>
+<div class="stance"><span class="tag tag-air">Air-lock</span><div class="stance-b"><span class="q"><span class="p">¶6</span>“Either the well was very deep, or she fell very slowly”<span class="chk">✓</span></span><span class="body" style="font-size:12.5px">Closed and quotable; it could stand alone. Here the pause is the joke.</span></div></div>
+</div>
+<div class="inset rd">
+<p class="sub-h" style="margin-bottom:6px">Echoes <span class="reg reg-r">Sounds reminiscent of · unverified</span></p>
+<div class="stance"><span class="tag tag-air">Aphoristic</span><div class="stance-b"><span class="q"><span class="p">¶1</span>“what is the use of a book”<span class="chk">✓ in chapter</span></span><span class="body" style="font-size:12.5px">Sounds reminiscent of a proverb's “what is the use of…” turn.</span></div></div>
+<p class="eng-l" style="margin-top:8px"><b style="color:var(--accent-hi);font-weight:500">Accuracy:</b> the quote is checked against your chapter; the resemblance is not. A model's memory of sources is often wrong, so read this as “worth a look,” never as a finding.</p>
+</div>
+<p class="foot"><b>Where it strains:</b> Carroll's idiom is period voice. “Familiar” here means familiar to the reader, not a fault.</p>
+</section>
+
+<!-- 3 · Rhythm & handoffs -->
+<section class="tile is-hybrid span3" aria-label="Rhythm and handoffs">
+<div class="th">
+<p class="eb hy"><span class="num">3</span>Rhythm &amp; handoffs</p>
+<div class="regs"><span class="reg reg-m">Lengths: measured</span><span class="reg reg-r">Handoffs: read</span></div>
+</div>
+<p class="from">From the Craft Steering tool</p>
+<div>
+<p class="sub-h">Sentence lengths by paragraph <span class="reg reg-m">Measured</span></p>
+<div class="rh" role="img" aria-label="Sentence lengths for each of 24 paragraphs">
+<sc-for list="{{rhythm}}" as="r" hint-placeholder-count="24">
+<div class="rh-c"><sc-for list="{{r.bars}}" as="b" hint-placeholder-count="3"><i style="height: {{b.h}}px"></i></sc-for></div>
+</sc-for>
+</div>
+<div class="land" role="img" aria-label="How each paragraph ends">
+<sc-for list="{{landing}}" as="l" hint-placeholder-count="24"><span class="{{l.cls}}"></span></sc-for>
+</div>
+<div class="tkey">
+<span class="tk"><i style="background:var(--read);border-radius:50%"></i>Lands <b>18</b></span>
+<span class="tk"><i style="background:linear-gradient(90deg,var(--read) 50%,transparent 50%);border:1px solid var(--read);border-radius:50%"></i>Holds <b>4</b></span>
+<span class="tk"><i style="border:1px dashed var(--read);border-radius:50%"></i>Opens <b>2</b> · ¶4, ¶20</span>
+</div>
+<p class="eng-l" style="margin-top:8px">Mean 24 words · longest 77 (¶6) · 9 sentences under 6 words.</p>
+</div>
+<div class="inset rd hand">
+<p class="sub-h" style="margin:0">Handoff sample · ¶8 <span class="reg reg-r">Read</span></p>
+<div class="hand-pair">
+<span class="q">“Down, down, down.”</span><span class="hand-arr">→</span><span class="q">“Would the fall never come to an end?”</span>
+</div>
+<dl class="kv">
+<dt>Carried</dt><dd>The falling.</dd>
+<dt>What changes</dt><dd>Description turns into her question.</dd>
+<dt>Effect</dt><dd><span class="tag tag-air" style="margin-right:6px">Continues</span>We fall into her head, not past her.</dd>
+</dl>
+<p class="eng-l">Code checks that both quotes are adjacent sentences in one paragraph.</p>
+</div>
+<p class="foot"><b>Do sentences move toward conclusion?</b> Mostly yes. The two that open (¶4, ¶20) open on purpose: each ends on a problem she hasn't noticed yet. <b>Where it strains:</b> stress is one possible reading aloud, not a fact.</p>
+</section>
+
+<!-- 4 · Pressure -->
+<section class="tile is-hybrid span3" aria-label="Pressure">
+<div class="th">
+<p class="eb hy"><span class="num">4</span>Pressure</p>
+<div class="regs"><span class="reg reg-r">Threads: read</span><span class="reg reg-h">Spans: counted</span></div>
+</div>
+<p class="from">What's building, and whether it resolves</p>
+<div class="pr">
+<sc-for list="{{threads}}" as="t" hint-placeholder-count="5">
+<div class="pr-row">
+<span class="pr-name">{{t.name}}<span>{{t.meta}}</span></span>
+<span class="pr-track"><sc-for list="{{t.cells}}" as="c" hint-placeholder-count="24"><i class="{{c.cls}}"></i></sc-for></span>
+</div>
+</sc-for>
+</div>
+<div class="pr-key tkey">
+<span class="tk"><i style="background:var(--read);border-radius:5px 1px 1px 5px"></i>Planted</span>
+<span class="tk"><i style="background:var(--accent)"></i>Escalates</span>
+<span class="tk"><i style="background:var(--green)"></i>Resolved</span>
+<span class="tk"><i style="border:1px dashed var(--read)"></i>Still open</span>
+</div>
+<div class="inset">
+<div class="row"><span class="big" style="font-size:26px">5</span><span class="eng-l">threads</span><span class="big" style="font-size:26px;margin-left:10px">2</span><span class="eng-l">resolved here</span><span class="big" style="font-size:26px;margin-left:10px">3</span><span class="eng-l">carried out of the chapter</span></div>
+<p class="eng-l" style="margin-top:6px">Dormant since ¶4: “how in the world she was to get out again.” Planted once, never touched again.</p>
+</div>
+<p class="foot"><b>Every plant, escalation and resolution quotes its paragraph</b>, checked by code. <b>Where it strains:</b> “Is the bottle safe?” resolves in ¶17 but the shrinking reopens it as a new thread.</p>
+</section>
+
+<!-- 5 · Artifacts -->
+<section class="tile is-hybrid span3" aria-label="Artifacts">
+<div class="th">
+<p class="eb hy"><span class="num">5</span>Artifacts</p>
+<div class="regs"><span class="reg reg-h">Named by reading · counted by code</span></div>
+</div>
+<p class="from">The objects in the scene, and what happens to them</p>
+<table class="art">
+<thead><tr><th scope="col">Object</th><th scope="col">First</th><th scope="col">Mentions</th><th scope="col">Arc · read</th></tr></thead>
+<tbody>
+<tr><td class="o">Golden key</td><td class="p">¶13</td><td class="n">×4</td><td><span class="arc">found <em>→</em> opens the door <em>→</em> forgotten on the table <em>→</em> out of reach</span></td></tr>
+<tr><td class="o">Bottle · DRINK ME</td><td class="p">¶15</td><td class="n">×3</td><td><span class="arc">appears <em>→</em> checked for “poison” <em>→</em> drunk</span></td></tr>
+<tr><td class="o">Glass table</td><td class="p">¶13</td><td class="n">×4</td><td><span class="arc">holds key and bottle <em>→</em> too high to climb</span></td></tr>
+<tr><td class="o">Little door</td><td class="p">¶14</td><td class="n">×3</td><td><span class="arc">behind a curtain <em>→</em> opened <em>→</em> shut to her</span></td></tr>
+<tr><td class="o">Cake · EAT ME</td><td class="p">¶22</td><td class="n">×2</td><td><span class="arc">found in a glass box <em>→</em> eaten</span></td></tr>
+<tr><td class="o">Watch</td><td class="p">¶3</td><td class="n">×1</td><td><span class="arc">shown <em>→</em> leaves with the Rabbit</span></td></tr>
+<tr><td class="o">Marmalade jar</td><td class="p">¶6</td><td class="n">×1</td><td><span class="arc">taken <em>→</em> empty <em>→</em> put back <span class="tag tag-air" style="margin-left:4px">planted, unused</span></span></td></tr>
+</tbody>
+</table>
+<p class="foot"><b>7 objects · 3 change state · 1 leaves with a character.</b> Mentions and first paragraphs are counted by code from the names the reading gives. Arcs are read, and each step quotes its paragraph.</p>
+</section>
+
+<!-- 6 · The numbers -->
+<section class="tile is-hybrid span3" aria-label="What stands out in the numbers">
+<div class="th">
+<p class="eb hy"><span class="num">6</span>What stands out in the numbers</p>
+<div class="regs"><span class="reg reg-m">Standouts: measured</span><span class="reg reg-r">How it's used: read</span></div>
+</div>
+<p class="from">Against your manuscript (12 chapters) and the middle-grade ranges</p>
+<div class="nm">
+<div class="nm-row">
+<span class="nm-k">“very”<span>intensifier</span></span>
+<span class="nm-bar"><span class="nm-band" style="left:10%;width:24%"></span><span class="nm-dot" style="left:78%"></span></span>
+<span class="nm-v">9.6 / 1k · 2.4×</span>
+</div>
+<div class="nm-read">
+<span class="row"><span class="tag tag-air">Reads as deliberate</span></span>
+<span class="body" style="font-size:12.5px">The intensifiers are Alice's, not the narrator's. They cluster where she is thinking.</span>
+<span class="q"><span class="p">¶2</span>“the hot day made her feel very sleepy and stupid”<span class="chk">✓</span></span>
+</div>
+<div class="nm-row">
+<span class="nm-k">Sentence length<span>mean, words</span></span>
+<span class="nm-bar"><span class="nm-band" style="left:18%;width:30%"></span><span class="nm-dot" style="left:70%"></span></span>
+<span class="nm-v">24.1 · range 10–18</span>
+</div>
+<div class="nm-read">
+<span class="row"><span class="tag tag-air">Reads as deliberate</span></span>
+<span class="body" style="font-size:12.5px">The fall sentence runs as long as the fall.</span>
+<span class="q"><span class="p">¶6</span>“Either the well was very deep, or she fell very slowly”<span class="chk">✓</span></span>
+</div>
+<div class="nm-row">
+<span class="nm-k">Being verbs<span>per 1k words</span></span>
+<span class="nm-bar"><span class="nm-band" style="left:22%;width:30%"></span><span class="nm-dot" style="left:60%"></span></span>
+<span class="nm-v">41 · above range</span>
+</div>
+<div class="nm-read">
+<span class="row"><span class="tag tag-fam">Reads as mixed</span></span>
+<span class="body" style="font-size:12.5px">Some carry understatement, some only stage the room.</span>
+<span class="q"><span class="p">¶3</span>“There was nothing so very remarkable in that”<span class="chk">✓</span></span>
+<span class="q"><span class="p">¶12</span>“There were doors all round the hall”<span class="chk">✓</span></span>
+</div>
+<div class="nm-row">
+<span class="nm-k">Passive voice<span>share of sentences</span></span>
+<span class="nm-bar"><span class="nm-band" style="left:6%;width:34%"></span><span class="nm-dot in" style="left:24%"></span></span>
+<span class="nm-v in">3.2% · within</span>
+</div>
+<div class="nm-row">
+<span class="nm-k">Dialogue<span>share of words</span></span>
+<span class="nm-bar"><span class="nm-band" style="left:20%;width:40%"></span><span class="nm-dot in" style="left:30%"></span></span>
+<span class="nm-v in">17% · within</span>
+</div>
+</div>
+<p class="foot"><b>Standouts are measured:</b> code flags a figure outside its range or far from your own average. <b>Readings say how it works here</b> and never tell you to cut it. The call is yours.</p>
+</section>
+
+<!-- 8 · Opinion -->
+<section class="tile is-opinion span6" aria-label="Opinion">
+<div class="th">
+<p class="eb op"><span class="num">8</span>Opinion</p>
+<div class="regs"><span class="reg reg-o">The one evaluative tile</span><span class="reg reg-r">Read</span></div>
+</div>
+<div class="op-top">
+<div class="op-tabs" role="group" aria-label="Choose a view">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" class="{{t.cls}}" onClick="{{t.pick}}" aria-pressed="{{t.on}}"><span class="op-tab-l">{{t.label}}</span><span class="op-tab-s">{{t.sub}}</span></button>
+</sc-for>
+</div>
+<p class="eng-l op-rule">Same facts, three temperaments. Each view may only weigh the observations below, and code refuses a view that cites anything else.</p>
+</div>
+<div class="op-body">
+<p class="op-head">{{op.head}}</p>
+<p class="body" style="font-size:14.5px;max-width:880px">{{op.body}}</p>
+<div>
+<p class="sub-h">Why</p>
+<div class="op-why">
+<sc-for list="{{op.why}}" as="w" hint-placeholder-count="3">
+<div class="op-w">
+<span class="{{w.cls}}">{{w.weight}}</span>
+<div class="stance-b">
+<span class="stance-t">{{w.text}}</span>
+<span class="op-ev">{{w.ev}}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<div>
+<p class="sub-h">Observations all three views share <span class="reg reg-h">From this board</span></p>
+<div class="op-obs">
+<sc-for list="{{obs}}" as="o" hint-placeholder-count="5">
+<div class="op-o"><span class="op-oid">{{o.id}}</span><span class="body" style="font-size:12.5px">{{o.text}}</span><span class="op-ev">{{o.ev}}</span></div>
+</sc-for>
+</div>
+</div>
+<p class="foot"><b>One call returns all three.</b> It runs last, on the checked board, and goes stale when any lens it cites is re-read. Ignore it and nothing else on the board changes. <b>Where it strains:</b> a temperament isn't a second opinion. All three come from the same reading of the same facts.</p>
+</section>
+
+</div>
+
+<p class="illus">Illustrative draft. Quotes are verbatim from the public-domain text. Paragraph numbers, counts, ranges, tiers and readings are stub figures written to show each section's shape. The numbered sections follow the writer's list: 1 Template &amp; freshness · 2 Stock &amp; signature · 3 Rhythm · 4 Pressure · 5 Artifacts · 6 The numbers · 7 Summary &amp; movements · 8 Opinion.</p>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var mv = ['I','I','I','I','II','II','II','II','II','II','III','III','III','III','IV','IV','IV','IV','IV','IV','IV','IV','IV','IV'];
+    var firsts = { 0: 'I', 4: 'II', 10: 'III', 14: 'IV' };
+    var open = [0,0,1,2,2,2,2,3,3,2,2,2,2,3,4,4,3,3,3,3,3,3,3,3];
+    var eng = [1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,2,2];
+    var cols = mv.map(function (m, i) {
+      var odd = m === 'II' || m === 'IV';
+      return {
+        n: String(i + 1),
+        mvCls: 'ln-mv' + (odd ? ' mv-b' : ''),
+        mvLabel: firsts[i] || '',
+        pr: 4 + open[i] * 6,
+        en: eng[i] * 9
+      };
+    });
+
+    var lens = [
+      [12, 22, 31], [44], [28, 52], [17], [61], [77, 19], [9, 14, 8], [4, 9, 12],
+      [21, 33], [3, 5, 18, 26], [38, 15], [22, 30], [41, 12], [36, 24], [29, 18],
+      [11, 34], [19, 27], [7, 9], [16, 25], [42, 13], [6, 22], [33, 21], [18, 6, 4], [12]
+    ];
+    var rhythm = lens.map(function (ls) {
+      return { bars: ls.map(function (w) { return { h: Math.max(3, Math.round(w * 0.8)) }; }) };
+    });
+
+    var ld = ['l','l','l','o','l','h','l','l','l','l','l','l','h','l','l','h','l','l','l','o','l','h','l','l'];
+    var landing = ld.map(function (k) { return { cls: k === 'l' ? 'ld-l' : (k === 'h' ? 'ld-h' : 'ld-o') }; });
+
+    function track(plant, escs, end, endKind) {
+      var cells = [];
+      for (var i = 1; i <= 24; i++) {
+        var cls = '';
+        if (i === plant) cls = 'plant';
+        else if (escs.indexOf(i) >= 0) cls = 'esc';
+        else if (i === end) cls = endKind;
+        else if (i > plant && i < end) cls = 'run';
+        cells.push({ cls: cls });
+      }
+      return cells;
+    }
+    var threads = [
+      { name: 'Where is the Rabbit hurrying?', meta: '¶3 “I shall be late!” · open', cells: track(3, [11], 24, 'open') },
+      { name: 'How does she get out again?', meta: '¶4 · dormant, never touched again', cells: track(4, [], 24, 'open') },
+      { name: 'Will the fall ever end?', meta: '¶8 → ¶10 “and the fall was over.”', cells: track(8, [], 10, 'res') },
+      { name: 'How will she reach the garden?', meta: '¶14 → ¶20 “forgotten the little golden key” · open', cells: track(14, [20], 24, 'open') },
+      { name: 'Is the bottle safe?', meta: '¶15 → ¶17 “not marked ‘poison,’”', cells: track(15, [], 17, 'res') }
+    ];
+
+    var engSteps = [
+      { name: 'I · The bank', level: 'Low → medium', h: 22 },
+      { name: 'II · The well', level: 'Medium', h: 40 },
+      { name: 'III · The hall', level: 'High', h: 64 },
+      { name: 'IV · Drink me', level: 'High', h: 64 }
+    ];
+
+    var obs = [
+      { id: 'O1', text: 'The voice carries the fall: her talk to herself is the chapter’s signature.', ev: 'Stock & signature · ¶10 “Do cats eat bats?”' },
+      { id: 'O2', text: 'Objects do the plotting: the key is found, used, forgotten, lost.', ev: 'Artifacts · key ×4, 3 changes' },
+      { id: 'O3', text: 'Movement II has the least pull and the longest sentences.', ev: 'Engagement II · medium · Rhythm ¶6 77 words' },
+      { id: 'O4', text: 'Three threads leave the chapter open; one has slept since ¶4.', ev: 'Pressure · 3 carried, 1 dormant' },
+      { id: 'O5', text: 'The peak of longing rests on a stock superlative.', ev: 'Stock & signature · ¶14 “the loveliest garden you ever saw”' }
+    ];
+    var views = {
+      enthusiastic: {
+        head: 'A chapter that makes boredom funny, then turns every object into a door.',
+        body: 'The template is old, and that is the point: the reader knows the shape, so the voice gets all the attention, and it earns it. By the end, a key, a bottle and a cake have done the plotting.',
+        why: [
+          { w: 's', text: 'Signature beats cluster at the turns, where attention is highest.', ev: 'O1 · Template: 24% signature' },
+          { w: 's', text: 'The key’s four-step arc gives the hall a plot without a villain.', ev: 'O2' },
+          { w: 's', text: 'Three open threads hand the next chapter a reason to exist.', ev: 'O4' }
+        ]
+      },
+      neutral: {
+        head: 'A familiar portal shape, carried by a distinctive voice. The middle runs slow on purpose.',
+        body: 'The chapter trades suspense for voice in the fall and gets it back in the hall. Its objects carry the plot. The cost is a slow second movement and one stock phrase at the emotional peak.',
+        why: [
+          { w: 's', text: 'Voice and objects carry the plot.', ev: 'O1 · O2' },
+          { w: 'n', text: 'The slow fall reads as intended; whether it is too slow is a taste call.', ev: 'O3' },
+          { w: 'c', text: 'The garden’s peak leans on a familiar superlative.', ev: 'O5' }
+        ]
+      },
+      blunt: {
+        head: 'The fall overstays, and the chapter’s biggest want is stated in its most generic words.',
+        body: 'Two “Down, down, down” passages and the longest sentences sit in the movement with the least pull. Then the garden, the thing she wants most, gets “the loveliest garden you ever saw.” The voice is strong enough to carry a shorter fall.',
+        why: [
+          { w: 'c', text: 'Movement II is the slowest stretch, with the least pull.', ev: 'O3' },
+          { w: 'c', text: 'Stock phrasing at the peak of longing.', ev: 'O5' },
+          { w: 'n', text: 'One thread, “how does she get out,” is planted and never touched.', ev: 'O4' }
+        ]
+      }
+    };
+    var labels = [
+      { id: 'enthusiastic', label: 'Enthusiastic', sub: 'what is working' },
+      { id: 'neutral', label: 'Neutral', sub: 'weighed evenly' },
+      { id: 'blunt', label: 'Blunt', sub: 'what costs the most' }
+    ];
+    var self = this;
+    var view = (this.state && this.state.view) || 'neutral';
+    var tabs = labels.map(function (l) {
+      var on = l.id === view;
+      return { label: l.label, sub: l.sub, on: on, cls: 'op-tab' + (on ? ' is-on' : ''), pick: function () { self.setState({ view: l.id }); } };
+    });
+    var cur = views[view];
+    var weights = { s: ['wt wt-s', 'Strength'], n: ['wt wt-n', 'Even'], c: ['wt wt-c', 'Concern'] };
+    var op = {
+      head: cur.head,
+      body: cur.body,
+      why: cur.why.map(function (w) { return { cls: weights[w.w][0], weight: weights[w.w][1], text: w.text, ev: w.ev }; })
+    };
+
+    return { cols: cols, rhythm: rhythm, landing: landing, threads: threads, eng: engSteps, tabs: tabs, op: op, obs: obs };
+  }
+}
+</script>
+</body>
+</html>

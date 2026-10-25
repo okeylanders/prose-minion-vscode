@@ -180,6 +180,15 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     });
   };
 
+  const handleOpenLightbox = () => {
+    vscode.postMessage({
+      type: MessageType.OPEN_LIGHTBOX,
+      source: 'webview.analysis.tab',
+      payload: {},
+      timestamp: Date.now()
+    });
+  };
+
   const handleGenerateContext = () => {
     if (!text.trim() || context.loading) {
       return;
@@ -301,13 +310,22 @@ export const AnalysisTab = React.memo<AnalysisTabProps>(({
     <div className="tab-content">
       <div className="assistant-title-row">
         <h2 className="text-lg font-semibold mb-4">Prose Excerpt Assistant</h2>
-        <button
-          className="btn btn-secondary workshop-launch-button"
-          onClick={handleOpenWorkshop}
-          title="Open the Workshop editor tab"
-        >
-          <Icon name="panelRight" size={14} /> Workshop
-        </button>
+        <div className="surface-launch-buttons">
+          <button
+            className="btn btn-secondary surface-launch-button"
+            onClick={handleOpenWorkshop}
+            title="Open the Workshop editor tab"
+          >
+            <Icon name="panelRight" size={14} /> Workshop
+          </button>
+          <button
+            className="btn btn-secondary surface-launch-button"
+            onClick={handleOpenLightbox}
+            title="Open the Lightbox editor tab"
+          >
+            <Icon name="grid" size={14} /> Lightbox
+          </button>
+        </div>
       </div>
 
       <div className="input-container">

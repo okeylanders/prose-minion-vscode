@@ -86,6 +86,9 @@ describe('styled-HTML transcript stylesheet', () => {
   it('mirrors the stylesheets in the webview cascade order', () => {
     expect(WORKSHOP_TRANSCRIPT_MIRRORED_STYLES.map(({ source }) => source)).toEqual([
       'index.css',
+      // The shared full-tab frame precedes the Workshop's own sheets (Lightbox Slice 1).
+      'styles/fulltab/tokens.css',
+      'styles/fulltab/shell.css',
       'styles/workshop/tokens.css',
       'styles/workshop/shell.css',
       'styles/workshop/session.css',
@@ -94,9 +97,10 @@ describe('styled-HTML transcript stylesheet', () => {
   });
 
   it('carries the Workshop palette tokens the mirrored rules resolve against', () => {
-    const tokens = topLevelRules(
-      WORKSHOP_TRANSCRIPT_MIRRORED_STYLES.find(({ source }) => source.endsWith('tokens.css'))!.css
-    );
+    // Frame tokens and the Workshop's own tokens are separate layers since Lightbox Slice 1.
+    const tokens = WORKSHOP_TRANSCRIPT_MIRRORED_STYLES
+      .filter(({ source }) => source.endsWith('tokens.css'))
+      .flatMap(({ css }) => topLevelRules(css));
     const used = new Set(
       [...WORKSHOP_TRANSCRIPT_HTML_CSS.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1])
     );

@@ -1,6 +1,8 @@
 /** Guard the prompt-budget table against new module-local limit constants. */
 
 import * as fs from 'fs';
+import { LIGHTBOX_NUMBERS_READ_STATS } from '@shared/constants/lightboxSteering';
+import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -20,6 +22,12 @@ const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:
 const NON_PROMPT_LIMITS = new Set([
   // Named-session titles are file and browser labels; no prompt sees them.
   'application/services/workshop/WorkshopSessionTitles.ts:WORKSHOP_SESSION_TITLE_MAX_LENGTH',
+  // A Build lens seed's delivery id is a host-minted correlation id; no prompt sees it.
+  'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
+  // So is a Lightbox tile's (Slice 4).
+  'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts:MAX_DELIVERY_ID',
+  // A Lightbox project picker request's id is a webview-minted correlation id the host echoes (PR #154 F-01).
+  'application/handlers/domain/LightboxProjectFiles.ts:MAX_REQUEST_ID_LENGTH',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',
@@ -66,6 +74,95 @@ function collectLimitDeclarationNames(source: string, fileName = 'prompt-budget-
 }
 
 describe('prompt budgets', () => {
+  it('keeps the Lightbox ceiling, book-size threshold, ribbon width and reading ceilings (ADR 2026-10-19 D4, D7, D8)', () => {
+    expect(PROMPT_BUDGETS.lightbox).toEqual({
+      sourceWords: 50_000,
+      chapterWords: 12_000,
+      ribbonColumns: 96,
+      groupOutputTokens: 12_000,
+      groupResponseCharacters: 48_000,
+      quoteCharacters: 300,
+      claimCharacters: 400,
+      frictionCharacters: 360,
+      labelCharacters: 80,
+      noteCharacters: 160,
+      quotesPerClaim: 3,
+      termsPerClaim: 5,
+      motifs: 4,
+      characters: 6,
+      genreNeighbors: 5,
+      tensionPeaks: 3,
+      gravityFields: 5,
+      gravityTerms: 8,
+      gravityCollisions: 3,
+      gravityLiterals: 4,
+      paletteClusters: 4,
+      clusterWords: 6,
+      swatches: 6,
+      swatchWords: 3,
+      lineageStories: 4,
+      lineageStances: 3,
+      lineageSetAsides: 3,
+      subtextPairs: 4,
+      subtextContextQuotes: 2,
+      sparks: 4,
+      sparkCharacters: 300,
+      stockBeats: 40,
+      signaturePhrases: 4,
+      familiarPhrases: 6,
+      airLocks: 3,
+      echoes: 3,
+      handoffs: 3,
+      numberReadings: 3,
+      templateBeats: 6,
+      pressureThreads: 6,
+      threadEscalations: 3,
+      artifacts: 8,
+      artifactSteps: 5,
+      movements: 8,
+      synopsisQuotes: 3,
+      synopsisSentences: 5,
+      // Slice 4D: the Opinion's digest bound (priced "up to" it); Slice 4H: its asks, which Bring clips to a Workshop tile.
+      opinionDigestTokens: 9_000,
+      opinionQuotesPerItem: 3,
+      opinionParagraphsPerLine: 12,
+      opinionSections: 24,
+      opinionObservations: 6,
+      opinionCitesPerObservation: 3,
+      opinionObservationCharacters: 260,
+      opinionHeadlineCharacters: 160,
+      opinionBodyCharacters: 400,
+      opinionWhyPoints: 4,
+      opinionWhyCharacters: 160,
+      steeringNotes: 4,
+      steeringWhyCharacters: 200,
+      steeringNudgeCharacters: 160,
+      steeringExampleBeforeWords: 8,
+      steeringExampleAfterWords: 6,
+      steeringExampleCharacters: 72,
+      // Slice 4H: the one safety ceiling, never stated in a prompt.
+      safetyMultiple: 8
+    });
+    // One usage reading per figure the numbers lens reads at most (Slice 4B; three since Slice 4F gave craft steering the others).
+    expect(PROMPT_BUDGETS.lightbox.numberReadings).toBe(LIGHTBOX_NUMBERS_READ_STATS.length);
+    // Slice 4H: asks rose past the Workshop's own bounds, which stay as they are: Bring clips at that surface
+    // (`clipLightboxText`), so a nudge or an example (both sides and the arrow) can run past one Workshop point.
+    expect(PROMPT_BUDGETS.lightbox.steeringNudgeCharacters).toBeGreaterThan(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    expect(2 * PROMPT_BUDGETS.lightbox.steeringExampleCharacters + ' → '.length).toBeGreaterThan(WORKSHOP_LIGHTBOX_TILE_LIMITS.pointCharacters);
+    // The output ceiling and the whole response it asks for keep their ratio: four characters a token.
+    expect(PROMPT_BUDGETS.lightbox.groupResponseCharacters).toBe(4 * PROMPT_BUDGETS.lightbox.groupOutputTokens);
+    // A synopsis's quotes stay within a claim's quotes, and engagement gives one entry per movement (Slice 4C).
+    expect(PROMPT_BUDGETS.lightbox.synopsisQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
+    // A said/meant pair's quotes (its said line and its context) stay within a claim's quotes.
+    expect(1 + PROMPT_BUDGETS.lightbox.subtextContextQuotes).toBeLessThanOrEqual(PROMPT_BUDGETS.lightbox.quotesPerClaim);
+    // One story carries each of the three stances at most once.
+    expect(PROMPT_BUDGETS.lightbox.lineageStances).toBe(3);
+    // The writer's ceiling matches the other whole-document inputs.
+    expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);
+    expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.contextFiles.words);
+    expect(PROMPT_BUDGETS.lightbox.chapterWords).toBeLessThan(PROMPT_BUDGETS.lightbox.sourceWords);
+  });
+
   it('keeps the writer-selected Workshop room and standing-context bounds', () => {
     expect(PROMPT_BUDGETS.guestJoinSnapshot).toEqual({
       turns: 100,

@@ -7,6 +7,10 @@
  * the persona modal had that the tools modal lacked: capture the opener,
  * focus the close button on open, return focus on close. Content stays with
  * the callers; the shell renders chrome only.
+ *
+ * The Lightbox renders it too, through the shared project picker
+ * (2026-10-20), so its rules are the full-tab frame's:
+ * styles/fulltab/modal.css.
  */
 
 import * as React from 'react';

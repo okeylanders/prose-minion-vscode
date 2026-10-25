@@ -34,6 +34,7 @@ import {
   type PersistedWorkshopWidgetId
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 import { workshopWidgetDescriptor } from '@shared/constants/workshopWidgets';
+import { MessageType } from '@messages';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -96,6 +97,8 @@ const WORKSHOP_SHOW_VS_TELL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler.ts';
 const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
+const WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopLightboxTileHandler.ts';
 
 /**
  * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
@@ -238,13 +241,30 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: [
       'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
       'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
-      'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS'
+      'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS',
+      // ADR 2026-10-19 D11: a Build lens subject handed over from the Lightbox.
+      // Direct: it only opens the sheet prefilled and changes no session state.
+      'WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD'
     ]
   },
   {
     owner: WORKSHOP_LEXICAL_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES']
+  },
+  {
+    // Lightbox Slice 4 (ADR 2026-10-19 D11): the provider's offer is direct,
+    // since holding it changes no session state.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_STAGE_LIGHTBOX_TILE']
+  },
+  {
+    // Staging is a session mutation: persisted, so it waits behind a session
+    // save or replacement and is refused as busy while one is pending.
+    owner: WORKSHOP_LIGHTBOX_TILE_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_ACCEPT_LIGHTBOX_TILE']
   },
   {
     owner: WORKSHOP_STANDING_HANDLER_OWNER,
@@ -298,6 +318,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopCreativeVariationsHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
+  'WorkshopLightboxTileHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -539,7 +560,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/WorkshopApp.tsx',
     reason: 'Workshop presentation composition root',
-    allowedToken: /(?:WorkshopShowVsTellModal|clearShowVsTellTransientState|show-vs-tell|showVsTellAuthoring|showVsTellOpening|useShowVsTellAuthoring|CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:WorkshopShowVsTellModal|clearShowVsTellTransientState|show-vs-tell|showVsTellAuthoring|showVsTellOpening|useShowVsTellAuthoring|CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityBuild|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/components/SettingsOverlay.tsx',
@@ -564,7 +585,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:BuildSeedAnswerPayload|BuildSeedHost|BuildSeedPayload|Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|answerLexicalGravityBuildSeed|lexicalGravityBuild(?:Seed)?|openLexicalGravityBuildSeed|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
@@ -584,7 +605,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity|lexical-gravity-build)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
@@ -655,6 +676,31 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
     reason: 'catalog-neighbor algorithm owns an unrelated distance coordinate',
     allowedToken: /distance/
+  },
+  {
+    file: 'shared/types/messages/lightboxHandoff.ts',
+    reason: 'Lightbox handoff contract: a borrowed field travels as a Lexical Gravity Build lens seed (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|WorkshopLexicalGravityBuildSeed|lexical-gravity-seed|lexicalGravity)/
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxHandoff.ts',
+    reason: 'Lightbox handoff seam: resolves, re-checks and bounds a borrowed field as a Build lens seed (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|LEXICAL_GRAVITY_BUILD_SEED_LIMITS|WorkshopLexicalGravityBuildSeed(?:Term)?|lexical-gravity-seed)/
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
+    reason: 'names the Lightbox lexical gravity lens prompt file (Slice 3)',
+    allowedToken: /13-lexical-gravity/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+    reason: 'Lightbox "Build as a lens in Lexical Gravity" action and its request (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|lexical-gravity-seed)/
+  },
+  {
+    file: 'shared/types/messages/workshop/seedDelivery.ts',
+    reason: 'closed seed-kind registry for handoffs from other tabs (PR #150 F-03)',
+    allowedToken: /lexical-gravity-build/
   }
 ] as const;
 
@@ -768,6 +814,26 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
     reason: 'catalog-neighbor distance is unrelated to widget feature dispatch'
+  },
+  {
+    file: 'shared/types/messages/lightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
+    reason: 'a Lightbox lens prompt file name, not widget dispatch'
+  },
+  {
+    file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
+    file: 'shared/types/messages/workshop/seedDelivery.ts',
+    reason: 'seed kinds are handoffs from other tabs; Prose Controller receives none'
   }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
@@ -925,8 +991,351 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
+
+/**
+ * Lightbox modules (ADR 2026-10-19 D13). Every module the feature adds is
+ * listed, so the size, construction and transport rules below cover each one
+ * and a new module joins on purpose.
+ */
+const LIGHTBOX_MODULES = [
+  'shared/types/messages/lightbox.ts',
+  'shared/types/messages/lightboxReadings.ts',
+  'shared/types/messages/lightboxRuns.ts',
+  'shared/types/messages/lightboxPlotTiles.ts',
+  'shared/types/messages/lightboxSections.ts',
+  // Slice 4D: the Opinion's contract, its shared tables and standing, and what it can cite.
+  'shared/types/messages/lightboxOpinion.ts',
+  // Slice 4F: craft steering's contract and its shared tables (ownership, words, count lines).
+  'shared/types/messages/lightboxSteering.ts',
+  'shared/types/messages/lightboxEstimate.ts',
+  'shared/types/messages/lightboxGravity.ts',
+  'shared/types/messages/lightboxStoryTiles.ts',
+  'shared/types/messages/lightboxCraftTiles.ts',
+  'shared/types/messages/lightboxNumbers.ts',
+  'shared/types/messages/lightboxContextFiles.ts',
+  'shared/types/messages/lightboxStale.ts',
+  'shared/types/messages/lightboxHandoff.ts',
+  'shared/types/messages/lightboxProjectFiles.ts',
+  // Slice 4E: the inspector's passages, their contract and bounds.
+  'shared/types/messages/lightboxPassages.ts',
+  // Slice 5A: the rail's saved boards, their shelf and its requests.
+  'shared/types/messages/lightboxBoards.ts',
+  // Slice 5A.1: the Lightbox message domain's own barrel, re-exported by `messages/index.ts`.
+  'shared/types/messages/lightboxBarrel.ts',
+  'shared/constants/lightboxPassages.ts',
+  'shared/constants/lightbox.ts',
+  'shared/constants/lightboxPlot.ts',
+  'shared/constants/lightboxOpinion.ts',
+  'shared/constants/lightboxOpinionItems.ts',
+  // Slice 5A: the Opinion's citation basis, the cited item's canonical data (epic decision 25).
+  'shared/constants/lightboxOpinionBasis.ts',
+  // Slice 5A.1: a saved board's name, one rule for the codec, the route and the rail (epic decision 33).
+  'shared/constants/lightboxBoardName.ts',
+  'shared/constants/lightboxSteering.ts',
+  // Slice 4H: clipping at a surface (the safety ceiling, a Workshop tile's bounds).
+  'shared/constants/lightboxClip.ts',
+  'infrastructure/lightbox/LightboxParagraphs.ts',
+  // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
+  'infrastructure/lightbox/LightboxMeasureRules.ts',
+  'infrastructure/lightbox/LightboxMeasures.ts',
+  'infrastructure/lightbox/LightboxService.ts',
+  // Slice 5A: the service's board assembly and source key, moved out to give it room.
+  'infrastructure/lightbox/LightboxBoardAssembly.ts',
+  'infrastructure/lightbox/LightboxSourceKey.ts',
+  'infrastructure/lightbox/LightboxReadingWire.ts',
+  'infrastructure/lightbox/LightboxReadingCodec.ts',
+  'infrastructure/lightbox/LightboxReadingFields.ts',
+  // Slice 4H: a group's frame, its sentinels and a reply cut off at the output ceiling; its JSON goes through `@parsers/ModelJsonRepair`.
+  'infrastructure/lightbox/LightboxReadingFrame.ts',
+  // Slice 4K: each block's own fields, and a member closed out of its block moved back (epic decision 50).
+  'infrastructure/lightbox/LightboxBlockFormat.ts',
+  'infrastructure/lightbox/LightboxGravityCodec.ts',
+  'infrastructure/lightbox/LightboxGravityCounts.ts',
+  'infrastructure/lightbox/LightboxGravityTiles.ts',
+  'infrastructure/lightbox/LightboxStoryCodec.ts',
+  'infrastructure/lightbox/LightboxStoryTiles.ts',
+  'infrastructure/lightbox/LightboxSparkPhrasing.ts',
+  'infrastructure/lightbox/LightboxDialogueAnchor.ts',
+  'infrastructure/lightbox/LightboxSparkLane.ts',
+  'infrastructure/lightbox/LightboxNumbers.ts',
+  'infrastructure/lightbox/LightboxNumberInstances.ts',
+  'infrastructure/lightbox/LightboxWriterBaseline.ts',
+  'infrastructure/lightbox/LightboxSourceChecks.ts',
+  'infrastructure/lightbox/LightboxCraftCodec.ts',
+  'infrastructure/lightbox/LightboxCraftTiles.ts',
+  'infrastructure/lightbox/LightboxSentencePairs.ts',
+  'infrastructure/lightbox/LightboxCarryQuotes.ts',
+  'infrastructure/lightbox/LightboxPlotWire.ts',
+  'infrastructure/lightbox/LightboxPlotCodec.ts',
+  'infrastructure/lightbox/LightboxPlotGates.ts',
+  'infrastructure/lightbox/LightboxPlotTiles.ts',
+  'infrastructure/lightbox/LightboxPlotCarry.ts',
+  'infrastructure/lightbox/LightboxPlotHandoff.ts',
+  'infrastructure/lightbox/LightboxSections.ts',
+  // Slice 4D: group F, the Opinion.
+  'infrastructure/lightbox/LightboxOpinionWire.ts',
+  'infrastructure/lightbox/LightboxOpinionCodec.ts',
+  'infrastructure/lightbox/LightboxOpinionPhrasing.ts',
+  'infrastructure/lightbox/LightboxOpinionGates.ts',
+  'infrastructure/lightbox/LightboxOpinionDigest.ts',
+  'infrastructure/lightbox/LightboxOpinionReply.ts',
+  'infrastructure/lightbox/LightboxOpinionCall.ts',
+  'infrastructure/lightbox/LightboxOpinionHandoff.ts',
+  // Slice 4F: group G, craft steering.
+  'infrastructure/lightbox/LightboxSteeringMeasure.ts',
+  'infrastructure/lightbox/LightboxSteeringWire.ts',
+  'infrastructure/lightbox/LightboxSteeringCodec.ts',
+  'infrastructure/lightbox/LightboxSteeringPhrasing.ts',
+  'infrastructure/lightbox/LightboxSteeringTiles.ts',
+  'infrastructure/lightbox/LightboxSteeringHandoff.ts',
+  // Dialogue is voice (epic decision 26): where a note's instance stands, and what that withholds.
+  'infrastructure/lightbox/LightboxSteeringVoice.ts',
+  // PR #162 F-01: each paragraph's instances and dialogue spans, indexed once per text.
+  'infrastructure/lightbox/LightboxSpanIndex.ts',
+  'infrastructure/lightbox/LightboxFirstReadingTiles.ts',
+  'infrastructure/lightbox/LightboxTileGates.ts',
+  'infrastructure/lightbox/LightboxHandoff.ts',
+  'infrastructure/lightbox/LightboxTileHandoff.ts',
+  'infrastructure/lightbox/LightboxQuoteVerifier.ts',
+  'infrastructure/lightbox/LightboxTermCounts.ts',
+  'infrastructure/lightbox/LightboxReadingTiles.ts',
+  'infrastructure/lightbox/LightboxReadingPrompts.ts',
+  'infrastructure/lightbox/LightboxRunEstimate.ts',
+  'infrastructure/lightbox/LightboxReadingRunContracts.ts',
+  'infrastructure/lightbox/LightboxReadingRunner.ts',
+  'infrastructure/lightbox/LightboxGroupReply.ts',
+  'infrastructure/lightbox/LightboxCallFailure.ts',
+  'infrastructure/lightbox/LightboxPressSnapshot.ts',
+  'infrastructure/lightbox/LightboxReadingState.ts',
+  'infrastructure/lightbox/LightboxStaleReadings.ts',
+  'infrastructure/lightbox/LightboxTileCounts.ts',
+  'infrastructure/lightbox/LightboxContextShelf.ts',
+  'infrastructure/lightbox/LightboxFileKey.ts',
+  // Slice 4E: instance finders by each figure's own rule, the board's text kept host-side, and passages cut from it.
+  'infrastructure/lightbox/LightboxInstances.ts',
+  'infrastructure/lightbox/LightboxPassageIndex.ts',
+  'infrastructure/lightbox/LightboxPassages.ts',
+  // Slice 5A: the saved board's format 1, its decoders by layer.
+  'infrastructure/storage/LightboxBoardSchema.ts',
+  'infrastructure/storage/LightboxBoardMeasuredCodec.ts',
+  'infrastructure/storage/LightboxBoardTileCodec.ts',
+  'infrastructure/storage/LightboxBoardCodec.ts',
+  // Slice 5A: the files on disk, their availability, writes and the reload pointer.
+  'infrastructure/storage/LightboxBoardStore.ts',
+  // Slice 5A.2: the store's contracts, a new file's write, and a save's path (PR #167), split from it.
+  'infrastructure/storage/LightboxBoardStoreContracts.ts',
+  'infrastructure/storage/LightboxBoardNewFile.ts',
+  'infrastructure/storage/LightboxBoardSaving.ts',
+  // PR #163 F-04: one source's folder read whole, and each file's summary.
+  'infrastructure/storage/LightboxBoardFiles.ts',
+  // Slice 5A.1: a saved file rewritten in place under a claim (a name, a spark set aside).
+  'infrastructure/storage/LightboxBoardRewrite.ts',
+  // PR #164 F-01, F-02: claims live or abandoned, settled, and a delete's leftovers retired.
+  'infrastructure/storage/LightboxBoardClaims.ts',
+  // Slice 5A: the boards the service keeps, when boards save, open and restore, and the rail's routes.
+  'infrastructure/lightbox/LightboxRetainedBoards.ts',
+  'application/services/lightbox/LightboxBoardLibrary.ts',
+  // Slice 5A.1: names and spark marks in place, and the rail's notices.
+  'application/services/lightbox/LightboxBoardEdits.ts',
+  'application/services/lightbox/LightboxBoardNotices.ts',
+  // Slice 5A.2: one file per board, the save in place and its fallback.
+  'application/services/lightbox/LightboxBoardSaves.ts',
+  'application/handlers/domain/LightboxBoardsHandler.ts',
+  'application/handlers/domain/LightboxHandler.ts',
+  'application/handlers/domain/LightboxHandoffRoute.ts',
+  'application/handlers/domain/LightboxContextIntake.ts',
+  'application/handlers/domain/LightboxProjectFiles.ts',
+  'application/handlers/domain/LightboxReadingHandler.ts',
+  'application/handlers/domain/LightboxPressRun.ts',
+  // Slice 4I: what a press asks to read, checked (a call run on its own, by group).
+  'application/handlers/domain/LightboxPressScope.ts',
+  'application/handlers/domain/LightboxPassageHandler.ts',
+  'presentation/webview/LightboxApp.tsx',
+  'presentation/webview/hooks/domain/useLightbox.ts',
+  'presentation/webview/hooks/domain/useLightboxHandoff.ts',
+  'presentation/webview/hooks/domain/useLightboxProjectFiles.ts',
+  // Slice 4E: the inspector's passages (transport), counted terms and the wells as drawn (pure).
+  'presentation/webview/hooks/domain/useLightboxPassages.ts',
+  // Slice 5A: the rail's saved boards (transport) and their words (pure).
+  'presentation/webview/hooks/domain/useLightboxBoards.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCraft.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPlot.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
+  // Slice 4I: each call's own run, a widget's Analyze and a call's Run (pure), and its button.
+  'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  // Slice 5A.2: which of the saved boards' surfaces is open.
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts',
+  'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxCallButton.tsx',
+  // Slice 5A.2: the header's Boards menu, the saved-board browser and the name sheet (the rail's panel is gone).
+  'presentation/webview/components/lightbox/LightboxBoardsMenu.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardsOutcome.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardBrowserModal.tsx',
+  'presentation/webview/components/lightbox/LightboxBoardNameModal.tsx',
+  'presentation/webview/components/lightbox/LightboxCharacters.tsx',
+  'presentation/webview/components/lightbox/LightboxContextList.tsx',
+  'presentation/webview/components/lightbox/LightboxGenre.tsx',
+  'presentation/webview/components/lightbox/LightboxGravity.tsx',
+  'presentation/webview/components/lightbox/LightboxGravityOrbit.tsx',
+  'presentation/webview/components/lightbox/LightboxHapaxList.tsx',
+  'presentation/webview/components/lightbox/LightboxHeadline.tsx',
+  'presentation/webview/components/lightbox/LightboxInspector.tsx',
+  'presentation/webview/components/lightbox/LightboxItemButton.tsx',
+  'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
+  'presentation/webview/components/lightbox/LightboxLineage.tsx',
+  'presentation/webview/components/lightbox/LightboxMotifs.tsx',
+  'presentation/webview/components/lightbox/LightboxNumbers.tsx',
+  'presentation/webview/components/lightbox/LightboxOpinion.tsx',
+  'presentation/webview/components/lightbox/LightboxPalette.tsx',
+  'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxPassageWell.tsx',
+  'presentation/webview/components/lightbox/LightboxProjectPicker.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingPlaceholder.tsx',
+  'presentation/webview/components/lightbox/LightboxRhythm.tsx',
+  'presentation/webview/components/lightbox/LightboxRibbon.tsx',
+  'presentation/webview/components/lightbox/LightboxRunLine.tsx',
+  'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
+  'presentation/webview/components/lightbox/LightboxSparkLane.tsx',
+  'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxSteering.tsx',
+  'presentation/webview/components/lightbox/LightboxStock.tsx',
+  'presentation/webview/components/lightbox/LightboxSummary.tsx',
+  'presentation/webview/components/lightbox/LightboxTemplate.tsx',
+  'presentation/webview/components/lightbox/LightboxPressure.tsx',
+  'presentation/webview/components/lightbox/LightboxArtifacts.tsx',
+  'presentation/webview/components/lightbox/LightboxRibbonPlot.tsx',
+  'presentation/webview/components/lightbox/LightboxSubtext.tsx',
+  'presentation/webview/components/lightbox/LightboxTensionArc.tsx',
+  'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
+  'presentation/webview/components/lightbox/LightboxTiles.tsx',
+  'presentation/webview/components/lightbox/LightboxTopWords.tsx',
+  'presentation/webview/components/lightbox/LightboxVoice.tsx',
+  'presentation/webview/components/lightbox/LightboxWorkshopTray.tsx'
+] as const;
+/** Presentation controllers and pure item logic: host effects arrive injected. */
+const LIGHTBOX_TRANSPORT_FREE_MODULES = [
+  'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxTerms.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPassages.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCraft.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxPlot.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxBoardsView.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxEscape.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts'
+] as const;
+/**
+ * Complete Lightbox route ledger (2026-10-20). Every `LIGHTBOX_*` message type
+ * is either inbound, with the one handler that registers it, or outbound
+ * (host to webview); a new type fails here until it is placed.
+ */
+const LIGHTBOX_ROUTE_OWNERS = [
+  {
+    owner: 'application/handlers/domain/LightboxHandler.ts',
+    messageTypes: [
+      'LIGHTBOX_REQUEST_BOARD',
+      'LIGHTBOX_SET_SOURCE',
+      'LIGHTBOX_PICK_SOURCE_FILE',
+      'LIGHTBOX_REFRESH_SOURCE',
+      'LIGHTBOX_DISMISS_REFUSAL',
+      'LIGHTBOX_HAND_OFF',
+      'LIGHTBOX_OPEN_WORKSHOP',
+      // Choose from project (the shared project picker, 2026-10-20)
+      'LIGHTBOX_REQUEST_PROJECT_CATALOG',
+      'LIGHTBOX_SEARCH_PROJECT_CATALOG',
+      'LIGHTBOX_CHOOSE_PROJECT_SOURCE'
+    ]
+  },
+  {
+    owner: 'application/handlers/domain/LightboxReadingHandler.ts',
+    messageTypes: [
+      'LIGHTBOX_SET_LENSES',
+      'LIGHTBOX_RUN',
+      'LIGHTBOX_CANCEL_RUN',
+      'LIGHTBOX_ADD_CONTEXT_FILES',
+      // Context from the shared project picker (2026-10-20)
+      'LIGHTBOX_ADD_PROJECT_CONTEXT',
+      'LIGHTBOX_REMOVE_CONTEXT_FILE',
+      'LIGHTBOX_SET_SPARK_DISMISSED'
+    ]
+  },
+  {
+    // Slice 4E: the text a pinned paragraph or counted item stands in
+    owner: 'application/handlers/domain/LightboxPassageHandler.ts',
+    messageTypes: ['LIGHTBOX_REQUEST_PASSAGE']
+  },
+  {
+    // Slice 5A: the rail's saved boards
+    owner: 'application/handlers/domain/LightboxBoardsHandler.ts',
+    messageTypes: ['LIGHTBOX_REQUEST_BOARDS', 'LIGHTBOX_OPEN_BOARD', 'LIGHTBOX_DELETE_BOARD', 'LIGHTBOX_RENAME_BOARD', 'LIGHTBOX_OPEN_BOARD_FILE']
+  }
+] as const;
+const LIGHTBOX_OUTBOUND_MESSAGE_TYPES = [
+  'LIGHTBOX_BOARD',
+  'LIGHTBOX_SOURCE_REFUSED',
+  'LIGHTBOX_RUN_ESTIMATE',
+  'LIGHTBOX_RUN_PROGRESS',
+  'LIGHTBOX_GROUP_RESULT',
+  'LIGHTBOX_CONTEXT_FILES',
+  'LIGHTBOX_HAND_OFF_RESULT',
+  'LIGHTBOX_WORKSHOP_TRAY',
+  'LIGHTBOX_PROJECT_CATALOG',
+  'LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS',
+  'LIGHTBOX_PASSAGE',
+  'LIGHTBOX_BOARDS'
+] as const;
+/**
+ * The project picker the Workshop's context selector and the Lightbox share
+ * (2026-10-20). It is presentation only: every host effect is a callback.
+ */
+const SHARED_PROJECT_PICKER_MODULES = [
+  {
+    file: 'presentation/webview/components/fulltab/ProjectResourcePickerModal.tsx',
+    imports: ['react', '@components/shared/Icon', '@components/workshop/WorkshopModalShell', '@messages', '@shared/types/context']
+  },
+  {
+    file: 'presentation/webview/components/fulltab/ProjectResourceAttachFooter.tsx',
+    imports: ['react', '@components/shared/Icon', '@components/fulltab/ProjectResourcePickerModal']
+  }
+] as const;
+const LIGHTBOX_FEATURE_DIRECTORIES = [
+  'infrastructure/lightbox',
+  'application/services/lightbox',
+  'presentation/webview/hooks/domain/lightbox',
+  'presentation/webview/components/lightbox'
+] as const;
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -1223,11 +1632,12 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(56);
+    // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
+    expect(expectedOwnerPairs).toHaveLength(59);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(37);
+      .toHaveLength(38);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(19);
+      .toHaveLength(21);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1524,6 +1934,158 @@ describe('architectural boundaries', () => {
     ))).toBe(false);
   });
 
+  it('keeps the shared model-output parsers feature-agnostic: they import only one another (Lightbox Slice 4H)', () => {
+    const parsers = path.join(SRC_ROOT, 'infrastructure', 'api', 'parsers');
+    const files = collectSourceFiles(parsers);
+    expect(files.map((file) => path.relative(SRC_ROOT, file))).toEqual(expect.arrayContaining([
+      'infrastructure/api/parsers/ModelJsonRepair.ts',
+      'infrastructure/api/parsers/ModelJsonTokens.ts'
+    ]));
+    expect(files.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)).toEqual([]);
+    // A parser any feature may call (Lightbox now; the Workshop widgets later) names no feature, host or platform module.
+    const outside = files.flatMap((file) => moduleImports(file, fs.readFileSync(file, 'utf8'))
+      .filter(({ module }) => !module.startsWith('@parsers/') && !module.startsWith('./'))
+      .map(({ module }) => `${path.relative(SRC_ROOT, file)} -> ${module}`));
+    expect(outside).toEqual([]);
+    // And no Lightbox module keeps a JSON repair of its own: the frame reads its JSON through the shared parser.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'lightbox', 'LightboxReadingFrame.ts'), 'utf8'))
+      .toMatch(/from '@parsers\/ModelJsonRepair'/);
+  });
+
+  it('keeps the tolerant reader to model replies: saved boards and the Workshop keep their strict readers (Lightbox Slice 4K)', () => {
+    const files = collectSourceFiles(SRC_ROOT);
+    const importersOf = (module: string) => files
+      .filter((file) => moduleImports(file, fs.readFileSync(file, 'utf8')).some((entry) => entry.module === module))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+    const codecs = [
+      'infrastructure/lightbox/LightboxCraftCodec.ts',
+      'infrastructure/lightbox/LightboxGravityCodec.ts',
+      'infrastructure/lightbox/LightboxOpinionCodec.ts',
+      'infrastructure/lightbox/LightboxPlotCodec.ts',
+      'infrastructure/lightbox/LightboxReadingCodec.ts',
+      'infrastructure/lightbox/LightboxSteeringCodec.ts',
+      'infrastructure/lightbox/LightboxStoryCodec.ts'
+    ];
+    // `replyObject` ignores a field the format does not define; only the model-reply codecs read through it.
+    const readers = importersOf('@/infrastructure/lightbox/LightboxReadingFields')
+      .filter((file) => /\breplyObject\b/.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
+    expect(readers).toEqual(codecs);
+    // The block table and its repair: the same codecs, and the frame that moves a member back.
+    expect(importersOf('@/infrastructure/lightbox/LightboxBlockFormat'))
+      .toEqual([...codecs, 'infrastructure/lightbox/LightboxReadingFrame.ts'].sort());
+    // A saved board is our own format: its schema refuses a field it does not read, and the Workshop's codecs stay exact.
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'infrastructure', 'storage', 'LightboxBoardSchema.ts'), 'utf8')).toMatch(/'unknown-field'/);
+    expect(fs.readFileSync(path.join(SRC_ROOT, 'application', 'services', 'workshop', 'persistedValidation.ts'), 'utf8'))
+      .toMatch(/contains unknown field/);
+  });
+
+  it('lists every Lightbox module, each under 500 lines (ADR 2026-10-19 D13)', () => {
+    const onDisk = LIGHTBOX_FEATURE_DIRECTORIES.flatMap((directory) =>
+      collectSourceFiles(path.join(SRC_ROOT, directory)).map((file) => path.relative(SRC_ROOT, file))
+    );
+    const listed = new Set<string>(LIGHTBOX_MODULES);
+    expect(onDisk.filter((file) => !listed.has(file))).toEqual([]);
+
+    const oversized = LIGHTBOX_MODULES
+      .map((file) => ({ file, lines: fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').split('\n').length }))
+      .filter(({ lines }) => lines >= 500);
+    expect(oversized).toEqual([]);
+  });
+
+  it('constructs the Lightbox service only at the composition root, and its handler only in MessageHandler', () => {
+    const constructions = (pattern: RegExp) => collectSourceFiles(SRC_ROOT)
+      .filter((file) => pattern.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(constructions(/\bnew\s+LightboxService\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxReadingRunner\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
+    // Slice 4B: the writer's baseline holds one cache; only the composition root builds it.
+    expect(constructions(/\bnew\s+LightboxWriterBaseline\s*\(/)).toEqual([]);
+    // Slice 5A: one store owns the boards folder's queue and the reload pointer.
+    expect(constructions(/\bnew\s+LightboxBoardStore\s*\(/)).toEqual([]);
+    // Slice 5A: one library hears every board and restores once per session.
+    expect(constructions(/\bnew\s+LightboxBoardLibrary\s*\(/)).toEqual([]);
+    // Slice 5A.1: the library's edits and the store's rewrites are their owners' own.
+    expect(constructions(/\bnew\s+LightboxBoardEdits\s*\(/)).toEqual(['application/services/lightbox/LightboxBoardLibrary.ts']);
+    expect(constructions(/\bnew\s+LightboxBoardRewrites\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
+    // PR #164 F-01: one store's claims settle its folder; nothing else takes or puts back a claim.
+    expect(constructions(/\bnew\s+LightboxBoardClaims\s*\(/)).toEqual(['infrastructure/storage/LightboxBoardStore.ts']);
+    expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxPassageHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxBoardsHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+  });
+
+  it('reads the Lightbox on its own model scope, whose engine only the AI resource manager builds (Slice 4L)', () => {
+    const read = (file: string) => fs.readFileSync(path.join(SRC_ROOT, file), 'utf8');
+    const constructions = (pattern: RegExp) => collectSourceFiles(SRC_ROOT)
+      .filter((file) => pattern.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    // Every scope's engine and client, the Lightbox's included, come from the one manager;
+    // core never builds the manager: the composition root does (the app's own witness pins it).
+    expect(constructions(/\bnew\s+AgentRunEngine\s*\(/)).toEqual(['infrastructure/api/orchestration/AIResourceManager.ts']);
+    expect(constructions(/\bnew\s+OpenRouterClient\s*\(/)).toEqual(['infrastructure/api/orchestration/AIResourceManager.ts']);
+    expect(constructions(/\bnew\s+AIResourceManager\s*\(/)).toEqual([]);
+    expect(read('infrastructure/api/orchestration/AIResourceManager.ts'))
+      .toMatch(/this\.createResourceBundle\(apiKey!, 'lightbox', lightboxModel\)/);
+    // No Lightbox module asks for the assistant scope's engine or model, so no Lightbox
+    // pick or run can move the Workshop's; the runner's engine surface names only its own.
+    const assistantScope = /\b(?:getEngine|getResolvedModel)\(\s*['"]assistant['"]/;
+    expect(LIGHTBOX_MODULES.filter((file) => assistantScope.test(read(file)))).toEqual([]);
+    const contracts = read('infrastructure/lightbox/LightboxReadingRunContracts.ts');
+    expect(contracts).toMatch(/getEngine\(scope: 'lightbox'\)/);
+    expect(contracts).toMatch(/getResolvedModel\(scope: 'lightbox'\)/);
+    expect(read('presentation/webview/LightboxApp.tsx')).toMatch(/modelScope="lightbox"/);
+  });
+
+  it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {
+    const transportReference = /(?:useVSCodeApi|MessageType|postMessage)/;
+    expect(LIGHTBOX_TRANSPORT_FREE_MODULES
+      .filter((file) => transportReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
+      .toEqual([]);
+    // D10: the Lightbox's source is its own, never the Workshop's excerpt; it
+    // names no Workshop route. (Slice 4's tile bounds, a shared contract
+    // constant, are not a route.)
+    const workshopRoutes = new Set(Object.keys(MessageType).filter((name) => name.startsWith('WORKSHOP_')));
+    expect(LIGHTBOX_MODULES
+      .filter((file) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').matchAll(/\bWORKSHOP_[A-Z_]+\b/g)]
+        .some(([name]) => workshopRoutes.has(name))))
+      .toEqual([]);
+    expect(workshopRoutes.has('WORKSHOP_STAGE_LIGHTBOX_TILE')).toBe(true);
+  });
+
+  it('keeps every Lightbox route with its one owner, and every Lightbox message type placed (2026-10-20)', () => {
+    const registration = /router\.register\(\s*MessageType\.(LIGHTBOX_[A-Z0-9_]+)\b/g;
+    const actual = collectSourceFiles(SRC_ROOT)
+      .flatMap((file) => [...fs.readFileSync(file, 'utf8').matchAll(registration)]
+        .map((match) => `${match[1]} ${path.relative(SRC_ROOT, file)}`))
+      .filter((pair) => !pair.includes('__tests__'))
+      .sort();
+    const expected = LIGHTBOX_ROUTE_OWNERS
+      .flatMap(({ owner, messageTypes }) => messageTypes.map((messageType) => `${messageType} ${owner}`))
+      .sort();
+    expect(actual).toEqual(expected);
+
+    const inbound: string[] = LIGHTBOX_ROUTE_OWNERS.flatMap(({ messageTypes }) => [...messageTypes]);
+    const placed = [...inbound, ...LIGHTBOX_OUTBOUND_MESSAGE_TYPES];
+    expect(placed.filter((name, index) => placed.indexOf(name) !== index)).toEqual([]);
+    expect(placed.sort()).toEqual(Object.keys(MessageType).filter((name) => name.startsWith('LIGHTBOX_')).sort());
+  });
+
+  it('keeps the shared project picker presentation-only: no transport, no route, no feature imports (2026-10-20)', () => {
+    for (const { file: relative, imports: allowed } of SHARED_PROJECT_PICKER_MODULES) {
+      const file = path.join(SRC_ROOT, relative);
+      const source = fs.readFileSync(file, 'utf8');
+      expect({ relative, transport: /useVSCodeApi|MessageType|postMessage|acquireVsCodeApi/.test(source) })
+        .toEqual({ relative, transport: false });
+      expect({ relative, routes: source.match(/\b(WORKSHOP|LIGHTBOX)_[A-Z_]+\b/g) ?? [] }).toEqual({ relative, routes: [] });
+      expect(moduleImports(file, source).map(({ module }) => module).sort()).toEqual([...allowed].sort());
+    }
+  });
+
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {
     const transportReference = /(?:useVSCodeApi|MessageType|postMessage)/;
     const offenders = collectSourceFiles(WORKSHOP_PRESENTATION_CONTROLLERS)
@@ -1691,8 +2253,10 @@ describe('architectural boundaries', () => {
       'gesturePlayground.ts',
       'index.ts',
       'lexicalGravity.ts',
+      'lightboxTiles.ts',
       'participants.ts',
       'recovery.ts',
+      'seedDelivery.ts',
       'session.ts',
       'settings.ts',
       'showVsTell.ts',

@@ -772,12 +772,17 @@ body {
 }
 .assistant-title-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   margin: 6px 0 14px;
 }
+/* The 8em basis keeps the launchers on the title's line down to a ~415px
+   sidebar (the title wraps beside them); narrower, they move to their own
+   line instead of crushing the title. */
 .assistant-title-row > h2 {
+  flex: 1 1 8em;
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -785,7 +790,14 @@ body {
   color: var(--pm-text);
   min-width: 0;
 }
-.workshop-launch-button {
+/* The editor-tab launchers (Workshop, Lightbox) beside the Assistant title. */
+.surface-launch-buttons {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
+}
+.surface-launch-button {
   flex-shrink: 0;
   padding: 7px 11px;
   font-size: 12px;
@@ -2830,6 +2842,16 @@ select:focus {
   position: relative;
   min-height: 132px;
   padding: 14px;
+}
+
+/* A following scope's first card (Lightbox Slice 4L): "Same as Workshop",
+   above the models and only as tall as its words. */
+.mb-follow {
+  margin-top: 18px;
+}
+
+.mb-follow .mb-card {
+  min-height: 0;
 }
 
 .mb-card.selected {

@@ -1,0 +1,289 @@
+/* ============================================================
+   Prose Minion — the Lightbox board (main column), ADR 2026-10-19 D3–D6.
+   Ported from docs/design/lightbox/Main.dc.html; Slice 2A's scope only.
+   ============================================================ */
+
+/* ---------- Main column ----------
+   At full width the board scrolls inside the main column, so the rail and
+   the inspector stay put; the ribbon sticks to the top of this scroller. At
+   1240px and below the frame scrolls the whole tab instead
+   (styles/fulltab/shell.css), so this stops being a scroller there. */
+[data-pm-surface="lightbox"] .pm-lb-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px 56px;
+}
+@media (max-width: 1240px) {
+  [data-pm-surface="lightbox"] .pm-lb-scroll {
+    flex: none;
+    overflow: visible;
+    padding: 20px 20px 40px;
+  }
+}
+@media (max-width: 760px) {
+  [data-pm-surface="lightbox"] .pm-lb-scroll {
+    padding: 18px 16px 32px;
+  }
+}
+[data-pm-surface="lightbox"] .pm-lb-loading {
+  color: var(--pm-muted);
+  font-size: 13px;
+}
+
+/* ---------- Board header ---------- */
+[data-pm-surface="lightbox"] .pm-lb-main-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-main-eyebrow i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pm-lb-measured);
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline {
+  font-family: var(--pm-lb-display);
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--pm-text);
+  max-width: 820px;
+}
+[data-pm-surface="lightbox"] .pm-lb-sub {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--pm-text-2);
+  margin: 12px 0 0;
+  max-width: 720px;
+}
+[data-pm-surface="lightbox"] .pm-lb-sub b {
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="lightbox"] .pm-lb-read-text {
+  color: var(--pm-lb-read);
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  [data-pm-surface="lightbox"] .pm-lb-headline {
+    font-size: 26px;
+  }
+}
+
+/* ---------- Welcome (nothing boarded yet) ---------- */
+[data-pm-surface="lightbox"] .pm-lb-welcome {
+  max-width: 640px;
+  padding: 8px 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-welcome .pm-lb-primary {
+  margin-top: 20px;
+}
+
+/* ---------- Buttons ---------- */
+[data-pm-surface="lightbox"] .pm-lb-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 15px;
+  border-radius: 9px;
+  border: 0;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  color: #fff;
+  font: 700 12.5px var(--pm-sans);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-primary:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+[data-pm-surface="lightbox"] .pm-lb-primary:disabled {
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  color: var(--pm-dim);
+}
+[data-pm-surface="lightbox"] .pm-lb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font: 500 12px var(--pm-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-button:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-button svg {
+  color: var(--pm-muted);
+  flex: none;
+}
+
+/* ---------- Refusal ---------- */
+[data-pm-surface="lightbox"] .pm-lb-refusal {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 14px 16px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 50%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, var(--pm-surface));
+  color: var(--pm-text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal > svg {
+  color: var(--pm-amber);
+  flex: none;
+  margin-top: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-body {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-body p {
+  margin: 0 0 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-title {
+  font-weight: 700;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-path {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-suggestion {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-refusal-kept {
+  font-size: 12px;
+  color: var(--pm-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Toolbar ---------- */
+[data-pm-surface="lightbox"] .pm-lb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin: 22px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pm-border-soft);
+  background: var(--pm-inset);
+  border-radius: 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-segmented {
+  display: flex;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-segment {
+  min-height: 30px;
+  padding: 0 13px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  font: 600 12.5px var(--pm-sans);
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-segment:hover {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-segment.is-on {
+  background: var(--pm-surface-3);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  flex: 1;
+  min-width: 220px;
+}
+[data-pm-surface="lightbox"] .pm-lb-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-key {
+  display: block;
+  width: 22px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-key.is-measured {
+  background: var(--pm-lb-measured-soft);
+  border: 1px solid var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-key.is-read {
+  background: var(--pm-lb-read-soft);
+  border: 1px dashed var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-key.is-counted-read {
+  border: 1px solid var(--pm-lb-counted-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-run {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* On a narrow board a press's button wraps its cost under its label instead of running past the card (PR #164 review, 500 px). */
+[data-pm-surface="lightbox"] .pm-lb-run .pm-lb-button {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  padding-block: 6px;
+  white-space: normal;
+}
+/* The run line's press keeps the primary style in every state (Slice 4I) and wraps its cost the same way. */
+[data-pm-surface="lightbox"] .pm-lb-run .pm-lb-primary {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  padding-block: 6px;
+  white-space: normal;
+}
+[data-pm-surface="lightbox"] .pm-lb-primary .pm-lb-run-cost {
+  color: rgba(255, 255, 255, 0.82);
+}
+[data-pm-surface="lightbox"] .pm-lb-primary:disabled .pm-lb-run-cost {
+  color: var(--pm-dim);
+}
+[data-pm-surface="lightbox"] .pm-lb-run-note {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+}

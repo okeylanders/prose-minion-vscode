@@ -1,0 +1,9 @@
+kept@1440: status "Saved", not "Name not saved"
+kept@1440: the outcome banner null, not {"role":"alert","text":"Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.","dismiss":true}
+kept@1440: renames sent [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read"}], not [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read","adoption":2}]
+kept@1000: status "Saved", not "Name not saved"
+kept@1000: the outcome banner null, not {"role":"alert","text":"Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.","dismiss":true}
+kept@1000: renames sent [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read"}], not [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read","adoption":2}]
+kept@500: status "Saved", not "Name not saved"
+kept@500: the outcome banner null, not {"role":"alert","text":"Saved boards The board on screen is named, but the file it was saved to could not be changed. The output log says why.","dismiss":true}
+kept@500: renames sent [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read"}], not [{"boardId":"board-6","fileId":null,"name":"alice-1 - morning read","adoption":2}]

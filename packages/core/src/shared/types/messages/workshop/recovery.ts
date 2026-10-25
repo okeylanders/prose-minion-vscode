@@ -31,9 +31,25 @@ export const RECOVERABLE_WIDGET_RESPONSE_CONTRACTS = {
     id: 'lexical-gravity-preview-v2',
     intendedContentType: 'application/json',
     protocol: 'First-line ===LEXICAL_GRAVITY_PREVIEW_V2===, then JSON {version, semanticPositions, selectedDynamicId, openEntailment, text}, then final-line ===END_LEXICAL_GRAVITY_PREVIEW_V2===.'
+  },
+  'lightbox-readings': {
+    id: 'lightbox-reading-group-v1',
+    intendedContentType: 'application/json',
+    // The default only: every Lightbox capture names its own group's sentinels and blocks (`lightboxRecoveryContract`, Slice 4H).
+    protocol: 'First-line ===LIGHTBOX_GROUP_<group>_V1===, then JSON {version: 1, one block per lens the call requested, each with friction}, then final-line ===END_LIGHTBOX_GROUP_<group>_V1===.'
   }
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type RecoverableWidgetToolName = keyof typeof RECOVERABLE_WIDGET_RESPONSE_CONTRACTS;
-export type RejectedModelResponseContract = typeof RECOVERABLE_WIDGET_RESPONSE_CONTRACTS[RecoverableWidgetToolName];
+
+/**
+ * The contract a recovery sidecar records for its body. A tool's default is
+ * its entry above; a capture may name a narrower one for the request it
+ * made (a Lightbox group's own sentinels and blocks, Slice 4H).
+ */
+export interface RejectedModelResponseContract {
+  id: string;
+  intendedContentType: 'application/json' | 'text/plain';
+  protocol: string;
+}

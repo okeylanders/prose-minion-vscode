@@ -19,9 +19,11 @@
  *    that "1." begins a numbered step or that a phrase is a link, so the
  *    export restores both without changing layout.
  *
- * The page renders under `data-pm-surface="workshop"` on <body>, so the
- * mirrored selectors apply unchanged and the Workshop's pinned warm-dark
- * tokens resolve as they do in the editor.
+ * The page renders under `data-pm-surface="workshop"` and
+ * `data-pm-frame="fulltab"` on <body>, the same two stamps the editor tab's
+ * #root carries, so the mirrored selectors apply unchanged and the pinned
+ * warm-dark tokens resolve as they do in the editor. The full-tab frame
+ * layers (Lightbox Slice 1) come before the Workshop's, as in the webview.
  */
 
 export interface WorkshopTranscriptMirroredStyles {
@@ -238,9 +240,9 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
 `
   },
   {
-    source: 'styles/workshop/tokens.css',
+    source: 'styles/fulltab/tokens.css',
     css: `
-[data-pm-surface="workshop"] {
+[data-pm-frame="fulltab"] {
   --pm-bg:          #15110d;
   --pm-bg-grad-top: #211910;
   --pm-surface:     #221a13;
@@ -265,6 +267,47 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   --pm-pink:   #e0589e;
   --pm-amber:  #e2b24a;
   --pm-red:    #ef7d66;
+  --pm-r-card: 12px;
+  --pm-r-tile: 9px;
+  --pm-r-input: 8px;
+  --pm-r-button: 8px;
+  --pm-r-pill: 999px;
+  --pm-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --pm-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+}
+`
+  },
+  {
+    source: 'styles/fulltab/shell.css',
+    css: `
+[data-pm-frame="fulltab"] .pm-ws {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--pm-sans);
+  color: var(--pm-text);
+  background: var(--pm-bg);
+  background-image: linear-gradient(180deg, var(--pm-bg-grad-top) 0%, var(--pm-bg) 220px);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+[data-pm-frame="fulltab"] .pm-ws-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  margin: 0;
+}
+`
+  },
+  {
+    source: 'styles/workshop/tokens.css',
+    css: `
+[data-pm-surface="workshop"] {
   --pm-identity-0:  #ee7d49;
   --pm-identity-1:  #5aa2f0;
   --pm-identity-2:  #6fc98a;
@@ -277,41 +320,12 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   --pm-identity-9:  #7db7e8;
   --pm-identity-10: #d99a62;
   --pm-identity-11: #c69cf4;
-  --pm-r-card: 12px;
-  --pm-r-tile: 9px;
-  --pm-r-input: 8px;
-  --pm-r-button: 8px;
-  --pm-r-pill: 999px;
-  --pm-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --pm-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
 }
 `
   },
   {
     source: 'styles/workshop/shell.css',
     css: `
-[data-pm-surface="workshop"] .pm-ws {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  font-family: var(--pm-sans);
-  color: var(--pm-text);
-  background: var(--pm-bg);
-  background-image: linear-gradient(180deg, var(--pm-bg-grad-top) 0%, var(--pm-bg) 220px);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-[data-pm-surface="workshop"] .pm-ws-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--pm-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--pm-dim);
-  margin: 0;
-}
 [data-pm-surface="workshop"] .pm-ws-thread {
   flex: 1;
   min-height: 0;

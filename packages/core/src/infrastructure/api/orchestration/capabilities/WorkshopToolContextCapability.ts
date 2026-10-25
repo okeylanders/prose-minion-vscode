@@ -8,7 +8,7 @@ import {
 import { GuideMetadata, GuideRegistry } from '@/infrastructure/guides/GuideRegistry';
 import { GuideLoader } from '@/tools/shared/guides';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
-import { WorkshopConfiguredResourceRef } from '@messages';
+import { ConfiguredResourceRef } from '@messages';
 import {
   AgentCapability,
   CapabilityArtifact,
@@ -36,7 +36,7 @@ export interface WorkshopToolContextCapabilityInput {
    * resolution stamped one. Unconfigured or ambiguous sources arrive as
    * undefined and fail safe: the catalog simply offers no project entries.
    */
-  source?: WorkshopConfiguredResourceRef;
+  source?: ConfiguredResourceRef;
   /** Honor the writer's craft-guides toggle; source access is orthogonal to it. */
   includeGuides: boolean;
 }

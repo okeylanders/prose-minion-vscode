@@ -1,0 +1,207 @@
+fresh-runline@1440: the run press says "Read the chapter", not "Run AI analyses"
+one-call-runline@1440: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
+one-call-runline@1440: the run press "Finish" is not in the primary style
+one-call-runline@1440: the run press "Finish" has no sparkle
+read-runline@1440: the run press says "Re-read7 calls · est. $0.33 · the Opinion up to its digest bound", not "Re-analyze"
+read-runline@1440: the run press "Re-analyze" is not in the primary style
+read-runline@1440: the run press "Re-analyze" has no sparkle
+fresh-widgets@1440: Motifs · where they recur: 0 controls, not 1
+fresh-widgets@1440: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+fresh-widgets@1440: Palette: 0 controls, not 1
+fresh-widgets@1440: Characters · the vibes they give: 0 controls, not 1
+fresh-widgets@1440: Lineage · adjacent stories: 0 controls, not 1
+fresh-widgets@1440: Genre neighborhood: 0 controls, not 1
+fresh-widgets@1440: Voice: 0 controls, not 1
+fresh-widgets@1440: Subtext · said and meant: 0 controls, not 1
+fresh-widgets@1440: Stock & signature: 0 controls, not 1
+fresh-widgets@1440: Rhythm & handoffs: 0 controls, not 1
+fresh-widgets@1440: What stands out in the numbers: 0 controls, not 1
+fresh-widgets@1440: Craft steering: 0 controls, not 1
+fresh-widgets@1440: Summary & movements: 0 controls, not 1
+fresh-widgets@1440: Template & freshness: 0 controls, not 1
+fresh-widgets@1440: Pressure: 0 controls, not 1
+fresh-widgets@1440: Artifacts: 0 controls, not 1
+one-call-widgets@1440: Motifs · where they recur: 0 controls, not 1
+one-call-widgets@1440: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+one-call-widgets@1440: Palette: 0 controls, not 1
+one-call-widgets@1440: Characters · the vibes they give: 0 controls, not 1
+one-call-widgets@1440: Lineage · adjacent stories: 0 controls, not 1
+one-call-widgets@1440: Genre neighborhood: 0 controls, not 1
+one-call-widgets@1440: Voice: 0 controls, not 1
+one-call-widgets@1440: Subtext · said and meant: 0 controls, not 1
+one-call-widgets@1440: Stock & signature: 0 controls, not 1
+one-call-widgets@1440: Rhythm & handoffs: 0 controls, not 1
+one-call-widgets@1440: What stands out in the numbers: 0 controls, not 1
+one-call-widgets@1440: Craft steering: 0 controls, not 1
+one-call-widgets@1440: Summary & movements: 0 controls, not 1
+one-call-widgets@1440: Template & freshness: 0 controls, not 1
+one-call-widgets@1440: Pressure: 0 controls, not 1
+one-call-widgets@1440: Artifacts: 0 controls, not 1
+one-call-widgets@1440: no control for the motif widget to press
+analyzing-widgets@1440: the run note says "Reading… 0 of 1 lens group back"
+analyzing-widgets@1440: Motifs · where they recur: 0 controls, not 1
+analyzing-widgets@1440: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+analyzing-widgets@1440: Palette: 0 controls, not 1
+analyzing-widgets@1440: Characters · the vibes they give: 0 controls, not 1
+analyzing-widgets@1440: Lineage · adjacent stories: 0 controls, not 1
+analyzing-widgets@1440: Genre neighborhood: 0 controls, not 1
+analyzing-widgets@1440: Voice: 0 controls, not 1
+analyzing-widgets@1440: Subtext · said and meant: 0 controls, not 1
+analyzing-widgets@1440: Stock & signature: 0 controls, not 1
+analyzing-widgets@1440: Rhythm & handoffs: 0 controls, not 1
+analyzing-widgets@1440: What stands out in the numbers: 0 controls, not 1
+analyzing-widgets@1440: Craft steering: 0 controls, not 1
+analyzing-widgets@1440: Summary & movements: 0 controls, not 1
+analyzing-widgets@1440: Template & freshness: 0 controls, not 1
+analyzing-widgets@1440: Pressure: 0 controls, not 1
+analyzing-widgets@1440: Artifacts: 0 controls, not 1
+analyzing-widgets@1440: no control for the voice widget to press
+fresh-opinion@1440: Opinion: 0 controls, not 1
+fresh-opinion@1440: the Opinion's Analyze does not show the host's reason: undefined
+one-call-lenses@1440: the calls listed are []
+analyzing-lenses@1440: the calls listed are []
+opinion-reading@1440: Opinion: 0 controls, not 1
+opinion-reading@1440: the earlier Opinion is not drawn
+opinion-reading@1440: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1440: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1440: Opinion: 0 controls, not 1
+opinion-kept@1440: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+headline-rerun@1440: the read headline has 0 Analyze controls, not 1
+fresh-runline@1000: the run press says "Read the chapter", not "Run AI analyses"
+one-call-runline@1000: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
+one-call-runline@1000: the run press "Finish" is not in the primary style
+one-call-runline@1000: the run press "Finish" has no sparkle
+read-runline@1000: the run press says "Re-read7 calls · est. $0.33 · the Opinion up to its digest bound", not "Re-analyze"
+read-runline@1000: the run press "Re-analyze" is not in the primary style
+read-runline@1000: the run press "Re-analyze" has no sparkle
+fresh-widgets@1000: Motifs · where they recur: 0 controls, not 1
+fresh-widgets@1000: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+fresh-widgets@1000: Palette: 0 controls, not 1
+fresh-widgets@1000: Characters · the vibes they give: 0 controls, not 1
+fresh-widgets@1000: Lineage · adjacent stories: 0 controls, not 1
+fresh-widgets@1000: Genre neighborhood: 0 controls, not 1
+fresh-widgets@1000: Voice: 0 controls, not 1
+fresh-widgets@1000: Subtext · said and meant: 0 controls, not 1
+fresh-widgets@1000: Stock & signature: 0 controls, not 1
+fresh-widgets@1000: Rhythm & handoffs: 0 controls, not 1
+fresh-widgets@1000: What stands out in the numbers: 0 controls, not 1
+fresh-widgets@1000: Craft steering: 0 controls, not 1
+fresh-widgets@1000: Summary & movements: 0 controls, not 1
+fresh-widgets@1000: Template & freshness: 0 controls, not 1
+fresh-widgets@1000: Pressure: 0 controls, not 1
+fresh-widgets@1000: Artifacts: 0 controls, not 1
+one-call-widgets@1000: Motifs · where they recur: 0 controls, not 1
+one-call-widgets@1000: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+one-call-widgets@1000: Palette: 0 controls, not 1
+one-call-widgets@1000: Characters · the vibes they give: 0 controls, not 1
+one-call-widgets@1000: Lineage · adjacent stories: 0 controls, not 1
+one-call-widgets@1000: Genre neighborhood: 0 controls, not 1
+one-call-widgets@1000: Voice: 0 controls, not 1
+one-call-widgets@1000: Subtext · said and meant: 0 controls, not 1
+one-call-widgets@1000: Stock & signature: 0 controls, not 1
+one-call-widgets@1000: Rhythm & handoffs: 0 controls, not 1
+one-call-widgets@1000: What stands out in the numbers: 0 controls, not 1
+one-call-widgets@1000: Craft steering: 0 controls, not 1
+one-call-widgets@1000: Summary & movements: 0 controls, not 1
+one-call-widgets@1000: Template & freshness: 0 controls, not 1
+one-call-widgets@1000: Pressure: 0 controls, not 1
+one-call-widgets@1000: Artifacts: 0 controls, not 1
+one-call-widgets@1000: no control for the motif widget to press
+analyzing-widgets@1000: the run note says "Reading… 0 of 1 lens group back"
+analyzing-widgets@1000: Motifs · where they recur: 0 controls, not 1
+analyzing-widgets@1000: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+analyzing-widgets@1000: Palette: 0 controls, not 1
+analyzing-widgets@1000: Characters · the vibes they give: 0 controls, not 1
+analyzing-widgets@1000: Lineage · adjacent stories: 0 controls, not 1
+analyzing-widgets@1000: Genre neighborhood: 0 controls, not 1
+analyzing-widgets@1000: Voice: 0 controls, not 1
+analyzing-widgets@1000: Subtext · said and meant: 0 controls, not 1
+analyzing-widgets@1000: Stock & signature: 0 controls, not 1
+analyzing-widgets@1000: Rhythm & handoffs: 0 controls, not 1
+analyzing-widgets@1000: What stands out in the numbers: 0 controls, not 1
+analyzing-widgets@1000: Craft steering: 0 controls, not 1
+analyzing-widgets@1000: Summary & movements: 0 controls, not 1
+analyzing-widgets@1000: Template & freshness: 0 controls, not 1
+analyzing-widgets@1000: Pressure: 0 controls, not 1
+analyzing-widgets@1000: Artifacts: 0 controls, not 1
+analyzing-widgets@1000: no control for the voice widget to press
+fresh-opinion@1000: Opinion: 0 controls, not 1
+fresh-opinion@1000: the Opinion's Analyze does not show the host's reason: undefined
+one-call-lenses@1000: the calls listed are []
+analyzing-lenses@1000: the calls listed are []
+opinion-reading@1000: Opinion: 0 controls, not 1
+opinion-reading@1000: the earlier Opinion is not drawn
+opinion-reading@1000: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@1000: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@1000: Opinion: 0 controls, not 1
+opinion-kept@1000: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+headline-rerun@1000: the read headline has 0 Analyze controls, not 1
+fresh-runline@500: the run press says "Read the chapter", not "Run AI analyses"
+one-call-runline@500: the run press says "Read the rest6 calls · est. $0.30 · the Opinion up to its digest bound", not "Finish"
+one-call-runline@500: the run press "Finish" is not in the primary style
+one-call-runline@500: the run press "Finish" has no sparkle
+read-runline@500: the run press says "Re-read7 calls · est. $0.33 · the Opinion up to its digest bound", not "Re-analyze"
+read-runline@500: the run press "Re-analyze" is not in the primary style
+read-runline@500: the run press "Re-analyze" has no sparkle
+fresh-widgets@500: Motifs · where they recur: 0 controls, not 1
+fresh-widgets@500: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+fresh-widgets@500: Palette: 0 controls, not 1
+fresh-widgets@500: Characters · the vibes they give: 0 controls, not 1
+fresh-widgets@500: Lineage · adjacent stories: 0 controls, not 1
+fresh-widgets@500: Genre neighborhood: 0 controls, not 1
+fresh-widgets@500: Voice: 0 controls, not 1
+fresh-widgets@500: Subtext · said and meant: 0 controls, not 1
+fresh-widgets@500: Stock & signature: 0 controls, not 1
+fresh-widgets@500: Rhythm & handoffs: 0 controls, not 1
+fresh-widgets@500: What stands out in the numbers: 0 controls, not 1
+fresh-widgets@500: Craft steering: 0 controls, not 1
+fresh-widgets@500: Summary & movements: 0 controls, not 1
+fresh-widgets@500: Template & freshness: 0 controls, not 1
+fresh-widgets@500: Pressure: 0 controls, not 1
+fresh-widgets@500: Artifacts: 0 controls, not 1
+one-call-widgets@500: Motifs · where they recur: 0 controls, not 1
+one-call-widgets@500: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+one-call-widgets@500: Palette: 0 controls, not 1
+one-call-widgets@500: Characters · the vibes they give: 0 controls, not 1
+one-call-widgets@500: Lineage · adjacent stories: 0 controls, not 1
+one-call-widgets@500: Genre neighborhood: 0 controls, not 1
+one-call-widgets@500: Voice: 0 controls, not 1
+one-call-widgets@500: Subtext · said and meant: 0 controls, not 1
+one-call-widgets@500: Stock & signature: 0 controls, not 1
+one-call-widgets@500: Rhythm & handoffs: 0 controls, not 1
+one-call-widgets@500: What stands out in the numbers: 0 controls, not 1
+one-call-widgets@500: Craft steering: 0 controls, not 1
+one-call-widgets@500: Summary & movements: 0 controls, not 1
+one-call-widgets@500: Template & freshness: 0 controls, not 1
+one-call-widgets@500: Pressure: 0 controls, not 1
+one-call-widgets@500: Artifacts: 0 controls, not 1
+one-call-widgets@500: no control for the motif widget to press
+analyzing-widgets@500: the run note says "Reading… 0 of 1 lens group back"
+analyzing-widgets@500: Motifs · where they recur: 0 controls, not 1
+analyzing-widgets@500: Lexical gravity · borrowed fields the prose leans on: 0 controls, not 1
+analyzing-widgets@500: Palette: 0 controls, not 1
+analyzing-widgets@500: Characters · the vibes they give: 0 controls, not 1
+analyzing-widgets@500: Lineage · adjacent stories: 0 controls, not 1
+analyzing-widgets@500: Genre neighborhood: 0 controls, not 1
+analyzing-widgets@500: Voice: 0 controls, not 1
+analyzing-widgets@500: Subtext · said and meant: 0 controls, not 1
+analyzing-widgets@500: Stock & signature: 0 controls, not 1
+analyzing-widgets@500: Rhythm & handoffs: 0 controls, not 1
+analyzing-widgets@500: What stands out in the numbers: 0 controls, not 1
+analyzing-widgets@500: Craft steering: 0 controls, not 1
+analyzing-widgets@500: Summary & movements: 0 controls, not 1
+analyzing-widgets@500: Template & freshness: 0 controls, not 1
+analyzing-widgets@500: Pressure: 0 controls, not 1
+analyzing-widgets@500: Artifacts: 0 controls, not 1
+analyzing-widgets@500: no control for the voice widget to press
+fresh-opinion@500: Opinion: 0 controls, not 1
+fresh-opinion@500: the Opinion's Analyze does not show the host's reason: undefined
+one-call-lenses@500: the calls listed are []
+analyzing-lenses@500: the calls listed are []
+opinion-reading@500: Opinion: 0 controls, not 1
+opinion-reading@500: the earlier Opinion is not drawn
+opinion-reading@500: the Opinion shows a skeleton in place of the earlier one
+opinion-reading@500: the Opinion's notes are [], not "Analyzing… This is the earlier Opinion until the new one lands."
+opinion-kept@500: Opinion: 0 controls, not 1
+opinion-kept@500: the Opinion's notes are ["The call failed before a reading came back. Press Finish or Analyze to try again."], not "The new Opinion did not land, so the earlier one stays. The call failed before a reading came back. Press Finish or Analyze to try again."
+headline-rerun@500: the read headline has 0 Analyze controls, not 1

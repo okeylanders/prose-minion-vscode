@@ -63,13 +63,14 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 11 flat domains + Workshop feature family
+│       └── domain/                     # 12 flat domains (incl. LightboxHandler, with LightboxReadingHandler beside it) + Workshop feature family
 │           └── workshop/               # Room owner, 5 shared slices, 3 widget owners
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
 │   ├── api/           # OpenRouter: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService; readings (prompts, codec incl. gravity/palette, quote verifier, term and field counts, runner, estimate, stale carry-over, handoff checks)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/       # React webview UI
 │   └── webview/       # Components + domain hooks
@@ -148,12 +149,13 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
+| `useLightbox` | `LightboxHandler`, `LightboxReadingHandler` | Lightbox counted board, readings and the Build-as-a-lens handoff (ADR 2026-10-19) |
 | `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
 | `useWorkshopWidgetHost` | `WorkshopWidgetHostHandler` | Config lookup and the family-generic one-shot commit route |
 | `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation and correlation |
 | `useCreativeVariations` | `WorkshopCreativeVariationsHandler` | Creative generation and correlation; the authoring controller owns writer choices |
-| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
+| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows, and Build lens opened from a Lightbox seed |
 | `useShowVsTell` | `WorkshopShowVsTellHandler` | Show vs. Tell generation and correlation; the authoring controller (`controllers/showVsTell/`) owns writer choices |
 | `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
@@ -274,8 +276,11 @@ Workshop is internally sliced under `application/handlers/domain/workshop/`.
 `WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
 the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
 and registers the context, excerpt/scope, session, todo, standing-directive,
-widget-host, Gesture Playground, Creative Variations, Lexical Gravity, and Show
-vs. Tell route owners behind the shared session-operation mutation gate.
+widget-host, Gesture Playground, Creative Variations, Lexical Gravity, Show
+vs. Tell and Lightbox-tile route owners behind the shared session-operation
+mutation gate. A seed handed over from another tab (a Build lens subject, a
+Lightbox tile) reaches its owner only through the panel provider's
+claim-before-open delivery (ADR 2026-10-19 D11).
 `WorkshopWidgetHostHandler` owns the single family commit route, while
 `WorkshopOneShotWidgetCommitCoordinator` owns retry-config, turn/artifact
 acceptance, and linkage mechanics; named feature compilers retain feature
@@ -302,6 +307,8 @@ workshop/
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── recovery.ts              # Rejected response repair-contract registry
+├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
+├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 

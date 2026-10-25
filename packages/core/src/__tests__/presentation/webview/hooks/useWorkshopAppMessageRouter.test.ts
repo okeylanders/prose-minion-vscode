@@ -2,6 +2,7 @@ import {
   buildWorkshopAppMessageRoutes,
   WorkshopAppMessageRouterDeps
 } from '@hooks/useWorkshopAppMessageRouter';
+import { buildFullTabChromeRoutes } from '@hooks/fulltab/useFullTabChrome';
 import { MessageType, WorkshopWidgetActionResultMessage } from '@messages';
 
 const makeDeps = (): WorkshopAppMessageRouterDeps => ({
@@ -38,7 +39,14 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleLensesData: jest.fn(),
     handlePreviewResult: jest.fn(),
     handleCandidates: jest.fn(),
-    handleLensesSaved: jest.fn()
+    handleLensesSaved: jest.fn(),
+    handleBuildSeed: jest.fn(),
+    handleSeedClaimResult: jest.fn()
+  } as never,
+  lightboxTiles: {
+    handleTileOffered: jest.fn(),
+    handleSeedClaimResult: jest.fn(),
+    handleTileStaged: jest.fn()
   } as never,
   creativeVariations: {
     handleGenerationProgress: jest.fn(),
@@ -59,12 +67,14 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
-  modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() } as never,
-  tokenTracking: { handleTokenUsageUpdate: jest.fn() } as never,
-  accountBalance: { handleAccountBalanceData: jest.fn() } as never,
+  chrome: {
+    modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() },
+    tokenTracking: { handleTokenUsageUpdate: jest.fn() },
+    accountBalance: { handleAccountBalanceData: jest.fn() },
+    handleApiKeyStatus: jest.fn(),
+    handleApiKeyConfigured: jest.fn()
+  },
   startupNotice: { handleStartupNoticeData: jest.fn() } as never,
-  handleApiKeyStatus: jest.fn(),
-  handleApiKeyConfigured: jest.fn(),
   handleStatusMessage: jest.fn(),
   handleErrorMessage: jest.fn(),
   handleCopyResultSuccess: jest.fn(),
@@ -218,7 +228,18 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     routes[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]!(message as never);
 
-    expect(deps.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
+    expect(deps.chrome.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves every shared full-tab chrome route unshadowed by a Workshop route', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const chromeRoutes = buildFullTabChromeRoutes(deps.chrome);
+
+    expect(Object.keys(chromeRoutes).length).toBeGreaterThan(0);
+    for (const [type, handler] of Object.entries(chromeRoutes)) {
+      expect(routes[type as MessageType]).toBe(handler);
+    }
   });
 
   it('routes Creative generation and exact subject intake to their named owners', () => {
@@ -260,5 +281,33 @@ describe('buildWorkshopAppMessageRoutes', () => {
       .toHaveBeenCalledWith(selection);
     expect(deps.excerptVerify.handleSelectionData).not.toHaveBeenCalled();
     expect(deps.creativeVariations.handleGenerationProgress).toHaveBeenCalledWith(progress);
+  });
+
+  it('routes each seed kind\'s claim result to its own receiver only (Lightbox Slice 4)', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const result = (kind: string) => ({
+      type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { kind, deliveryId: `${kind}-1`, granted: true }
+    });
+    const lexical = deps.lexicalGravity.handleSeedClaimResult as jest.Mock;
+    const tiles = deps.lightboxTiles.handleSeedClaimResult as jest.Mock;
+
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('lightbox-tile') as never);
+    expect(tiles).toHaveBeenCalledTimes(1);
+    expect(lexical).not.toHaveBeenCalled();
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('lexical-gravity-build') as never);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(tiles).toHaveBeenCalledTimes(1);
+    // A kind nobody receives reaches nobody, including a prototype key.
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('toString') as never);
+    routes[MessageType.WORKSHOP_SEED_CLAIM_RESULT]!(result('another-kind') as never);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(tiles).toHaveBeenCalledTimes(1);
+
+    expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]).toBe(deps.lightboxTiles.handleTileOffered);
+    expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]).toBe(deps.lightboxTiles.handleTileStaged);
   });
 });

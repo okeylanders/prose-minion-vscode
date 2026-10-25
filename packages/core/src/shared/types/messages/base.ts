@@ -48,6 +48,8 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum.
+  OPEN_LIGHTBOX = 'open_lightbox',
   OPEN_ASSISTANT_SETTINGS = 'open_assistant_settings',
   REQUEST_STARTUP_NOTICE = 'request_startup_notice',
   STARTUP_NOTICE_DATA = 'startup_notice_data',
@@ -190,6 +192,21 @@ export enum MessageType {
   WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES = 'workshop_lexical_gravity_lens_candidates',
   WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES = 'workshop_save_lexical_gravity_lenses',
   WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED = 'workshop_lexical_gravity_lenses_saved',
+  // Build lens from a seed handed over by another tab (Lightbox, ADR 2026-10-19 D11)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD = 'workshop_open_lexical_gravity_build',
+  WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED = 'workshop_lexical_gravity_build_seed',
+  // Seed delivery: claim before opening, then answer (PR #150 F-03)
+  WORKSHOP_SEED_CLAIM = 'workshop_seed_claim',
+  WORKSHOP_SEED_CLAIM_RESULT = 'workshop_seed_claim_result',
+  WORKSHOP_SEED_ANSWER = 'workshop_seed_answer',
+  WORKSHOP_SEED_RECEIVER = 'workshop_seed_receiver',
+  // A Lightbox tile staged above the composer, through seed delivery (Lightbox Slice 4)
+  WORKSHOP_STAGE_LIGHTBOX_TILE = 'workshop_stage_lightbox_tile',
+  WORKSHOP_LIGHTBOX_TILE_OFFERED = 'workshop_lightbox_tile_offered',
+  WORKSHOP_ACCEPT_LIGHTBOX_TILE = 'workshop_accept_lightbox_tile',
+  WORKSHOP_LIGHTBOX_TILE_STAGED = 'workshop_lightbox_tile_staged',
+  /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
   WORKSHOP_WIDGET_CONFIG_RESTORED = 'workshop_widget_config_restored',
@@ -199,7 +216,56 @@ export enum MessageType {
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
   CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request',
   CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request',
-  CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request'
+  CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request',
+
+  // Lightbox editor tab (ADR 2026-10-19 D10; Slice 2A counted board, Slice 2B readings)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  LIGHTBOX_REQUEST_BOARD = 'lightbox_request_board',
+  LIGHTBOX_SET_SOURCE = 'lightbox_set_source',
+  LIGHTBOX_PICK_SOURCE_FILE = 'lightbox_pick_source_file',
+  LIGHTBOX_REFRESH_SOURCE = 'lightbox_refresh_source',
+  LIGHTBOX_DISMISS_REFUSAL = 'lightbox_dismiss_refusal',
+  LIGHTBOX_BOARD = 'lightbox_board',
+  LIGHTBOX_SOURCE_REFUSED = 'lightbox_source_refused',
+  // Slice 2B readings: lenses, estimate, runs, and context files
+  LIGHTBOX_SET_LENSES = 'lightbox_set_lenses',
+  LIGHTBOX_RUN_ESTIMATE = 'lightbox_run_estimate',
+  LIGHTBOX_RUN = 'lightbox_run',
+  LIGHTBOX_CANCEL_RUN = 'lightbox_cancel_run',
+  LIGHTBOX_RUN_PROGRESS = 'lightbox_run_progress',
+  LIGHTBOX_GROUP_RESULT = 'lightbox_group_result',
+  LIGHTBOX_ADD_CONTEXT_FILES = 'lightbox_add_context_files',
+  LIGHTBOX_REMOVE_CONTEXT_FILE = 'lightbox_remove_context_file',
+  LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files',
+  // Slice 3: handoffs to the Workshop, through its own message path (D11)
+  LIGHTBOX_HAND_OFF = 'lightbox_hand_off',
+  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result',
+  // Slice 4: the Spark lane's "Not for me" and its Undo
+  LIGHTBOX_SET_SPARK_DISMISSED = 'lightbox_set_spark_dismissed',
+  // Slice 4: the tiles waiting above the Workshop composer, and the way there
+  LIGHTBOX_WORKSHOP_TRAY = 'lightbox_workshop_tray',
+  LIGHTBOX_OPEN_WORKSHOP = 'lightbox_open_workshop',
+  // Source picker (2026-10-20): the shared project picker over the configured catalog
+  LIGHTBOX_REQUEST_PROJECT_CATALOG = 'lightbox_request_project_catalog',
+  LIGHTBOX_PROJECT_CATALOG = 'lightbox_project_catalog',
+  LIGHTBOX_SEARCH_PROJECT_CATALOG = 'lightbox_search_project_catalog',
+  LIGHTBOX_PROJECT_CATALOG_SEARCH_RESULTS = 'lightbox_project_catalog_search_results',
+  LIGHTBOX_CHOOSE_PROJECT_SOURCE = 'lightbox_choose_project_source',
+  // Context from the project picker (2026-10-20); answered by LIGHTBOX_CONTEXT_FILES
+  LIGHTBOX_ADD_PROJECT_CONTEXT = 'lightbox_add_project_context',
+  // Slice 4E: the text a pinned paragraph or counted item stands in, by request id
+  LIGHTBOX_REQUEST_PASSAGE = 'lightbox_request_passage',
+  LIGHTBOX_PASSAGE = 'lightbox_passage',
+  // Saved boards (Slice 5A, ADR 2026-10-19 D12 addendum): the rail's shelf, open and delete
+  LIGHTBOX_REQUEST_BOARDS = 'lightbox_request_boards',
+  LIGHTBOX_BOARDS = 'lightbox_boards',
+  LIGHTBOX_OPEN_BOARD = 'lightbox_open_board',
+  LIGHTBOX_DELETE_BOARD = 'lightbox_delete_board',
+  // Slice 5A.1: name a saved board, or the board on screen; answered with LIGHTBOX_BOARDS
+  LIGHTBOX_RENAME_BOARD = 'lightbox_rename_board',
+  // Slice 5A.2: open a board file the writer picks with the system picker; answered with LIGHTBOX_BOARDS
+  LIGHTBOX_OPEN_BOARD_FILE = 'lightbox_open_board_file'
+  /* eslint-enable @typescript-eslint/naming-convention */
 }
 
 export interface BaseMessage {

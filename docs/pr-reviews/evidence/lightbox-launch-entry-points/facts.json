@@ -1,0 +1,143 @@
+{
+  "sidebar-analysis@430": {
+    "title": {
+      "x": 16,
+      "y": 314,
+      "width": 151,
+      "height": 56
+    },
+    "launchers": [
+      {
+        "label": "Workshop",
+        "title": "Open the Workshop editor tab",
+        "box": {
+          "x": 179,
+          "y": 320,
+          "width": 119,
+          "height": 44
+        }
+      },
+      {
+        "label": "Lightbox",
+        "title": "Open the Lightbox editor tab",
+        "box": {
+          "x": 304,
+          "y": 320,
+          "width": 110,
+          "height": 44
+        }
+      }
+    ],
+    "sourceEmpty": null,
+    "welcome": null,
+    "horizontalOverflow": false,
+    "postedOnLightboxPress": [
+      {
+        "type": "open_lightbox",
+        "source": "webview.analysis.tab",
+        "payload": {}
+      }
+    ]
+  },
+  "sidebar-analysis@560": {
+    "title": {
+      "x": 16,
+      "y": 304,
+      "width": 281,
+      "height": 28
+    },
+    "launchers": [
+      {
+        "label": "Workshop",
+        "title": "Open the Workshop editor tab",
+        "box": {
+          "x": 309,
+          "y": 296,
+          "width": 119,
+          "height": 44
+        }
+      },
+      {
+        "label": "Lightbox",
+        "title": "Open the Lightbox editor tab",
+        "box": {
+          "x": 434,
+          "y": 296,
+          "width": 110,
+          "height": 44
+        }
+      }
+    ],
+    "sourceEmpty": null,
+    "welcome": null,
+    "horizontalOverflow": false,
+    "postedOnLightboxPress": [
+      {
+        "type": "open_lightbox",
+        "source": "webview.analysis.tab",
+        "payload": {}
+      }
+    ]
+  },
+  "sidebar-analysis@320": {
+    "title": {
+      "x": 16,
+      "y": 373,
+      "width": 288,
+      "height": 28
+    },
+    "launchers": [
+      {
+        "label": "Workshop",
+        "title": "Open the Workshop editor tab",
+        "box": {
+          "x": 69,
+          "y": 409,
+          "width": 119,
+          "height": 44
+        }
+      },
+      {
+        "label": "Lightbox",
+        "title": "Open the Lightbox editor tab",
+        "box": {
+          "x": 194,
+          "y": 409,
+          "width": 110,
+          "height": 44
+        }
+      }
+    ],
+    "sourceEmpty": null,
+    "welcome": null,
+    "horizontalOverflow": false,
+    "postedOnLightboxPress": [
+      {
+        "type": "open_lightbox",
+        "source": "webview.analysis.tab",
+        "payload": {}
+      }
+    ]
+  },
+  "lightbox-empty@1440": {
+    "title": null,
+    "launchers": [],
+    "sourceEmpty": "No source yet. Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
+    "welcome": "Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
+    "horizontalOverflow": false
+  },
+  "lightbox-empty@1000": {
+    "title": null,
+    "launchers": [],
+    "sourceEmpty": "No source yet. Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
+    "welcome": "Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
+    "horizontalOverflow": false
+  },
+  "lightbox-empty@500": {
+    "title": null,
+    "launchers": [],
+    "sourceEmpty": "No source yet. Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox.",
+    "welcome": "Choose a file, right-click a chapter and pick Open File in Lightbox, or select a passage and run Open Selection in Lightbox. The counted board appears at once and costs nothing: no model is asked.",
+    "horizontalOverflow": false
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "menu@1440": {
+    "elements": 58,
+    "markup": "identical",
+    "markupSha256": "3e36d59a9eeec6ff1ef32c97fa33b39faace827c62406550f13835f6ee66d7a1",
+    "computedStyles": "identical",
+    "styleSha256": "e9005483441e3d2e6f6450a6ae5c3e3a9d7095feb34b4799fa4a6eb1961b45af",
+    "boxes": "identical",
+    "focused": {
+      "before": "New session⌘⇧N",
+      "after": "New session⌘⇧N"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser@1440": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "96b4f206651a704113252c68e7f50efce5dd96736c137e2a6617d4ba65f05e30",
+    "computedStyles": "identical",
+    "styleSha256": "e3b0407909401472d1dd1a431e3f7f69a9668511597b760f5fd8152854af1a55",
+    "boxes": "identical",
+    "focused": {
+      "before": "Search session names and content",
+      "after": "Search session names and content"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-excerpt@1440": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "2041f4417affd5ad06aec35bc87305e85b39109871bb47569b0b1ef194575484",
+    "computedStyles": "identical",
+    "styleSha256": "425b0030324a591de40dd9bbc8e9c09b1b94cb5609dc79feafe7bfaab82847fe",
+    "boxes": "identical",
+    "focused": {
+      "before": "Excerpt",
+      "after": "Excerpt"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-rename@1440": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "3b0ec0ba2f7e38609165fd75ec93008583f5997aa83f7a503ff1192f21e28cd5",
+    "computedStyles": "identical",
+    "styleSha256": "9961ac1502e4b70dd6b21347fc49d9957fd0b39043917e969a486bc32d28de4e",
+    "boxes": "identical",
+    "focused": {
+      "before": "Rename session",
+      "after": "Rename session"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-delete@1440": {
+    "elements": 239,
+    "markup": "identical",
+    "markupSha256": "55595c1a958958fdc126317c9431fdbd50c1a651383d472b0d2f9043758fb9eb",
+    "computedStyles": "identical",
+    "styleSha256": "2e90c61f25f0c03fe752e0b506e6a945898d9a3b23895b88828d0df3ad52ceae",
+    "boxes": "identical",
+    "focused": {
+      "before": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe",
+      "after": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "menu@1000": {
+    "elements": 58,
+    "markup": "identical",
+    "markupSha256": "3e36d59a9eeec6ff1ef32c97fa33b39faace827c62406550f13835f6ee66d7a1",
+    "computedStyles": "identical",
+    "styleSha256": "e9005483441e3d2e6f6450a6ae5c3e3a9d7095feb34b4799fa4a6eb1961b45af",
+    "boxes": "identical",
+    "focused": {
+      "before": "New session⌘⇧N",
+      "after": "New session⌘⇧N"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser@1000": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "96b4f206651a704113252c68e7f50efce5dd96736c137e2a6617d4ba65f05e30",
+    "computedStyles": "identical",
+    "styleSha256": "5641624c4a6e6a97c3ee2468a97e363c92612c61bcddfe11fd54622be80716b7",
+    "boxes": "identical",
+    "focused": {
+      "before": "Search session names and content",
+      "after": "Search session names and content"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-excerpt@1000": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "2041f4417affd5ad06aec35bc87305e85b39109871bb47569b0b1ef194575484",
+    "computedStyles": "identical",
+    "styleSha256": "fdef5d1d112dea1d6254bc4d1be2bcc21eda259bcf7677d1badf4b7a25648ec1",
+    "boxes": "identical",
+    "focused": {
+      "before": "Excerpt",
+      "after": "Excerpt"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-rename@1000": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "3b0ec0ba2f7e38609165fd75ec93008583f5997aa83f7a503ff1192f21e28cd5",
+    "computedStyles": "identical",
+    "styleSha256": "f4bd00d7fcc1770eb464ff70c1cccd7952f0625c044c0f50b6891ba5d47cc579",
+    "boxes": "identical",
+    "focused": {
+      "before": "Rename session",
+      "after": "Rename session"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-delete@1000": {
+    "elements": 239,
+    "markup": "identical",
+    "markupSha256": "55595c1a958958fdc126317c9431fdbd50c1a651383d472b0d2f9043758fb9eb",
+    "computedStyles": "identical",
+    "styleSha256": "943a870e5d5374d42aeb83eaaf46ba29647cd2335cadfd580b69acad59ca8150",
+    "boxes": "identical",
+    "focused": {
+      "before": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe",
+      "after": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "menu@500": {
+    "elements": 58,
+    "markup": "identical",
+    "markupSha256": "3e36d59a9eeec6ff1ef32c97fa33b39faace827c62406550f13835f6ee66d7a1",
+    "computedStyles": "identical",
+    "styleSha256": "b0e637403ea4e5fef4cab03e3e4bc8b86f17fbde403571a2e98b6f61d59718fd",
+    "boxes": "identical",
+    "focused": {
+      "before": "New session⌘⇧N",
+      "after": "New session⌘⇧N"
+    },
+    "offscreen": {
+      "before": true,
+      "after": true
+    }
+  },
+  "browser@500": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "96b4f206651a704113252c68e7f50efce5dd96736c137e2a6617d4ba65f05e30",
+    "computedStyles": "identical",
+    "styleSha256": "f5dedf80ef50d94e5ad2cc302e04a7dcb06ad1d57e8e3dff71b1abccfee69830",
+    "boxes": "identical",
+    "focused": {
+      "before": "Search session names and content",
+      "after": "Search session names and content"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-excerpt@500": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "2041f4417affd5ad06aec35bc87305e85b39109871bb47569b0b1ef194575484",
+    "computedStyles": "identical",
+    "styleSha256": "a76ddcdd19326dfa2fac59411b81376a28c1bc55f6be08fe2596c9d14db271ad",
+    "boxes": "identical",
+    "focused": {
+      "before": "Excerpt",
+      "after": "Excerpt"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-rename@500": {
+    "elements": 250,
+    "markup": "identical",
+    "markupSha256": "3b0ec0ba2f7e38609165fd75ec93008583f5997aa83f7a503ff1192f21e28cd5",
+    "computedStyles": "identical",
+    "styleSha256": "7159a07ba1b210cdfb7732e2d654a236fa199c287afb0f62f929552ada8263bf",
+    "boxes": "identical",
+    "focused": {
+      "before": "Rename session",
+      "after": "Rename session"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  },
+  "browser-delete@500": {
+    "elements": 239,
+    "markup": "identical",
+    "markupSha256": "55595c1a958958fdc126317c9431fdbd50c1a651383d472b0d2f9043758fb9eb",
+    "computedStyles": "identical",
+    "styleSha256": "05ef97632c14e5ffd5d8d3a82524d8bbb240028ae9f4e40794f2979e2c7e98dc",
+    "boxes": "identical",
+    "focused": {
+      "before": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe",
+      "after": "Prose Minion · AssistantWorkshop No excerpt pinned yetJillSe"
+    },
+    "offscreen": {
+      "before": false,
+      "after": false
+    }
+  }
+}

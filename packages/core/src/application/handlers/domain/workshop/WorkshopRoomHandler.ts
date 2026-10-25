@@ -100,6 +100,7 @@ import {
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -1016,6 +1017,8 @@ export class WorkshopRoomHandler {
     const roomThreadArtifacts: WorkshopThreadArtifactFrameInput[] =
       messageAttachments.map((attachment) => ({
         id: attachment.id,
+        // A Lightbox tile's frame says what it is (Slice 4); a file's has no kind.
+        ...withMessageAttachmentKind(attachment),
         name: attachment.label,
         sourcePath: attachment.relativePath,
         truncation: attachment.truncation,
@@ -1571,4 +1574,10 @@ export class WorkshopRoomHandler {
       `[${owner}] ERROR [${source}]: ${message}${details ? ` - ${details}` : ''}`
     );
   }
+}
+
+/** The frame kind a staged attachment carries, when it has one. */
+function withMessageAttachmentKind(attachment: { lightboxTile?: unknown }): { kind?: string } {
+  const kind = workshopMessageAttachmentKind(attachment);
+  return kind ? { kind } : {};
 }

@@ -29,7 +29,10 @@ import type {
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
-import type { WorkshopMessageAttachment } from '@/application/services/workshop/WorkshopSessionRecords';
+import type {
+  WorkshopMessageAttachment,
+  WorkshopMessageAttachmentInput
+} from '@/application/services/workshop/WorkshopSessionRecords';
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import {
   WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
@@ -52,6 +55,7 @@ import type {
   WorkshopTurn
 } from '@messages';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import type { LogSink } from '@/platform';
 
 export interface ScriptedRestPoint {
@@ -64,6 +68,8 @@ export interface ScriptedRestPoint {
 export interface ScriptedAttachment {
   label: string;
   content: string;
+  /** The staged input as production builds it (a Lightbox tile's, PR #151 F-01); otherwise a plain file. */
+  input?: WorkshopMessageAttachmentInput;
 }
 
 const toolConversationName = (toolId: WorkshopToolId): string =>
@@ -602,7 +608,7 @@ export class ScriptedWorkshopRoom {
     if (!attachment) {
       return [];
     }
-    const staged = this.session.addMessageAttachment({
+    const staged = this.session.addMessageAttachment(attachment.input ?? {
       label: attachment.label,
       words: attachment.content.split(/\s+/).length,
       content: attachment.content
@@ -629,11 +635,16 @@ export class ScriptedWorkshopRoom {
     if (publishesRoomArtifacts) {
       this.session.recordRoomThreadArtifacts(
         writerTurn.id,
-        staged.map((attachment) => ({
-          id: attachment.id,
-          name: attachment.label,
-          content: attachment.content
-        }))
+        staged.map((attachment) => {
+          // The kind its shape gives it, as the room handler frames it.
+          const kind = workshopMessageAttachmentKind(attachment);
+          return {
+            id: attachment.id,
+            ...(kind ? { kind } : {}),
+            name: attachment.label,
+            content: attachment.content
+          };
+        })
       );
     }
     this.session.commitMessageAttachments(staged.map((attachment) => attachment.id), target);

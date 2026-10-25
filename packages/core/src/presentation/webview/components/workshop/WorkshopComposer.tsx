@@ -26,6 +26,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { workshopAttachmentSize, workshopAttachmentTitle } from '@components/workshop/workshopAttachmentPills';
 import { WorkshopCacheIndicator } from '@components/workshop/WorkshopCacheIndicator';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
@@ -218,12 +219,14 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
       {messageAttachments.length > 0 && (
         <div className="pm-ws-comp-attachments" aria-label="Attachments for this message">
           {messageAttachments.map((attachment) => (
-            <span key={attachment.id} className="pm-ws-comp-attachment" title={attachment.relativePath ?? attachment.label}>
-              <Icon name="doc" size={11} />
+            <span
+              key={attachment.id}
+              className={`pm-ws-comp-attachment${attachment.lightboxTile ? ' pm-ws-comp-attachment-lightbox' : ''}`}
+              title={workshopAttachmentTitle(attachment)}
+            >
+              <Icon name={attachment.lightboxTile ? 'pin' : 'doc'} size={11} />
               <span className="pm-ws-comp-attachment-label">{attachment.label}</span>
-              <span className="pm-ws-comp-attachment-size">
-                {attachment.words.toLocaleString()} words{attachment.truncation ? ' · head slice' : ''}
-              </span>
+              <span className="pm-ws-comp-attachment-size">{workshopAttachmentSize(attachment, 'composer')}</span>
               <button
                 type="button"
                 className="pm-ws-comp-attachment-remove"

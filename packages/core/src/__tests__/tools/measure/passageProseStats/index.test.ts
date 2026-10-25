@@ -3,7 +3,26 @@
  * Tests prose statistics calculations
  */
 
-import { PassageProseStats } from '@/tools/measure/passageProseStats/index';
+import { PassageProseStats, proseStatsWords } from '@/tools/measure/passageProseStats/index';
+
+/** 22 words, 13 of them inside curly-quoted dialogue. */
+const CURLY_SCENE = [
+  '“You came back,” she said.',
+  'He set the lamp on the table. “I said I would.”',
+  '“You say a lot of things.”'
+].join('\n\n');
+
+/** The pre-fix computation (`/"[^"]*"/g`), kept as an oracle for straight-quoted text. */
+function legacyDialoguePercentage(text: string): number {
+  const trimmed = text.trim();
+  const countTokens = (value: string): number => value.split(/\s+/).filter(word => word.length > 0).length;
+  const matches = trimmed.match(/"[^"]*"/g);
+  const totalWords = countTokens(trimmed);
+  if (!matches || totalWords === 0) {
+    return 0;
+  }
+  return Math.round((countTokens(matches.join(' ')) / totalWords) * 100 * 10) / 10;
+}
 
 describe('PassageProseStats - Business Logic', () => {
   let stats: PassageProseStats;
@@ -93,6 +112,52 @@ describe('PassageProseStats - Business Logic', () => {
     it('should handle nested quotes', () => {
       const result = stats.analyze({ text: '"He said, \\"hello\\"" said John' });
       expect(result.dialoguePercentage).toBeGreaterThan(0);
+    });
+
+    it('counts curly-quoted dialogue (formerly 0%)', () => {
+      expect(stats.analyze({ text: '“Hello world,” said John.' }).dialoguePercentage).toBe(50);
+      expect(stats.analyze({ text: CURLY_SCENE }).dialoguePercentage).toBe(59.1);
+    });
+
+    it('reports the same share for a scene in straight or curly quotes', () => {
+      const straightScene = CURLY_SCENE.replace(/[“”]/g, '"');
+      expect(stats.analyze({ text: straightScene }).dialoguePercentage).toBe(
+        stats.analyze({ text: CURLY_SCENE }).dialoguePercentage
+      );
+    });
+
+    it('counts a scene that mixes straight and curly quotes', () => {
+      const result = stats.analyze({ text: '"Straight," he said.\n\n“Curly,” she said.' });
+      // 2 dialogue words of 6.
+      expect(result.dialoguePercentage).toBe(33.3);
+    });
+
+    it('does not count apostrophes or possessives as dialogue', () => {
+      const result = stats.analyze({ text: 'The boys’ bikes were gone. It’s late, and it\'s cold. Don’t.' });
+      expect(result.dialoguePercentage).toBe(0);
+    });
+
+    it('keeps an unclosed quote inside its own paragraph', () => {
+      // 3 of 9 words: the open quote ends with its paragraph.
+      const curly = stats.analyze({ text: '“Wait, she said.\n\nThe rain kept falling. Nobody spoke.' });
+      expect(curly.dialoguePercentage).toBe(33.3);
+      // `" of rope.` (3 tokens) and `"Bye,"` (1) of 10 words. The former regex
+      // paired the inches mark with the next paragraph's opener: 6 of 10.
+      const straight = 'He cut 12" of rope.\n\nShe left. "Bye," he said.';
+      expect(stats.analyze({ text: straight }).dialoguePercentage).toBe(40);
+      expect(legacyDialoguePercentage(straight)).toBe(60);
+    });
+
+    it.each([
+      '"Hello world" said John',
+      '"All dialogue" "More dialogue"',
+      '"He said, \\"hello\\"" said John',
+      'This is just prose without any dialogue',
+      '',
+      '"Line one\nline two," she said.',
+      CURLY_SCENE.replace(/[“”]/g, '"')
+    ])('leaves straight-quoted output unchanged: %j', (text) => {
+      expect(stats.analyze({ text }).dialoguePercentage).toBe(legacyDialoguePercentage(text));
     });
   });
 
@@ -331,5 +396,27 @@ describe('PassageProseStats - Business Logic', () => {
       expect(result.dialoguePercentage).toBe(Math.round(result.dialoguePercentage * 10) / 10);
       expect(result.lexicalDensity).toBe(Math.round(result.lexicalDensity * 10) / 10);
     });
+  });
+});
+
+describe('proseStatsWords, the words the vocabulary figures count (Slice 4E)', () => {
+  it('splits on whitespace only, keeps letters and apostrophes, and trims nothing', () => {
+    expect(proseStatsWords('The rabbit-hole went—down. ’Twas "Alice\'s"  x2 \'tis \' 42')).toEqual([
+      'the', 'rabbithole', 'wentdown', 'twas', 'alice\'s', 'x', '\'tis', '\''
+    ]);
+  });
+
+  it('is what hapax and unique words are counted over', () => {
+    const text = 'Down, down, down. Would the fall NEVER come to an end? Never—never.';
+    const words = proseStatsWords(text);
+    const counts = new Map<string, number>();
+    for (const word of words) {
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+    const result = new PassageProseStats().analyze({ text });
+    // down ×3, never ×1 and nevernever ×1 (the dash joins), and seven others once.
+    expect(result.hapaxCount).toBe(9);
+    expect([...counts.values()].filter((count) => count === 1)).toHaveLength(9);
+    expect(result.uniqueWordCount).toBe(counts.size);
   });
 });

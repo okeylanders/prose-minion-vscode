@@ -5,6 +5,7 @@
  */
 
 import { LogSink, Platform } from '@/platform';
+import type { LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
 import {
   WebviewToExtensionMessage,
   MessageType,
@@ -23,7 +24,8 @@ import {
   WorkshopSessionStateMessage,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WRITER_PROFILE_SETTING,
-  WORKSHOP_WEB_RESEARCH_SETTING
+  WORKSHOP_WEB_RESEARCH_SETTING,
+  LightboxSetSourcePayload
 } from '@messages';
 import {
   CoreServices,
@@ -48,6 +50,11 @@ import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
+import { LightboxHandler } from './domain/LightboxHandler';
+import { workshopLightboxTray } from '@/application/services/workshop/WorkshopLightboxTray';
+import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
+import { LightboxPassageHandler } from './domain/LightboxPassageHandler';
+import { LightboxBoardsHandler } from './domain/LightboxBoardsHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -77,6 +84,10 @@ export class MessageHandler {
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
   private readonly workshopHandler: WorkshopRoomHandler;
+  private readonly lightboxHandler: LightboxHandler;
+  private readonly lightboxReadingHandler: LightboxReadingHandler;
+  private readonly lightboxPassageHandler: LightboxPassageHandler;
+  private readonly lightboxBoardsHandler: LightboxBoardsHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -135,7 +146,8 @@ export class MessageHandler {
     'proseMinion.dictionaryModel',
     'proseMinion.contextModel',
     'proseMinion.categoryModel',
-    'proseMinion.widgetModel'
+    'proseMinion.widgetModel',
+    'proseMinion.lightboxModel'
   ] as const;
 
   private readonly UI_KEYS = [
@@ -188,7 +200,11 @@ export class MessageHandler {
       showVsTellService,
       lexicalGravityModelService,
       lexicalGravityLensRepository,
-      workshopStandingDirectiveService
+      workshopStandingDirectiveService,
+      lightboxService,
+      lightboxReadingRunner,
+      lightboxContextShelf,
+      lightboxBoardLibrary
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -334,6 +350,39 @@ export class MessageHandler {
       },
       outputChannel
     );
+    // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
+    // like the others. The shell owns the file picker; the service owns boards.
+    this.lightboxHandler = new LightboxHandler(
+      lightboxService,
+      textSourceResolver,
+      this.platform.shell,
+      // Choose from project: the configured catalog the Workshop's selector reads, inside the open folders.
+      { catalog: workshopContextIntakeService, workspace: this.platform.workspace },
+      this.postMessage.bind(this),
+      outputChannel,
+      this.uiActions.handOffToWorkshop,
+      // Slice 4: the tiles the Workshop holds, read from the shared session, and the way there.
+      { tray: workshopLightboxTray(workshopSessionService), openWorkshop: this.uiActions.openWorkshop }
+    );
+    // Its readings (Slice 2B) beside it: lenses, estimate, runs, context files.
+    this.lightboxReadingHandler = new LightboxReadingHandler(
+      lightboxService,
+      lightboxReadingRunner,
+      lightboxContextShelf,
+      textSourceResolver,
+      this.platform.shell,
+      // Context from the project picker: the same catalog, inside the open folders.
+      { catalog: workshopContextIntakeService, workspace: this.platform.workspace },
+      this.postMessage.bind(this),
+      outputChannel,
+      // Slice 5A: a run that landed readings saves its board; 5A.1: a spark set aside saves at once.
+      lightboxBoardLibrary
+    );
+    // The inspector's passages (Slice 4E): the text a pinned paragraph or counted item stands in, by board id.
+    this.lightboxPassageHandler = new LightboxPassageHandler(lightboxService, this.postMessage.bind(this), outputChannel);
+    // Saved boards (Slice 5A): the rail's shelf, open, delete and (5A.1) rename, over the composition root's library.
+    // 5A.2: the Boards menu and browser across chapters, and "Open a board file…" through the shell's picker.
+    this.lightboxBoardsHandler = new LightboxBoardsHandler(lightboxBoardLibrary, this.platform.shell, this.postMessage.bind(this), outputChannel);
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -364,6 +413,10 @@ export class MessageHandler {
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
     this.workshopHandler.registerRoutes(this.router);
+    this.lightboxHandler.registerRoutes(this.router);
+    this.lightboxReadingHandler.registerRoutes(this.router);
+    this.lightboxPassageHandler.registerRoutes(this.router);
+    this.lightboxBoardsHandler.registerRoutes(this.router);
     this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
       this.resultCache.error = undefined;
     });
@@ -385,6 +438,22 @@ export class MessageHandler {
         'Error processing request',
         details
       );
+    }
+  }
+
+  /**
+   * Board a Lightbox source the host already owns (PR #152 F-01): an editor
+   * command that took `ticket` from the shared LightboxService when the
+   * writer chose the source. Host-only, never a route, so no webview message
+   * can name a ticket.
+   */
+  async seedLightboxSource(payload: LightboxSetSourcePayload, ticket: LightboxSourceTicket): Promise<void> {
+    try {
+      await this.lightboxHandler.seedSource(payload, ticket);
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[MessageHandler] ✗ Error seeding a Lightbox source: ${details}`);
+      this.sendError('unknown', 'Error processing request', details);
     }
   }
 
@@ -875,6 +944,15 @@ export class MessageHandler {
       this.disposeSearchStatusListener();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();
+      this.lightboxReadingHandler.dispose();
+    } catch {
+      // noop
+    }
+    // Drop the Lightbox outcome subscription so a closed panel's handler never
+    // posts a board; the shared service keeps serving the replacement panel.
+    try {
+      this.lightboxHandler.dispose();
+      this.lightboxBoardsHandler.dispose();
     } catch {
       // noop
     }

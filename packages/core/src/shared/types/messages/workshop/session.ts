@@ -9,8 +9,8 @@ import type {
   WorkshopCapabilityArtifactDetails
 } from '../../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../../context';
+import type { ConfiguredResourceRef } from '../configuredResources';
 import {
-  WorkshopConfiguredResourceRef,
   WorkshopContextAttachmentSnapshot,
   WorkshopMessageAttachmentSnapshot
 } from './context';
@@ -197,7 +197,7 @@ export type WorkshopExcerptSource =
       /** 1-based inclusive selection lines, when the host editor supplied them. */
       startLine?: number;
       endLine?: number;
-      configuredResource?: WorkshopConfiguredResourceRef;
+      configuredResource?: ConfiguredResourceRef;
     }
   | {
       kind: 'file';
@@ -209,7 +209,7 @@ export type WorkshopExcerptSource =
        * containment and symlink validation.
        */
       relativePath: string;
-      configuredResource?: WorkshopConfiguredResourceRef;
+      configuredResource?: ConfiguredResourceRef;
     };
 
 /** Display-safe source provenance for the session snapshot; never exposes a host URI. */
@@ -220,12 +220,12 @@ export type WorkshopExcerptSourceSnapshot =
       relativePath: string;
       startLine?: number;
       endLine?: number;
-      configuredResource?: WorkshopConfiguredResourceRef;
+      configuredResource?: ConfiguredResourceRef;
     }
   | {
       kind: 'file';
       relativePath: string;
-      configuredResource?: WorkshopConfiguredResourceRef;
+      configuredResource?: ConfiguredResourceRef;
     };
 
 /** Display path for a sourced excerpt; undefined for manual text. */
@@ -265,7 +265,7 @@ const isSelectionLine = (value: unknown): value is number =>
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
-function coerceConfiguredResource(raw: unknown): WorkshopConfiguredResourceRef | undefined {
+function coerceConfiguredResource(raw: unknown): ConfiguredResourceRef | undefined {
   if (typeof raw !== 'object' || raw === null) {
     return undefined;
   }
@@ -587,7 +587,7 @@ export interface WorkshopRepinExcerptMessage extends MessageEnvelope<Record<stri
 
 /** Set the excerpt from ONE configured resource picked in the modal. */
 export interface WorkshopSetExcerptResourceMessage
-  extends MessageEnvelope<WorkshopConfiguredResourceRef> {
+  extends MessageEnvelope<ConfiguredResourceRef> {
   type: MessageType.WORKSHOP_SET_EXCERPT_RESOURCE;
 }
 

@@ -13,6 +13,7 @@ import {
 import {
   workshopWidgetArtifactKind
 } from '@shared/constants/workshopWidgets';
+import { workshopMessageAttachmentKind } from '@shared/constants/workshopThreadArtifactKinds';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -218,9 +219,10 @@ export function validateWorkshopSessionStateV1(
         `Persisted Workshop thread artifact ${artifact.id} references a private turn`
       );
     }
-    const attachmentReference = (turn.messageAttachments ?? []).some(
-      (attachment) => attachment.id === artifact.id
+    const attachment = (turn.messageAttachments ?? []).find(
+      (candidate) => candidate.id === artifact.id
     );
+    const attachmentReference = attachment !== undefined;
     const widgetReference = turn.widgetCommit?.rail === 'thread-artifact'
       && turn.widgetCommit.artifactId === artifact.id;
     if (!attachmentReference && !widgetReference) {
@@ -228,22 +230,29 @@ export function validateWorkshopSessionStateV1(
         `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
       );
     }
-    if (
-      artifact.kind !== undefined
-      && (
-        !widgetReference
-        || !turn.widgetCommit
-        || turn.widgetCommit.rail !== 'thread-artifact'
-        || artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)
-      )
-    ) {
+    // One owner per artifact (PR #151 F-05): a widget's artifact or a message
+    // attachment, never both, so neither owner's kind check can stand aside
+    // for the other.
+    if (attachmentReference && widgetReference) {
       throw new Error(
-        `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
+        `Persisted Workshop thread artifact ${artifact.id} is referenced both as a message attachment and as a widget artifact`
       );
     }
-    if (widgetReference && artifact.kind === undefined) {
+    if (widgetReference && turn.widgetCommit) {
+      if (artifact.kind === undefined) {
+        throw new Error(
+          `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
+        );
+      }
+      if (artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)) {
+        throw new Error(
+          `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
+        );
+      }
+    } else if (attachment && artifact.kind !== workshopMessageAttachmentKind(attachment)) {
+      // A message attachment's kind follows from its own shape (a Lightbox tile's, Slice 4); a file has none.
       throw new Error(
-        `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
+        `Persisted Workshop thread artifact ${artifact.id} has the wrong attachment kind`
       );
     }
   }
