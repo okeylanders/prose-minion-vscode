@@ -15,7 +15,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
 import {
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import type {
@@ -167,7 +167,7 @@ export class LexicalGravityModelService {
         boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
-      const receipt = await persistRejectedWidgetResponse(
+      const receipt = await persistRejectedModelResponse(
         this.rejectedResponseRecovery,
         this.rejectedResponseRecoveryPresenter,
         {
@@ -248,7 +248,7 @@ export class LexicalGravityModelService {
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );
-      const receipt = await persistRejectedWidgetResponse(
+      const receipt = await persistRejectedModelResponse(
         this.rejectedResponseRecovery,
         this.rejectedResponseRecoveryPresenter,
         {

@@ -548,9 +548,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS|SHOW_VS_TELL)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
   },
   {
-    file: 'shared/types/messages/workshop/recovery.ts',
-    reason: 'closed rejected-widget response-contract registry',
-    allowedToken: /(?:RECOVERABLE_WIDGET_RESPONSE_CONTRACTS|RecoverableWidgetToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|show-vs-tell(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE|LEXICAL)_[A-Z0-9_]+)/
+    file: 'shared/types/messages/recovery.ts',
+    reason: 'closed rejected-model-response contract registry',
+    allowedToken: /(?:RECOVERABLE_RESPONSE_CONTRACTS|RecoverableToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|show-vs-tell(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE|LEXICAL)_[A-Z0-9_]+)/
   },
   {
     file: 'index.ts',
@@ -734,7 +734,7 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'shared/types/messages/base.ts',
   'shared/types/messages/index.ts',
   'shared/types/messages/workshop/index.ts',
-  'shared/types/messages/workshop/recovery.ts'
+  'shared/types/messages/recovery.ts'
 ] as const;
 
 /**
@@ -2255,7 +2255,6 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
-      'recovery.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',

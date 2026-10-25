@@ -306,11 +306,13 @@ workshop/
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
-├── recovery.ts              # Rejected response repair-contract registry
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 ├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
+
+The rejected-model-response recovery registry is not Workshop-owned: it lives at
+`shared/types/messages/recovery.ts` because the Lightbox captures through it too.
 
 Application and presentation consumers import these contracts through
 `@messages`. Generic modules may name a feature only at reviewed composition,

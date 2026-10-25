@@ -29,6 +29,8 @@ export * from './ui';
 export * from './results';
 export * from './streaming';
 export * from './configuredResources';
+// Rejected-response recovery contracts, shared beyond the Workshop (widgets, the Lightbox)
+export * from './recovery';
 export * from './workshop';
 // The Lightbox domain, behind its own barrel (Slice 5A.1)
 export * from './lightboxBarrel';

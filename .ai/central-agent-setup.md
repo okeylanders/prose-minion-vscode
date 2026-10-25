@@ -131,6 +131,7 @@ packages/core/src/
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
+            ├── recovery.ts      # Rejected-model-response recovery contracts (Conversation Widgets, the Lightbox)
             └── workshop/        # Workshop contracts behind one subdomain barrel
                 ├── index.ts
                 ├── session.ts
@@ -142,7 +143,6 @@ packages/core/src/
                 ├── gesturePlayground.ts
                 ├── lexicalGravity.ts
                 ├── showVsTell.ts
-                ├── recovery.ts
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
                 └── settings.ts

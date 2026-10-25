@@ -104,7 +104,7 @@ export {
 export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 export type {
@@ -112,7 +112,7 @@ export type {
   RejectedModelResponseRecoveryPresenter,
   RejectedModelResponseRecoveryReceipt
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
-export type { RecoverableWidgetToolName } from '@messages';
+export type { RecoverableToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';

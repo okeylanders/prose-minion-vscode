@@ -20,7 +20,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
 import {
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import type {
@@ -212,7 +212,7 @@ export class GesturePlaygroundService {
       return { cancelled: false, additions, usage: result.usage };
     } catch (error) {
       const message = this.errorMessage(error);
-      const receipt = await persistRejectedWidgetResponse(
+      const receipt = await persistRejectedModelResponse(
         this.rejectedResponseRecovery,
         this.rejectedResponseRecoveryPresenter,
         {
@@ -343,7 +343,7 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('composite response', message, content);
-      const receipt = await persistRejectedWidgetResponse(
+      const receipt = await persistRejectedModelResponse(
         this.rejectedResponseRecovery,
         this.rejectedResponseRecoveryPresenter,
         {
@@ -373,7 +373,7 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('alternatives menu', message, content);
-      const receipt = await persistRejectedWidgetResponse(
+      const receipt = await persistRejectedModelResponse(
         this.rejectedResponseRecovery,
         this.rejectedResponseRecoveryPresenter,
         {
