@@ -562,3 +562,55 @@ The F-05 Clear witnesses moved, unchanged in what they assert, to `draftEditClea
 No live provider call, private manuscript or native Extension Development Host was used. The native checks for F-06 are the writer's:
 - With another extension's refactoring shown, run Fix on a chapter, change that chapter's language while VS Code asks to replace the shown one, and refuse. The other refactoring should still be shown, its selection kept.
 - Then repeat and let it replace: Proofread's preview should close at once, with nothing written.
+
+## Astra independent re-review — preview-copy ownership, head `35d1b4f3`
+
+**Reviewed:** 2026-10-25. **Head:** `35d1b4f30db7a36183304202392f23081f95e98c`; delta from report head `cc6767b9`: 15 files, +859 / −328, including `ae5fb579`, `825af6d2`, the report merge and the author response above.
+
+**Request changes. F-06 remains the sole P2 blocker.** The correction improves the original already-observed-preview cases, but a preview copy's file and arrival time do not establish which request owns the current native pane. F-01/F-03/F-04/F-05 remain closed. F-02 remains the writer's accepted native-preview lifetime risk. The closed quick-fix summary overclaim is corrected.
+
+### F-06 — a newly observed copy is not request ownership
+
+**Locations:** [`RefactorPreviews.ts:65–70`](https://github.com/okeylanders/prose-minion-vscode/blob/35d1b4f30db7a36183304202392f23081f95e98c/apps/vscode-extension/src/platform/vscode/RefactorPreviews.ts#L65-L70), [`VsCodeDocumentEditor.ts:162–170`](https://github.com/okeylanders/prose-minion-vscode/blob/35d1b4f30db7a36183304202392f23081f95e98c/apps/vscode-extension/src/platform/vscode/VsCodeDocumentEditor.ts#L162-L170), [`VsCodeDocumentEditor.ts:211–246`](https://github.com/okeylanders/prose-minion-vscode/blob/35d1b4f30db7a36183304202392f23081f95e98c/apps/vscode-extension/src/platform/vscode/VsCodeDocumentEditor.ts#L211-L246).
+
+`holds` accepts any instance absent from the request's `before` set with exactly one observed file matching the request URI. The instance ID belongs to a native preview provider, but is never correlated with this particular `applyEdit`. Model-open delivery can lag behind native pane ownership, and the observed file set can be incomplete. The result is still an unowned global Discard.
+
+Independent production-adapter witness, reproduced with **both supported preview schemes**:
+
+1. Foreign preview **A** owns the pane for file **D**, but its copied model/open event has not yet reached the extension host.
+2. Proofread **B**, also for D, asks for preview and waits for replacement confirmation. Its `before` set does not contain A.
+3. A's copy arrives. The heuristic now labels A as B's own preview because the instance is new to B and its only observed file is D.
+4. A programmatic close/language event for D causes B to send global Discard. **A is cancelled without the writer agreeing to replace it.** B can subsequently refuse the replacement dialog.
+
+The same cancellation is reproduced through the **production use case, applier and both VS Code adapters**, with either event order: B's lifetime ends before A's delayed copy arrives, or A's copy arrives first. In both cases B is still awaiting replacement confirmation, its run returns `closed`, and the document text is unchanged.
+
+This ordering is grounded in the host source, not a native UI claim: [`BulkEditPreviewProvider._init`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPreview.ts#L386-L438) awaits each file/model reference, and [`BulkEditPane.setInput`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPane.ts#L183-L218) does not await the provider's asynchronous model-copy initialization before adopting its input. The same provider behavior is present at [the pinned current source](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPreview.ts). A file URI and an observed-after timestamp therefore are not a request token.
+
+Additional controls expose the same inference error when only the first of a foreign multi-file preview's copies has arrived, or when another copy never synchronizes: VS Code excludes [too-large/simple-widget models](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/editor/common/model.ts#L1427-L1431) from extension-host synchronization. The code/author response acknowledge the first-copy case; that acknowledgement is **not** the writer accepting cancellation of unrelated reviews. A delayed global command can also act on a subsequent preview: the command still targets whichever pane is current when it executes, not a captured instance. These are controlled source/RPC-ordering witnesses, not measured native timing; the demonstrated consequence is loss of another pending review/selection, **not** an additional document write.
+
+The shared repository double now tests more useful flows, but opens all copies synchronously in `pane.take` and closes them synchronously in `release`. Those assumptions exclude asynchronous-copy and stale-inventory cases and cannot establish the claimed “another extension is never discarded” guarantee.
+
+**Requested correction remains narrow:** avoid automatically mutating a global preview without request/current-session ownership that survives dispatch. A model inventory heuristic is insufficient. If the public API cannot provide that guarantee, **omit automatic global Discard while keeping native preview** and retain the already accepted F-02 lifetime limitation. No replacement UI or strict pre-commit barrier is required by this review. Any broader acceptance of cross-preview cancellation would require a separate writer decision; it is not inferred here.
+
+### Positive results and limits
+
+- The original witnesses where a foreign preview's copy is already observed before B asks now leave that preview alone; ordinary owned-preview discard and delayed-opening controls pass.
+- The closed Fix-all message now warns that the fix may have gone in and asks the writer to check. This correctly distinguishes uncertain write outcome after lifetime loss from a proven no-change result.
+- Existing table-structure and Clear ownership corrections are unchanged. Their regression coverage remains part of the full gate.
+- F-02 is still accepted risk, not fully fixed. Native preview/UI/undo/accessibility and live-provider quality remain separate never-run acceptance stages; no private manuscript or provider call was used.
+
+### Independent verification
+
+| Check | Result on `35d1b4f3` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass: core, webview and adapter |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings, unchanged baseline |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass; three existing webpack size warnings |
+| Full Jest, Node 18.20.8 | **550 suites / 7,694 tests / 59 snapshots pass** |
+| Independent scratch | **3 suites / 37 tests pass**: 24 copied repository controls and 13 independent ownership/lifecycle/wording cases; observed-defect assertions are not successful product acceptance |
+| Focused repository preview/Clear checks | **4 suites / 33 tests pass**, overlapping the 24 copied controls above |
+| Exact implementation-head CI | [Push 40217145604](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40217145604) and [PR 40217148483](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40217148483): completed, success |
+
+The independent scratch suite also includes a retained-model lifecycle counterexample. It is explicitly modeled, not claimed as a native-retention reproduction; the same-file asynchronous-copy finding above does not rely on it. Logs, scratch harnesses and pinned official sources remain outside the repository under `pr172-review-evidence/rereview4`. The previously recorded Node/dependency reuse and never-run limitations still apply. Report publication and its exact-head CI are checked afterward, not pre-claimed here.
+
+**Not approved for merge into `epic/lightbox` on `35d1b4f3`.** F-06 remains open; the other dispositions above are unchanged. Only this appended report is published, preserving the original review and all author responses.
