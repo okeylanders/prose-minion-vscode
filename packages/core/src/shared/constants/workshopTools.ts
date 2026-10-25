@@ -33,7 +33,7 @@ export const WORKSHOP_TOOL_CATALOG: readonly WorkshopToolDescriptor[] = [
   { id: 'craft-steering', label: 'Craft Steering', group: 'Craft & Voice', description: 'Sound, rhythm, and how each sentence carries you into the next. Inspired by Le Guin’s Steering the Craft.' },
   { id: 'placeholders', label: 'Placeholders', group: 'Craft & Voice', description: 'Find TODOs, [brackets], and unfinished seams.' },
   { id: 'style', label: 'Style', group: 'Technical', description: 'Weak verbs, adverbs, filler, and passive voice.' },
-  { id: 'editor', label: 'Editor', group: 'Technical', description: 'A holistic developmental editor pass.' },
+  { id: 'editor', label: 'Editor', group: 'Technical', description: 'Copyediting: grammar, spelling, dialogue punctuation, and mechanical consistency.' },
   { id: 'continuity', label: 'Continuity', group: 'Technical', description: 'Contradictions against characters and prior chapters.' },
   { id: 'fresh', label: 'Fresh', group: 'Technical', description: 'Fresh-eyes reactions, as a first-time reader.' },
 ];

@@ -104,7 +104,7 @@ export {
 export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 export type {
@@ -112,7 +112,7 @@ export type {
   RejectedModelResponseRecoveryPresenter,
   RejectedModelResponseRecoveryReceipt
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
-export type { RecoverableWidgetToolName } from '@messages';
+export type { RecoverableToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
@@ -179,6 +179,7 @@ export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageServ
 // --- Infrastructure: AI resource orchestration ---
 export { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 export { AIResourceManager } from '@orchestration/AIResourceManager';
+export { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 
 // --- Infrastructure: services (measurement / analysis / dictionary / search / resources / shared) ---
 export { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -203,3 +204,15 @@ export {
   AccountBalanceService,
   OpenRouterAccountClient
 } from '@/infrastructure/account';
+
+// --- Draft Edit (ADR 2026-10-21): the Proofread pass, the run, and the adapter's helpers ---
+export { ProofreadService } from '@services/proofread/ProofreadService';
+export { DraftEditUseCase, type DraftEditRunPlan } from '@/application/services/draftEdit/DraftEditUseCase';
+export { describeDraftEditOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
+export {
+  DRAFT_EDIT_LANGUAGE_IDS,
+  type DraftEditOutcome,
+  type DraftEditPass,
+  type DraftEditTarget
+} from '@/domain/models/DraftEdit';
+export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

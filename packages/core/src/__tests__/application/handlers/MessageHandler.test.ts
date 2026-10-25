@@ -23,8 +23,10 @@ import {
   SecretStore
 } from '@/platform';
 import {
+  createFakeDocumentEditor,
   createFakeEditorContext,
   createFakeFileSystem,
+  createFakeIssueAnnotator,
   createFakeGlobalState,
   createFakeSettings,
   createFakeShellService,
@@ -85,7 +87,9 @@ function createTestAssembly(): TestAssembly {
     fileSystem: createFakeFileSystem(),
     workspace: createFakeWorkspace(),
     shell: createFakeShellService(),
-    editor: createFakeEditorContext()
+    editor: createFakeEditorContext(),
+    documents: createFakeDocumentEditor(),
+    annotations: createFakeIssueAnnotator()
   };
 
   const scheduleRefresh = jest.fn();
@@ -151,6 +155,9 @@ function createTestAssembly(): TestAssembly {
       }),
       refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
+    },
+    aiResourceRefresh: {
+      refreshKey: jest.fn().mockResolvedValue(undefined)
     },
     secretsService: {
       getApiKey: jest.fn().mockResolvedValue(undefined),
@@ -589,7 +596,9 @@ describe('MessageHandler assembly', () => {
     // work settle before asserting the services were refreshed.
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    // The manager is rebuilt through the extension-lifetime owner, never directly (PR #171 F-01).
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
@@ -605,7 +614,9 @@ describe('MessageHandler assembly', () => {
     'proseMinion.categoryModel',
     'proseMinion.widgetModel',
     // Lightbox Slice 4L: the Lightbox's own model, watched like the other five.
-    'proseMinion.lightboxModel'
+    'proseMinion.lightboxModel',
+    // Draft Edit Slice 1: Proofread's own model (ADR 2026-10-21 D6).
+    'proseMinion.proofreadModel'
   ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
@@ -696,7 +707,7 @@ describe('MessageHandler assembly', () => {
     onSecretChange();
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.contextAssistantService.refreshConfiguration).not.toHaveBeenCalled();

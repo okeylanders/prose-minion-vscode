@@ -16,6 +16,7 @@ describe('ConfigurationHandler', () => {
   beforeEach(() => {
     handler = new ConfigurationHandler(
       {} as any, // aiResourceManager
+      {} as any, // aiResourceRefresh
       {} as any, // assistantToolService
       {} as any, // dictionaryService
       {} as any, // contextAssistantService
@@ -54,10 +55,32 @@ describe('ConfigurationHandler', () => {
     });
   });
 
+  it.each([
+    [MessageType.UPDATE_API_KEY, { apiKey: 'sk-placeholder-next' }],
+    [MessageType.DELETE_API_KEY, {}]
+  ])('%s refreshes through the extension-lifetime owner, never rebuilding the manager itself (PR #171 F-01)', async (type, payload) => {
+    const manager = { refreshConfiguration: jest.fn(async () => undefined) };
+    const owner = { refreshKey: jest.fn(async () => undefined) };
+    const services = { refreshConfiguration: jest.fn(async () => undefined) };
+    const secrets = { setApiKey: jest.fn(async () => undefined), deleteApiKey: jest.fn(async () => undefined) };
+    const built = new ConfigurationHandler(
+      manager as never, owner as never, services as never, services as never, services as never, secrets as never,
+      {} as never, { showInformationMessage: jest.fn(async () => undefined) } as never,
+      jest.fn().mockResolvedValue(undefined), { appendLine: jest.fn() } as never
+    );
+    const routes = new MessageRouter();
+    built.registerRoutes(routes);
+    await routes.route({ type, source: 'webview.settings', payload, timestamp: 0 } as never);
+
+    expect(owner.refreshKey).toHaveBeenCalledTimes(1);
+    expect(manager.refreshConfiguration).not.toHaveBeenCalled();
+    expect(services.refreshConfiguration).toHaveBeenCalledTimes(3);
+  });
+
   it.each(['5m', '1h', '24h', 60, null])('validates Claude cache duration before saving (%s)', async value => {
     const update = jest.fn().mockResolvedValue(undefined);
     const postMessage = jest.fn();
-    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never,
+    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
       { update } as never, {} as never, postMessage, { appendLine: jest.fn() } as never);
     await built.handleUpdateSetting({ type: MessageType.UPDATE_SETTING, source: 'webview', timestamp: 0,
       payload: { key: 'claudeCacheTtl', value } } as never);
@@ -71,7 +94,7 @@ describe('ConfigurationHandler', () => {
 
   it('projects the stored Claude duration through settings data', async () => {
     const postMessage = jest.fn();
-    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never,
+    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
       { get: (_section: string, key: string) => key === 'claudeCacheTtl' ? '1h' : undefined } as never,
       {} as never, postMessage, { appendLine: jest.fn() } as never);
     await built.handleRequestSettingsData({} as never);
@@ -103,6 +126,7 @@ describe('ConfigurationHandler', () => {
       const aiResourceManager = { getResolvedModelSelections: () => ({}) };
       const built = new ConfigurationHandler(
         aiResourceManager as any,
+        {} as any,
         {} as any,
         {} as any,
         {} as any,

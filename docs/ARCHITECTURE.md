@@ -39,6 +39,8 @@ Core defines host-agnostic ports in `packages/core/src/platform/`. The VS Code a
 | `Workspace` | Workspace folder + glob discovery |
 | `ShellService` | Subprocess execution (future MCP) |
 | `EditorContext` | Active editor selection + source metadata |
+| `DocumentEditor` | A watch on one lifetime of an open document: its edits and live buffer, or closed (Draft Edit; writes arrive with Proofread and Fix) |
+| `IssueAnnotator` | Draft Edit's flags on a document, without changing it (diagnostics in VS Code) |
 
 All ports are composed into a single `Platform` bundle at the composition root.
 
@@ -306,11 +308,13 @@ workshop/
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
-├── recovery.ts              # Rejected response repair-contract registry
 ├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 ├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
+
+The rejected-model-response recovery registry is not Workshop-owned: it lives at
+`shared/types/messages/recovery.ts` because the Lightbox captures through it too.
 
 Application and presentation consumers import these contracts through
 `@messages`. Generic modules may name a feature only at reviewed composition,
@@ -451,6 +455,40 @@ host and webview independence tests.
 
 ---
 
+### 11. Draft Edit
+
+Draft Edit turns intent into anchored, reviewable edits on the writer's own
+document ([ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md)).
+Proofread is its first pass; in Slice 1 it only flags.
+
+- **Passes are policies.** `DRAFT_EDIT_PASS_POLICIES` is an exhaustive
+  `Record` over `DraftEditPass['kind']`. A new pass adds a union member, a
+  row, and a producer, never a branch in the code that places edits.
+- **Quotes, not offsets.** Only a pass calls a model, and a model returns
+  quotes with context. `utils/draftEdit/` masks protected Markdown regions
+  (block structure from `marked`'s block lexer, container-aware; inline
+  constructs read one leaf block or table cell at a time, in CommonMark
+  precedence), chunks on paragraph
+  boundaries, and anchors each quote deterministically, failing closed on
+  ambiguity. The Proofread guard (`utils/proofread/`) decides fix vs. flag
+  by category and edit size.
+- **One run, one door.** `DraftEditUseCase` alone reaches the
+  `DocumentEditor` and `IssueAnnotator` ports, and a boundary test enforces
+  it. A run watches its open document from the version it read: each flag
+  follows its own occurrence through the writer's edits, the live text's
+  protected regions are found again, and a document that closed shows
+  nothing, so a flag is never drawn on moved, protected, or reopened text.
+- **Its own model scope.** `proofread` is an own scope in
+  `ModelScopeSelections` with an inexpensive default. `ProofreadService` calls
+  it at temperature 0, reads replies with the shared `parseModelJson`, and
+  stops starting chunks when the API key changes mid-run.
+  `AIResourceRefresh`, built at the composition root, owns the shared
+  manager's key and model subscriptions, so the command sees every change
+  with no webview open, and one key change is one rebuild.
+- **Host commands.** `apps/vscode-extension/src/application/commands/proofreadCommands.ts`
+  holds the editor commands behind a host port, so their rules are tested
+  without a VS Code mock.
+
 ## Settings Architecture
 
 All settings use the **Domain Hooks pattern** (6 specialized hooks) with bidirectional sync between VS Code Settings, the backend `ConfigurationHandler`, and the webview. An echo-prevention system in `ConfigurationHandler` stops infinite loops.
@@ -500,5 +538,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 - [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
 - [Workshop Personas Recall Saved Session Transcripts (2026-10-05)](adr/2026-10-05-workshop-session-transcript-recall.md)
+- [Draft Edit Engine and Document Write-Back (2026-10-21)](adr/2026-10-21-draft-edit-engine-and-document-write-back.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.

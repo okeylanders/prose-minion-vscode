@@ -26,6 +26,7 @@ import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
 import { resolveModelScopeSelections } from './ModelScopeSelections';
+import { apiKeyFingerprint } from './apiKeyFingerprint';
 import { GuideCapability } from './capabilities/GuideCapability';
 import { ContextFileCapability } from './capabilities/ContextFileCapability';
 import {
@@ -56,6 +57,8 @@ export class AIResourceManager {
   private rebuilds = 0;
   private initialized = false;
   private initialization?: Promise<void>;
+  /** The fingerprint of the key the current resources were built with, never the key (PR #171 F-01). */
+  private adoptedKey?: string;
   private statusCallback?: StatusCallback;
   private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
   private readonly tokenUsageResetListeners: ListenerSet<[]>;
@@ -107,9 +110,14 @@ export class AIResourceManager {
   }
 
   /** Rebuild only for an explicit configuration change. */
-  async refreshConfiguration(): Promise<void> {
-    this.initialization = this.startRebuild();
+  async refreshConfiguration(observed?: { apiKey: string | undefined }): Promise<void> {
+    this.initialization = this.startRebuild(observed);
     await this.initialization;
+  }
+
+  /** Which key the current resources were built with, as `apiKeyFingerprint`; undefined before a build or after one failed. */
+  adoptedKeyFingerprint(): string | undefined {
+    return this.adoptedKey;
   }
 
   /**
@@ -165,11 +173,12 @@ export class AIResourceManager {
    * A failed build must not poison the singleton: clear the cached promise
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
-  private startRebuild(): Promise<void> {
+  private startRebuild(observed?: { apiKey: string | undefined }): Promise<void> {
     const rebuild = ++this.rebuilds;
-    return this.rebuildResources(rebuild).catch(error => {
+    return this.rebuildResources(rebuild, observed).catch(error => {
       if (rebuild === this.rebuilds) {
         this.initialization = undefined;
+        this.adoptedKey = undefined;
       }
       this.outputChannel?.appendLine(
         `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
@@ -178,12 +187,15 @@ export class AIResourceManager {
     });
   }
 
-  private async rebuildResources(rebuild: number): Promise<void> {
+  /** `observed`: a key the caller read already (its refresh owner, which orders reads), built with exactly as given. */
+  private async rebuildResources(rebuild: number, observed?: { apiKey: string | undefined }): Promise<void> {
     // Get API key from SecretStorage (fallback to settings for backward compatibility)
-    let apiKey = await this.secretsService.getApiKey();
-    if (!apiKey) {
+    let apiKey = observed ? observed.apiKey : await this.secretsService.getApiKey();
+    if (!observed && !apiKey) {
       apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
     }
+    // Trimmed, as `apiKeyFingerprint` reads it: the key sent is the key compared (the second re-review).
+    apiKey = apiKey?.trim() || undefined;
     // Every webview refreshes on a key change, so rebuilds overlap. One that a
     // newer rebuild overtook while it read the key builds nothing: its key may
     // be the old one, and its transports would replace the newer ones. It
@@ -191,6 +203,7 @@ export class AIResourceManager {
     if (rebuild !== this.rebuilds) {
       return this.initialization;
     }
+    this.adoptedKey = apiKeyFingerprint(apiKey);
 
     // Non-conversational scopes remain disposable. The assistant engine owns
     // retained conversations, so only its provider attachment is replaced.
@@ -227,6 +240,8 @@ export class AIResourceManager {
     // The Lightbox's own engine and client (Slice 4L), never the assistant's:
     // its model follows the assistant model until the writer picks one.
     const lightboxModel = selections.lightbox;
+    // Proofread's own engine (ADR 2026-10-21 D6): an own scope, built only here.
+    const proofreadModel = selections.proofread;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -243,6 +258,7 @@ export class AIResourceManager {
     const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
     const widgetResources = this.createResourceBundle(apiKey!, 'widget', widgetModel);
     const lightboxResources = this.createResourceBundle(apiKey!, 'lightbox', lightboxModel);
+    const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
 
     this.aiResources = {
       assistant: assistantResources,
@@ -250,7 +266,8 @@ export class AIResourceManager {
       context: contextResources,
       category: categoryResources,
       widget: widgetResources,
-      lightbox: lightboxResources
+      lightbox: lightboxResources,
+      proofread: proofreadResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -263,7 +280,8 @@ export class AIResourceManager {
       context: contextModel,
       category: categoryModel,
       widget: widgetModel,
-      lightbox: lightboxModel
+      lightbox: lightboxModel,
+      proofread: proofreadModel
     };
     this.initialized = true;
   }
@@ -275,7 +293,7 @@ export class AIResourceManager {
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {
@@ -399,6 +417,7 @@ export class AIResourceManager {
     this.resolvedModels = {};
     this.initialized = false;
     this.initialization = undefined;
+    this.adoptedKey = undefined;
     this.statusCallback = undefined;
     this.tokenUsageListeners.clear();
     this.tokenUsageResetListeners.clear();

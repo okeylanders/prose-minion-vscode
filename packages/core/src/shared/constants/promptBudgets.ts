@@ -388,6 +388,28 @@ export interface PromptBudgets {
     lexicalPreviewOutputTokens: number;
     lexicalDirectiveCharacters: number;
   }>;
+  /**
+   * Proofread (ADR 2026-10-21 D6 and its Thresholds table): starting values,
+   * each in one place, tuned against the writer's manual fixture run.
+   */
+  readonly proofread: Readonly<{
+    /** Words per model call, cut on paragraph boundaries. */
+    chunkWords: number;
+    /** Chunks in flight at once. */
+    concurrency: number;
+    /** Output ceiling per chunk; a reply that reaches it is rejected, never salvaged. */
+    outputTokens: number;
+    /** A whole-file run over this many words asks first; a selection never does. */
+    confirmWholeFileWords: number;
+    /** A reply longer than this is refused before it is read. */
+    responseCharacters: number;
+    /** A quoted span longer than this is malformed: proofreading quotes the shortest span. */
+    quoteCharacters: number;
+    /** Context either side of a quote is clipped to this, nearest the quote kept. */
+    contextCharacters: number;
+    /** An explanation is clipped to this. */
+    explanationCharacters: number;
+  }>;
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
@@ -641,5 +663,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalPreviewEntailmentCharacters: 500,
     lexicalPreviewOutputTokens: 5_000,
     lexicalDirectiveCharacters: 16_000
+  },
+  proofread: {
+    chunkWords: 1_200,
+    concurrency: 3,
+    outputTokens: 4_000,
+    confirmWholeFileWords: 15_000,
+    responseCharacters: 40_000,
+    quoteCharacters: 300,
+    contextCharacters: 120,
+    explanationCharacters: 300
   }
 };

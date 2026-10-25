@@ -1,7 +1,7 @@
-/** Closed response contracts for durable rejected-widget recovery artifacts. */
+/** Closed response contracts for durable rejected-model-response recovery artifacts (Conversation Widgets, the Lightbox, and Proofread). */
 
 /* eslint-disable @typescript-eslint/naming-convention -- persisted tool ids are protocol literals. */
-export const RECOVERABLE_WIDGET_RESPONSE_CONTRACTS = {
+export const RECOVERABLE_RESPONSE_CONTRACTS = {
   'gesture-playground': {
     id: 'gesture-playground-composite-v1',
     intendedContentType: 'text/plain',
@@ -37,11 +37,16 @@ export const RECOVERABLE_WIDGET_RESPONSE_CONTRACTS = {
     intendedContentType: 'application/json',
     // The default only: every Lightbox capture names its own group's sentinels and blocks (`lightboxRecoveryContract`, Slice 4H).
     protocol: 'First-line ===LIGHTBOX_GROUP_<group>_V1===, then JSON {version: 1, one block per lens the call requested, each with friction}, then final-line ===END_LIGHTBOX_GROUP_<group>_V1===.'
+  },
+  proofread: {
+    id: 'proofread-v1',
+    intendedContentType: 'application/json',
+    protocol: 'First-line ===PROOFREAD_V1===, then JSON {version: 1, issues: [{category, original, before, after, replacement, explanation}]}, then final-line ===END_PROOFREAD_V1===.'
   }
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
-export type RecoverableWidgetToolName = keyof typeof RECOVERABLE_WIDGET_RESPONSE_CONTRACTS;
+export type RecoverableToolName = keyof typeof RECOVERABLE_RESPONSE_CONTRACTS;
 
 /**
  * The contract a recovery sidecar records for its body. A tool's default is

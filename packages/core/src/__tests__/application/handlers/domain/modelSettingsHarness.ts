@@ -110,7 +110,7 @@ export async function createModelSettingsHosts(
 
   for (const surface of MODEL_SETTINGS_SURFACES) {
     handlers[surface] = new ConfigurationHandler(
-      manager, {} as never, {} as never, {} as never,
+      manager, {} as never, {} as never, {} as never, {} as never,
       { getApiKey: async () => 'sk-placeholder' } as never,
       settings as never, {} as never,
       async (message: ExtensionToWebviewMessage) => {

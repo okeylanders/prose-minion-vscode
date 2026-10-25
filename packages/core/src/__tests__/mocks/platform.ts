@@ -7,11 +7,13 @@
  */
 import {
   ActiveSelectionInfo,
+  DocumentEditor,
   EditorContext,
   FileStat,
   FileSystem,
   FileType,
   GlobalStateStore,
+  IssueAnnotator,
   SettingsStore,
   ShellService,
   Workspace,
@@ -137,6 +139,24 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
 export function createFakeEditorContext(overrides: Partial<EditorContext> = {}): EditorContext {
   return {
     getActiveSelection: (): ActiveSelectionInfo | undefined => undefined,
+    ...overrides,
+  };
+}
+
+/** A DocumentEditor with no open documents by default; override `watch` to follow one. */
+export function createFakeDocumentEditor(overrides: Partial<DocumentEditor> = {}): DocumentEditor {
+  return {
+    watch: () => undefined,
+    ...overrides,
+  };
+}
+
+/** An IssueAnnotator that accepts every `show` and records nothing; override to observe. */
+export function createFakeIssueAnnotator(overrides: Partial<IssueAnnotator> = {}): IssueAnnotator {
+  return {
+    show: () => true,
+    remove: () => undefined,
+    clear: () => undefined,
     ...overrides,
   };
 }

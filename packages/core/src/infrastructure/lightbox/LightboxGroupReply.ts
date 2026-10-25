@@ -37,7 +37,7 @@ import { lightboxLensLabel } from '@shared/constants/lightbox';
 import { LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice,
   type RejectedModelResponseRecovery,
   type RejectedModelResponseRecoveryPresenter
@@ -223,7 +223,7 @@ export async function quarantineLightboxReply(
   rejection: LightboxRejection
 ): Promise<string> {
   ports.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection.message}`);
-  const receipt = await persistRejectedWidgetResponse(ports.recovery, ports.recoveryPresenter, {
+  const receipt = await persistRejectedModelResponse(ports.recovery, ports.recoveryPresenter, {
     toolName: 'lightbox-readings',
     requestSummary: lightboxRecoverySummary(call),
     rawResponse: content,

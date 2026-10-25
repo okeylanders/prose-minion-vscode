@@ -24,7 +24,7 @@ prose-minion-vscode/
 ```
 
 **The two rules that define this architecture:**
-- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
+- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
 - **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
 
 `extension.ts` builds a typed `CoreServices` bundle alongside `Platform`.
@@ -132,6 +132,7 @@ packages/core/src/
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
+            ├── recovery.ts      # Rejected-model-response recovery contracts (Conversation Widgets, the Lightbox)
             └── workshop/        # Workshop contracts behind one subdomain barrel
                 ├── index.ts
                 ├── session.ts
@@ -143,7 +144,6 @@ packages/core/src/
                 ├── gesturePlayground.ts
                 ├── lexicalGravity.ts
                 ├── showVsTell.ts
-                ├── recovery.ts
                 ├── seedDelivery.ts
                 ├── lightboxTiles.ts
                 └── settings.ts
@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-24, Lightbox Slice 4J (every run keeps each lens's reading until a usable new one replaces it, with its provenance and an earlier mark; a call's failure said once, under the run line) with PR #170's review and re-review corrections, on `epic/lightbox-keep-readings`, with `epic/lightbox` at `f75ed80` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back; Slice 4L, PR #169: the Lightbox's own model setting) merged in, under Node 18):
-- 519 suites / 7,257 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-25, Draft Edit Slice 1 (Proofread and Flag) with its PR #171 review, re-review and second re-review fixes on `claude/upbeat-galileo-y1l4yf`, with `epic/lightbox` at `31edcfd` (Slice 4J, PR #170) merged in, under Node 22 and Node 18):
+- 537 suites / 7,501 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1535,6 +1535,45 @@ records, when it saves, or how a saved one comes back:
   webview never names a path.
 - **Logs never carry the writer's text,** nor do tests, fixtures or
   evidence: use *Alice* or made-up names.
+
+### Draft Edit
+
+Follow [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md)
+when touching Proofread or anything that reads, flags, or (later) edits the
+writer's own document:
+
+- **Passes are policies.** A new behavior joins `DraftEditPass` and
+  `DRAFT_EDIT_PASS_POLICIES` and brings its own prompt, codec, and guard.
+  Never add a pass-specific branch to the code that places or applies edits.
+- **Quotes, not offsets.** A model returns quoted text with context; host code
+  anchors it (`utils/draftEdit/anchorEdits.ts`) and fails closed on
+  ambiguity. Never ask a model for offsets or line numbers.
+- **One door.** Only `DraftEditUseCase` (and, from Slice 2, its applier) may
+  reach `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
+  members; `boundaries.test.ts` enforces it. Widgets stay write-free.
+- **Live text wins, one lifetime.** A run watches its open document from
+  the version it read (`DocumentEditor.watch`). Findings follow their own
+  occurrence through the writer's edits, never a fresh search; what an edit
+  touched is stale, what the live text now protects is protected, and a
+  document that closed (or reopened, or changed language) shows nothing and
+  is never reopened (PR #171 F-03, F-04).
+- **Protected regions.** Front matter, fenced and inline code, link targets,
+  URLs, reference definitions, HTML comments, and tags are never sent or
+  edited, read as whole constructs wherever Markdown's containers put them
+  (`markdownBlockRegions` over `marked`'s block lexer; PR #171 F-02). Inline
+  constructs are read one scope at a time, the parser's own leaf blocks and
+  table cells with container prefixes stripped, never across raw source
+  (`markdownInlineRegions`, re-review). Where a scanner is unsure it protects
+  more, never less. Indented code is deliberately prose.
+- **Proofread's model** is an own scope with an inexpensive default; calls run
+  at temperature 0, replies go through `parseModelJson`, and a key change
+  mid-run stops starting chunks (PR #169 F-01). The shared manager's key and
+  model subscriptions are `AIResourceRefresh`'s, built in `extension.ts`, not
+  a webview's: a surface that hears a key change asks it to refresh (PR #171
+  F-01). It numbers requests before awaiting, counts only the newest
+  reading, and hands the manager exactly that key when it differs from the
+  adopted one (`adoptedKeyFingerprint`); never rebuild the manager for a key
+  change another way.
 
 ### Operational Tips
 

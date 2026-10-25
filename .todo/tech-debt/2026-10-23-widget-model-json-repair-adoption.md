@@ -18,7 +18,7 @@ it to that), and today only the Lightbox reads through it.
 The writer reports that the Workshop widgets' replies sometimes fail the same
 way. Each cuts its JSON out of its own frame and calls `JSON.parse`, so a
 stray closing brace, a trailing comma or a code fence fails a paid reply,
-which goes to `persistRejectedWidgetResponse` /
+which goes to `persistRejectedModelResponse` /
 `RejectedModelResponseRecoveryStore`:
 
 | Widget | Call site |

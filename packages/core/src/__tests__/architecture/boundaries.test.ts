@@ -420,7 +420,7 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
 
 /** One-shot slices receive selected text through UI contracts, never host write authority. */
 const ONE_SHOT_FORBIDDEN_IMPORT_REFERENCE = new RegExp(
-  String.raw`\b(?:Platform|EditorContext|FileSystem|Workspace|ShellService|WorkshopTurnBubble|parseVariations|VARIATION_HEADING)\b`
+  String.raw`\b(?:Platform|EditorContext|FileSystem|Workspace|ShellService|DocumentEditor|IssueAnnotator|WorkshopTurnBubble|parseVariations|VARIATION_HEADING)\b`
 );
 const ONE_SHOT_PLATFORM_MODULE_REFERENCE = new RegExp(
   String.raw`(?:from\s+|import\(\s*|require\(\s*)['"]@/platform(?:/[^'"]*)?['"]`
@@ -548,9 +548,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS|SHOW_VS_TELL)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
   },
   {
-    file: 'shared/types/messages/workshop/recovery.ts',
-    reason: 'closed rejected-widget response-contract registry',
-    allowedToken: /(?:RECOVERABLE_WIDGET_RESPONSE_CONTRACTS|RecoverableWidgetToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|show-vs-tell(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE|LEXICAL)_[A-Z0-9_]+)/
+    file: 'shared/types/messages/recovery.ts',
+    reason: 'closed rejected-model-response contract registry',
+    allowedToken: /(?:RECOVERABLE_RESPONSE_CONTRACTS|RecoverableToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|show-vs-tell(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE|LEXICAL)_[A-Z0-9_]+)/
   },
   {
     file: 'index.ts',
@@ -734,7 +734,7 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'shared/types/messages/base.ts',
   'shared/types/messages/index.ts',
   'shared/types/messages/workshop/index.ts',
-  'shared/types/messages/workshop/recovery.ts'
+  'shared/types/messages/recovery.ts'
 ] as const;
 
 /**
@@ -1472,6 +1472,24 @@ describe('architectural boundaries', () => {
     const offenders = collectSourceFiles(SRC_ROOT)
       .filter((file) => VSCODE_IMPORT.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('reaches the Draft Edit document ports only through the one run (ADR 2026-10-21 D10)', () => {
+    // A type name, or a call through Platform's members that never names the type.
+    const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.snapshot\(|\.annotations\.(?:show|remove|clear)\(/;
+    const allowed = new Set([
+      'platform/DocumentEditor.ts',
+      'platform/IssueAnnotator.ts',
+      'platform/Platform.ts',
+      'platform/index.ts',
+      'application/services/draftEdit/DraftEditUseCase.ts'
+    ]);
+    const offenders = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !allowed.has(file))
+      .filter((file) => portReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
 
     expect(offenders).toEqual([]);
   });
@@ -2264,7 +2282,6 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
-      'recovery.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',

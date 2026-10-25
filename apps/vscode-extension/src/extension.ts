@@ -23,6 +23,7 @@ import {
   SecretStorageService,
   ResourceLoaderService,
   AIResourceManager,
+  AIResourceRefresh,
   StandardsService,
   ToolOptionsProvider,
   ProseStatsService,
@@ -66,6 +67,8 @@ import {
   LightboxWriterBaseline,
   LightboxBoardStore,
   LightboxBoardLibrary,
+  ProofreadService,
+  DraftEditUseCase,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -79,7 +82,18 @@ import { VsCodeFileSystem } from './platform/vscode/VsCodeFileSystem';
 import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
+import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
+import { VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
+import {
+  PROOFREAD_CLEAR_COMMAND,
+  PROOFREAD_DISMISS_COMMAND,
+  PROOFREAD_FLAG_COMMAND,
+  ProofreadCommandHost,
+  clearProofreadFlags,
+  dismissProofreadIssue,
+  proofreadAndFlag
+} from './application/commands/proofreadCommands';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
@@ -104,6 +118,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ports (log, secrets) are the native vscode objects passed directly.
   const editorContext = new VsCodeEditorContext();
   context.subscriptions.push(editorContext);
+  // Draft Edit's flags (ADR 2026-10-21 D7): diagnostics whose code actions call back into the commands below.
+  const issueAnnotator = new VsCodeIssueAnnotator({ dismiss: PROOFREAD_DISMISS_COMMAND, clear: PROOFREAD_CLEAR_COMMAND });
+  context.subscriptions.push(issueAnnotator);
+  // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04).
+  const documentEditor = new VsCodeDocumentEditor();
+  context.subscriptions.push(documentEditor);
   const platform: Platform = {
     log: outputChannel,
     secrets: context.secrets,
@@ -112,7 +132,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fileSystem: new VsCodeFileSystem(),
     workspace: new VsCodeWorkspace(context.extensionUri),
     shell: new VsCodeShellService(),
-    editor: editorContext
+    editor: editorContext,
+    documents: documentEditor,
+    annotations: issueAnnotator
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -136,6 +158,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   aiResourceManager.ensureInitialized().catch(error => {
     outputChannel.appendLine(`[extension] Initial AI resource build failed: ${error instanceof Error ? error.message : String(error)}`);
   });
+  // The manager's key and model subscriptions live as long as the extension,
+  // not a webview: the Proofread command uses it with none open (PR #171 F-01).
+  const aiResourceRefresh = new AIResourceRefresh(aiResourceManager, secretsService, platform.settings, outputChannel);
+  context.subscriptions.push(
+    aiResourceRefresh,
+    vscode.workspace.onDidChangeConfiguration(event => aiResourceRefresh.handleConfigurationChange(section => event.affectsConfiguration(section)))
+  );
   const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 
@@ -397,6 +426,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   context.subscriptions.push({ dispose: () => lightboxBoardLibrary.dispose() });
 
+  // Draft Edit (ADR 2026-10-21): the Proofread pass on the manager-owned
+  // `proofread` scope, and the one run per document that places its flags.
+  // Built here and used by the editor commands below; it joins CoreServices
+  // when a webview handler first needs it (the Workshop, Slice 4).
+  const proofreadService = new ProofreadService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
+    outputChannel
+  );
+  const draftEdit = new DraftEditUseCase(proofreadService, platform.documents, platform.annotations, outputChannel);
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -408,6 +450,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     wordSearchService,
     standardsService,
     aiResourceManager,
+    aiResourceRefresh,
     secretsService,
     textSourceResolver,
     categorySearchService,
@@ -643,6 +686,40 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxPanelProvider?.seedSource(payload);
   };
 
+  // Proofread (Draft Edit Slice 1): the target is captured at the gesture, in
+  // one synchronous read of the active editor (ADR 2026-10-21 D5).
+  const proofreadCommandHost: ProofreadCommandHost = {
+    activeEditor: () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        return undefined;
+      }
+      const document = editor.document;
+      const selection = editor.selection;
+      return {
+        uri: document.uri.toString(),
+        version: document.version,
+        text: document.getText(),
+        languageId: document.languageId,
+        label: document.isUntitled ? document.fileName : vscode.workspace.asRelativePath(document.uri, false),
+        ...(selection.isEmpty ? {} : { selection: { start: document.offsetAt(selection.start), end: document.offsetAt(selection.end) } })
+      };
+    },
+    confirm: async (message, action) =>
+      (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
+    withProgress: (title, task) => vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title, cancellable: true },
+      (_progress, token) => {
+        const controller = new AbortController();
+        token.onCancellationRequested(() => controller.abort());
+        return task(controller.signal);
+      }
+    ),
+    showInformation: (message, ...actions) => vscode.window.showInformationMessage(message, ...actions),
+    showWarning: (message, ...actions) => vscode.window.showWarningMessage(message, ...actions),
+    executeCommand: (command) => void vscode.commands.executeCommand(command)
+  };
+
   const handleWordLookupSelection = () => {
     const payload = getSelectionPayload();
     if (!payload) {
@@ -672,7 +749,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       lightboxPanelProvider?.openOrReveal();
     }),
     vscode.commands.registerCommand('prose-minion.lightboxSelection', handleLightboxSelection),
-    vscode.commands.registerCommand('prose-minion.openFileInLightbox', handleOpenFileInLightbox)
+    vscode.commands.registerCommand('prose-minion.openFileInLightbox', handleOpenFileInLightbox),
+    vscode.commands.registerCommand(PROOFREAD_FLAG_COMMAND, () => proofreadAndFlag(proofreadCommandHost, draftEdit)),
+    vscode.commands.registerCommand(PROOFREAD_CLEAR_COMMAND, (uri?: unknown) => clearProofreadFlags(proofreadCommandHost, draftEdit, uri)),
+    vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId))
   );
 }
 

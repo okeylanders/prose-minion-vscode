@@ -4,7 +4,7 @@
 
 ## Overview
 
-Prose Minion includes **9 integrated prose tools** organized in clean architecture — 5 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
+Prose Minion includes **10 integrated prose tools** organized in clean architecture — 6 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
 
 ### AI-Powered Tools (require OpenRouter API key)
 
@@ -15,15 +15,16 @@ Prose Minion includes **9 integrated prose tools** organized in clean architectu
 | 3 | **Context Assistant** | Context | `tools/assist/contextAssistant.ts` |
 | 4 | **Dictionary Utility** | Dictionary | `tools/utility/dictionaryUtility.ts` |
 | 5 | **Category Search** | Category Search | `infrastructure/api/services/search/CategorySearchService.ts` |
+| 6 | **Proofread** | Proofread | `infrastructure/api/services/proofread/ProofreadService.ts` |
 
 ### Measurement Tools (no API key required)
 
 | # | Tool | Location |
 |---|------|----------|
-| 6 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
-| 7 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
-| 8 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
-| 9 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
+| 7 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
+| 8 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
+| 9 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
+| 10 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
 
 ---
 
@@ -92,11 +93,37 @@ Semantic word discovery by meaning, not exact match. Uses the Category Search mo
 - Full word search integration (occurrence counts, clusters, chapter locations)
 - Markdown export
 
+### 6. Proofread
+
+Marks mechanical errors in an open Markdown or plain-text file: spelling,
+homophones, punctuation, capitalization, spacing, agreement, and tense. Right-
+click in the editor and choose **Prose Minion: Proofread and Flag**. A selection
+narrows the run; with nothing selected the whole file is proofread. Uses the
+Proofread model scope (`proseMinion.proofreadModel`, a fast, inexpensive model by
+default).
+
+- **Never changes the text.** Each issue is a diagnostic: a squiggle, an entry in
+  the Problems panel, and a suggested correction in its message. Tense and
+  agreement show as warnings, since they are judgment calls; surface errors show
+  as information.
+- **Leaves markup alone.** Front matter, code, link targets, URLs, HTML comments,
+  and tags are never sent or flagged. Indented paragraphs are proofread.
+- **Follows your edits.** Flags move with their text as you type, and a flag
+  whose text you change disappears. Each flag offers **Dismiss**;
+  **Prose Minion: Clear Proofread Flags** removes them all. Closing the file
+  clears its flags, and they are not restored after a reload.
+- **Asks before long runs.** A whole file over 15,000 words asks first. The run
+  can be cancelled from its progress notification, and its summary reports what
+  was flagged and what it cost.
+
+Proofread and Fix (applying corrections) arrives in a later release; see
+[ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
+
 ---
 
 ## Measurement Tools (No API Key Required)
 
-### 6. Prose Statistics
+### 7. Prose Statistics
 
 **Location**: `packages/core/src/tools/measure/passageProseStats/index.ts`
 
@@ -117,7 +144,7 @@ Comprehensive prose metrics:
 - Publishing format with trim size and page estimate
 - Optional chapter breakdown tables on save/copy
 
-### 7. Style Flags
+### 8. Style Flags
 
 **Location**: `packages/core/src/tools/measure/styleFlags/index.ts`
 
@@ -135,7 +162,7 @@ Identifies style patterns that need attention:
 
 Output: count per category + example sentences.
 
-### 8. Word Frequency
+### 9. Word Frequency
 
 **Location**: `packages/core/src/tools/measure/wordFrequency/index.ts`
 
@@ -150,7 +177,7 @@ Comprehensive word usage analysis:
 
 Configurable via `proseMinion.wordFrequency.*` settings. POS tagging uses `wink-pos-tagger` bundled with the extension.
 
-### 9. Word Search
+### 10. Word Search
 
 Advanced word pattern matching with context windows and cluster detection.
 
@@ -201,7 +228,7 @@ Loaded by `packages/core/src/tools/shared/guides.ts` when `proseMinion.includeCr
   composite workflows may use their own documented allowance; Gesture
   Dictionary generation uses 14,000 so the readable scan and menu can complete.
   Responses hitting a provider cap show a truncation notice.
-- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`. See the in-app **Model Browser** for the full curated list.
+- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `proofreadModel`. See the in-app **Model Browser** for the full curated list.
 - Curated model IDs are defined in `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts` and verified against the live OpenRouter API.
 
 ---

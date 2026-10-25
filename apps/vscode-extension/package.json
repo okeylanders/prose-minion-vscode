@@ -106,7 +106,9 @@
     "onCommand:prose-minion.workshopSelection",
     "onCommand:prose-minion.openLightbox",
     "onCommand:prose-minion.lightboxSelection",
-    "onCommand:prose-minion.openFileInLightbox"
+    "onCommand:prose-minion.openFileInLightbox",
+    "onCommand:prose-minion.proofreadFlag",
+    "onCommand:prose-minion.clearProofreadFlags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -167,6 +169,14 @@
         "command": "prose-minion.openFileInLightbox",
         "title": "Prose Minion: Open File in Lightbox",
         "icon": "$(layout)"
+      },
+      {
+        "command": "prose-minion.proofreadFlag",
+        "title": "Prose Minion: Proofread and Flag"
+      },
+      {
+        "command": "prose-minion.clearProofreadFlags",
+        "title": "Prose Minion: Clear Proofread Flags"
       }
     ],
     "menus": {
@@ -204,6 +214,11 @@
           "when": "!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)",
           "command": "prose-minion.openFileInLightbox",
           "group": "prose-minion@3"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.proofreadFlag",
+          "group": "prose-minion@4"
         },
         {
           "when": "editorHasSelection",
@@ -256,6 +271,12 @@
           "default": "",
           "markdownDescription": "AI model for the Lightbox's analyses. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here, or in the Lightbox's model picker, gives the Lightbox its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
           "order": 5.1
+        },
+        "proseMinion.proofreadModel": {
+          "type": "string",
+          "default": "anthropic/claude-haiku-5.5",
+          "markdownDescription": "AI model for Proofread (the editor's right-click **Prose Minion: Proofread** commands). Proofreading wants precise, repeatable corrections across many small calls, so the default is a fast, inexpensive model. Enter any OpenRouter model ID.",
+          "order": 5.2
         },
         "proseMinion.categoryModel": {
           "type": "string",

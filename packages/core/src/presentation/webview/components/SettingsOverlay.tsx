@@ -194,6 +194,7 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
         {renderModelSelect('category', 'Category Search Model', 'Powers semantic word matching for category search.')}
         {renderModelSelect('widget', 'Widget Model', 'Controls generation for Conversation Widgets such as Gesture Playground.')}
         {renderModelSelect('lightbox', 'Lightbox Model', 'Runs the Lightbox’s analyses. “Same as Workshop” uses the Assistant Model above and follows it when it changes; pick a model to give the Lightbox its own.')}
+        {renderModelSelect('proofread', 'Proofread Model', 'Runs Proofread from the editor’s right-click menu. Precision matters more than flair, so a fast, inexpensive model is the default.')}
       </section>
 
       {/* General */}

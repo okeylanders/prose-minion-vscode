@@ -26,5 +26,4 @@ export * from './seedDelivery';
 export * from './showVsTell';
 export * from './standingDirectives';
 export * from './widgets';
-export * from './recovery';
 export * from './session';

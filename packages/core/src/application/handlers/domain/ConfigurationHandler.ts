@@ -7,7 +7,9 @@
 
 import { LogSink, SettingsStore, ShellService } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import {
+  DEFAULT_PROOFREAD_MODEL,
   DEFAULT_WIDGET_MODEL,
   MODEL_SCOPE_SETTING_KEYS,
   followingModelScopes,
@@ -56,6 +58,7 @@ export class ConfigurationHandler {
 
   constructor(
     private readonly aiResourceManager: AIResourceManager,
+    private readonly aiResourceRefresh: AIResourceRefresh,
     private readonly assistantToolService: AssistantToolService,
     private readonly dictionaryService: DictionaryService,
     private readonly contextAssistantService: ContextAssistantService,
@@ -473,7 +476,8 @@ export class ConfigurationHandler {
       dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
       context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
       category: this.settings.get<string>('proseMinion', 'categoryModel') || DEFAULT_CATEGORY_MODEL,
-      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL
+      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL,
+      proofread: this.settings.get<string>('proseMinion', 'proofreadModel') || DEFAULT_PROOFREAD_MODEL
     };
     const selections: Partial<Record<ModelScope, string>> = { ...own, ...resolveFollowingModels(this.settings, own) };
 
@@ -503,7 +507,8 @@ export class ConfigurationHandler {
     this.outputChannel.appendLine(`[ConfigurationHandler] refreshServiceConfiguration called`);
     // SPRINT 05: Refresh configuration on all services that need it
     try {
-      await this.aiResourceManager.refreshConfiguration();
+      // Through the extension-lifetime owner, so this save and the change event it raises are one rebuild (PR #171 F-01).
+      await this.aiResourceRefresh.refreshKey();
       await this.assistantToolService.refreshConfiguration();
       await this.dictionaryService.refreshConfiguration();
       await this.contextAssistantService.refreshConfiguration();

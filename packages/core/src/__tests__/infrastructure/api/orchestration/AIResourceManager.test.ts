@@ -1,5 +1,7 @@
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
+import { DEFAULT_PROOFREAD_MODEL } from '@orchestration/ModelScopeSelections';
+import { apiKeyFingerprint } from '@orchestration/apiKeyFingerprint';
 
 describe('AIResourceManager lifecycle', () => {
   it('keeps the assistant engine stable across explicit configuration rebuilds', async () => {
@@ -265,13 +267,13 @@ describe('AIResourceManager, the lightbox scope (Slice 4L)', () => {
 
   it('retires every disposable engine\'s transport when its bundle is rebuilt, so a held engine starts no new call (PR #169 F-01)', async () => {
     const manager = await managerWith({ assistantModel: WORKSHOP });
-    const retired = (['lightbox', 'dictionary', 'context', 'category', 'widget'] as const)
+    const retired = (['lightbox', 'dictionary', 'context', 'category', 'widget', 'proofread'] as const)
       .map((scope) => manager.getEngine(scope));
     expect(retired.every((engine) => engine?.isProviderAvailable())).toBe(true);
 
     await manager.refreshConfiguration();
 
-    expect(retired.map((engine) => engine?.isProviderAvailable())).toEqual([false, false, false, false, false]);
+    expect(retired.map((engine) => engine?.isProviderAvailable())).toEqual([false, false, false, false, false, false]);
     await expect(retired[0]!.runInitial({} as never)).rejects.toMatchObject({ reason: 'missing-credentials' });
     expect(manager.getEngine('lightbox')).not.toBe(retired[0]);
     expect(manager.getEngine('lightbox')?.isProviderAvailable()).toBe(true);
@@ -310,5 +312,76 @@ describe('AIResourceManager, the lightbox scope (Slice 4L)', () => {
     expect(manager.getEngine('lightbox')).toBeUndefined();
     expect(manager.getResolvedModel('lightbox')).toBe(LIGHTBOX);
     manager.dispose();
+  });
+});
+
+/**
+ * Proofread's own model scope (Draft Edit Slice 1, ADR 2026-10-21 D6): an
+ * own scope with an inexpensive default, built only by this manager, and
+ * never moved by the assistant model. Model ids are placeholders; no
+ * provider is called.
+ */
+describe('AIResourceManager, the proofread scope (Draft Edit Slice 1)', () => {
+  const WORKSHOP = 'placeholder/workshop-model';
+  const PROOFREAD = 'placeholder/proofread-model';
+  const built: AIResourceManager[] = [];
+  afterEach(() => built.splice(0).forEach((manager) => manager.dispose()));
+
+  async function managerWith(configured: Record<string, string | undefined>, apiKey: string | null = 'key') {
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn().mockResolvedValue(apiKey ?? undefined) } as never,
+      { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never
+    );
+    built.push(manager);
+    await manager.ensureInitialized();
+    return manager;
+  }
+
+  it('adopts a key trimmed, so the key it sends is the key its fingerprint names (second re-review)', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP }, '\nsk-placeholder ');
+    const keyOf = (engine: unknown) => Reflect.get(Reflect.get(engine as object, 'openRouterClient') as object, 'apiKey');
+
+    expect(keyOf(manager.getEngine('proofread'))).toBe('sk-placeholder');
+    expect(manager.adoptedKeyFingerprint()).toBe(apiKeyFingerprint('sk-placeholder'));
+    await manager.refreshConfiguration({ apiKey: ' sk-placeholder\n' });
+    expect(keyOf(manager.getEngine('proofread'))).toBe('sk-placeholder');
+    await manager.refreshConfiguration({ apiKey: '  ' });
+    expect(manager.getEngine('proofread')).toBeUndefined();
+  });
+
+  it('builds Proofread its own engine on the inexpensive default, not the assistant model', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP });
+
+    const proofread = manager.getEngine('proofread');
+    expect(proofread).toBeDefined();
+    expect(proofread).not.toBe(manager.getEngine('assistant'));
+    expect(proofread).not.toBe(manager.getEngine('lightbox'));
+    expect(proofread?.getModel()).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(manager.getResolvedModel('proofread')).toBe(DEFAULT_PROOFREAD_MODEL);
+  });
+
+  it('hot-swaps only the Proofread engine when its model is picked, and the assistant model never moves it', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP };
+    const manager = await managerWith(configured);
+    const engines = { assistant: manager.getEngine('assistant'), proofread: manager.getEngine('proofread') };
+
+    configured.proofreadModel = PROOFREAD;
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('proofread')).toBe(engines.proofread);
+    expect(engines.proofread?.getModel()).toBe(PROOFREAD);
+    expect(engines.assistant?.getModel()).toBe(WORKSHOP);
+
+    configured.assistantModel = 'placeholder/workshop-model-next';
+    await manager.refreshModelSelections();
+    expect(engines.proofread?.getModel()).toBe(PROOFREAD);
+  });
+
+  it('has no Proofread engine without an API key, but still resolves its model', async () => {
+    const manager = await managerWith({ proofreadModel: PROOFREAD }, null);
+
+    expect(manager.getEngine('proofread')).toBeUndefined();
+    expect(manager.getResolvedModel('proofread')).toBe(PROOFREAD);
   });
 });

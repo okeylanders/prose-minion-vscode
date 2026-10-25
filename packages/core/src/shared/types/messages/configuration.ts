@@ -10,7 +10,7 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread';
 
 /**
  * A scope with no model of its own until the writer picks one (Lightbox
