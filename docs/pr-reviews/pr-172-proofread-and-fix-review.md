@@ -433,3 +433,60 @@ No live provider call, private manuscript or native Extension Development Host w
 - close it while its review is open, and confirm the same.
 
 For F-05: Clear this file, then Clear all, each while a Fix all is open in review, and confirm the cleared flags stay gone after Apply.
+
+## Astra independent re-review — table/Clear corrections and native-preview mitigation, head `58693f03`
+
+**Reviewed:** 2026-10-25. **Head:** `58693f0369e57c68e279841b4935a6834255a9e4`; cumulative delta from report head `b52feced`: 21 files, +931 / −43. This includes the F-02 mitigation (`e4c353b9`), its docs and report merge, then the F-03/F-05 corrections (`3e2d0a25`), updated decisions (`6f025ba7`) and author response (`58693f03`). The intermediate `4fa857c7` was independently checked before the latest corrections arrived; its results are not silently relabeled as this head.
+
+**Request changes: new F-06 is the sole P2 blocker.** F-03 and F-05 are independently closed on this head; F-01/F-04 remain closed. F-02 remains the writer's explicitly accepted residual native-preview risk, now with a verified best-effort mitigation—not a guaranteed barrier or a fully fixed defect. The author's latest best-effort wording correctly preserves that distinction.
+
+### F-02 — best-effort behavior verified, acceptance unchanged
+
+The adapter records preview requests while awaiting `workspace.applyEdit`, notices the corresponding document's close/language event and sends VS Code's global Discard command. Source-backed controlled execution confirms that a timely discard of its already-visible preview prevents the write and returns `closed`; ordinary unchanged-language Apply continues to work. This is useful mitigation for the accepted limitation.
+
+The accepted residual race remains real. An Apply that wins before the close event/Discard is processed can change the buffer and then report `closed`; a preview still opening or a failed/delayed Discard is likewise not a strict pre-commit barrier. No compensating undo is attempted. The writer's choice to retain native review remains respected; no replacement review UI is requested.
+
+**Wording correction, not a renewed race blocker:** [`draftEditSummary.ts:119–120`](https://github.com/okeylanders/prose-minion-vscode/blob/58693f0369e57c68e279841b4935a6834255a9e4/packages/core/src/application/services/draftEdit/draftEditSummary.ts#L119-L120) still says a closed quick fix means “nothing was changed.” An independent production Fix-all witness changes `begining`/`vrey` to `beginning`/`very` in the accepted late-discard sequence, returns `closed`, then emits that false assurance. This overclaim predates the mitigation (which adds language-change wording); use wording that does not assert no buffer change when the lifetime is no longer observable. Full Fix's closed summary accurately limits its assurance to no flags being shown. The latest ADR/adapter wording now explicitly calls the mitigation best effort rather than a complete barrier.
+
+### F-06 — global Discard can cancel a preview this request does not own
+
+**Locations:** [`VsCodeDocumentEditor.ts:133–144`](https://github.com/okeylanders/prose-minion-vscode/blob/58693f0369e57c68e279841b4935a6834255a9e4/apps/vscode-extension/src/platform/vscode/VsCodeDocumentEditor.ts#L133-L144), [`VsCodeDocumentEditor.ts:187–208`](https://github.com/okeylanders/prose-minion-vscode/blob/58693f0369e57c68e279841b4935a6834255a9e4/apps/vscode-extension/src/platform/vscode/VsCodeDocumentEditor.ts#L187-L208).
+
+`reviews.add` records a pending `applyEdit` before its preview necessarily owns the native pane. A close/language event for that pending request sends global `refactorPreview.discard`, which has no request/document/session target. “Our applyEdit is pending” is not proof that the currently displayed preview belongs to it.
+
+The official VS Code implementation makes this distinction observable: while another preview is current, `_previewEdit` awaits replacement confirmation **before** replacing its session. Discard acts on the pane's current input, not the waiting request. See [`bulkEdit.contribution.ts:120–148`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEdit.contribution.ts#L120-L148), [global Discard at 209–212](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEdit.contribution.ts#L209-L212) and [`BulkEditPane.discard`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEditPane.ts#L268-L275). The same ordering is present at the PR's [current-source pin](https://github.com/microsoft/vscode/blob/4f383697191fef7129052d5396d5709d5799934a/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEdit.contribution.ts#L121-L149).
+
+Independent production-adapter witness:
+
+1. An unrelated provider's preview **A** is current, including the writer's pending selection.
+2. Proofread **B** submits a preview and remains in the native replacement-confirmation await. B has not acquired the pane; the writer has not agreed to discard A.
+3. B receives a programmatic language/close event. The adapter's global Discard settles **A** as discarded.
+4. B can still be rejected at the confirmation dialog, but A's review has already been lost.
+
+The same cancellation is independently reproduced with two concurrent Proofread documents; a direct apply for the waiting document does not interfere. An additional delayed-command probe can reach a subsequent preview, but is only controlled RPC-ordering evidence, not observed native timing.
+
+This witness models the official asynchronous host sequence; **no native modal clicking or Extension Development Host execution is claimed**. A programmatic lifecycle event can occur while confirmation is pending. The issue is loss of another review and its selection, not a claim that this sequence writes A's document. It is new interference introduced by the mitigation, separate from the accepted risk that B's own lifetime race may still permit B's write.
+
+**Requested correction:** do not send a destructive global preview command without establishing that it targets the request whose lifetime ended. Preserve unrelated/native-provider reviews and other documents' reviews across pending replacement and delayed command delivery; retain no-preview/direct/settled-request controls. If the public host API cannot establish ownership, prefer a narrower or omitted best-effort discard over cancelling an unowned preview. The writer's accepted native-preview risk does not require a replacement UI or a perfect lifetime barrier.
+
+### F-03 and F-05 closure
+
+- **F-03:** the fingerprint now recursively includes every header/body cell's inline tokens and table alignment; task items also retain checked state. Twelve independent production-use-case tests pass: the former tag-maker is refused in body/header/quoted/list-nested tables; Flag no longer prefers it and Fix all excludes it; reference-link creation is refused; original paragraph/fence controls still pass; ordinary spelling inside unchanged cell emphasis applies in all four table contexts. Both placement and the live applier use the same checker. This closes the demonstrated syntax hole; the documented conservative 50,000-character span bound remains unchanged.
+- **F-05:** `applyShown` re-shows leftovers only while the outer map still owns the exact captured inner map. Clear invalidates that ownership; Dismiss still mutates the owned map. Independent held-preview controls confirm the cleared annotations and quick-fix state stay gone, while no-clear coalesced leftovers and unrelated documents retain their correct state. Six independent controls cover document/global Clear, other-document isolation, Dismiss, busy/new-run gating, a later fresh run, and 1,001 coalesced fixes across 30 actual chunks with the untouched tense flag retained (1,001 applied, zero unknown).
+- **F-01/F-04:** their corrections are unchanged by this delta. The large-coalesced no-clear control also protects the F-04/F-05 interaction.
+
+### Independent verification
+
+| Check | Independent result on `58693f03` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass: core, webview and adapter |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings, unchanged baseline |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass; three existing webpack size warnings |
+| Full Jest, Node 18.20.8 | **548 suites / 7,681 tests / 59 snapshots pass** |
+| Scratch closure/ownership checks | **3 suites / 37 tests pass** (12 syntax, 6 Clear/ownership/coalescing, 19 preview-adapter assertions including 12 copied controls); assertions labeled observed establish the defect, not successful behavior |
+| Focused repository adapter/integration checks | 2 suites / 21 tests pass, including all three multi-document Clear cases; partially overlaps the copied controls above |
+| Exact implementation-head CI | [Push 40213850532](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40213850532) and [PR 40213853764](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40213853764): completed, success |
+
+The intermediate `4fa857c7` also passed typecheck/lint/build and 548 suites / 7,659 tests / 59 snapshots, but all aggregate gates were independently rerun after the later implementation changes. Commands, Node/dependency reuse and memory-bounded execution remain as recorded above; this was not a fresh install or an independent Node 22 run. Evidence is retained outside the repository under `pr172-review-evidence/rereview2` and `rereview3`. The published report's resulting commit and exact-head CI are verified afterward, not inferred from these implementation runs.
+
+**Not approved for merge into `epic/lightbox` on `58693f03`.** F-06 needs correction and independent re-review; F-03/F-05 no longer block. F-02 remains accepted risk, not fixed. Native VS Code preview/UI/undo/accessibility and live provider quality remain separate never-run acceptance stages. Only this report is published; implementation and scratch tests are untouched on the PR branch.
