@@ -105,9 +105,11 @@ The spike, and every departure from the plan above, is in the ADR's
 
 ## Review fixes (PR #172, Astra, 2026-10-25)
 
-Astra's review found four blocking write-side defects. All four are fixed,
-with regressions that fail on the reviewed head; the ADR's "Amendment
-2026-10-25: PR #172 review" records each:
+Astra's review found four blocking write-side defects, and her re-review of
+the corrections one more (F-05) and a gap in F-03's (table cells). Each is
+fixed or, for F-02, accepted with a best-effort mitigation, with regressions
+that fail on the head they were found on; the ADR's "Amendment 2026-10-25:
+PR #172 review" records each:
 
 - **F-01. The direct retry checks again.** A retry follows its edits through
   the writer's typing and runs every check on the document as it now stands,
@@ -117,25 +119,29 @@ with regressions that fail on the reviewed head; the ADR's "Amendment
   shape, as `marked` reads it with the document's link definitions, is
   flagged instead (at placement) and refused (in the applier). This covers a
   tag, a fence opener, a bare link, a reference link, a heading, a list item
-  and a hard line break. Edits are judged together, and kept in order while
-  the shape holds.
+  and a hard line break, and (after the re-review) the same made inside a
+  table cell, a ticked task and a column's alignment. Edits are judged
+  together, and kept in order while the shape holds.
 - **F-04. Merged changes read back.** Reconciliation replays the document
   and reads each host change as the edits it is made of, VS Code's
   1,000-operation merge included. Counts stay right, untouched flags stay on
   their text, and a quick fix shows them again.
-- **F-02. A review ends with its document** (the writer's choice: keep
-  Refactor Preview). Refactor Preview writes inside `workspace.applyEdit`, and
-  a language change moves no version. So while a review is held, the VS Code
-  adapter answers the document's close event (close, reopen or language
-  change) with VS Code's own Discard, and the run reports the document closed
-  with nothing written. An Apply that beats the close event to the extension
-  host, or a preview still opening, is the stated limit; the run still shows
-  nothing.
+- **F-02. An accepted limit, with a best-effort discard** (the writer's
+  choice: keep Refactor Preview). Refactor Preview writes inside
+  `workspace.applyEdit`, and a language change moves no version. So while a
+  review is held, the VS Code adapter answers the document's close event
+  (close, reopen or language change) with VS Code's own Discard, and the run
+  reports the document closed with nothing written. It narrows the window
+  without closing it: an Apply that beats the close event to the extension
+  host, or a preview still opening, is the stated limit, and the run still
+  shows nothing.
+- **F-05 (re-review). A Clear is for good.** A quick fix that lands after a
+  Clear this file or Clear all no longer shows the cleared flags again.
 
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (548 suites / 7,659 tests / 59 snapshots with the PR #172 review
+  suite (548 suites / 7,681 tests / 59 snapshots with the PR #172 review
   fixes; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox`
   at `e3a7fac0`. The full suite also passes under Node 22.
 - Fix is tested through the real applier, anchoring and guard on a document

@@ -846,18 +846,21 @@ conflict detector and the text-edit task, at `main` (`4f383697`) and at
 
 ## Amendment 2026-10-25: PR #172 review (Slice 2)
 
-Astra's review of Slice 2 found four blocking defects on the write side.
-Each changed a decision above; F-02's fix is the review step the writer
-chose:
+Astra's review of Slice 2 found four blocking defects on the write side,
+and her re-review of the corrections found one more (F-05) and a gap in
+F-03's (table cells). Each changed a decision above, except F-02, which the
+writer accepted as a limit of VS Code's preview, with a best-effort
+mitigation:
 
 | Finding | Decision |
 |---|---|
 | F-01: a stale direct retry wrote into code the writer had just fenced | D4 step 5: a retry follows each edit through the writer's typing, then checks every rule again against the document as it now stands (text, protection, line breaks, overlaps, structure) before asking. |
-| F-03: a spacing fix with the same markup characters made a tag, or a fence | D4, D6: a fix must leave the document's Markdown structure as it was. Each top-level block an edit touches is lexed by `marked` before and after, its inline content with the document's own link definitions, and the shape (token types and nesting, heading depths, list kinds, table sizes) must match (`utils/draftEdit/markdownStructure.ts`). The batch is judged together; when a block's shape moves, its edits are kept in order only while the shape holds. A block too long to verify refuses its edits. The policy row gains `preservesMarkdownStructure`. Placement downgrades such a fix to a flag (`markup-change`), so it is never preferred, and the applier checks again on the live text. |
+| F-03: a spacing fix with the same markup characters made a tag, or a fence | D4, D6: a fix must leave the document's Markdown structure as it was. Each top-level block an edit touches is lexed by `marked` before and after, its inline content with the document's own link definitions, and the shape (token types and nesting, heading depths, list kinds and task boxes, and every table cell's inline shape with the columns' alignment) must match (`utils/draftEdit/markdownStructure.ts`). The re-review found the first version reduced a table to its size, so a tag or a reference link made inside a cell passed. The batch is judged together; when a block's shape moves, its edits are kept in order only while the shape holds. A block too long to verify refuses its edits; since spans an edit touches at their edges join, a long run of such paragraphs can pass the bound together, and its fixes are then flagged instead (a conservative availability limit the re-review recorded). The policy row gains `preservesMarkdownStructure`. Placement downgrades such a fix to a flag (`markup-change`), so it is never preferred, and the applier checks again on the live text. |
 | F-04: at 1,000 operations VS Code merges an edit into one spanning change, and every fix read as unknown | D4 step 7: reconciliation replays the document. A change and the edits it touches form a cluster; the cluster's new text must read, in exactly one way, as the text between the edits unchanged with each edit original or replaced. Read that way, the cluster is given back as exactly those replacements, so leftover flags between them stay on their text; otherwise an edit the change reached into is unknown. A quick fix shows the untouched flags again after it applies, since the annotator moves flags change by change. |
-| F-02: a held Refactor Preview can write after a language change ends the watched lifetime | D3, D7: a review belongs to one lifetime of its document. Decided 2026-10-25 by the writer: keep Refactor Preview, and discard it when the lifetime ends, with the gap that leaves stated (below). |
+| F-02: a held Refactor Preview can write after a language change ends the watched lifetime | An accepted limit, decided 2026-10-25 by the writer: keep Refactor Preview. D3, D7: a review belongs to one lifetime of its document, and a best-effort discard when that lifetime ends narrows the window. It is not a pre-commit barrier (below). |
+| F-05 (re-review): a Clear made while a quick fix's write was out was undone when it landed | D7: a Clear withdraws flags for good. After a quick fix lands, the untouched flags are shown again only while the issues it captured still hold the document's flags. A Clear replaces them, so nothing comes back; a Dismiss deletes from them, so it holds too. |
 
-### F-02: a review ends with its document
+### F-02: a held review is discarded, best effort, when its document's lifetime ends
 
 The preview commits inside `workspace.applyEdit`, with no hook between the
 writer's Apply and the write. A language change fires the document's close
@@ -868,12 +871,15 @@ and the version, so it would apply a held review to the document as it now
 reads. The writer weighed three review steps: this one, the extension's own
 checklist (a strict barrier, without VS Code's diff), and direct only.
 
-- **The barrier.** While a review is held, `VsCodeDocumentEditor` answers
-  the document's close event (a close, a reopen or a language change) by
-  running VS Code's own Discard, `refactorPreview.discard`. Discard settles
-  the held preview with nothing applied (`bulkEditPane.ts` `discard`), and
-  VS Code restores its panels. The adapter then answers `closed`, and the
-  run shows nothing.
+- **Best effort, not a barrier.** While a review is held,
+  `VsCodeDocumentEditor` answers the document's close event (a close, a
+  reopen or a language change) by running VS Code's own Discard,
+  `refactorPreview.discard`. Discard settles the held preview with nothing
+  applied (`bulkEditPane.ts` `discard`), and VS Code restores its panels.
+  The adapter then answers `closed`, and the run shows nothing. This
+  narrows the window, but it cannot close it: VS Code gives the extension
+  no way to stop its own commit. So it is tested as a mitigation, never
+  described as a guarantee.
 - **The command.** It is the Discard button's command
   ([`bulkEdit.contribution.ts`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEdit.contribution.ts),
   the same at `main`). It runs whatever the button's precondition, because
