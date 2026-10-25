@@ -3,7 +3,7 @@
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 and D12, and their **addendum of 2026-10-24, keep, lens by lens, until replaced**
 **Writer decisions:** 49 (supersedes 42, generalizes 47) and 52 in the [epic table](README.md#writer-decisions-2026-10-19); decisions 50 and 51 are Slices 4K and 4L's
-**Status:** Built on `epic/lightbox-keep-readings`, from `epic/lightbox` at `cf7f260` (Slices 4H, 4I and 5A.2 merged), with `epic/lightbox` at `13aff89` (Slice 4K, PR #168) merged in. PR #170 is open; its review's three findings are corrected.
+**Status:** Built on `epic/lightbox-keep-readings`, from `epic/lightbox` at `cf7f260` (Slices 4H, 4I and 5A.2 merged), with `epic/lightbox` at `f75ed80` (Slices 4K and 4L, PRs #168 and #169) merged in. PR #170 is open; its re-review closed F-01 and N-01, and F-02's remaining case is corrected.
 
 ## Why
 
@@ -85,13 +85,23 @@ A group gains two optional fields (`shared/types/messages/lightboxProvenance.ts`
   model?, at }`: the run's host-minted token, the provider-reported model of
   its call, and the ISO time it landed, from the service's clock
   (`LightboxService.clock()`). A lens a call replaces, or shows fresh, gets
-  the new entry; a kept lens keeps its own. **A reading from a board read
-  before this slice** (no entry of its own) gets `{ lens, model? }` when a
-  later call of its group settles: the model its group named then, taken
-  before the group's model becomes the new call's, and never a run or time
-  the board did not hold; nothing at all when the group named no model
-  (PR #170 F-02). `run` and `at` are both present or both absent, and the
-  codec drops an entry with one and not the other.
+  the new entry; a kept lens keeps its own. When a later call of its group
+  settles, a reading with no entry of its own gets one (PR #170 F-02):
+  - **from a board read before this slice** (its group has no `provenance`
+    field at all): `{ lens, model? }`, the model its group named then, taken
+    before the group's model becomes the new call's, and never a run or
+    time the board did not hold; nothing at all when the group named no
+    model;
+  - **from a group that has the field** (even empty), whose entry for it
+    did not read or was left out: `{ lens }` alone. Its origin is lost and
+    stays unknown through every later call, never the group's model, which
+    is the latest call's (PR #170's re-review).
+
+  `run` and `at` are both present or both absent, and the codec drops an
+  entry with one and not the other. The field, once present, stays present
+  through every transition, empty or not, and is written and read back as
+  an empty list, so a lost origin never reads as a board from before this
+  slice.
 - **`earlierLenses`**: `{ lens, reason }` for each lens showing an earlier
   reading.
 
@@ -105,12 +115,13 @@ per-lens entries, so each lens keeps or takes its own.
 (`lightboxBoardModels`, `lightboxLensModel` in
 `shared/constants/lightboxProvenance.ts`): the Boards browser's row and the
 inspector. A call whose reading replaced nothing (it failed, was stopped, or
-every lens it read kept its earlier reading) is not named. A board read
-before this slice has no provenance at all, and its readings are its
-group's model. Once a call of a group settles, every reading the group
-shows has an entry, so a lens without one has lost it (an entry that did not
-read): its model is unknown, never the group's latest call's (PR #170
-F-02).
+every lens it read kept its earlier reading) is not named. Only a board read
+before this slice has no `provenance` field at all, and its readings are its
+group's model; a present field, even empty, never falls back. Once a call of
+a group settles, every reading the group shows has an entry, so a lens
+without one has lost it (an entry that did not read, or one left out): its
+model is unknown, never the group's latest call's (PR #170 F-02 and its
+re-review).
 
 **The inspector** names the model and time of the pinned reading ("Read by
 model-v1 · Oct 24, 2026, 9:08 AM", in the viewer's zone; "Read by model-v1"
@@ -412,6 +423,52 @@ corrections, under Node 22, the one time-bound miss passing alone); lint
 `extension.js` `556346ba…` both times; `git diff --check` clean. The
 evidence's states rebuild byte for byte, and the corrected bundle gives the
 same `facts.json` and an empty `errors.txt`.
+
+## PR #170's re-review correction (2026-10-25)
+
+Astra's re-review closed F-01 and N-01 and narrowed F-02 to unknown
+origins, after `epic/lightbox` at `f75ed80` (Slice 4L, PR #169) was merged
+in. The F-02 correction gave every reading without an entry its group's
+model at the next settle, as if it came from a board saved before this
+slice; in a group that records provenance, such a reading has lost its
+origin (an entry the codec dropped, or one left out), and the group's
+model is its latest call's. A headline-only rerun under a third model then
+wrote the second model onto the motif, and the inspector and the row named
+it; a present but empty list read as a board from before this slice at
+once.
+
+**The field's presence decides** (section 2): only a group whose
+`provenance` is absent is from before this slice. A group with the field,
+even empty, gives a reading with no entry `{ lens }` alone, unknown
+through every later call. `lightboxLensModel` falls back only when the
+field is absent. Once present, the field stays present through every
+transition, and an empty list is written and read back as one.
+
+**Tests added:** in `LightboxKeptReadingSources.test.ts`, the three
+sequences through the real host (the motif's entry made half so the codec
+drops it, left out of a well-formed list, every entry malformed), each
+with a headline-only rerun under a third model, a save and a fresh host's
+restore, the motif unknown in the board, the inspector and the row, and a
+failed whole-call rerun as a control; in `LightboxKeepReadings.test.ts`,
+an unrelated rerun (twice), a present but empty list, a failed call and a
+cleared lens; in `LightboxBoardProvenance.test.ts`, an empty list written
+and read back present, and every entry dropped. **On `bc3ab1c` all 10 fail**
+(typed or not: they compile there), and the 39 earlier tests in those files
+pass, the ordinary legacy cases included.
+
+**The merge's one semantic conflict:** the webview now reads the
+Lightbox's own model selection, so this slice's App tests and the evidence
+harness name it in their model data.
+
+**Verification:** 519 suites / 7,257 tests / 59 snapshots, all passing
+under Node 18.20.8 (519 / 7,247 / 59 on the merged tree before the fix);
+lint 0 errors and 1,133 warnings, identical per file, rule and severity to
+`f75ed80`; typecheck under Node 22 and Node 18; `npm run build` with
+`verify:bundle` under each Node, `webview.js` `55feaac0…` and
+`extension.js` `e060a472…` both times; `git diff --check` clean. The
+evidence's states rebuild byte for byte; the merged bundle gives the same
+`facts.json` and an empty `errors.txt`, and the captures were rendered
+again, since 4L's header changed the page.
 
 ## Visual evidence
 

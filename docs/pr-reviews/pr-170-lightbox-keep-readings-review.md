@@ -248,3 +248,56 @@ Rebuilt SHA-256 values match the author's correction hashes:
 - `extension.js`: `556346baf03cacf308b65f8cf6c70770e5b14423dcdf034008f246aa9c6dcb05`
 
 This appendix reviews actual #168 integration at the named head/base, not separate #169 model-setting integration or any later merge. Decisions 49/52 and the empty-answer/pairing questions are still not independently accepted on the writer's behalf. Only this append-only report is published; the report commit's exact bytes, sole parent, single changed path and both exact-head CI events are verified separately. No formal review, PR comment, implementation change, merge or deployment is authorized by this report.
+
+## Author response to the re-review (2026-10-25)
+
+**F-02's remaining case: fixed**, after merging `epic/lightbox` at
+`f75ed80` (Slice 4L, PR #169) into the branch. Nothing above this section
+was edited.
+
+| Commit | What |
+| --- | --- |
+| `a18150ce` | Merge of `epic/lightbox` at `f75ed80` (a merge commit). The conflicts were the agents guide, the epic README and the ADR. One semantic conflict: the webview now reads the Lightbox's own model selection, so this slice's App tests and evidence harness name it in their model data (three App tests waited for it on the merged tree; they pass with it) |
+| `214be5d2` | F-02: an origin a group with provenance lost stays unknown |
+| this commit | This response, the slice notes, the ADR's addendum, the agents guide, the epic, and the evidence (rendered again) |
+
+The six shared files that merged cleanly were checked. 4L's changes to the
+reading handler, the call controls and the run line only rename the
+assistant model as the Lightbox's; the boundaries, runner and Opinion
+tests carry both slices. The runner's engine is the `'lightbox'` scope's,
+and a group's `outcome.model` is still that engine's provider-reported
+`modelId` (`LightboxGroupReply`), so provenance names the Lightbox's model.
+On the merged tree, before the fix, the full suite under Node 18.20.8 was
+519 suites / 7,247 tests / 59 snapshots, all passing once the App tests
+named the Lightbox's selection.
+
+### Resolution ledger
+
+| ID | Priority | Disposition | Fix | Regression tests |
+| --- | --- | --- | --- | --- |
+| F-02 (remaining) | P2 | **Fixed** | **The field's presence decides what is legacy.** Only a group whose `provenance` field is absent is a board read before Slice 4J; `carriedProvenance` gives its readings the group's model, as before. A group with the field, **even empty**, gives a reading with no entry (one the codec dropped, or one left out) an entry of the lens alone, `{ lens }`: unknown, with no model, run or time, never `group.model`, which is the latest call's. `lightboxLensModel` falls back to the group's model only when `provenance === undefined`, never on an empty list. **The field stays present** once it is: `settleLightboxGroup` and `withoutLenses` (a dropped lens, a lens with no reading cleared when its call starts) keep `provenance: []` rather than dropping it, and the codec writes and reads an empty list back as one. Since every settle gives each reading shown an entry, an unknown origin stays unknown through later runs, failed and partial outcomes, and save and reload. | `LightboxKeptReadingSources.test.ts` (real codec, host, store and fresh hosts):<br>• **Your three sequences**, from the legacy witness's mixed board (headline by model-v2; motif, tension, gravity, palette by model-v1), its file's group A provenance changed, then restored by a fresh host: the motif's entry made half (a run without its time; one entry dropped), left out of a well-formed list (none dropped), and every entry malformed (an empty list kept). Each: the motif unknown on open; a headline-only rerun under model-v3; the autosave and a second fresh host's restore; the motif's tiles unchanged, its entry `{ lens: 'motif' }`, no inspector model line, the headline "Read by model-v3 · …", and the row's models `[v3, v1]` (`[v3]` when every entry was malformed), never v2<br>• **Failed outcome control:** the dropped half-entry board, Run A under model-v3 with an unusable reply: the motif stays `{ lens: 'motif' }`, the headline keeps model-v2, the row `[v2, v1]`<br>`LightboxKeepReadings.test.ts` (pure): an unrelated rerun, then another; a present but empty list (no model at once, and after a call); a failed call keeping the lost origin unknown and the known one known; a lens with no reading cleared when its call starts, the list staying `[]`<br>`LightboxBoardProvenance.test.ts` (codec): an empty list written and read back present, byte for byte, naming no model; every entry dropped leaves `[]`, naming none though the group has a model<br>**Kept passing:** the ordinary legacy witness and its failed control (format-1 open, partial whole-group rerun, headline-only rerun), and every earlier provenance test |
+
+### Which tests fail on `bc3ab1c`
+
+The 3 changed test files, copied onto an export of `bc3ab1c`: **all 10
+new tests fail**, typed or not (they compile there), each at the
+unknown-origin assertion. The host sequences and the failed control
+receive `{ lens: 'motif', model: 'provider/model-v2' }`, the pure cases
+the group's model (or no list after a clear), and the codec cases the
+group's model for an empty list. **The 39 earlier tests in those files
+pass there**, the ordinary legacy cases included.
+
+### Verification at the correction head
+
+| Check | Result |
+| --- | --- |
+| Full Jest, Node 18.20.8 (`npx -p node@18`) | **519 suites / 7,257 tests / 59 snapshots, all passing** |
+| Lint | **0 errors / 1,133 warnings**, identical per file, rule and severity to `f75ed80` |
+| Typecheck | **Pass** under Node 22 and Node 18.20.8 |
+| `npm run build` with `verify:bundle`, under Node 22 and Node 18.20.8 | **Pass**, the same hashes both times: `webview.js` `55feaac0fa5d28704817228a25991d3cce331c1e2f8e38d292e88b531c49c56d`, `extension.js` `e060a4725fa5cebd54d7d04d41deaa88786d22379d56ff418e9baf06df9ef745` |
+| `git diff --check` | **Clean** |
+| Visual evidence | The states rebuild byte for byte; the bundle gives the same `facts.json`, byte for byte, and an empty `errors.txt`. The captures were rendered again: 4L's header names the Lightbox's model and moves the page at 500 px |
+
+Module sizes: `LightboxReadingState.ts` 299 lines,
+`lightboxProvenance.ts` (constants) 130, (types) 51. No live or billable
+call; *Alice* fixtures only; model ids are placeholders.

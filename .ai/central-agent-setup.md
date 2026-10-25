@@ -840,7 +840,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-24, Lightbox Slice 4J (every run keeps each lens's reading until a usable new one replaces it, with its provenance and an earlier mark; a call's failure said once, under the run line) with PR #170's review and re-review corrections, on `epic/lightbox-keep-readings`, with `epic/lightbox` at `f75ed80` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back; Slice 4L, PR #169: the Lightbox's own model setting) merged in, under Node 18):
-- 519 suites / 7,247 tests / 59 snapshots
+- 519 suites / 7,257 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1333,11 +1333,13 @@ while it is read, or how a call's failure is said:
   on screen reads `lightboxLensModel` / `lightboxBoardModels`, never the
   group's model alone. Usage stays summed per group over every call made.
   Once a call settles, every reading its group shows has an entry: a
-  reading from a board read before Slice 4J takes `{ lens, model? }`, its
-  group's model then, before the group's model moves (PR #170 F-02). Never
-  invent a run or time for it; `run` and `at` come together or not at all.
-  A group with no provenance at all reads its group's model; a lens
-  without an entry in a group that has some names none.
+  reading from a board read before Slice 4J (its group has no `provenance`
+  field at all) takes `{ lens, model? }`, its group's model then, before
+  the group's model moves (PR #170 F-02); a reading whose entry a group
+  with the field (even empty) lost takes `{ lens }` alone and stays unknown
+  (the re-review). Never invent a model, run or time; `run` and `at` come
+  together or not at all. Only an absent field reads its group's model.
+  Once present, the field stays present, empty or not: never drop `[]`.
 - **The Opinion is no exception.** It keeps its reading in every scope;
   its citation basis rule moves only when a new Opinion lands
   (`LightboxPressRun`'s `opinionLanded`).

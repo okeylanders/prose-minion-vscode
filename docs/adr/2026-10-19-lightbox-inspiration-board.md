@@ -412,7 +412,12 @@ Opinion-only rule (decision 47). The run and reading model becomes:
   new call's), never a run or time the board did not hold. So once a call
   settles, every reading its group shows has an entry, the fallback is
   only for a group with none at all, and a lens whose entry was lost names
-  no model rather than the latest call's.
+  no model rather than the latest call's. *And by its re-review:* only a
+  group whose `provenance` field is absent is from before Slice 4J; a
+  group with the field, even empty, gives a reading whose entry did not
+  read or was left out an entry of the lens alone, unknown through every
+  later call, never the group's model. The field, once present, stays
+  present, and an empty list is written and read back as one.
 - **Stop and the text changing underneath.** A Stop marks each pending
   lens with a reading earlier with the stop's reason; a group set aside
   because the chapter changed while it was read is carried with its earlier

@@ -1950,3 +1950,18 @@ lens, and adds its items to 4D's digest.
     `webview.js` `2ffd7bcd…` and `extension.js` `556346ba…`; the evidence's
     states rebuild byte for byte and render the same facts, `errors.txt`
     empty.
+  - **`epic/lightbox` at `f75ed80` (Slice 4L, PR #169) merged in, and
+    PR #170's re-review (2026-10-25).** The conflicts were this README
+    (decisions 49, 50, 51, 52 in order; 4L merged), the agents guide's
+    inventory and the ADR (4L's D6 addendum beside this slice's); this
+    slice's App tests and evidence harness now name the Lightbox's own
+    model selection. The re-review closed F-01 and N-01 and narrowed F-02:
+    an origin a group with provenance lost was given its group's (latest)
+    model at the next settle. Now only a group with no `provenance` field
+    is from before Slice 4J; a lost origin stays `{ lens }`, unknown, and
+    the field once present stays present. The 10 new tests fail on
+    `bc3ab1c`. After it: 519 suites / 7,257 tests / 59 snapshots under
+    Node 18.20.8; lint identical to `f75ed80`; typecheck and `npm run
+    build` with `verify:bundle` under each Node, `webview.js` `55feaac0…`
+    and `extension.js` `e060a472…`; the evidence rendered again with no
+    error and the same facts.

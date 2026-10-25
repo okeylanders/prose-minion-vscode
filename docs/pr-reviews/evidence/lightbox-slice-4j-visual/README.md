@@ -128,6 +128,15 @@ nothing drawn changes: the captures are the earlier render's, which differ
 from the new one by at most 49 pixels a capture, as two renders of one
 bundle do. The corrections' own witnesses are tests (see the slice notes).
 
+**After `epic/lightbox` at `f75ed80` (Slice 4L, the Lightbox's own model
+setting) was merged in, and PR #170's re-review correction** (a lost
+provenance origin stays unknown), the harness names the Lightbox's own
+model selection in its model data, as the webview now reads it. The states
+rebuild byte for byte, and the bundle (`webview.js` SHA-256 `55feaac0…`,
+the same under Node 22 and Node 18) gives the same `facts.json`, byte for
+byte, and an empty `errors.txt`. The captures were rendered again from it:
+4L's header names the Lightbox's model, which moves the page at 500 px.
+
 In every capture: each AI-read widget says what its call's state on the
 host's board says (the live note over an earlier reading, the earlier note
 and its reason, or the short line pointing to its call's note), with no
