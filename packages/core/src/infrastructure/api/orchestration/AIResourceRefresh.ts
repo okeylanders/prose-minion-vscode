@@ -11,17 +11,25 @@
  * - **A model setting change** hot-swaps the model in place. The swap is
  *   idempotent, so an open webview's own swap repeats it harmlessly.
  *
- * One rebuild per key. Every surface that hears a key change asks through
- * `refreshKey`: this owner, and each open webview's handler. The first to
- * read the new key rebuilds; the rest join that rebuild. A request that finds
- * the key unchanged since the rebuild it last started builds nothing, so a
- * run that began after the change is not retired by a second rebuild. The
- * key is compared by a fingerprint, never kept.
+ * Every surface that hears a key change asks through `refreshKey`: this
+ * owner, each open webview's handler, and the Settings overlay's Save and
+ * Clear. The requests are ordered when they are made, before anything is
+ * awaited, and only the newest one's reading of the key counts:
+ * - An older request whose read comes back later is obsolete. It joins the
+ *   newest request and builds nothing, so it can neither retire a run that
+ *   started on a newer key nor leave a stale identity behind (the re-review).
+ * - The newest compares its reading with the key the manager actually
+ *   adopted (`adoptedKeyFingerprint`). It rebuilds only when they differ, and
+ *   then hands the manager exactly the key it read, so the adopted identity
+ *   is the one it compared. One key change is one rebuild.
+ * - A request still reading when the owner is disposed builds nothing.
+ *
+ * Keys are compared by fingerprint, never kept.
  */
 
-import { createHash } from 'node:crypto';
 import type { LogSink, PlatformDisposable, SettingsStore } from '@/platform';
 import type { AIResourceManager } from './AIResourceManager';
+import { apiKeyFingerprint } from './apiKeyFingerprint';
 import { MODEL_SCOPE_SETTING_KEYS } from './ModelScopeSelections';
 
 /** The key source the manager reads: secret storage, with the legacy setting as a fallback. */
@@ -35,9 +43,11 @@ const LEGACY_KEY_SETTING = 'openRouterApiKey';
 const MODEL_SETTINGS: readonly string[] = Object.values(MODEL_SCOPE_SETTING_KEYS).map((key) => `${SECTION}.${key}`);
 
 export class AIResourceRefresh {
-  /** The fingerprint of the key the latest rebuild this owner started read; undefined before one, or after one failed. */
-  private builtFor?: string;
-  private latest: Promise<void> = Promise.resolve();
+  /** Requests made so far; the newest is the only one whose reading of the key counts. */
+  private requests = 0;
+  /** The newest request, which an obsolete one joins. */
+  private newest: Promise<void> = Promise.resolve();
+  private disposed = false;
   private readonly subscription: PlatformDisposable;
 
   constructor(
@@ -51,25 +61,16 @@ export class AIResourceRefresh {
     });
   }
 
-  /** Rebuild the manager for the key stored now, joining a rebuild already started for it. */
-  async refreshKey(): Promise<void> {
-    const fingerprint = await this.fingerprintOfStoredKey();
-    if (fingerprint === this.builtFor) {
-      return this.latest;
+  /** Bring the manager to the key stored now; resolves once it is built with it, or already was. */
+  refreshKey(): Promise<void> {
+    if (this.disposed) {
+      return Promise.resolve();
     }
-    this.builtFor = fingerprint;
-    const rebuild = this.manager.refreshConfiguration();
-    this.latest = rebuild;
-    try {
-      await rebuild;
-      this.log.appendLine('[AIResourceRefresh] API key changed; AI resources rebuilt');
-    } catch (error) {
-      if (this.latest === rebuild) {
-        this.builtFor = undefined;
-      }
-      this.log.appendLine(`[AIResourceRefresh] Rebuild after an API key change failed: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
-    }
+    // Ordered here, before the first await, so a read that answers late cannot pass a newer one.
+    const request = ++this.requests;
+    const run = this.observe(request);
+    this.newest = run;
+    return run;
   }
 
   /** React to a host configuration change, given its `affects(section)` predicate. */
@@ -85,11 +86,33 @@ export class AIResourceRefresh {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.subscription.dispose();
   }
 
-  private async fingerprintOfStoredKey(): Promise<string> {
-    const key = (await this.keys.getApiKey()) || this.settings.get<string>(SECTION, LEGACY_KEY_SETTING) || '';
-    return createHash('sha256').update(key).digest('hex');
+  private async observe(request: number): Promise<void> {
+    const apiKey = await this.storedKey();
+    if (this.disposed) {
+      return;
+    }
+    if (request !== this.requests) {
+      // A newer request was made while this one read: its reading decides.
+      return this.newest;
+    }
+    if (apiKeyFingerprint(apiKey) === this.manager.adoptedKeyFingerprint()) {
+      return;
+    }
+    try {
+      await this.manager.refreshConfiguration({ apiKey });
+      this.log.appendLine('[AIResourceRefresh] API key changed; AI resources rebuilt');
+    } catch (error) {
+      this.log.appendLine(`[AIResourceRefresh] Rebuild after an API key change failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
+
+  /** The key the manager would read: secret storage, then the legacy setting. */
+  private async storedKey(): Promise<string | undefined> {
+    return (await this.keys.getApiKey()) || this.settings.get<string>(SECTION, LEGACY_KEY_SETTING) || undefined;
   }
 }

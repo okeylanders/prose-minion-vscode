@@ -26,6 +26,7 @@ import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
 import { resolveModelScopeSelections } from './ModelScopeSelections';
+import { apiKeyFingerprint } from './apiKeyFingerprint';
 import { GuideCapability } from './capabilities/GuideCapability';
 import { ContextFileCapability } from './capabilities/ContextFileCapability';
 import {
@@ -56,6 +57,8 @@ export class AIResourceManager {
   private rebuilds = 0;
   private initialized = false;
   private initialization?: Promise<void>;
+  /** The fingerprint of the key the current resources were built with, never the key (PR #171 F-01). */
+  private adoptedKey?: string;
   private statusCallback?: StatusCallback;
   private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
   private readonly tokenUsageResetListeners: ListenerSet<[]>;
@@ -107,9 +110,14 @@ export class AIResourceManager {
   }
 
   /** Rebuild only for an explicit configuration change. */
-  async refreshConfiguration(): Promise<void> {
-    this.initialization = this.startRebuild();
+  async refreshConfiguration(observed?: { apiKey: string | undefined }): Promise<void> {
+    this.initialization = this.startRebuild(observed);
     await this.initialization;
+  }
+
+  /** Which key the current resources were built with, as `apiKeyFingerprint`; undefined before a build or after one failed. */
+  adoptedKeyFingerprint(): string | undefined {
+    return this.adoptedKey;
   }
 
   /**
@@ -165,11 +173,12 @@ export class AIResourceManager {
    * A failed build must not poison the singleton: clear the cached promise
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
-  private startRebuild(): Promise<void> {
+  private startRebuild(observed?: { apiKey: string | undefined }): Promise<void> {
     const rebuild = ++this.rebuilds;
-    return this.rebuildResources(rebuild).catch(error => {
+    return this.rebuildResources(rebuild, observed).catch(error => {
       if (rebuild === this.rebuilds) {
         this.initialization = undefined;
+        this.adoptedKey = undefined;
       }
       this.outputChannel?.appendLine(
         `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
@@ -178,10 +187,11 @@ export class AIResourceManager {
     });
   }
 
-  private async rebuildResources(rebuild: number): Promise<void> {
+  /** `observed`: a key the caller read already (its refresh owner, which orders reads), built with exactly as given. */
+  private async rebuildResources(rebuild: number, observed?: { apiKey: string | undefined }): Promise<void> {
     // Get API key from SecretStorage (fallback to settings for backward compatibility)
-    let apiKey = await this.secretsService.getApiKey();
-    if (!apiKey) {
+    let apiKey = observed ? observed.apiKey : await this.secretsService.getApiKey();
+    if (!observed && !apiKey) {
       apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
     }
     // Every webview refreshes on a key change, so rebuilds overlap. One that a
@@ -191,6 +201,7 @@ export class AIResourceManager {
     if (rebuild !== this.rebuilds) {
       return this.initialization;
     }
+    this.adoptedKey = apiKeyFingerprint(apiKey);
 
     // Non-conversational scopes remain disposable. The assistant engine owns
     // retained conversations, so only its provider attachment is replaced.
@@ -404,6 +415,7 @@ export class AIResourceManager {
     this.resolvedModels = {};
     this.initialized = false;
     this.initialization = undefined;
+    this.adoptedKey = undefined;
     this.statusCallback = undefined;
     this.tokenUsageListeners.clear();
     this.tokenUsageResetListeners.clear();

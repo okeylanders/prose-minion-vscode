@@ -58,8 +58,18 @@ async function createHost() {
   const stored = new Map<string, string>([['openRouterApiKey', FIRST_KEY]]);
   const listeners = new Set<(event: unknown) => unknown>();
   const changed = () => listeners.forEach((listener) => listener({ key: 'openRouterApiKey' }));
+  /** When set, the next read answers only when released, with the key as it stood when read. */
+  let holdNextRead = false;
+  const heldReads: Array<() => void> = [];
   const secretStore = {
-    get: async (key: string) => stored.get(key),
+    get: (key: string) => {
+      const value = stored.get(key);
+      if (!holdNextRead) {
+        return Promise.resolve(value);
+      }
+      holdNextRead = false;
+      return new Promise<string | undefined>((resolve) => heldReads.push(() => resolve(value)));
+    },
     store: async (key: string, value: string) => { stored.set(key, value); changed(); },
     delete: async (key: string) => { stored.delete(key); changed(); },
     onDidChange: (listener: (event: unknown) => unknown) => {
@@ -117,12 +127,15 @@ async function createHost() {
     manager, refresh, secrets, service, sent, until,
     proofread: (chunks: number) => service.proofread({ chunks: Array.from({ length: chunks }, () => ALICE_OPENING_SEEDED), label: 'chapter-01.md' }),
     hold: (count: number) => { holding = count; },
+    holdNextKeyRead: () => { holdNextRead = true; },
+    releaseKeyRead: () => heldReads.shift()?.(),
     releaseAll: () => held.splice(0).forEach((release) => release()),
     held: () => held.length,
     setModel: (model: string) => {
       values.proofreadModel = model;
       refresh.handleConfigurationChange((section) => section === 'proseMinion.proofreadModel');
     },
+    generation: () => manager.getGeneration('assistant')!,
     /** Change the stored key, then wait for the rebuild its change event alone starts: nothing here asks for one. */
     changeKey: async (change: () => Promise<void>) => {
       const before = manager.getGeneration('assistant')!;
@@ -194,6 +207,50 @@ describe('Proofread with no webview open, after a model or key change (PR #171 F
       interrupted: { cause: 'key-changed' }
     });
     await expect(host.proofread(1)).resolves.toEqual({ kind: 'unconfigured' });
+  });
+
+  it('never lets an older key read that answers last retire a run on the newer key, or hide the next deletion (re-review)', async () => {
+    const host = track(await createHost());
+    // The deletion's read is held after it saw no key.
+    host.holdNextKeyRead();
+    await host.secrets.deleteApiKey();
+    // A newer key arrives, and its change rebuilds the manager.
+    await host.changeKey(() => host.secrets.setApiKey(NEXT_KEY));
+    const afterNext = host.generation();
+
+    // A fresh run starts on the newer key; three requests are held in flight.
+    host.hold(3);
+    const run = host.proofread(6);
+    await host.until(() => host.sent.length === 3);
+
+    // The older read lands last: it builds nothing and retires nothing.
+    host.releaseKeyRead();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(host.generation()).toBe(afterNext);
+    host.releaseAll();
+    const result = await run;
+    expect(result).toMatchObject({ kind: 'completed', chunks: Array.from({ length: 6 }, () => ({ kind: 'read' })) });
+    expect(result).not.toHaveProperty('interrupted');
+    expect(host.sent.map((each) => each.authorization)).toEqual(Array.from({ length: 6 }, () => `Bearer ${NEXT_KEY}`));
+
+    // The next deletion is still heard, as the overlay's Clear awaits it.
+    await host.changeKey(() => host.secrets.deleteApiKey());
+    await host.refresh.refreshKey();
+    await expect(host.proofread(1)).resolves.toEqual({ kind: 'unconfigured' });
+    expect(host.sent).toHaveLength(6);
+    expect(host.manager.getEngine('assistant')?.isProviderAvailable()).toBe(false);
+  });
+
+  it('builds nothing for a key read still pending when the owner is disposed', async () => {
+    const host = track(await createHost());
+    const before = host.generation();
+    host.holdNextKeyRead();
+    await host.secrets.setApiKey(NEXT_KEY);
+    host.refresh.dispose();
+    host.releaseKeyRead();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(host.generation()).toBe(before);
   });
 
   it('rebuilds once for a key change that this owner and an open webview both hear', async () => {
