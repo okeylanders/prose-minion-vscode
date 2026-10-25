@@ -491,3 +491,63 @@ All required gates were independently rerun at this head with task-local Node `1
 | Report-only diff and previous text preservation | `git diff --check` clean; preceding report and all author responses preserved as an exact byte prefix |
 
 No implementation edit, live/billable call, private manuscript, formal GitHub review, merge or deployment was made. **The native Extension Development Host and screen-reader/editor interaction pass remain unexercised.** The ADR/author response does not establish independent writer acceptance, and passing CI does not close the remaining F-02 protection defect.
+
+---
+
+## Author response to the second re-review — 2026-10-25
+
+**Correction head:** `3aa8b175` (base `31edcfdf`, unchanged). The fixes are in `96418bfe`; the verification record and test inventory are in `3aa8b175`. Both open F-02 cases are fixed, along with your nonblocking guard note and the P3 key normalization. The ADR amendment's F-01 and F-02 rows, the slice document and the memory bank record the changes.
+
+### F-02 A: a row's last cell is taken however the row ends
+
+- **Fix.** `tableCellStretches` no longer flushes the final cell from inside the loop. The loop only splits on unescaped pipes; the last cell is then taken once, after the loop, whatever the escape branch did to the index. A row ending in an odd number of backslashes keeps its last cell's scope, code span and all.
+- **Scanner tests** (`protectedRegions.test.ts`), each asserting the exact masked text:
+  - a code span before one terminal backslash, with no trailing pipe and with a final newline;
+  - a code span before an escaped trailing pipe (`\|`);
+  - a code span before two terminal backslashes (your passing control);
+  - a link target and a tag attribute before one terminal backslash.
+- **Use-case tests** (`DraftEditUseCase.test.ts`): code before one terminal backslash, with and without a final newline; code before an escaped trailing pipe; and a link target and a tag attribute before one terminal backslash. Each runs both ways:
+  - whole document: `teh` is absent from the payload, `unanchored: 1`, nothing flagged;
+  - selection of `teh` alone: `empty`, nothing sent, nothing shown.
+- **Against the previous scanner,** eight of these use-case assertions fail: the four odd-backslash entries on both paths. The escaped-pipe entry passes there too; it is a control.
+
+### F-02 B: what cannot be classified within the bound is not prose
+
+- **Fix.** `linkDestination` now tells two answers apart: `undefined` ("not a destination") and `TOO_DEEP` ("nested past `MAX_LINK_PAREN_DEPTH`; not classified"). On `TOO_DEEP`, `linkDestinationEnd` protects everything from the destination's opening parenthesis to the end of the scope. The bound stays at 32 and the work stays bounded.
+- **The cost.** Prose after the overflow in the same leaf block or table cell is not proofread. Other blocks are unaffected. A link nested 33 parentheses deep is not manuscript prose, so the trade is the right one.
+- **Pinned at 31, 32 and 33** (limit−1, limit, limit+1):
+  - **Scanner:** the masked text never contains `teh` and opens with the protected destination after `[chapter]`.
+  - **Use case:** your synthetic source at each depth, whole document and selection, with the same payload, flag and outcome assertions as above.
+  - Depth 33 fails on both paths against the previous scanner; 31 and 32 are controls.
+- **The rescan witness changed meaning.** `'](x'` repeated 20,000 times now nests past the bound at its 33rd `(`, so everything after the first `]` is protected. The test now says so and still holds the scan under its time bound.
+
+### Nonblocking: list indentation inside block quotes
+
+`nestsTooDeeply` now strips a line's leading quote markers before it reads list indentation, so a list nested line by line inside a block quote is held to the same 64-column bound as one outside. The space after `>` counts as indentation, so the quoted case is one column stricter, erring toward protection. Measured with your shape (`'> ' + '  '.repeat(level) + '- prose'`, one line per level):
+
+- inside a quote, 33, 34 and 40 levels are protected whole, and eight levels are read;
+- outside a quote, 33 levels are read and 34 are protected whole.
+
+The test pins 40 and 8 inside a quote.
+
+### P3: the key sent is the key fingerprinted
+
+`AIResourceManager.rebuildResources` trims the key it adopts, observed or read from secret storage or the legacy setting, before it fingerprints it and before it builds any client. Both `OpenRouterClient` construction sites take that trimmed key, so the Authorization value and `adoptedKeyFingerprint` always describe one string, and a whitespace-only key is no key. In your legacy-key sequence, the first build already sends the trimmed key. The migration's trimmed store then changes nothing, correctly.
+
+- **Test** (`AIResourceManager.test.ts`):
+  1. Built from `'\nsk-placeholder '`: the Proofread engine's client holds `sk-placeholder`, and the fingerprint is `sk-placeholder`'s.
+  2. Rebuilt with `' sk-placeholder\n'`: still `sk-placeholder`.
+  3. Rebuilt with `'  '`: unconfigured.
+- **Not covered:** this is a manager-level test, not a rerun of your migration and `Headers` sequence.
+
+### Verification at `3aa8b175`
+
+| Check | Result |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass; core, webview and adapter |
+| Full Jest, Node 18.20.8 | Pass; 537 suites / 7,501 tests / 59 snapshots |
+| Lint, Node 18.20.8 | Pass; 0 errors / 1,133 warnings (baseline unchanged) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 22 | Pass; 537 suites / 7,501 tests / 59 snapshots |
+
+No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
