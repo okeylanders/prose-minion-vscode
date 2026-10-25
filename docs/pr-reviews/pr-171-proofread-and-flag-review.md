@@ -162,3 +162,92 @@ All local execution used an isolated cloud checkout with matching lockfile and v
 | Implementation-head pull-request CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40151174514) at `0edaf691` |
 
 Independent regression failures are deliberately failing desired-correctness assertions, not failures of the repository's committed suite. They were run outside the checkout; this publication adds only this report. Source and actual adapter execution do not substitute for native command activation, context-menu interaction, editor squiggle/F8 presentation, focus, cancellation notification behavior or screen-reader validation. **The native Extension Development Host was not exercised.** Cloud/Jest timings are not predictions of editor latency or model quality. The proposed human host pass and seeded-fixture false-positive evaluation remain outstanding.
+
+---
+
+## Author response — 2026-10-25
+
+**Implementation head:** `ad33ecbd` (base `31edcfdf`, unchanged since the review). All six findings are fixed with regression tests; the decisions are recorded in the ADR's new "Amendment 2026-10-25: PR #171 review (Slice 1)" section.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01 | Fixed | `03dfd83e`, `ad33ecbd` |
+| F-02 | Fixed | `4f3c5859` |
+| F-03 | Fixed | `32203d3a` |
+| F-04 | Fixed | `32203d3a` |
+| F-05 | Fixed | `09d2a815` |
+| F-06 | Fixed | `32203d3a` |
+
+### F-01 — `AIResourceRefresh` owns the manager's subscriptions
+
+- `orchestration/AIResourceRefresh.ts` is built once in `extension.ts`, before any provider or command is registered, and disposed with the extension.
+- **Key changes.** It subscribes to the secret store's change event and rebuilds the manager, which retires every engine a run still holds (PR #169 F-01).
+- **Model and legacy-key settings.** One extension-lifetime `onDidChangeConfiguration` registration feeds it. A model setting hot-swaps in place; a legacy-key setting rebuilds.
+- **Duplicate refreshes.** Every surface that hears a key change now asks the owner through `refreshKey()`: the owner's own listener, each webview's `MessageHandler`, and the Settings overlay's Save and Clear (`ConfigurationHandler`). It compares a SHA-256 fingerprint of the stored key (never the key itself) with the one its last rebuild read. The first caller to read a new key starts the rebuild; the rest join it, and a caller that finds the key unchanged builds nothing. One key change is therefore one rebuild, and no second rebuild retires a run that began after the change.
+- **Overlay.** `ConfigurationHandler` still awaits the rebuild before it answers, so `LightboxKeyRetirement` holds unchanged.
+- **Unchanged.** `AIResourceManager.refreshConfiguration()` still rebuilds unconditionally, as its own tests pin, and model hot-swaps stay idempotent.
+- **Tests:**
+  - `ProofreadColdRefresh.test.ts` runs with no handler at all, through the production `SecretStorageService` (over a store that fires its change event), manager, engine, `OpenRouterClient` and `ProofreadService`. HTTP is stubbed at `fetch`.
+  - It covers a native model change, a key removed from another window, a key replaced, and the six-chunk run: three held, the key deleted, three dispatched, `read ×3, unsent ×3`, `key-changed`, the next run unconfigured. It also checks one rebuild when two surfaces ask.
+  - Each scenario waits for the rebuild that the change event alone starts. With the owner's subscriptions disabled, all four scenarios fail.
+  - Also: `AIResourceRefresh.test.ts` (unit rules), `MessageHandler.test.ts` and `ConfigurationHandler.test.ts` (refresh through the owner, never the manager directly), and `providerAssembly.test.ts` (wiring before any webview or command).
+
+### F-02 — complete constructs
+
+- **Blocks.** `utils/draftEdit/markdownBlockRegions.ts` takes block structure from `marked`'s block lexer (`new Lexer(getDefaults()).blockTokens`).
+  - It finds fenced code, link reference definitions and raw `<script>`/`<style>` blocks inside block quotes and list items, nested or not.
+  - Each container keeps its source lines one for one (verified against marked 16.4.1 for quotes, lists, nested containers, tab-indented items and lazy lines), so each region is whole source lines. Every protected block is also checked line by line against the source.
+  - It fails closed: a child that does not continue its container's content, a misaligned block, a lexer error, or nesting past any manuscript (33 quote markers, or a list marker past 64 columns) protects the whole top-level block, or the whole document.
+  - A conservative line rule still protects definition-shaped lines Markdown would read as paragraph text, and the line after a bare `[label]:`.
+- **Inline.** `utils/draftEdit/markdownInlineRegions.ts` is one left-to-right pass in CommonMark precedence:
+  - backslash escapes;
+  - maximal backtick runs (an unmatched run is literal and never takes a later span's opener; spans stop at a paragraph break or a line that definitely starts a new block);
+  - URI autolinks of any scheme, and email autolinks;
+  - raw HTML read by its grammar (quoted attributes may hold `>`), comments, processing instructions, declarations, CDATA;
+  - link destinations with balanced or escaped parentheses, `<…>`, or a line break before the destination or title, including inside a block quote.
+
+  GFM bare URLs, `www.` links and email addresses are protected in their own pass.
+- **Policy and performance.** Indented paragraphs stay prose. The inline lexer is skipped deliberately: on 40,000 backticks the full `marked.lexer` took 3.7 s, while block tokens plus this pass take about 40 ms. A 438 KB chapter takes 45 ms.
+- **Tests:** every row of your table, plus the mismatched-backtick and quoted-attribute cases, with controls (a label stays prose; a blank line ends a destination; two list items share no span). They are covered in the scanner, and through the use case for a whole document (the payload holds none of it, `unanchored: 1`, nothing flagged) and for a selection inside the construct (`empty`, nothing sent). The 24 new assertions fail on the previous scanner.
+
+### F-03 — same occurrence, live protection
+
+- **Following edits.** Findings now follow their own occurrence through the edits recorded while the model worked (`shiftRanges`, the arithmetic the annotator uses for shown flags). An edit that touches a finding drops it as `stale`, and nothing is searched for again. The permissive model-quote matcher is used only to place a reply in its chunk.
+- **Live protection.** Protected regions are found again on the live text, and a finding now inside one is dropped as `protected`.
+- **Tests:** the use case covers your three cases and the control: the corrected duplicate (`stale: 1`, no flag), the newly fenced text (`protected: 1`), the existing-code duplicate (`stale: 1`), and the harmless prefix (moved to 19–22). The production adapters cover the corrected duplicate and the prefix.
+
+### F-04 — one document lifetime
+
+- **A watch, not a snapshot.** `DocumentEditor.snapshot(uri)` is now `watch(uri, version)`. The use case starts it on the open document at the gesture's version before anything is awaited. `VsCodeDocumentEditor` collects each change event, and settles `closed` on the document's close event or `isClosed`.
+- **Lifetimes.** A language change (VS Code closes and reopens the same object) and a close followed by a reopen (a new object, versions restarting) are both another lifetime. Only open documents are watched, so nothing is reopened through `openTextDocument`.
+- **Outcomes.** A run whose document closed returns `closed` and shows nothing ("… was closed before Proofread finished, so no flags were shown"). One whose document moved before it could start returns `changed` and sends nothing. Any future Workshop caller that needs open-by-URI behavior will get its own path.
+- **Tests:** `draftEditDocumentLifetime.integration.test.ts` runs the production `VsCodeDocumentEditor`, `VsCodeIssueAnnotator` and `DraftEditUseCase` against a controlled VS Code double with a held reply. It covers the open control, a held close (no diagnostic, `openTextDocument` never called), close and reopen at version 1 with different text, and a language change.
+
+### F-05 — wholly missing usage
+
+- `sumTokenUsage` now keeps a call with no usage record in the completeness check: cost and cache totals need every call's record and field. `requestCount` counts every call.
+- **Tests:** pure, and through the production manager, engine and `OpenRouterClient` with `fetch` stubbed.
+  - `[reported, missing]` gives `{ promptTokens: 10, completionTokens: 10, totalTokens: 20, requestCount: 2 }`, with no cost or cache.
+  - All-missing gives no usage, while the chunks still report both reads.
+
+### F-06 — truthful recovery wording
+
+- **What a chunk carries.** A rejected chunk carries `saved` (whether `persistRejectedModelResponse` returned a receipt). The outcome's `rejectedChunks` is `{ saved, unsaved }`.
+- **Wording.** The summary says "saved for recovery" only for saved parts. Otherwise: "1 part unreadable and not saved for recovery (see the Prose Minion output)", or for a mix, "3 parts unreadable: 2 saved for recovery, 1 not saved (see …)". The once-per-run presenter and the per-chunk captures are unchanged.
+- **Tests:** `DraftEditRecovery.test.ts` runs the production recovery store, whose file system fails writes on cue, through the service, use case and summary. It covers saved, failed and mixed. The presenter opens once when anything was saved, and never otherwise.
+
+### Nonblocking notes
+
+The ellipsis-expansion boundary in `anchorQuote` and the stronger no-line-break-change rule are recorded as required write-side hardening in `slice-2-write-side-and-fix.md`, to land before anything is applied.
+
+### Verification at `ad33ecbd`
+
+| Check | Result |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass |
+| Full Jest, Node 18.20.8 | Pass; 537 suites / 7,452 tests / 59 snapshots |
+| Lint, Node 18.20.8 | Pass; 0 errors / 1,133 warnings (baseline unchanged) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 22 | Pass; 537 suites / 7,452 tests / 59 snapshots |
+
+No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
