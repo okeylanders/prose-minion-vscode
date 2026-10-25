@@ -2,7 +2,8 @@
 
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D3 (`DocumentEditor.applyEdits`), D4, D5 (gesture), D7 (quick fixes), D8 (Fix)
-**Status:** Planned. Starts after the writer's manual Flag run on seeded public-domain fixtures.
+**Status:** Built 2026-10-25, in review. The writer ran Flag in their editor and reported it working,
+so the default Proofread model stays.
 
 ## Outcome
 
@@ -52,3 +53,70 @@ In particular:
 - a single undo step;
 - a stale quote is never applied to a shifted range;
 - tense and agreement issues are never auto-applied.
+
+## As built (2026-10-25)
+
+The spike, and every departure from the plan above, is in the ADR's
+"Amendment 2026-10-25: Slice 2, the write side". In short:
+
+- **The spike read VS Code's source, not a running VS Code.** The build
+  environment's network policy denies VS Code's download host. The bulk-edit
+  service, Refactor Preview and the conflict detector read the same at
+  `main` and at 1.82.0, the engine floor:
+  - a discarded preview resolves `false`;
+  - an applied one makes only the ticked entries;
+  - a buffer edited while the preview is open is refused.
+- **Review starts unticked (writer decision).** `needsConfirmation` is the
+  only way an extension opens Refactor Preview, and VS Code lists those
+  entries unticked. Nothing changes until the writer ticks the file or single
+  fixes, then Apply. The progress line says so while the preview is open.
+- **What landed is read from the document.** `reconcileEdits` follows each
+  edit's range through every change, taking in the changes inside it
+  (VS Code may split a replacement into smaller ones), so a fix is
+  `applied`, `not-applied` or `unknown` by what stands there. Touching edits
+  are joined first.
+- **Leftovers become flags.** These are flagged where their text stands
+  after:
+  - fixes unticked, discarded or refused;
+  - judgment calls;
+  - downgraded fixes.
+
+  A fix the writer rewrote during review is left as written.
+- **Retry only for a direct apply.** A stale direct apply follows the
+  writer's typing and asks once more; a reviewed one never re-opens review.
+- **The quick fixes.**
+  - *Replace with '…'* applies one fix at once. It is preferred only for
+    Proofread's own fixes; a judgment call's suggestion is the writer's to
+    choose.
+  - *Fix all* applies every Proofread fix, reviewed as the setting says.
+  - Both ask `IssueAnnotator.current` where the flag sits now.
+- **A markup guard** (beyond the plan): a fix that adds or removes a Markdown
+  markup character is flagged instead (`markup-change`).
+- **The setting is VS Code-only.** `proseMinion.proofread.fixReview` is read
+  at the gesture and has no Settings Overlay row, like the Workshop's settings.
+- **Known limit.** Cancel on the progress notification cannot close an open
+  preview: the extension API has no call for it.
+- **Module split.** The use case stayed under 500 lines by moving the pure
+  issue helpers into `draftEditIssues.ts`.
+- **Tech debt recorded.** `extension.ts` was past 500 lines before Draft
+  Edit, and its command hosts' VS Code glue is most of the growth:
+  `.todo/tech-debt/2026-10-25-extension-composition-root-size.md`.
+
+## Verification
+
+- CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
+  suite (545 suites / 7,614 tests / 59 snapshots; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox` at `e3a7fac0`. The full suite also
+  passes under Node 22.
+- Fix is tested through the real applier, anchoring and guard on a document
+  that moves as VS Code's does, and end to end through the production
+  VS Code adapters on a controlled double whose `applyEdit` behaves as
+  VS Code's source shows.
+- No live provider calls. Fixtures are public-domain *Alice*.
+- Pending a human with VS Code:
+  - Fix a seeded fixture chapter through Refactor Preview: tick the file
+    and Apply; untick one; Discard.
+  - Type in the file while the preview is open, then Apply.
+  - Undo the fixes in one step.
+  - *Replace with '…'* and *Fix all* from the lightbulb.
+  - Fix with `proseMinion.proofread.fixReview` set to `apply`.
+
