@@ -1,6 +1,6 @@
 # Epic: Draft Edit
 
-**Status:** In progress. Slice 1 under way.
+**Status:** In progress. Slice 1 built and in review.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -60,7 +60,7 @@ bubbles, then Apply Recommendations and Apply Variation.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | Feature notes, ADR (Accepted), this epic; `epic/lightbox` merged in; recovery registry moved (`d058e8d2`) | Done |
-| 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | In progress |
+| 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Built; in review |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Planned |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, summary refinements | Planned |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
@@ -124,3 +124,12 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   - Reconciled the ADR with the Lightbox precedents and marked it Accepted.
     The writer's decisions: the name "Draft Edit", confirmation above 15,000
     words, and an own `proofread` scope with a cheap default.
+- **2026-10-25. Slice 1 built.**
+  - The `proofread` scope (`5e07d91d`) and the deterministic core
+    (`c97fcbfd`).
+  - The Proofread pass and its key-retirement behavior (`e50c2b36`).
+  - The ports, the use case, the commands, and the adapters (`fd5f3133`).
+  - Guards, docs, and the Workshop catalog fix.
+  - CI green under Node 18; the full suite also passes under Node 22.
+  - See the slice's "As built" for the departures from plan, each mirrored
+    in the ADR.

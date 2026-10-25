@@ -2,7 +2,7 @@
 
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D1, D2, D3 (`IssueAnnotator`, `DocumentEditor.snapshot`), D6, D7, D8 (Flag, Clear), D10
-**Status:** In progress
+**Status:** Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, and the guards-and-docs commit). In review. The writer's manual Flag run on seeded public-domain fixtures is pending.
 
 ## Outcome
 
@@ -168,3 +168,49 @@ Nothing in this slice writes to a document.
 - `proseMinion.proofreadModel` round-trips between the Settings Overlay and
   VS Code settings.
 - CI's four steps pass under Node 18. Core still imports no `vscode`.
+
+## As built (2026-10-25)
+
+Where the build departed from the plan above, and why:
+
+- **No `commandPalette` rule.** A manifest test enforces that the project
+  hides no command from the Command Palette. Proofread and Flag therefore
+  refuses other languages with a message ("Proofread reads Markdown and
+  plain-text files."). The editor menu still offers it only for Markdown and
+  plain text. ADR D8 is amended.
+- **`DraftEditUseCase` is not in `CoreServices` yet.** No webview handler
+  uses it in Slice 1, so it is built at the composition root and passed to the
+  commands. It joins `CoreServices` with the Workshop route in Slice 4. ADR D8
+  is amended.
+- **Command rules behind a host port.** As with the Lightbox's Open File
+  command, `application/commands/proofreadCommands.ts` holds the rules and
+  imports only from core. The composition root passes VS Code in as a host,
+  so the tests use a fake.
+- **Show Problems** is offered on the summary when flags were shown. This was
+  planned for Slice 3, but it was one line.
+- **Anchoring joins context with or without a space.** Writing the worked
+  example showed that a model leaves out the space between its context words
+  and the quote, so each junction is tried both ways.
+- **Doubled words** ("the the" → "the") count as a mechanical spelling fix,
+  even though their edit distance exceeds the bound.
+- **Prose-free paragraphs** (a lone protected block) are skipped by the
+  chunker, so a chunk never starts or ends on a placeholder.
+- **A shared `sumTokenUsage`** (`utils/tokenUsage.ts`) treats an unreported
+  cost as unknown. Adopting it in the Lightbox and the Dictionary is tracked
+  in `.todo/tech-debt/2026-10-25-shared-token-usage-sum.md`.
+
+## Verification
+
+- CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
+  suite (524 suites / 7,262 tests / 59 snapshots). The full suite also passes
+  under Node 22.
+- No live provider calls. The key-retirement test runs real
+  `OpenRouterClient`s with only the transport stubbed. Fixtures are
+  public-domain *Alice*.
+- Pending a human with VS Code:
+  - Flag a seeded fixture chapter in the Extension Development Host.
+  - Type over a flag, and type before one.
+  - Dismiss a flag, and Clear all flags.
+  - Run a long file and confirm the modal appears.
+  - Cancel a run mid-way.
+  - Remove the API key during a long run.

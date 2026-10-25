@@ -515,22 +515,30 @@ correction, and a note without colliding with Markdown (see Out of scope).
 | `prose-minion.proofreadFix` | Prose Minion: Proofread and Fix | `{ kind: 'proofread', output: 'fix' }` |
 | `prose-minion.clearProofreadFlags` | Prose Minion: Clear Proofread Flags | annotator only |
 
-- **Visibility.** `editor/context` and `commandPalette` entries use
+- **Visibility.** The `editor/context` entry uses
   `editorLangId == markdown || editorLangId == plaintext`, with **no**
   `editorHasSelection`. A non-empty selection narrows the target; otherwise
-  the whole document is proofread.
+  the whole document is proofread. There is no `commandPalette` rule: the
+  project hides no command there (a manifest test enforces it), so from the
+  palette any other language is refused with a message (amended 2026-10-25).
 - **Long files confirm first.** A whole-file run over
   `PROMPT_BUDGETS.proofread.confirmWholeFileWords` (15,000 words) shows a
   modal naming the word count and the number of model calls before anything
   is sent. *Cancel* sends nothing. A selection never confirms, however long.
   Typical chapters never see the modal.
-- **Wiring.** `DraftEditUseCase` is constructed at the composition root and
-  joins `CoreServices`. Command handlers in `extension.ts` call it directly,
-  not through a webview `MessageHandler` (Context 3).
+- **Wiring.** `DraftEditUseCase` is constructed at the composition root.
+  Command handlers in `extension.ts` call it directly, not through a webview
+  `MessageHandler` (Context 3). It joins `CoreServices` when a webview
+  handler first needs it, the Workshop's in Slice 4 (amended 2026-10-25).
+  The command rules live behind a host port in
+  `application/commands/proofreadCommands.ts`, so they are tested without a
+  VS Code mock, like the Lightbox's Open File command.
 - **Progress and summary.** Handlers wrap the run in a cancellable
   `window.withProgress`, which feeds the `AbortSignal`. They present the
-  `DraftEditOutcome` as one notification, e.g. "Fixed 9 · flagged 2 tense ·
-  1 unplaced · $0.004".
+  `DraftEditOutcome` as one notification, e.g. "Proofread chapter-03.md:
+  9 issues flagged (2 tense or agreement) · 1 not placed · $0.0040", worded
+  once in core (`describeDraftEditOutcome`). It offers *Show Problems* when
+  flags were shown and *Open Settings* when there is no key.
 - **Activation.** `onCommand:` activation events are added, matching the
   manifest's style.
 

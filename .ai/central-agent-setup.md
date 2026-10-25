@@ -24,7 +24,7 @@ prose-minion-vscode/
 ```
 
 **The two rules that define this architecture:**
-- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
+- **`packages/core` never imports `vscode`.** It depends only on the `Platform` ports (`packages/core/src/platform/`: `LogSink`, `SecretStore`, `SettingsStore`, `FileSystem`, `Workspace`, `ShellService`, `EditorContext`, `DocumentEditor`, `IssueAnnotator`). A non-VS-Code host (e.g. a console app) can reuse core by implementing these ports. **Verify before adding host-coupled code: no `from 'vscode'` in `packages/core/src`.**
 - **`apps/vscode-extension` is the only composition root.** `extension.ts` constructs concrete services + the VS Code Platform implementations and threads them inward. The app imports core *only* through the `@prose-minion/core` barrel (enforced via `eslint no-restricted-imports`); core never imports the app.
 
 `extension.ts` builds a typed `CoreServices` bundle alongside `Platform`.
@@ -1475,6 +1475,30 @@ records, when it saves, or how a saved one comes back:
   webview never names a path.
 - **Logs never carry the writer's text,** nor do tests, fixtures or
   evidence: use *Alice* or made-up names.
+
+### Draft Edit
+
+Follow [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md)
+when touching Proofread or anything that reads, flags, or (later) edits the
+writer's own document:
+
+- **Passes are policies.** A new behavior joins `DraftEditPass` and
+  `DRAFT_EDIT_PASS_POLICIES` and brings its own prompt, codec, and guard.
+  Never add a pass-specific branch to the code that places or applies edits.
+- **Quotes, not offsets.** A model returns quoted text with context; host code
+  anchors it (`utils/draftEdit/anchorEdits.ts`) and fails closed on
+  ambiguity. Never ask a model for offsets or line numbers.
+- **One door.** Only `DraftEditUseCase` (and, from Slice 2, its applier) may
+  reach `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
+  members; `boundaries.test.ts` enforces it. Widgets stay write-free.
+- **Live text wins.** Re-read the live buffer and re-anchor before showing or
+  applying anything; drop what no longer matches as stale.
+- **Protected regions.** Front matter, fenced and inline code, link targets,
+  URLs, reference definitions, HTML comments, and tags are never sent or
+  edited. Indented code is deliberately prose.
+- **Proofread's model** is an own scope with an inexpensive default; calls run
+  at temperature 0, replies go through `parseModelJson`, and a key change
+  mid-run stops starting chunks (PR #169 F-01).
 
 ### Operational Tips
 
