@@ -23,6 +23,21 @@ describe('anchorQuote', () => {
     expect(placed(text, result)).toBe('the the');
   });
 
+  it('joins context to the quote with or without the separating space the model dropped', () => {
+    const text = 'Oh dear! Oh dear! I shall be late!';
+    // "dear" repeats, so only the context can place it, and the model left out the spaces.
+    const result = anchorQuote(text, { quote: 'dear', before: 'Oh dear! Oh', after: '! I shall' });
+    expect(result).toMatchObject({ kind: 'anchored', start: text.lastIndexOf('dear') });
+    expect(placed(text, anchorQuote(text, { quote: 'dear', before: 'Oh dear! Oh ', after: '! I shall' }))).toBe('dear');
+  });
+
+  it('places the worked example\'s context exactly as the prompt asks for it', () => {
+    const result = anchorQuote(ALICE_OPENING_SEEDED, {
+      quote: 'weather', before: 'very sleepy and stupid),', after: 'the pleasure of making'
+    });
+    expect(result).toMatchObject({ kind: 'anchored', start: ALICE_OPENING_SEEDED.indexOf('weather') });
+  });
+
   it('narrows to a shorter form when the model misquotes its context', () => {
     const result = anchorQuote(ALICE_OPENING_SEEDED, { quote: 'weather', before: 'NOT IN THE TEXT ' });
     expect(placed(ALICE_OPENING_SEEDED, result)).toBe('weather');

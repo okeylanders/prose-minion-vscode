@@ -28,13 +28,12 @@ export function anchorQuote(text: string, anchor: DraftEditAnchor): AnchorResult
   }
   const normalizedText = normalizeForMatching(text);
   for (const form of anchorForms(anchor)) {
-    const exact = findAll(text, form.needle);
+    const exact = quoteStarts(text, form.prefix, form.quote, form.suffix);
     if (exact.length > 1) {
       return { kind: 'ambiguous' };
     }
     if (exact.length === 1) {
-      const start = exact[0] + form.prefix.length;
-      return { kind: 'anchored', start, end: start + anchor.quote.length };
+      return { kind: 'anchored', start: exact[0], end: exact[0] + anchor.quote.length };
     }
     const normalized = locateNormalized(normalizedText, form);
     if (normalized.kind !== 'unanchored') {
@@ -48,7 +47,26 @@ interface AnchorForm {
   readonly prefix: string;
   readonly quote: string;
   readonly suffix: string;
-  readonly needle: string;
+}
+
+/**
+ * Where `quote` starts in `haystack` with `prefix` just before and `suffix`
+ * just after it, distinct starts only. A model naturally drops the space
+ * between its context words and the quote, so each junction is tried both
+ * as written and with one space, unless a side already supplies whitespace.
+ */
+function quoteStarts(haystack: string, prefix: string, quote: string, suffix: string): number[] {
+  const separators = (outer: string, outerEdge: RegExp, inner: RegExp) =>
+    outer.length === 0 || outerEdge.test(outer) || inner.test(quote) ? [''] : ['', ' '];
+  const starts = new Set<number>();
+  for (const before of separators(prefix, /\s$/u, /^\s/u)) {
+    for (const after of separators(suffix, /^\s/u, /\s$/u)) {
+      for (const index of findAll(haystack, prefix + before + quote + after + suffix)) {
+        starts.add(index + prefix.length + before.length);
+      }
+    }
+  }
+  return [...starts];
 }
 
 /** The search forms, most specific first, without repeats. */
@@ -64,7 +82,7 @@ function anchorForms(anchor: DraftEditAnchor): AnchorForm[] {
       continue;
     }
     seen.add(key);
-    forms.push({ prefix, quote: anchor.quote, suffix, needle: prefix + anchor.quote + suffix });
+    forms.push({ prefix, quote: anchor.quote, suffix });
   }
   return forms;
 }
@@ -90,14 +108,14 @@ function locateNormalized(normalizedText: NormalizedText, form: AnchorForm): Anc
   if (quote.trim().length === 0) {
     return { kind: 'unanchored' };
   }
-  const matches = findAll(normalizedText.text, prefix + quote + suffix);
-  if (matches.length > 1) {
+  const starts = quoteStarts(normalizedText.text, prefix, quote, suffix);
+  if (starts.length > 1) {
     return { kind: 'ambiguous' };
   }
-  if (matches.length === 0) {
+  if (starts.length === 0) {
     return { kind: 'unanchored' };
   }
-  const first = matches[0] + prefix.length;
+  const first = starts[0];
   const last = first + quote.length - 1;
   return { kind: 'anchored', start: normalizedText.sourceStart[first], end: normalizedText.sourceEnd[last] };
 }
