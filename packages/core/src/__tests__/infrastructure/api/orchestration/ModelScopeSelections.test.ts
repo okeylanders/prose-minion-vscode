@@ -5,6 +5,7 @@
  * its own. Model ids are placeholders.
  */
 import {
+  DEFAULT_PROOFREAD_MODEL,
   DEFAULT_WIDGET_MODEL,
   MODEL_SCOPE_SETTING_KEYS,
   followingModelScopes,
@@ -71,8 +72,32 @@ describe('resolveModelScopeSelections: the Lightbox model scope (Slice 4L)', () 
       context: '',
       category: DEFAULT_CATEGORY_MODEL,
       widget: DEFAULT_WIDGET_MODEL,
-      lightbox: defaults.assistant
+      lightbox: defaults.assistant,
+      proofread: DEFAULT_PROOFREAD_MODEL
     });
+  });
+});
+
+describe('resolveModelScopeSelections: the Proofread model scope (ADR 2026-10-21 D6)', () => {
+  const PROOFREAD = 'placeholder/proofread-model';
+
+  it('defaults to the inexpensive Proofread model, never the assistant model', () => {
+    const selections = resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP }));
+    expect(selections.proofread).toBe(DEFAULT_PROOFREAD_MODEL);
+    expect(selections.proofread).not.toBe(WORKSHOP);
+  });
+
+  it('runs on its own setting, and the assistant model never moves it', () => {
+    const values: Record<string, unknown> = { assistantModel: WORKSHOP, proofreadModel: PROOFREAD };
+    expect(resolveModelScopeSelections(settingsOf(values)).proofread).toBe(PROOFREAD);
+
+    values.assistantModel = 'placeholder/workshop-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values)).proofread).toBe(PROOFREAD);
+  });
+
+  it('is an own scope: it is never reported as following', () => {
+    expect(followingModelScopes(settingsOf({}))).not.toContain('proofread');
+    expect(isFollowingModelScope('proofread')).toBe(false);
   });
 });
 
@@ -90,7 +115,8 @@ describe('the following scopes', () => {
       context: 'contextModel',
       category: 'categoryModel',
       widget: 'widgetModel',
-      lightbox: 'lightboxModel'
+      lightbox: 'lightboxModel',
+      proofread: 'proofreadModel'
     });
     expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant' });
     expect(['lightbox', 'assistant', 'widget', 'toString', undefined].map(isFollowingModelScope))

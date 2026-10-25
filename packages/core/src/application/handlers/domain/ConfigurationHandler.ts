@@ -8,6 +8,7 @@
 import { LogSink, SettingsStore, ShellService } from '@/platform';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import {
+  DEFAULT_PROOFREAD_MODEL,
   DEFAULT_WIDGET_MODEL,
   MODEL_SCOPE_SETTING_KEYS,
   followingModelScopes,
@@ -473,7 +474,8 @@ export class ConfigurationHandler {
       dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
       context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
       category: this.settings.get<string>('proseMinion', 'categoryModel') || DEFAULT_CATEGORY_MODEL,
-      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL
+      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL,
+      proofread: this.settings.get<string>('proseMinion', 'proofreadModel') || DEFAULT_PROOFREAD_MODEL
     };
     const selections: Partial<Record<ModelScope, string>> = { ...own, ...resolveFollowingModels(this.settings, own) };
 

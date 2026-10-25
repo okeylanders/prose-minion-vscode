@@ -257,6 +257,12 @@
           "markdownDescription": "AI model for the Lightbox's analyses. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here, or in the Lightbox's model picker, gives the Lightbox its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
           "order": 5.1
         },
+        "proseMinion.proofreadModel": {
+          "type": "string",
+          "default": "anthropic/claude-haiku-5.5",
+          "markdownDescription": "AI model for Proofread (the editor's right-click **Prose Minion: Proofread** commands). Proofreading wants precise, repeatable corrections across many small calls, so the default is a fast, inexpensive model. Enter any OpenRouter model ID.",
+          "order": 5.2
+        },
         "proseMinion.categoryModel": {
           "type": "string",
           "default": "openai/gpt-oss-120b:nitro",

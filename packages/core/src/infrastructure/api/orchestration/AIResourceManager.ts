@@ -227,6 +227,8 @@ export class AIResourceManager {
     // The Lightbox's own engine and client (Slice 4L), never the assistant's:
     // its model follows the assistant model until the writer picks one.
     const lightboxModel = selections.lightbox;
+    // Proofread's own engine (ADR 2026-10-21 D6): an own scope, built only here.
+    const proofreadModel = selections.proofread;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -243,6 +245,7 @@ export class AIResourceManager {
     const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
     const widgetResources = this.createResourceBundle(apiKey!, 'widget', widgetModel);
     const lightboxResources = this.createResourceBundle(apiKey!, 'lightbox', lightboxModel);
+    const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
 
     this.aiResources = {
       assistant: assistantResources,
@@ -250,7 +253,8 @@ export class AIResourceManager {
       context: contextResources,
       category: categoryResources,
       widget: widgetResources,
-      lightbox: lightboxResources
+      lightbox: lightboxResources,
+      proofread: proofreadResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -263,7 +267,8 @@ export class AIResourceManager {
       context: contextModel,
       category: categoryModel,
       widget: widgetModel,
-      lightbox: lightboxModel
+      lightbox: lightboxModel,
+      proofread: proofreadModel
     };
     this.initialized = true;
   }
@@ -275,7 +280,7 @@ export class AIResourceManager {
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {

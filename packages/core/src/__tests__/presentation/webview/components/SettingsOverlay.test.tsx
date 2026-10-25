@@ -95,6 +95,27 @@ describe('SettingsOverlay', () => {
     expect(screen.getByText(/one-hour writes cost 2×/)).toBeTruthy();
   });
 
+  /** Proofread's own model (Draft Edit Slice 1, ADR 2026-10-21 D6): an own scope, so no "Same as" choice. */
+  it('surfaces the Proofread Model selection on the proofread scope, following nothing', () => {
+    const PROOFREAD = 'placeholder/proofread-model';
+    const { onModelChange, onFollowModel } = renderOverlay({
+      modelOptions: [
+        { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5' },
+        { id: PROOFREAD, label: 'Proofread placeholder' }
+      ] as never,
+      modelSelections: { assistant: 'anthropic/claude-sonnet-5', proofread: PROOFREAD }
+    });
+
+    const select = screen.getByText('Proofread Model').closest('label')?.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe(PROOFREAD);
+    expect([...select.options].some((option) => option.value === '' || /Same as/.test(option.textContent ?? ''))).toBe(false);
+    expect(screen.getByText(/Runs Proofread from the editor’s right-click menu/)).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: 'anthropic/claude-sonnet-5' } });
+    expect(onModelChange).toHaveBeenCalledWith('proofread', 'anthropic/claude-sonnet-5');
+    expect(onFollowModel).not.toHaveBeenCalled();
+  });
+
   /** The Lightbox's own model (Slice 4L): placeholder ids for the Workshop's and the Lightbox's. */
   describe('the Lightbox Model row (Slice 4L)', () => {
     const WORKSHOP = 'placeholder/workshop-model';

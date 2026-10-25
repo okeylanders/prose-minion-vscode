@@ -605,7 +605,9 @@ describe('MessageHandler assembly', () => {
     'proseMinion.categoryModel',
     'proseMinion.widgetModel',
     // Lightbox Slice 4L: the Lightbox's own model, watched like the other five.
-    'proseMinion.lightboxModel'
+    'proseMinion.lightboxModel',
+    // Draft Edit Slice 1: Proofread's own model (ADR 2026-10-21 D6).
+    'proseMinion.proofreadModel'
   ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));

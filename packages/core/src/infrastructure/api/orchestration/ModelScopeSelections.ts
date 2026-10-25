@@ -3,10 +3,10 @@
  * settings into the model each scope runs on. Pure: the settings arrive as a
  * reader.
  *
- * - **Own scopes.** The assistant, dictionary, context, category and widget
- *   scopes each read their own setting, with a built-in default when it is
- *   absent. A blank one is kept blank, so the hot-swap names it rather than
- *   running on a guess.
+ * - **Own scopes.** The assistant, dictionary, context, category, widget and
+ *   proofread scopes each read their own setting, with a built-in default
+ *   when it is absent. A blank one is kept blank, so the hot-swap names it
+ *   rather than running on a guess.
  * - **Following scopes (Lightbox Slice 4L).** The Lightbox has no model of
  *   its own until the writer picks one: its setting blank, it runs on the
  *   model of the scope it follows (`MODEL_SCOPE_FOLLOWS`: the assistant
@@ -35,6 +35,13 @@ export type OwnModelScope = Exclude<ModelScope, FollowingModelScope>;
  * than minimizing the small per-run cost.
  */
 export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-sonnet-5';
+/**
+ * Precision-first default for the `proofread` scope (ADR 2026-10-21 D6): a
+ * fast, inexpensive model, because proofreading wants exact, repeatable
+ * corrections across many small calls, not the Workshop's quality-first
+ * model. An own scope, so it never follows the assistant model.
+ */
+export const DEFAULT_PROOFREAD_MODEL = 'anthropic/claude-haiku-5.5';
 const DEFAULT_SCOPE_MODEL = 'anthropic/claude-sonnet-5';
 
 /** Each scope's setting under `proseMinion.*`. */
@@ -44,7 +51,8 @@ export const MODEL_SCOPE_SETTING_KEYS: Readonly<Record<ModelScope, string>> = {
   context: 'contextModel',
   category: 'categoryModel',
   widget: 'widgetModel',
-  lightbox: 'lightboxModel'
+  lightbox: 'lightboxModel',
+  proofread: 'proofreadModel'
 };
 
 const FOLLOWING_SCOPES = Object.keys(MODEL_SCOPE_FOLLOWS) as FollowingModelScope[];
@@ -79,7 +87,8 @@ export function resolveModelScopeSelections(settings: ModelSettingsReader): Reco
     dictionary: read('dictionary') ?? DEFAULT_SCOPE_MODEL,
     context: read('context') ?? DEFAULT_SCOPE_MODEL,
     category: read('category') ?? DEFAULT_CATEGORY_MODEL,
-    widget: read('widget') ?? DEFAULT_WIDGET_MODEL
+    widget: read('widget') ?? DEFAULT_WIDGET_MODEL,
+    proofread: read('proofread') ?? DEFAULT_PROOFREAD_MODEL
   };
   return { ...own, ...resolveFollowingModels(settings, own) };
 }
