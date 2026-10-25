@@ -41,7 +41,7 @@ export function proofreadCategoryDisposition(category: ProofreadCategory): Proof
 }
 
 /** Why a fixable issue is flagged instead. */
-export type ProofreadDowngradeReason = 'non-mechanical-edit' | 'no-replacement';
+export type ProofreadDowngradeReason = 'non-mechanical-edit' | 'no-replacement' | 'markup-change';
 
 /** One issue as a reply reports it: quoted, never located. */
 export interface ProofreadFinding {

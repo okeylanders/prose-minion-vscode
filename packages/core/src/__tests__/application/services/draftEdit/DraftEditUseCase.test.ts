@@ -4,6 +4,7 @@
  * annotator are stand-ins; nothing reaches a provider. Passages are public
  * domain (Lewis Carroll, 1865) with seeded errors.
  */
+import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { DraftEditTarget } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
@@ -74,7 +75,8 @@ function setup(options: {
       return options.shows ?? true;
     }),
     remove: jest.fn(),
-    clear: jest.fn()
+    clear: jest.fn(),
+    current: jest.fn(() => undefined)
   };
   const disposed = jest.fn();
   const documents = {
@@ -95,10 +97,12 @@ function setup(options: {
         },
         dispose: disposed
       };
-    })
+    }),
+    // Flag never writes: the applier's door stays shut in these runs.
+    applyEdits: jest.fn(async () => ({ kind: 'closed' as const }))
   };
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
-  const useCase = new DraftEditUseCase(pass, documents, annotations, log);
+  const useCase = new DraftEditUseCase(pass, documents, annotations, new DraftEditApplier(documents), log);
   return { useCase, pass, requests, shown, annotations, documents, disposed };
 }
 

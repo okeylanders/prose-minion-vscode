@@ -68,6 +68,20 @@ describe('anchorQuote', () => {
     expect(placed(text, anchorQuote(text, { quote: 'waited... and' }))).toBe('waited… and');
   });
 
+  it.each([
+    ['ends inside the ellipsis', 'Wait.'],
+    ['starts inside the ellipsis', '. Then'],
+    ['takes in only part of it', 'Wait.. Then']
+  ])('never anchors a match that %s, so an edit never replaces more than was quoted', (_name, quote) => {
+    expect(anchorQuote('Wait… Then she ran.', { quote })).toEqual({ kind: 'unanchored' });
+  });
+
+  it('anchors a match that takes in the whole ellipsis, from either side', () => {
+    const text = 'Wait… Then she ran.';
+    expect(placed(text, anchorQuote(text, { quote: 'Wait...' }))).toBe('Wait…');
+    expect(placed(text, anchorQuote(text, { quote: '... Then' }))).toBe('… Then');
+  });
+
   it('never matches a quote that normalizes to whitespace', () => {
     expect(anchorQuote('a  b', { quote: ' ' })).toEqual({ kind: 'unanchored' });
   });

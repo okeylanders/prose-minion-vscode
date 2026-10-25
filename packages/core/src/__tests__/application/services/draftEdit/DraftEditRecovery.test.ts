@@ -19,6 +19,7 @@ jest.mock('p-limit', () => ({
   }
 }));
 
+import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase } from '@/application/services/draftEdit/DraftEditUseCase';
 import { describeDraftEditOutcome } from '@/application/services/draftEdit/draftEditSummary';
 import { FileType, type FileSystem } from '@/platform';
@@ -72,10 +73,11 @@ async function summaryWith(writable: readonly boolean[]) {
     watch: (uri: string, version: number) => ({
       settle: () => ({ kind: 'open' as const, snapshot: { uri, version, text: TEXT, languageId: 'plaintext' }, edits: [] }),
       dispose: () => undefined
-    })
+    }),
+    applyEdits: async () => ({ kind: 'closed' as const })
   };
-  const annotations = { show: () => true, remove: jest.fn(), clear: jest.fn() };
-  const useCase = new DraftEditUseCase(service, documents, annotations, log);
+  const annotations = { show: () => true, remove: jest.fn(), clear: jest.fn(), current: () => undefined };
+  const useCase = new DraftEditUseCase(service, documents, annotations, new DraftEditApplier(documents), log);
   const outcome = await useCase.run(
     { uri: URI, version: 1, text: TEXT, languageId: 'plaintext', relativePath: 'chapter-01.txt' },
     { kind: 'proofread', output: 'flag' }

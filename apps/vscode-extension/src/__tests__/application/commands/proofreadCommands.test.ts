@@ -1,7 +1,7 @@
 /**
- * Proofread commands (Draft Edit Slice 1; ADR 2026-10-21 D5, D8): what is
- * refused before anything is sent, the long-file confirmation, and how an
- * outcome is presented. The host and the runner are fakes, so no VS Code API
+ * Proofread commands (Draft Edit Slices 1 and 2; ADR 2026-10-21 D5, D7, D8):
+ * what is refused before anything is sent, the long-file confirmation, how
+ * an outcome is presented, and how Fix and the quick fixes ask core. The host and the runner are fakes, so no VS Code API
  * is mocked. Passages are public domain (Lewis Carroll, 1865).
  */
 
@@ -10,16 +10,21 @@
 jest.mock('@prose-minion/core', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
-  describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome
+  describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome,
+  describeQuickFixOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeQuickFixOutcome
 }));
 
-import type { DraftEditOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type { DraftEditOutcome, DraftEditPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
 import {
   OPEN_SETTINGS_COMMAND,
+  REVIEW_HINT,
   SHOW_PROBLEMS_COMMAND,
   clearProofreadFlags,
   dismissProofreadIssue,
+  fixAllProofreadIssues,
+  proofreadAndFix,
   proofreadAndFlag,
+  replaceProofreadIssue,
   type ProofreadCommandHost,
   type ProofreadEditorSnapshot,
   type ProofreadRunner
@@ -46,14 +51,18 @@ function setup(options: {
   confirm?: boolean;
   outcome?: DraftEditOutcome;
   choice?: string;
+  fixReview?: 'preview' | 'apply';
+  quickFix?: DraftEditQuickFixOutcome;
 } = {}) {
   const calls: string[] = [];
   const host = {
     activeEditor: jest.fn(() => options.active),
+    document: jest.fn((uri: string) => (options.active?.uri === uri ? options.active : undefined)),
+    fixReview: jest.fn(() => options.fixReview ?? 'preview'),
     confirm: jest.fn(async () => options.confirm ?? false),
-    withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal) => Promise<T>) => {
+    withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal, report: (message: string) => void) => Promise<T>) => {
       calls.push(`progress:${title}`);
-      return task(new AbortController().signal);
+      return task(new AbortController().signal, (message) => calls.push(`report:${message}`));
     }),
     showInformation: jest.fn(async () => options.choice),
     showWarning: jest.fn(async () => options.choice),
@@ -63,7 +72,15 @@ function setup(options: {
     plan: jest.fn((target: DraftEditTarget): DraftEditRunPlan => ({
       words: 14, chunks: 1, wholeFile: target.range === undefined, needsConfirmation: false, ...options.plan
     })),
-    run: jest.fn(async () => options.outcome ?? COMPLETED),
+    run: jest.fn(async (_target: DraftEditTarget, pass: DraftEditPass, _signal?: AbortSignal, hooks?: { onReview?(fixes: number): void }) => {
+      if (pass.output === 'fix') {
+        hooks?.onReview?.(2);
+      }
+      return options.outcome ?? COMPLETED;
+    }),
+    applyShown: jest.fn(async (): Promise<DraftEditQuickFixOutcome> => options.quickFix ?? {
+      kind: 'done', refused: 0, review: 'direct', answer: 'submitted', applied: 1, notApplied: 0, unknown: 0
+    }),
     dismiss: jest.fn(),
     clear: jest.fn()
   } satisfies ProofreadRunner;
@@ -94,7 +111,8 @@ describe('proofreadAndFlag', () => {
     expect(runner.run).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId, relativePath: 'chapter-01.md' },
       { kind: 'proofread', output: 'flag' },
-      expect.any(AbortSignal)
+      expect.any(AbortSignal),
+      expect.any(Object)
     );
     expect(calls).toEqual(['progress:Proofreading chapter-01.md…']);
     expect(host.confirm).not.toHaveBeenCalled();
@@ -104,7 +122,7 @@ describe('proofreadAndFlag', () => {
     const { host, runner, calls } = setup({ active: editor({ selection: { start: 6, end: 9 } }) });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0]).toEqual([expect.objectContaining({ range: { start: 6, end: 9 } }), expect.anything(), expect.anything()]);
+    expect(runner.run.mock.calls[0]).toEqual([expect.objectContaining({ range: { start: 6, end: 9 } }), expect.anything(), expect.anything(), expect.anything()]);
     expect(calls).toEqual(['progress:Proofreading chapter-01.md (selection)…']);
   });
 
@@ -174,5 +192,74 @@ describe('clearProofreadFlags and dismissProofreadIssue', () => {
     dismissProofreadIssue(runner, 'file:///workspace/chapter-01.md', 'proofread-2');
     dismissProofreadIssue(runner, 42, 'proofread-2');
     expect(runner.dismiss.mock.calls).toEqual([['file:///workspace/chapter-01.md', 'proofread-2']]);
+  });
+});
+
+describe('proofreadAndFix (Slice 2)', () => {
+  it('runs the Fix pass through review by default, and says how to take the fixes while the preview is open', async () => {
+    const { host, runner, calls } = setup({ active: editor() });
+    await proofreadAndFix(host, runner);
+
+    expect(runner.run).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: 'file:///workspace/chapter-01.md', version: 4 }),
+      { kind: 'proofread', output: 'fix', review: 'preview' },
+      expect.any(AbortSignal),
+      expect.objectContaining({ onReview: expect.any(Function) })
+    );
+    expect(calls).toEqual(['progress:Proofreading chapter-01.md…', `report:${REVIEW_HINT}`]);
+  });
+
+  it('applies directly when the writer chose to', async () => {
+    const { host, runner } = setup({ active: editor(), fixReview: 'apply' });
+    await proofreadAndFix(host, runner);
+
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'fix', review: 'direct' });
+  });
+
+  it('refuses a language it does not read, as Flag does', async () => {
+    const { host, runner } = setup({ active: editor({ languageId: 'json' }) });
+    await expect(proofreadAndFix(host, runner)).resolves.toMatchObject({ kind: 'refused' });
+    expect(runner.run).not.toHaveBeenCalled();
+  });
+});
+
+describe('the quick fixes (Slice 2)', () => {
+  const document = { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown' };
+
+  it('applies one fix at once, reading the document the code action names, and says nothing when it landed', async () => {
+    const { host, runner } = setup({ active: editor() });
+    await replaceProofreadIssue(host, runner, 'file:///workspace/chapter-01.md', 'proofread-3');
+    await settle();
+
+    expect(runner.applyShown).toHaveBeenCalledWith(document, { issueIds: ['proofread-3'] }, 'direct');
+    expect(host.showInformation).not.toHaveBeenCalled();
+    expect(host.showWarning).not.toHaveBeenCalled();
+  });
+
+  it('applies every fix Proofread would make, reviewed as the setting says, and counts them', async () => {
+    const { host, runner } = setup({
+      active: editor(),
+      quickFix: { kind: 'done', refused: 0, review: 'preview', answer: 'submitted', applied: 4, notApplied: 1, unknown: 0 }
+    });
+    await fixAllProofreadIssues(host, runner, 'file:///workspace/chapter-01.md');
+
+    expect(runner.applyShown).toHaveBeenCalledWith(document, 'all-fixes', 'preview');
+    expect(host.showInformation).toHaveBeenCalledWith('Proofread chapter-01.md: 4 fixes applied · 1 left as flags.');
+  });
+
+  it('says why a fix did not land', async () => {
+    const { host, runner } = setup({ active: editor(), quickFix: { kind: 'nothing' } });
+    await replaceProofreadIssue(host, runner, 'file:///workspace/chapter-01.md', 'proofread-3');
+
+    expect(host.showInformation).toHaveBeenCalledWith('That Proofread fix is no longer there: its flag was dismissed, or its text edited.');
+  });
+
+  it('ignores a code action for a document no longer open, or without an issue id', async () => {
+    const { host, runner } = setup({ active: editor() });
+    await replaceProofreadIssue(host, runner, 'file:///workspace/other.md', 'proofread-3');
+    await replaceProofreadIssue(host, runner, 'file:///workspace/chapter-01.md', undefined);
+    await fixAllProofreadIssues(host, runner, 42);
+
+    expect(runner.applyShown).not.toHaveBeenCalled();
   });
 });

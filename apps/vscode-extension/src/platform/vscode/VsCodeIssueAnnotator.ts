@@ -14,16 +14,20 @@
  *   is no longer what was flagged.
  * - **Session-only.** A document's flags clear when it closes, on Clear, or
  *   when the next run replaces them; nothing is restored after a reload.
- * - **Code actions.** Each flag offers Dismiss, and Clear for its document.
- *   Both are commands into core; neither edits text. (Replace-with quick
- *   fixes arrive with the write side, in Slice 2.)
+ * - **Code actions.** A flag with a replacement offers *Replace with '…'*,
+ *   preferred only for a fix Proofread would make itself (a judgment call's
+ *   suggestion is the writer's to choose). A document with any such fix
+ *   offers *Fix all*. Each flag offers Dismiss, and Clear for its document.
+ *   Every action is a command into core, which writes through its applier;
+ *   none is a raw edit (D7).
  */
 import * as vscode from 'vscode';
 import {
   DRAFT_EDIT_LANGUAGE_IDS,
   shiftRanges,
   type DocumentAnnotation,
-  type IssueAnnotator
+  type IssueAnnotator,
+  type ShownAnnotations
 } from '@prose-minion/core';
 
 export const DRAFT_EDIT_DIAGNOSTIC_SOURCE = 'Prose Minion';
@@ -33,6 +37,10 @@ export interface VsCodeIssueAnnotatorCommands {
   readonly dismiss: string;
   /** Invoked with `(uri)`. */
   readonly clear: string;
+  /** Invoked with `(uri, issueId)`: apply that flag's replacement. */
+  readonly replace: string;
+  /** Invoked with `(uri)`: apply every fix Proofread would make in the document. */
+  readonly fixAll: string;
 }
 
 export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionProvider, vscode.Disposable {
@@ -86,6 +94,13 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
     this.collection.delete(vscode.Uri.parse(uri));
   }
 
+  current(uri: string): ShownAnnotations | undefined {
+    const document = openDocument(uri);
+    const annotations = this.shown.get(uri);
+    // Every change event re-places them before anything else runs, so they sit at the document's version now.
+    return document && annotations ? { version: document.version, annotations: [...annotations] } : undefined;
+  }
+
   provideCodeActions(
     document: vscode.TextDocument,
     _range: vscode.Range | vscode.Selection,
@@ -105,12 +120,24 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
       if (!annotation) {
         continue;
       }
+      if (annotation.fix) {
+        const replace = new vscode.CodeAction(replaceTitle(annotation.fix.replacement), vscode.CodeActionKind.QuickFix);
+        replace.diagnostics = [diagnostic];
+        replace.isPreferred = annotation.fix.preferred;
+        replace.command = { title: replace.title, command: this.commands.replace, arguments: [uri, annotation.id] };
+        actions.push(replace);
+      }
       const dismiss = new vscode.CodeAction('Dismiss this Proofread flag', vscode.CodeActionKind.QuickFix);
       dismiss.diagnostics = [diagnostic];
       dismiss.command = { title: dismiss.title, command: this.commands.dismiss, arguments: [uri, annotation.id] };
       actions.push(dismiss);
     }
     if (actions.length > 0) {
+      if (current.some((annotation) => annotation.fix?.preferred)) {
+        const fixAll = new vscode.CodeAction('Fix all Proofread issues in this file', vscode.CodeActionKind.QuickFix);
+        fixAll.command = { title: fixAll.title, command: this.commands.fixAll, arguments: [uri] };
+        actions.push(fixAll);
+      }
       const clear = new vscode.CodeAction('Clear all Proofread flags in this file', vscode.CodeActionKind.QuickFix);
       clear.command = { title: clear.title, command: this.commands.clear, arguments: [uri] };
       actions.push(clear);
@@ -151,6 +178,15 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
       return diagnostic;
     }));
   }
+}
+
+/** "Replace with 'the'"; a deletion reads as one, and a long replacement is cut so the menu stays one line. */
+function replaceTitle(replacement: string): string {
+  if (replacement.length === 0) {
+    return 'Delete it';
+  }
+  const shown = replacement.length > 40 ? `${replacement.slice(0, 39)}…` : replacement;
+  return `Replace with “${shown.replace(/\s+/g, ' ')}”`;
 }
 
 function openDocument(uri: string): vscode.TextDocument | undefined {

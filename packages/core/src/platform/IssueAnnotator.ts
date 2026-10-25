@@ -9,7 +9,8 @@
  *
  * The adapter keeps shown annotations on their text while the writer types,
  * so it, not core, knows where a shown flag now sits. That is why Dismiss is
- * `remove` by id rather than a fresh `show` from stale offsets.
+ * `remove` by id rather than a fresh `show` from stale offsets, and why a
+ * quick fix (Slice 2) asks `current` where its flag is before core writes.
  */
 
 export type DocumentAnnotationSeverity = 'info' | 'warning';
@@ -24,6 +25,18 @@ export interface DocumentAnnotation {
   /** A stable kind, e.g. `proofread.tense`. */
   readonly code: string;
   readonly message: string;
+  /**
+   * The replacement a quick fix offers, routed back to core by `id`, never a
+   * raw edit. `preferred`: a fix Proofread would make itself, not a judgment
+   * call's suggestion.
+   */
+  readonly fix?: { readonly replacement: string; readonly preferred: boolean };
+}
+
+/** A document's shown annotations, where they sit now, at its current version. */
+export interface ShownAnnotations {
+  readonly version: number;
+  readonly annotations: readonly DocumentAnnotation[];
 }
 
 export interface IssueAnnotator {
@@ -37,4 +50,6 @@ export interface IssueAnnotator {
   remove(uri: string, ids: readonly string[]): void;
   /** Withdraw a document's annotations, or every document's when `uri` is absent. */
   clear(uri?: string): void;
+  /** Where `uri`'s shown annotations sit now; undefined when its document is not open or shows none. */
+  current(uri: string): ShownAnnotations | undefined;
 }

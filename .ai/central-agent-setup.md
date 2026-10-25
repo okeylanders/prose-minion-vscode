@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-25, Draft Edit Slice 1 (Proofread and Flag) with its PR #171 review, re-review and second re-review fixes on `claude/upbeat-galileo-y1l4yf`, with `epic/lightbox` at `31edcfd` (Slice 4J, PR #170) merged in, under Node 22 and Node 18):
-- 537 suites / 7,501 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review and re-review fixes (F-01 to F-06) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
+- 549 suites / 7,681 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1548,15 +1548,58 @@ writer's own document:
 - **Quotes, not offsets.** A model returns quoted text with context; host code
   anchors it (`utils/draftEdit/anchorEdits.ts`) and fails closed on
   ambiguity. Never ask a model for offsets or line numbers.
-- **One door.** Only `DraftEditUseCase` (and, from Slice 2, its applier) may
-  reach `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
-  members; `boundaries.test.ts` enforces it. Widgets stay write-free.
+- **One door.** Only `DraftEditUseCase` and `DraftEditApplier` may reach
+  `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
+  members, and only the applier calls `applyEdits`; `boundaries.test.ts`
+  enforces both. Widgets stay write-free. Never build a `WorkspaceEdit` for
+  the writer's text anywhere else: a quick fix is a command into core.
+- **A write is read back, never trusted** (Slice 2; the ADR's Slice 2
+  amendment). The applier makes one change (one undo step), never saves, and
+  reads what landed by replaying the document from the edits' version
+  (`reconcileEdits`). VS Code's boolean only says something landed: the
+  writer ticks entries in Refactor Preview (they open unticked), VS Code may
+  split a replacement into smaller edits, and at 1,000 operations it merges
+  them into one change spanning them all (PR #172 F-04). A host change reads
+  as the edits only when its new text reads one way as the text between
+  them, unchanged, with each edit original or replaced; the history the
+  applier returns gives it back as those edits, and callers move flags
+  through that history, never the raw one. Edits that touch are joined
+  first. A fix that did not land is flagged where its text stands; one the
+  writer rewrote is left alone. A quick fix asks `IssueAnnotator.current`
+  where its flag sits now, goes through the applier, and shows the untouched
+  flags again after.
+- **A retry checks again** (PR #172 F-01). A direct apply the writer typed
+  through follows its edits, then runs every check again on the document as
+  it now stands before asking once more; never retry with the first check's
+  verdict.
+- **What a fix may change.** Never a line break (`changesLineBreaks`: the
+  changed text between the common prefix and suffix holds none), and never
+  the Markdown structure: counting markup characters is not enough
+  (`< Rabbit >` → `<Rabbit>` is a tag), so each touched block's shape is
+  compared before and after with `marked`, the batch together, every table
+  cell's inline shape included (`editsChangingStructure`, PR #172 F-03). An
+  anchor never ends inside a
+  normalized expansion (`Wait.` is not `Wait…`). Tense and agreement are only
+  ever flagged; a judgment call's suggestion is applied only by its own
+  *Replace with*.
 - **Live text wins, one lifetime.** A run watches its open document from
   the version it read (`DocumentEditor.watch`). Findings follow their own
   occurrence through the writer's edits, never a fresh search; what an edit
   touched is stale, what the live text now protects is protected, and a
   document that closed (or reopened, or changed language) shows nothing and
-  is never reopened (PR #171 F-03, F-04).
+  is never reopened (PR #171 F-03, F-04). A review belongs to the same
+  lifetime, but VS Code gives no way to end one (PR #172 F-02, the writer's
+  accepted limit): Refactor Preview commits inside `applyEdit`, and a
+  language change moves no version, so an Apply after a close or language
+  change during review still writes; the run reports it closed and shows
+  nothing. Never send `refactorPreview.discard`, or any command, to the
+  preview (F-06): Discard ends whichever preview holds the pane, and no
+  public API ties a preview to the request that opened it (a pending
+  request may wait to replace another's preview, and a preview's copy of
+  the file arrives late or never).
+- **A Clear is for good** (PR #172 F-05). A quick fix that lands after a
+  Clear shows nothing again: it re-shows untouched flags only while the
+  issues it captured still hold the document's flags.
 - **Protected regions.** Front matter, fenced and inline code, link targets,
   URLs, reference definitions, HTML comments, and tags are never sent or
   edited, read as whole constructs wherever Markdown's containers put them

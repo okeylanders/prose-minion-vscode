@@ -108,6 +108,7 @@
     "onCommand:prose-minion.lightboxSelection",
     "onCommand:prose-minion.openFileInLightbox",
     "onCommand:prose-minion.proofreadFlag",
+    "onCommand:prose-minion.proofreadFix",
     "onCommand:prose-minion.clearProofreadFlags"
   ],
   "main": "./dist/extension.js",
@@ -175,6 +176,10 @@
         "title": "Prose Minion: Proofread and Flag"
       },
       {
+        "command": "prose-minion.proofreadFix",
+        "title": "Prose Minion: Proofread and Fix"
+      },
+      {
         "command": "prose-minion.clearProofreadFlags",
         "title": "Prose Minion: Clear Proofread Flags"
       }
@@ -219,6 +224,11 @@
           "when": "editorLangId == markdown || editorLangId == plaintext",
           "command": "prose-minion.proofreadFlag",
           "group": "prose-minion@4"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.proofreadFix",
+          "group": "prose-minion@5"
         },
         {
           "when": "editorHasSelection",
@@ -277,6 +287,20 @@
           "default": "anthropic/claude-haiku-5.5",
           "markdownDescription": "AI model for Proofread (the editor's right-click **Prose Minion: Proofread** commands). Proofreading wants precise, repeatable corrections across many small calls, so the default is a fast, inexpensive model. Enter any OpenRouter model ID.",
           "order": 5.2
+        },
+        "proseMinion.proofread.fixReview": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "apply"
+          ],
+          "enumDescriptions": [
+            "Open Refactor Preview with each fix as a change to tick; nothing changes until you tick and Apply.",
+            "Apply the safe fixes at once, as one change you can undo."
+          ],
+          "default": "preview",
+          "markdownDescription": "How **Prose Minion: Proofread and Fix**, and the *Fix all* quick fix, bring their fixes to the file. Either way the fixes are one undoable change and the file is never saved for you, and tense and agreement issues are only ever flagged. A single *Replace with* quick fix always applies at once.",
+          "order": 5.3
         },
         "proseMinion.categoryModel": {
           "type": "string",

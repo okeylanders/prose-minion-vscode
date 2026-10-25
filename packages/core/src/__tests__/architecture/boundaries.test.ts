@@ -1476,20 +1476,32 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('reaches the Draft Edit document ports only through the one run (ADR 2026-10-21 D10)', () => {
+  it('reaches the Draft Edit document ports only through the one run and its applier (ADR 2026-10-21 D10)', () => {
     // A type name, or a call through Platform's members that never names the type.
-    const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.snapshot\(|\.annotations\.(?:show|remove|clear)\(/;
+    const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.(?:watch|applyEdits)\(|\.annotations\.(?:show|remove|clear|current)\(/;
     const allowed = new Set([
       'platform/DocumentEditor.ts',
       'platform/IssueAnnotator.ts',
       'platform/Platform.ts',
       'platform/index.ts',
-      'application/services/draftEdit/DraftEditUseCase.ts'
+      'application/services/draftEdit/DraftEditUseCase.ts',
+      'application/services/draftEdit/DraftEditApplier.ts'
     ]);
     const offenders = collectSourceFiles(SRC_ROOT)
       .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
       .filter((file) => !allowed.has(file))
       .filter((file) => portReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('writes to the writer\'s document through one door: only the applier asks for applyEdits (ADR 2026-10-21 D4, D10)', () => {
+    const writes = /\bapplyEdits\s*\(/;
+    const offenders = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      // The port declares it; the applier calls it.
+      .filter((file) => file !== 'platform/DocumentEditor.ts' && file !== 'application/services/draftEdit/DraftEditApplier.ts')
+      .filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
 
     expect(offenders).toEqual([]);
   });

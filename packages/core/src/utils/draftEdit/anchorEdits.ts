@@ -9,7 +9,9 @@
  * - **A normalized fallback, for matching only.** Curly and straight quotes,
  *   NBSP and other spaces, whitespace runs, and an ellipsis character are
  *   folded on both sides, and a match maps back to the exact source span.
- *   The source text is never changed.
+ *   The source text is never changed. A match must start and end on whole
+ *   source characters: `Wait.` never anchors on `Wait…`, whose span would
+ *   hold more than was quoted, and an edit would replace it (PR #171).
  * - **Ambiguity fails closed.** A form that matches more than once stops the
  *   search: a narrower form would be no less ambiguous.
  */
@@ -117,7 +119,21 @@ function locateNormalized(normalizedText: NormalizedText, form: AnchorForm): Anc
   }
   const first = starts[0];
   const last = first + quote.length - 1;
+  if (!startsExpansion(normalizedText, first) || !endsExpansion(normalizedText, last)) {
+    // The match ends inside one source character's expansion (`Wait.` against `Wait…`): its source span would hold more than was quoted.
+    return { kind: 'unanchored' };
+  }
   return { kind: 'anchored', start: normalizedText.sourceStart[first], end: normalizedText.sourceEnd[last] };
+}
+
+/** Whether normalized character `index` is the first its source character expanded to. */
+function startsExpansion(normalized: NormalizedText, index: number): boolean {
+  return index === 0 || normalized.sourceStart[index - 1] !== normalized.sourceStart[index];
+}
+
+/** Whether normalized character `index` is the last its source character expanded to. */
+function endsExpansion(normalized: NormalizedText, index: number): boolean {
+  return index === normalized.text.length - 1 || normalized.sourceStart[index + 1] !== normalized.sourceStart[index];
 }
 
 interface NormalizedText {

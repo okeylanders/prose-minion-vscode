@@ -74,11 +74,12 @@ jest.mock('@prose-minion/core', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges,
-  DraftEditUseCase: jest.requireActual('@/application/services/draftEdit/DraftEditUseCase').DraftEditUseCase
+  DraftEditUseCase: jest.requireActual('@/application/services/draftEdit/DraftEditUseCase').DraftEditUseCase,
+  DraftEditApplier: jest.requireActual('@/application/services/draftEdit/DraftEditApplier').DraftEditApplier
 }));
 
 import * as vscode from 'vscode';
-import { DraftEditUseCase, type DraftEditOutcome, type DraftEditTarget } from '@prose-minion/core';
+import { DraftEditApplier, DraftEditUseCase, type DraftEditOutcome, type DraftEditTarget } from '@prose-minion/core';
 import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor';
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 
@@ -141,9 +142,9 @@ function start(document: FakeDocument) {
       return { kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings: [TEH], malformed: 0 }] };
     })
   };
-  const documentEditor = new VsCodeDocumentEditor();
-  const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear' });
-  const useCase = new DraftEditUseCase(pass, documentEditor, annotator, { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+  const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+  const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
+  const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const target: DraftEditTarget = { uri: URI, version: document.version, text: document.getText(), languageId: document.languageId, relativePath: 'chapter-01.md' };
   const run: Promise<DraftEditOutcome> = useCase.run(target, { kind: 'proofread', output: 'flag' });
   return {

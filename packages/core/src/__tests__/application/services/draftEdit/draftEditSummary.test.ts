@@ -2,7 +2,7 @@
  * The words a host shows for a Draft Edit outcome (ADR 2026-10-21 D8): counts,
  * the honest cost, and the interruption, never the writer's text.
  */
-import { describeDraftEditOutcome } from '@/application/services/draftEdit/draftEditSummary';
+import { describeDraftEditOutcome, describeQuickFixOutcome } from '@/application/services/draftEdit/draftEditSummary';
 import type { DraftEditOutcome } from '@/domain/models/DraftEdit';
 
 const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
@@ -80,11 +80,11 @@ describe('describeDraftEditOutcome', () => {
       'a.md'
     )).toEqual({
       level: 'warning',
-      message: 'a.md was closed before Proofread finished, so no flags were shown · 1 part unreadable, saved for recovery · $0.0020.',
+      message: 'a.md was closed or changed language before Proofread finished, so no flags were shown · 1 part unreadable, saved for recovery · $0.0020.',
       hasFlags: false
     });
     expect(describeDraftEditOutcome({ kind: 'closed', rejectedChunks: { saved: 0, unsaved: 0 } }, 'a.md'))
-      .toMatchObject({ message: 'a.md was closed before Proofread finished, so no flags were shown.' });
+      .toMatchObject({ message: 'a.md was closed or changed language before Proofread finished, so no flags were shown.' });
   });
 
   it('words the runs that send nothing', () => {
@@ -96,5 +96,73 @@ describe('describeDraftEditOutcome', () => {
     expect(describeDraftEditOutcome({ kind: 'cancelled' }, 'a.md')).toMatchObject({ message: 'Proofread cancelled. No flags changed.' });
     expect(describeDraftEditOutcome({ kind: 'cancelled', usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2, costUsd: 0.0012 } }, 'a.md'))
       .toMatchObject({ message: 'Proofread cancelled. No flags changed (spent $0.0012).' });
+  });
+});
+
+describe('describeDraftEditOutcome: Proofread and Fix (Slice 2)', () => {
+  const fixed = (fix: NonNullable<Extract<DraftEditOutcome, { kind: 'completed' }>['fix']>, flagged = 3, judgmentCalls = 2) =>
+    completed({ flagged, judgmentCalls, fix });
+
+  it('leads with the fixes applied, then what is flagged', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 7, notApplied: 0, unknown: 0 }), 'chapter-03.md'))
+      .toEqual({ level: 'info', message: 'Proofread chapter-03.md: 7 fixes applied · 3 issues flagged (2 tense or agreement) · $0.0040', hasFlags: true });
+  });
+
+  it('says how many fixes the writer left unticked, now flagged', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 1, notApplied: 2, unknown: 0 }, 4), 'a.md').message)
+      .toBe('Proofread a.md: 1 fix applied (2 left unticked, flagged) · 4 issues flagged (2 tense or agreement) · $0.0040');
+  });
+
+  it('says a discarded preview changed nothing', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'declined', applied: 0, notApplied: 7, unknown: 0 }, 9), 'a.md'))
+      .toMatchObject({ level: 'info', message: 'Proofread a.md: fixes discarded, nothing changed · 9 issues flagged (2 tense or agreement) · $0.0040' });
+  });
+
+  it('warns when the file changed during review, and says what the writer edited was left alone', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'stale', applied: 0, notApplied: 5, unknown: 2 }, 7), 'a.md'))
+      .toMatchObject({
+        level: 'warning',
+        message: 'Proofread a.md: the file changed during review, so no fixes were applied · 7 issues flagged (2 tense or agreement)'
+          + ' · 2 fixes you edited during review left as you wrote them · $0.0040'
+      });
+  });
+
+  it('gives the editor\'s reason when it refused the change', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'direct', answer: 'failed', applied: 0, notApplied: 2, unknown: 0, failure: 'read-only' }, 2, 0), 'a.md'))
+      .toMatchObject({ level: 'warning', message: 'Proofread a.md: the editor did not apply the fixes (read-only) · 2 issues flagged · $0.0040' });
+  });
+
+  it('reads like Flag when there was nothing safe to fix, and says when nothing was found at all', () => {
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'none', applied: 0, notApplied: 0, unknown: 0 }, 1, 1), 'a.md').message)
+      .toBe('Proofread a.md: 1 issue flagged (1 tense or agreement) · $0.0040');
+    expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 2, notApplied: 0, unknown: 0 }, 0, 0), 'a.md').message)
+      .toBe('Proofread a.md: 2 fixes applied · $0.0040');
+  });
+});
+
+describe('describeQuickFixOutcome (Slice 2)', () => {
+  const done = (answer: 'submitted' | 'declined' | 'stale' | 'failed' | 'none', applied: number, notApplied = 0) =>
+    ({ kind: 'done' as const, refused: 0, review: 'direct' as const, answer, applied, notApplied, unknown: 0 });
+
+  it('says nothing when one fix simply landed', () => {
+    expect(describeQuickFixOutcome(done('submitted', 1), 'a.md')).toMatchObject({ quiet: true });
+  });
+
+  it('counts a Fix all, and what it left as flags', () => {
+    expect(describeQuickFixOutcome(done('submitted', 5, 1), 'a.md')).toEqual({
+      level: 'info', message: 'Proofread a.md: 5 fixes applied · 1 left as flags.', hasFlags: false, quiet: false
+    });
+  });
+
+  it.each([
+    [{ kind: 'changed' as const }, 'a.md changed since the fix was offered, so nothing was changed.'],
+    [{ kind: 'nothing' as const }, 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.'],
+    [{ kind: 'busy' as const }, 'Proofread is already working on a.md.'],
+    [{ kind: 'closed' as const }, 'a.md was closed or changed language before the fix finished. Check it: the fix may have gone in.'],
+    [done('stale', 0, 1), 'a.md changed as the fix went in, so it was not applied.'],
+    [{ ...done('stale', 0, 1), review: 'preview' as const }, 'a.md changed during review, so no fixes were applied.'],
+    [done('none', 0), 'That fix was not applied: its text has changed, or it would change a line break or the Markdown around it.']
+  ])('explains a quick fix that did not land', (outcome, message) => {
+    expect(describeQuickFixOutcome(outcome, 'a.md')).toMatchObject({ message, quiet: false });
   });
 });

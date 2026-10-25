@@ -17,8 +17,18 @@
  * language: a late reply is never drawn on another lifetime of the document,
  * and a closed document is never reopened to place one (F-04).
  *
- * The write half (`applyEdits`, behind a version check and a review step)
- * arrives with Proofread and Fix, and only Draft Edit's applier may call it.
+ * The write half (Slice 2) is `applyEdits`: one change to the live buffer,
+ * checked against the version the edits were placed in, as one undo step,
+ * through the writer's review when asked. It never saves. Only Draft Edit's
+ * applier calls it, and it never trusts the result alone: it reads what
+ * landed from a watch (ADR D4 step 7). A review belongs to one lifetime of
+ * the document: if the document closes, reopens or changes language while
+ * the writer reviews, a host that can end the review without writing does,
+ * and answers `closed`. One that cannot says so: VS Code's preview commits
+ * inside `applyEdit`, and its Discard ends whichever preview is shown, so
+ * its adapter lets the writer's Apply stand (PR #172 F-02, F-06). Whatever
+ * the host does, the applier's watch reads the lifetime as ended, so
+ * nothing more is shown.
  */
 
 export interface DocumentSnapshot {
@@ -57,7 +67,46 @@ export interface DocumentWatch {
   dispose(): void;
 }
 
+/** One replacement, in offsets of the document at the `expectedVersion` its apply names. */
+export interface DocumentTextEdit {
+  readonly start: number;
+  readonly end: number;
+  readonly newText: string;
+  /** What the edit is, for the writer's review: Refactor Preview groups entries by it. */
+  readonly label: string;
+  /** A longer note beside it in review. */
+  readonly description?: string;
+}
+
+/** `preview`: the writer reviews the edits and keeps any of them; `direct`: they land at once. */
+export type DocumentEditReview = 'preview' | 'direct';
+
+/**
+ * What the host did. Whatever it says, only a watch shows what landed: a
+ * submitted review may keep some edits and not others.
+ */
+export type DocumentApplyOutcome =
+  /** The host applied the edits, or the ones the writer kept in review. */
+  | { readonly kind: 'submitted' }
+  /** The writer discarded the review: nothing changed. */
+  | { readonly kind: 'declined' }
+  /** The document moved past `expectedVersion`, before the edit or during its review: nothing changed. */
+  | { readonly kind: 'stale' }
+  /** The document is not open, or its lifetime ended during review: nothing changed. */
+  | { readonly kind: 'closed' }
+  /** The host refused the edits for another reason. */
+  | { readonly kind: 'failed'; readonly message: string };
+
 export interface DocumentEditor {
   /** Follow an open document from `version`; undefined when it is not open at that version. */
   watch(uri: string, version: number): DocumentWatch | undefined;
+  /**
+   * Make `edits` (non-overlapping, in offsets at `expectedVersion`) one change
+   * to the open document: refused at once unless it is open at that version.
+   */
+  applyEdits(
+    uri: string,
+    edits: readonly DocumentTextEdit[],
+    options: { readonly expectedVersion: number; readonly review: DocumentEditReview }
+  ): Promise<DocumentApplyOutcome>;
 }

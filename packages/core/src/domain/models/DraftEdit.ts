@@ -7,13 +7,19 @@
  * a branch in the code that places or applies edits. Only a pass may call a
  * model; target resolution and edit placement are deterministic.
  *
- * Slice 1 ships the Proofread pass in flag mode only: nothing writes yet.
+ * The Proofread pass flags (Slice 1) or fixes (Slice 2). Fix writes only
+ * through `DraftEditApplier`, the one door to the writer's document (D4).
  */
 
 import type { ModelScope, TokenUsage } from '@messages';
 
-/** What a run produces. Slice 1: Proofread, flagging only. */
-export type DraftEditPass = { readonly kind: 'proofread'; readonly output: 'flag' };
+/** How a fix reaches the document: through the writer's review, or at once. */
+export type DraftEditReview = 'preview' | 'direct';
+
+/** What a run produces: flags only, or the safe fixes applied and the rest flagged. */
+export type DraftEditPass =
+  | { readonly kind: 'proofread'; readonly output: 'flag' }
+  | { readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview };
 
 export type DraftEditPassKind = DraftEditPass['kind'];
 
@@ -21,12 +27,14 @@ export type DraftEditPassKind = DraftEditPass['kind'];
 export interface DraftEditPassPolicy {
   /** The engine the pass's model calls run on. */
   readonly modelScope: ModelScope;
-  /** Whether a fix may add or remove a line break (Proofread: never, D6). */
+  /** Whether a fix may add, remove or move a line break (Proofread: never, D6). */
   readonly allowsNewlineChanges: boolean;
+  /** Whether fixes must leave the document's Markdown structure as it was (Proofread: always, PR #172 F-03). */
+  readonly preservesMarkdownStructure: boolean;
 }
 
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
-  proofread: { modelScope: 'proofread', allowsNewlineChanges: false }
+  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */
@@ -80,6 +88,23 @@ export interface DraftEditRejectedChunks {
   readonly unsaved: number;
 }
 
+/**
+ * What became of a Fix run's fixes. The fixes it did not apply (unticked,
+ * discarded, refused) are flagged instead, and counted in `flagged` too.
+ */
+export interface DraftEditFixReport {
+  readonly review: DraftEditReview;
+  /** What the editor answered; `none` when there was no fix to offer. */
+  readonly answer: 'submitted' | 'declined' | 'stale' | 'failed' | 'none';
+  readonly applied: number;
+  /** Fixes still standing as they were, now flagged. */
+  readonly notApplied: number;
+  /** Fixes whose text the writer changed during review: left as they wrote it. */
+  readonly unknown: number;
+  /** The editor's reason, when it refused the change. */
+  readonly failure?: string;
+}
+
 /** What a run did, for the host to present (the adapter's summary, a Workshop result). */
 export type DraftEditOutcome =
   | { readonly kind: 'empty' }
@@ -102,6 +127,8 @@ export type DraftEditOutcome =
       readonly chunks: { readonly total: number; readonly completed: number };
       /** Why later chunks were never sent: the API key changed mid-run, or the provider refused. */
       readonly interrupted?: { readonly cause: 'key-changed' | 'provider'; readonly message: string };
+      /** A Fix run's fixes; absent for Flag. */
+      readonly fix?: DraftEditFixReport;
       readonly usage?: TokenUsage;
     };
 
