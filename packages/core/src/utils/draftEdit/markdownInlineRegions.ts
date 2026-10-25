@@ -5,21 +5,26 @@
  * declarations, CDATA); and GFM's bare URLs, `www.` links and email
  * addresses.
  *
+ * It reads one inline scope at a time (`markdownBlockRegions`): one leaf
+ * block or table cell, container prefixes stripped, so nothing pairs across
+ * blocks and no `>` of a block quote is read as markup (the re-review).
+ *
  * One left-to-right pass in CommonMark's precedence: the construct that
  * starts first wins, so a backtick inside a tag's quoted attribute or a
  * comment never opens a code span that would take a later span's opener.
  * - Backslash escapes are honored outside code.
  * - A code span is a maximal backtick run closed by the next run of the same
- *   length, never across a paragraph break; an unmatched run is literal.
- * - A link destination may hold balanced or escaped parentheses, or be
- *   `<…>`. It and its title may follow a line break, inside a block quote
- *   too.
+ *   length, never across a blank line (indented code, read as prose, can
+ *   hold one); an unmatched run is literal.
+ * - A link destination may hold balanced or escaped parentheses, at most
+ *   `MAX_LINK_PAREN_DEPTH` deep, or be `<…>`, or be empty before a title. It
+ *   and its title may follow a line break.
  * - A tag's attribute values may hold `>` when quoted.
  * GFM's bare links pair with nothing, so they have their own pass.
  *
- * The pass reads raw source, container prefixes (`> `) included, so where it
- * is unsure it protects more, never less: text read as protected is never
- * sent or flagged. Every step moves forward.
+ * Where it is unsure it protects more, never less: text read as protected is
+ * never sent or flagged. Every step moves forward, and no attempt rescans
+ * more than a bounded stretch.
  */
 
 import type { TextRange } from '@/domain/models/DraftEdit';
@@ -33,14 +38,11 @@ const BARE_LINKS: readonly RegExp[] = [
   /\bwww\.[^\s<>]+/gi,
   /(?<![A-Za-z0-9._+-])[A-Za-z0-9._+-]+@[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+/g
 ];
-/** A line holding nothing but whitespace and block-quote markers: a paragraph break. */
-const BLANK_LINE = /^[ \t]*(?:>[ \t]*)*$/;
-const QUOTE_PREFIX = /^(?:[ \t]*>)*/;
-/** Blocks that interrupt a paragraph wherever they start: a non-empty bullet or `1.` item, or an ATX heading. */
-const INTERRUPTING_BLOCK = /^(?:(?:[-+*]|1[.)])[ \t]+\S|#{1,6}(?:[ \t]|$))/;
-const ATX_HEADING = /^#{1,6}(?:[ \t]|$)/;
+const BLANK_LINE = /^[ \t]*$/;
+/** How deeply a link destination's parentheses may nest; CommonMark's reference parser stops at the same depth. */
+const MAX_LINK_PAREN_DEPTH = 32;
 
-/** Every inline protected region of `segment` (a stretch outside block regions), in segment offsets; may overlap. */
+/** Every inline protected region of `segment` (one inline scope), in segment offsets; may overlap. */
 export function findMarkdownInlineRegions(segment: string): TextRange[] {
   const scan = new InlineScan(segment);
   return [...scan.run(), ...bareLinks(segment)];
@@ -50,7 +52,7 @@ class InlineScan {
   private readonly regions: TextRange[] = [];
   /** Starts of maximal backtick runs, by run length. */
   private readonly runsByLength = new Map<number, number[]>();
-  /** Offsets nothing inline may run past: each paragraph break and new block's line start, ascending. */
+  /** Offsets nothing inline may run past: each blank line's start, ascending. */
   private readonly breaks: number[] = [];
 
   constructor(private readonly s: string) {
@@ -65,16 +67,12 @@ class InlineScan {
       this.runsByLength.set(end - index, starts);
       index = end;
     }
-    let previousHeading = false;
     for (let start = 0; start <= s.length;) {
       const newline = s.indexOf('\n', start);
       const end = newline === -1 ? s.length : newline;
-      const line = s.slice(start, end).replace(/\r$/, '');
-      const block = blockContent(line);
-      if (start > 0 && (previousHeading || BLANK_LINE.test(line) || (block !== undefined && INTERRUPTING_BLOCK.test(block)))) {
+      if (start > 0 && BLANK_LINE.test(s.slice(start, end).replace(/\r$/, ''))) {
         this.breaks.push(start);
       }
-      previousHeading = block !== undefined && ATX_HEADING.test(block);
       if (newline === -1) {
         break;
       }
@@ -135,24 +133,6 @@ class InlineScan {
     const next = this.breaks[firstAtOrAfter(this.breaks, from)];
     return next === undefined || starts[at] < next ? starts[at] + length : undefined;
   }
-}
-
-/**
- * A line's content after its block-quote markers, when it is indented little
- * enough to start a block there; undefined when it is not (four or more
- * columns, or a tab: indented code, or a lazy continuation). A line read as
- * no block start lets inline constructs run on, which protects more, never
- * less.
- */
-function blockContent(line: string): string | undefined {
-  const prefix = QUOTE_PREFIX.exec(line)![0];
-  const rest = line.slice(prefix.length);
-  let indent = 0;
-  while (rest[indent] === ' ') {
-    indent += 1;
-  }
-  // After `>`, one space belongs to the marker.
-  return rest[indent] === '\t' || indent > (prefix.length > 0 ? 4 : 3) ? undefined : rest.slice(indent);
 }
 
 function runEnd(s: string, index: number): number {
@@ -294,13 +274,7 @@ function skipLinkSpacing(s: string, index: number): number | undefined {
     return at;
   }
   at += 1;
-  for (;;) {
-    while (s[at] === ' ' || s[at] === '\t') {
-      at += 1;
-    }
-    if (s[at] !== '>') {
-      break;
-    }
+  while (s[at] === ' ' || s[at] === '\t') {
     at += 1;
   }
   return at >= s.length || s[at] === '\n' || s[at] === '\r' ? undefined : at;
@@ -308,10 +282,19 @@ function skipLinkSpacing(s: string, index: number): number | undefined {
 
 /** The end of a link destination and optional title, `(` at `open` through its `)`; undefined when it is not one. */
 function linkDestinationEnd(s: string, open: number): number | undefined {
-  let at = skipLinkSpacing(s, open + 1);
-  if (at === undefined) {
+  const start = skipLinkSpacing(s, open + 1);
+  if (start === undefined) {
     return undefined;
   }
+  const destination = linkDestination(s, start);
+  return (destination !== undefined ? linkTail(s, destination, false) : undefined)
+    // `marked` also reads an empty destination before a title, `[label]( "title")`: protect that reading too.
+    ?? linkTail(s, start, true);
+}
+
+/** Where a destination starting at `at` ends, `<…>` or bare; undefined when none does. */
+function linkDestination(s: string, start: number): number | undefined {
+  let at = start;
   if (s[at] === '<') {
     at += 1;
     while (at < s.length && s[at] !== '>') {
@@ -320,44 +303,44 @@ function linkDestinationEnd(s: string, open: number): number | undefined {
       }
       at += s[at] === '\\' ? 2 : 1;
     }
-    if (s[at] !== '>') {
-      return undefined;
+    return s[at] === '>' ? at + 1 : undefined;
+  }
+  let depth = 0;
+  while (at < s.length) {
+    const char = s[at];
+    if (char === '\\' && ASCII_PUNCTUATION.test(s[at + 1] ?? '')) {
+      at += 2;
+      continue;
     }
-    at += 1;
-  } else {
-    let depth = 0;
-    while (at < s.length) {
-      const char = s[at];
-      if (char === '\\' && ASCII_PUNCTUATION.test(s[at + 1] ?? '')) {
-        at += 2;
-        continue;
+    if (char === '(') {
+      if (++depth > MAX_LINK_PAREN_DEPTH) {
+        return undefined;
       }
-      if (char === '(') {
-        depth += 1;
-      } else if (char === ')') {
-        if (depth === 0) {
-          break;
-        }
-        depth -= 1;
-      } else if (char <= ' ' || char === '\x7f') {
+    } else if (char === ')') {
+      if (depth === 0) {
         break;
       }
-      at += 1;
+      depth -= 1;
+    } else if (char <= ' ' || char === '\x7f') {
+      break;
     }
-    if (depth !== 0) {
-      return undefined;
-    }
+    at += 1;
   }
-  const afterDestination = at;
+  return depth === 0 ? at : undefined;
+}
+
+/** An optional title, then `)`, after a destination ending at `at`; `titleHere`: the title may open at `at` itself. */
+function linkTail(s: string, at: number, titleHere: boolean): number | undefined {
+  let end = at;
   const titleStart = skipLinkSpacing(s, at);
-  if (titleStart !== undefined && titleStart > afterDestination && `"'(`.includes(s[titleStart] ?? '\0')) {
+  if (titleStart !== undefined && (titleHere || titleStart > at) && `"'(`.includes(s[titleStart] ?? '\0')) {
     const titleEnd = linkTitleEnd(s, titleStart);
     if (titleEnd === undefined) {
       return undefined;
     }
-    at = titleEnd;
+    end = titleEnd;
   }
-  const close = skipLinkSpacing(s, at);
+  const close = skipLinkSpacing(s, end);
   return close !== undefined && s[close] === ')' ? close + 1 : undefined;
 }
 

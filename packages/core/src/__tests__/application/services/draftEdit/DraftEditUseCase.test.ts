@@ -297,7 +297,11 @@ describe('DraftEditUseCase.run: protected Markdown never reaches the payload or 
     ['a reference definition on two lines', '[chapter]:\n  secret/teh.md'],
     ['an email autolink', 'Contact <teh@example.invalid>.'],
     ['a code span after an unmatched backtick run', 'A `` b `teh` c'],
-    ['a tag whose quoted attribute holds >', 'See <a title="x>y" href="teh.html">link</a>.']
+    ['a tag whose quoted attribute holds >', 'See <a title="x>y" href="teh.html">link</a>.'],
+    // The re-review: an unmatched backtick never takes the next block's code opener, and a quote's `>` never closes a tag.
+    ['code in the next numbered item', '1. One `unclosed\n2. `teh` end'],
+    ['code in a block quote that interrupts the paragraph', 'Before ` unclosed\n> `teh` after'],
+    ['a tag continued in a block quote', '> <a\n> href="teh.html">label</a>']
   ];
 
   it.each(CONSTRUCTS)('a whole-document run: %s', async (_name, construct) => {

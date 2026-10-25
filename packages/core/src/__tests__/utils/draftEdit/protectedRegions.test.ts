@@ -151,6 +151,71 @@ describe('findProtectedRegions: complete constructs (PR #171 F-02)', () => {
   });
 });
 
+describe('findProtectedRegions: inline constructs stay inside their block (PR #171 F-02 re-review)', () => {
+  const masked = (text: string) => maskProtectedRegions(text, findProtectedRegions(text, 'markdown')).text;
+  const P = PROTECTED_PLACEHOLDER;
+
+  it.each<[string, string, string]>([
+    ['the next numbered item', '1. One `unclosed\n2. `teh` end', `1. One \`unclosed\n2. ${P} end`],
+    ['a block quote that interrupts the paragraph', 'Before ` unclosed\n> `teh` after', `Before \` unclosed\n> ${P} after`],
+    ['a nested quote\'s next paragraph', '> > a ` x\n> > b\n>\n> `teh` c', `> > a \` x\n> > b\n>\n> ${P} c`],
+    ['a thematic break', 'Para ` x\n***\n`teh` y', `Para \` x\n***\n${P} y`],
+    ['a setext heading', 'Title ` x\n===\n`teh` y', `Title \` x\n===\n${P} y`],
+    ['a paragraph after a lone carriage return', 'Para ` x\r\rNext `teh` y', `Para \` x\r\rNext ${P} y`]
+  ])('never lets an unmatched backtick take a code opener across %s', (_name, text, expected) => {
+    expect(masked(text)).toBe(expected);
+  });
+
+  it('reads each table cell alone, across cells and rows', () => {
+    expect(masked('| a ` x | `teh` |\n|---|---|\n| ` y | z |\n| `teh` | ok |'))
+      .toBe(`| a \` x | ${P} |\n|---|---|\n| \` y | z |\n| ${P} | ok |`);
+  });
+
+  it('never reads a block quote\'s marker as the end of a tag', () => {
+    expect(masked('> <a\n> href="teh.html">label</a>')).toBe(`> ${P}label${P}`);
+  });
+
+  it('protects an empty destination before a title', () => {
+    expect(masked('[label]( "hidden title")')).toBe(`[label]${P}`);
+  });
+
+  it('controls: a label stays prose, a code span may run over a line, and prose in containers is read whole', () => {
+    expect(masked('[teh](chapter.md)')).toBe(`[teh]${P}`);
+    expect(masked('A `multi\nline` code span')).toBe(`A ${P} code span`);
+    expect(masked('Prose `a\n1999. teh` more')).toBe(`Prose ${P} more`);
+    for (const prose of [
+      '> Alice was beginning to get very tired.\n> She had peeped into the book.',
+      '- Alice fell.\n  - Down, down, down.\n    Would the fall never come to an end?',
+      '-\tAlice fell.\n\tStill falling.',
+      '> - A nested item.\n>   Continued, lazily.',
+      '1. Alice\n2. The Rabbit'
+    ]) {
+      expect(masked(prose)).toBe(prose);
+    }
+  });
+
+  it('protects a document nesting quotes and list items, mixed, deeper than any manuscript', () => {
+    expect(masked(`${'> - '.repeat(65)}Prose sentinel`)).toBe(P);
+    expect(masked(`${'> - '.repeat(8)}Prose sentinel`)).toBe(`${'> - '.repeat(8)}Prose sentinel`);
+  });
+
+  it('reads unmatched destinations in bounded work', () => {
+    const adversarial = '](x'.repeat(20000);
+    const started = Date.now();
+    expect(masked(adversarial)).toBe(adversarial);
+    // Generous: linear work takes a few milliseconds; a rescan per opener takes seconds.
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+
+  it('reads a long list in work that grows with it, not with its square', () => {
+    const list = '- item `x` text\n'.repeat(20000);
+    const started = Date.now();
+    expect(findProtectedRegions(list, 'markdown')).toHaveLength(20000);
+    // Generous: about 0.2 s here; recounting every earlier item per item took over 2 s.
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+});
+
 describe('mergeRanges', () => {
   it('sorts, and merges ranges that overlap or touch', () => {
     expect(mergeRanges([{ start: 5, end: 8 }, { start: 0, end: 2 }, { start: 2, end: 3 }, { start: 7, end: 10 }]))

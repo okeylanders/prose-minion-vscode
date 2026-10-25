@@ -4,13 +4,13 @@
  * destinations, autolinks and bare URLs and email addresses, reference
  * definitions, HTML comments, and HTML tags with their attributes.
  *
- * Block regions come first (`markdownBlockRegions`: front matter, and fences,
- * definitions and raw `<script>`/`<style>` blocks inside any container),
- * then inline regions in the text between them (`markdownInlineRegions`).
- * Both read complete constructs: a fence under `> ` or a list marker, a
- * destination with balanced parentheses or a line break, a definition on
- * several lines, an attribute holding `>` (PR #171 F-02). Where a scanner is
- * unsure, it protects more, never less.
+ * `markdownBlockRegions` reads the block structure: the protected blocks
+ * (front matter, and fences, definitions and raw `<script>`/`<style>` blocks
+ * inside any container), and the inline scopes (each leaf block or table
+ * cell, container prefixes stripped, mapped back to the source column by
+ * column). `markdownInlineRegions` then reads each scope alone, so an inline
+ * construct never runs from one block into the next (PR #171 F-02 and its
+ * re-review). Where either is unsure, it protects more, never less.
  *
  * Indented code blocks are deliberately not protected: fiction writers
  * indent paragraphs with a tab or four spaces, which Markdown reads as code,
@@ -23,7 +23,7 @@
  */
 
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { findMarkdownBlockRegions } from '@/utils/draftEdit/markdownBlockRegions';
+import { readMarkdownBlocks } from '@/utils/draftEdit/markdownBlockRegions';
 import { findMarkdownInlineRegions } from '@/utils/draftEdit/markdownInlineRegions';
 
 /** What a masked region looks like to the model; the prompt says never to quote or change it. */
@@ -37,29 +37,14 @@ export function findProtectedRegions(text: string, languageId: string): TextRang
   if (!MARKDOWN_LANGUAGE_IDS.has(languageId)) {
     return [];
   }
-  const blocks = mergeRanges(findMarkdownBlockRegions(text));
-  const regions: TextRange[] = [...blocks];
-  for (const gap of gapsBetween(blocks, text.length)) {
-    for (const range of findMarkdownInlineRegions(text.slice(gap.start, gap.end))) {
-      regions.push({ start: gap.start + range.start, end: gap.start + range.end });
+  const blocks = readMarkdownBlocks(text);
+  const regions: TextRange[] = [...blocks.regions];
+  for (const scope of blocks.scopes) {
+    for (const range of findMarkdownInlineRegions(scope.text)) {
+      regions.push({ start: scope.toSource(range.start), end: scope.toSource(range.end) });
     }
   }
   return mergeRanges(regions.filter((region) => region.end > region.start));
-}
-
-function gapsBetween(sorted: readonly TextRange[], length: number): TextRange[] {
-  const gaps: TextRange[] = [];
-  let cursor = 0;
-  for (const range of sorted) {
-    if (range.start > cursor) {
-      gaps.push({ start: cursor, end: range.start });
-    }
-    cursor = Math.max(cursor, range.end);
-  }
-  if (cursor < length) {
-    gaps.push({ start: cursor, end: length });
-  }
-  return gaps;
 }
 
 /** Sort, and merge ranges that overlap or touch. */
