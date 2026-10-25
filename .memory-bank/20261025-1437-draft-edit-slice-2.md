@@ -61,9 +61,10 @@
   sees it.
 - **Cancel can't close an open preview.** The progress notification's
   Cancel has no effect once the preview is open; there is no extension API
-  for it. (Corrected in PR #172 F-02: VS Code's `refactorPreview.discard`
-  command is that call, and the adapter now runs it when a reviewed
-  document closes or changes language; Cancel does not use it yet.)
+  for it. (Corrected in PR #172: VS Code's `refactorPreview.discard`
+  command could, but it ends whichever preview holds the pane, and no API
+  ties a preview to its request, so neither Cancel nor the adapter sends
+  it; F-02 stays the writer's accepted limit, F-06.)
 
 ## Verification
 

@@ -95,8 +95,9 @@ The spike, and every departure from the plan above, is in the ADR's
 - **The setting is VS Code-only.** `proseMinion.proofread.fixReview` is read
   at the gesture and has no Settings Overlay row, like the Workshop's settings.
 - **Known limit.** Cancel on the progress notification does not close an
-  open preview. (Corrected in PR #172 F-02: VS Code's own Discard,
-  `refactorPreview.discard`, is the call; Cancel does not use it yet.)
+  open preview. (Corrected in PR #172: VS Code's own Discard,
+  `refactorPreview.discard`, could, but it ends whichever preview is shown,
+  so Cancel does not use it; F-06.)
 - **Module split.** The use case stayed under 500 lines by moving the pure
   issue helpers into `draftEditIssues.ts`.
 - **Tech debt recorded.** `extension.ts` was past 500 lines before Draft
@@ -105,11 +106,11 @@ The spike, and every departure from the plan above, is in the ADR's
 
 ## Review fixes (PR #172, Astra, 2026-10-25)
 
-Astra's review found four blocking write-side defects, and her re-review of
-the corrections one more (F-05) and a gap in F-03's (table cells). Each is
-fixed or, for F-02, accepted with a best-effort mitigation, with regressions
-that fail on the head they were found on; the ADR's "Amendment 2026-10-25:
-PR #172 review" records each:
+Astra's review found four blocking write-side defects, and her re-reviews of
+the corrections two more (F-05, F-06) and a gap in F-03's (table cells).
+Each is fixed or, for F-02, accepted as a limit, with regressions that fail
+on the head they were found on; the ADR's "Amendment 2026-10-25: PR #172
+review" records each:
 
 - **F-01. The direct retry checks again.** A retry follows its edits through
   the writer's typing and runs every check on the document as it now stands,
@@ -126,29 +127,25 @@ PR #172 review" records each:
   and reads each host change as the edits it is made of, VS Code's
   1,000-operation merge included. Counts stay right, untouched flags stay on
   their text, and a quick fix shows them again.
-- **F-02. An accepted limit, with a best-effort discard** (the writer's
-  choice: keep Refactor Preview). Refactor Preview writes inside
-  `workspace.applyEdit`, and a language change moves no version. So while a
-  review is held, the VS Code adapter answers the document's close event
-  (close, reopen or language change) with VS Code's own Discard, and the run
-  reports the document closed with nothing written. It narrows the window
-  without closing it: an Apply that beats the close event to the extension
-  host is the stated limit, and the run still shows nothing. (A preview still
-  opening is discarded as it opens, since F-06.)
-- **F-06 (second re-review). The discard ends only the review's own
-  preview.** VS Code's Discard ends whichever preview holds the pane, and a
-  review may be waiting to replace another's. So it is sent only once the
-  review's own preview holds the pane, read from the copy of its document
-  that preview opens; another extension's preview, or another chapter's
-  review, is never discarded. A closed quick fix now asks the writer to
-  check the file instead of saying nothing changed.
+- **F-02. An accepted limit** (the writer's choice: keep Refactor Preview).
+  Refactor Preview writes inside `workspace.applyEdit`, and a language change
+  moves no version, so an Apply after a close, reopen or language change
+  during review still writes what the writer ticked. The run reports the
+  document closed or changed language and shows nothing; a closed quick fix
+  asks the writer to check the file.
+- **F-06 (second and third re-reviews). No command to the preview.** A
+  best-effort Discard was tried, then narrowed to "our own preview", then
+  withdrawn: VS Code's Discard ends whichever preview holds the pane, a
+  review may wait to replace another's, and a preview's copy of the file
+  (the only ownership signal) arrives late or never. No public API ties a
+  preview to its request, so Draft Edit sends none.
 - **F-05 (re-review). A Clear is for good.** A quick fix that lands after a
   Clear this file or Clear all no longer shows the cleared flags again.
 
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (550 suites / 7,694 tests / 59 snapshots with the PR #172 review
+  suite (549 suites / 7,681 tests / 59 snapshots with the PR #172 review
   fixes; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox`
   at `e3a7fac0`. The full suite also passes under Node 22.
 - Fix is tested through the real applier, anchoring and guard on a document

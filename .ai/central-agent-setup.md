@@ -840,7 +840,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review and re-review fixes (F-01 to F-06) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
-- 550 suites / 7,694 tests / 59 snapshots
+- 549 suites / 7,681 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1588,16 +1588,15 @@ writer's own document:
   touched is stale, what the live text now protects is protected, and a
   document that closed (or reopened, or changed language) shows nothing and
   is never reopened (PR #171 F-03, F-04). A review belongs to the same
-  lifetime (PR #172 F-02, an accepted limit): Refactor Preview commits inside
-  `applyEdit`, and a language change moves no version, so while a review is
-  held the VS Code adapter answers the document's close event with VS Code's
-  own Discard (`refactorPreview.discard`) and answers `closed`. That is best
-  effort, never a guarantee: an Apply that beats the close event to the
-  extension host is the ADR's stated limit. Discard ends whichever preview
-  holds the pane, so send it only once the review's own preview does
-  (`RefactorPreviews`, PR #172 F-06: a preview copy of its document, and
-  nothing else, opened after it asked). Never discard on "our request is
-  pending" alone: it may be waiting to replace another's preview.
+  lifetime, but VS Code gives no way to end one (PR #172 F-02, the writer's
+  accepted limit): Refactor Preview commits inside `applyEdit`, and a
+  language change moves no version, so an Apply after a close or language
+  change during review still writes; the run reports it closed and shows
+  nothing. Never send `refactorPreview.discard`, or any command, to the
+  preview (F-06): Discard ends whichever preview holds the pane, and no
+  public API ties a preview to the request that opened it (a pending
+  request may wait to replace another's preview, and a preview's copy of
+  the file arrives late or never).
 - **A Clear is for good** (PR #172 F-05). A quick fix that lands after a
   Clear shows nothing again: it re-shows untouched flags only while the
   issues it captured still hold the document's flags.
