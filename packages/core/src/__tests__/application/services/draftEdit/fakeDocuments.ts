@@ -199,3 +199,38 @@ export class FakeAnnotations implements IssueAnnotator {
     return this.shown.map((annotation) => this.document.text.slice(annotation.start, annotation.end));
   }
 }
+
+/** VS Code's text buffer merges this many operations or more into one change (`PieceTreeTextBuffer._reduceOperations`). */
+export const VS_CODE_MERGE_THRESHOLD = 1000;
+
+/**
+ * The ticked edits as VS Code applies them: one change each below the
+ * threshold; at or above it, one change from the first edit's start to the
+ * last's end, the text between them kept.
+ */
+export function applyLikeVsCode(ticked: (edit: DocumentTextEdit) => boolean = () => true): HostBehavior {
+  return (edits, _review, document) => {
+    const kept = edits.filter(ticked).sort((a, b) => a.start - b.start);
+    if (kept.length === 0) {
+      return { kind: 'declined' };
+    }
+    if (kept.length < VS_CODE_MERGE_THRESHOLD) {
+      document.edit(kept.map(asChange));
+      return { kind: 'submitted' };
+    }
+    const first = kept[0].start;
+    const last = kept[kept.length - 1].end;
+    let text = '';
+    kept.forEach((edit, index) => {
+      text += document.text.slice(index === 0 ? first : kept[index - 1].end, edit.start) + edit.newText;
+    });
+    document.edit([{ offset: first, length: last - first, text }]);
+    return { kind: 'submitted' };
+  };
+}
+
+/** One host behavior for the first apply, another for every one after (a retry). */
+export function firstThen(first: HostBehavior, then: HostBehavior): HostBehavior {
+  let calls = 0;
+  return (edits, review, document) => (calls++ === 0 ? first : then)(edits, review, document);
+}

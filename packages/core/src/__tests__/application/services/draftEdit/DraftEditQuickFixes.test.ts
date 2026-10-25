@@ -8,7 +8,7 @@ import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditAppl
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments, type HostBehavior } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, writerTypes, type HostBehavior } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister on the bank, '
   + 'and once or twice she peeped into the book her sister is reading.';
@@ -127,3 +127,18 @@ describe('DraftEditUseCase.applyShown: the quick fixes', () => {
     expect(await useCase.applyShown(snapshot(), { issueIds: [id] }, 'direct')).toEqual({ kind: 'nothing' });
   });
 });
+
+describe('Replace with, when the writer fences the flag as it goes in (PR #172 F-01)', () => {
+  it('writes nothing into the new code', async () => {
+    const { document, useCase, idOf, snapshot } = await flagged();
+    const id = idOf('vrey');
+    document.host = writerTypes([{ offset: 0, length: 0, text: '```text\n' }, { offset: document.text.length, length: 0, text: '\n```' }]);
+    const pending = useCase.applyShown(snapshot(), { issueIds: [id] }, 'direct');
+    document.host = () => ({ kind: 'submitted' });
+
+    expect(await pending).toMatchObject({ kind: 'done', answer: 'stale', applied: 0, refused: 1 });
+    expect(document.text).toContain('get vrey tired');
+    expect(document.applyCalls).toHaveLength(1);
+  });
+});
+

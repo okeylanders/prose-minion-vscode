@@ -19,6 +19,7 @@ import {
   FakeDocuments,
   applyTicked,
   decline,
+  firstThen,
   writerTypes,
   type HostBehavior
 } from '@/__tests__/application/services/draftEdit/fakeDocuments';
@@ -177,5 +178,69 @@ describe('DraftEditUseCase.run: Proofread and Fix', () => {
     expect(await run()).toEqual({ kind: 'busy' });
     finish();
     expect((await first).kind).toBe('completed');
+  });
+});
+
+describe('DraftEditUseCase: a direct fix the writer fences as it goes out (PR #172 F-01)', () => {
+  it('writes nothing into the new code, and counts the fix as protected', async () => {
+    const sentence = 'Alice saw teh rabbit.';
+    const teh: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'A typo.' };
+    const document = new FakeDocuments(sentence, undefined, 'markdown', 3, firstThen(writerTypes([
+      { offset: 0, length: 0, text: '```text\n' },
+      { offset: sentence.length, length: 0, text: '\n```' }
+    ]), () => ({ kind: 'submitted' })));
+    const annotations = new FakeAnnotations(document);
+    const pass: ProofreadPassPort = { proofread: jest.fn(async (): Promise<ProofreadRunResult> => read(teh)) };
+    const useCase = new DraftEditUseCase(pass, document, annotations, new DraftEditApplier(document), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    const outcome = completed(await useCase.run({ uri: document.uri, version: 3, text: sentence, languageId: 'markdown', relativePath: 'a.md' }, DIRECT));
+
+    expect(document.text).toBe('```text\nAlice saw teh rabbit.\n```');
+    expect(document.applyCalls).toHaveLength(1);
+    expect(outcome.fix).toMatchObject({ answer: 'stale', applied: 0 });
+    expect(outcome.dropped.protected).toBe(1);
+    expect(annotations.flaggedText()).toEqual([]);
+  });
+});
+
+
+describe('DraftEditUseCase: fixes that would change the Markdown structure (PR #172 F-03)', () => {
+  function run(text: string, findings: ProofreadFinding[], pass: DraftEditPass = PREVIEW) {
+    const document = new FakeDocuments(text, undefined, 'markdown', 2);
+    const annotations = new FakeAnnotations(document);
+    const proofread: ProofreadPassPort = { proofread: jest.fn(async (): Promise<ProofreadRunResult> => read(...findings)) };
+    const useCase = new DraftEditUseCase(proofread, document, annotations, new DraftEditApplier(document), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    const target = () => ({ uri: document.uri, version: document.version, text: document.text, languageId: 'markdown', relativePath: 'a.md' });
+    return { document, annotations, useCase, outcome: useCase.run(target(), pass) };
+  }
+
+  it('flags a spacing fix that would make a tag of prose, and never writes it', async () => {
+    const tag: ProofreadFinding = { anchor: { quote: '< Rabbit >' }, category: 'spacing', replacement: '<Rabbit>', explanation: 'Extra spaces.' };
+    const { document, annotations, outcome } = run('Alice wrote < Rabbit > in her notebook.', [tag]);
+
+    expect((await outcome)).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'none', applied: 0 } });
+    expect(document.applyCalls).toEqual([]);
+    expect(annotations.flaggedText()).toEqual(['< Rabbit >']);
+    expect(annotations.shown[0].fix).toEqual({ replacement: '<Rabbit>', preferred: false });
+  });
+
+  it('applies the spelling fix, and flags the spacing fix that would have fenced it as code', async () => {
+    const text = '` ``text\nAlice saw teh rabbit.';
+    const fence: ProofreadFinding = { anchor: { quote: '` ``' }, category: 'spacing', replacement: '```', explanation: 'Stray space.' };
+    const teh: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'A typo.' };
+    const { document, annotations, outcome } = run(text, [fence, teh], DIRECT);
+
+    expect(await outcome).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'submitted', applied: 1 } });
+    expect(document.text).toBe('` ``text\nAlice saw the rabbit.');
+    expect(annotations.flaggedText()).toEqual(['` ``']);
+  });
+
+  it('never offers such a fix to Fix all after a Flag run', async () => {
+    const tag: ProofreadFinding = { anchor: { quote: '< Rabbit >' }, category: 'spacing', replacement: '<Rabbit>', explanation: 'Extra spaces.' };
+    const vrey: ProofreadFinding = { anchor: { quote: 'vrey' }, category: 'spelling', replacement: 'very', explanation: 'A typo.' };
+    const { document, useCase, outcome } = run('Alice wrote < Rabbit > in her vrey neat notebook.', [tag, vrey], { kind: 'proofread', output: 'flag' });
+    await outcome;
+
+    expect(await useCase.applyShown(document.snapshot(), 'all-fixes', 'direct')).toMatchObject({ kind: 'done', applied: 1 });
+    expect(document.text).toBe('Alice wrote < Rabbit > in her very neat notebook.');
   });
 });

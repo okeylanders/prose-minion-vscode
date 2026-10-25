@@ -158,8 +158,9 @@ describe('describeQuickFixOutcome (Slice 2)', () => {
     [{ kind: 'changed' as const }, 'a.md changed since the fix was offered, so nothing was changed.'],
     [{ kind: 'nothing' as const }, 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.'],
     [{ kind: 'busy' as const }, 'Proofread is already working on a.md.'],
-    [done('stale', 0, 1), 'a.md changed during review, so no fixes were applied.'],
-    [done('none', 0), 'That fix was not applied: its text has changed, or it would change a line break.']
+    [done('stale', 0, 1), 'a.md changed as the fix went in, so it was not applied.'],
+    [{ ...done('stale', 0, 1), review: 'preview' as const }, 'a.md changed during review, so no fixes were applied.'],
+    [done('none', 0), 'That fix was not applied: its text has changed, or it would change a line break or the Markdown around it.']
   ])('explains a quick fix that did not land', (outcome, message) => {
     expect(describeQuickFixOutcome(outcome, 'a.md')).toMatchObject({ message, quiet: false });
   });

@@ -27,12 +27,14 @@ export type DraftEditPassKind = DraftEditPass['kind'];
 export interface DraftEditPassPolicy {
   /** The engine the pass's model calls run on. */
   readonly modelScope: ModelScope;
-  /** Whether a fix may add or remove a line break (Proofread: never, D6). */
+  /** Whether a fix may add, remove or move a line break (Proofread: never, D6). */
   readonly allowsNewlineChanges: boolean;
+  /** Whether fixes must leave the document's Markdown structure as it was (Proofread: always, PR #172 F-03). */
+  readonly preservesMarkdownStructure: boolean;
 }
 
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
-  proofread: { modelScope: 'proofread', allowsNewlineChanges: false }
+  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */

@@ -92,7 +92,9 @@ function fixLead(fix: DraftEditFixReport): string {
     case 'declined':
       return 'fixes discarded, nothing changed';
     case 'stale':
-      return 'the file changed during review, so no fixes were applied';
+      return fix.review === 'preview'
+        ? 'the file changed during review, so no fixes were applied'
+        : 'the file changed as the fixes went in, so they were not applied';
     case 'failed':
       return `the editor did not apply the fixes${fix.failure ? ` (${fix.failure})` : ''}`;
     case 'none':
@@ -125,11 +127,13 @@ export function describeQuickFixOutcome(outcome: DraftEditQuickFixOutcome, docum
         case 'declined':
           return say('info', 'Proofread fixes discarded; nothing changed.');
         case 'stale':
-          return say('warning', `${documentLabel} changed during review, so no fixes were applied.`);
+          return say('warning', outcome.review === 'preview'
+            ? `${documentLabel} changed during review, so no fixes were applied.`
+            : `${documentLabel} changed as the fix went in, so it was not applied.`);
         case 'failed':
           return say('warning', `The editor did not apply the fix${outcome.failure ? ` (${outcome.failure})` : ''}.`);
         case 'none':
-          return say('warning', 'That fix was not applied: its text has changed, or it would change a line break.');
+          return say('warning', 'That fix was not applied: its text has changed, or it would change a line break or the Markdown around it.');
         default: {
           const unknown: never = outcome.answer;
           return unknown;

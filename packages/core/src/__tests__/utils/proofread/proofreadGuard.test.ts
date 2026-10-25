@@ -32,8 +32,8 @@ describe('Proofread categories', () => {
     expect(['tense', 'style', 'Tense', 3, undefined].map(isProofreadCategory)).toEqual([true, false, false, false, false]);
   });
 
-  it('never lets a Proofread fix change line breaks', () => {
-    expect(proofread).toEqual({ modelScope: 'proofread', allowsNewlineChanges: false });
+  it('never lets a Proofread fix change line breaks, or the Markdown structure (PR #172 F-03)', () => {
+    expect(proofread).toEqual({ modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true });
   });
 });
 

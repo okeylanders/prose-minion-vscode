@@ -14,7 +14,7 @@ import {
 } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister.';
-const PROOFREAD = { allowsNewlineChanges: false };
+const PROOFREAD = { allowsNewlineChanges: false, preservesMarkdownStructure: true };
 
 function edit(id: string, original: string, replacement: string, text = TEXT, from = 0): DraftEditEdit {
   const start = text.indexOf(original, from);
@@ -49,8 +49,8 @@ describe('DraftEditApplier.apply', () => {
     const { documents, applier } = setup(applyMinimal);
     const result = await applier.apply({ document: documents.snapshot(), edits: [BEGINING, VREY], review: 'direct', policy: PROOFREAD });
 
-    // `begining` → `beginning` lands as an inserted "n"; `vrey` → `very` as "re" → "er".
-    expect(result.settled?.edits[0]).toEqual([{ offset: 15, length: 0, text: 'n' }, { offset: 27, length: 2, text: 'er' }]);
+    // The host inserted an "n" and turned "re" into "er"; the history gives them back as the edits they are.
+    expect(result.settled?.edits[0]).toEqual([{ offset: 10, length: 8, text: 'beginning' }, { offset: 26, length: 4, text: 'very' }]);
     expect(result).toMatchObject({ outcome: 'submitted', applied: ['a', 'b'], unknown: [] });
   });
 
@@ -145,7 +145,7 @@ describe('DraftEditApplier.apply', () => {
       document: documents.snapshot(),
       edits: [edit('b', 'vrey tired', 'very\ntired')],
       review: 'direct',
-      policy: { allowsNewlineChanges: true }
+      policy: { allowsNewlineChanges: true, preservesMarkdownStructure: true }
     });
 
     expect(result).toMatchObject({ applied: ['b'], refused: [] });
@@ -200,3 +200,49 @@ describe('DraftEditApplier.apply', () => {
     expect(result).toEqual({ outcome: 'changed', applied: [], notApplied: [], unknown: ['a'], refused: [] });
   });
 });
+
+/**
+ * PR #172 F-01: a direct apply the writer typed through is asked again only
+ * after every rule is checked again against the document as it now stands:
+ * the text it would fix may now be code, or a link's target.
+ */
+describe('DraftEditApplier.apply: the direct retry checks again', () => {
+  const SENTENCE = 'Alice saw teh rabbit.';
+  const TEH = edit('a', 'teh', 'the', SENTENCE);
+  const at = SENTENCE.indexOf('teh');
+
+  it.each([
+    ['fences it as code', [{ offset: 0, length: 0, text: '```text\n' }, { offset: SENTENCE.length, length: 0, text: '\n```' }]],
+    ['makes it inline code', [{ offset: at, length: 0, text: '`' }, { offset: at + 3, length: 0, text: '`' }]],
+    ['makes it a link target', [{ offset: at, length: 0, text: '[x](' }, { offset: at + 3, length: 0, text: ')' }]]
+  ])('refuses the retry when the writer %s as the edit goes out, and writes nothing', async (_name, typed) => {
+    const { documents, applier } = setup(writerTypes(typed), SENTENCE);
+    const pending = applier.apply({ document: documents.snapshot(), edits: [TEH], review: 'direct', policy: PROOFREAD });
+    documents.host = applyAll;
+    const result = await pending;
+    const live = documents.text;
+
+    expect(documents.applyCalls).toHaveLength(1);
+    expect(live).toContain('teh');
+    expect(result).toMatchObject({ outcome: 'stale', applied: [], notApplied: [], unknown: [], refused: [{ id: 'a', reason: 'protected' }] });
+  });
+
+  it('control: a harmless prefix is followed, checked, and asked once more', async () => {
+    const { documents, applier } = setup(writerTypes([{ offset: 0, length: 0, text: 'Then ' }]), SENTENCE);
+    const pending = applier.apply({ document: documents.snapshot(), edits: [TEH], review: 'direct', policy: PROOFREAD });
+    documents.host = applyAll;
+
+    expect(await pending).toMatchObject({ outcome: 'submitted', applied: ['a'], refused: [] });
+    expect(documents.text).toBe('Then Alice saw the rabbit.');
+  });
+
+  it('control: a reviewed apply never asks again, so a fence the writer typed during review is left alone', async () => {
+    const { documents, applier } = setup(writerTypes([{ offset: 0, length: 0, text: '```text\n' }, { offset: SENTENCE.length, length: 0, text: '\n```' }]), SENTENCE);
+    const result = await applier.apply({ document: documents.snapshot(), edits: [TEH], review: 'preview', policy: PROOFREAD });
+
+    expect(documents.applyCalls).toHaveLength(1);
+    expect(documents.text).toContain('teh');
+    expect(result).toMatchObject({ outcome: 'stale', applied: [], refused: [] });
+  });
+});
+

@@ -30,7 +30,7 @@
  * counted, never guessed.
  */
 
-import type { DocumentSnapshot, DocumentTextChange, LogSink } from '@/platform';
+import type { DocumentAnnotation, DocumentSnapshot, DocumentTextChange, LogSink } from '@/platform';
 import type { DocumentEditor, DocumentWatch } from '@/platform/DocumentEditor';
 import type { IssueAnnotator } from '@/platform/IssueAnnotator';
 import {
@@ -45,12 +45,11 @@ import {
 } from '@/domain/models/DraftEdit';
 import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/models/ProofreadIssue';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
-import { chunkParagraphs, type TextChunk } from '@/utils/draftEdit/chunkParagraphs';
-import { findProtectedRegions, maskProtectedRegions, type MaskedText } from '@/utils/draftEdit/protectedRegions';
-import { judgeProofreadFinding } from '@/utils/proofread/proofreadGuard';
+import { chunkParagraphs } from '@/utils/draftEdit/chunkParagraphs';
+import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 import type { DraftEditApplier, DraftEditApplyResult } from '@/application/services/draftEdit/DraftEditApplier';
+import { placeFindings, type Prepared } from '@/application/services/draftEdit/draftEditPlacement';
 import {
   byPlace,
   hasReplacement,
@@ -95,12 +94,6 @@ export type DraftEditQuickFixOutcome =
   /** What the editor did with the fixes; `refused` counts those the applier would not ask for. */
   | ({ readonly kind: 'done'; readonly refused: number } & DraftEditFixReport);
 
-interface Prepared {
-  readonly region: TextRange;
-  readonly masked: MaskedText;
-  readonly chunks: readonly TextChunk[];
-  readonly words: number;
-}
 
 /** What a run shows, at which version; a Fix run's report of its fixes beside it. */
 type Leftovers =
@@ -190,15 +183,41 @@ export class DraftEditUseCase {
       if (result.outcome === 'changed') {
         return { kind: 'changed' };
       }
-      if (result.applied.length > 0) {
-        // Withdraw their flags: an insertion at a flag's edge would leave it beside its fixed text.
-        this.annotations.remove(document.uri, result.applied);
-        result.applied.forEach((id) => issues.delete(id));
+      if (result.applied.length > 0 && result.settled) {
+        this.reshow(document.uri, shown.annotations, issues, new Set(result.applied), result.settled);
       }
       this.log.appendLine(`[DraftEdit] Quick fix: ${result.applied.length}/${edits.length} applied (${result.outcome})`);
       return { kind: 'done', refused: result.refused.length, ...fixReport(review, result) };
     } finally {
       this.inFlight.delete(document.uri);
+    }
+  }
+
+  /**
+   * After a quick fix: the flags still shown, moved through what changed, and
+   * shown again. The fixed ones go (an insertion at a flag's edge would leave
+   * it beside its fixed text), and the rest stay on their text even when the
+   * editor made the fixes as one change spanning them (PR #172 F-04), which
+   * the annotator, moving flags change by change, could not follow.
+   */
+  private reshow(
+    uri: string,
+    before: readonly DocumentAnnotation[],
+    issues: Map<string, ProofreadIssue>,
+    applied: ReadonlySet<string>,
+    settled: { readonly snapshot: DocumentSnapshot; readonly edits: ReadonlyArray<readonly DocumentTextChange[]> }
+  ): void {
+    applied.forEach((id) => issues.delete(id));
+    const placed = before.flatMap((annotation) => {
+      const issue = issues.get(annotation.id);
+      return issue ? [{ ...issue, start: annotation.start, end: annotation.end }] : [];
+    });
+    const moved = moveIssues(placed, settled.edits, settled.snapshot.text);
+    // Nothing is awaited since the applier settled, so the version still holds unless the host refuses it.
+    if (this.annotations.show(uri, settled.snapshot.version, moved.map(toAnnotation))) {
+      this.shownIssues.set(uri, new Map(moved.map((issue) => [issue.id, issue])));
+    } else {
+      this.annotations.remove(uri, [...applied]);
     }
   }
 
@@ -261,7 +280,7 @@ export class DraftEditUseCase {
       return { kind: 'closed', rejectedChunks, ...(result.usage ? { usage: result.usage } : {}) };
     };
     const dropped = noDrops();
-    const placed = this.place(target, pass, prepared, result, dropped);
+    const placed = placeFindings(target, DRAFT_EDIT_PASS_POLICIES[pass.kind], prepared, result, dropped, () => `proofread-${++this.sequence}`);
     const settled = watch.settle();
     if (settled.kind === 'closed') {
       return closed();
@@ -346,8 +365,12 @@ export class DraftEditUseCase {
       } else if (refusal.reason === 'protected') {
         dropped.protected += 1;
       } else {
-        // Refused for its own shape (a line break, an overlap): still true where it was, so flagged.
-        standing.push(byId.get(refusal.id)!);
+        // Refused for its own shape (Markdown, a line break, an overlap): still true where it was, so flagged,
+        // and no longer offered as Proofread's own fix, so Fix all never tries it again.
+        const issue = byId.get(refusal.id)!;
+        standing.push(refusal.reason === 'overlapping'
+          ? issue
+          : { ...issue, disposition: 'flag', downgradeReason: refusal.reason === 'markup' ? 'markup-change' : 'non-mechanical-edit' });
       }
     }
     const moved = this.followed([...others, ...standing], result.settled.edits, after.text, dropped);
@@ -372,68 +395,6 @@ export class DraftEditUseCase {
     return moved;
   }
 
-  /** Each finding placed in the gesture's snapshot, guarded, and with overlaps resolved. */
-  private place(
-    target: DraftEditTarget,
-    pass: DraftEditPass,
-    prepared: Prepared,
-    result: Extract<ProofreadRunResult, { kind: 'completed' }>,
-    dropped: DraftEditDrops
-  ): ProofreadIssue[] {
-    const policy = DRAFT_EDIT_PASS_POLICIES[pass.kind];
-    const issues: ProofreadIssue[] = [];
-    result.chunks.forEach((chunkResult, index) => {
-      if (chunkResult.kind !== 'read') {
-        return;
-      }
-      dropped.malformed += chunkResult.malformed;
-      const chunk = prepared.chunks[index];
-      for (const finding of chunkResult.findings) {
-        const anchored = anchorQuote(chunk.text, finding.anchor);
-        if (anchored.kind !== 'anchored') {
-          dropped.unanchored += 1;
-          continue;
-        }
-        const maskedRange = { start: chunk.start + anchored.start, end: chunk.start + anchored.end };
-        const sourceStart = prepared.masked.toSource(maskedRange.start);
-        const sourceEnd = prepared.masked.toSource(maskedRange.end);
-        if (prepared.masked.touchesPlaceholder(maskedRange) || sourceStart === undefined || sourceEnd === undefined) {
-          dropped.protected += 1;
-          continue;
-        }
-        const start = prepared.region.start + sourceStart;
-        const end = prepared.region.start + sourceEnd;
-        const original = target.text.slice(start, end);
-        const verdict = judgeProofreadFinding({ category: finding.category, original, replacement: finding.replacement }, policy);
-        if (verdict.kind === 'drop') {
-          continue;
-        }
-        issues.push({
-          id: `proofread-${++this.sequence}`,
-          category: finding.category,
-          disposition: verdict.disposition,
-          start,
-          end,
-          original,
-          ...(finding.replacement !== undefined ? { replacement: finding.replacement } : {}),
-          explanation: finding.explanation,
-          ...(verdict.downgradeReason ? { downgradeReason: verdict.downgradeReason } : {})
-        });
-      }
-    });
-
-    issues.sort(byPlace);
-    const kept: ProofreadIssue[] = [];
-    for (const issue of issues) {
-      const last = kept[kept.length - 1];
-      if (last && issue.start < last.end) {
-        dropped.overlapping += 1;
-      } else {
-        kept.push(issue);
-      }
-    }
-    return kept;
-  }
 }
 
 /** Names a run in logs and recovery files: a path, never the text. */
