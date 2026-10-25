@@ -401,3 +401,93 @@ No implementation edit, live/billable call, private manuscript, formal GitHub re
 | Full Jest, Node 22 | Pass; 537 suites / 7,475 tests / 59 snapshots |
 
 No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
+
+---
+
+## Astra second re-review — 2026-10-25
+
+**Reviewed head:** `f1ba770f8445407cb9fe0a891a6764fb7471444d`. **Base:** `31edcfdfda7ebe2cab89a121cfdba5655dbd170a`, unchanged.
+
+Reviewed all five commits after the prior report commit `ef9e4599`: 17 files, +615 / −201, including `acc58a05`, `749b3393`, the documentation changes and the full appended author response. The latest `f1ba770f` change is response-only. All preceding review and response text is preserved unchanged.
+
+### Updated disposition
+
+**Request changes: F-02 remains P2. F-01 is now closed; F-03 through F-06 remain closed.** The retained key-ordering witness and all six previous inline-scope assertions pass. Two narrower protected-text cases remain: an omitted final table cell and fail-open behavior at the new destination-depth limit. There is also a nonblocking P3 malformed-legacy-key normalization note below.
+
+### F-01 closed — Ordered observations preserve the newer run and honor deletion
+
+The retained witness now passes through the real refresh owner, secret-storage service, manager, engines, OpenRouter client, Proofread service and real concurrency limiter, with synthetic storage and an intercepted HTTP boundary:
+
+- Hold the deletion's empty-key observation, adopt B, and start six fresh chunks on B with three replies held.
+- Release the obsolete observation: generation stays at 2, the fresh engine remains attached, and all six chunks finish `read` on B with no interruption.
+- Delete B and await the owner: generation advances to 3, the next Proofread is `unconfigured`, and both Lightbox and assistant provider states are detached. The shared-scope checks inspect actual manager state, not complete Lightbox/Workshop inference runs.
+
+Additional independent controls pass: normal model/key changes, one rebuild for duplicate callers, three out-of-order observations joining the newest without hanging, an older initial manager read overlapping a newer observed-key build and model changes, retrying the same key after a failed build, and disposal while a read is pending. The disposed owner also performs no subsequent key read. The cache identity now belongs to the manager and the authoritative build receives the observed key; the prior stale-read retirement/deletion defect is closed.
+
+### F-02 remains open — Flush the last table cell and fail closed at the depth bound
+
+**A. A terminal backslash drops the entire final GFM cell's inline scope.**
+
+**Location:** [`markdownBlockRegions.ts:280–293`](https://github.com/okeylanders/prose-minion-vscode/blob/f1ba770f8445407cb9fe0a891a6764fb7471444d/packages/core/src/utils/draftEdit/markdownBlockRegions.ts#L280-L293).
+
+A valid table with no trailing pipe:
+
+```text
+Column | Other
+--- | ---
+plain | `teh` \
+```
+
+At the last backslash, the escape branch increments the index, then the loop increments it again. That skips `index === row.length`, the only final-cell flush. The whole final cell has no scope, including the code span before the backslash. The installed Markdown parser renders that span as code, but the protection scan returns no region for it. A final newline does not cure the omission; two terminal backslashes are a passing control.
+
+The production use case independently reproduces both paths: a full-file run includes the code word in its locally captured payload and shows a flag at offsets 34–37; a selection of `teh` plans one word/one chunk, sends it to the local pass stub and shows the same flag.
+
+**Required correction:** always flush the final cell independently of escape-loop termination. Add odd/even terminal-backslash controls, with and without a final newline/trailing pipe, and full-file/selection assertions that code, targets and tag attributes in that cell are excluded and never flagged.
+
+**B. Exceeding the deliberate destination bound is treated as ordinary prose.**
+
+**Location:** [`markdownInlineRegions.ts:307–330`](https://github.com/okeylanders/prose-minion-vscode/blob/f1ba770f8445407cb9fe0a891a6764fb7471444d/packages/core/src/utils/draftEdit/markdownInlineRegions.ts#L307-L330), propagated through [`linkDestinationEnd`](https://github.com/okeylanders/prose-minion-vscode/blob/f1ba770f8445407cb9fe0a891a6764fb7471444d/packages/core/src/utils/draftEdit/markdownInlineRegions.ts#L283-L293).
+
+Build the synthetic source as `'[chapter](' + '('.repeat(33) + 'teh' + ')'.repeat(33) + ')'`. On the 33rd nested parenthesis, `linkDestination` returns `undefined`; the caller interprets this as no destination and proceeds through the target as prose. The installed parser recognizes these as links at depths 33 and 64. The depth-32 control is protected.
+
+At depth 33, both production-use-case paths expose the target: the full-file payload contains it, and the selection plans one word/one chunk and sends `teh`; both show a flag at offsets 43–46. This is a failure to exclude at the limit, **not a request for unbounded parsing or a higher limit**.
+
+**Required correction:** retain a bounded approach, but distinguish “not a construct” from “cannot safely classify within the bound.” Conservatively exclude the uncertain target/scope on overflow rather than treating it as prose. Pin limit−1/limit/limit+1 cases with both payload and diagnostic assertions.
+
+**Evidence boundary:** these four desired-correctness tests fail for the stated application behavior, not harness errors. All payloads and findings are synthetic and local; no protected text was transmitted to an actual provider.
+
+### Confirmed protections and retained closures
+
+- All 26 previously retained use-case/adapter tests now pass, including the prior six F-02 failures. The new suite totals **31 pass / 4 fail** after adding the two new witnesses, depth-32 controls and Unicode/EOL label-offset controls.
+- The previous block matrix again passes: 2,535 container/EOL variants, including 2,427 recognized protected fence/definition/script cases, with no leak. A new 168-case Unicode, surrogate-pair, container, scope and LF/CRLF/CR mapping matrix has no mapping failure or protected-word leak. Ordinary labels remain readable, including tab-indented containers. Indented code remains deliberately treated as prose.
+- F-03/F-04 occurrence tracking, shifted flags, Dismiss/Clear, corrected duplicates, newly fenced text, close/reopen, language-change close and stale starting versions remain passing in controlled adapter/use-case probes. These are not native editor interactions.
+- F-05/F-06 usage and saved/failed/mixed recovery witnesses were independently rerun under Node 18 and all pass, including once-per-run presentation only when a receipt exists.
+- The original unmatched-destination rescan witness is resolved: bounded Node 24 executions at 2,000 / 4,000 / 8,000 markers took approximately 14 / 14 / 13 ms in the inline function, without hitting their three-second worker limits. These are scoped cloud timings, not native-editor predictions. The repository's long-list regression also passes.
+- The original mixed-marker example now protects the document whole. One nonblocking budget gap remains: incrementally nested lists inside a blockquote (`'> ' + '  '.repeat(level) + '- prose'`, one line per level) bypass the raw-line indentation check. Bounded 33/40-level cases parsed at depths 34/41 without refusal. No resulting latency failure or protected-content leak was established, so this is guard hardening, not another blocker.
+
+### Nonblocking P3 — Fingerprint and transport should use the same key representation
+
+**Location:** [`apiKeyFingerprint.ts:9–10`](https://github.com/okeylanders/prose-minion-vscode/blob/f1ba770f8445407cb9fe0a891a6764fb7471444d/packages/core/src/infrastructure/api/orchestration/apiKeyFingerprint.ts#L9-L10), compared with [`OpenRouterClient.ts:130–131`](https://github.com/okeylanders/prose-minion-vscode/blob/f1ba770f8445407cb9fe0a891a6764fb7471444d/packages/core/src/infrastructure/api/providers/OpenRouterClient.ts#L130-L131).
+
+The fingerprint trims the key, but the client adopts and sends its raw representation. In a narrow synthetic legacy-key case with a leading newline, an initial raw-key build is followed by the migration's normalization operations: store the trimmed value and clear the legacy setting. The fingerprint is unchanged, so neither that change nor a repeated normalized Save rebuilds. Local WHATWG `Headers` validation rejects the stale raw Authorization value, and Proofread remains `unsent` with a provider interruption. An explicit build with the same clean stored key succeeds in the intercepted transport control.
+
+Normalize consistently before both comparison and transport adoption, or fingerprint the exact adopted transport representation. This is a malformed-legacy-key recovery edge, not evidence that ordinary surrounding spaces fail authentication, not an actual provider rejection, and not a native activation/migration run. It does not reopen the now-fixed F-01 ordering defect.
+
+### Second re-review verification
+
+All required gates were independently rerun at this head with task-local Node `18.20.8` / npm `10.8.2`, the 2 GiB heap, one Jest worker, 1,000 MB idle limit and disk-backed cache. Lockfile equality and workspace links into this checkout were rechecked before dependency reuse. Heavy gates and independent probes were serialized.
+
+| Check | Independent result |
+| --- | --- |
+| Full repository Jest, Node 18 | Pass; 537 suites / 7,475 tests / 59 snapshots |
+| Typecheck, Node 18 | Pass; core, webview and adapter |
+| Lint, Node 18 | Pass; 0 errors / 1,133 warnings |
+| Production build and `verify:bundle`, Node 18 | Pass; existing three webpack size warnings |
+| Independent use-case/adapter regressions, Node 18 | 31 pass / 4 fail; failures are the remaining F-02 full/selection witnesses |
+| Refresh/manager/client/service controls, Node 18 | All six groups pass; original F-01 race closed |
+| Recovery/usage controls, Node 18 | All saved/failed/mixed and usage controls pass |
+| Correction-head push CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40160592342) at `f1ba770f` |
+| Correction-head pull-request CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40160596774) at `f1ba770f` |
+| Report-only diff and previous text preservation | `git diff --check` clean; preceding report and all author responses preserved as an exact byte prefix |
+
+No implementation edit, live/billable call, private manuscript, formal GitHub review, merge or deployment was made. **The native Extension Development Host and screen-reader/editor interaction pass remain unexercised.** The ADR/author response does not establish independent writer acceptance, and passing CI does not close the remaining F-02 protection defect.
