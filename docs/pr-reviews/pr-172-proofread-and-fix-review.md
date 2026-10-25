@@ -490,3 +490,75 @@ This witness models the official asynchronous host sequence; **no native modal c
 The intermediate `4fa857c7` also passed typecheck/lint/build and 548 suites / 7,659 tests / 59 snapshots, but all aggregate gates were independently rerun after the later implementation changes. Commands, Node/dependency reuse and memory-bounded execution remain as recorded above; this was not a fresh install or an independent Node 22 run. Evidence is retained outside the repository under `pr172-review-evidence/rereview2` and `rereview3`. The published report's resulting commit and exact-head CI are verified afterward, not inferred from these implementation runs.
 
 **Not approved for merge into `epic/lightbox` on `58693f03`.** F-06 needs correction and independent re-review; F-03/F-05 no longer block. F-02 remains accepted risk, not fixed. Native VS Code preview/UI/undo/accessibility and live provider quality remain separate never-run acceptance stages. Only this report is published; implementation and scratch tests are untouched on the PR branch.
+
+## Author response to the second re-review — 2026-10-25
+
+**Correction head:** `825af6d2` (base `e3a7fac0`, unchanged). F-06 and the closed quick-fix wording are fixed in `ae5fb579`; the docs are in `825af6d2`. Thank you for closing F-03 and F-05.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01, F-03, F-04, F-05 | Closed in your re-reviews | — |
+| F-02 | Accepted limit (the writer's decision), with a best-effort discard, now narrowed by F-06 | `e4c353b9`, `8803b521`, `3e2d0a25`, `6f025ba7`, `ae5fb579`, `825af6d2` |
+| F-06 | Fixed: the discard is sent only once the review's own preview holds the pane | `ae5fb579`, `825af6d2` |
+| Closed quick-fix wording | Fixed | `ae5fb579` |
+
+### F-06 — the discard ends only the review's own preview
+
+I agree with the finding. "Our `applyEdit` is pending" never meant "our preview is shown". The source offers a positive signal, so the discard now waits for it:
+
+- **The signal.** A preview copies each file it edits into a model of its own once it holds the pane (`bulkEditPreview.ts` `_init`), and so after `_previewEdit`'s replacement confirmation. Those models reach the extension host as documents: `shouldSynchronizeModel` excludes only too-large and simple-widget models, at 1.82.0 and at `4f383697`.
+- **The copy's URI** (`asPreviewUri`):
+  - its scheme is `vscode-bulkeditpreview` at 1.82.0, `vscode-bulkeditpreview-editor` at main;
+  - its authority is the preview's instance id;
+  - its query is the file's URI.
+- **`RefactorPreviews`** (new, `apps/vscode-extension/src/platform/vscode/`, no `vscode` import) follows those copies by instance. A review records the instances open when it asked. Its own preview holds the pane when an instance opened since then covers its document and nothing else; a review edits one document.
+- **When it is sent.** The adapter sends Discard only for an ended review whose own preview holds the pane:
+  - at the close, if the preview already holds it;
+  - when its copy opens after the close, if VS Code was still opening it, or the writer then let it replace the one shown.
+
+  Otherwise it sends nothing.
+- **Never touched:** another extension's preview, another chapter's review, any preview open before the review asked, and a preview the review waits to replace.
+- **Where ownership is unsure, nothing is discarded:** an unknown scheme, a copy too large to sync, or a preview of several files. One case passes for ours: a several-file preview whose first copy alone has opened, until its next copy opens. That would need another extension's several-file preview to take the pane in the instant our review's document closes.
+- **A side effect** in the accepted race only. When the writer's Apply beats the close event, the late Discard finds no session and briefly opens an empty Refactor Preview panel, as you noted for any unowned send. Nothing is written by it.
+- **F-02's limit is narrower now.** A preview still opening at the close is discarded as it opens, so the stated limit is only an Apply that reaches VS Code before the close event reaches the extension host.
+
+**Tests:**
+- **The shared double.** `refactorPreviewHost.ts` is now one controlled VS Code shared by both integration suites, built from the same sources:
+  - a request made while another preview holds the pane waits for the writer to replace it or refuse;
+  - a preview holding the pane opens its copies and closes them when it ends;
+  - Discard ends whatever holds the pane.
+- `draftEditPreviewLifetime.integration.test.ts`, through the production use case, applier and both adapters:
+  - **Another extension's preview shown, the review waiting:** the review's document changes language. No discard is sent, their preview stays shown and unsettled, and the writer's refusal leaves the review `closed` with nothing written.
+  - **Two chapters:** the first's review shown, the second's waiting. The second changes language: no discard. After the writer refuses the second, the first's Apply still writes both fixes, and the second is unchanged.
+  - **Replacement after the change:** the writer then lets the waiting review replace theirs. The review is discarded as its copy opens, writes nothing, and is `closed`.
+  - The F-02 witnesses and controls run on the new double unchanged in what they assert.
+- `VsCodeDocumentEditor.applyEdits.test.ts`:
+  - a discard when the document closes, or changes language, while its own preview holds the pane;
+  - a discard when its preview opens after the close;
+  - none for a preview open before it asked, even of the same document, or for a new preview covering another file too;
+  - none for another document, a direct apply or a settled review;
+  - a refused discard is logged.
+- `RefactorPreviews.test.ts`: both schemes; earlier, several-file and closed previews; documents that are not a preview's.
+- **On `58693f03`'s adapter**, all six ownership cases fail: the three integration witnesses, the opened-after-close case, and the two not-owned unit cases. Everything else passes on both.
+
+### The closed quick fix's wording
+
+`describeQuickFixOutcome` no longer says "nothing was changed" for `closed`. It says: "a.md was closed or changed language before the fix finished. Check it: the fix may have gone in." Once the lifetime is over, what landed cannot be read, and an Apply can win the race. Full Fix's closed line already limits itself to no flags being shown and is unchanged. Pinned in `draftEditSummary.test.ts`.
+
+### Housekeeping
+
+The F-05 Clear witnesses moved, unchanged in what they assert, to `draftEditClearDuringReview.integration.test.ts` on the shared double. This keeps each suite under 500 lines. The two older adapter suites' mocks gained `onDidOpenTextDocument`, which the adapter now listens to.
+
+### Verification
+
+| Check | Result on `825af6d2` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings (the baseline) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 18.20.8 | Pass: **550 suites / 7,694 tests / 59 snapshots** |
+| Full Jest, Node 22.22.0 | Pass: 550 suites / 7,694 tests / 59 snapshots |
+
+No live provider call, private manuscript or native Extension Development Host was used. The native checks for F-06 are the writer's:
+- With another extension's refactoring shown, run Fix on a chapter, change that chapter's language while VS Code asks to replace the shown one, and refuse. The other refactoring should still be shown, its selection kept.
+- Then repeat and let it replace: Proofread's preview should close at once, with nothing written.
