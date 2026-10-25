@@ -230,6 +230,19 @@ Astra's review found six blocking defects. Each fix is in the ADR's
   saved. The summary says "saved for recovery" only for those, and points
   to the output channel otherwise.
 
+Astra's re-review closed F-03 to F-06 and kept two open, both now fixed:
+
+- **F-01, ordering.** A late, obsolete key read could become the newest
+  rebuild. Requests are now numbered before anything is awaited, only the
+  newest reading counts, and the manager builds with exactly the key the
+  owner compared (`adoptedKeyFingerprint`). A read pending at disposal
+  builds nothing.
+- **F-02, inline scopes.** The inline pass now reads the parser's own leaf
+  blocks and table cells, container prefixes stripped, one at a time. The
+  review's nonblocking notes are fixed too: empty destinations before a
+  title, a bound on destination parentheses, mixed quote and list nesting in
+  the depth guard, and a long list counted in linear work.
+
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full

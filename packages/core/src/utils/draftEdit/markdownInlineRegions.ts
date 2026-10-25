@@ -39,7 +39,7 @@ const BARE_LINKS: readonly RegExp[] = [
   /(?<![A-Za-z0-9._+-])[A-Za-z0-9._+-]+@[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+/g
 ];
 const BLANK_LINE = /^[ \t]*$/;
-/** How deeply a link destination's parentheses may nest; CommonMark's reference parser stops at the same depth. */
+/** How deeply a link destination's parentheses may nest: far deeper than any link a manuscript holds, and it keeps an unmatched opener's scan short. */
 const MAX_LINK_PAREN_DEPTH = 32;
 
 /** Every inline protected region of `segment` (one inline scope), in segment offsets; may overlap. */

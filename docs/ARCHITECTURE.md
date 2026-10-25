@@ -467,7 +467,8 @@ Proofread is its first pass; in Slice 1 it only flags.
 - **Quotes, not offsets.** Only a pass calls a model, and a model returns
   quotes with context. `utils/draftEdit/` masks protected Markdown regions
   (block structure from `marked`'s block lexer, container-aware; inline
-  constructs from one CommonMark-precedence pass), chunks on paragraph
+  constructs read one leaf block or table cell at a time, in CommonMark
+  precedence), chunks on paragraph
   boundaries, and anchors each quote deterministically, failing closed on
   ambiguity. The Proofread guard (`utils/proofread/`) decides fix vs. flag
   by category and edit size.

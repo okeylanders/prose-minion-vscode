@@ -1560,15 +1560,20 @@ writer's own document:
 - **Protected regions.** Front matter, fenced and inline code, link targets,
   URLs, reference definitions, HTML comments, and tags are never sent or
   edited, read as whole constructs wherever Markdown's containers put them
-  (`markdownBlockRegions` over `marked`'s block lexer, `markdownInlineRegions`
-  in CommonMark precedence; PR #171 F-02). Where a scanner is unsure it
-  protects more, never less. Indented code is deliberately prose.
+  (`markdownBlockRegions` over `marked`'s block lexer; PR #171 F-02). Inline
+  constructs are read one scope at a time, the parser's own leaf blocks and
+  table cells with container prefixes stripped, never across raw source
+  (`markdownInlineRegions`, re-review). Where a scanner is unsure it protects
+  more, never less. Indented code is deliberately prose.
 - **Proofread's model** is an own scope with an inexpensive default; calls run
   at temperature 0, replies go through `parseModelJson`, and a key change
   mid-run stops starting chunks (PR #169 F-01). The shared manager's key and
   model subscriptions are `AIResourceRefresh`'s, built in `extension.ts`, not
-  a webview's: a surface that hears a key change asks it to refresh, and it
-  rebuilds once per key (PR #171 F-01).
+  a webview's: a surface that hears a key change asks it to refresh (PR #171
+  F-01). It numbers requests before awaiting, counts only the newest
+  reading, and hands the manager exactly that key when it differs from the
+  adopted one (`adoptedKeyFingerprint`); never rebuild the manager for a key
+  change another way.
 
 ### Operational Tips
 
