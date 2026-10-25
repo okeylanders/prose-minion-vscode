@@ -345,3 +345,59 @@ Required gates were rerun independently on the correction head under task-local 
 | `git diff --check`; original report/author response preservation | Clean; existing report bytes preserved as an exact prefix |
 
 No implementation edit, live/billable call, private manuscript, formal GitHub review, merge or deployment was made. Adapter tests remain controlled native-API doubles, not a real editor session. **The native Extension Development Host and screen-reader/editor interaction pass remain unexercised.** The ADR's status and author response are not substituted for writer acceptance, and green CI does not close F-01/F-02.
+
+---
+
+## Author response to the re-review — 2026-10-25
+
+**Correction head:** `3441e185` (base `31edcfdf`, unchanged). F-01 and F-02 are fixed in `acc58a05` and `749b3393`; docs are in `3441e185`. Both of your nonblocking scanner notes are fixed too. The ADR amendment's F-01 and F-02 rows record the changes.
+
+### F-01: observations are ordered, and the identity compared is the identity built
+
+- **Ordering.** `refreshKey()` numbers each request when it is made, before anything is awaited. Only the newest request's reading of the key counts. An older request whose read answers later joins the newest and builds nothing, so it can neither retire a run started on a newer key nor leave a stale identity behind.
+- **Identity.** The newest request compares its reading with `AIResourceManager.adoptedKeyFingerprint()`, the key the current resources were actually built with. A failed build or a dispose clears it. When they differ, it calls `refreshConfiguration({ apiKey })`, and the manager builds with exactly that key instead of reading again. The owner never keeps its own copy of the identity, and the manager keeps only a SHA-256 fingerprint.
+- **Disposal.** A request still reading when the owner is disposed builds nothing.
+- **Unchanged.** Duplicate listeners still produce one rebuild. The overlay's Save and Clear still await the rebuild before answering, and `LightboxKeyRetirement` passes unchanged. The manager's unordered `refreshConfiguration()` still rebuilds unconditionally for any other caller.
+- **Tests:**
+  - `ProofreadColdRefresh.test.ts` runs your sequence through the production secret storage service, manager, engines, `OpenRouterClient`, real limiter and `ProofreadService`:
+    1. Hold the deletion's read after it saw no key.
+    2. Store B, which rebuilds.
+    3. Start a fresh six-chunk run with three requests held.
+    4. Release the old read: no rebuild.
+    5. Release the replies: six `read`, no interruption, every request on B.
+    6. Delete B and await `refreshKey()`: unconfigured, with the assistant engine's provider detached.
+  - It also covers disposal while a read is pending (no rebuild).
+  - Both cases fail on the previous owner.
+  - `AIResourceRefresh.test.ts` pins the ordering rules on a stand-in manager.
+
+### F-02: inline constructs are read in the parser's own scopes
+
+- **Scopes.** `readMarkdownBlocks` now yields inline scopes alongside the protected blocks, taken from marked's block tokens:
+  - each paragraph, heading, tight list item's text, HTML block, and indented code block (still prose);
+  - each table cell, split on unescaped pipes as GFM splits rows.
+
+  A scope's text is its container content: prefixes stripped, lines one for one with the source. It maps back column by column, setting aside the spaces a tab became. A line that does not end its computed source line fails closed and protects the top-level block.
+- **The inline pass.** `markdownInlineRegions` reads each scope alone, so nothing pairs across blocks and no container prefix reaches the tag reader. Its only break inside a scope is a blank line, which matters only for indented code. The old block-start heuristic is gone, so lazy continuations such as ``Prose `a\n1999. teh` more`` stay one paragraph, as the parser reads them.
+- **Tests:**
+  - **Scanner:** your three cases, nested quotes, a thematic break, a setext heading, table cells and rows, a lone carriage return, and `[label]( "hidden title")`.
+  - **Use case:** the three code and tag cases, for a whole document (`teh` absent from the payload, `unanchored: 1`, nothing flagged) and for a selection of `teh` alone (`empty`, nothing sent).
+  - **Controls:** a label stays prose, a multiline code span is protected, and a lazy paragraph continuation stays one span. Prose in a quote, nested list items, a tab-indented item, a quoted list item and a two-item numbered list are left whole.
+  - Sixteen of these assertions fail on the previous scanner.
+
+### Nonblocking notes, fixed
+
+- **Unmatched `](`.** A destination's parentheses nest at most 32 deep (`MAX_LINK_PAREN_DEPTH`, far deeper than any link a manuscript holds). An unmatched `](` therefore reads a bounded stretch and never rescans the rest of a scope. `'](x'` repeated 40,000 times now takes about 24 ms in the whole scanner, and 20,000 repetitions sit under a test bound.
+- **Mixed nesting.** The depth guard counts quote and list markers in any mix. `'> - '.repeat(65) + 'Prose sentinel'` is protected whole, while eight levels are read.
+- **Also found and fixed:** the list walker recounted every earlier item's lines for each item. 20,000 tight items now take about 0.2 s instead of 2.6 s, under a test bound.
+
+### Verification at `3441e185`
+
+| Check | Result |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass |
+| Full Jest, Node 18.20.8 | Pass; 537 suites / 7,475 tests / 59 snapshots |
+| Lint, Node 18.20.8 | Pass; 0 errors / 1,133 warnings (baseline unchanged) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 22 | Pass; 537 suites / 7,475 tests / 59 snapshots |
+
+No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
