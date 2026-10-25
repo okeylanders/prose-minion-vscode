@@ -102,6 +102,30 @@ The spike, and every departure from the plan above, is in the ADR's
   Edit, and its command hosts' VS Code glue is most of the growth:
   `.todo/tech-debt/2026-10-25-extension-composition-root-size.md`.
 
+## Review fixes (PR #172, Astra, 2026-10-25)
+
+Astra's review found four blocking write-side defects. Three are fixed, with
+regressions that fail on the reviewed head; the ADR's "Amendment 2026-10-25:
+PR #172 review" records each:
+
+- **F-01. The direct retry checks again.** A retry follows its edits through
+  the writer's typing and runs every check on the document as it now stands,
+  so text the writer fenced, made inline code or a link target as the fix
+  went out is refused as protected.
+- **F-03. Markdown structure is kept.** A fix that changes a touched block's
+  shape, as `marked` reads it with the document's link definitions, is
+  flagged instead (at placement) and refused (in the applier). This covers a
+  tag, a fence opener, a bare link, a reference link, a heading, a list item
+  and a hard line break. Edits are judged together, and kept in order while
+  the shape holds.
+- **F-04. Merged changes read back.** Reconciliation replays the document
+  and reads each host change as the edits it is made of, VS Code's
+  1,000-operation merge included. Counts stay right, untouched flags stay on
+  their text, and a quick fix shows them again.
+- **F-02. Open.** Refactor Preview writes inside `workspace.applyEdit`, so a
+  language change during review cannot stop the write. The review step is
+  the writer's to choose.
+
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full

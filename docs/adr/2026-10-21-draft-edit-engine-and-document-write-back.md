@@ -844,6 +844,18 @@ conflict detector and the text-edit task, at `main` (`4f383697`) and at
   Cancel cannot close it: the extension API has no call for that. The writer
   applies or discards in the preview.
 
+## Amendment 2026-10-25: PR #172 review (Slice 2)
+
+Astra's review of Slice 2 found four blocking defects on the write side.
+Three changed a decision above; the fourth (F-02) is the writer's to decide:
+
+| Finding | Decision |
+|---|---|
+| F-01: a stale direct retry wrote into code the writer had just fenced | D4 step 5: a retry follows each edit through the writer's typing, then checks every rule again against the document as it now stands (text, protection, line breaks, overlaps, structure) before asking. |
+| F-03: a spacing fix with the same markup characters made a tag, or a fence | D4, D6: a fix must leave the document's Markdown structure as it was. Each top-level block an edit touches is lexed by `marked` before and after, its inline content with the document's own link definitions, and the shape (token types and nesting, heading depths, list kinds, table sizes) must match (`utils/draftEdit/markdownStructure.ts`). The batch is judged together; when a block's shape moves, its edits are kept in order only while the shape holds. A block too long to verify refuses its edits. The policy row gains `preservesMarkdownStructure`. Placement downgrades such a fix to a flag (`markup-change`), so it is never preferred, and the applier checks again on the live text. |
+| F-04: at 1,000 operations VS Code merges an edit into one spanning change, and every fix read as unknown | D4 step 7: reconciliation replays the document. A change and the edits it touches form a cluster; the cluster's new text must read, in exactly one way, as the text between the edits unchanged with each edit original or replaced. Read that way, the cluster is given back as exactly those replacements, so leftover flags between them stay on their text; otherwise an edit the change reached into is unknown. A quick fix shows the untouched flags again after it applies, since the annotator moves flags change by change. |
+| F-02: a held Refactor Preview can write after a language change ends the watched lifetime | Open: the preview commits inside `workspace.applyEdit`, with no hook between the writer's Apply and the write, so only a different review step can be a barrier. The writer decides. |
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to

@@ -1555,20 +1555,32 @@ writer's own document:
   the writer's text anywhere else: a quick fix is a command into core.
 - **A write is read back, never trusted** (Slice 2; the ADR's Slice 2
   amendment). The applier makes one change (one undo step), never saves, and
-  reads what landed by following each edit's range through the document's
-  changes (`reconcileEdits`). VS Code's boolean only says something landed:
-  the writer ticks entries in Refactor Preview (they open unticked), and
-  VS Code may split a replacement into smaller edits. Edits that touch are
-  joined first. A fix that did not land is flagged where its text stands;
-  one the writer rewrote is left alone. A quick fix asks
-  `IssueAnnotator.current` where its flag sits now, then goes through the
-  applier.
+  reads what landed by replaying the document from the edits' version
+  (`reconcileEdits`). VS Code's boolean only says something landed: the
+  writer ticks entries in Refactor Preview (they open unticked), VS Code may
+  split a replacement into smaller edits, and at 1,000 operations it merges
+  them into one change spanning them all (PR #172 F-04). A host change reads
+  as the edits only when its new text reads one way as the text between
+  them, unchanged, with each edit original or replaced; the history the
+  applier returns gives it back as those edits, and callers move flags
+  through that history, never the raw one. Edits that touch are joined
+  first. A fix that did not land is flagged where its text stands; one the
+  writer rewrote is left alone. A quick fix asks `IssueAnnotator.current`
+  where its flag sits now, goes through the applier, and shows the untouched
+  flags again after.
+- **A retry checks again** (PR #172 F-01). A direct apply the writer typed
+  through follows its edits, then runs every check again on the document as
+  it now stands before asking once more; never retry with the first check's
+  verdict.
 - **What a fix may change.** Never a line break (`changesLineBreaks`: the
-  changed text between the common prefix and suffix holds none), and never a
-  Markdown markup character (the guard's `markup-change`). An anchor never
-  ends inside a normalized expansion (`Wait.` is not `Wait…`). Tense and
-  agreement are only ever flagged; a judgment call's suggestion is applied
-  only by its own *Replace with*.
+  changed text between the common prefix and suffix holds none), and never
+  the Markdown structure: counting markup characters is not enough
+  (`< Rabbit >` → `<Rabbit>` is a tag), so each touched block's shape is
+  compared before and after with `marked`, the batch together
+  (`editsChangingStructure`, PR #172 F-03). An anchor never ends inside a
+  normalized expansion (`Wait.` is not `Wait…`). Tense and agreement are only
+  ever flagged; a judgment call's suggestion is applied only by its own
+  *Replace with*.
 - **Live text wins, one lifetime.** A run watches its open document from
   the version it read (`DocumentEditor.watch`). Findings follow their own
   occurrence through the writer's edits, never a fresh search; what an edit
