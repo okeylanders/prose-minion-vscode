@@ -183,7 +183,9 @@ export class DraftEditUseCase {
       if (result.outcome === 'changed') {
         return { kind: 'changed' };
       }
-      if (result.applied.length > 0 && result.settled) {
+      // A Clear made while the write was out withdrew these flags for good: they are shown again only while this
+      // map still holds the document's flags (PR #172 F-05). A Dismiss deletes from it, so it holds too.
+      if (result.applied.length > 0 && result.settled && this.shownIssues.get(document.uri) === issues) {
         this.reshow(document.uri, shown.annotations, issues, new Set(result.applied), result.settled);
       }
       this.log.appendLine(`[DraftEdit] Quick fix: ${result.applied.length}/${edits.length} applied (${result.outcome})`);

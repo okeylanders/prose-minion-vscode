@@ -8,7 +8,7 @@ import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditAppl
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments, writerTypes, type HostBehavior } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, applyAll, writerTypes, type HostBehavior } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister on the bank, '
   + 'and once or twice she peeped into the book her sister is reading.';
@@ -139,6 +139,62 @@ describe('Replace with, when the writer fences the flag as it goes in (PR #172 F
     expect(await pending).toMatchObject({ kind: 'done', answer: 'stale', applied: 0, refused: 1 });
     expect(document.text).toContain('get vrey tired');
     expect(document.applyCalls).toHaveLength(1);
+  });
+});
+
+/**
+ * A Clear made while a quick fix's write is out (in review, say) withdraws
+ * the flags for good: the write landing never shows them again (PR #172
+ * F-05). A Dismiss is kept the same way, and with neither, the untouched
+ * flags come back where they stand.
+ */
+describe('DraftEditUseCase.applyShown: a Clear while the write is out', () => {
+  async function pendingFixAll() {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const held: HostBehavior = async (edits, review, document) => {
+      await gate;
+      return applyAll(edits, review, document);
+    };
+    const setup = await flagged(undefined, held);
+    const fix = setup.useCase.applyShown(setup.snapshot(), 'all-fixes', 'preview');
+    return { ...setup, fix, release };
+  }
+
+  it.each([
+    ['Clear this file', (useCase: DraftEditUseCase, uri: string) => useCase.clear(uri)],
+    ['Clear all', (useCase: DraftEditUseCase) => useCase.clear()]
+  ])('keeps the flags cleared by %s, and offers no fix from them after', async (_name, clear) => {
+    const { document, annotations, useCase, fix, release, snapshot } = await pendingFixAll();
+
+    clear(useCase, document.uri);
+    expect(annotations.flaggedText()).toEqual([]);
+    release();
+
+    expect(await fix).toMatchObject({ kind: 'done', applied: 2 });
+    expect(document.text).toContain('beginning to get very tired');
+    expect(annotations.flaggedText()).toEqual([]);
+    expect(await useCase.applyShown(snapshot(), 'all-fixes', 'direct')).toEqual({ kind: 'nothing' });
+  });
+
+  it('keeps a flag dismissed while the write is out', async () => {
+    const { annotations, useCase, document, idOf, fix, release } = await pendingFixAll();
+
+    useCase.dismiss(document.uri, idOf('is reading'));
+    release();
+
+    expect(await fix).toMatchObject({ kind: 'done', applied: 2 });
+    expect(annotations.flaggedText()).toEqual([]);
+  });
+
+  it('control: with neither, shows the untouched flag again where it stands', async () => {
+    const { annotations, fix, release } = await pendingFixAll();
+    release();
+
+    expect(await fix).toMatchObject({ kind: 'done', applied: 2 });
+    expect(annotations.flaggedText()).toEqual(['is reading']);
   });
 });
 

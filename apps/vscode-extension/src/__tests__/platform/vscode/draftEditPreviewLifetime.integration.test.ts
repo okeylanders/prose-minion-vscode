@@ -1,7 +1,8 @@
 /**
  * PR #172 F-02, through the production `VsCodeDocumentEditor`,
- * `VsCodeIssueAnnotator`, `DraftEditApplier` and `DraftEditUseCase`: a review
- * belongs to one lifetime of its document.
+ * `VsCodeIssueAnnotator`, `DraftEditApplier` and `DraftEditUseCase`: a held
+ * review is discarded, best effort, when its document's lifetime ends. The
+ * writer accepted the gap that leaves, and one case pins it.
  *
  * VS Code is a controlled double built from its source (1.82.0 and main):
  * - Refactor Preview holds `workspace.applyEdit` until the writer acts. Apply
@@ -13,6 +14,9 @@
  *   (`BulkEditPane.discard`), and does nothing when none is held.
  *
  * Text is public-domain *Alice*; nothing reaches a provider.
+ *
+ * And PR #172 F-05: a Clear made while a Fix all is held in review stays
+ * cleared when the writer applies it, in that document and no other.
  */
 
 /* eslint-disable @typescript-eslint/naming-convention -- the double mirrors VS Code's own API names, and the mocked barrel's exports. */
@@ -141,9 +145,9 @@ const FINDINGS: Finding[] = [
   { anchor: { quote: 'is reading' }, category: 'tense', replacement: 'was reading', explanation: 'Past tense.' }
 ];
 
-function openDocument(text: string, languageId: string): FakeDocument {
+function openDocument(text: string, languageId: string, uri = URI): FakeDocument {
   const document: FakeDocument = {
-    uri: { toString: () => URI },
+    uri: { toString: () => uri },
     version: 1,
     languageId,
     isClosed: false,
@@ -212,7 +216,7 @@ function setup(document: FakeDocument, findings: Finding[]) {
 const flaggedText = (document: FakeDocument) =>
   (host.diagnostics.get(URI) ?? []).map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
 
-describe('A Proofread review ends with its document\'s lifetime (PR #172 F-02)', () => {
+describe('A held review is discarded, best effort, when its document\'s lifetime ends (PR #172 F-02)', () => {
   const disposers: Array<() => void> = [];
   beforeEach(() => {
     workspace.applyEdit.mockImplementation((edit: RecordedEdit) => host.preview.hold(edit));
@@ -325,5 +329,76 @@ describe('A Proofread review ends with its document\'s lifetime (PR #172 F-02)',
     await expect(run).resolves.toMatchObject({ kind: 'closed' });
     expect(document.text).toBe('Alice was beginning to get very tired of sitting by her sister, who is reading.');
     expect(flaggedText(document)).toEqual([]);
+  });
+});
+
+describe('A Clear while a Fix all is held in review stays cleared (PR #172 F-05)', () => {
+  const OTHER = 'file:///workspace/chapter-02.md';
+  const disposers: Array<() => void> = [];
+  beforeEach(() => {
+    workspace.applyEdit.mockImplementation((edit: RecordedEdit) => host.preview.hold(edit));
+  });
+  afterEach(() => {
+    disposers.splice(0).forEach((dispose) => dispose());
+    workspace.textDocuments.splice(0);
+    workspace.applyEdit.mockReset();
+    commands.executeCommand.mockClear();
+    host.diagnostics.clear();
+  });
+
+  /** One use case and annotator, as the extension has, with two chapters flagged. */
+  async function twoFlaggedChapters() {
+    const first = openDocument(TEXT, 'markdown');
+    const second = openDocument(TEXT, 'markdown', OTHER);
+    const pass = { proofread: jest.fn(async () => ({ kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings: FINDINGS, malformed: 0 }] })) };
+    const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
+    const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+    disposers.push(() => {
+      documentEditor.dispose();
+      annotator.dispose();
+    });
+    const snapshot = (document: FakeDocument) => ({ uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: 'markdown' });
+    for (const document of [first, second]) {
+      await useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' });
+    }
+    const flags = (document: FakeDocument) =>
+      (host.diagnostics.get(document.uri.toString()) ?? []).map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
+    expect([flags(first), flags(second)]).toEqual([['begining', 'vrey', 'is reading'], ['begining', 'vrey', 'is reading']]);
+    const fixAll = useCase.applyShown(snapshot(first), 'all-fixes', 'preview');
+    await previewHeld();
+    return { first, second, useCase, fixAll, flags };
+  }
+
+  it('keeps the first chapter cleared, and leaves the other chapter\'s flags alone', async () => {
+    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
+
+    useCase.clear(first.uri.toString());
+    expect(writerApplies(first)).toBe(true);
+
+    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
+    expect(flags(first)).toEqual([]);
+    expect(flags(second)).toEqual(['begining', 'vrey', 'is reading']);
+  });
+
+  it('keeps every chapter cleared by Clear all', async () => {
+    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
+
+    useCase.clear();
+    expect(writerApplies(first)).toBe(true);
+
+    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
+    expect([flags(first), flags(second)]).toEqual([[], []]);
+  });
+
+  it('control: clearing the other chapter still shows the first one\'s untouched flag again', async () => {
+    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
+
+    useCase.clear(OTHER);
+    expect(writerApplies(first)).toBe(true);
+
+    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
+    expect(flags(first)).toEqual(['is reading']);
+    expect(flags(second)).toEqual([]);
   });
 });

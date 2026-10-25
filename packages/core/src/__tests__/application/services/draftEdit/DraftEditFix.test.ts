@@ -234,6 +234,49 @@ describe('DraftEditUseCase: fixes that would change the Markdown structure (PR #
     expect(annotations.flaggedText()).toEqual(['` ``']);
   });
 
+  describe('in a table (re-review)', () => {
+    const tag: ProofreadFinding = { anchor: { quote: '< Rabbit >' }, category: 'spacing', replacement: '<Rabbit>', explanation: 'Extra spaces.' };
+    const body = '| Note |\n| --- |\n| Alice wrote < Rabbit > here. |\n';
+    const header = '| Alice wrote < Rabbit > here. |\n| --- |\n| Note |\n';
+
+    it.each([['a body cell', body], ['a header cell', header]])('flags a fix that would make a tag in %s, and never writes it', async (_name, text) => {
+      const { document, annotations, outcome } = run(text, [tag], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'none', applied: 0 } });
+      expect(document.text).toBe(text);
+      expect(annotations.flaggedText()).toEqual(['< Rabbit >']);
+      expect(annotations.shown[0].fix).toEqual({ replacement: '<Rabbit>', preferred: false });
+    });
+
+    it('never offers it to Fix all after a Flag run', async () => {
+      const vrey: ProofreadFinding = { anchor: { quote: 'vrey' }, category: 'spelling', replacement: 'very', explanation: 'A typo.' };
+      const text = '| Note |\n| --- |\n| Alice wrote < Rabbit > in her vrey neat notebook. |\n';
+      const { document, useCase, outcome } = run(text, [tag, vrey], { kind: 'proofread', output: 'flag' });
+      await outcome;
+
+      expect(await useCase.applyShown(document.snapshot(), 'all-fixes', 'direct')).toMatchObject({ kind: 'done', applied: 1 });
+      expect(document.text).toBe('| Note |\n| --- |\n| Alice wrote < Rabbit > in her very neat notebook. |\n');
+    });
+
+    it('flags a spelling fix that would make a reference link in a cell', async () => {
+      const alcie: ProofreadFinding = { anchor: { quote: 'Alcie' }, category: 'spelling', replacement: 'Alice', explanation: 'A typo.' };
+      const text = '| Note |\n| --- |\n| See [Alcie] go. |\n\n[alice]: https://example.invalid\n';
+      const { document, annotations, outcome } = run(text, [alcie], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'none', applied: 0 } });
+      expect(document.text).toBe(text);
+      expect(annotations.flaggedText()).toEqual(['Alcie']);
+    });
+
+    it('control: applies an ordinary spelling fix in a cell', async () => {
+      const teh: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'A typo.' };
+      const { document, outcome } = run('| *Note* |\n| --- |\n| Alice saw teh rabbit. |\n', [teh], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 1 } });
+      expect(document.text).toBe('| *Note* |\n| --- |\n| Alice saw the rabbit. |\n');
+    });
+  });
+
   it('never offers such a fix to Fix all after a Flag run', async () => {
     const tag: ProofreadFinding = { anchor: { quote: '< Rabbit >' }, category: 'spacing', replacement: '<Rabbit>', explanation: 'Extra spaces.' };
     const vrey: ProofreadFinding = { anchor: { quote: 'vrey' }, category: 'spelling', replacement: 'very', explanation: 'A typo.' };

@@ -151,12 +151,14 @@ function describeToken(token: Token): string {
       return `heading${(token as Tokens.Heading).depth}(${describe((token as Tokens.Heading).tokens)})`;
     case 'list': {
       const list = token as Tokens.List;
-      const items = list.items.map((item) => `${item.task ? 'task' : 'item'}(${describe(item.tokens)})`).join('|');
+      const items = list.items.map((item) => `${item.task ? (item.checked ? 'done' : 'task') : 'item'}(${describe(item.tokens)})`).join('|');
       return `list${list.ordered ? 'ol' : 'ul'}${list.loose ? 'loose' : ''}[${items}]`;
     }
     case 'table': {
+      // Every cell's inline shape, header and body: a tag or a link made inside a cell keeps the table's size (PR #172 F-03 re-review).
       const table = token as Tokens.Table;
-      return `table${table.header.length}x${table.rows.length}`;
+      const cells = (row: readonly Tokens.TableCell[]) => row.map((cell) => `cell(${describe(cell.tokens)})`).join('|');
+      return `table[${table.align.map((align) => align ?? 'none').join('|')}](${cells(table.header)})[${table.rows.map(cells).join('/')}]`;
     }
     case 'text': {
       const text = token as Tokens.Text;

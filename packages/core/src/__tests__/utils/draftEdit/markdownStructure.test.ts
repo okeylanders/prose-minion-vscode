@@ -58,6 +58,37 @@ describe('editsChangingStructure', () => {
     expect(refused(text, [edit(text, 'teh', 'the')])).toEqual([0]);
   });
 
+  describe('inside a table (PR #172 F-03 re-review)', () => {
+    it.each([
+      ['a body cell', '| Note |\n| --- |\n| Alice wrote < Rabbit > here. |\n'],
+      ['a header cell', '| Alice wrote < Rabbit > here. |\n| --- |\n| Note |\n'],
+      ['a table in a quote', '> | Note |\n> | --- |\n> | Alice wrote < Rabbit > here. |\n'],
+      ['a table in a list item', '- item\n\n  | Note |\n  | --- |\n  | Alice wrote < Rabbit > here. |\n']
+    ])('refuses a fix that makes a tag in %s', (_name, text) => {
+      expect(refused(text, [edit(text, '< Rabbit >', '<Rabbit>')])).toEqual([0]);
+    });
+
+    it('refuses a fix that makes a reference link in a cell', () => {
+      const text = '| Note |\n| --- |\n| See [Alcie] go. |\n\n[alice]: https://example.invalid\n';
+      expect(refused(text, [edit(text, 'Alcie', 'Alice')])).toEqual([0]);
+    });
+
+    it('refuses a fix that changes a column\'s alignment', () => {
+      const text = '| Note |\n| --- |\n| Alice ran. |\n';
+      expect(refused(text, [edit(text, '---', ':--')])).toEqual([0]);
+    });
+
+    it('keeps ordinary fixes in cells, beside markup they leave alone', () => {
+      const text = '| *Note* | Who |\n| --- | --- |\n| Alice was vrey tired. | teh Hatter |\n';
+      expect(refused(text, [edit(text, 'vrey', 'very'), edit(text, 'teh', 'the')])).toEqual([]);
+    });
+  });
+
+  it('refuses a fix that ticks a task', () => {
+    const text = '- [ ] Alice ran.\n';
+    expect(refused(text, [edit(text, '[ ]', '[x]')])).toEqual([0]);
+  });
+
   it('refuses nothing in plain text, which has no structure', () => {
     const text = 'Alice wrote < Rabbit > in her notebook.';
     expect(refused(text, [edit(text, '< Rabbit >', '<Rabbit>')], 'plaintext')).toEqual([]);

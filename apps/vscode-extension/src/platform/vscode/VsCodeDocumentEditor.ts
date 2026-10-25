@@ -26,16 +26,17 @@
  * So `false` is told apart by the version, and only the applier's watch shows
  * which edits landed: VS Code may split an edit into smaller ones first.
  *
- * A review ends when its document's lifetime does (PR #172 F-02). The preview
- * commits inside `applyEdit`, with no hook between the writer's Apply and the
- * write, and a language change moves no version, so VS Code itself would
- * apply the review to the document as it now reads. While a review is held,
- * the close event (which a language change fires too) runs VS Code's own
- * Discard (`refactorPreview.discard`): nothing is written, and the answer is
- * `closed`. The discard is sent when that event reaches the extension host,
- * so two cases fall outside it, the limit the ADR states: an Apply the
- * writer makes before then, and a preview VS Code is still opening. Either
- * way the run reports the document closed and shows nothing.
+ * A review should end when its document's lifetime does (PR #172 F-02). The
+ * preview commits inside `applyEdit`, with no hook between the writer's Apply
+ * and the write, and a language change moves no version, so VS Code itself
+ * would apply the review to the document as it now reads. As a best-effort
+ * mitigation, not a barrier, the close event (which a language change fires
+ * too) runs VS Code's own Discard (`refactorPreview.discard`) while a review
+ * is held: nothing is written, and the answer is `closed`. The discard is
+ * sent when that event reaches the extension host, so two cases fall outside
+ * it, the limit the writer accepted and the ADR states: an Apply the writer
+ * makes before then, and a preview VS Code is still opening. Either way the
+ * run reports the document closed and shows nothing.
  */
 import * as vscode from 'vscode';
 import type {

@@ -24,6 +24,7 @@ function edit(id: string, original: string, replacement: string, text = TEXT, fr
   return { id, start, end: start + original.length, original, replacement, label: 'Proofread: spelling' };
 }
 
+const CELL = '| Note |\n| --- |\n| Alice wrote < Rabbit > here. |\n';
 const BEGINING = edit('a', 'begining', 'beginning');
 const VREY = edit('b', 'vrey', 'very');
 
@@ -121,7 +122,9 @@ describe('DraftEditApplier.apply', () => {
     ['its text is no longer the original', { ...VREY, original: 'very' }, 'changed', TEXT],
     ['it sits in code on the live text', edit('b', 'vrey', 'very', 'Alice was `vrey` tired.'), 'protected', 'Alice was `vrey` tired.'],
     ['it would change a line break', edit('b', 'vrey tired', 'very\ntired'), 'line-break', TEXT],
-    ['it overlaps an earlier edit', edit('b', 'ing to', 'ing too'), 'overlapping', TEXT]
+    ['it overlaps an earlier edit', edit('b', 'ing to', 'ing too'), 'overlapping', TEXT],
+    ['it would make a tag of prose (PR #172 F-03)', edit('b', '< Rabbit >', '<Rabbit>', 'Alice wrote < Rabbit > here.'), 'markup', 'Alice wrote < Rabbit > here.'],
+    ['it would make a tag in a table cell (F-03 re-review)', edit('b', '< Rabbit >', '<Rabbit>', CELL), 'markup', CELL]
   ])('refuses an edit when %s, and never sends it', async (_name, refusedEdit, reason, text) => {
     const { documents, applier } = setup(applyAll, text);
     const edits = text === TEXT ? [BEGINING, refusedEdit] : [refusedEdit];
