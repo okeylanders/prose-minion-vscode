@@ -94,8 +94,9 @@ The spike, and every departure from the plan above, is in the ADR's
   markup character is flagged instead (`markup-change`).
 - **The setting is VS Code-only.** `proseMinion.proofread.fixReview` is read
   at the gesture and has no Settings Overlay row, like the Workshop's settings.
-- **Known limit.** Cancel on the progress notification cannot close an open
-  preview: the extension API has no call for it.
+- **Known limit.** Cancel on the progress notification does not close an
+  open preview. (Corrected in PR #172 F-02: VS Code's own Discard,
+  `refactorPreview.discard`, is the call; Cancel does not use it yet.)
 - **Module split.** The use case stayed under 500 lines by moving the pure
   issue helpers into `draftEditIssues.ts`.
 - **Tech debt recorded.** `extension.ts` was past 500 lines before Draft
@@ -104,9 +105,9 @@ The spike, and every departure from the plan above, is in the ADR's
 
 ## Review fixes (PR #172, Astra, 2026-10-25)
 
-Astra's review found four blocking write-side defects. Three are fixed, with
-regressions that fail on the reviewed head; the ADR's "Amendment 2026-10-25:
-PR #172 review" records each:
+Astra's review found four blocking write-side defects. All four are fixed,
+with regressions that fail on the reviewed head; the ADR's "Amendment
+2026-10-25: PR #172 review" records each:
 
 - **F-01. The direct retry checks again.** A retry follows its edits through
   the writer's typing and runs every check on the document as it now stands,
@@ -122,14 +123,19 @@ PR #172 review" records each:
   and reads each host change as the edits it is made of, VS Code's
   1,000-operation merge included. Counts stay right, untouched flags stay on
   their text, and a quick fix shows them again.
-- **F-02. Open.** Refactor Preview writes inside `workspace.applyEdit`, so a
-  language change during review cannot stop the write. The review step is
-  the writer's to choose.
+- **F-02. A review ends with its document** (the writer's choice: keep
+  Refactor Preview). Refactor Preview writes inside `workspace.applyEdit`, and
+  a language change moves no version. So while a review is held, the VS Code
+  adapter answers the document's close event (close, reopen or language
+  change) with VS Code's own Discard, and the run reports the document closed
+  with nothing written. An Apply that beats the close event to the extension
+  host, or a preview still opening, is the stated limit; the run still shows
+  nothing.
 
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (547 suites / 7,648 tests / 59 snapshots with the PR #172 review
+  suite (548 suites / 7,659 tests / 59 snapshots with the PR #172 review
   fixes; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox`
   at `e3a7fac0`. The full suite also passes under Node 22.
 - Fix is tested through the real applier, anchoring and guard on a document

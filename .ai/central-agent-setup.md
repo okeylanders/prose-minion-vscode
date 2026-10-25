@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review fixes on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
-- 547 suites / 7,648 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review fixes (F-01 to F-04) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
+- 548 suites / 7,659 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1586,7 +1586,14 @@ writer's own document:
   occurrence through the writer's edits, never a fresh search; what an edit
   touched is stale, what the live text now protects is protected, and a
   document that closed (or reopened, or changed language) shows nothing and
-  is never reopened (PR #171 F-03, F-04).
+  is never reopened (PR #171 F-03, F-04). A review belongs to the same
+  lifetime (PR #172 F-02): Refactor Preview commits inside `applyEdit`, and a
+  language change moves no version, so while a review is held the VS Code
+  adapter answers the document's close event with VS Code's own Discard
+  (`refactorPreview.discard`) and answers `closed`. Send it only while a
+  review of ours is held: with none, it opens an empty preview panel. An
+  Apply that beats the close event to the extension host is the ADR's
+  stated limit.
 - **Protected regions.** Front matter, fenced and inline code, link targets,
   URLs, reference definitions, HTML comments, and tags are never sent or
   edited, read as whole constructs wherever Markdown's containers put them
