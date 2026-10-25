@@ -251,3 +251,97 @@ The ellipsis-expansion boundary in `anchorQuote` and the stronger no-line-break-
 | Full Jest, Node 22 | Pass; 537 suites / 7,452 tests / 59 snapshots |
 
 No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
+
+---
+
+## Astra re-review — 2026-10-25
+
+**Reviewed correction head:** `fae86e9a7cba134d7b243eb65d8c66fd95d834b5`
+
+**Base:** `31edcfdfda7ebe2cab89a121cfdba5655dbd170a`, unchanged. Reviewed all eight commits after report commit `19ff80df`, including the appended author response: 44 files, +2,454 / −241. The original review and author response above are preserved unchanged.
+
+### Updated disposition
+
+**Request changes. F-03, F-04, F-05 and F-06 are closed; F-01 and F-02 remain open at P2.** The original straightforward refresh and Markdown cases now pass, but the new refresh owner admits an out-of-order key-read race, and the new inline scanner still crosses real Markdown parsing boundaries. These are narrower follow-up witnesses of the original contracts, not a rejection of the occurrence-tracking/lifetime design.
+
+| ID | Disposition at this head | Independent evidence |
+| --- | --- | --- |
+| F-01 | P2, still open | Normal standalone changes and duplicate requests work; an older held fingerprint can retire a newer run and suppress a subsequent real key deletion |
+| F-02 | P2, still open | Original examples pass; code across numbered-item/blockquote boundaries and multiline HTML in a blockquote still enter the locally captured payload and can be flagged |
+| F-03 | Closed | Findings follow recorded edits, not a fresh quote search; corrected duplicates drop and newly fenced text is excluded |
+| F-04 | Closed | Held close, close/reopen at version 1 and language-change close show nothing and never call `openTextDocument`; a stale starting version sends nothing |
+| F-05 | Closed | Mixed reported/missing usage omits cost/cache totals and counts both calls; all-reported and all-missing controls pass |
+| F-06 | Closed | Actual store/service/use-case paths distinguish saved, failed and mixed captures; presentation remains once per run when a receipt exists |
+
+### F-01 remains open — Sequence the key observation before deduplicating rebuilds
+
+**Location:** [`AIResourceRefresh.ts:53–61`](https://github.com/okeylanders/prose-minion-vscode/blob/fae86e9a7cba134d7b243eb65d8c66fd95d834b5/packages/core/src/infrastructure/api/orchestration/AIResourceRefresh.ts#L53-L61).
+
+The new composition-root owner repairs the missing lifetime subscription. However, `refreshKey` awaits an unsequenced fingerprint read and then asks the manager to read the key again. `builtFor` is the first read's fingerprint, not necessarily the key that the rebuild adopted. An older fingerprint can arrive last and become the newest manager rebuild. The manager's existing rebuild-order guard cannot reject it because this stale operation enters the manager **after** the newer one.
+
+Independent Node 18 witness uses the real owner, secret-storage service, manager, engines, OpenRouter client, Proofread service and real concurrency limiter. The secret store/event source is synthetic, with one asynchronously returned key snapshot held; HTTP is intercepted at `fetch`.
+
+1. Initialize with placeholder key A.
+2. Delete A. Hold the owner's event-triggered read after it captured the empty value.
+3. Store key B and let that newer event rebuild the manager with B.
+4. Start a fresh six-chunk Proofread run with B, holding its first three requests.
+5. Release the older empty read. The owner sets `builtFor` to the empty fingerprint, while the manager's separate current read finds B. A redundant B rebuild retires the fresh run's engine.
+6. Release the three replies. The run returns three `read`, three `unsent`, and `key-changed`, despite having started on the newer B key.
+7. Delete B and await `refreshKey`, the same owner method the overlay's Save/Clear now awaits. The empty fingerprint matches the stale `builtFor`, so no rebuild occurs.
+8. The store is empty, but the next intercepted Proofread request still uses B. The actual Lightbox and assistant engines also still report a provider attached. Those last two checks inspect manager state; they are not full Lightbox/Workshop inference witnesses.
+
+Normal-order controls pass: the model changes on the next request; replacing a key with duplicate refresh callers builds once; ordinary deletion leaves the next Proofread unconfigured. Thus the ownership change is useful, but the asynchronous observation/deduplication boundary is not safe. `MessageHandler` and `ConfigurationHandler` now both use this owner, making the defect relevant to the shared manager rather than only the new editor command. A pending key read also still initiates a rebuild after the owner is disposed; this is an observed lifecycle boundary to cover in the same correction, not a separate blocker.
+
+**Required correction:** establish operation ordering before the first await and make the cached identity describe the key actually adopted by the authoritative rebuild. Obsolete observations must neither retire fresh engines nor poison the next change's deduplication. Preserve single-rebuild behavior for duplicate listeners and overlay acknowledgment semantics. Add the held-old-read → newer replacement → fresh run → old completion → final deletion witness, plus disposal while a read is pending, alongside the existing ordinary-change controls.
+
+### F-02 remains open — Use actual inline scopes and container-aware source mapping
+
+**Locations:** [`markdownInlineRegions.ts:69–76`](https://github.com/okeylanders/prose-minion-vscode/blob/fae86e9a7cba134d7b243eb65d8c66fd95d834b5/packages/core/src/utils/draftEdit/markdownInlineRegions.ts#L69-L76), [`markdownInlineRegions.ts:231–243`](https://github.com/okeylanders/prose-minion-vscode/blob/fae86e9a7cba134d7b243eb65d8c66fd95d834b5/packages/core/src/utils/draftEdit/markdownInlineRegions.ts#L231-L243).
+
+The block lexer repairs the original fenced/container and reference cases. The inline pass nevertheless runs across unprotected raw-source stretches using a small block-start heuristic rather than the actual parser's inline scopes. An unmatched backtick in one block can consume a genuine opener in the next. Separately, the raw HTML reader treats a blockquote's continuation marker as the tag's closing angle bracket.
+
+The production scanner and use case reproduce the following, both for a whole-document run and a selection containing only `teh`:
+
+| Source (`\n` denotes a newline) | Incorrect masking |
+| --- | --- |
+| ``1. One `unclosed\n2. `teh` end`` | The first item's unmatched tick consumes the second item's code opener; the code word remains exposed |
+| ``Before ` unclosed\n> `teh` after`` | The prose tick consumes the new blockquote's code opener; the code word remains exposed |
+| `> <a\n> href="teh.html">label</a>` | The tag is masked only through the continuation `>`; its `href` attribute remains exposed |
+
+For each case, the installed Markdown parser independently renders `teh` as code or as part of the HTML attribute, not ordinary prose. Each selection run still plans one word/one chunk, sends `teh` to the local pass stub and shows a flag. Whole-document runs also contain the word in their captured payload and flag it. **No protected text was transmitted to an actual provider.**
+
+Further pure-scanner witnesses find the same code-boundary error across nested quotes, a thematic break, a setext heading, GFM table cells/rows and standalone-CR paragraph breaks. A valid empty-destination link with a title, `[label]( "hidden title")`, is also left unmasked. The primary blocking evidence is the code and HTML-attribute cases above, not a disagreement about indented prose.
+
+**Required correction:** derive inline parsing scopes from the real block/container structure and map them back to raw source, or use another equivalently complete bounded approach. Container prefixes must not be interpreted as HTML syntax. Merely recognizing every numbered marker would break valid lazy paragraph continuations, so extend regressions beyond the three examples. Assert both full/selection payload exclusion and no diagnostics; retain label-as-prose, ordinary multiline code and container controls.
+
+### Confirmed closures and retained boundaries
+
+- **F-03/F-04:** independently reran the original occurrence and close witnesses against the changed ports. The production-adapter controls additionally cover unordered simultaneous edits followed by another event, correction followed by undo, language-change close and a stale starting version. Closing/reopening never reloads the resource or republishes flags. A harmless prefix still moves the same occurrence, and shown flags still support shifted Dismiss/Clear. The live protection recheck is correct; its coverage remains limited by the separate F-02 scanner defect.
+- **F-05:** through the actual client/service mapping, two known costs sum correctly, one whole missing record yields only the reported token subtotal with `requestCount: 2` and no cost/cache total, and two missing records leave usage absent while both chunks are read.
+- **F-06:** actual recovery-store paths under real chunk concurrency cover two saved captures, two refused writes and one of each. Counts and summary wording agree with receipts; the presenter runs once if any capture is saved and zero times otherwise. No claim of disk durability beyond the controlled filesystem witness is made.
+- **Markdown controls:** the original failure matrix now passes. A separate block/source-offset matrix covered 2,535 container/EOL variants, including 2,427 recognized protected fence/definition/script cases, with no leak. Indented code was deliberately excluded. Quoted-prefix depth 33 and list indentation 65 fail closed, while their 32/64 controls remain readable.
+- The shared registry's persisted IDs and parser behavior are unchanged by this correction delta. Full-suite coverage includes Lightbox key retirement, model selection, retained readings and Workshop behavior. The new shared-owner ordering issue above is not cleared by those passing ordinary-order tests.
+- The author has recorded the original ellipsis-expansion and no-line-break-change requirements in the Slice 2 plan. They remain prerequisites before any write-side clearance; this re-review still concerns diagnostics only.
+
+### Nonblocking scanner hardening
+
+The malformed-input work bound still needs hardening. Each unmatched `](` can rescan the remaining suffix in [`linkDestinationEnd`](https://github.com/okeylanders/prose-minion-vscode/blob/fae86e9a7cba134d7b243eb65d8c66fd95d834b5/packages/core/src/utils/draftEdit/markdownInlineRegions.ts#L310-L354). A bounded cloud Node 24 probe of `](x` repeated 2,000 / 4,000 / 8,000 times measured approximately 33 / 88 / 303 ms in the inline function alone, consistent with the quadratic loop; these are not native editor latency predictions. Avoid retrying complete suffix scans and retain a bounded adversarial-input regression. Separately, the prefix-only nesting guard misses mixed containers: `'> - '.repeat(65) + 'Prose sentinel'` produces 130 nested quote/list containers in the installed parser but is not refused by the scanner. Cover mixed nesting in the guard, rather than only contiguous quote markers or indentation. Neither observation is counted as an additional blocking finding here.
+
+### Re-review verification
+
+Required gates were rerun independently on the correction head under task-local Node `18.20.8` / npm `10.8.2`, serially with the same 2 GiB heap, one Jest worker, 1,000 MB idle limit and disk-backed cache. Lockfile equality and current-checkout workspace links were rechecked before dependency reuse.
+
+| Check | Independent result |
+| --- | --- |
+| Full repository Jest, Node 18 | Pass; 537 suites / 7,452 tests / 59 snapshots |
+| Typecheck, Node 18 | Pass; core, webview and adapter |
+| Lint, Node 18 | Pass; 0 errors / 1,133 warnings |
+| Production build and `verify:bundle`, Node 18 | Pass; existing webpack size warnings |
+| Independent use-case/adapter regressions, Node 18 | 20 pass; 6 desired-correctness tests fail at the remaining F-02 cases; 26 total |
+| Real refresh/manager/client/service witnesses, Node 18 | Remaining F-01 race reproduced; ordinary model/key/deduplication controls pass |
+| Recovery/usage closure witnesses, Node 18 | All six saved/failed/mixed and usage cases pass |
+| Correction-head push CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40157691154) at `fae86e9a` |
+| Correction-head pull-request CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40157693796) at `fae86e9a` |
+| `git diff --check`; original report/author response preservation | Clean; existing report bytes preserved as an exact prefix |
+
+No implementation edit, live/billable call, private manuscript, formal GitHub review, merge or deployment was made. Adapter tests remain controlled native-API doubles, not a real editor session. **The native Extension Development Host and screen-reader/editor interaction pass remain unexercised.** The ADR's status and author response are not substituted for writer acceptance, and green CI does not close F-01/F-02.
