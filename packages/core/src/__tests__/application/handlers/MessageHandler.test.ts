@@ -156,6 +156,9 @@ function createTestAssembly(): TestAssembly {
       refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
     },
+    aiResourceRefresh: {
+      refreshKey: jest.fn().mockResolvedValue(undefined)
+    },
     secretsService: {
       getApiKey: jest.fn().mockResolvedValue(undefined),
       setApiKey: jest.fn().mockResolvedValue(undefined),
@@ -593,7 +596,9 @@ describe('MessageHandler assembly', () => {
     // work settle before asserting the services were refreshed.
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    // The manager is rebuilt through the extension-lifetime owner, never directly (PR #171 F-01).
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
@@ -702,7 +707,7 @@ describe('MessageHandler assembly', () => {
     onSecretChange();
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.contextAssistantService.refreshConfiguration).not.toHaveBeenCalled();

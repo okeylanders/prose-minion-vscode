@@ -14,6 +14,7 @@ import type {
   WorkshopSessionStateMessage
 } from '@messages';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
+import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type {
@@ -119,6 +120,11 @@ export interface CoreServices {
   wordSearchService: WordSearchService;
   standardsService: StandardsService;
   aiResourceManager: AIResourceManager;
+  /**
+   * The manager's extension-lifetime key and model subscriptions (PR #171
+   * F-01): a key change rebuilds it once, however many surfaces ask.
+   */
+  aiResourceRefresh: AIResourceRefresh;
   secretsService: SecretsPort;
   textSourceResolver: TextSourceResolver;
   categorySearchService: CategorySearchService;

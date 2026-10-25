@@ -381,6 +381,19 @@ describe('app-shell provider assembly', () => {
     expect(extensionSource).toMatch(/annotations: issueAnnotator/);
   });
 
+  it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    expect(extensionSource).toMatch(/const aiResourceRefresh = new AIResourceRefresh\(aiResourceManager, secretsService, platform\.settings, outputChannel\);/);
+    expect(extensionSource).toMatch(
+      /context\.subscriptions\.push\(\s*aiResourceRefresh,\s*vscode\.workspace\.onDidChangeConfiguration\(event => aiResourceRefresh\.handleConfigurationChange\(section => event\.affectsConfiguration\(section\)\)\)\s*\)/
+    );
+    // Live from activation, so an editor command with no webview open sees every change.
+    const built = extensionSource.indexOf('new AIResourceRefresh(');
+    for (const provider of ['new ProseToolsViewProvider(', 'registerWebviewViewProvider(', 'registerCommand(PROOFREAD_FLAG_COMMAND,']) {
+      expect(built).toBeLessThan(extensionSource.indexOf(provider));
+    }
+  });
+
   it('names only declared commands in its menus, each with an activation event', () => {
     const manifest = readManifest();
     const declared = new Set(manifest.contributes.commands.map((entry) => entry.command));

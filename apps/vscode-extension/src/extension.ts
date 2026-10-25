@@ -23,6 +23,7 @@ import {
   SecretStorageService,
   ResourceLoaderService,
   AIResourceManager,
+  AIResourceRefresh,
   StandardsService,
   ToolOptionsProvider,
   ProseStatsService,
@@ -157,6 +158,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   aiResourceManager.ensureInitialized().catch(error => {
     outputChannel.appendLine(`[extension] Initial AI resource build failed: ${error instanceof Error ? error.message : String(error)}`);
   });
+  // The manager's key and model subscriptions live as long as the extension,
+  // not a webview: the Proofread command uses it with none open (PR #171 F-01).
+  const aiResourceRefresh = new AIResourceRefresh(aiResourceManager, secretsService, platform.settings, outputChannel);
+  context.subscriptions.push(
+    aiResourceRefresh,
+    vscode.workspace.onDidChangeConfiguration(event => aiResourceRefresh.handleConfigurationChange(section => event.affectsConfiguration(section)))
+  );
   const standardsService = new StandardsService(platform.workspace.extensionPath, platform.fileSystem, platform.settings, outputChannel);
   const toolOptions = new ToolOptionsProvider(platform.settings);
 
@@ -442,6 +450,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     wordSearchService,
     standardsService,
     aiResourceManager,
+    aiResourceRefresh,
     secretsService,
     textSourceResolver,
     categorySearchService,

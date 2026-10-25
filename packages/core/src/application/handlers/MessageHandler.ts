@@ -608,7 +608,8 @@ export class MessageHandler {
 
   private async refreshServiceConfiguration(options: { clearTransientApiKeyWarning?: boolean } = {}): Promise<void> {
     const refreshSteps = [
-      { name: 'AI resource manager', refresh: () => this.services.aiResourceManager.refreshConfiguration() },
+      // Through the extension-lifetime owner, so one key change is one rebuild however many surfaces hear it (PR #171 F-01).
+      { name: 'AI resource manager', refresh: () => this.services.aiResourceRefresh.refreshKey() },
       { name: 'assistant tool service', refresh: () => this.services.assistantToolService.refreshConfiguration() },
       { name: 'dictionary service', refresh: () => this.services.dictionaryService.refreshConfiguration() },
       { name: 'context assistant service', refresh: () => this.services.contextAssistantService.refreshConfiguration() }
