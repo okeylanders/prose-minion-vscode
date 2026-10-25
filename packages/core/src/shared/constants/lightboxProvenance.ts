@@ -69,12 +69,12 @@ export function lightboxLensProvenance(
 
 /**
  * The model that produced the lens's reading on screen: its provenance's.
- * A group that records no provenance at all is a board read before Slice
- * 4J, whose readings are all its group's model. A group that records some
- * gives every reading it shows an entry (`settleLightboxGroup` carries the
- * old model onto a kept one before its group's model changes, PR #170
- * F-02), so a lens without one has lost it (an entry that did not read):
- * its model is unknown, never the group's latest call's.
+ * Only a group with no provenance field at all is a board read before
+ * Slice 4J, whose readings are all its group's model. A group with the
+ * field, even empty, gives every reading it shows an entry once a call
+ * settles (`settleLightboxGroup`, PR #170 F-02), so a lens without one has
+ * lost it (an entry that did not read, or one left out): its model is
+ * unknown, never the group's, which is its latest call's.
  */
 export function lightboxLensModel(
   group: Pick<LightboxReadingGroup, 'model' | 'provenance'> | undefined,
@@ -84,7 +84,7 @@ export function lightboxLensModel(
   if (provenance) {
     return provenance.model;
   }
-  return group?.provenance && group.provenance.length > 0 ? undefined : group?.model;
+  return group?.provenance === undefined ? group?.model : undefined;
 }
 
 /** Why the lens's reading on screen is an earlier one, when it is. */

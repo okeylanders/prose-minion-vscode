@@ -130,6 +130,35 @@ describe('format 1 with per-lens provenance and earlier marks (Slice 4J)', () =>
     expect(lightboxLensModel(a, 'headline')).toBe('provider/model-b');
   });
 
+  it('keeps an empty list present, written and read back, so it is never a board from before Slice 4J (PR #170 re-review)', async () => {
+    const { board, text } = await keptBoard();
+    const empty: LightboxBoard = { ...board, readings: board.readings.map((group) => (group.group !== 'A' ? group : { ...group, provenance: [] })) };
+    const json = encodeLightboxBoardFile({ board: empty, text, savedAt: SAVED_AT });
+    expect(JSON.parse(json).board.readings[0].provenance).toEqual([]);
+    const decoded = decodeLightboxBoardFile(json);
+    if (decoded.kind !== 'board') {
+      throw new Error(decoded.reason);
+    }
+    expect(decoded.file.board.readings[0].provenance).toEqual([]);
+    expect(writeLightboxBoardFile(decoded.file)).toBe(json);
+    expect(lightboxLensModel(decoded.file.board.readings[0], 'motif')).toBeUndefined();
+  });
+
+  it('keeps the list present when every entry is dropped, and names no model for any of them rather than the group\'s', async () => {
+    const { board, text } = await keptBoard();
+    const raw = JSON.parse(encodeLightboxBoardFile({ board, text, savedAt: SAVED_AT }));
+    raw.board.readings[0].provenance = raw.board.readings[0].provenance.map(({ at: _at, ...entry }: { at?: string }) => entry);
+    const decoded = decodeLightboxBoardFile(JSON.stringify(raw));
+    if (decoded.kind !== 'board') {
+      throw new Error(decoded.reason);
+    }
+    expect(decoded.dropped).toBe(2);
+    const a = decoded.file.board.readings[0];
+    expect(a.provenance).toEqual([]);
+    expect(a.model).toBeDefined();
+    expect([lightboxLensModel(a, 'headline'), lightboxLensModel(a, 'motif')]).toEqual([undefined, undefined]);
+  });
+
   it('does not read a file whose earlier mark does not read, as with a stale mark', async () => {
     const { board, text } = await keptBoard();
     const raw = JSON.parse(encodeLightboxBoardFile({ board, text, savedAt: SAVED_AT }));

@@ -341,6 +341,60 @@ describe('a reading from before Slice 4J keeps the model that read it (PR #170 F
     expect(lightboxLensModel(legacyA(), 'motif')).toBe('provider/model-v1');
   });
 
+  describe('an origin a group with provenance lost stays unknown (PR #170 re-review)', () => {
+    const v3 = (lenses: LightboxLensId[], over: Partial<LightboxGroupOutcome> = {}) => outcome(lenses, { model: 'provider/model-v3', ...over });
+    /** Group A as run 1 left it, under model-a, the motif's entry gone (one that did not read, or one left out). */
+    const lostMotif = (): LightboxReadingGroup => {
+      const landed = landedA();
+      return { ...landed, provenance: landed.provenance?.filter((entry) => entry.lens !== 'motif') };
+    };
+
+    it('an unrelated rerun gives the motif an entry of the lens alone, never the group\'s model', () => {
+      const after = settleLightboxGroup(rerun(lostMotif(), ['headline']), v3(['headline'], { tiles: [tile('h2', 'headline')] }), SECOND);
+      expect(after.provenance?.find((entry) => entry.lens === 'motif')).toEqual({ lens: 'motif' });
+      expect(lightboxLensModel(after, 'motif')).toBeUndefined();
+      expect(lightboxBoardModels([after])).toEqual(['provider/model-v3']);
+      // And the next call keeps it unknown.
+      const again = settleLightboxGroup(rerun(after, ['headline']), outcome(['headline'], { tiles: [tile('h3', 'headline')], model: 'provider/model-v4' }), SECOND);
+      expect(again.provenance?.find((entry) => entry.lens === 'motif')).toEqual({ lens: 'motif' });
+    });
+
+    it('a present but empty list is not a board from before Slice 4J: it names no model at once, and after a call', () => {
+      const empty = { ...landedA(), provenance: [] };
+      expect(lightboxLensModel(empty, 'motif')).toBeUndefined();
+      expect(lightboxLensModel(empty, 'headline')).toBeUndefined();
+      const after = settleLightboxGroup(rerun(empty, ['headline']), v3(['headline'], { tiles: [tile('h2', 'headline')] }), SECOND);
+      expect(after.provenance).toEqual([
+        { lens: 'headline', run: 'run-2-token', model: 'provider/model-v3', at: SECOND.at },
+        { lens: 'motif' }
+      ]);
+      expect(lightboxBoardModels([after])).toEqual(['provider/model-v3']);
+    });
+
+    it('control: a failed call keeps the lost origin unknown, and the known one known', () => {
+      const after = settleLightboxGroup(rerun(lostMotif(), ['headline', 'motif']), v3(['headline', 'motif'], { status: 'failed', error: 'x' }), SECOND);
+      expect(after.model).toBe('provider/model-v3');
+      expect(after.provenance).toEqual([
+        { lens: 'headline', run: 'run-1-token', model: 'provider/model-a', at: FIRST.at },
+        { lens: 'motif' }
+      ]);
+      expect(lightboxBoardModels([after])).toEqual(['provider/model-a']);
+    });
+
+    it('clearing a lens with no reading keeps the field present, so nothing reads as a board from before Slice 4J', () => {
+      const answered: LightboxReadingGroup = {
+        ...emptyLightboxReadingGroup('A'), status: 'ok', lenses: ['motif'], model: 'provider/model-a',
+        frictions: [{ lens: 'motif', friction: 'nothing recurs' }],
+        provenance: [{ lens: 'motif', run: 'run-1-token', model: 'provider/model-a', at: FIRST.at }]
+      };
+      const running = rerun(answered, ['motif']);
+      expect(running.provenance).toEqual([]);
+      const failed = settleLightboxGroup(running, v3(['motif'], { status: 'failed', error: 'x' }), SECOND);
+      expect(failed.provenance).toEqual([]);
+      expect(lightboxLensModel(failed, 'motif')).toBeUndefined();
+    });
+  });
+
   it('records nothing more on a board whose every reading already has its provenance', () => {
     const after = settleLightboxGroup(rerun(landedA(), ['headline']), outcome(['headline'], { tiles: [tile('h2', 'headline')] }), SECOND);
     expect(after.provenance?.every((entry) => entry.run !== undefined && entry.at !== undefined)).toBe(true);

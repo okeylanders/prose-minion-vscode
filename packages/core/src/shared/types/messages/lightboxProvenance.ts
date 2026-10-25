@@ -20,7 +20,12 @@ import type { LightboxLensId } from './lightboxReadings';
  * call of its group settles, records only the model its group named then,
  * or nothing when the group named none (PR #170 F-02): never a run or a
  * time the board did not hold. `run` and `at` are both present or both
- * absent.
+ * absent. An entry of the lens alone is also a reading whose origin a group
+ * with provenance lost (an entry that did not read, or one left out): it
+ * stays unknown through every later call.
+ *
+ * A group's `provenance` absent means a board read before Slice 4J; present,
+ * even empty, it is never read as one.
  */
 export interface LightboxLensProvenance {
   lens: LightboxLensId;

@@ -32,8 +32,11 @@
  * and `error` are its latest call's; what is on screen, lens by lens, is
  * the provenance and the earlier marks. Once a call settles, every reading
  * its group shows has a provenance entry: a reading from a board read
- * before Slice 4J takes its group's model then, before the group's model
- * moves on (PR #170 F-02).
+ * before Slice 4J (no provenance field at all) takes its group's model
+ * then, before the group's model moves on; a reading whose origin a group
+ * with provenance has lost stays unknown (PR #170 F-02). The field, once
+ * present, stays present, empty or not, so a lost origin never reads as a
+ * board from before Slice 4J.
  */
 
 import type {
@@ -142,7 +145,8 @@ export function settleLightboxGroup(
     quoteChecks: merged(base.quoteChecks, outcome.quoteChecks),
     ...(outcome.status === 'failed' ? { error: outcome.error ?? 'The reading failed.' } : {}),
     ...staleField(base.staleLenses?.filter((mark) => fromGroup(mark.lens))),
-    ...provenanceField(inLensOrder(provenance)),
+    // A group that recorded provenance keeps the field, empty or not: its absence is what says a board predates 4J.
+    ...provenanceField(inLensOrder(provenance), base.provenance !== undefined),
     ...earlierField(inLensOrder(earlier))
   };
 }
@@ -182,21 +186,27 @@ export function lightboxLensVerdicts(group: LightboxReadingGroup, outcome: Light
 }
 
 /**
- * A reading the call leaves on the board with no provenance of its own (a
- * board read before Slice 4J) keeps the model that read it: its group's,
- * taken now, before the group's model becomes this call's (PR #170 F-02).
- * Only the model: the board never held that reading's run or time. A group
- * that named no model gives an entry with none, so the reading is never
- * said to be the latest call's.
+ * An entry for each reading the call leaves on the board with no provenance
+ * of its own, before the group's model becomes this call's (PR #170 F-02):
+ * - **A board read before Slice 4J** records no provenance at all (the
+ *   field absent). Its readings are its group's model, so each takes that
+ *   model now. Only the model: the board never held the reading's run or
+ *   time. A group that named no model gives an entry with none.
+ * - **A group that records provenance** (the field present, even empty)
+ *   has lost that reading's origin: an entry that did not read, or one
+ *   left out. It stays unknown, an entry of the lens alone, never the
+ *   group's model, which is the latest call's and not that reading's (PR
+ *   #170's re-review).
  */
 function carriedProvenance(
   group: LightboxReadingGroup,
   taken: readonly LightboxLensId[],
   model: string | undefined
 ): LightboxLensProvenance[] {
+  const legacy = group.provenance === undefined;
   return RAIL_ORDER
     .filter((lens) => !taken.includes(lens) && lightboxLensWasRead(group, lens) && !lightboxLensProvenance(group, lens))
-    .map((lens) => ({ lens, ...(model ? { model } : {}) }));
+    .map((lens) => ({ lens, ...(legacy && model ? { model } : {}) }));
 }
 
 /** Why a call that came back drew no reading of `lens`: its block withheld (cut off, missing, broken), or no tile. */
@@ -251,7 +261,7 @@ function withoutLenses(group: LightboxReadingGroup, lenses: readonly LightboxLen
     frictions: keep(group.frictions),
     quoteChecks: keep(group.quoteChecks),
     ...staleField(staleLenses && keep(staleLenses)),
-    ...provenanceField(provenance && keep(provenance)),
+    ...provenanceField(provenance && keep(provenance), provenance !== undefined),
     ...earlierField(earlierLenses && keep(earlierLenses))
   };
 }
@@ -260,8 +270,9 @@ function staleField(marks: readonly LightboxStaleLens[] | undefined): { staleLen
   return marks && marks.length > 0 ? { staleLenses: [...marks] } : {};
 }
 
-function provenanceField(entries: readonly LightboxLensProvenance[] | undefined): { provenance?: LightboxLensProvenance[] } {
-  return entries && entries.length > 0 ? { provenance: [...entries] } : {};
+/** The provenance field: present when it has entries, or when the group recorded one (`present`), even emptied. */
+function provenanceField(entries: readonly LightboxLensProvenance[] | undefined, present: boolean): { provenance?: LightboxLensProvenance[] } {
+  return entries && (entries.length > 0 || present) ? { provenance: [...entries] } : {};
 }
 
 function earlierField(marks: readonly LightboxEarlierLens[] | undefined): { earlierLenses?: LightboxEarlierLens[] } {
