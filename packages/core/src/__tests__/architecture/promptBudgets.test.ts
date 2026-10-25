@@ -40,7 +40,10 @@ const NON_PROMPT_LIMITS = new Set([
   // Transcript export names files and documents; no prompt sees them.
   'shared/constants/workshopTranscriptExport.ts:MAX_STEM_LENGTH',
   'shared/types/messages/workshop/session.ts:WORKSHOP_TRANSCRIPT_EXPORT_TITLE_MAX_LENGTH',
-  'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX'
+  'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX',
+  // How deeply Draft Edit's Markdown scanner lets containers nest before it protects a document whole; no prompt sees them (PR #171 F-02).
+  'utils/draftEdit/markdownBlockRegions.ts:MAX_QUOTE_DEPTH',
+  'utils/draftEdit/markdownBlockRegions.ts:MAX_LIST_INDENT'
 ]);
 
 function collectTypeScriptFiles(dir: string, acc: string[] = []): string[] {

@@ -7,6 +7,7 @@
  * Replies are about public-domain passages; the key and model id are
  * placeholders. Nothing reaches a provider.
  */
+/* eslint-disable @typescript-eslint/naming-convention -- OpenRouter's wire fields are snake_case. */
 jest.mock('p-limit', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- jest's ES-module interop flag.
   __esModule: true,

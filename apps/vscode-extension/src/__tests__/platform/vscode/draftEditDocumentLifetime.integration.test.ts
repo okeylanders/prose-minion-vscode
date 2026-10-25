@@ -16,6 +16,7 @@
  * Text is synthetic, around *Alice*; nothing reaches a provider.
  */
 
+/* eslint-disable @typescript-eslint/naming-convention -- the double mirrors VS Code's own API names, and the mocked barrel's exports. */
 jest.mock('vscode', () => {
   type Listener = (event: unknown) => void;
   const emitter = () => {
