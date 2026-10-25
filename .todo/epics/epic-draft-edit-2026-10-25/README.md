@@ -129,7 +129,8 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
     (`c97fcbfd`).
   - The Proofread pass and its key-retirement behavior (`e50c2b36`).
   - The ports, the use case, the commands, and the adapters (`fd5f3133`).
-  - Guards, docs, and the Workshop catalog fix.
+  - Guards, docs, and the Workshop catalog fix (`f1a6e79f`); `epic/lightbox` at
+    `31edcfd` merged in (`5663ebd7`).
   - CI green under Node 18; the full suite also passes under Node 22.
   - See the slice's "As built" for the departures from plan, each mirrored
     in the ADR.

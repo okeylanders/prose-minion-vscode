@@ -2,7 +2,7 @@
 
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D1, D2, D3 (`IssueAnnotator`, `DocumentEditor.snapshot`), D6, D7, D8 (Flag, Clear), D10
-**Status:** Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, and the guards-and-docs commit). In review. The writer's manual Flag run on seeded public-domain fixtures is pending.
+**Status:** Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, `f1a6e79f`). In review. The writer's manual Flag run on seeded public-domain fixtures is pending.
 
 ## Outcome
 
@@ -202,8 +202,8 @@ Where the build departed from the plan above, and why:
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (524 suites / 7,262 tests / 59 snapshots). The full suite also passes
-  under Node 22.
+  suite (531 suites / 7,378 tests / 59 snapshots, with `epic/lightbox` at
+  `31edcfd` merged in). The full suite also passes under Node 22.
 - No live provider calls. The key-retirement test runs real
   `OpenRouterClient`s with only the transport stubbed. Fixtures are
   public-domain *Alice*.

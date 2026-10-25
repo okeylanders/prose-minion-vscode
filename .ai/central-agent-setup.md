@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-24, Lightbox Slice 4J (every run keeps each lens's reading until a usable new one replaces it, with its provenance and an earlier mark; a call's failure said once, under the run line) with PR #170's review and re-review corrections, on `epic/lightbox-keep-readings`, with `epic/lightbox` at `f75ed80` (Slice 4K, PR #168: fields the format does not define forgiven, a misplaced member moved back; Slice 4L, PR #169: the Lightbox's own model setting) merged in, under Node 18):
-- 519 suites / 7,257 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-25, Draft Edit Slice 1 (Proofread and Flag) on `claude/upbeat-galileo-y1l4yf`, with `epic/lightbox` at `31edcfd` (Slice 4J, PR #170) merged in, under Node 22 and Node 18):
+- 531 suites / 7,378 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

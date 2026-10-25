@@ -37,7 +37,8 @@ writes to a document yet: that is Slice 2.
   key-retirement behavior).
 - `fd5f3133`: the ports, the use case, the summary, the adapters, and the
   commands.
-- The guards-and-docs commit, which follows this entry.
+- `f1a6e79f`: guards, the Workshop catalog fix, and docs.
+- `5663ebd7`: merged `epic/lightbox` at `31edcfd` (Slice 4J, PR #170).
 
 ## Decisions (the writer's, 2026-10-25)
 
@@ -65,8 +66,8 @@ writes to a document yet: that is Slice 2.
 
 ## Verification
 
-- Node 18.20.8: typecheck, lint, build, and the full suite (524 suites /
-  7,262 tests / 59 snapshots).
+- Node 18.20.8: typecheck, lint, build, and the full suite (531 suites /
+  7,378 tests / 59 snapshots, with `epic/lightbox` at `31edcfd` merged in).
 - Node 22: the full suite.
 - No live provider calls. Fixtures are public-domain *Alice*.
 - Pending: the writer's Extension Development Host pass and false-positive
