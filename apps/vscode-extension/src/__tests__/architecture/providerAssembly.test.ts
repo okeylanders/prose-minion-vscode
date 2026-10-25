@@ -8,9 +8,23 @@
  * empty-offenders-list. Pure file-content witnesses; no vscode API touched.
  */
 
+// The whole core barrel cannot load under jest (an ESM dependency), so the
+// two runtime values these commands use are required from their modules.
+jest.mock('@prose-minion/core', () => ({
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
+  DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
+  describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome
+}));
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
+import { DRAFT_EDIT_LANGUAGE_IDS } from '@prose-minion/core';
+import {
+  PROOFREAD_CLEAR_COMMAND,
+  PROOFREAD_DISMISS_COMMAND,
+  PROOFREAD_FLAG_COMMAND
+} from '@app/application/commands/proofreadCommands';
 
 // __dirname = apps/vscode-extension/src/__tests__/architecture -> app src root.
 const APP_SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -335,6 +349,35 @@ describe('app-shell provider assembly', () => {
     expect(selection).toMatch(/lightboxPanelProvider\?\.seedSource\(payload\)/);
     // Both commands reach the board only through the panel's seedSource.
     expect(extensionSource.match(/lightboxPanelProvider\?\.seedSource\(/g)).toHaveLength(2);
+  });
+
+  it('offers Proofread and Flag on Markdown and plain text in the editor context menu (Draft Edit Slice 1)', () => {
+    const manifest = readManifest();
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const entries = (manifest.contributes.menus['editor/context'] ?? [])
+      .filter((entry) => entry.command === PROOFREAD_FLAG_COMMAND);
+
+    // With or without a selection (a selection narrows the run), on unsaved buffers too.
+    expect(entries).toEqual([{
+      command: PROOFREAD_FLAG_COMMAND,
+      group: 'prose-minion@4',
+      when: 'editorLangId == markdown || editorLangId == plaintext'
+    }]);
+    expect((entries[0].when ?? '').match(/editorLangId == (\w+)/g)).toEqual(
+      DRAFT_EDIT_LANGUAGE_IDS.map((languageId) => `editorLangId == ${languageId}`)
+    );
+    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+      { command: PROOFREAD_FLAG_COMMAND, title: 'Prose Minion: Proofread and Flag' },
+      { command: PROOFREAD_CLEAR_COMMAND, title: 'Prose Minion: Clear Proofread Flags' }
+    ]));
+    // Dismiss is a code action's command: registered, never contributed, so the palette never lists it.
+    expect(manifest.contributes.commands.map((entry) => entry.command)).not.toContain(PROOFREAD_DISMISS_COMMAND);
+    for (const command of ['PROOFREAD_FLAG_COMMAND', 'PROOFREAD_CLEAR_COMMAND', 'PROOFREAD_DISMISS_COMMAND']) {
+      expect(extensionSource).toContain(`registerCommand(${command},`);
+    }
+    // Both ports are the composition root's adapters, threaded through Platform.
+    expect(extensionSource).toMatch(/documents: new VsCodeDocumentEditor\(\)/);
+    expect(extensionSource).toMatch(/annotations: issueAnnotator/);
   });
 
   it('names only declared commands in its menus, each with an activation event', () => {

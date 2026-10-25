@@ -89,8 +89,12 @@ export type DraftEditOutcome =
       readonly dropped: DraftEditDropCounts;
       /** Chunks whose reply could not be read, each captured for recovery. */
       readonly rejectedChunks: number;
+      /** Chunks requested, and chunks answered (read or rejected). */
       readonly chunks: { readonly total: number; readonly completed: number };
-      /** The API key was removed or replaced mid-run, so later chunks were never sent. */
-      readonly keyChanged: boolean;
+      /** Why later chunks were never sent: the API key changed mid-run, or the provider refused. */
+      readonly interrupted?: { readonly cause: 'key-changed' | 'provider'; readonly message: string };
       readonly usage?: TokenUsage;
     };
+
+/** The languages Draft Edit reads (and the editor menus offer it for). */
+export const DRAFT_EDIT_LANGUAGE_IDS: readonly string[] = ['markdown', 'plaintext'];

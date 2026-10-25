@@ -23,8 +23,10 @@ import {
   SecretStore
 } from '@/platform';
 import {
+  createFakeDocumentEditor,
   createFakeEditorContext,
   createFakeFileSystem,
+  createFakeIssueAnnotator,
   createFakeGlobalState,
   createFakeSettings,
   createFakeShellService,
@@ -85,7 +87,9 @@ function createTestAssembly(): TestAssembly {
     fileSystem: createFakeFileSystem(),
     workspace: createFakeWorkspace(),
     shell: createFakeShellService(),
-    editor: createFakeEditorContext()
+    editor: createFakeEditorContext(),
+    documents: createFakeDocumentEditor(),
+    annotations: createFakeIssueAnnotator()
   };
 
   const scheduleRefresh = jest.fn();

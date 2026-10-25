@@ -203,3 +203,15 @@ export {
   AccountBalanceService,
   OpenRouterAccountClient
 } from '@/infrastructure/account';
+
+// --- Draft Edit (ADR 2026-10-21): the Proofread pass, the run, and the adapter's helpers ---
+export { ProofreadService } from '@services/proofread/ProofreadService';
+export { DraftEditUseCase, type DraftEditRunPlan } from '@/application/services/draftEdit/DraftEditUseCase';
+export { describeDraftEditOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
+export {
+  DRAFT_EDIT_LANGUAGE_IDS,
+  type DraftEditOutcome,
+  type DraftEditPass,
+  type DraftEditTarget
+} from '@/domain/models/DraftEdit';
+export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';
