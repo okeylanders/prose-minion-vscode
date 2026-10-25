@@ -1016,6 +1016,8 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightboxNumbers.ts',
   'shared/types/messages/lightboxContextFiles.ts',
   'shared/types/messages/lightboxStale.ts',
+  // Slice 4J: each lens's provenance, and an earlier reading's mark (epic decision 49).
+  'shared/types/messages/lightboxProvenance.ts',
   'shared/types/messages/lightboxHandoff.ts',
   'shared/types/messages/lightboxProjectFiles.ts',
   // Slice 4E: the inspector's passages, their contract and bounds.
@@ -1036,6 +1038,9 @@ const LIGHTBOX_MODULES = [
   'shared/constants/lightboxSteering.ts',
   // Slice 4H: clipping at a surface (the safety ceiling, a Workshop tile's bounds).
   'shared/constants/lightboxClip.ts',
+  // Slice 4J: keep, lens by lens, until replaced (decision 49), and a call's failure said once (decision 52).
+  'shared/constants/lightboxProvenance.ts',
+  'shared/constants/lightboxCallNotes.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   // Slice 5A: the ids of the rules a board is measured with (ADR D12 addendum).
   'infrastructure/lightbox/LightboxMeasureRules.ts',
@@ -1178,6 +1183,8 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   // Slice 4I: each call's own run, a widget's Analyze and a call's Run (pure), and its button.
   'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
+  // Slice 4J: a call that did not land, said once (pure), and its notes and pointers (decision 52).
+  'presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
@@ -1185,6 +1192,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxBoardsSurface.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   'presentation/webview/components/lightbox/LightboxCallButton.tsx',
+  'presentation/webview/components/lightbox/LightboxCallNotes.tsx',
   // Slice 5A.2: the header's Boards menu, the saved-board browser and the name sheet (the rail's panel is gone).
   'presentation/webview/components/lightbox/LightboxBoardsMenu.tsx',
   'presentation/webview/components/lightbox/LightboxBoardsOutcome.tsx',
@@ -1246,6 +1254,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxBring.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',

@@ -18,8 +18,10 @@
  * - **Replies cut off at the output ceiling** (epic decision 40) keep the
  *   blocks they finished; the block they were cut inside is withheld with
  *   the host's reason, and the paid body is still saved for recovery, its
- *   place named in that reason. One the frame cannot salvage fails as an
- *   unusable reply does.
+ *   place named in that reason. A block it never reached says so too
+ *   (Slice 4J, epic decision 52), with the same place, so the board can
+ *   show the cut once, at the call, and point each widget there. One the
+ *   frame cannot salvage fails as an unusable reply does.
  * - **Checked replies.** Otherwise the frame's blocks are checked against
  *   the chapter (quotes verified, terms counted) and assembled into tiles.
  *   Blocks and items that break their own rules are withheld, not failed.
@@ -32,6 +34,7 @@ import type { LightboxLensId, LightboxReadingGroupId, RejectedModelResponseContr
 import type { LogSink } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { lightboxLensLabel } from '@shared/constants/lightbox';
+import { LIGHTBOX_CUT_BEFORE_REASON } from '@shared/constants/lightboxCallNotes';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
   persistRejectedModelResponse,
@@ -194,10 +197,14 @@ export async function decodeLightboxReply(
     contract: lightboxRecoveryContract(call)
   });
   const notice = recoveryLocationNotice(receipt);
+  // A lens the codec found no block for was never reached (decision 52's words; the codec's own for a missing block otherwise).
+  const unreached = (lens: LightboxLensId, reason: string) => reason === `The reading returned no ${LIGHTBOX_LENS_KEYS[lens]} block.`;
   return {
     decoded: {
       ...decoded,
-      withheld: decoded.withheld.map((entry) => (cut.includes(entry.lens) ? { ...entry, reason: `${entry.reason} ${notice}` } : entry))
+      withheld: decoded.withheld.map((entry) => (cut.includes(entry.lens)
+        ? { ...entry, reason: `${entry.reason} ${notice}` }
+        : unreached(entry.lens, entry.reason) ? { ...entry, reason: `${LIGHTBOX_CUT_BEFORE_REASON} ${notice}` } : entry))
     }
   };
 }

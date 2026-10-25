@@ -16,6 +16,7 @@
 
 import type { TokenUsage } from './tokenUsage';
 import type { LightboxStaleLens } from './lightboxStale';
+import type { LightboxEarlierLens, LightboxLensProvenance } from './lightboxProvenance';
 import type {
   LightboxLineageSetAside,
   LightboxLineageTile,
@@ -373,12 +374,16 @@ export interface LightboxReadingGroup {
   /** The lenses the group's readings came from, in rail order. Empty before any call. */
   lenses: LightboxLensId[];
   /**
-   * While `running`: the lenses the call in flight reads. A full run reads
-   * all of the group's lenses that are on and clears the group first; a
-   * tile's re-read reads one lens and leaves the others' tiles in place.
+   * While `running`: the lenses the call in flight reads. Every run keeps a
+   * lens's reading until a new one lands (Slice 4J, epic decision 49): a
+   * pending lens with a reading keeps it on the board, and one without is
+   * cleared of its earlier withheld notes when the call starts.
    */
   pending?: LightboxLensId[];
-  /** The provider-reported model of the latest call, not the selection. */
+  /**
+   * The provider-reported model of the latest call, not the selection. The
+   * model of each reading on screen is its lens's `provenance` (Slice 4J).
+   */
   model?: string;
   /** Usage of every call this group has made on this board, summed. */
   usage?: TokenUsage;
@@ -394,4 +399,16 @@ export interface LightboxReadingGroup {
   error?: string;
   /** Lenses read against an earlier version of the text; absent when every reading is current. */
   staleLenses?: LightboxStaleLens[];
+  /**
+   * Per lens whose state is on the board, the run, model and time that
+   * produced it (Slice 4J). Absent on a board read before it, whose readings
+   * fall back to the group's `model`.
+   */
+  provenance?: LightboxLensProvenance[];
+  /**
+   * Lenses showing an earlier reading because the latest call that read them
+   * did not replace it, with why (Slice 4J, epic decision 49); absent when
+   * none is.
+   */
+  earlierLenses?: LightboxEarlierLens[];
 }

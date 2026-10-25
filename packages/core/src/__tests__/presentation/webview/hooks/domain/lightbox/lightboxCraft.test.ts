@@ -57,8 +57,12 @@ describe('paragraph endings', () => {
     expect(lightboxEndingsLane(stale, true)).toMatchObject({
       stale: true, note: 'Read against an earlier version of this chapter: endings stand only on paragraphs unchanged since.'
     });
+    // Slice 4J: read again, the earlier endings stay drawn until the new ones land.
     const reading = withGroupD(read, { ...groupD, status: 'running', pending: ['rhythm'] });
-    expect(lightboxEndingsLane(reading, true).note).toBe('Reading how the paragraphs end…');
+    expect(lightboxEndingsLane(reading, true)).toMatchObject({ endings: lane.endings, note: 'How each paragraph ends, as read: lands, holds or opens.' });
+    // A first read in flight: nothing to keep, so the lane says it is reading.
+    const first = withGroupD(read, { ...groupD, status: 'running', pending: ['rhythm'], tiles: groupD.tiles.filter((tile) => tile.lens !== 'rhythm') });
+    expect(lightboxEndingsLane(first, true).note).toBe('Reading how the paragraphs end…');
     // A first read that failed: no lens of the group was read.
     const failed = withGroupD(read, { ...groupD, status: 'failed', lenses: [], tiles: [], error: 'No answer.' });
     expect(lightboxEndingsLane(failed, true)).toEqual({ stale: false, note: 'The paragraph endings did not come back.' });

@@ -197,6 +197,45 @@
   border-radius: 4px;
   padding: 0 3px;
 }
+/*
+ * An earlier reading kept (Slice 4J, epic decision 49): a quiet note, not an
+ * alarm. The reading under it keeps its own register and stale mark; the
+ * label says only that a newer call did not replace it, and why.
+ */
+[data-pm-surface="lightbox"] .pm-lb-earlier-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+  border: 1px dashed var(--pm-border-2);
+  border-radius: 9px;
+  padding: 8px 11px;
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-earlier-label {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-text-2);
+  margin-right: 6px;
+}
+/* Neutral, not the measured register's colors: an earlier reading is still a reading. */
+[data-pm-surface="lightbox"] .pm-lb-badge.pm-lb-earlier-badge {
+  color: var(--pm-text-2);
+  background: transparent;
+  border: 1px dashed var(--pm-border-2);
+}
+/* The tension line's kept note sits under its row, aligned with it. */
+[data-pm-surface="lightbox"] .pm-lb-tension-kept {
+  margin: 6px 0 0 84px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-kept > .pm-lb-reading-notice,
+[data-pm-surface="lightbox"] .pm-lb-tension-kept > .pm-lb-earlier-note {
+  margin: 0;
+}
 [data-pm-surface="lightbox"] .pm-lb-stale-note b {
   font-family: var(--pm-mono);
   font-size: 10.5px;

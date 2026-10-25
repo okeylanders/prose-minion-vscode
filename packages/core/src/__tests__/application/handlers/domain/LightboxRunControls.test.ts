@@ -109,7 +109,7 @@ describe('one call, run on its own', () => {
     expect(readingOf(host, 'A')?.lenses).toEqual(['headline', 'motif', 'tension', 'gravity']);
   });
 
-  it('re-runs a call that already has readings, clearing it first and replacing it whole; the other calls keep theirs', async () => {
+  it('re-runs a call that already has readings, keeping them on screen until the new ones land, then replacing them; the other calls keep theirs', async () => {
     const { host, tab } = await setup();
     await tab.run();
     await settle();
@@ -121,9 +121,10 @@ describe('one call, run on its own', () => {
     await tab.run({ mode: 'group', group: 'C', lens: 'spark' });
     await settle();
 
-    // Started: call C cleared and running, as a full run clears its groups.
+    // Started: call C running, its readings still on the board (Slice 4J, decision 49, superseding decision 42's clear-first).
     const started = tab.ofType(MessageType.LIGHTBOX_BOARD)[boards].payload.board?.readings.find((group) => group.group === 'C');
-    expect(started).toMatchObject({ status: 'running', tiles: [], lenses: [], pending: ['genre', 'lineage', 'spark'] });
+    expect(started).toMatchObject({ status: 'running', lenses: ['genre', 'lineage', 'spark'], pending: ['genre', 'lineage', 'spark'] });
+    expect(started?.tiles.map((tile) => tile.id)).toEqual(before?.readings.find((group) => group.group === 'C')?.tiles.map((tile) => tile.id));
     const after = host.service.currentBoard();
     const c = after?.readings.find((group) => group.group === 'C');
     expect(c?.status).toBe('ok');

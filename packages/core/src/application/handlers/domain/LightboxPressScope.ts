@@ -15,14 +15,12 @@
  *   and current, it is refused with the Opinion's own reason
  *   (`lightboxOpinionNothingToWeigh`), before the board is reserved. F's
  *   call still checks again when it opens on the digest.
- * - **What a press keeps until its new reading lands**
- *   (`lightboxPressKeptLens`): a tile's "Re-analyze this tile" keeps its
- *   lens's earlier reading, and so does the Opinion's call run on its own
- *   (epic decision 47): the old Opinion stays on the board while the new one
- *   is weighed, is replaced when it lands, and stays, standing and stale
- *   marks and all, if the call fails or is stopped. Every other call run on
- *   its own is cleared first and read whole (decision 42), and so is the
- *   Opinion in a run of every call.
+ * - **Every press keeps what it reads until the new reading lands** (Slice
+ *   4J, epic decision 49, superseding decision 42's clear-first and
+ *   generalizing decision 47): the scope only decides which calls run and
+ *   which lenses each reads; `LightboxReadingState` keeps, lens by lens,
+ *   whatever a call does not replace. `lightboxPressLens` names the lens of
+ *   a tile's "Re-analyze this tile", for the run's progress and log.
  * - **What an estimate prices** (`lightboxEstimateCalls`): every call with a
  *   lens on, which is also what each call's Run and each widget's Analyze
  *   send for a lens that is on, and each tile's "Re-analyze this tile".
@@ -117,16 +115,13 @@ export function lightboxPressCalls(
 }
 
 /**
- * The lens whose earlier reading a press of `scope` keeps until its new one
- * lands, if any (`startLightboxGroups`, `settleLightboxGroup`): a tile's
- * lens, or the Opinion when its call runs on its own (decision 47). For any
- * other press, its calls are cleared first and replaced whole.
+ * The tile's lens a press of `scope` re-analyzes, for a tile's "Re-analyze
+ * this tile"; none for a call or a run of calls. It names the run in its
+ * progress and log only: what a press keeps is the same for every scope
+ * (Slice 4J, decision 49).
  */
-export function lightboxPressKeptLens(scope: LightboxRunScope): LightboxLensId | undefined {
-  if (scope.mode === 'lens') {
-    return scope.lens;
-  }
-  return scope.mode === 'group' && scope.group === LIGHTBOX_BOARD_GROUP ? 'opinion' : undefined;
+export function lightboxPressLens(scope: LightboxRunScope): LightboxLensId | undefined {
+  return scope.mode === 'lens' ? scope.lens : undefined;
 }
 
 /**

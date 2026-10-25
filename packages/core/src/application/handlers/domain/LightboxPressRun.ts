@@ -18,6 +18,12 @@
  *   Opinion's standing is checked against the board as it stands, so a late
  *   F whose cited items changed meanwhile lands stale, never current. The
  *   log says which, by key prefix and counts only.
+ * - **Kept until replaced (Slice 4J, epic decision 49).** Each lens a call
+ *   replaces records this run, the call's model and the time it landed (the
+ *   service's clock); a lens it does not replace keeps its earlier reading
+ *   (`settleLightboxGroup`). The Opinion's citation basis moves to this
+ *   build's rule only when a new Opinion lands, never for a call that left
+ *   the earlier one on the board.
  */
 
 import type { LogSink } from '@/platform';
@@ -40,7 +46,7 @@ import { lightboxGroupReadsBoard } from '@shared/constants/lightbox';
 const BOARD_GONE = 'The board this press read is gone, so the Opinion was not read.';
 
 export interface LightboxPressRunInputs {
-  service: Pick<LightboxService, 'updateReadings'>;
+  service: Pick<LightboxService, 'clock' | 'updateReadings'>;
   boardId: string;
   groups: readonly LightboxReadingGroupId[];
   lens: LightboxLensId | undefined;
@@ -68,14 +74,18 @@ export function lightboxPressRun(inputs: LightboxPressRunInputs): LightboxPressR
     boardId, token, phase: 'streaming', groups: [...groups], groupsBack, outputCharacters, ...(lens ? { lens } : {})
   });
   const land = (outcome: LightboxGroupOutcome, token: string): boolean => {
+    const landing = { run: token, at: new Date(service.clock()).toISOString() };
+    // A new Opinion landed: its citations stand under this build's basis rule, and the board says so (Slice 5A).
+    // One that did not replace the earlier Opinion leaves its rule as it was (Slice 4J).
+    const opinionLanded = lightboxGroupReadsBoard(outcome.group) && outcome.status === 'ok' &&
+      outcome.tiles.some((tile) => tile.kind === 'opinion');
     const board = service.updateReadings(
       boardId,
       (readings, current) => readings.map((group) => (group.group === outcome.group
-        ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), lens)
+        ? settleLightboxGroup(group, holdLightboxNumberUsages(outcome, press.source.material.numbers, current.measured.numbers.rows), landing)
         : group)),
       { token, group: outcome.group },
-      // Group F read: its citations stand under this build's basis rule, and the board says so (Slice 5A).
-      lightboxGroupReadsBoard(outcome.group) && outcome.status === 'ok' ? { opinionBasis: LIGHTBOX_OPINION_BASIS_RULE_ID } : undefined
+      opinionLanded ? { opinionBasis: LIGHTBOX_OPINION_BASIS_RULE_ID } : undefined
     );
     if (!board) {
       outputChannel.appendLine(`[LightboxReadingHandler] Dropped group ${outcome.group}: its board is gone`);

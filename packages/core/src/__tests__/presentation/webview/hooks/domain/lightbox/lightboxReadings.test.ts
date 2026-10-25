@@ -42,9 +42,16 @@ describe('lens views', () => {
     const failed = { ...board, readings: [{ ...emptyLightboxReadingGroup('B'), status: 'failed' as const, error: 'Rate limited.' }] };
     expect(lightboxLensView(failed, 'voice')).toMatchObject({ phase: 'failed', notice: 'Rate limited.' });
 
-    // A failed re-read keeps the earlier reading, with the failure beside it.
-    const rereadFailed = { ...read, readings: read.readings.map((group) => (group.group === 'A' ? { ...group, status: 'failed' as const, error: 'Timed out.' } : group)) };
-    expect(lightboxLensView(rereadFailed, 'motif')).toMatchObject({ phase: 'ok', notice: 'Timed out.' });
+    // A failed re-read keeps the earlier reading it asked for, marked earlier with the failure (Slice 4J); a reading
+    // the call never asked for says nothing of it (PR #170 N-01).
+    const rereadFailed = { ...read, readings: read.readings.map((group) => (group.group === 'A'
+      ? { ...group, status: 'failed' as const, error: 'Timed out.', earlierLenses: [{ lens: 'motif' as const, reason: 'Timed out.' }] }
+      : group)) };
+    expect(lightboxLensView(rereadFailed, 'motif')).toMatchObject({ phase: 'ok', earlier: 'Timed out.' });
+    expect(lightboxLensView(rereadFailed, 'motif').notice).toBeUndefined();
+    expect(lightboxLensView(rereadFailed, 'headline')).toMatchObject({ phase: 'ok' });
+    expect(lightboxLensView(rereadFailed, 'headline').notice).toBeUndefined();
+    expect(lightboxLensView(rereadFailed, 'headline').earlier).toBeUndefined();
   });
 
   it('keeps an empty lens honest: no tiles, but its friction', () => {

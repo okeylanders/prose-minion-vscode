@@ -10,7 +10,8 @@
  * decision 41): "Run AI analyses" before any, "Finish" when a call with a
  * lens on is not back yet (stopped, failed, or never run), and "Re-analyze"
  * when every one landed; all three keep the primary style. It says how many
- * lenses are stale after the text changed (D4). Every figure comes from the
+ * lenses are stale after the text changed (D4), and how many earlier
+ * readings a later call did not replace (Slice 4J). Every figure comes from the
  * host's estimate and board. The Opinion (Slice 4D) is priced "up to" its
  * digest's bound, and the cost note says so; while it is the one call out,
  * the line says it is weighing the board.
@@ -33,6 +34,7 @@ import type {
 } from '@messages';
 import { LIGHTBOX_BOARD_GROUP, lightboxLensLabel, lightboxRereadLenses } from '@shared/constants/lightbox';
 import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxEarlierLensCount } from '@shared/constants/lightboxProvenance';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
 
@@ -251,6 +253,11 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   const stale = lightboxStaleLensCount(board);
   if (stale > 0) {
     parts.push(`${pluralize(stale, 'lens', 'lenses')} stale`);
+  }
+  // Slice 4J: readings a later call did not replace stay, and the line counts them.
+  const earlier = lightboxEarlierLensCount(board.readings);
+  if (earlier > 0) {
+    parts.push(`${pluralize(earlier, 'earlier reading')} kept`);
   }
   const note = parts.join(' · ');
   if (rest.length > 0) {

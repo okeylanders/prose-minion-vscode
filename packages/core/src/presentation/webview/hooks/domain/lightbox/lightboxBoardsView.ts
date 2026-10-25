@@ -171,7 +171,7 @@ export function buildLightboxBoardsBrowser(shelf: LightboxBoardShelf | null, opt
 
 /** Every saved board as a row, newest first, as the host listed them. */
 export function lightboxBoardRows(shelf: LightboxBoardShelf, options: LightboxBoardsViewOptions = {}): LightboxBoardRow[] {
-  const when = whenFormat(options.timeZone);
+  const when = lightboxWhenFormat(options.timeZone);
   return shelf.boards.map((board) => rowOf(board, when));
 }
 
@@ -216,7 +216,7 @@ export function lightboxSnapshotNotice(
 ): LightboxSnapshotView | undefined {
   // A board opened from outside that has saved here since has a file of its own, on screen (PR #167 N-02).
   const savedHere = shelf?.boards.some((board) => board.onScreen) ?? false;
-  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, whenFormat(options.timeZone), savedHere);
+  const snapshot = shelf?.snapshot && snapshotOf(shelf.snapshot, lightboxWhenFormat(options.timeZone), savedHere);
   return snapshot && (snapshot.tone === 'warn' || snapshot.dropped || shelf?.snapshot?.outside) ? snapshot : undefined;
 }
 
@@ -342,7 +342,8 @@ function costNote(costUsd: number): string {
   return costUsd < 0.005 ? 'under $0.01' : `≈ $${costUsd.toFixed(2)}`;
 }
 
-function whenFormat(timeZone: string | undefined): Intl.DateTimeFormat {
+/** How the board's surfaces tell a time: "Oct 23, 2026, 9:08 AM", in `timeZone` (the viewer's own when absent). */
+export function lightboxWhenFormat(timeZone: string | undefined): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',

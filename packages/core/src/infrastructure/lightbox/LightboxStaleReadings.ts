@@ -48,7 +48,11 @@
  * - keeps the writer's own marks on what survives: a spark set aside stays
  *   set aside (Slice 4), since its id and its words are unchanged;
  * - sets aside a group that was still being read when the text changed: its
- *   run read the old text, and nothing it returns is attached here.
+ *   run read the old text, and nothing it returns is attached here. Its
+ *   lenses keep the earlier readings they held, carried like any other and
+ *   marked earlier with the reason (Slice 4J, epic decision 49);
+ * - keeps each lens's provenance (the run, model and time that read it),
+ *   and its earlier mark while the lens still holds a reading.
  * A fresh reading of a lens replaces its stale readings and clears the mark
  * (`LightboxReadingState`).
  */
@@ -66,6 +70,8 @@ import type {
   LightboxWithheldQuote
 } from '@messages';
 import { LIGHTBOX_LENSES, lightboxGroupReadsBoard } from '@shared/constants/lightbox';
+import { lightboxLensHasReading } from '@shared/constants/lightboxProvenance';
+import { cancelLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingState';
 import { lightboxOpinionItemMap } from '@shared/constants/lightboxOpinionItems';
 import { carryLightboxOpinion } from '@/infrastructure/lightbox/LightboxOpinionGates';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
@@ -163,9 +169,20 @@ function carryOpinionGroup(
     }
   }
   const staleLenses = staleMarks(group, context.readAgainst);
-  const { pending: _pending, staleLenses: _previous, ...rest } = group;
-  const next: LightboxReadingGroup = { ...rest, tiles, withheldClaims, ...(staleLenses.length > 0 ? { staleLenses } : {}) };
-  return group.status === 'running' ? { ...next, status: 'cancelled', error: LIGHTBOX_CHANGED_WHILE_READING } : next;
+  const { staleLenses: _previous, ...rest } = group;
+  return settledCarry({ ...rest, tiles, withheldClaims, ...(staleLenses.length > 0 ? { staleLenses } : {}) });
+}
+
+/**
+ * A carried group as it now stands: one that was being read is set aside,
+ * its lenses' earlier readings kept (Slice 4J); an earlier mark stays only
+ * on a lens that still holds a reading.
+ */
+function settledCarry(group: LightboxReadingGroup): LightboxReadingGroup {
+  const held = group.status === 'running' ? cancelLightboxGroup(group, LIGHTBOX_CHANGED_WHILE_READING) : group;
+  const { earlierLenses, pending: _pending, ...rest } = held;
+  const earlier = earlierLenses?.filter((mark) => lightboxLensHasReading(held, mark.lens)) ?? [];
+  return { ...rest, ...(earlier.length > 0 ? { earlierLenses: earlier } : {}) };
 }
 
 
@@ -212,18 +229,15 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
     }
   }
   const staleLenses = staleMarks(group, tools.context.readAgainst);
-  const { pending: _pending, staleLenses: _previous, ...rest } = group;
-  const carried: LightboxReadingGroup = {
+  const { staleLenses: _previous, ...rest } = group;
+  return settledCarry({
     ...rest,
     tiles,
     // A quote that was found and is gone now counts as withheld in the tally.
     quoteChecks: group.quoteChecks.map((checks) => ({ ...checks, withheld: checks.withheld + (lostByLens.get(checks.lens) ?? 0) })),
     withheldClaims,
     ...(staleLenses.length > 0 ? { staleLenses } : {})
-  };
-  return group.status === 'running'
-    ? { ...carried, status: 'cancelled', error: LIGHTBOX_CHANGED_WHILE_READING }
-    : carried;
+  });
 }
 
 /** Every lens the group holds readings for is stale now; one already stale keeps its hash. */
