@@ -659,3 +659,49 @@ I agree. A preview's copy of the file is not a request token: copies are made as
 | Full Jest, Node 22.22.0 | Pass: 549 suites / 7,681 tests / 59 snapshots |
 
 No live provider call, private manuscript or native Extension Development Host was used. The native check is the writer's: with another extension's refactoring shown, run Fix on a chapter and change that chapter's language while VS Code asks to replace the shown one. The other refactoring should stay as it was.
+
+## Final Astra re-review — `ff53ff95`, 2026-10-25
+
+**Approved for merge into `epic/lightbox`.** No unresolved code-review blocker remains on implementation head `ff53ff956cd9f069c24aa4ac06ec21e166b6a0fc`, with **F-02 retained as the writer's explicitly accepted native-preview limitation, not a fixed defect**. This final disposition supersedes the earlier request-changes verdicts; the original review and all author responses remain above as history.
+
+**Final delta reviewed:** 15 files, +245 / −565 from report head `41ee1a32`, including `2e62c82b`, `565d2925` and the author response `ff53ff95`. Base remains `e3a7fac09e503b17ecbc78bc7629540a0c8db61f` on `epic/lightbox`.
+
+| Finding | Final disposition |
+| --- | --- |
+| F-01 — stale direct retry protection | Closed: surviving candidates are rechecked against the settled live snapshot |
+| F-02 — native-preview lifetime/language race | **Accepted risk, not fixed**: native preview remains; automatic discard is withdrawn |
+| F-03 — creation of Markdown syntax, including table cells | Closed: context/batch structure checks include nested cell tokens and relevant attributes |
+| F-04 — native coalescing of large edit sets | Closed: unambiguous replacement-aware reconciliation preserves counts and untouched leftovers |
+| F-05 — Clear undone by pending quick-fix re-show | Closed: re-show requires continued ownership of the captured issue map |
+| F-06 — unowned global preview cancellation | **Closed on this head:** no automatic preview command or copy-based ownership heuristic remains |
+| Closed quick-fix no-change overclaim | Closed: the writer is accurately warned that the fix may have gone in |
+
+### Why F-06 is now closed
+
+The adapter no longer invokes a global preview command, listens for preview-copy opens, or infers request ownership from model inventory. `RefactorPreviews` is removed. A held document's lifetime ending is recorded and logged; the writer's native Apply/Discard decision remains the only preview action. Source search confirms the former Discard command name is explanatory text only, not an invocation.
+
+Independent production-adapter and full-use-case controls verify that foreign same-file previews retain their pending selections for both supported schemes and both delayed-copy event orders. Staged/missing multi-file copies cannot trigger interference, and there is no queued automatic Discard to reach a later preview. Ordinary reviewed Apply, partial selection, refusal, direct apply and failure/disposal cleanup remain functional. The table-syntax closure controls were rerun on the final head, and Clear/coalesced-leftover behavior was rechecked without reopening the previously closed findings.
+
+### Accepted limitation and separate acceptance stages
+
+A language/lifetime change while native preview is held **can still allow the writer's subsequent Apply to modify the document**. Independent controls retain the plaintext-fence-to-Markdown witness: the write can reach now-protected text before the old lifetime is reported `closed`, with no flags shown. Removing global Discard intentionally restores the original accepted F-02 limit; no mitigation, strict pre-commit barrier or guaranteed no-write result is claimed. Same-version reopen probes remain port-level evidence only, not established native tab-close/model-retention behavior.
+
+The progress notification's Cancel does not discard native preview; the writer must use the preview's controls. The corrected closed quick-fix message warns that the edit may have gone in. This approval does not expand the writer's acceptance to unrelated defects or certify native UI behavior.
+
+**Never run here:** a native VS Code Extension Development Host, actual Refactor Preview/modal interaction, native one-step undo/redo, lightbulb/Problems/F8/accessibility acceptance, or live-provider proofreading quality/false-positive acceptance. All review edits used synthetic in-memory documents and provider stubs. These native and live-quality stages remain separate from this code-review approval.
+
+### Final verification
+
+| Check | Independent result on `ff53ff95` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass: core, webview and adapter |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings, unchanged baseline |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass; three existing webpack size warnings |
+| Full Jest, Node 18.20.8 | **549 suites / 7,681 tests / 59 snapshots pass** |
+| Final scratch regression/closure checks | **6 suites / 68 tests pass**, including copied controls and a 400-case deterministic reconciliation corpus nested in one test |
+| Focused repository adapter/lifetime/Clear checks | **5 suites / 30 tests pass**; 17 copied controls overlap the scratch run, so counts are not summed as unique coverage |
+| Exact implementation-head CI | [Push 40222179753](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40222179753) and [PR 40222184729](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40222184729): completed, success |
+
+All aggregate gates were rerun after the final code changes, with the previously recorded one-worker/memory-bounded Node 18 command. Existing dependencies were reused against the unchanged lockfile; no fresh install or independent Node 22 run is claimed. Final evidence is retained outside the repository under `pr172-review-evidence/rereview5` (the table-syntax scratch source remains under `rereview3/core`, with its final-head log under `rereview5`). Controlled-host tests deliberately isolate source-backed behavior; they do not substitute for the native/live acceptance stages above.
+
+No implementation fix, test fixture, generated bundle, unrelated author edit, formal GitHub review/comment, merge or deployment is included in the review publication. Only this report is appended on the same PR branch. Its resulting remote commit, exact bytes and report-only parent/diff are checked after publication, followed by exact report-head CI to a terminal result; those future checks are not inferred from the implementation-head runs.
