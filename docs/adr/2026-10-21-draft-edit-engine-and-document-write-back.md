@@ -858,6 +858,7 @@ mitigation:
 | F-03: a spacing fix with the same markup characters made a tag, or a fence | D4, D6: a fix must leave the document's Markdown structure as it was. Each top-level block an edit touches is lexed by `marked` before and after, its inline content with the document's own link definitions, and the shape (token types and nesting, heading depths, list kinds and task boxes, and every table cell's inline shape with the columns' alignment) must match (`utils/draftEdit/markdownStructure.ts`). The re-review found the first version reduced a table to its size, so a tag or a reference link made inside a cell passed. The batch is judged together; when a block's shape moves, its edits are kept in order only while the shape holds. A block too long to verify refuses its edits; since spans an edit touches at their edges join, a long run of such paragraphs can pass the bound together, and its fixes are then flagged instead (a conservative availability limit the re-review recorded). The policy row gains `preservesMarkdownStructure`. Placement downgrades such a fix to a flag (`markup-change`), so it is never preferred, and the applier checks again on the live text. |
 | F-04: at 1,000 operations VS Code merges an edit into one spanning change, and every fix read as unknown | D4 step 7: reconciliation replays the document. A change and the edits it touches form a cluster; the cluster's new text must read, in exactly one way, as the text between the edits unchanged with each edit original or replaced. Read that way, the cluster is given back as exactly those replacements, so leftover flags between them stay on their text; otherwise an edit the change reached into is unknown. A quick fix shows the untouched flags again after it applies, since the annotator moves flags change by change. |
 | F-02: a held Refactor Preview can write after a language change ends the watched lifetime | An accepted limit, decided 2026-10-25 by the writer: keep Refactor Preview. D3, D7: a review belongs to one lifetime of its document, and a best-effort discard when that lifetime ends narrows the window. It is not a pre-commit barrier (below). |
+| F-06 (second re-review): the discard could end a preview this review did not own | D3: VS Code's Discard acts on whichever preview holds the pane, and a request made while another is shown waits for the writer to agree to replace it. So the discard is sent only once the review's own preview holds the pane, read from the preview's copies of the file (below); never otherwise. |
 | F-05 (re-review): a Clear made while a quick fix's write was out was undone when it landed | D7: a Clear withdraws flags for good. After a quick fix lands, the untouched flags are shown again only while the issues it captured still hold the document's flags. A Clear replaces them, so nothing comes back; a Dismiss deletes from them, so it holds too. |
 
 ### F-02: a held review is discarded, best effort, when its document's lifetime ends
@@ -884,16 +885,37 @@ checklist (a strict barrier, without VS Code's diff), and direct only.
   ([`bulkEdit.contribution.ts`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/bulkEdit/browser/preview/bulkEdit.contribution.ts),
   the same at `main`). It runs whatever the button's precondition, because
   `registerAction2` registers `action.run` as its handler.
-- **Only while ours is held.** With no review open, Discard would open an
-  empty Refactor Preview panel. VS Code shows one preview at a time and asks
-  before another replaces it, in a modal dialog, so the preview open while
-  ours is held is ours.
-- **Stated limit.** The discard is sent when the close event reaches the
-  extension host. Two cases fall outside it:
-  - an Apply the writer makes before that event arrives;
-  - a preview VS Code is still opening when the discard arrives.
+- **Only once its own preview holds the pane** (F-06). Discard has no
+  target: it ends whichever preview is shown, or, with none, opens an empty
+  Refactor Preview panel. A request made while another preview is shown
+  waits, in a modal dialog, for the writer to agree to replace it
+  (`bulkEdit.contribution.ts` `_previewEdit`). So "our request is pending"
+  does not mean "our preview is shown". What does:
+  - Once a preview holds the pane, it copies each file it edits into a
+    model of its own (`bulkEditPreview.ts` `_init`).
+  - Those models reach the extension host as documents
+    (`shouldSynchronizeModel` excludes only too-large and simple-widget
+    models).
+  - A copy's URI carries the preview's scheme (`vscode-bulkeditpreview` at
+    1.82.0, `vscode-bulkeditpreview-editor` at main), the preview's
+    instance id as its authority, and the file's URI as its query
+    (`asPreviewUri`).
 
-  In either case the run reports the document closed or changed language,
+  `RefactorPreviews` reads them: a review's preview holds the pane when a
+  preview that opened after the review asked covers its document and
+  nothing else. The discard is sent at the close if that is already so,
+  or when such a preview opens after the close (VS Code was still opening
+  it, or the writer then let it replace the one shown).
+- **What it never touches.** Another extension's preview, another
+  chapter's review, or any preview open before the review asked is never
+  discarded.
+- **Where ownership is unsure, nothing is discarded.** That covers an unknown
+  scheme, a copy too large to sync, and a preview of several files. One
+  case passes for ours: a several-file preview whose first copy alone has
+  opened, until its next copy opens.
+- **Stated limit.** The discard is sent when the close event reaches the
+  extension host. An Apply the writer makes before that event arrives
+  still lands, and the run reports the document closed or changed language
   and shows nothing.
 - **The port.** `DocumentEditor` now says a review belongs to one lifetime
   of its document. A host must end it without writing when that lifetime
@@ -903,7 +925,10 @@ checklist (a strict barrier, without VS Code's diff), and direct only.
   preview: Discard is that call. The progress notification's Cancel still
   does not use it; that is a follow-up.
 - **The wording.** A closed run says the document "was closed or changed
-  language", since a language change now ends the review too.
+  language", since a language change now ends the review too. A closed
+  quick fix asks the writer to check the file, since its fix may have gone
+  in: once the lifetime is over, what landed cannot be read (the second
+  re-review).
 
 ## Out of scope (follow-ups)
 

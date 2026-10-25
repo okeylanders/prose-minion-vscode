@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review and re-review fixes (F-01 to F-05) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
-- 548 suites / 7,681 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review and re-review fixes (F-01 to F-06) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
+- 550 suites / 7,694 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1593,8 +1593,11 @@ writer's own document:
   held the VS Code adapter answers the document's close event with VS Code's
   own Discard (`refactorPreview.discard`) and answers `closed`. That is best
   effort, never a guarantee: an Apply that beats the close event to the
-  extension host is the ADR's stated limit. Send it only while a review of
-  ours is held: with none, it opens an empty preview panel.
+  extension host is the ADR's stated limit. Discard ends whichever preview
+  holds the pane, so send it only once the review's own preview does
+  (`RefactorPreviews`, PR #172 F-06: a preview copy of its document, and
+  nothing else, opened after it asked). Never discard on "our request is
+  pending" alone: it may be waiting to replace another's preview.
 - **A Clear is for good** (PR #172 F-05). A quick fix that lands after a
   Clear shows nothing again: it re-shows untouched flags only while the
   issues it captured still hold the document's flags.

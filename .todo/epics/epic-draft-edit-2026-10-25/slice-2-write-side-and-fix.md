@@ -133,15 +133,22 @@ PR #172 review" records each:
   (close, reopen or language change) with VS Code's own Discard, and the run
   reports the document closed with nothing written. It narrows the window
   without closing it: an Apply that beats the close event to the extension
-  host, or a preview still opening, is the stated limit, and the run still
-  shows nothing.
+  host is the stated limit, and the run still shows nothing. (A preview still
+  opening is discarded as it opens, since F-06.)
+- **F-06 (second re-review). The discard ends only the review's own
+  preview.** VS Code's Discard ends whichever preview holds the pane, and a
+  review may be waiting to replace another's. So it is sent only once the
+  review's own preview holds the pane, read from the copy of its document
+  that preview opens; another extension's preview, or another chapter's
+  review, is never discarded. A closed quick fix now asks the writer to
+  check the file instead of saying nothing changed.
 - **F-05 (re-review). A Clear is for good.** A quick fix that lands after a
   Clear this file or Clear all no longer shows the cleared flags again.
 
 ## Verification
 
 - CI's four steps under Node 18.20.8: typecheck, lint, build, and the full
-  suite (548 suites / 7,681 tests / 59 snapshots with the PR #172 review
+  suite (550 suites / 7,694 tests / 59 snapshots with the PR #172 review
   fixes; lint 0 errors / 1,133 warnings, the baseline), with `epic/lightbox`
   at `e3a7fac0`. The full suite also passes under Node 22.
 - Fix is tested through the real applier, anchoring and guard on a document
