@@ -1,240 +1,92 @@
 /**
- * PR #172 F-02, through the production `VsCodeDocumentEditor`,
- * `VsCodeIssueAnnotator`, `DraftEditApplier` and `DraftEditUseCase`: a held
- * review is discarded, best effort, when its document's lifetime ends. The
- * writer accepted the gap that leaves, and one case pins it.
- *
- * VS Code is a controlled double built from its source (1.82.0 and main):
- * - Refactor Preview holds `workspace.applyEdit` until the writer acts. Apply
- *   writes the ticked entries if the document's version has not moved; a
- *   language change does not move it.
- * - A language change fires the document's close event (then open), leaving
- *   the same document open (`extHostDocuments.$acceptModelLanguageChanged`).
- * - `refactorPreview.discard` settles a held preview with nothing applied
- *   (`BulkEditPane.discard`), and does nothing when none is held.
+ * PR #172 F-02 and F-06, through the production `VsCodeDocumentEditor`,
+ * `VsCodeIssueAnnotator`, `DraftEditApplier` and `DraftEditUseCase`, on the
+ * controlled VS Code of `refactorPreviewHost.ts`:
+ * - F-02: a held review is discarded, best effort, when its document's
+ *   lifetime ends. The writer accepted the gap that leaves; one case pins it.
+ * - F-06: the discard never ends a preview the review does not own: another
+ *   extension's, or another chapter's, shown while this review waits to
+ *   replace it.
  *
  * Text is public-domain *Alice*; nothing reaches a provider.
- *
- * And PR #172 F-05: a Clear made while a Fix all is held in review stays
- * cleared when the writer applies it, in that document and no other.
  */
 
-/* eslint-disable @typescript-eslint/naming-convention -- the double mirrors VS Code's own API names, and the mocked barrel's exports. */
-jest.mock('vscode', () => {
-  type Listener = (event: unknown) => void;
-  const emitter = () => {
-    const listeners = new Set<Listener>();
-    return {
-      event: (listener: Listener) => {
-        listeners.add(listener);
-        return { dispose: () => listeners.delete(listener) };
-      },
-      fire: (event: unknown) => listeners.forEach((listener) => listener(event))
-    };
-  };
-  const changes = emitter();
-  const closes = emitter();
-  const diagnostics = new Map<string, unknown[]>();
-  let session: { edit: unknown; settle: (applied: boolean) => void; done: boolean } | undefined;
-  const preview = {
-    hold: (edit: unknown) => new Promise<boolean>((settle) => {
-      session = { edit, settle, done: false };
-    }),
-    held: () => (session && !session.done ? session : undefined),
-    discard: () => {
-      if (session && !session.done) {
-        session.done = true;
-        session.settle(false);
-      }
-    }
-  };
-  class Range {
-    constructor(readonly start: { offset: number }, readonly end: { offset: number }) {}
-  }
-  class Diagnostic {
-    source?: string;
-    code?: unknown;
-    constructor(readonly range: Range, readonly message: string, readonly severity: number) {}
-  }
-  class WorkspaceEdit {
-    readonly replacements: Array<{ range: Range; newText: string; metadata?: { needsConfirmation?: boolean } }> = [];
-    replace(_uri: unknown, range: Range, newText: string, metadata?: { needsConfirmation?: boolean }): void {
-      this.replacements.push({ range, newText, ...(metadata ? { metadata } : {}) });
-    }
-  }
-  return {
-    workspace: {
-      textDocuments: [] as unknown[],
-      onDidChangeTextDocument: changes.event,
-      onDidCloseTextDocument: closes.event,
-      applyEdit: jest.fn()
-    },
-    commands: {
-      executeCommand: jest.fn(async (command: string) => {
-        if (command === 'refactorPreview.discard') {
-          preview.discard();
-        }
-      })
-    },
-    languages: {
-      createDiagnosticCollection: () => ({
-        set: (uri: unknown, list: unknown[]) => diagnostics.set(String(uri), list),
-        delete: (uri: unknown) => diagnostics.delete(String(uri)),
-        clear: () => diagnostics.clear(),
-        dispose: () => diagnostics.clear()
-      }),
-      registerCodeActionsProvider: () => ({ dispose: () => undefined })
-    },
-    Uri: { parse: (value: string) => ({ toString: () => value }) },
-    Range,
-    Diagnostic,
-    WorkspaceEdit,
-    DiagnosticSeverity: { Warning: 1, Information: 2 },
-    CodeActionKind: { QuickFix: 'quickfix' },
-    CodeAction: class {},
-    mockHost: { changes, closes, diagnostics, preview }
-  };
-}, { virtual: true });
+jest.mock('vscode', () => jest.requireActual('@app/__tests__/platform/vscode/refactorPreviewHost').createVsCodeDouble(), { virtual: true });
 
+/* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's exports. */
 jest.mock('@prose-minion/core', () => ({
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges,
   DraftEditUseCase: jest.requireActual('@/application/services/draftEdit/DraftEditUseCase').DraftEditUseCase,
   DraftEditApplier: jest.requireActual('@/application/services/draftEdit/DraftEditApplier').DraftEditApplier
 }));
+/* eslint-enable @typescript-eslint/naming-convention */
 
 import * as vscode from 'vscode';
 import { DraftEditApplier, DraftEditUseCase, type DraftEditOutcome, type DraftEditQuickFixOutcome } from '@prose-minion/core';
 import { REFACTOR_PREVIEW_DISCARD_COMMAND, VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor';
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
+import { reviewHarness, type FakeDocument } from '@app/__tests__/platform/vscode/refactorPreviewHost';
 
-interface RecordedEdit {
-  replacements: Array<{ range: { start: { offset: number }; end: { offset: number } }; newText: string; metadata?: { needsConfirmation?: boolean } }>;
-}
-interface HeldPreview {
-  edit: RecordedEdit;
-  settle(applied: boolean): void;
-  done: boolean;
-}
-interface MockHost {
-  changes: { fire(event: unknown): void };
-  closes: { fire(event: unknown): void };
-  diagnostics: Map<string, Array<{ range: { start: { offset: number }; end: { offset: number } } }>>;
-  preview: { hold(edit: unknown): Promise<boolean>; held(): HeldPreview | undefined };
-}
-interface FakeDocument {
-  uri: { toString(): string };
-  version: number;
-  languageId: string;
-  isClosed: boolean;
-  text: string;
-  getText(): string;
-  positionAt(offset: number): { offset: number };
-  offsetAt(position: { offset: number }): number;
-}
 type Finding = { anchor: { quote: string }; category: 'spelling' | 'tense'; replacement: string; explanation: string };
 
-const host = (vscode as unknown as { mockHost: MockHost }).mockHost;
-const workspace = vscode.workspace as unknown as { textDocuments: FakeDocument[]; applyEdit: jest.Mock };
-const commands = vscode.commands as unknown as { executeCommand: jest.Mock };
-const URI = 'file:///workspace/chapter-01.md';
+const { host, commands, openDocument, write, writerApplies, changeLanguage, asked, reset } = reviewHarness(vscode);
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister, who is reading.';
+const FIXED = 'Alice was beginning to get very tired of sitting by her sister, who is reading.';
+const SECOND = 'file:///workspace/chapter-02.md';
+const NOTES = 'file:///workspace/notes.md';
 const FINDINGS: Finding[] = [
   { anchor: { quote: 'begining' }, category: 'spelling', replacement: 'beginning', explanation: 'A typo.' },
   { anchor: { quote: 'vrey' }, category: 'spelling', replacement: 'very', explanation: 'A typo.' },
   { anchor: { quote: 'is reading' }, category: 'tense', replacement: 'was reading', explanation: 'Past tense.' }
 ];
 
-function openDocument(text: string, languageId: string, uri = URI): FakeDocument {
-  const document: FakeDocument = {
-    uri: { toString: () => uri },
-    version: 1,
-    languageId,
-    isClosed: false,
-    text,
-    getText: () => document.text,
-    positionAt: (offset) => ({ offset }),
-    offsetAt: (position) => position.offset
-  };
-  workspace.textDocuments.push(document);
-  return document;
-}
+const disposers: Array<() => void> = [];
+afterEach(() => {
+  disposers.splice(0).forEach((dispose) => dispose());
+  reset();
+});
 
-/** VS Code writing the preview's entries as one change, at an unmoved version: what its Apply does. */
-function write(document: FakeDocument, edit: RecordedEdit): void {
-  const changes = edit.replacements.map((each) => ({ offset: each.range.start.offset, length: each.range.end.offset - each.range.start.offset, text: each.newText }));
-  for (const each of [...changes].sort((a, b) => b.offset - a.offset)) {
-    document.text = document.text.slice(0, each.offset) + each.text + document.text.slice(each.offset + each.length);
-  }
-  document.version += 1;
-  host.changes.fire({ document, contentChanges: changes.map((each) => ({ rangeOffset: each.offset, rangeLength: each.length, text: each.text })) });
-}
+const log = () => ({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
 
-/** The writer ticks the file and presses Apply, as VS Code permits at an unmoved version; nothing happens once the preview has gone. */
-function writerApplies(document: FakeDocument): boolean {
-  const held = host.preview.held();
-  if (!held) {
-    return false;
-  }
-  held.done = true;
-  write(document, held.edit);
-  held.settle(true);
-  return true;
-}
-
-/** VS Code changing a document's language: close (then open) for the same document, its version unmoved. */
-function changeLanguage(document: FakeDocument, languageId: string): void {
-  document.languageId = languageId;
-  host.closes.fire(document);
-}
-
-async function previewHeld(): Promise<void> {
-  for (let turn = 0; turn < 50 && !host.preview.held(); turn += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-  expect(host.preview.held()).toBeDefined();
-}
-
-function setup(document: FakeDocument, findings: Finding[]) {
+/** One use case and annotator, as the extension has. */
+function proofreader(findings: Finding[] = FINDINGS) {
   const pass = { proofread: jest.fn(async () => ({ kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings, malformed: 0 }] })) };
-  const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
+  const documentEditor = new VsCodeDocumentEditor(log());
   const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
-  const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
-  const target = () => ({ uri: URI, version: document.version, text: document.getText(), languageId: document.languageId, relativePath: 'chapter-01.md' });
+  const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), log());
+  disposers.push(() => {
+    documentEditor.dispose();
+    annotator.dispose();
+  });
+  const snapshot = (document: FakeDocument) => ({ uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: document.languageId });
   return {
-    fix: (): Promise<DraftEditOutcome> => useCase.run(target(), { kind: 'proofread', output: 'fix', review: 'preview' }),
-    flag: (): Promise<DraftEditOutcome> => useCase.run(target(), { kind: 'proofread', output: 'flag' }),
-    fixAll: (): Promise<DraftEditQuickFixOutcome> =>
-      useCase.applyShown({ uri: URI, version: document.version, text: document.getText(), languageId: document.languageId }, 'all-fixes', 'preview'),
-    dispose: () => {
-      documentEditor.dispose();
-      annotator.dispose();
-    }
+    fix: (document: FakeDocument): Promise<DraftEditOutcome> =>
+      useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'fix', review: 'preview' }),
+    flag: (document: FakeDocument): Promise<DraftEditOutcome> =>
+      useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' }),
+    fixAll: (document: FakeDocument): Promise<DraftEditQuickFixOutcome> => useCase.applyShown(snapshot(document), 'all-fixes', 'preview')
   };
 }
 
 const flaggedText = (document: FakeDocument) =>
-  (host.diagnostics.get(URI) ?? []).map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
+  (host.diagnostics.get(document.uri.toString()) as Array<{ range: { start: { offset: number }; end: { offset: number } } }> | undefined ?? [])
+    .map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
+
+/** Another extension's preview, of a file Proofread never touches, holding the pane. */
+function anotherExtensionsPreview(): { settled(): boolean } {
+  let settled = false;
+  void host.pane.request({ files: [NOTES], replacements: [] }).then(() => {
+    settled = true;
+  });
+  return { settled: () => settled };
+}
 
 describe('A held review is discarded, best effort, when its document\'s lifetime ends (PR #172 F-02)', () => {
-  const disposers: Array<() => void> = [];
-  beforeEach(() => {
-    workspace.applyEdit.mockImplementation((edit: RecordedEdit) => host.preview.hold(edit));
-  });
-  afterEach(() => {
-    disposers.splice(0).forEach((dispose) => dispose());
-    workspace.textDocuments.splice(0);
-    workspace.applyEdit.mockReset();
-    commands.executeCommand.mockClear();
-    host.diagnostics.clear();
-  });
-
   it('writes nothing when Markdown becomes JavaScript during review, even if the writer then presses Apply', async () => {
     const document = openDocument(TEXT, 'markdown');
-    const proofread = setup(document, FINDINGS);
-    disposers.push(proofread.dispose);
-    const run = proofread.fix();
-    await previewHeld();
+    const run = proofreader().fix(document);
+    await asked();
 
     changeLanguage(document, 'javascript');
     const pressed = writerApplies(document);
@@ -252,10 +104,8 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
 
     it('writes nothing into the fence', async () => {
       const document = openDocument(fenced, 'plaintext');
-      const proofread = setup(document, [teh]);
-      disposers.push(proofread.dispose);
-      const run = proofread.fix();
-      await previewHeld();
+      const run = proofreader([teh]).fix(document);
+      await asked();
 
       changeLanguage(document, 'markdown');
       const pressed = writerApplies(document);
@@ -267,10 +117,8 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
 
     it('control: with no language change, the writer\'s Apply writes the fix', async () => {
       const document = openDocument(fenced, 'plaintext');
-      const proofread = setup(document, [teh]);
-      disposers.push(proofread.dispose);
-      const run = proofread.fix();
-      await previewHeld();
+      const run = proofreader([teh]).fix(document);
+      await asked();
 
       expect(writerApplies(document)).toBe(true);
 
@@ -282,10 +130,8 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
 
   it('writes nothing when the document closes during review', async () => {
     const document = openDocument(TEXT, 'markdown');
-    const proofread = setup(document, FINDINGS);
-    disposers.push(proofread.dispose);
-    const run = proofread.fix();
-    await previewHeld();
+    const run = proofreader().fix(document);
+    await asked();
 
     document.isClosed = true;
     host.closes.fire(document);
@@ -298,11 +144,10 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
 
   it('writes nothing through Fix all when the language changes during its review', async () => {
     const document = openDocument(TEXT, 'markdown');
-    const proofread = setup(document, FINDINGS);
-    disposers.push(proofread.dispose);
-    await expect(proofread.flag()).resolves.toMatchObject({ kind: 'completed', flagged: 3 });
-    const fixAll = proofread.fixAll();
-    await previewHeld();
+    const proofread = proofreader();
+    await expect(proofread.flag(document)).resolves.toMatchObject({ kind: 'completed', flagged: 3 });
+    const fixAll = proofread.fixAll(document);
+    await asked();
 
     changeLanguage(document, 'javascript');
     const pressed = writerApplies(document);
@@ -314,91 +159,74 @@ describe('A held review is discarded, best effort, when its document\'s lifetime
 
   it('the stated limit: an Apply that lands before the close event reaches the extension host is reported closed, with nothing shown', async () => {
     const document = openDocument(TEXT, 'markdown');
-    const proofread = setup(document, FINDINGS);
-    disposers.push(proofread.dispose);
-    const run = proofread.fix();
-    await previewHeld();
+    const run = proofreader().fix(document);
+    const shown = await asked();
 
-    // In VS Code the language changed, then the writer pressed Apply, before the extension host heard of the change.
-    const held = host.preview.held()!;
-    held.done = true;
-    write(document, held.edit);
+    // In VS Code the language changed, then the writer pressed Apply, before the extension host heard of the change:
+    // the pane is already free when the discard arrives.
+    host.pane.current = undefined;
+    shown.done = true;
     changeLanguage(document, 'javascript');
-    held.settle(true);
+    write(document, shown.edit);
+    host.pane.release(shown);
+    shown.settle(true);
 
     await expect(run).resolves.toMatchObject({ kind: 'closed' });
-    expect(document.text).toBe('Alice was beginning to get very tired of sitting by her sister, who is reading.');
+    expect(document.text).toBe(FIXED);
     expect(flaggedText(document)).toEqual([]);
   });
 });
 
-describe('A Clear while a Fix all is held in review stays cleared (PR #172 F-05)', () => {
-  const OTHER = 'file:///workspace/chapter-02.md';
-  const disposers: Array<() => void> = [];
-  beforeEach(() => {
-    workspace.applyEdit.mockImplementation((edit: RecordedEdit) => host.preview.hold(edit));
-  });
-  afterEach(() => {
-    disposers.splice(0).forEach((dispose) => dispose());
-    workspace.textDocuments.splice(0);
-    workspace.applyEdit.mockReset();
-    commands.executeCommand.mockClear();
-    host.diagnostics.clear();
+describe('The discard never ends a preview the review does not own (PR #172 F-06)', () => {
+  it('leaves another extension\'s preview, shown while the review waits to replace it, when the review\'s document changes language', async () => {
+    const theirs = anotherExtensionsPreview();
+    const document = openDocument(TEXT, 'markdown');
+    const run = proofreader().fix(document);
+    await asked('waiting');
+
+    changeLanguage(document, 'javascript');
+
+    expect(commands.executeCommand).not.toHaveBeenCalled();
+    expect(host.pane.current?.edit.files).toEqual([NOTES]);
+    host.pane.refuse(); // The writer keeps the preview shown.
+    await expect(run).resolves.toMatchObject({ kind: 'closed' });
+    expect(theirs.settled()).toBe(false);
+    expect(document.text).toBe(TEXT);
   });
 
-  /** One use case and annotator, as the extension has, with two chapters flagged. */
-  async function twoFlaggedChapters() {
+  it('leaves another chapter\'s review shown, and its fixes still go in when the writer applies them', async () => {
     const first = openDocument(TEXT, 'markdown');
-    const second = openDocument(TEXT, 'markdown', OTHER);
-    const pass = { proofread: jest.fn(async () => ({ kind: 'completed' as const, chunks: [{ kind: 'read' as const, findings: FINDINGS, malformed: 0 }] })) };
-    const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
-    const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
-    const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
-    disposers.push(() => {
-      documentEditor.dispose();
-      annotator.dispose();
-    });
-    const snapshot = (document: FakeDocument) => ({ uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: 'markdown' });
-    for (const document of [first, second]) {
-      await useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' });
-    }
-    const flags = (document: FakeDocument) =>
-      (host.diagnostics.get(document.uri.toString()) ?? []).map((diagnostic) => document.text.slice(diagnostic.range.start.offset, diagnostic.range.end.offset));
-    expect([flags(first), flags(second)]).toEqual([['begining', 'vrey', 'is reading'], ['begining', 'vrey', 'is reading']]);
-    const fixAll = useCase.applyShown(snapshot(first), 'all-fixes', 'preview');
-    await previewHeld();
-    return { first, second, useCase, fixAll, flags };
-  }
+    const second = openDocument(TEXT, 'markdown', SECOND);
+    const proofread = proofreader();
+    const firstRun = proofread.fix(first);
+    await asked();
+    const secondRun = proofread.fix(second);
+    await asked('waiting');
 
-  it('keeps the first chapter cleared, and leaves the other chapter\'s flags alone', async () => {
-    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
+    changeLanguage(second, 'javascript');
 
-    useCase.clear(first.uri.toString());
+    expect(commands.executeCommand).not.toHaveBeenCalled();
+    host.pane.refuse();
+    await expect(secondRun).resolves.toMatchObject({ kind: 'closed' });
     expect(writerApplies(first)).toBe(true);
-
-    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
-    expect(flags(first)).toEqual([]);
-    expect(flags(second)).toEqual(['begining', 'vrey', 'is reading']);
+    await expect(firstRun).resolves.toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 2 } });
+    expect([first.text, second.text]).toEqual([FIXED, TEXT]);
   });
 
-  it('keeps every chapter cleared by Clear all', async () => {
-    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
+  it('discards the review as its preview opens, if the writer then lets it replace the one shown', async () => {
+    const theirs = anotherExtensionsPreview();
+    const document = openDocument(TEXT, 'markdown');
+    const run = proofreader().fix(document);
+    await asked('waiting');
+    changeLanguage(document, 'javascript');
 
-    useCase.clear();
-    expect(writerApplies(first)).toBe(true);
+    host.pane.replace(); // The writer chose to replace theirs; ours then holds the pane, for a lifetime that has ended.
+    const pressed = writerApplies(document);
 
-    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
-    expect([flags(first), flags(second)]).toEqual([[], []]);
-  });
-
-  it('control: clearing the other chapter still shows the first one\'s untouched flag again', async () => {
-    const { first, second, useCase, fixAll, flags } = await twoFlaggedChapters();
-
-    useCase.clear(OTHER);
-    expect(writerApplies(first)).toBe(true);
-
-    await expect(fixAll).resolves.toMatchObject({ kind: 'done', applied: 2 });
-    expect(flags(first)).toEqual(['is reading']);
-    expect(flags(second)).toEqual([]);
+    await expect(run).resolves.toMatchObject({ kind: 'closed' });
+    expect(commands.executeCommand).toHaveBeenCalledTimes(1);
+    expect(pressed).toBe(false);
+    expect(document.text).toBe(TEXT);
+    expect(theirs.settled()).toBe(true);
   });
 });

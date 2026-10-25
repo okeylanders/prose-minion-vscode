@@ -158,6 +158,7 @@ describe('describeQuickFixOutcome (Slice 2)', () => {
     [{ kind: 'changed' as const }, 'a.md changed since the fix was offered, so nothing was changed.'],
     [{ kind: 'nothing' as const }, 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.'],
     [{ kind: 'busy' as const }, 'Proofread is already working on a.md.'],
+    [{ kind: 'closed' as const }, 'a.md was closed or changed language before the fix finished. Check it: the fix may have gone in.'],
     [done('stale', 0, 1), 'a.md changed as the fix went in, so it was not applied.'],
     [{ ...done('stale', 0, 1), review: 'preview' as const }, 'a.md changed during review, so no fixes were applied.'],
     [done('none', 0), 'That fix was not applied: its text has changed, or it would change a line break or the Markdown around it.']

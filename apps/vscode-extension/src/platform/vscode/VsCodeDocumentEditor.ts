@@ -30,13 +30,22 @@
  * preview commits inside `applyEdit`, with no hook between the writer's Apply
  * and the write, and a language change moves no version, so VS Code itself
  * would apply the review to the document as it now reads. As a best-effort
- * mitigation, not a barrier, the close event (which a language change fires
- * too) runs VS Code's own Discard (`refactorPreview.discard`) while a review
- * is held: nothing is written, and the answer is `closed`. The discard is
- * sent when that event reaches the extension host, so two cases fall outside
- * it, the limit the writer accepted and the ADR states: an Apply the writer
- * makes before then, and a preview VS Code is still opening. Either way the
- * run reports the document closed and shows nothing.
+ * mitigation, not a barrier, a held review whose document closes (which a
+ * language change fires too) is ended with VS Code's own Discard
+ * (`refactorPreview.discard`): nothing is written, and the answer is
+ * `closed`.
+ *
+ * Discard acts on whichever preview holds the pane, so it is sent only once
+ * the review's own preview holds it (`RefactorPreviews`, PR #172 F-06): at the
+ * close if it already does, or when it opens after the close. A preview of
+ * another review, another document or another extension is never discarded,
+ * even while this review waits for VS Code's "Another refactoring is being
+ * previewed" dialog; that preview's reviewer chose to replace it or not.
+ *
+ * The limit the writer accepted and the ADR states: the discard is sent when
+ * the event reaches the extension host, so an Apply the writer makes before
+ * then still lands, and the run reports the document closed and shows
+ * nothing.
  */
 import * as vscode from 'vscode';
 import type {
@@ -49,6 +58,7 @@ import type {
   DocumentWatchResult,
   LogSink
 } from '@prose-minion/core';
+import { REFACTOR_PREVIEW_SCHEMES, RefactorPreviews, type PreviewDocumentUri } from './RefactorPreviews';
 
 /** The command behind Refactor Preview's Discard button (`bulkEdit.contribution.ts`, at 1.82.0 and at main). */
 export const REFACTOR_PREVIEW_DISCARD_COMMAND = 'refactorPreview.discard';
@@ -63,18 +73,37 @@ interface WatchState {
 /** A review VS Code is holding inside `applyEdit`. */
 interface HeldReview {
   readonly uri: string;
+  /** The previews open when it asked: none of them is its own. */
+  readonly before: ReadonlySet<string>;
   /** Its document closed, reopened or changed language while it was held. */
   ended: boolean;
+  discarded: boolean;
+}
+
+/** A document's URI as `RefactorPreviews` reads it; only a preview's copy names a file. */
+function previewUriOf(document: vscode.TextDocument): PreviewDocumentUri {
+  const { scheme, authority, query } = document.uri;
+  if (!REFACTOR_PREVIEW_SCHEMES.has(scheme) || query === '') {
+    return { scheme, authority, file: undefined };
+  }
+  try {
+    return { scheme, authority, file: vscode.Uri.parse(query, true).toString() };
+  } catch {
+    return { scheme, authority, file: undefined };
+  }
 }
 
 export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
   private readonly watches = new Set<WatchState>();
   private readonly reviews = new Set<HeldReview>();
+  private readonly previews = new RefactorPreviews();
   private readonly subscriptions: vscode.Disposable[];
 
   constructor(private readonly log: LogSink) {
+    vscode.workspace.textDocuments.forEach((document) => this.previews.opened(previewUriOf(document)));
     this.subscriptions = [
       vscode.workspace.onDidChangeTextDocument((event) => this.record(event)),
+      vscode.workspace.onDidOpenTextDocument((document) => this.open(document)),
       vscode.workspace.onDidCloseTextDocument((document) => this.close(document))
     ];
   }
@@ -130,7 +159,9 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
         change.replace(document.uri, range, edit.newText);
       }
     }
-    const review: HeldReview | undefined = options.review === 'preview' ? { uri, ended: false } : undefined;
+    const review: HeldReview | undefined = options.review === 'preview'
+      ? { uri, before: this.previews.current(), ended: false, discarded: false }
+      : undefined;
     if (review) {
       this.reviews.add(review);
     }
@@ -177,30 +208,40 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
     }
   }
 
+  private open(document: vscode.TextDocument): void {
+    if (this.previews.opened(previewUriOf(document))) {
+      // A review whose document closed while VS Code was still opening its preview, or asking to replace another.
+      this.discardHeld();
+    }
+  }
+
   private close(document: vscode.TextDocument): void {
+    this.previews.closed(previewUriOf(document));
     const uri = document.uri.toString();
     for (const state of this.watches) {
       if (state.uri === uri) {
         state.closed = true;
       }
     }
-    const ending = [...this.reviews].filter((review) => review.uri === uri && !review.ended);
-    if (ending.length > 0) {
-      ending.forEach((review) => {
+    for (const review of this.reviews) {
+      if (review.uri === uri) {
         review.ended = true;
-      });
-      this.discardReview();
+      }
     }
+    this.discardHeld();
   }
 
   /**
-   * End the review VS Code holds, as its Discard button does. Only ever sent
-   * while one of ours is held: with none open, the command would open an empty
-   * Refactor Preview panel. VS Code shows one preview at a time, so the one it
-   * shows is ours, except while it asks, in a modal dialog, whether ours may
-   * replace another's.
+   * End, as its Discard button does, an ended review whose own preview holds
+   * the pane. Never sent otherwise: Discard would end another's preview, or,
+   * with none open, open an empty Refactor Preview panel.
    */
-  private discardReview(): void {
+  private discardHeld(): void {
+    const review = [...this.reviews].find((each) => each.ended && !each.discarded && this.previews.holds(each.uri, each.before));
+    if (!review) {
+      return;
+    }
+    review.discarded = true;
     this.log.appendLine('[DraftEdit] A document under review closed or changed language: discarding its Refactor Preview');
     Promise.resolve(vscode.commands.executeCommand(REFACTOR_PREVIEW_DISCARD_COMMAND)).catch((error: unknown) => {
       this.log.appendLine(`[DraftEdit] Refactor Preview was not discarded: ${error instanceof Error ? error.message : String(error)}`);

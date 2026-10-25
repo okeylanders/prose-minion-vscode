@@ -117,7 +117,8 @@ export function describeQuickFixOutcome(outcome: DraftEditQuickFixOutcome, docum
     case 'nothing':
       return say('info', 'That Proofread fix is no longer there: its flag was dismissed, or its text edited.');
     case 'closed':
-      return say('warning', `${documentLabel} was closed or changed language, so nothing was changed.`);
+      // Its lifetime is over, so what landed cannot be read: an Apply can win the race to it (PR #172 F-02).
+      return say('warning', `${documentLabel} was closed or changed language before the fix finished. Check it: the fix may have gone in.`);
     case 'done': {
       switch (outcome.answer) {
         case 'submitted': {
