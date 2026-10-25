@@ -551,3 +551,53 @@ The test pins 40 and 8 inside a quote.
 | Full Jest, Node 22 | Pass; 537 suites / 7,501 tests / 59 snapshots |
 
 No live provider call was made. Fixtures are public-domain *Alice* or synthetic. The Extension Development Host pass remains the writer's.
+
+---
+
+## Astra third re-review — 2026-10-25
+
+**Reviewed head:** `0ebf3c80b67f2415c4b5f4f4fc6697f83a0ca977`. **Base:** `31edcfdfda7ebe2cab89a121cfdba5655dbd170a`, unchanged.
+
+Reviewed all three commits after report commit `8be89444`: implementation `96418bfe`, documentation `3aa8b175` and author response `0ebf3c80`; 11 files, +179 / −23. Every preceding report and author response is preserved unchanged.
+
+### Final disposition
+
+**F-02 is closed. F-01 and F-03 through F-06 remain closed. The P3 key-normalization note and the quoted-list guard note are also closed. No new blocking finding was established on this head.** This supersedes the earlier request-changes dispositions. It is an independent code-review conclusion, not a formal GitHub approval, permission to merge, or clearance for future document writes.
+
+### F-02 closure and bounded behavior
+
+- **Final table cell:** the unconditional post-loop flush now preserves the last cell regardless of escape-loop termination. Both retained full-document/selection witnesses pass: the code word is absent from the locally captured payload, produces no diagnostic, and a selection of it is empty with no pass call. An independent 180-case matrix covers one through five trailing backslashes, newline/pipe endings, code/link/tag contents and LF/CRLF/CR, retaining ordinary labels with no exclusion failure.
+- **Destination overflow:** a distinct overflow result now protects from the destination's opening parenthesis to the end of its inline scope. Both retained depth-33 full-document/selection witnesses pass; depth 32 remains protected and permits following prose. The bound stays at 32.
+- **The conservative tradeoff is explicit:** prose after an overflow in the **same** leaf block/table cell is intentionally not proofread. The correction does not mask subsequent independent scopes. The 126-case depth/scope matrix passes at depths 0/1/31/32/33/64 across paragraphs, quoted paragraphs, list items, table cells/rows and headings with all three line-ending forms. Visible labels remain prose. Nine additional production-use-case controls verify preceding/label prose, following paragraphs/cells, same-scope exclusion, code precedence, angle-bracketed destinations and escaped parentheses, including exact diagnostic offsets.
+- **Retained protections:** the original 2,535-case block/container/EOL matrix passes again, including 2,427 recognized protected constructs. The 168-case Unicode/surrogate-pair/container/inline-scope mapping matrix has no mapping failure or protected-word leak. All earlier concrete F-02 witnesses remain fixed. Indented code remains deliberately treated as prose.
+- **Depth guard:** quoted-list 33/34/40-level witnesses now protect the document whole; 8/32 remain readable. Unquoted 33 remains readable and 34/40 protect whole, consistent with the documented indentation limit and conservative extra quote-space count.
+- **Bounded work:** the retained unmatched-destination workers finish inside their three-second limits and now produce one conservative protected region. The repository's long-list regression passes. These are scoped cloud checks, not native editor latency predictions.
+
+### Other findings remain closed
+
+- **F-01:** all six independent ordering/lifecycle groups pass again through the real owner, manager, engines, client and Proofread service with synthetic storage and intercepted transport. The obsolete empty read neither retires the fresh six-chunk B run nor hides final deletion. Duplicate callers rebuild once; obsolete promises settle with the newest; initialization/model overlap, failed-build retry and pending-read disposal remain correct. Shared Lightbox/assistant checks are actual manager provider-state checks, not complete native inference runs.
+- **P3 normalization:** the retained newline-padded legacy-key witness now starts with a clean transport key. Initial use, simulated migration, repeated Save, explicitly observed padded key, padded-secret deduplication and direct secret-read rebuild all complete `read`; all six captured Authorization values are clean and local `Headers` validation reports zero errors. A whitespace-only observation leaves Proofread unconfigured and shared providers detached. This exercises the actual manager/client/service paths with synthetic migration operations, not native activation or a live provider.
+- **F-03/F-04:** unchanged-occurrence tracking, shifted flags/Dismiss/Clear, corrected duplicates, newly fenced text, stale starting versions, close/reopen and language-change close all remain passing in the retained controlled use-case/adapter probes.
+- **F-05/F-06:** the independent known/missing-usage and saved/failed/mixed recovery witnesses pass again, including truthful summary wording and once-per-run presentation only when an actual receipt exists.
+
+### Fresh independent verification
+
+Dependency reuse was rechecked against the unchanged lockfile and workspace links into this checkout. Required gates ran serially under task-local **Node 18.20.8 / npm 10.8.2**, with a 2 GiB heap, one Jest worker, a 1,000 MB idle limit and a disk-backed cache. Independent probes ran afterward, without heavy-job overlap.
+
+| Check | Independent result |
+| --- | --- |
+| Full repository Jest, Node 18 | Pass: **537 suites / 7,501 tests / 59 snapshots** |
+| Typecheck, Node 18 | Pass: core, webview and adapter |
+| Lint, Node 18 | Pass: 0 errors / 1,133 warnings |
+| Production build and `verify:bundle`, Node 18 | Pass; existing three webpack size warnings |
+| Independent use-case/adapter Jest, Node 18 | **44/44 pass**, including all formerly failing witnesses |
+| Refresh and normalization probes, Node 18 | All retained and extended controls pass |
+| Usage/recovery probes, Node 18 | All controls pass |
+| Pure scanner probes, Node 24 | Retained matrices, 126 scope-retention controls and 180 final-cell controls pass |
+| Implementation-head push CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40162991036) at `0ebf3c80` |
+| Implementation-head pull-request CI | [Success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40162993569) at `0ebf3c80` |
+| Report-only diff / preservation | `git diff --check` clean; all existing report bytes preserved as an exact prefix |
+
+**Remaining evidence limits:** the native Extension Development Host, editor/screen-reader interaction and live model-quality/false-positive pass remain unexercised. Controlled adapter tests do not replace native menu, Problems/F8, progress cancellation, long-file confirmation or diagnostic interaction acceptance. The ADR's status and the author's writer-decision claims are not independently accepted on the writer's behalf. This is Slice 1 diagnostics-only clearance; the previously documented write-side anchoring/line-break requirements remain prerequisites for later slices.
+
+No implementation edit, paid/live provider call, private manuscript, formal GitHub review/comment, merge or deployment was used. Only this append-only report is published; remote bytes, sole parent, single report path and both exact-head CI events are verified separately. Later implementation changes require their own delta check.
