@@ -614,3 +614,48 @@ The shared repository double now tests more useful flows, but opens all copies s
 The independent scratch suite also includes a retained-model lifecycle counterexample. It is explicitly modeled, not claimed as a native-retention reproduction; the same-file asynchronous-copy finding above does not rely on it. Logs, scratch harnesses and pinned official sources remain outside the repository under `pr172-review-evidence/rereview4`. The previously recorded Node/dependency reuse and never-run limitations still apply. Report publication and its exact-head CI are checked afterward, not pre-claimed here.
 
 **Not approved for merge into `epic/lightbox` on `35d1b4f3`.** F-06 remains open; the other dispositions above are unchanged. Only this appended report is published, preserving the original review and all author responses.
+
+## Author response to the third re-review — 2026-10-25
+
+**Correction head:** `565d2925` (base `e3a7fac0`, unchanged). F-06 is fixed in `2e62c82b` by withdrawing the automatic Discard; the docs are in `565d2925`.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01, F-03, F-04, F-05 | Closed in your re-reviews | — |
+| F-02 | The writer's accepted limit, now with no mitigation | `2e62c82b`, `565d2925` |
+| F-06 | Fixed: Draft Edit sends no command to VS Code's preview | `2e62c82b`, `565d2925` |
+| Closed quick-fix wording | Closed in your re-review | `ae5fb579` |
+
+### F-06 — no command to the preview
+
+I agree. A preview's copy of the file is not a request token: copies are made asynchronously after the preview takes the pane, some never sync, and nothing ties an instance to the `applyEdit` that asked. I found no public API that does. So I took the path you named: **keep the native preview, and send no Discard.**
+
+- **The adapter** (`VsCodeDocumentEditor`) no longer sends any command, and no longer reads preview copies; `RefactorPreviews` is gone. A held review whose document closes, reopens or changes language is still answered `closed` when it then ends with nothing applied. The end of its lifetime is logged ("its Refactor Preview stays open, and Apply would still write").
+- **F-02 is the writer's limit as first accepted.** An Apply after the lifetime ends still writes what the writer ticked, as the diff showed it. The run reports the document "closed or changed language" and shows nothing, and a closed quick fix asks the writer to check the file. No cross-preview cancellation remains to accept.
+- **The progress notification's Cancel** does not use Discard either, for the same reason. The ADR and the Slice 2 doc now say so, correcting my earlier note that wiring it was a simple follow-up.
+- **The port** (`DocumentEditor`) says a host that can end a review without writing does and answers `closed`, and one that cannot says so, as the VS Code adapter does. The applier's watch reads the lifetime as ended either way.
+
+**Tests:**
+- **The shared double** (`refactorPreviewHost.ts`) no longer models preview copies or Discard, so it makes neither of the assumptions you flagged. It can fire a raw document-open event, a preview's copy included, whenever a suite says so. Commands are a bare spy.
+- `draftEditPreviewLifetime.integration.test.ts`, through the production use case, applier and both adapters:
+  - **The accepted limit, pinned:** Markdown → JavaScript during Fix's review, then Apply, writes both fixes. The run is `closed` and nothing is flagged. Fix all behaves the same way and answers `closed`.
+  - **Control:** with no change, Apply writes the fixes and the tense flag stays on its text.
+  - **Your witness, in both orders:** another extension's preview of the *same* document holds the pane. Proofread waits to replace it, and that preview's copy arrives late, before and after the review's document changes language. No command is sent, their preview stays unsettled, and the writer's refusal leaves the review `closed` with nothing written.
+  - **Another extension's preview** of another file, and **another chapter's review**, are likewise left alone.
+- `VsCodeDocumentEditor.applyEdits.test.ts`:
+  - no command, a log line, and `closed` (not `declined`) after a language change and a discard;
+  - an Apply after the change answers `submitted`, the limit;
+  - nothing is logged for another document's close, a direct apply, or a review that settled first.
+- **On `35d1b4f3`'s adapter**, both orders of your witness fail, because it sends Discard. Everything else passes on both.
+
+### Verification
+
+| Check | Result on `565d2925` |
+| --- | --- |
+| Typecheck, Node 18.20.8 | Pass |
+| Lint, Node 18.20.8 | Pass: 0 errors / 1,133 warnings (the baseline) |
+| Production build + `verify:bundle`, Node 18.20.8 | Pass |
+| Full Jest, Node 18.20.8 | Pass: **549 suites / 7,681 tests / 59 snapshots** |
+| Full Jest, Node 22.22.0 | Pass: 549 suites / 7,681 tests / 59 snapshots |
+
+No live provider call, private manuscript or native Extension Development Host was used. The native check is the writer's: with another extension's refactoring shown, run Fix on a chapter and change that chapter's language while VS Code asks to replace the shown one. The other refactoring should stay as it was.
