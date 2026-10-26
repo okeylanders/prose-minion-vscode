@@ -1087,7 +1087,7 @@ continuity each get their own rows here when they are built, in that order.
 | Cliché: what it flags | A phrase worn smooth by use, standing in for something this scene could name exactly. Its `kind` is `cliche` or `weighted` (a familiar beat asked to hold a peak, a turn or a coda). `idiom` and `stock` are familiar, not faults, and never flagged. |
 | Cliché: one vocabulary | **`FAMILIAR_PHRASE_KINDS`** (`shared/constants/familiarPhrasing.ts`) holds the four kinds and their definitions. `LightboxFamiliarKind` is that type. The cliché prompt states each definition verbatim, and a sync test holds it there, and holds the Lightbox's prompt to the same four kinds. |
 | Cliché: dialogue | **Left alone.** A character's idiom is their voice (the Lightbox's rule, epic decision 26). Host code drops a flag that touches speech, counted as `dialogue`: the shared dialogue rule (`findDialogueSpans`, double quotation marks) and single-quoted speech, whole, by the narration baseline's rule (Slice 3b part 1, PR #174 F-01). That rule moves to `utils/draftEdit/speechSpans.ts`, shared by both. The prompt asks the same. |
-| Cliché: repeats | **Host code counts each flagged phrase over the whole document's narration** (speech and protected regions left out), case, curly apostrophes, dashes and runs of space folded, at word boundaries. Two or more add "This phrase appears N times in this chapter." to every flag on it. Inflected forms ("ran down her spine", "runs down his spine") count apart: the stated limit, which gesture strain's lemma counts may lift. |
+| Cliché: repeats | **Host code counts each flagged phrase over the whole document's narration** (speech and protected regions left out), case, curly apostrophes, dashes and runs of space folded, at word boundaries. Two or more add "This phrase appears N times in this document." to every flag on it. Inflected forms ("ran down her spine", "runs down his spine") count apart: the stated limit, which gesture strain's lemma counts may lift. |
 | Cost before a run | **Every run confirms first,** naming the words read, the calls, the model, and the price: "≈ $0.06", or "< $0.01". The price is an estimate, never a cap. It is the engine's token estimator over the exact messages times the live catalog's prompt price, plus a typical reply (`PROMPT_BUDGETS.craftFlags.typicalOutputTokens`) times its completion price. With no live pricing, the confirmation says the price is unknown. The catalog is fetched once if nothing has fetched it (a free request, never billable), through a port tests replace. |
 | The summary | One notification, worded in core (`describeCraftFlagsOutcome`): "Craft Flags chapter-03.md: 4 flags · 1 left alone in dialogue · $0.0610". It offers *Show Problems* when flags were shown and *Open Settings* when there is no key. |
 
@@ -1095,6 +1095,32 @@ continuity each get their own rows here when they are built, in that order.
 command is the opt-in. When a second category joins,
 `proseMinion.craftFlags.categories` chooses which run, and the fixture run
 (the slice doc's) decides each one's default.
+
+**As built (part 1), where the build goes beyond the above:**
+
+- **The calls start together.** A call the provider refuses is not sent,
+  and the summary says why, but the other calls are already out and stand
+  as they are answered. "Stops starting calls" means nothing with the calls
+  in parallel.
+- **A run with no key says so before the confirmation.** The estimate names
+  no model without an engine, so the plan is `unconfigured`, and nothing is
+  priced that would not be sent.
+- **A selection with no words in it is empty,** whatever the document
+  holds.
+- **Overlaps are judged within a category.** Two categories may flag the
+  same words; part 1 has one.
+- **The fence's lists** are `CRAFT_FLAG_FORBIDDEN_FORMS`, the two-word orders
+  in `CRAFT_FLAG_FORBIDDEN_PHRASES`, and `CRAFT_FLAG_IMPERATIVE_OPENERS`.
+  Softening words ("perhaps", "instead") are set aside before a clause's
+  opening verb is read. "Say" is not an opener: "say, her shoulders lock" is
+  a hedge, not an order.
+- **The host's why** for a withheld one is the shared definition of the
+  flag's kind (`FAMILIAR_PHRASE_DEFINITIONS`).
+- **Speech spans are joined** (`findSpeechSpans`): a single-quoted line
+  inside double-quoted speech is one span, so one binary search answers
+  whether a flag touches speech.
+- **Its recovery contract** is `craft-flags-v1` in
+  `RECOVERABLE_RESPONSE_CONTRACTS`.
 
 ## Out of scope (follow-ups)
 

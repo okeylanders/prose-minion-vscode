@@ -24,6 +24,32 @@ the ADR" are decided (the writer, 2026-10-26; see "Decided").
   confirmation.
 - **Cliché first.**
 
+## Part 1: as built (2026-10-26)
+
+The pass and cliché, built on `claude/upbeat-galileo-y1l4yf` from
+`epic/lightbox` at `fd145a6a` (the PR #176 merge). The ADR's "Amendment
+2026-10-26: Slice 3c" decides it, and its "As built (part 1)" note records
+where the build goes beyond it.
+
+- **The pass:** `CraftFlagsPass` in `DraftEditPass`, a `craft` policy row,
+  and its own run (`CraftFlagsUseCase`), which takes no applier.
+- **Its flags:** `Platform.craftAnnotations`. In VS Code, a second
+  `VsCodeIssueAnnotator` (`CRAFT_FLAGS`): collection
+  `prose-minion.craftFlags`, source `Prose Minion Craft`, `info`, Dismiss and
+  Clear only.
+- **The commands:** **Craft Flags** in the **Prose Minion** submenu (its own
+  group), and **Clear Craft Flags** in the palette.
+- **The model:** `proseMinion.craftModel`, following the Workshop's until
+  picked.
+- **Cliché:**
+  - one whole-chapter call (`craft-flags/00`, `10`, `11`);
+  - kinds `cliche` and `weighted`, from `FAMILIAR_PHRASE_KINDS`, which the
+    Lightbox shares;
+  - flags in speech dropped by host code;
+  - each phrase counted over the narration;
+  - each note held to `craftFlagPhrasing`.
+- **Cost:** every run confirms with the words, the model and "≈ $…".
+
 ## Problem
 
 Proofread catches mechanical errors. The writer also wants the notes a
@@ -235,8 +261,8 @@ How it works:
 
 ## Order
 
-1. The ADR amendment.
-2. The pass and **cliché**. It is closest to what exists (the Lightbox's
+1. The ADR amendment. *Done (`84f11928`).*
+2. The pass and **cliché**. *Built (part 1).* It is closest to what exists (the Lightbox's
    familiar-phrase definitions) and proves the pass end to end.
 3. **Register shift**, with the chapter's register measure.
 4. **Gesture strain**, with the host's stock-beat counts.
