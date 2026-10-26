@@ -301,6 +301,17 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+/* Finish and Re-analyze all stay together (Slice 4M): side by side, and when
+   they do not fit beside the run note they wrap as a pair onto a line of
+   their own; only on a board too narrow for both does the pair wrap. */
+[data-pm-surface="lightbox"] .pm-lb-run-presses {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  max-width: 100%;
+  min-width: 0;
+}
 /* On a narrow board a press's button wraps its cost under its label instead of running past the card (PR #164 review, 500 px). */
 [data-pm-surface="lightbox"] .pm-lb-run .pm-lb-button {
   max-width: 100%;
@@ -320,7 +331,8 @@
 [data-pm-surface="lightbox"] .pm-lb-primary .pm-lb-run-cost {
   color: rgba(255, 255, 255, 0.82);
 }
-[data-pm-surface="lightbox"] .pm-lb-primary:disabled .pm-lb-run-cost {
+[data-pm-surface="lightbox"] .pm-lb-primary:disabled .pm-lb-run-cost,
+[data-pm-surface="lightbox"] .pm-lb-run-secondary:disabled .pm-lb-run-cost {
   color: var(--pm-dim);
 }
 [data-pm-surface="lightbox"] .pm-lb-run-note {
