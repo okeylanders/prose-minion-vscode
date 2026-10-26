@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
-- 571 suites / 7,981 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review fixes (F-01, F-02, F-03, N-01, N-02) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
+- 573 suites / 8,028 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1691,18 +1691,31 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   - **Every run confirms first** with an estimated price ("≈ $…", never a
     cap) from `CraftFlagsService.estimate`, priced through a port so tests
     never reach the catalog.
+  - **The approved model is the model** (PR #177 F-01). The estimate reads
+    the engine's model once, before any await, and the run sends every call
+    to it (`AgentRunOptions.model`). Never resolve the model again at
+    dispatch.
+  - **A gesture is held** (PR #177 F-02): `begin` (synchronous, with the
+    watch), `plan`, `run` once, `release` however it ends. Before pricing
+    ends and before sending, ask `DocumentWatch.ended()`; the service asks
+    `stillCurrent` in the turn its calls start. A URI and a version do not
+    name a lifetime.
   - **Cliché's kinds are the shared vocabulary.** `cliche` and `weighted`
     come from `FAMILIAR_PHRASE_KINDS` (`shared/constants/familiarPhrasing.ts`),
     which the Lightbox's `LightboxFamiliarKind` is too.
     `craftFlagsPrompt.test.ts` holds both prompts to it.
   - **Speech.** A category that leaves speech alone
-    (`CRAFT_FLAG_LEAVES_SPEECH`) drops a flag touching `findSpeechSpans`
-    (`utils/draftEdit/speechSpans.ts`): the shared double-quote rule plus
-    single-quoted speech, joined. The narration baseline reads the same
-    spans.
-  - **Repeats are counted by host code** (`phraseRepeats`) over the
-    narration: case, apostrophes, dashes and space folded, at word
-    boundaries. Inflected forms count apart: the stated limit.
+    (`CRAFT_FLAG_LEAVES_SPEECH`) drops a flag touching
+    `findSpeechSpansOutsideProtected` (`utils/draftEdit/speechSpans.ts`): the
+    shared double-quote rule plus single-quoted speech, joined, read with
+    protected syntax set aside, in the gesture's text and again in the
+    settled live text (PR #177 F-03). The narration baseline reads
+    `findSpeechSpans` on the raw text, as before.
+  - **Repeats are counted by host code** (`phraseRepeats`) in the live text
+    once the run settles, and only when there is a flag: one scan per
+    distinct phrase, at most `PHRASE_REPEATS.phrases` (PR #177 N-01, N-02).
+    Case, apostrophes, dashes and space are folded, at word boundaries.
+    Inflected forms count apart: the stated limit.
 
 ### Editor Menus and Command Titles
 

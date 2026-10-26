@@ -70,6 +70,24 @@ note
   the unconfigured plan and the temperature.
 - No live or billable provider call; fixtures adapt public-domain *Alice*.
 
+## PR #177 review (Astra): changes requested, fixed in `9b5f2393`
+
+- **F-01:** the approved model was not the model called; a hot-swap during
+  pricing or the confirmation sent the chapter elsewhere. Now the estimate
+  reads the engine's model once before any await, and every call names it
+  (`AgentRunOptions.model`, `OpenRouterCompletionOptions.model`).
+- **F-02:** pricing and the confirmation lost the document's lifetime. Now
+  the gesture is held (`begin` / `plan` / `run` / `release`) with its watch
+  from the first read; `DocumentWatch.ended()` (new, non-ending) and the
+  service's `stillCurrent` refuse a closed, reopened or relanguaged document.
+- **F-03:** speech was read on raw text, at the gesture only. Now it is read
+  with protected syntax set aside, and again on the settled live text.
+- **N-01, N-02:** repeats are counted in the live text, lazily, one scan per
+  distinct phrase, at most 40. A 250,000-word selection run reaches the
+  model stub in about 0.1 s (2.86 s before).
+- Inventory after the fixes: 573 suites / 8,028 tests / 59 snapshots. 18
+  mutations: 16 fail tests; the 2 that survive are redundant guards.
+
 ## Follow-ups
 
 - The writer's fixture run for cliché: hits and false positives in the

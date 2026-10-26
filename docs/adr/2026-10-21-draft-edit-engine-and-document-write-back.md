@@ -1122,6 +1122,42 @@ command is the opt-in. When a second category joins,
 - **Its recovery contract** is `craft-flags-v1` in
   `RECOVERABLE_RESPONSE_CONTRACTS`.
 
+**PR #177 review (Astra), as built:**
+
+- **F-01: the run goes to the model its confirmation named.** The estimate
+  reads the craft engine's model once, before anything is awaited, and
+  prices that model. The approval carries it to the run, and every call
+  names it (`AgentRunOptions.model`, through to
+  `OpenRouterCompletionOptions.model`). The context preflight measures
+  against it too. A model that changes while the price is read, while the
+  confirmation is open or while the prompts load, by the writer's own
+  setting or by the Workshop model it follows, never receives the chapter.
+  The next run uses the new model.
+- **F-02: a gesture is held from its first read.** `begin` takes it
+  synchronously, with the document watch, at the writer's gesture. `plan`
+  and `run` ask the watch whether its lifetime ended (`DocumentWatch.ended()`,
+  a new port method that does not end the watch) once the price is in, and
+  before sending. The service asks again (`stillCurrent`) once the prompts
+  are ready, in the same turn the calls start. A close, a reopen or a
+  language change shows no confirmation, or sends nothing (`changed`). The
+  gesture is released however the command ends. An ordinary edit while the
+  price is read is followed, as an edit while the model reads is.
+- **F-03: speech is read with protected syntax set aside**
+  (`findSpeechSpansOutsideProtected`): every character of a protected region
+  but a line break reads as a letter, so a quotation mark in inline code
+  neither opens nor closes speech, and offsets stay the text's own. It is
+  read in the gesture's text before overlaps are weighed, and again in the
+  settled live text (`outsideSpeech`), so words put in quotation marks during
+  the run are left alone and counted as `dialogue`. The shared dialogue rule
+  and the narration baseline are unchanged.
+- **N-01: repeats are counted in the live text,** after the run settles.
+- **N-02: repeats are counted only when there is a flag,** one regular
+  expression scan of the text per distinct phrase, at most
+  `PHRASE_REPEATS.phrases` (40) per document; a phrase past that shows no
+  count. Measured on Node 18: a 250,000-word manuscript with a 36-character
+  selection reached the model stub in about 0.1 s (2.86 s before), and 40
+  phrases over 1.2 million characters were counted in 87 ms.
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to

@@ -56,6 +56,7 @@ export function findSpeechSpansOutsideProtected(text: string, protectedRegions: 
     if (end <= start) {
       continue;
     }
+    // Per UTF-16 code unit (no `u` flag), so the view is exactly as long as the text.
     view += text.slice(at, start) + text.slice(start, end).replace(/[^\r\n]/g, 'x');
     at = end;
   }

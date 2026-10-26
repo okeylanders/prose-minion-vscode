@@ -105,3 +105,79 @@ Scratch probes/logs remain outside the checkout at `../pr177-review-evidence/`. 
 **Hold for F-01–F-03, then independently re-review the corrected head.** Exact report-head CI is checked after publication, separately from the implementation CI above. A changed implementation/base requires a delta/integration recheck.
 
 Native VS Code confirmation/Problems UI and live cliché hit/false-positive fixture acceptance remain separate and unrun. The ADR explicitly makes this command the initial opt-in; later categories and their defaults are not implementation-approved here. PR #172's accepted native-preview lifetime race remains **not fixed**; no global preview-discard mechanism was reintroduced.
+
+## Author response — 2026-10-26
+
+**Head:** the fixes are `9b5f2393`; the docs, test inventory and this response are the commit after them. The three P2 findings are fixed, and both notes are taken. Your report above is unchanged; this response is appended.
+
+### F-01 · fixed in `9b5f2393`
+
+You're right: the confirmation priced one model and `flag` resolved the engine again at dispatch. The run now goes to the model its confirmation named:
+
+- **The estimate reads the craft engine's model once,** before anything is awaited, and prices that model. A model that changes while the price is read cannot make the confirmation stale: it names the model priced.
+- **The approval carries that model to the run, and every call names it.** `AgentRunOptions.model` goes through the engine to the client's request (`OpenRouterCompletionOptions.model`), so neither an in-place `setModel` nor a rebuilt engine changes where the chapter goes. The context preflight measures against the same model.
+- **Your windows are tests** (`CraftFlagsApprovedModel.test.ts`). They run through the production manager, engine, client, service and use case, with only `fetch` stubbed, recording each request body's model. Cases: the writer's own Craft setting changed, and the Workshop model it follows changed, each while pricing, confirmation and prompt loading are held. The confirmation names `test/cheap-model` at under a cent, and the one request goes to `test/cheap-model`, while the engine already reads `test/expensive-model`. Control: nothing changed, and the request goes to the engine's model.
+- **The engine and client** have their own witnesses: a run naming its model sends to it, streaming or not; a run naming none sends to the client's.
+
+### F-02 · fixed in `9b5f2393`
+
+Confirmed: the watch began only in `run`, after the awaits. The gesture is now an opaque ticket held from the first read:
+
+- **`begin`** takes it synchronously at the command's read, with the document watch, and the document's "one gesture at a time" mark.
+- **`plan`** prices it, then asks the watch whether its lifetime ended. A close, reopen or language change shows no confirmation (`changed`).
+- **`run`** asks again before it sends. The service asks a third time (`stillCurrent`) once the prompts are ready, in the same turn the calls start. `DocumentWatch.ended()` is a new port method that answers without ending the watch: the VS Code adapter reads its close flag, which a reopen or language change sets.
+- **`release`** ends it unsent. The command releases in a `finally` on decline, a failed price, a failed run and completion; a gesture runs once, and a second `run` or a released gesture throws.
+- **Your table is a test** (`craftFlagsLifetime.integration.test.ts`), through the production command, use case, `VsCodeDocumentEditor` and the Craft annotator. Each of your five lifetime changes — reopen at the same URI/version/language, Markdown→plaintext, other text at the same version, plaintext→Markdown fencing what was sent, Markdown→JavaScript — runs twice, during held pricing and during a held confirmation. No case calls the pass, none shows a confirmation where pricing was held, and none draws a flag. A close without reopen sends nothing and frees the document.
+- **One deliberate difference from your controls:** an ordinary edit while the price is read is now followed, not refused. The passage sent is the gesture's text, and the flags move through every edit since the gesture, as they do through edits while the model reads. The test pins it: an insertion during pricing, and the flag drawn shifted onto its text.
+
+### F-03 · fixed in `9b5f2393`
+
+Confirmed both cases. Speech is now read with protected syntax set aside (`findSpeechSpansOutsideProtected`):
+
+- **The view:** every code unit of a protected region but a line break reads as a letter, so a quotation mark in inline code or a fence neither opens nor closes speech. Offsets stay the text's own (code units, no `u` flag), and paragraphs keep their breaks.
+- **Read twice:** in the gesture's text before overlaps are weighed, and again in the settled live text before anything is shown (`outsideSpeech`, counted as `dialogue`).
+- **The shared rules are unchanged:** `findDialogueSpans` (and its saved-board rule id) and the narration baseline's raw reading.
+- **Your witnesses are tests:**
+  - `Alice said time stood still.` with `“…”`, `"…"` and `‘…’` inserted around the untouched phrase while the reply is held: `flagged: 0`, `dialogue: 1`, `stale: 0`. Control: an edit elsewhere leaves narration as narration, flagged.
+  - The inline-code quote inside speech: `flagged: 0`, `dialogue: 1`. Control: the same code span in narration, flagged.
+  - The view's own tests: the raw reading differs from the protected-aware one, and offsets survive a fence with a paragraph break.
+
+### N-01 · taken
+
+Repeats are counted in the settled live text, with the live speech and protected regions left out. Your witness is a test: the second "time stood still" deleted while the reply is held, and the flag says no count.
+
+### N-02 · taken
+
+Nothing is built for the whole document up front:
+
+- **Only when there is a flag.** Repeats are counted only for flags about to be shown.
+- **One scan per distinct phrase.** Each is one regular-expression scan of the text as written, with case, apostrophes, dashes and white space folded by the pattern, never by a per-character copy.
+- **A bound.** At most `PHRASE_REPEATS.phrases` (40) distinct phrases per document; a phrase past it shows no count, never a guess.
+
+Measured on Node 18 (scratch probes, not committed):
+
+| Path | Before the call | Total |
+| --- | --- | --- |
+| 250,000-word manuscript, 36-character selection, no findings | 133 ms | 196 ms |
+| Same, one finding shown | 105 ms | 175 ms |
+| 40 distinct phrases counted over 1.2 million characters | — | 87 ms |
+
+### Verification
+
+| Check | Result on `9b5f2393` |
+| --- | --- |
+| Node 18.20.8 typecheck | Pass |
+| Node 18.20.8 full Jest | 573 suites / 8,028 tests / 59 snapshots |
+| Node 18.20.8 lint | 0 errors / 1,133 warnings (as before) |
+| Node 18.20.8 build (incl. `verify:bundle`) | Pass |
+| Mutations | 18; 16 fail a test (below) |
+
+**Mutations that fail a test:**
+- **F-01:** the pin dropped in the service, the engine or the client; the estimate reading the model after its awaits.
+- **F-02:** the check after pricing, the run's check and the service's `stillCurrent` each removed; the command never releasing; release leaving the document busy.
+- **F-03:** no live speech gate; raw speech at placement or live; the view keeping quotation marks.
+- **N-01, N-02:** repeats from the gesture text; no bound; a phrase's marks read as a pattern.
+
+**The two that survive are redundant guards.** The adapter's `state.closed` is one: VS Code marks a closed document's object `isClosed` too, so either signal catches the case alone. A check before pricing was the other: `begin` takes the gesture synchronously, so nothing can end it before pricing starts. I removed that check rather than keep code no case reaches.
+
+The ADR's "PR #177 review, as built" note, the agent guide and the memory bank say the same.
