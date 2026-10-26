@@ -120,20 +120,23 @@ describe('The editor context menu (Draft Edit Slice 3)', () => {
     ['a selection in a saved Markdown file', { ...markdownFile, editorHasSelection: true }, [
       ['Word Lookup', 'Assistant'],
       ['Send Selection to Workshop', 'Open Selection in Lightbox'],
-      ['Proofread and Flag', 'Proofread and Fix']
+      ['Proofread and Flag', 'Proofread and Fix'],
+      ['Craft Flags']
     ]],
     ['a saved Markdown file with nothing selected', { ...markdownFile, editorHasSelection: false }, [
       ['Open File in Lightbox'],
-      ['Proofread and Flag', 'Proofread and Fix']
+      ['Proofread and Flag', 'Proofread and Fix'],
+      ['Craft Flags']
     ]],
     ['an untitled plain-text buffer with nothing selected', { resourceScheme: 'untitled', editorLangId: 'plaintext', editorHasSelection: false }, [
-      ['Proofread and Flag', 'Proofread and Fix']
+      ['Proofread and Flag', 'Proofread and Fix'],
+      ['Craft Flags']
     ]],
     ['a selection in a JavaScript file', { resourceScheme: 'file', editorLangId: 'javascript', editorHasSelection: true }, [
       ['Word Lookup', 'Assistant'],
       ['Send Selection to Workshop', 'Open Selection in Lightbox']
     ]]
-  ])('offers, for %s, the commands the flat list offered, in its order', (_case, context, expected) => {
+  ])('offers, for %s, the commands the flat list offered, in its order, then Craft Flags in its own group (Slice 3c)', (_case, context, expected) => {
     expect(drawn('editor/context', context)).toEqual([['Prose Minion']]);
     expect(drawn(SUBMENU, context)).toEqual(expected);
   });

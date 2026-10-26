@@ -23,6 +23,7 @@ import type { LightboxDecodedPlotBlock } from '@/infrastructure/lightbox/Lightbo
 import type { LightboxDecodedOpinionBlock } from '@/infrastructure/lightbox/LightboxOpinionWire';
 import type { LightboxDecodedSteeringBlock } from '@/infrastructure/lightbox/LightboxSteeringWire';
 import type { ModelJsonRepairKind } from '@parsers/ModelJsonRepair';
+import { FAMILIAR_PHRASE_KINDS } from '@shared/constants/familiarPhrasing';
 
 /** The protocol version every group's JSON carries. */
 export const LIGHTBOX_READING_PROTOCOL_VERSION = 1;
@@ -86,7 +87,8 @@ export const LIGHTBOX_LENS_KEYS: Readonly<Record<LightboxLensId, string>> = {
 export const LIGHTBOX_STOCK_MINIMUM_BEATS = 4;
 
 export const LIGHTBOX_STOCK_TIERS: readonly LightboxStockTier[] = ['functional', 'decorated', 'weighted', 'signature'];
-export const LIGHTBOX_FAMILIAR_KINDS: readonly LightboxFamiliarKind[] = ['idiom', 'cliche', 'stock', 'weighted'];
+/** The shared vocabulary (`FAMILIAR_PHRASE_KINDS`, Slice 3c), which Craft Flags' cliché category reads too. */
+export const LIGHTBOX_FAMILIAR_KINDS: readonly LightboxFamiliarKind[] = FAMILIAR_PHRASE_KINDS;
 export const LIGHTBOX_PARAGRAPH_ENDINGS: readonly LightboxParagraphEnding[] = ['lands', 'holds', 'opens'];
 export const LIGHTBOX_HANDOFF_EFFECTS: readonly LightboxHandoffEffect[] = ['continues', 'pause', 'closure', 'loses'];
 export const LIGHTBOX_NUMBER_USAGES: readonly LightboxNumberUsage[] = ['deliberate', 'mixed', 'habit'];

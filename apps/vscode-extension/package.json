@@ -109,7 +109,9 @@
     "onCommand:prose-minion.openFileInLightbox",
     "onCommand:prose-minion.proofreadFlag",
     "onCommand:prose-minion.proofreadFix",
-    "onCommand:prose-minion.clearProofreadFlags"
+    "onCommand:prose-minion.clearProofreadFlags",
+    "onCommand:prose-minion.craftFlags",
+    "onCommand:prose-minion.clearCraftFlags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -194,6 +196,16 @@
         "command": "prose-minion.clearProofreadFlags",
         "title": "Clear Proofread Flags",
         "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.craftFlags",
+        "title": "Craft Flags",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.clearCraftFlags",
+        "title": "Clear Craft Flags",
+        "category": "Prose Minion"
       }
     ],
     "submenus": [
@@ -258,6 +270,11 @@
           "when": "editorLangId == markdown || editorLangId == plaintext",
           "command": "prose-minion.proofreadFix",
           "group": "3_proofread@2"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.craftFlags",
+          "group": "4_craft@1"
         }
       ],
       "view/title": [

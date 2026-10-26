@@ -14,7 +14,7 @@
  */
 
 import type { LogSink } from '@/platform';
-import type { DraftEditPass, DraftEditTarget, TextRange } from '@/domain/models/DraftEdit';
+import type { DraftEditTarget, ProofreadPass, TextRange } from '@/domain/models/DraftEdit';
 import type { ProofreadHostCategory } from '@/domain/models/ProofreadIssue';
 import { readDocumentRegions } from '@/utils/draftEdit/protectedRegions';
 import { findNameVariants, type NameVariant } from '@/utils/proofread/nameConsistency';
@@ -40,7 +40,7 @@ export interface DraftEditHostRead {
   readonly findings: readonly DraftEditHostFinding[];
 }
 
-export function readWholeDocument(target: DraftEditTarget, pass: DraftEditPass, log: LogSink, label: string): DraftEditHostRead {
+export function readWholeDocument(target: DraftEditTarget, pass: ProofreadPass, log: LogSink, label: string): DraftEditHostRead {
   const regions = readDocumentRegions(target.text, target.languageId);
   const accepted = proofreadWordListKeys(pass.wordList ?? []);
   const region = target.range ?? { start: 0, end: target.text.length };

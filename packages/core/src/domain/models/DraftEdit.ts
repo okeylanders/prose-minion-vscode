@@ -9,9 +9,12 @@
  *
  * The Proofread pass flags (Slice 1) or fixes (Slice 2). Fix writes only
  * through `DraftEditApplier`, the one door to the writer's document (D4).
+ * The Craft Flags pass (Slice 3c) only flags, through a run of its own that
+ * takes no applier (`CraftFlagsUseCase`).
  */
 
 import type { ModelScope, TokenUsage } from '@messages';
+import type { CraftFlagsPass } from '@/domain/models/CraftFlag';
 
 /** How a fix reaches the document: through the writer's review, or at once. */
 export type DraftEditReview = 'preview' | 'direct';
@@ -41,12 +44,15 @@ export interface ProofreadSettings {
 }
 
 /**
- * What a run produces: flags only, or the safe fixes applied and the rest
- * flagged; held to the writer's settings.
+ * What a Proofread run produces: flags only, or the safe fixes applied and
+ * the rest flagged; held to the writer's settings.
  */
-export type DraftEditPass =
+export type ProofreadPass =
   | ({ readonly kind: 'proofread'; readonly output: 'flag' } & ProofreadSettings)
   | ({ readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview } & ProofreadSettings);
+
+/** Every pass: Proofread, and Craft Flags (Slice 3c), which only flags. */
+export type DraftEditPass = ProofreadPass | CraftFlagsPass;
 
 export type DraftEditPassKind = DraftEditPass['kind'];
 
@@ -61,7 +67,9 @@ export interface DraftEditPassPolicy {
 }
 
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
-  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true }
+  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true },
+  // Craft Flags never writes: nothing reads its fix rules, which take the strictest values should that change.
+  craft: { modelScope: 'craft', allowsNewlineChanges: false, preservesMarkdownStructure: true }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */

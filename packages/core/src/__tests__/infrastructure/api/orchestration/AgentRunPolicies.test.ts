@@ -15,7 +15,8 @@ describe('agent-run caller-to-policy matrix', () => {
       'DictionaryService standard and parallel blocks',
       'CategorySearchService batches',
       'ContextAssistantService',
-      'ProofreadService chunks'
+      'ProofreadService chunks',
+      'CraftFlagsService categories'
     ]);
     expect(AGENT_RUN_POLICIES.assistant).toMatchObject({ capabilityCatalog: 'guides', retention: 'discard', cleanupOwner: 'engine', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.workshopTool).toMatchObject({ capabilityCatalog: 'workshopToolContext', retention: 'retain', cleanupOwner: 'workshop-session', onCapabilityLimit: 'forceFinalResponse' });
@@ -31,6 +32,7 @@ describe('agent-run caller-to-policy matrix', () => {
     expect(AGENT_RUN_POLICIES.categorySearch).toMatchObject({ capabilityCatalog: 'none', retention: 'discard' });
     expect(AGENT_RUN_POLICIES.context).toMatchObject({ capabilityCatalog: 'projectContext', retention: 'discard', onCapabilityLimit: 'forceFinalResponse' });
     expect(AGENT_RUN_POLICIES.proofread).toMatchObject({ capabilityCatalog: 'none', retention: 'discard', maxCapabilityRounds: 0, cleanupOwner: 'engine' });
+    expect(AGENT_RUN_POLICIES.craftFlags).toMatchObject({ capabilityCatalog: 'none', retention: 'discard', maxCapabilityRounds: 0, cleanupOwner: 'engine' });
     for (const route of AGENT_RUN_ROUTE_MATRIX) {
       expect(route.policy.visibleArtifact).toBe('final-response');
     }

@@ -30,6 +30,11 @@ import {
   PROOFREAD_FLAG_COMMAND,
   PROOFREAD_REPLACE_COMMAND
 } from '@app/application/commands/proofreadCommands';
+import {
+  CRAFT_FLAGS_CLEAR_COMMAND,
+  CRAFT_FLAGS_COMMAND,
+  CRAFT_FLAGS_DISMISS_COMMAND
+} from '@app/application/commands/craftFlagsCommands';
 
 // __dirname = apps/vscode-extension/src/__tests__/architecture -> app src root.
 const APP_SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -450,6 +455,42 @@ describe('app-shell provider assembly', () => {
       .toMatchObject({ type: 'array', items: { type: 'string' }, default: [] });
     expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
       .toContain(`wordList: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('proofread.wordList')`);
+  });
+
+  it('offers Craft Flags beside Proofread, in its own group, with its own flags and no quick fix (Draft Edit Slice 3c)', () => {
+    const manifest = readManifest();
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const menu = manifest.contributes.menus[EDITOR_CONTEXT_SUBMENU] ?? [];
+    const flag = menu.find((entry) => entry.command === PROOFREAD_FLAG_COMMAND);
+
+    expect(menu.filter((entry) => entry.command === CRAFT_FLAGS_COMMAND)).toEqual([{
+      command: CRAFT_FLAGS_COMMAND,
+      group: '4_craft@1',
+      when: flag?.when
+    }]);
+    expect(paletteCommands(manifest)).toEqual(expect.arrayContaining([
+      { command: CRAFT_FLAGS_COMMAND, title: 'Prose Minion: Craft Flags' },
+      { command: CRAFT_FLAGS_CLEAR_COMMAND, title: 'Prose Minion: Clear Craft Flags' }
+    ]));
+    expect(manifest.contributes.commands.map((entry) => entry.command)).not.toContain(CRAFT_FLAGS_DISMISS_COMMAND);
+    for (const command of ['CRAFT_FLAGS_COMMAND', 'CRAFT_FLAGS_CLEAR_COMMAND', 'CRAFT_FLAGS_DISMISS_COMMAND']) {
+      expect(extensionSource).toContain(`registerCommand(${command},`);
+    }
+    // Its own annotator, with Dismiss and Clear only: no replace or fix-all command to offer.
+    expect(extensionSource).toContain(
+      'new VsCodeIssueAnnotator({ dismiss: CRAFT_FLAGS_DISMISS_COMMAND, clear: CRAFT_FLAGS_CLEAR_COMMAND }, CRAFT_FLAGS)'
+    );
+    expect(extensionSource).toMatch(/craftAnnotations: craftAnnotator/);
+    // Its run is built with no applier.
+    const built = extensionSource.slice(extensionSource.indexOf('new CraftFlagsUseCase('), extensionSource.indexOf('const coreServices'));
+    expect(built).not.toMatch(/Applier/);
+  });
+
+  it('declares the Craft Flags model, empty so it follows the Workshop\'s until picked (Draft Edit Slice 3c)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown }> } };
+    };
+    expect(manifest.contributes.configuration.properties['proseMinion.craftModel']).toMatchObject({ type: 'string', default: '' });
   });
 
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {

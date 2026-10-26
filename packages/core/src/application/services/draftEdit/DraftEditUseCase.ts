@@ -44,10 +44,10 @@ import {
   DRAFT_EDIT_PASS_POLICIES,
   type DraftEditFixReport,
   type DraftEditOutcome,
-  type DraftEditPass,
   type DraftEditRejectedChunks,
   type DraftEditReview,
   type DraftEditTarget,
+  type ProofreadPass,
   type TextRange
 } from '@/domain/models/DraftEdit';
 import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/models/ProofreadIssue';
@@ -133,7 +133,7 @@ export class DraftEditUseCase {
     };
   }
 
-  async run(target: DraftEditTarget, pass: DraftEditPass, signal?: AbortSignal, hooks: DraftEditRunHooks = {}): Promise<DraftEditOutcome> {
+  async run(target: DraftEditTarget, pass: ProofreadPass, signal?: AbortSignal, hooks: DraftEditRunHooks = {}): Promise<DraftEditOutcome> {
     if (this.inFlight.has(target.uri)) {
       return { kind: 'busy' };
     }
@@ -295,7 +295,7 @@ export class DraftEditUseCase {
 
   private async proofread(
     target: DraftEditTarget,
-    pass: DraftEditPass,
+    pass: ProofreadPass,
     prepared: Prepared,
     watch: DocumentWatch,
     keep: ReadonlySet<string>,
@@ -384,7 +384,7 @@ export class DraftEditUseCase {
    * the fixes still standing as they were (unticked, discarded, refused).
    */
   private async fix(
-    pass: Extract<DraftEditPass, { output: 'fix' }>,
+    pass: Extract<ProofreadPass, { output: 'fix' }>,
     live: DocumentSnapshot,
     current: readonly ProofreadIssue[],
     dropped: DraftEditDrops,

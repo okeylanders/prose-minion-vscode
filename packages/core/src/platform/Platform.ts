@@ -28,6 +28,8 @@ export interface Platform {
   readonly editor: EditorContext;
   /** Documents by URI, live buffer included (Draft Edit, ADR 2026-10-21 D3). */
   readonly documents: DocumentEditor;
-  /** Draft Edit's flags on a document, without changing it (ADR 2026-10-21 D7). */
+  /** Draft Edit's flags on a document, without changing it (ADR 2026-10-21 D7): Proofread's. */
   readonly annotations: IssueAnnotator;
+  /** Craft Flags' own flags (ADR 2026-10-21, Slice 3c), shown apart from Proofread's: neither pass's run replaces the other's. */
+  readonly craftAnnotations: IssueAnnotator;
 }

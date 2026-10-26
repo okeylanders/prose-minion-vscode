@@ -1479,15 +1479,16 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('reaches the Draft Edit document ports only through the one run and its applier (ADR 2026-10-21 D10)', () => {
+  it('reaches the Draft Edit document ports only through the runs and the applier (ADR 2026-10-21 D10; Slice 3c)', () => {
     // A type name, or a call through Platform's members that never names the type.
-    const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.(?:watch|applyEdits)\(|\.annotations\.(?:show|remove|clear|current)\(/;
+    const portReference = /\b(?:DocumentEditor|IssueAnnotator)\b|\.documents\.(?:watch|applyEdits)\(|\.(?:craftA|a)nnotations\.(?:show|remove|clear|current)\(/;
     const allowed = new Set([
       'platform/DocumentEditor.ts',
       'platform/IssueAnnotator.ts',
       'platform/Platform.ts',
       'platform/index.ts',
       'application/services/draftEdit/DraftEditUseCase.ts',
+      'application/services/draftEdit/CraftFlagsUseCase.ts',
       'application/services/draftEdit/DraftEditApplier.ts'
     ]);
     const offenders = collectSourceFiles(SRC_ROOT)
@@ -1507,6 +1508,23 @@ describe('architectural boundaries', () => {
       .filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('keeps Craft Flags write-free: no Craft Flags module names the applier or asks for an edit (ADR 2026-10-21, Slice 3c)', () => {
+    const writes = /\bDraftEditApplier\b|\bapplyEdits\b|\bDraftEditEdit\b/;
+    const craftModules = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => /(?:^|\/)(?:craftFlags?[A-Z][\w]*|CraftFlag\w*)\.ts$|\/craftFlags\//.test(file));
+
+    expect(craftModules).toEqual(expect.arrayContaining([
+      'application/services/draftEdit/CraftFlagsUseCase.ts',
+      'application/services/draftEdit/craftFlagsPlacement.ts',
+      'domain/models/CraftFlag.ts',
+      'infrastructure/api/services/craftFlags/CraftFlagsService.ts',
+      'utils/craftFlags/craftFlagPhrasing.ts'
+    ]));
+    expect(craftModules.filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
   });
 
   it('application handlers do not construct infrastructure services', () => {

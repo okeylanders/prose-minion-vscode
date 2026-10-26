@@ -410,6 +410,29 @@ export interface PromptBudgets {
     /** An explanation is clipped to this. */
     explanationCharacters: number;
   }>;
+  /**
+   * Craft Flags (ADR 2026-10-21, Amendment 2026-10-26: Slice 3c): one call
+   * per category over the whole chapter. Starting values, tuned against the
+   * writer's fixture run.
+   */
+  readonly craftFlags: Readonly<{
+    /** The most a call reads: a whole chapter at or under this; over it, a selection alone. */
+    chapterWords: number;
+    /** Output ceiling per call; a reply that reaches it is rejected, never salvaged. */
+    outputTokens: number;
+    /** The reply the cost estimate prices: a typical chapter's flags, not the ceiling. */
+    typicalOutputTokens: number;
+    /** A reply longer than this is refused before it is read. */
+    responseCharacters: number;
+    /** A quoted phrase longer than this is malformed: a flag quotes the phrase, not its sentence. */
+    quoteCharacters: number;
+    /** Context either side of a quote is clipped to this, nearest the quote kept. */
+    contextCharacters: number;
+    /** A flag's why is clipped to this. */
+    whyCharacters: number;
+    /** A flag's suggestion is clipped to this. */
+    suggestionCharacters: number;
+  }>;
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
@@ -673,5 +696,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     quoteCharacters: 300,
     contextCharacters: 120,
     explanationCharacters: 300
+  },
+  craftFlags: {
+    chapterWords: 25_000,
+    outputTokens: 8_000,
+    typicalOutputTokens: 1_500,
+    responseCharacters: 80_000,
+    quoteCharacters: 160,
+    contextCharacters: 120,
+    whyCharacters: 300,
+    suggestionCharacters: 200
   }
 };
