@@ -340,6 +340,15 @@
           "markdownDescription": "The spelling **Prose Minion: Proofread** holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and **Proofread and Fix** corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling.",
           "order": 5.4
         },
+        "proseMinion.proofread.wordList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Names and invented words **Prose Minion: Proofread** accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive (*Dinah's*), and never flagged as a variant of another name. An entry of several words counts word by word. Set it in your workspace settings to keep a list per project.",
+          "order": 5.5
+        },
         "proseMinion.categoryModel": {
           "type": "string",
           "default": "openai/gpt-oss-120b:nitro",

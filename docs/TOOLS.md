@@ -108,8 +108,9 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
 - **Proofread and Flag never changes the text.** Each issue is a diagnostic: a
   squiggle, an entry in the Problems panel, and a suggested correction in its
   message. Surface errors Fix may correct show as information. Everything only
-  ever flagged shows as a warning: tense, agreement, person, and wrong, missing
-  and stray words. The summary counts those as needing your judgment.
+  ever flagged shows as a warning: tense, agreement, person, wrong, missing
+  and stray words, and name variants. The summary counts those as needing
+  your judgment.
 - **Knows the book's narration.** Proofread measures the whole file's narrative
   tense and person (past or present, first or third), from the sentences no
   one speaks, and judges each passage against them. A short selection, or a
@@ -134,6 +135,16 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
   `proseMinion.proofread.spellingConvention` to American, British, Canadian, or
   Australian English, or leave it at `auto` to flag only a spelling that breaks
   the text's own pattern.
+- **Accepts your names and invented words.** List them in
+  `proseMinion.proofread.wordList`, in workspace settings for a list per
+  project. A listed word is never flagged as a spelling or wrong word, in any
+  case or with a possessive.
+- **Catches a misspelled name.** Proofread reads the whole file for names
+  (capitalized words used mid-sentence) and flags a rare spelling beside a
+  common one: *Alcie*, once, beside *Alice*, three times or more. Its
+  **Replace with** offers the common spelling, never as Proofread's own fix.
+  A name used only at the start of sentences is not read as a name; a listed
+  word is never flagged.
 - **Asks before long runs.** A whole file over 15,000 words asks first. The run
   can be cancelled from its progress notification, and its summary reports what
   was flagged and what it cost.

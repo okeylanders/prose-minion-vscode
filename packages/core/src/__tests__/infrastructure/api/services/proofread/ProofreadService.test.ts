@@ -129,6 +129,33 @@ describe('ProofreadService', () => {
     expect(Object.keys(quoted[0])).toEqual(['task', 'spelling', 'narration', 'passage']);
   });
 
+  it('sends each chunk only the listed words it holds, after the narration, and none when it holds none (Slice 3b, part 2)', async () => {
+    const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }, { content: replyOf() }]);
+    const wordList = ['Dinah', 'chain', 'Wonderland', 'itself', 'ALICE'];
+    await service.proofread({ chunks, label: 'chapter-01.md', spelling: 'british', narration: { tense: 'past' }, wordList });
+    await service.proofread({ chunks: [chunks[0]], label: 'chapter-01.md', wordList: ['Dinah'] });
+
+    const quoted = runInitial.mock.calls.map((call) => {
+      const [request] = call as unknown as [{ userMessage: string }];
+      return JSON.parse(request.userMessage.slice(request.userMessage.indexOf('{')));
+    });
+    expect(quoted).toEqual([
+      { task: 'proofread', spelling: 'british', narration: { tense: 'past' }, acceptedWords: ['chain', 'ALICE'], passage: chunks[0] },
+      { task: 'proofread', spelling: 'british', narration: { tense: 'past' }, acceptedWords: ['itself', 'ALICE'], passage: chunks[1] },
+      { task: 'proofread', passage: chunks[0] }
+    ]);
+    expect(Object.keys(quoted[0])).toEqual(['task', 'spelling', 'narration', 'acceptedWords', 'passage']);
+  });
+
+  it('teaches the model the accepted words a request can carry (Slice 3b, part 2)', () => {
+    const prompt = fs.readFileSync(path.resolve(__dirname, '../../../../../../resources/system-prompts/proofread/00-proofread.md'), 'utf8');
+    const section = prompt.slice(prompt.indexOf('## The writer\'s word list'), prompt.indexOf('## The document\'s narration'));
+
+    for (const term of ['`acceptedWords`', '`spelling`', '`wrong-word`', '`punctuation`']) {
+      expect(section).toContain(term);
+    }
+  });
+
   it('teaches the model every spelling convention a request can name (Slice 3)', () => {
     const prompt = fs.readFileSync(path.resolve(__dirname, '../../../../../../resources/system-prompts/proofread/00-proofread.md'), 'utf8');
     const section = prompt.slice(prompt.indexOf('## The spelling convention'), prompt.indexOf('## How to report an issue'));

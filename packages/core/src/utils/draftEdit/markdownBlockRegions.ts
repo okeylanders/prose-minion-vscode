@@ -11,6 +11,9 @@
  *   found within one scope only, as a parser finds them: a backtick in one
  *   list item never pairs with one in the next, and a block quote's `>` is
  *   never read as the end of a tag.
+ * - **Headings,** ATX or setext, wherever containers put them, as whole
+ *   source lines: prose a pass may edit, but title case that says nothing
+ *   about names (Slice 3b's name check; PR #176 F-02).
  *
  * Offsets. `marked` gives each token's raw text, not its offset. At every
  * level a container's children's raw texts make up its content, and that
@@ -87,6 +90,8 @@ export interface MarkdownBlockReading {
   /** Protected regions, as whole source lines. */
   readonly regions: TextRange[];
   readonly scopes: MarkdownInlineScope[];
+  /** Heading blocks, as whole source lines, a setext heading's underline included. */
+  readonly headings: TextRange[];
 }
 
 /** Front matter, then the protected blocks and inline scopes `marked` finds. */
@@ -94,6 +99,7 @@ export function readMarkdownBlocks(text: string): MarkdownBlockReading {
   const lines = splitSourceLines(text);
   const regions: TextRange[] = [];
   const scopes: MarkdownInlineScope[] = [];
+  const headings: TextRange[] = [];
   const protect = (first: number, last: number): void => {
     const from = Math.max(0, first);
     const to = Math.min(lines.length - 1, last);
@@ -120,9 +126,9 @@ export function readMarkdownBlocks(text: string): MarkdownBlockReading {
   }
   if (tokens.length === 0 && body.trim() !== '') {
     protect(bodyLine, lines.length - 1);
-    return { regions, scopes };
+    return { regions, scopes, headings };
   }
-  const walker = new BlockWalker(lines, protect, scopes);
+  const walker = new BlockWalker(lines, protect, scopes, headings);
   let line = bodyLine;
   let offset = 0;
   for (const token of tokens) {
@@ -146,14 +152,15 @@ export function readMarkdownBlocks(text: string): MarkdownBlockReading {
       protect(index, definition[1].trim() === '' ? index + 1 : index);
     }
   });
-  return { regions, scopes };
+  return { regions, scopes, headings };
 }
 
 class BlockWalker {
   constructor(
     private readonly lines: readonly SourceLine[],
     private readonly protect: (first: number, last: number) => void,
-    private readonly scopes: MarkdownInlineScope[]
+    private readonly scopes: MarkdownInlineScope[],
+    private readonly headings: TextRange[]
   ) {}
 
   /** Protect or scope what `token`, starting at source line `line`, holds; false when its lines are not where they should be. */
@@ -166,7 +173,11 @@ class BlockWalker {
       return true;
     }
     if (INLINE_SCOPE_TYPES.has(token.type)) {
-      return this.scope(contentLines(token.raw).map((text, index) => ({ text, line: line + index, from: 0, to: text.length })));
+      const scoped = this.scope(contentLines(token.raw).map((text, index) => ({ text, line: line + index, from: 0, to: text.length })));
+      if (scoped && token.type === 'heading') {
+        this.headings.push({ start: this.lines[line].start, end: this.lines[line + lastLineOffset(token.raw)].end });
+      }
+      return scoped;
     }
     if (token.type === 'table') {
       return this.tableCells(token.raw, line);

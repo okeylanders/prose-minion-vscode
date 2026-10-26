@@ -34,8 +34,20 @@ const MARKDOWN_LANGUAGE_IDS: ReadonlySet<string> = new Set(['markdown']);
 
 /** Every protected region of `text`, sorted and merged; none unless the language is Markdown. */
 export function findProtectedRegions(text: string, languageId: string): TextRange[] {
+  return readDocumentRegions(text, languageId).protected;
+}
+
+/** What one reading of a document's structure finds: its protected regions, and its headings (Slice 3b's name check). */
+export interface DocumentRegions {
+  readonly protected: TextRange[];
+  /** Heading blocks, as whole source lines, sorted and merged; none unless the language is Markdown. */
+  readonly headings: TextRange[];
+}
+
+/** The protected regions and headings of `text`, from one reading of its blocks. */
+export function readDocumentRegions(text: string, languageId: string): DocumentRegions {
   if (!MARKDOWN_LANGUAGE_IDS.has(languageId)) {
-    return [];
+    return { protected: [], headings: [] };
   }
   const blocks = readMarkdownBlocks(text);
   const regions: TextRange[] = [...blocks.regions];
@@ -44,7 +56,10 @@ export function findProtectedRegions(text: string, languageId: string): TextRang
       regions.push({ start: scope.toSource(range.start), end: scope.toSource(range.end) });
     }
   }
-  return mergeRanges(regions.filter((region) => region.end > region.start));
+  return {
+    protected: mergeRanges(regions.filter((region) => region.end > region.start)),
+    headings: mergeRanges(blocks.headings)
+  };
 }
 
 /** Sort, and merge ranges that overlap or touch. */

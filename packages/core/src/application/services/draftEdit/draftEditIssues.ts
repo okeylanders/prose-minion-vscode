@@ -14,7 +14,7 @@ import type { DraftEditEdit } from '@/application/services/draftEdit/DraftEditAp
 export type DraftEditDrops = { -readonly [K in keyof DraftEditDropCounts]: number };
 
 export function noDrops(): DraftEditDrops {
-  return { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
+  return { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0, accepted: 0 };
 }
 
 /**

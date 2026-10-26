@@ -9,11 +9,13 @@
  * 2. starts watching the open document at the version the gesture read,
  *    before anything is awaited;
  * 3. hands the chunks to the pass (the only step that calls a model), with
- *    the whole document's narration, measured by host code, beside them
- *    (Slice 3b);
- * 4. places each finding by its quote in its own chunk; refuses one that
- *    touches a placeholder; applies the Proofread guard; and keeps the
- *    earlier of two overlapping issues;
+ *    what host code read of the whole document beside them: its narration,
+ *    and the writer's listed words each chunk holds (Slice 3b);
+ * 4. places each finding by its quote in its own chunk; drops a spelling or
+ *    wrong-word finding on a listed word; refuses one that touches a
+ *    placeholder; applies the Proofread guard; keeps the earlier of two
+ *    overlapping issues; and adds the host's issues (name variants), which
+ *    win where they overlap a model's;
  * 5. settles the watch. Each issue follows its own occurrence through the
  *    writer's edits: one an edit touched is dropped as stale, never moved to
  *    another occurrence of its words (PR #171 F-03). The live text's
@@ -52,10 +54,10 @@ import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/mode
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { chunkParagraphs } from '@/utils/draftEdit/chunkParagraphs';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
-import { measureNarrationBaseline, type NarrationBaseline } from '@/utils/proofread/narrationBaseline';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 import type { DraftEditApplier, DraftEditApplyResult } from '@/application/services/draftEdit/DraftEditApplier';
 import { placeFindings, type Prepared } from '@/application/services/draftEdit/draftEditPlacement';
+import { readWholeDocument } from '@/application/services/draftEdit/draftEditHostRead';
 import {
   byPlace,
   hasReplacement,
@@ -301,12 +303,13 @@ export class DraftEditUseCase {
     hooks: DraftEditRunHooks
   ): Promise<DraftEditOutcome> {
     const label = runLabel(target);
-    const narration = this.narrationOf(target, label);
+    const host = readWholeDocument(target, pass, this.log, label);
     const result = await this.proofreadPass.proofread({
       chunks: prepared.chunks.map((chunk) => chunk.text),
       label,
       ...(pass.spelling ? { spelling: pass.spelling } : {}),
-      ...(narration ? { narration } : {}),
+      ...(pass.wordList ? { wordList: pass.wordList } : {}),
+      ...(host.narration ? { narration: host.narration } : {}),
       ...(signal ? { signal } : {})
     });
     if (result.kind === 'unconfigured') {
@@ -325,7 +328,7 @@ export class DraftEditUseCase {
       return { kind: 'closed', rejectedChunks, ...(result.usage ? { usage: result.usage } : {}) };
     };
     const dropped = noDrops();
-    const placed = placeFindings(target, DRAFT_EDIT_PASS_POLICIES[pass.kind], prepared, result, dropped, () => `proofread-${++this.sequence}`);
+    const placed = placeFindings(target, DRAFT_EDIT_PASS_POLICIES[pass.kind], prepared, result, host, dropped, () => `proofread-${++this.sequence}`);
     const settled = watch.settle();
     if (settled.kind === 'closed') {
       return closed();
@@ -431,21 +434,6 @@ export class DraftEditUseCase {
       issues: outsideProtected([...moved, ...unticked], after.text, after.languageId, dropped).sort(byPlace),
       report: fixReport(pass.review, result)
     };
-  }
-
-  /**
-   * The whole document's narration, a selection run's too (Slice 3b): a hint
-   * beside every chunk. A tagger that fails to load sends none, and the run
-   * goes on.
-   */
-  private narrationOf(target: DraftEditTarget, label: string): NarrationBaseline | undefined {
-    try {
-      const narration = measureNarrationBaseline(target.text, findProtectedRegions(target.text, target.languageId));
-      return narration.tense || narration.person ? narration : undefined;
-    } catch (error) {
-      this.log.appendLine(`[DraftEdit] Proofread ${label}: no narration baseline (${error instanceof Error ? error.message : String(error)})`);
-      return undefined;
-    }
   }
 
   /** Issues moved through `events`; those an edit touched are counted as stale. */

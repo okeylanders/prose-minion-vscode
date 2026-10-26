@@ -1,8 +1,8 @@
 # Slice 3b: Proofread coverage
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Part 1 built; in review (2026-10-26). Parts 2 and 3 follow, in
-the order below. The immediate follow-up to Slice 3 (the writer's call,
+**Status:** Part 1 merged (PR #174, 2026-10-26). Part 2 built; in review.
+Part 3 follows. The immediate follow-up to Slice 3 (the writer's call,
 2026-10-26), before the Workshop slices.
 **Priority:** High
 **Needs first:** an ADR amendment. Several items extend D6's closed
@@ -207,3 +207,58 @@ The decisions are in the ADR's
 - **Astra's PR #173 nit:** TOOLS.md says "Proofread and Flag never changes
   the text".
 - **Not yet:** the fixture run that would let any new category write.
+
+## Part 2: as built
+
+The decisions are in the ADR's Slice 3b amendment, part 2, with an "As
+built (part 2)" note for where the build goes beyond them.
+
+- **The word list** (item 7): `proseMinion.proofread.wordList`, an array of
+  strings in user or workspace settings.
+  - It is read at the gesture and normalized (`proofreadWordList`): an
+    entry of several words counts word by word, each word once by case, a
+    possessive set aside.
+  - It travels on the pass beside the convention (`ProofreadSettings`).
+  - Each chunk carries only the listed words it holds, as `acceptedWords`,
+    taught by the prompt's "The writer's word list".
+  - A spelling or wrong-word finding whose quote is one listed word is
+    dropped and counted as `accepted`, never "not placed".
+- **Name consistency** (item 6): a host check over the whole document
+  (`utils/proofread/nameConsistency.ts`), with category `name` in
+  `PROOFREAD_HOST_CATEGORIES`.
+  - Flag-only (a warning), its *Replace with* never preferred. The host's
+    issue wins where it overlaps a model's.
+  - A selection run reads the whole document and shows only the variants
+    inside its selection.
+  - **Beyond the plan:**
+    - mid-sentence means after a letter, digit, comma or semicolon on the
+      word's line;
+    - heading lines, words in capitals, words under three letters and the
+      forms of "I" are never names;
+    - a variant the document also writes in lower case, a plural, and a tie
+      are never flagged.
+  - **Bounded:** it runs on the extension host. A deletion index means only
+    names that could be close are compared. A first version compared every
+    pair and took 24 seconds on 8,000 rare names under one initial.
+  - **PR #176 review (Astra), F-01:** the budget charged only index
+    entries visited, so making deletions was free. One 501-letter word made
+    125,711 and still returned `checked`. Now a word over 20 letters is
+    never a name. Every deletion made, entry visited and pair compared is
+    charged before it is done, to a budget of 250,000. Past it the check
+    stops, finds nothing, and logs it. A novel's 4,500 distinct names spend
+    121,845 (139 ms).
+  - **F-02:** setext headings and headings in block quotes or lists counted
+    as names. The Markdown block reader now records every heading
+    (`readDocumentRegions`), and the check skips them.
+  - **N-01, N-02:** hyphenated words are accepted by the word list's own
+    rule, and a host issue's overlaps are dropped before model issues are
+    weighed against each other.
+  - **Limit:** a misspelling only ever written at a sentence's start is not
+    read as a name.
+- **Tests:** the word-list helpers; each detector rule with a witness and a
+  control; a run end to end; the request's `acceptedWords`; the prompt
+  section; the setting and the gesture. Of 19 mutations, 17 failed tests;
+  the 2 left change only speed. On 992 words of real *Alice* in the
+  repository's fixtures it finds no variant; a measure of its false
+  positives waits for the fixture run.
+- **Not yet:** the fixture run; part 3 (quotation marks and consistency).

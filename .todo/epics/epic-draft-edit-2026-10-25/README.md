@@ -1,8 +1,8 @@
 # Epic: Draft Edit
 
 **Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
-3b (Proofread coverage) part 1 built and in review; Slice 3c (craft flags)
-queued.
+3b (Proofread coverage) part 1 merged (PR #174), part 2 built and in review;
+Slice 3c (craft flags) queued.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -65,8 +65,8 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
-| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Part 1 in review; parts 2 and 3 next |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; needs an ADR amendment |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Part 1 merged (PR #174); part 2 in review; part 3 next |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; a second pass, *Craft Flags*, decided; needs an ADR amendment |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -180,3 +180,13 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   and register shift. All four are flags with a recommendation, never
   edits, and most read the whole chapter. The slice doc recommends a
   second pass beside Proofread, for the ADR amendment to decide.
+- **2026-10-26. Slice 3b, part 1 merged** into `epic/lightbox` as
+  `57489816`, after Astra approved it with no blocking findings.
+- **2026-10-26. Slice 3b, part 2 built**, restarted from `epic/lightbox` at
+  `57489816`: the word list (`proseMinion.proofread.wordList`) and name
+  consistency, a host check over the whole document. See the slice doc's
+  "Part 2: as built".
+- **2026-10-26. Slice 3c decided in part** by the writer: a second pass,
+  *Craft Flags*, with its own command beside Proofread, and each category's
+  approach as the slice doc describes it. The rest of its questions go to
+  its ADR amendment.

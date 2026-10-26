@@ -63,6 +63,16 @@ The request may name the writer's spelling convention in `spelling`:
   only the single instance that breaks the passage's own pattern.
 - Proper names keep their own spelling, whatever the convention.
 
+## The writer's word list
+
+The request may list `acceptedWords`: names and invented words the writer
+accepts as spelled, as many of them as this passage holds.
+
+- Never report one of them as `spelling` or `wrong-word`, in any case or
+  with a possessive ("Dinah's").
+- Other errors beside one still count: a missing comma after it is still
+  `punctuation`.
+
 ## The document's narration
 
 The request may describe the whole document's narration in `narration`,

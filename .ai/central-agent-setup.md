@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 1 (four flag-only categories and the narration baseline) with its PR #174 review fixes (F-01 and its re-review, F-02) on `claude/upbeat-galileo-y1l4yf`, merged with `epic/lightbox` at `44127c92` (Lightbox Slice 4M, PR #175), under Node 18):
-- 559 suites / 7,780 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 2 (the word list and name consistency) with its PR #176 review fixes (F-01, F-02, N-01, N-02) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `57489816` (Draft Edit Slice 3b part 1, PR #174), under Node 18):
+- 562 suites / 7,870 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1641,6 +1641,22 @@ writer's own document:
   not a sample size. A
   field is named only past `NARRATION_BASELINE`'s thresholds. It is a hint beside each chunk, never a gate: tense and person
   stay flag-only, and a tagger that fails to load sends none.
+- **The word list and name consistency** (Slice 3b, part 2).
+  `proseMinion.proofread.wordList` is read at the gesture and normalized
+  (`proofreadWordList`); each chunk carries only the listed words it holds
+  (`acceptedWords`), and a spelling or wrong-word finding on one is dropped
+  as `accepted`. Names are checked by host code over the whole document
+  (`findNameVariants`), never by a model: a host category
+  (`PROOFREAD_HOST_CATEGORIES`) a reply may never name, always flagged, and
+  kept over a model's issue it overlaps. What host code reads of the whole
+  document lives in `draftEditHostRead`. The check runs on the extension
+  host, so it compares only names a deletion index finds close, and charges
+  every deletion it makes, index entry it visits and pair it compares to
+  `workBudget` before doing it; past it the check stops and finds nothing,
+  logged (PR #176 F-01). Keep any new whole-document check bounded the same
+  way, with its work charged where it is generated, not only where it is
+  read. Headings are read from the Markdown block reader
+  (`readDocumentRegions`), never a line pattern (F-02).
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring
