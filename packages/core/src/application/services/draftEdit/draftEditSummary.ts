@@ -49,7 +49,7 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       const flagged = outcome.flagged === 0
         ? ''
         : `${plural(outcome.flagged, 'issue')} flagged`
-          + (outcome.judgmentCalls > 0 ? ` (${outcome.judgmentCalls} tense or agreement)` : '');
+          + (outcome.judgmentCalls > 0 ? ` (${outcome.judgmentCalls} ${outcome.judgmentCalls === 1 ? 'needs' : 'need'} your judgment)` : '');
       const kept = outcome.kept ?? 0;
       const lead = [fix ? fixLead(fix) : '', flagged].filter(Boolean).join(' · ')
         || (kept > 0 ? 'no issues found in the selection' : 'no issues found');

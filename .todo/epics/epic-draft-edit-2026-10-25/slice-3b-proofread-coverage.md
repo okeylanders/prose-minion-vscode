@@ -1,7 +1,8 @@
 # Slice 3b: Proofread coverage
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Queued. The immediate follow-up to Slice 3 (the writer's call,
+**Status:** Part 1 built; in review (2026-10-26). Parts 2 and 3 follow, in
+the order below. The immediate follow-up to Slice 3 (the writer's call,
 2026-10-26), before the Workshop slices.
 **Priority:** High
 **Needs first:** an ADR amendment. Several items extend D6's closed
@@ -150,3 +151,37 @@ threshold because no such run was recorded; this slice needs one.
 - The fixture run's per-category false-positive rates are recorded here
   before any new category may write.
 - No live or billable provider calls in tests. Public-domain fixtures only.
+
+## Part 1: as built
+
+The decisions are in the ADR's
+[Amendment 2026-10-26: Slice 3b](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md#amendment-2026-10-26-slice-3b-proofread-coverage).
+
+- **Four categories** (items 1 to 4): `wrong-word`, `missing-word`,
+  `extra-word` and `person`.
+  - All four are flag-only, their suggestions a *Replace with* that is
+    never preferred.
+  - A doubled word stays `spelling`, fixable as before.
+  - The prompt describes each and how to quote it, and the worked example
+    shows each once.
+  - `proofreadPrompt.test.ts` holds the prompt's list to
+    `PROOFREAD_CATEGORIES`. It reads the example's response through the
+    production frame reader, codec, anchoring and guard.
+- **The narration baseline** (item 5, `utils/proofread/narrationBaseline.ts`).
+  - It is measured over the whole document from the sentences no one
+    speaks.
+  - **Beyond the plan:** a sentence holding any quotation mark is left out
+    too. The dialogue matcher reads double quotation marks only, so
+    single-quoted speech would otherwise lend its present tense and its "I"
+    to the narration, and a past-tense book could read as present.
+  - It is sent beside each chunk as `narration`. The prompt reports `person`
+    only against a named third person.
+  - **Tests:** *Alice* in three voices, the Caterpillar's single-quoted
+    exchange alone and added to the opening, a fenced block, and too little
+    text. Two mutations failed their tests: dropping the quotation-mark rule,
+    and dropping the protected regions.
+- **The summary** counts every flag-only issue as needing the writer's
+  judgment ("(4 need your judgment)").
+- **Astra's PR #173 nit:** TOOLS.md says "Proofread and Flag never changes
+  the text".
+- **Not yet:** the fixture run that would let any new category write.

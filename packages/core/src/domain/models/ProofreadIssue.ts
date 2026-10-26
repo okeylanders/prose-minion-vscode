@@ -2,9 +2,11 @@
  * Proofread's vocabulary (ADR 2026-10-21 D6): the closed categories, which
  * of them a fix may correct, and the issue a run shows.
  *
- * Fix vs. flag is decided here, by category, never by the model: tense and
- * agreement are judgment calls (dialogue, free indirect discourse, a
- * deliberate present-tense passage), so they are always flagged.
+ * Fix vs. flag is decided here, by category, never by the model. Tense,
+ * agreement and person are judgment calls (dialogue, free indirect
+ * discourse, a deliberate present-tense passage), so they are always
+ * flagged. So are the categories Slice 3b added (wrong, missing and extra
+ * words), until a recorded fixture run shows how often each is wrong.
  */
 
 import type { DraftEditAnchor } from '@/domain/models/DraftEdit';
@@ -16,7 +18,11 @@ export const PROOFREAD_CATEGORIES = [
   'capitalization',
   'spacing',
   'agreement',
-  'tense'
+  'tense',
+  'wrong-word',
+  'missing-word',
+  'extra-word',
+  'person'
 ] as const;
 
 export type ProofreadCategory = typeof PROOFREAD_CATEGORIES[number];

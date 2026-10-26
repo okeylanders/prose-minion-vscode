@@ -113,6 +113,22 @@ describe('ProofreadService', () => {
     expect(quoted).toEqual(chunks.map((passage) => ({ task: 'proofread', spelling: 'australian', passage })));
   });
 
+  it('sends the document\'s narration with every chunk, each field only when named, and nothing when neither is (Slice 3b)', async () => {
+    const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }, { content: replyOf() }]);
+    await service.proofread({ chunks, label: 'chapter-01.md', spelling: 'british', narration: { tense: 'past', person: 'third' } });
+    await service.proofread({ chunks: [chunks[0]], label: 'chapter-01.md', narration: {} });
+
+    const quoted = runInitial.mock.calls.map((call) => {
+      const [request] = call as unknown as [{ userMessage: string }];
+      return JSON.parse(request.userMessage.slice(request.userMessage.indexOf('{')));
+    });
+    expect(quoted).toEqual([
+      ...chunks.map((passage) => ({ task: 'proofread', spelling: 'british', narration: { tense: 'past', person: 'third' }, passage })),
+      { task: 'proofread', passage: chunks[0] }
+    ]);
+    expect(Object.keys(quoted[0])).toEqual(['task', 'spelling', 'narration', 'passage']);
+  });
+
   it('teaches the model every spelling convention a request can name (Slice 3)', () => {
     const prompt = fs.readFileSync(path.resolve(__dirname, '../../../../../../resources/system-prompts/proofread/00-proofread.md'), 'utf8');
     const section = prompt.slice(prompt.indexOf('## The spelling convention'), prompt.indexOf('## How to report an issue'));

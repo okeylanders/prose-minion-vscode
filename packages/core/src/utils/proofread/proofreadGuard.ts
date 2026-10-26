@@ -2,7 +2,8 @@
  * The Proofread guard (ADR 2026-10-21 D6): host code, not the model, decides
  * whether a finding may be fixed or only flagged.
  *
- * - Tense and agreement are flag-only, whatever the reply says.
+ * - Tense, agreement, person, and wrong, missing and extra words are
+ *   flag-only, whatever the reply says (`proofreadCategoryDisposition`).
  * - A fixable finding stays a fix only when the edit is small:
  *   - spelling and homophone edits stay within a bounded edit distance;
  *   - punctuation, spacing, and capitalization edits change nothing but
@@ -83,6 +84,10 @@ function isMechanicalEdit(category: ProofreadCategory, original: string, replace
       return lettersAndDigits(original) === lettersAndDigits(replacement);
     case 'agreement':
     case 'tense':
+    case 'wrong-word':
+    case 'missing-word':
+    case 'extra-word':
+    case 'person':
       return false;
     default: {
       const unknown: never = category;

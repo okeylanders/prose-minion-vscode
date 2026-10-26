@@ -8,7 +8,9 @@
  *    it on paragraph boundaries;
  * 2. starts watching the open document at the version the gesture read,
  *    before anything is awaited;
- * 3. hands the chunks to the pass (the only step that calls a model);
+ * 3. hands the chunks to the pass (the only step that calls a model), with
+ *    the whole document's narration, measured by host code, beside them
+ *    (Slice 3b);
  * 4. places each finding by its quote in its own chunk; refuses one that
  *    touches a placeholder; applies the Proofread guard; and keeps the
  *    earlier of two overlapping issues;
@@ -50,6 +52,7 @@ import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/mode
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { chunkParagraphs } from '@/utils/draftEdit/chunkParagraphs';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
+import { measureNarrationBaseline, type NarrationBaseline } from '@/utils/proofread/narrationBaseline';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 import type { DraftEditApplier, DraftEditApplyResult } from '@/application/services/draftEdit/DraftEditApplier';
 import { placeFindings, type Prepared } from '@/application/services/draftEdit/draftEditPlacement';
@@ -298,10 +301,12 @@ export class DraftEditUseCase {
     hooks: DraftEditRunHooks
   ): Promise<DraftEditOutcome> {
     const label = runLabel(target);
+    const narration = this.narrationOf(target, label);
     const result = await this.proofreadPass.proofread({
       chunks: prepared.chunks.map((chunk) => chunk.text),
       label,
       ...(pass.spelling ? { spelling: pass.spelling } : {}),
+      ...(narration ? { narration } : {}),
       ...(signal ? { signal } : {})
     });
     if (result.kind === 'unconfigured') {
@@ -426,6 +431,21 @@ export class DraftEditUseCase {
       issues: outsideProtected([...moved, ...unticked], after.text, after.languageId, dropped).sort(byPlace),
       report: fixReport(pass.review, result)
     };
+  }
+
+  /**
+   * The whole document's narration, a selection run's too (Slice 3b): a hint
+   * beside every chunk. A tagger that fails to load sends none, and the run
+   * goes on.
+   */
+  private narrationOf(target: DraftEditTarget, label: string): NarrationBaseline | undefined {
+    try {
+      const narration = measureNarrationBaseline(target.text, findProtectedRegions(target.text, target.languageId));
+      return narration.tense || narration.person ? narration : undefined;
+    } catch (error) {
+      this.log.appendLine(`[DraftEdit] Proofread ${label}: no narration baseline (${error instanceof Error ? error.message : String(error)})`);
+      return undefined;
+    }
   }
 
   /** Issues moved through `events`; those an edit touched are counted as stale. */

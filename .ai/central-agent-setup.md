@@ -1579,9 +1579,11 @@ writer's own document:
   compared before and after with `marked`, the batch together, every table
   cell's inline shape included (`editsChangingStructure`, PR #172 F-03). An
   anchor never ends inside a
-  normalized expansion (`Wait.` is not `Wait…`). Tense and agreement are only
-  ever flagged; a judgment call's suggestion is applied only by its own
-  *Replace with*.
+  normalized expansion (`Wait.` is not `Wait…`). Tense, agreement, person, and
+  wrong, missing and extra words are only ever flagged
+  (`proofreadCategoryDisposition`); a judgment call's suggestion is applied
+  only by its own *Replace with*. A category becomes fixable only after a
+  recorded fixture run, with its own guard rule (Slice 3b).
 - **Live text wins, one lifetime.** A run watches its open document from
   the version it read (`DocumentEditor.watch`). Findings follow their own
   occurrence through the writer's edits, never a fresh search; what an edit
@@ -1624,6 +1626,18 @@ writer's own document:
   and keeps those still shown when it shows its own. Never move a selection
   range through the writer's edits to decide it, and never bring back a flag
   the writer dismissed, edited or cleared during the run.
+- **The narration baseline** (Slice 3b; the ADR's Slice 3b amendment).
+  `measureNarrationBaseline` measures the whole document's tense and person
+  once per run, a selection run's too, from the sentences no one speaks: a
+  sentence touching dialogue or a protected region, or holding any quotation
+  mark (an apostrophe between letters aside), is left out, so single-quoted
+  speech never counts. A field is named only past `NARRATION_BASELINE`'s
+  thresholds. It is a hint beside each chunk, never a gate: tense and person
+  stay flag-only, and a tagger that fails to load sends none.
+- **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
+  holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
+  example's response through the production frame reader, codec, anchoring
+  and guard. A new category joins both, with a line in the example.
 - **Settings a run reads are read at the gesture** and carried on the pass,
   as the spelling convention is (`spelling`; absent means none named). The
   request sends them as JSON fields beside the passage; a prompt section

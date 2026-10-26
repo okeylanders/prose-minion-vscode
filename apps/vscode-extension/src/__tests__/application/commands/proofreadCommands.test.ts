@@ -152,7 +152,7 @@ describe('proofreadAndFlag', () => {
     await proofreadAndFlag(host, runner);
     await settle();
 
-    expect(host.showInformation).toHaveBeenCalledWith('Proofread chapter-01.md: 2 issues flagged (1 tense or agreement)', 'Show Problems');
+    expect(host.showInformation).toHaveBeenCalledWith('Proofread chapter-01.md: 2 issues flagged (1 needs your judgment)', 'Show Problems');
     expect(host.executeCommand).toHaveBeenCalledWith(SHOW_PROBLEMS_COMMAND);
   });
 
