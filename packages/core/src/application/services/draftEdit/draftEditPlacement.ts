@@ -4,6 +4,12 @@
  * when it touches a protected placeholder, judged by the Proofread guard, and
  * kept only when it does not overlap an earlier one.
  *
+ * Host code's reading of the whole document joins here (Slice 3b): a
+ * `spelling` or `wrong-word` finding whose quote is a word the writer's list
+ * accepts is dropped and counted (`accepted`), and the host's issues are
+ * added. Where a host issue and a model's overlap, the host's is kept: it
+ * read the whole document.
+ *
  * A fix that would change the document's Markdown structure is flagged
  * instead (`markup-change`), the batch judged together as Fix would apply it
  * (PR #172 F-03). So Flag's quick fixes never prefer one, and Fix never offers
@@ -11,14 +17,16 @@
  */
 
 import type { DraftEditPassPolicy, DraftEditTarget, TextRange } from '@/domain/models/DraftEdit';
-import type { ProofreadIssue } from '@/domain/models/ProofreadIssue';
+import type { ProofreadFinding, ProofreadIssue } from '@/domain/models/ProofreadIssue';
 import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
 import type { TextChunk } from '@/utils/draftEdit/chunkParagraphs';
 import { editsChangingStructure } from '@/utils/draftEdit/markdownStructure';
 import type { MaskedText } from '@/utils/draftEdit/protectedRegions';
 import { judgeProofreadFinding } from '@/utils/proofread/proofreadGuard';
+import { isAcceptedWord } from '@/utils/proofread/proofreadWordList';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
 import { byPlace, hasReplacement, type DraftEditDrops } from '@/application/services/draftEdit/draftEditIssues';
+import type { DraftEditHostRead } from '@/application/services/draftEdit/draftEditHostRead';
 
 /** The target as a run sends it: its region, masked, and chunked. */
 export interface Prepared {
@@ -28,12 +36,13 @@ export interface Prepared {
   readonly words: number;
 }
 
-/** Each finding placed in the gesture's snapshot, guarded, with overlaps resolved; `nextId` names each issue. */
+/** Each finding placed in the gesture's snapshot, guarded, with overlaps resolved and the host's issues added; `nextId` names each issue. */
 export function placeFindings(
   target: DraftEditTarget,
   policy: DraftEditPassPolicy,
   prepared: Prepared,
   result: Extract<ProofreadRunResult, { kind: 'completed' }>,
+  host: Pick<DraftEditHostRead, 'accepted' | 'findings'>,
   dropped: DraftEditDrops,
   nextId: () => string
 ): ProofreadIssue[] {
@@ -45,6 +54,10 @@ export function placeFindings(
     dropped.malformed += chunkResult.malformed;
     const chunk = prepared.chunks[index];
     for (const finding of chunkResult.findings) {
+      if (onAcceptedWord(finding, host.accepted)) {
+        dropped.accepted += 1;
+        continue;
+      }
       const anchored = anchorQuote(chunk.text, finding.anchor);
       if (anchored.kind !== 'anchored') {
         dropped.unanchored += 1;
@@ -88,7 +101,29 @@ export function placeFindings(
       kept.push(issue);
     }
   }
-  return policy.preservesMarkdownStructure ? flagStructureChanges(kept, target) : kept;
+  const placed = withHostIssues(kept, host.findings, dropped, nextId);
+  return policy.preservesMarkdownStructure ? flagStructureChanges(placed, target) : placed;
+}
+
+/** A spelling or wrong-word finding whose quote is one word the writer accepts. */
+function onAcceptedWord(finding: ProofreadFinding, accepted: ReadonlySet<string>): boolean {
+  return (finding.category === 'spelling' || finding.category === 'wrong-word') && isAcceptedWord(accepted, finding.anchor.quote);
+}
+
+/** The model's issues and the host's, in order; a model issue overlapping a host issue is counted as overlapping. */
+function withHostIssues(
+  issues: readonly ProofreadIssue[],
+  findings: DraftEditHostRead['findings'],
+  dropped: DraftEditDrops,
+  nextId: () => string
+): ProofreadIssue[] {
+  if (findings.length === 0) {
+    return [...issues];
+  }
+  const hostIssues: ProofreadIssue[] = findings.map((finding) => ({ id: nextId(), disposition: 'flag', ...finding }));
+  const model = issues.filter((issue) => !hostIssues.some((host) => host.start < issue.end && issue.start < host.end));
+  dropped.overlapping += issues.length - model.length;
+  return [...model, ...hostIssues].sort(byPlace);
 }
 
 /** Fixes that would change the Markdown structure, together as Fix would make them, flagged instead. */

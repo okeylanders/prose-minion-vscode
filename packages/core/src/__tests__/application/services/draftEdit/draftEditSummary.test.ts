@@ -5,7 +5,7 @@
 import { describeDraftEditOutcome, describeQuickFixOutcome } from '@/application/services/draftEdit/draftEditSummary';
 import type { DraftEditOutcome } from '@/domain/models/DraftEdit';
 
-const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
+const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0, accepted: 0 };
 const completed = (overrides: Partial<Extract<DraftEditOutcome, { kind: 'completed' }>> = {}): DraftEditOutcome => ({
   kind: 'completed',
   flagged: 9,
@@ -51,11 +51,11 @@ describe('describeDraftEditOutcome', () => {
       .toBe('Proofread a.md: 3 issues flagged (1 needs your judgment)');
   });
 
-  it('counts what was not placed and what could not be read', () => {
+  it('counts what was not placed and what could not be read; a word the writer\'s list accepts is neither (Slice 3b)', () => {
     const outcome = completed({
       flagged: 1,
       judgmentCalls: 0,
-      dropped: { unanchored: 1, protected: 1, overlapping: 1, stale: 1, malformed: 1 },
+      dropped: { unanchored: 1, protected: 1, overlapping: 1, stale: 1, malformed: 1, accepted: 4 },
       rejectedChunks: { saved: 1, unsaved: 0 },
       usage: undefined
     });

@@ -2,18 +2,19 @@
  * Proofread commands (Draft Edit Slices 1 to 3; ADR 2026-10-21 D5, D6, D7, D8):
  * what is refused before anything is sent, the long-file confirmation, how
  * an outcome is presented, how Fix and the quick fixes ask core, and the
- * writer's spelling convention. The host and the runner are fakes, so no
+ * writer's spelling convention and word list. The host and the runner are fakes, so no
  * VS Code API is mocked. Passages are public domain (Lewis Carroll, 1865).
  */
 
 // The whole core barrel cannot load under jest (an ESM dependency), so the
-// two runtime values these commands use are required from their modules.
+// runtime values these commands use are required from their modules.
 jest.mock('@prose-minion/core', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome,
   describeQuickFixOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeQuickFixOutcome,
-  isProofreadSpellingConvention: jest.requireActual('@/domain/models/DraftEdit').isProofreadSpellingConvention
+  isProofreadSpellingConvention: jest.requireActual('@/domain/models/DraftEdit').isProofreadSpellingConvention,
+  proofreadWordList: jest.requireActual('@/utils/proofread/proofreadWordList').proofreadWordList
 }));
 
 import type { DraftEditOutcome, DraftEditPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
@@ -33,7 +34,7 @@ import {
 } from '@app/application/commands/proofreadCommands';
 
 const TEXT = 'Alice was beginning to get very tired of sitting by her sister on the bank.';
-const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
+const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0, accepted: 0 };
 const COMPLETED: DraftEditOutcome = {
   kind: 'completed', flagged: 2, judgmentCalls: 1, dropped: NONE, rejectedChunks: { saved: 0, unsaved: 0 }, chunks: { total: 1, completed: 1 }
 };
@@ -55,6 +56,7 @@ function setup(options: {
   choice?: string;
   fixReview?: 'preview' | 'apply';
   spelling?: string;
+  wordList?: unknown;
   quickFix?: DraftEditQuickFixOutcome;
 } = {}) {
   const calls: string[] = [];
@@ -63,6 +65,7 @@ function setup(options: {
     document: jest.fn((uri: string) => (options.active?.uri === uri ? options.active : undefined)),
     fixReview: jest.fn(() => options.fixReview ?? 'preview'),
     spellingConvention: jest.fn(() => options.spelling),
+    wordList: jest.fn(() => options.wordList),
     confirm: jest.fn(async () => options.confirm ?? false),
     withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal, report: (message: string) => void) => Promise<T>) => {
       calls.push(`progress:${title}`);
@@ -241,6 +244,28 @@ describe('the spelling convention (Slice 3)', () => {
 
   it.each([['auto'], [undefined], ['irish'], ['British']])('names none for %p, so the passage keeps its own', async (spelling) => {
     const { host, runner } = setup({ active: editor(), spelling });
+    await proofreadAndFlag(host, runner);
+
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag' });
+  });
+});
+
+describe('the word list (Slice 3b)', () => {
+  it('sends the writer\'s words with Flag and with Fix, read at the gesture and normalized', async () => {
+    const { host, runner } = setup({ active: editor(), spelling: 'british', wordList: ['Dinah', ' Mad Hatter ', 'dinah', 42, 'Dinah’s'] });
+    await proofreadAndFlag(host, runner);
+    await proofreadAndFix(host, runner);
+
+    const wordList = ['Dinah', 'Mad', 'Hatter'];
+    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+      { kind: 'proofread', output: 'flag', spelling: 'british', wordList },
+      { kind: 'proofread', output: 'fix', review: 'preview', spelling: 'british', wordList }
+    ]);
+    expect(host.wordList).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([[undefined], [[]], ['Dinah'], [[' ', '—']], [{ word: 'Dinah' }]])('names none for %p', async (wordList) => {
+    const { host, runner } = setup({ active: editor(), wordList });
     await proofreadAndFlag(host, runner);
 
     expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag' });

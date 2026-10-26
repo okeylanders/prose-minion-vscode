@@ -225,6 +225,8 @@ export {
   type DraftEditPass,
   type DraftEditReview,
   type DraftEditTarget,
+  type ProofreadSettings,
   type ProofreadSpellingConvention
 } from '@/domain/models/DraftEdit';
+export { proofreadWordList } from '@/utils/proofread/proofreadWordList';
 export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

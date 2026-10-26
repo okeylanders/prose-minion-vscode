@@ -30,12 +30,23 @@ export function isProofreadSpellingConvention(value: unknown): value is Proofrea
 }
 
 /**
+ * The writer's settings a Proofread run reads at the gesture: the spelling
+ * convention (Slice 3) and the word list (Slice 3b), each absent when none
+ * is named.
+ */
+export interface ProofreadSettings {
+  readonly spelling?: ProofreadSpellingConvention;
+  /** Names and invented words the writer accepts, normalized (`proofreadWordList`); never empty. */
+  readonly wordList?: readonly string[];
+}
+
+/**
  * What a run produces: flags only, or the safe fixes applied and the rest
- * flagged; held to the writer's spelling convention when one is named.
+ * flagged; held to the writer's settings.
  */
 export type DraftEditPass =
-  | { readonly kind: 'proofread'; readonly output: 'flag'; readonly spelling?: ProofreadSpellingConvention }
-  | { readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview; readonly spelling?: ProofreadSpellingConvention };
+  | ({ readonly kind: 'proofread'; readonly output: 'flag' } & ProofreadSettings)
+  | ({ readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview } & ProofreadSettings);
 
 export type DraftEditPassKind = DraftEditPass['kind'];
 
@@ -96,6 +107,8 @@ export interface DraftEditDropCounts {
   readonly stale: number;
   /** The reply's issue was malformed: a missing field or an unknown category. */
   readonly malformed: number;
+  /** A `spelling` or `wrong-word` finding on a word the writer's list accepts (Slice 3b). Not a failure. */
+  readonly accepted: number;
 }
 
 /** Chunks whose reply could not be read: those whose capture for recovery was saved, and those whose save failed (PR #171 F-06). */

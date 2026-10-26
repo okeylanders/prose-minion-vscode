@@ -729,6 +729,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fixReview: () =>
       vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply' ? 'apply' : 'preview',
     spellingConvention: () => vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.spellingConvention'),
+    wordList: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('proofread.wordList'),
     confirm: async (message, action) =>
       (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
     withProgress: (title, task) => vscode.window.withProgress(

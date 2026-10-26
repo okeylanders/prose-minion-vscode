@@ -16,7 +16,9 @@
  *   with a message, since the project hides no command there.
  * - The writer's spelling convention (`proseMinion.proofread.spellingConvention`)
  *   is read at the gesture too, and goes with the pass (Slice 3). `auto`, or
- *   a value outside the list, names none.
+ *   a value outside the list, names none. So is the word list
+ *   (`proseMinion.proofread.wordList`, Slice 3b), normalized; an empty one
+ *   names none.
  * - A whole-file run over the confirmation threshold asks first, naming the
  *   word count and the number of model calls. Cancel sends nothing. A
  *   selection never asks.
@@ -40,6 +42,7 @@ import {
   describeDraftEditOutcome,
   describeQuickFixOutcome,
   isProofreadSpellingConvention,
+  proofreadWordList,
   type DocumentSnapshot,
   type DraftEditOutcome,
   type DraftEditPass,
@@ -48,7 +51,8 @@ import {
   type DraftEditReview,
   type DraftEditRunHooks,
   type DraftEditRunPlan,
-  type DraftEditTarget
+  type DraftEditTarget,
+  type ProofreadSettings
 } from '@prose-minion/core';
 
 export const PROOFREAD_FLAG_COMMAND = 'prose-minion.proofreadFlag';
@@ -87,6 +91,8 @@ export interface ProofreadCommandHost {
   fixReview(): 'preview' | 'apply';
   /** `proseMinion.proofread.spellingConvention`, as the writer set it. */
   spellingConvention(): string | undefined;
+  /** `proseMinion.proofread.wordList`, as the writer set it: anything, until normalized. */
+  wordList(): unknown;
   /** A modal question with one action besides Cancel; true when the action was chosen. */
   confirm(message: string, action: string): PromiseLike<boolean>;
   /** Runs `task` under a cancellable progress notification; cancelling aborts the signal, `report` replaces its line. */
@@ -114,11 +120,11 @@ export type ProofreadCommandOutcome =
 export const REVIEW_HINT = 'Review the fixes in Refactor Preview: tick the file to take them all, or tick them one by one, then Apply. Discard keeps them as flags.';
 
 export function proofreadAndFlag(host: ProofreadCommandHost, runner: ProofreadRunner): Promise<ProofreadCommandOutcome> {
-  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'flag', ...spellingOf(host) });
+  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'flag', ...settingsOf(host) });
 }
 
 export function proofreadAndFix(host: ProofreadCommandHost, runner: ProofreadRunner): Promise<ProofreadCommandOutcome> {
-  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'fix', review: reviewOf(host), ...spellingOf(host) });
+  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'fix', review: reviewOf(host), ...settingsOf(host) });
 }
 
 /** *Replace with '…'*: one shown fix, applied at once. */
@@ -200,10 +206,14 @@ function reviewOf(host: ProofreadCommandHost): DraftEditReview {
   return host.fixReview() === 'apply' ? 'direct' : 'preview';
 }
 
-/** The convention the writer named, if any: `auto` leaves it to the passage. */
-function spellingOf(host: ProofreadCommandHost): Pick<DraftEditPass, 'spelling'> {
+/** The writer's settings, read at the gesture: the convention named, if any (`auto` leaves it to the passage), and the word list, if any. */
+function settingsOf(host: ProofreadCommandHost): ProofreadSettings {
   const spelling = host.spellingConvention();
-  return isProofreadSpellingConvention(spelling) ? { spelling } : {};
+  const wordList = proofreadWordList(host.wordList());
+  return {
+    ...(isProofreadSpellingConvention(spelling) ? { spelling } : {}),
+    ...(wordList.length > 0 ? { wordList } : {})
+  };
 }
 
 /** Clear the active document's flags, or every document's when no editor is active. */

@@ -442,6 +442,16 @@ describe('app-shell provider assembly', () => {
       .toContain(`spellingConvention: () => vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.spellingConvention')`);
   });
 
+  it('declares the word list Proofread accepts, an array of strings, under the key the host reads (Draft Edit Slice 3b)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; items?: { type?: string }; default?: unknown }> } };
+    };
+    expect(manifest.contributes.configuration.properties['proseMinion.proofread.wordList'])
+      .toMatchObject({ type: 'array', items: { type: 'string' }, default: [] });
+    expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
+      .toContain(`wordList: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('proofread.wordList')`);
+  });
+
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     expect(extensionSource).toMatch(/const aiResourceRefresh = new AIResourceRefresh\(aiResourceManager, secretsService, platform\.settings, outputChannel\);/);

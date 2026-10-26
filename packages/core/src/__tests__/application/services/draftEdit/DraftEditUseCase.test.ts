@@ -107,7 +107,7 @@ function setup(options: {
 }
 
 const FLAG = { kind: 'proofread', output: 'flag' } as const;
-const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
+const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0, accepted: 0 };
 
 describe('DraftEditUseCase.run: placing and showing flags', () => {
   it('sends the pass\'s spelling convention with the chunks (Slice 3)', async () => {
