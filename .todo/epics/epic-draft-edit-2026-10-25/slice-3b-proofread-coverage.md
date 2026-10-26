@@ -175,9 +175,20 @@ The decisions are in the ADR's
     single-quoted speech would otherwise lend its present tense and its "I"
     to the narration, and a past-tense book could read as present.
   - **Also beyond the plan:** it runs on the extension host at about 6 µs a
-    word, so a long book is sampled evenly, every k-th narration sentence,
-    up to 20,000 words. A test with a present-tense prologue failed when the
-    sample was taken from the start.
+    word, so the tagger reads at most 20,000 words, chosen evenly across the
+    document by word position. A sentence over 500 words is read in pieces.
+    A test with a present-tense prologue failed when the sample was taken
+    from the start.
+  - **PR #174 review (Astra), F-01:** the per-sentence quotation-mark check
+    let a multi-sentence single-quoted speech's interior sentences through.
+    A narration-only detector now leaves single-quoted speech out whole
+    (paragraph-scoped; unclosed speech runs to its paragraph's end). The
+    shared dialogue rule is unchanged.
+  - **PR #174 review (Astra), F-02:** taking every k-th sentence bounded
+    sentences, not words. Her 600 pairs of 56- and 3-word sentences sent
+    33,600 words to the tagger, and an unpunctuated draft all of it. Pieces are now
+    chosen by word position, never past the budget, with long sentences cut
+    into 500-word pieces.
   - It is sent beside each chunk as `narration`. The prompt reports `person`
     only against a named third person.
   - **Tests:** *Alice* in three voices, the Caterpillar's single-quoted

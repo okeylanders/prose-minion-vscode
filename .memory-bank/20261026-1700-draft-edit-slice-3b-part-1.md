@@ -36,8 +36,12 @@ parts)
   - first-person pronouns were 8% of first-person narration's words and 0%
     of third.
 - Tagging 12,500 words took 77 ms.
-  - A longer book is sampled evenly up to 20,000 words (`sampleWords`), so
+  - The tagger reads at most 20,000 words (`sampleWords`), chosen evenly by
+    word position, with long sentences cut into pieces (PR #174 F-02), so
     a single-file novel never stalls the extension host.
+  - Single-quoted speech is left out whole by a narration-only detector
+    (PR #174 F-01); the shared dialogue rule reads double quotation marks
+    only.
   - The thresholds are in `NARRATION_BASELINE`.
 
 ## Follow-ups

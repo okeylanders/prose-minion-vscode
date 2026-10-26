@@ -1629,10 +1629,14 @@ writer's own document:
 - **The narration baseline** (Slice 3b; the ADR's Slice 3b amendment).
   `measureNarrationBaseline` measures the whole document's tense and person
   once per run, a selection run's too, from the sentences no one speaks: a
-  sentence touching dialogue or a protected region, or holding any quotation
-  mark (an apostrophe between letters aside), is left out, so single-quoted
-  speech never counts. A long book is sampled evenly (every k-th narration
-  sentence, up to `sampleWords`): the tagger runs on the extension host. A
+  sentence touching dialogue, single-quoted speech (left out whole, its
+  interior sentences too: PR #174 F-01) or a protected region, or still
+  holding any quotation mark (an apostrophe between letters aside), is left
+  out. The shared dialogue rule stays double-quotes-only. The tagger runs on
+  the extension host, so it reads at most `sampleWords` words, chosen evenly
+  by word position, never past the budget; a sentence over `sentenceWords`
+  is read in pieces (F-02). A test of a new rule asserts the tagger's input,
+  not a sample size. A
   field is named only past `NARRATION_BASELINE`'s thresholds. It is a hint beside each chunk, never a gate: tense and person
   stay flag-only, and a tagger that fails to load sends none.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
