@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 1: Craft Flags and cliché
 
-**Disposition: Changes requested before integration into `epic/lightbox`. Three P2 findings remain.**
+**Latest disposition — re-review of `d4db34f2`: Changes requested. F-01 and F-02 resolved; F-03 remains open for protected-adjacent single-quoted speech. N-01/N-02 addressed; N-03 is nonblocking.**
 
 **Author:** okeylanders · **PR:** [#177](https://github.com/okeylanders/prose-minion-vscode/pull/177) · **Reviewer:** Astra · **Reviewed:** 2026-10-26
 
@@ -181,3 +181,55 @@ Measured on Node 18 (scratch probes, not committed):
 **The two that survive are redundant guards.** The adapter's `state.closed` is one: VS Code marks a closed document's object `isClosed` too, so either signal catches the case alone. A check before pricing was the other: `begin` takes the gesture synchronously, so nothing can end it before pricing starts. I removed that check rather than keep code no case reaches.
 
 The ADR's "PR #177 review, as built" note, the agent guide and the memory bank say the same.
+
+## Re-review — 2026-10-26 (`d4db34f2`)
+
+**Changes still requested: F-01 and F-02 are resolved; F-03 remains open for one reproducible protected-markup/single-speech regression. N-01 and N-02 are addressed.**
+
+Reviewed `d4db34f25e9becb869e85eb038be6791ecd2e0a7` (functional correction `9b5f2393`) against unchanged base `fd145a6a44f3bd725c3c9f5ca9602c600906918d`. The 30-file correction delta includes shared engine/client model overrides and a new document-watch method. A fresh isolated checkout matches tree `f72ba84c574290a681f86ffcb6313afedb3096ef`; dependencies match the same lockfile. The original review above and the author's response are retained, not rewritten as if the initial defects never existed.
+
+### F-03 · still open: protected padding hides a following single-quote opener
+
+**Location:** [`speechSpans.ts:42–64`](../../packages/core/src/utils/draftEdit/speechSpans.ts#L42).
+
+The original in-flight quotation and embedded-code-quote witnesses now pass. However, the new protected-aware view replaces every non-newline code unit of a protected span with `x`. A single quote immediately following that span now looks like an apostrophe after a letter, so `singleQuotedSpans` does not recognize the opening speech mark.
+
+**Production-use-case witness:**
+
+```text
+<em>‘time stood still,’</em> said Alice.
+```
+
+The tag is correctly protected and the provider reads `⟦protected⟧‘time stood still,’⟦protected⟧ said Alice.`. A returned cliché finding on `time stood still` nevertheless produces **`flagged: 1`, `dialogue: 0`**. The new view begins `xxxx‘…`: its synthetic letters suppress the real opener. `<!--comment-->‘time stood still,’ said Alice.` produces the same result. Controls with unformatted single-quoted speech or tagged double-quoted speech correctly produce `flagged: 0`, `dialogue: 1`.
+
+This is introduced by the correction's protected-aware transformation: the original raw speech reader recognizes the opening single quote at these boundaries. It is not the acknowledged ambiguity of an apostrophe inside an ordinary word.
+
+**Requested correction:** conceal protected delimiters without inventing a word-like predecessor that suppresses a genuine speech opener. Preserve source offsets and paragraph boundaries, and test quotes immediately adjacent to tags/comments/code as well as quotes inside those constructs. Keep the original embedded-code and live-quotation controls, and do not change the saved-board shared dialogue rule incidentally.
+
+Independent expansion reproduces this in **18 cases** spanning straight/curly single quotes after tags, nested/attributed tags, comments, inline code, and list/blockquote containers. Six controls pass. A separate process loading the original reviewed checkout correctly suppresses the tagged/comment cases, confirming this is a correction regression rather than an inherited scanner limit.
+
+### Corrections independently established
+
+| Item | Evidence |
+| --- | --- |
+| **F-01 resolved** | The approved model is carried through command → use case → service → engine preflight → client request/cache policy. Fourteen production-chain cases exercise own/followed settings at estimate prompts, pricing, confirmation, progress, run prompts, preflight boundary and response; every approved request still names the originally priced model on the wire. |
+| **F-02 resolved** | Forty-nine cases exercise seven lifetime changes across seven asynchronous windows using the real document and annotation adapters. Every pre-dispatch close/reopen/language change sends nothing; after-send close shows no flags. Seven error/decline/cancellation cases release ownership; key retirement and repeated-gesture controls also pass. |
+| **Ordinary edits — deliberate behavior change** | Insertions during pricing, confirmation and prompt loading now follow the held gesture's occurrence instead of being refused by a later version-only watch. Three independent controls confirm the correct shifted flag. This follows the revised ADR's watch-from-gesture policy; it does not accept crossing a document lifetime. |
+| **N-01 resolved** | Counts are computed after settlement from live narration; deleting the other occurrence no longer leaves a newly shown flag claiming two occurrences. |
+| **N-02 addressed** | No eager whole-document character/source-map fold remains; repeat work is lazy, with at most 40 distinct phrase scans and no guessed count beyond the cap. The original 43-character-selection benchmark now reaches the model stub in about 90 ms with no findings (158 ms total), or 132 ms with one flag (241 ms total); 40 scans over 1.4 million characters take about 40 ms on this executor. |
+
+The host correction harness covers **77 scenarios**, including real `AIResourceManager`, `AgentRunEngine` and `OpenRouterClient` with only external transport/catalog/UI/events substituted. Focused repository checks pass: **6 suites / 193 tests**. Craft's capability-free engine path has no awaited gap between the final lifetime check and fetch. Shared default model behavior remains covered when no explicit override is supplied. No live provider or native VS Code session was used.
+
+Additional independent checks cover 35 placement/live/lazy cases, 134 repeat normalization/metacharacter/Unicode-boundary/cap cases, and 23 real-engine/fake-transport service assertions.
+
+### N-03 · P3 · The new repeat scan no longer counts overlapping occurrences
+
+`phraseRepeats('never say never say never', []).count('never say never')` returned **2** on the original head and now returns **1**: `matchAll` resumes after the consumed match, whereas the former scan advanced one code unit. Thus a host repeat statement can disappear for an overlapping repeated phrase. Consider preserving overlapping matching, or explicitly documenting disjoint occurrences as the intended rule. This is a nonblocking counting edge, not another F-03 case.
+
+### Aggregate verification and CI
+
+Node **18.20.8 / npm 10.8.2**: typecheck, lint and build (including bundle verification) pass; lint remains at 1,133 warnings and webpack at three existing size/performance warnings. **Full typed Jest: 573 suites / 8,028 tests / 59 snapshots pass**, 539.035 s, exit 0. `git diff --check` finds only an added trailing blank line in `speechSpans.test.ts`; this is cosmetic and not another blocker.
+
+The correction-head [push CI succeeded](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40418745033). The correction-head [PR CI failed](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40418750627): its logs confirm exactly one failed test, the existing `LightboxPassages` assertion that a 25,000-sentence phrase passage completes within 1,000 ms (8,027 tests passed). The measured passage implementation/index/instance files and fixture are unchanged by this PR. Independent reruns of that exact production fixture measured approximately **161 / 99 / 114 ms**, with the expected 24,999 instances, 25,000 sentences and one row. This supports a timing-sensitive failure, not proof that CI may be ignored. Final report-head CI remains a separate required check.
+
+**Hold for the remaining F-03 case, then re-review.** Native/live quality acceptance and PR #172's explicitly accepted, not-fixed preview limit remain separate. No source fixes, repository tests, dependencies, formal reviews/comments, merges or live calls were made by this reviewer.
