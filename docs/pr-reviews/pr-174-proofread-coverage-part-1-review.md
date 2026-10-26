@@ -52,7 +52,7 @@ The source narration alone is measured past/third. These observations use the re
 
 **Independent reproductions, instrumenting only the tagger input:**
 
-- A 35,400-word passage of 600 alternating Alice-derived sentences, 56 words then 3 words, sends **33,600 words** to the tagger. These are ordinary sentence lengths, not one pathological sentence.
+- A 35,400-word passage of 600 pairs of alternating Alice-derived sentences, 56 words then 3 words, sends **33,600 words** to the tagger. These are ordinary sentence lengths, not one pathological sentence.
 - A 55,000-word unpunctuated draft sends **all 55,000 words**. Increasing that one sentence increases the tagger input without limit.
 
 The tagger is synchronous on the extension host, and even a tiny selection run measures the whole document. This reintroduces document-size-dependent blocking before the provider call. The existing long-book test happens to use similarly distributed sentence lengths and checks a 10% tolerance; it does not establish a bound for other sentence distributions.
