@@ -1630,7 +1630,9 @@ writer's own document:
   `measureNarrationBaseline` measures the whole document's tense and person
   once per run, a selection run's too, from the sentences no one speaks: a
   sentence touching dialogue, single-quoted speech (left out whole, its
-  interior sentences too: PR #174 F-01) or a protected region, or still
+  interior sentences too, and closed only at a mark after closing
+  punctuation, never at a possessive or elision inside it: PR #174 F-01
+  and its re-review) or a protected region, or still
   holding any quotation mark (an apostrophe between letters aside), is left
   out. The shared dialogue rule stays double-quotes-only. The tagger runs on
   the extension host, so it reads at most `sampleWords` words, chosen evenly

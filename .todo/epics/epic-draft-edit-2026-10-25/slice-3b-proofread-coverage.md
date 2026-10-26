@@ -184,6 +184,13 @@ The decisions are in the ADR's
     A narration-only detector now leaves single-quoted speech out whole
     (paragraph-scoped; unclosed speech runs to its paragraph's end). The
     shared dialogue rule is unchanged.
+  - **F-01's re-review:** a plural possessive ("sisters'") or trailing
+    elision ("sittin'") inside speech still read as its closing mark, so
+    the rest of the speech leaked. Speech now closes only at a mark after
+    closing punctuation with no word after it; any other mark leaves it
+    open, to its paragraph's end if nothing closes it. A quoted word closed
+    after a letter takes the rest of its paragraph with it: where a mark's
+    role is unclear, more is left out, never less.
   - **PR #174 review (Astra), F-02:** taking every k-th sentence bounded
     sentences, not words. Her 600 pairs of 56- and 3-word sentences sent
     33,600 words to the tagger, and an unpunctuated draft all of it. Pieces are now

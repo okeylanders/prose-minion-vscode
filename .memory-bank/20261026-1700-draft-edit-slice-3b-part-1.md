@@ -41,7 +41,9 @@ parts)
     a single-file novel never stalls the extension host.
   - Single-quoted speech is left out whole by a narration-only detector
     (PR #174 F-01); the shared dialogue rule reads double quotation marks
-    only.
+    only. Speech closes only at a mark after closing punctuation, so a
+    possessive ("sisters'") or elision ("sittin'") inside it never ends it
+    early (F-01's re-review).
   - The thresholds are in `NARRATION_BASELINE`.
 
 ## Follow-ups
