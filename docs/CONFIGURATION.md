@@ -59,6 +59,7 @@ Model IDs are curated and verified against the live OpenRouter API. See the Mode
 |---------|------|---------|-------------|
 | `proseMinion.proofread.fixReview` | `preview` \| `apply` | `preview` | How **Proofread and Fix** and the *Fix all* quick fix bring their fixes to the file: through Refactor Preview, with each fix unticked until you tick it, or at once. Either way the fixes are one undoable change, and the file is never saved for you. |
 | `proseMinion.proofread.spellingConvention` | `auto` \| `american` \| `british` \| `canadian` \| `australian` | `auto` | The spelling Proofread holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and Fix corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling. |
+| `proseMinion.proofread.wordList` | array of strings | `[]` | Names and invented words Proofread accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive, and never flagged as a variant of another name. An entry of several words counts word by word. Set it in workspace settings to keep a list per project. |
 
 ---
 

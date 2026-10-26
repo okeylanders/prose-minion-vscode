@@ -972,6 +972,45 @@ Decided now, built in part 2.
   - Its issues join the model's at placement. Where both mark the same
     text, the host's is kept: it read the whole document.
 
+**As built (part 2), where the build goes beyond the above:**
+
+- **The word list** is normalized at the gesture (`proofreadWordList`) and
+  carried on the pass beside the convention (`ProofreadSettings`):
+  - strings only; an entry of several words counts word by word;
+  - each word once, by case;
+  - a possessive set aside.
+
+  It is compared with case and apostrophe shape set aside, and a
+  hyphenated word holds its parts. `acceptedWords` follows `narration` in
+  the request. A dropped finding counts as `accepted`, which the summary
+  never calls "not placed".
+- **Host categories** are a list of their own (`PROOFREAD_HOST_CATEGORIES`),
+  so a model reply naming `name` is malformed, and they are always flagged
+  (warnings).
+- **What counts as mid-sentence:** the nearest character before the word on
+  its line is a letter, digit, comma or semicolon. So a word after an
+  opening quotation mark, a colon, a dash or a sentence's end is never the
+  evidence. A misspelling only ever written at a sentence's start is not
+  found: the stated limit.
+- **Never read as names:**
+  - heading lines, whose title case says nothing;
+  - words in capitals, or under three letters;
+  - the forms of "I".
+- **Never flagged,** beyond the list:
+  - a variant the document also writes in lower case (a word, not a
+    misspelled name);
+  - a plural of the common name;
+  - a variant with two equally used candidates.
+- **Edits are counted by optimal string alignment,** so swapping two
+  neighbouring letters is one edit; the length rule uses the longer form.
+- **It runs on the extension host,** so it compares only names that could
+  be close: each common name is indexed by what is left with up to two
+  letters deleted. Past a budget of 100,000 index entries it stops, finds
+  nothing and logs why, rather than show a part. Measured: 13,000 distinct
+  names in 285,000 words used 31,234 (412 ms).
+- **What host code reads of the whole document** lives in
+  `draftEditHostRead` (the narration baseline moved there too).
+
 ### Part 3: quotation marks and consistency
 
 Decided now, built in part 3.
@@ -1005,7 +1044,8 @@ but a run still needs a key; running them without one is a follow-up.
 - A deterministic narrative-tense baseline: built in Slice 3b, part 1
   ([Amendment 2026-10-26: Slice 3b](#amendment-2026-10-26-slice-3b-proofread-coverage)).
 - A project word list (character and place names) to suppress false
-  spelling flags: Slice 3b, part 2.
+  spelling flags: built in Slice 3b, part 2
+  (`proseMinion.proofread.wordList`).
 - Craft flags (cliché, gesture strain, in-chapter continuity, register
   shift), flags with a recommendation that never edit: queued as Slice 3c,
   to be decided in an amendment of their own before any code.

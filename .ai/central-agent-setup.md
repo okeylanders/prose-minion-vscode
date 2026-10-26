@@ -1641,6 +1641,18 @@ writer's own document:
   not a sample size. A
   field is named only past `NARRATION_BASELINE`'s thresholds. It is a hint beside each chunk, never a gate: tense and person
   stay flag-only, and a tagger that fails to load sends none.
+- **The word list and name consistency** (Slice 3b, part 2).
+  `proseMinion.proofread.wordList` is read at the gesture and normalized
+  (`proofreadWordList`); each chunk carries only the listed words it holds
+  (`acceptedWords`), and a spelling or wrong-word finding on one is dropped
+  as `accepted`. Names are checked by host code over the whole document
+  (`findNameVariants`), never by a model: a host category
+  (`PROOFREAD_HOST_CATEGORIES`) a reply may never name, always flagged, and
+  kept over a model's issue it overlaps. What host code reads of the whole
+  document lives in `draftEditHostRead`. The check runs on the extension
+  host, so it compares only names a deletion index finds close, and past its
+  budget (`candidateBudget`) it stops and finds nothing, logged: keep any new
+  whole-document check bounded the same way.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring
