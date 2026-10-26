@@ -21,7 +21,7 @@ describe('describeDraftEditOutcome', () => {
   it('summarizes a completed run with counts and cost', () => {
     expect(describeDraftEditOutcome(completed(), 'chapter-03.md')).toEqual({
       level: 'info',
-      message: 'Proofread chapter-03.md: 9 issues flagged (2 tense or agreement) · $0.0040',
+      message: 'Proofread chapter-03.md: 9 issues flagged (2 need your judgment) · $0.0040',
       hasFlags: true
     });
   });
@@ -42,6 +42,13 @@ describe('describeDraftEditOutcome', () => {
       message: 'Proofread chapter-03.md: no issues found in the selection · 1 earlier flag outside the selection kept',
       hasFlags: true
     });
+  });
+
+  it('counts every flag-only issue as needing the writer\'s judgment, singular and plural (Slice 3b)', () => {
+    expect(describeDraftEditOutcome(completed({ flagged: 6, judgmentCalls: 4, usage: undefined }), 'a.md').message)
+      .toBe('Proofread a.md: 6 issues flagged (4 need your judgment)');
+    expect(describeDraftEditOutcome(completed({ flagged: 3, judgmentCalls: 1, usage: undefined }), 'a.md').message)
+      .toBe('Proofread a.md: 3 issues flagged (1 needs your judgment)');
   });
 
   it('counts what was not placed and what could not be read', () => {
@@ -82,7 +89,7 @@ describe('describeDraftEditOutcome', () => {
     });
     expect(describeDraftEditOutcome(outcome, 'a.md')).toMatchObject({
       level: 'warning',
-      message: 'Proofread a.md: 9 issues flagged (2 tense or agreement) · $0.0040. '
+      message: 'Proofread a.md: 9 issues flagged (2 need your judgment) · $0.0040. '
         + 'The API key changed during the run, so the remaining chunks were not sent. (1 of 3 parts proofread.)'
     });
   });
@@ -118,24 +125,24 @@ describe('describeDraftEditOutcome: Proofread and Fix (Slice 2)', () => {
 
   it('leads with the fixes applied, then what is flagged', () => {
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 7, notApplied: 0, unknown: 0 }), 'chapter-03.md'))
-      .toEqual({ level: 'info', message: 'Proofread chapter-03.md: 7 fixes applied · 3 issues flagged (2 tense or agreement) · $0.0040', hasFlags: true });
+      .toEqual({ level: 'info', message: 'Proofread chapter-03.md: 7 fixes applied · 3 issues flagged (2 need your judgment) · $0.0040', hasFlags: true });
   });
 
   it('says how many fixes the writer left unticked, now flagged', () => {
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 1, notApplied: 2, unknown: 0 }, 4), 'a.md').message)
-      .toBe('Proofread a.md: 1 fix applied (2 left unticked, flagged) · 4 issues flagged (2 tense or agreement) · $0.0040');
+      .toBe('Proofread a.md: 1 fix applied (2 left unticked, flagged) · 4 issues flagged (2 need your judgment) · $0.0040');
   });
 
   it('says a discarded preview changed nothing', () => {
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'declined', applied: 0, notApplied: 7, unknown: 0 }, 9), 'a.md'))
-      .toMatchObject({ level: 'info', message: 'Proofread a.md: fixes discarded, nothing changed · 9 issues flagged (2 tense or agreement) · $0.0040' });
+      .toMatchObject({ level: 'info', message: 'Proofread a.md: fixes discarded, nothing changed · 9 issues flagged (2 need your judgment) · $0.0040' });
   });
 
   it('warns when the file changed during review, and says what the writer edited was left alone', () => {
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'stale', applied: 0, notApplied: 5, unknown: 2 }, 7), 'a.md'))
       .toMatchObject({
         level: 'warning',
-        message: 'Proofread a.md: the file changed during review, so no fixes were applied · 7 issues flagged (2 tense or agreement)'
+        message: 'Proofread a.md: the file changed during review, so no fixes were applied · 7 issues flagged (2 need your judgment)'
           + ' · 2 fixes you edited during review left as you wrote them · $0.0040'
       });
   });
@@ -147,7 +154,7 @@ describe('describeDraftEditOutcome: Proofread and Fix (Slice 2)', () => {
 
   it('reads like Flag when there was nothing safe to fix, and says when nothing was found at all', () => {
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'none', applied: 0, notApplied: 0, unknown: 0 }, 1, 1), 'a.md').message)
-      .toBe('Proofread a.md: 1 issue flagged (1 tense or agreement) · $0.0040');
+      .toBe('Proofread a.md: 1 issue flagged (1 needs your judgment) · $0.0040');
     expect(describeDraftEditOutcome(fixed({ review: 'preview', answer: 'submitted', applied: 2, notApplied: 0, unknown: 0 }, 0, 0), 'a.md').message)
       .toBe('Proofread a.md: 2 fixes applied · $0.0040');
   });

@@ -1,7 +1,8 @@
 # Epic: Draft Edit
 
-**Status:** In progress. Slices 1 and 2 merged (PRs #171, #172); Slice 3 built
-and in review; Slice 3b (Proofread coverage) queued next.
+**Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
+3b (Proofread coverage) part 1 built and in review; Slice 3c (craft flags)
+queued.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -63,15 +64,17 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 0 | Spec | Feature notes, ADR (Accepted), this epic; `epic/lightbox` merged in; recovery registry moved (`d058e8d2`) | Done |
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
-| 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Built; in review |
-| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Queued next |
+| 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Part 1 in review; parts 2 and 3 next |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; needs an ADR amendment |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
 Each slice builds on the one before. Slice 2 needs Slice 1's anchoring and
 issue ledger. Slice 4 needs Slice 2's write side. Slice 3b comes before the
 Workshop slices at the writer's request (2026-10-26), so the button there
-proofreads with the wider coverage.
+proofreads with the wider coverage. Slice 3c follows it, also before the
+Workshop slices at the writer's request (2026-10-26).
 
 ## Project rules (from the integration branch)
 
@@ -166,3 +169,14 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
     rate was recorded. See the ADR's "Amendment 2026-10-26: Slice 3,
     polish".
   - Slice 3b, Proofread's wider coverage, is queued as the next slice.
+- **2026-10-26. Slice 3 merged** into `epic/lightbox` as `611bebd6`, after
+  Astra approved it with no blocking findings.
+- **2026-10-26. Slice 3b, part 1 built**, restarted from `epic/lightbox` at
+  `611bebd6`: four flag-only categories (wrong, missing and extra words,
+  person) and the narration baseline. See the slice doc's "Part 1: as
+  built".
+- **2026-10-26. Slice 3c, craft flags, queued** at the writer's request,
+  before the Workshop slices: cliché, gesture strain, in-chapter continuity
+  and register shift. All four are flags with a recommendation, never
+  edits, and most read the whole chapter. The slice doc recommends a
+  second pass beside Proofread, for the ADR amendment to decide.

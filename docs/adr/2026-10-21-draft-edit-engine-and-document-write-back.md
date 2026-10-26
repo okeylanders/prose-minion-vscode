@@ -566,7 +566,8 @@ correction, and a note without colliding with Markdown (see Out of scope).
   `DraftEditOutcome` as one notification, e.g. "Proofread chapter-03.md:
   9 issues flagged (2 tense or agreement) · 1 not placed · $0.0040", worded
   once in core (`describeDraftEditOutcome`). It offers *Show Problems* when
-  flags were shown and *Open Settings* when there is no key.
+  flags were shown and *Open Settings* when there is no key. (Since Slice 3b
+  the count reads "(2 need your judgment)": every flag-only category.)
 - **Activation.** `onCommand:` activation events are added, matching the
   manifest's style.
 
@@ -931,18 +932,84 @@ The writer's runs of Flag and Fix raised no false positive or threshold
 problem, but no fixture run with a rate was recorded, so the
 [Thresholds](#thresholds) table stands until one gives a reason to tune it.
 
+## Amendment 2026-10-26: Slice 3b, Proofread coverage
+
+Slice 3b widens what Proofread catches
+([slice doc](../../.todo/epics/epic-draft-edit-2026-10-25/slice-3b-proofread-coverage.md)).
+It ships in three parts, each a PR into `epic/lightbox`. This amendment
+decides all three; each part's PR records what it built.
+
+### Part 1: four categories and the narration baseline
+
+| Decision | Change |
+|---|---|
+| D6: the categories | The closed list gains four. **`wrong-word`**: a real word in place of the one meant that is not a sound-alike ("form" for "from"); sound-alikes stay `homophone`. **`missing-word`**: the quote spans the words either side of the gap, and the replacement puts the word back. **`extra-word`**: a stray word, often a revision's leftover; a word written twice in a row stays `spelling`, fixable as before. **`person`**: a first-person pronoun in third-person narration, outside dialogue and quoted thought. Every new category is **flag-only**: its suggestion is a *Replace with* that is never preferred, and Fix and *Fix all* never make it. A category becomes fixable only after a recorded fixture run shows its false-positive rate, and then with its own guard rule (for `wrong-word`, the spelling edit size; for `missing-word`, exactly one inserted word from a closed list). Severity follows the disposition, so they show as warnings. |
+| D6: the narration baseline | Host code measures the whole document's narration once per run (`measureNarrationBaseline`, `utils/proofread/narrationBaseline.ts`). It leaves out dialogue (`findDialogueSpans`), single-quoted speech whole, interior sentences included (PR #174 F-01), and protected regions. Single-quoted speech closes only at a mark after closing punctuation with no word after it; a possessive ("sisters'") or elision ("sittin'", "—'tis") inside it leaves it open, to its paragraph's end if nothing closes it, since where a mark's role is unclear more is left out (F-01's re-review). The part-of-speech tagger (`tagTextTokens`) counts finite verbs (past `VBD`; present `VBZ`, `VBP`) and personal pronouns. A tense is named when at least 20 finite verbs are counted and one tense holds 75% of them. `first` person is named when first-person singular pronouns are at least 1% of the narration's words; `third` when they are at most 0.2% and third-person pronouns at least 1%. Either needs at least 200 narration words. The thresholds live in `NARRATION_BASELINE`. Measured on *Alice* adaptations: past narration read 87–90% past, present narration 100% present; first-person pronouns were 8% of first-person narration and 0% of third. Tagging 12,500 words took 77 ms, so the tagger reads at most 20,000 words (about 120 ms on the extension host), chosen evenly across the document by word position; a sentence over 500 words is read in pieces (PR #174 F-02). A prologue in another tense cannot speak for the book. A selection run measures the whole document, not the selection, so a short or dialogue-heavy selection still knows the book's narration. The baseline goes beside each chunk as `narration` (`{"tense": "past", "person": "third"}`, each field only when named). The prompt judges `tense` against it, and reports `person` only against a named third person. It is a hint: tense and person stay flag-only. A tagger that fails to load sends no baseline, and the run goes on, logged. |
+| D8: the summary | "(N tense or agreement)" becomes "(N need your judgment)". Every flag-only category counts, so the writer sees how many flags Fix never makes. |
+
+### Part 2: the word list and name consistency
+
+Decided now, built in part 2.
+
+- **The word list.** `proseMinion.proofread.wordList`: names and invented
+  words the writer accepts, in user or workspace settings, read at the
+  gesture.
+  - Each chunk's request carries only the listed words that occur in it
+    (`acceptedWords`), so the request stays small.
+  - A host backstop drops a `spelling` or `wrong-word` finding whose quote
+    is a listed word, and counts it.
+- **Name consistency** is a host check over the whole document, not a model
+  category:
+  - Capitalized words that appear at least once mid-sentence are names.
+  - Forms with the same first letter within a small edit distance (one edit
+    up to six letters, two from seven), a possessive set aside, form a
+    group.
+  - In a group, a form used at most twice, beside one used at least three
+    times as often, is flagged at each use (`name`), with a *Replace with*
+    the common form that is never preferred.
+  - Month and day names and honorifics are never names, and a listed word
+    is never flagged.
+  - Its issues join the model's at placement. Where both mark the same
+    text, the host's is kept: it read the whole document.
+
+### Part 3: quotation marks and consistency
+
+Decided now, built in part 3.
+
+- **Quotation marks** (`quotation`, host):
+  - a double quotation mark that opens and never closes within its
+    paragraph, unless the next paragraph opens with one (speech running
+    over several paragraphs);
+  - a closing mark with nothing open.
+
+  Flag only, with no replacement.
+- **Consistency** (`consistency`, host): a closed table of variant pairs
+  (grey and gray, toward and towards, OK and okay, e-mail and email, all
+  right and alright, and others).
+  - Where one document uses both, the less used form is flagged, with a
+    *Replace with* the other.
+  - With a spelling convention named, the convention's form wins whatever
+    the counts.
+  - Flag only.
+
+Host checks run inside a Proofread run, over the whole document, and a
+selection run shows only those inside its selection. They need no model,
+but a run still needs a key; running them without one is a follow-up.
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to
   Draft).
 - CriticMarkup export and accept/reject, if portable in-file marks prove
   useful.
-- A deterministic narrative-tense baseline (via `wink-pos-tagger`, dialogue
-  excluded) passed to Proofread as a hint. Queued as
-  [Slice 3b](../../.todo/epics/epic-draft-edit-2026-10-25/slice-3b-proofread-coverage.md),
-  with the rest of Proofread's wider coverage.
+- A deterministic narrative-tense baseline: built in Slice 3b, part 1
+  ([Amendment 2026-10-26: Slice 3b](#amendment-2026-10-26-slice-3b-proofread-coverage)).
 - A project word list (character and place names) to suppress false
-  spelling flags. Queued in Slice 3b.
+  spelling flags: Slice 3b, part 2.
+- Craft flags (cliché, gesture strain, in-chapter continuity, register
+  shift), flags with a recommendation that never edit: queued as Slice 3c,
+  to be decided in an amendment of their own before any code.
+- Continuity across chapters (a story bible).
 - Draft edits on `manual` Workshop excerpts (no document to write).
 - Proofreading several files or a folder in one run.
 - Persisting flags across reloads (decided against).

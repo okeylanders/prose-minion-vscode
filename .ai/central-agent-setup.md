@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3 (Polish: the Prose Minion submenu, the spelling convention, selection-scoped flags) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `daec95d3` (Draft Edit Slice 2, PR #172), under Node 22 and Node 18):
-- 552 suites / 7,710 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 1 (four flag-only categories and the narration baseline) with its PR #174 review fixes (F-01 and its re-review, F-02) on `claude/upbeat-galileo-y1l4yf`, merged with `epic/lightbox` at `44127c92` (Lightbox Slice 4M, PR #175), under Node 18):
+- 559 suites / 7,780 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1579,9 +1579,11 @@ writer's own document:
   compared before and after with `marked`, the batch together, every table
   cell's inline shape included (`editsChangingStructure`, PR #172 F-03). An
   anchor never ends inside a
-  normalized expansion (`Wait.` is not `Wait…`). Tense and agreement are only
-  ever flagged; a judgment call's suggestion is applied only by its own
-  *Replace with*.
+  normalized expansion (`Wait.` is not `Wait…`). Tense, agreement, person, and
+  wrong, missing and extra words are only ever flagged
+  (`proofreadCategoryDisposition`); a judgment call's suggestion is applied
+  only by its own *Replace with*. A category becomes fixable only after a
+  recorded fixture run, with its own guard rule (Slice 3b).
 - **Live text wins, one lifetime.** A run watches its open document from
   the version it read (`DocumentEditor.watch`). Findings follow their own
   occurrence through the writer's edits, never a fresh search; what an edit
@@ -1624,6 +1626,25 @@ writer's own document:
   and keeps those still shown when it shows its own. Never move a selection
   range through the writer's edits to decide it, and never bring back a flag
   the writer dismissed, edited or cleared during the run.
+- **The narration baseline** (Slice 3b; the ADR's Slice 3b amendment).
+  `measureNarrationBaseline` measures the whole document's tense and person
+  once per run, a selection run's too, from the sentences no one speaks: a
+  sentence touching dialogue, single-quoted speech (left out whole, its
+  interior sentences too, and closed only at a mark after closing
+  punctuation, never at a possessive or elision inside it: PR #174 F-01
+  and its re-review) or a protected region, or still
+  holding any quotation mark (an apostrophe between letters aside), is left
+  out. The shared dialogue rule stays double-quotes-only. The tagger runs on
+  the extension host, so it reads at most `sampleWords` words, chosen evenly
+  by word position, never past the budget; a sentence over `sentenceWords`
+  is read in pieces (F-02). A test of a new rule asserts the tagger's input,
+  not a sample size. A
+  field is named only past `NARRATION_BASELINE`'s thresholds. It is a hint beside each chunk, never a gate: tense and person
+  stay flag-only, and a tagger that fails to load sends none.
+- **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
+  holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
+  example's response through the production frame reader, codec, anchoring
+  and guard. A new category joins both, with a line in the example.
 - **Settings a run reads are read at the gesture** and carried on the pass,
   as the spelling convention is (`spelling`; absent means none named). The
   request sends them as JSON fields beside the passage; a prompt section

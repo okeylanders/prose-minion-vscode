@@ -96,17 +96,24 @@ Semantic word discovery by meaning, not exact match. Uses the Category Search mo
 ### 6. Proofread
 
 Finds mechanical errors in an open Markdown or plain-text file: spelling,
-homophones, punctuation, capitalization, spacing, agreement, and tense. Right-
+homophones and other wrong words, punctuation, capitalization, spacing,
+agreement, tense, missing and stray words, and a first-person "I" slipping
+into third-person narration. Right-
 click in the editor and choose **Prose Minion ▸ Proofread and Flag** or
 **Proofread and Fix**; the Command Palette names them **Prose Minion: Proofread
 and Flag** and **Prose Minion: Proofread and Fix**. A selection narrows the run;
 with nothing selected the whole file is proofread. Uses the Proofread model
 scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
 
-- **Never changes the text.** Each issue is a diagnostic: a squiggle, an entry in
-  the Problems panel, and a suggested correction in its message. Tense and
-  agreement show as warnings, since they are judgment calls; surface errors show
-  as information.
+- **Proofread and Flag never changes the text.** Each issue is a diagnostic: a
+  squiggle, an entry in the Problems panel, and a suggested correction in its
+  message. Surface errors Fix may correct show as information. Everything only
+  ever flagged shows as a warning: tense, agreement, person, and wrong, missing
+  and stray words. The summary counts those as needing your judgment.
+- **Knows the book's narration.** Proofread measures the whole file's narrative
+  tense and person (past or present, first or third), from the sentences no
+  one speaks, and judges each passage against them. A short selection, or a
+  page of dialogue, is not judged by its own few verbs.
 - **Leaves markup alone.** Front matter, code, link targets, URLs, HTML comments,
   and tags are never sent or flagged. Indented paragraphs are proofread.
 - **Follows your edits.** Flags move with their text as you type, and a flag
@@ -120,7 +127,7 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
   homophone, punctuation, capitalization, and spacing fixes as one change you
   can undo, and flags the rest. By default the fixes open in Refactor Preview,
   unticked: tick the file to take them all, or tick them one by one, then
-  Apply. Tense and agreement are only ever flagged. A flag's lightbulb offers
+  Apply. The judgment calls are only ever flagged. A flag's lightbulb offers
   **Replace with '…'** and **Fix all Proofread issues in this file**
   (`proseMinion.proofread.fixReview`).
 - **Holds your spelling convention.** Set

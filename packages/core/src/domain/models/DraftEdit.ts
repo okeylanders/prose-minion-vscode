@@ -135,7 +135,7 @@ export type DraftEditOutcome =
       readonly kind: 'completed';
       /** Issues shown. */
       readonly flagged: number;
-      /** Of those, the judgment calls (tense, agreement). */
+      /** Of those, the flag-only ones Fix never makes (tense, agreement, person; wrong, missing and extra words). */
       readonly judgmentCalls: number;
       readonly dropped: DraftEditDropCounts;
       readonly rejectedChunks: DraftEditRejectedChunks;

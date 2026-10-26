@@ -17,15 +17,28 @@ const judge = (category: (typeof PROOFREAD_CATEGORIES)[number], original: string
 
 describe('Proofread categories', () => {
   it('fixes surface errors and only flags judgment calls', () => {
-    expect(Object.fromEntries(PROOFREAD_CATEGORIES.map((c) => [c, proofreadCategoryDisposition(c)]))).toEqual({
-      spelling: 'fix',
-      homophone: 'fix',
-      punctuation: 'fix',
-      capitalization: 'fix',
-      spacing: 'fix',
-      agreement: 'flag',
-      tense: 'flag'
-    });
+    expect(PROOFREAD_CATEGORIES.map((c) => [c, proofreadCategoryDisposition(c)])).toEqual([
+      ['spelling', 'fix'],
+      ['homophone', 'fix'],
+      ['punctuation', 'fix'],
+      ['capitalization', 'fix'],
+      ['spacing', 'fix'],
+      ['agreement', 'flag'],
+      ['tense', 'flag'],
+      ['wrong-word', 'flag'],
+      ['missing-word', 'flag'],
+      ['extra-word', 'flag'],
+      ['person', 'flag']
+    ]);
+  });
+
+  it.each([
+    ['wrong-word', 'cold', 'could'],
+    ['missing-word', 'for hot day', 'for the hot day'],
+    ['extra-word', 'speak say', 'say'],
+    ['person', 'I thought', 'she thought']
+  ] as const)('flags a %s finding, however small, and keeps its suggestion (Slice 3b)', (category, original, replacement) => {
+    expect(judge(category, original, replacement)).toEqual({ kind: 'keep', disposition: 'flag' });
   });
 
   it('recognizes only the closed set', () => {
