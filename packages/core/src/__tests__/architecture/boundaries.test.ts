@@ -1185,6 +1185,8 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
   // Slice 4J: a call that did not land, said once (pure), and its notes and pointers (decision 52).
   'presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts',
+  // Slice 4M: the ribbon's focus line, one line tall in every state (pure).
+  'presentation/webview/hooks/domain/lightbox/lightboxFocusLine.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxOpinionView.ts',
@@ -1255,6 +1257,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxCallControls.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxCallNotes.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxFocusLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSparks.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxOpinion.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxSteering.ts',

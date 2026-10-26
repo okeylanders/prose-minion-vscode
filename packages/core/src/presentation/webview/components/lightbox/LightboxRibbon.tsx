@@ -16,6 +16,10 @@
  * lanes are hoverable and pinnable. Under the columns, the story lanes
  * (Slice 4C, `LightboxRibbonPlot`): Sections (measured), Movements and
  * Engagement (read, hatched) and Pressure (counted from read threads).
+ *
+ * The focus line (`lightboxFocusLine`) has a row of its own under the
+ * eyebrow, one line tall whatever it says, so hovering never changes the
+ * ribbon's height or moves the board under the pointer (Slice 4M).
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxRibbonColumn } from '@messages';
@@ -26,6 +30,7 @@ import { LIGHTBOX_ENDING_LABELS } from '@shared/constants/lightbox';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxRibbonPlot, type LightboxRibbonPlotLanes } from '@components/lightbox/LightboxRibbonPlot';
+import { lightboxFocusLine } from '@hooks/domain/lightbox/lightboxFocusLine';
 
 export interface LightboxRibbonProps {
   board: LightboxBoard;
@@ -49,25 +54,11 @@ const TENSION_LANE_HEIGHT = 34;
 const TENSION_TOP_SCORE = 9;
 /** Scale floor, so a text of very short sentences does not fill the lane. */
 const RHYTHM_SCALE_FLOOR = 12;
-/** How many paragraph references the focus line spells out. */
-const FOCUS_REFERENCES = 14;
 
 function columnLabel(column: LightboxRibbonColumn): string {
   return column.from === column.to
     ? `Paragraph ${column.from}`
     : `Paragraphs ${column.from} to ${column.to}`;
-}
-
-function focusLine(item: LightboxResolvedItem | null): string {
-  if (!item) {
-    return 'Hover anything on the board to light the paragraphs it touches.';
-  }
-  if (item.paragraphs.length === 0) {
-    return `${item.title} · in no single paragraph`;
-  }
-  const shown = item.paragraphs.slice(0, FOCUS_REFERENCES).map((index) => `¶${index}`).join(' ');
-  const more = item.paragraphs.length - FOCUS_REFERENCES;
-  return `${item.title}  ·  ${shown}${more > 0 ? ` +${more}` : ''}`;
 }
 
 /** Label the first column and every nth after it, so the index row never crowds. */
@@ -90,6 +81,7 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
   const { ribbon } = board;
   const hasFocus = focusedItem !== null;
   const focusTone = focusedItem?.register === 'measured' ? 'is-measured' : 'is-read';
+  const focus = lightboxFocusLine(focusedItem);
   const scores = tensionLensOn && tension.scores?.length === ribbon.length ? tension.scores : undefined;
   const staleKey = tension.stale ? <span className="pm-lb-lane-stale">stale</span> : null;
   const endingMarks = endings?.endings?.length === ribbon.length ? endings.endings : undefined;
@@ -109,10 +101,12 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           The text · {board.paragraphs.length.toLocaleString('en-US')} ¶
           {bucketed ? ` · ${ribbon.length} columns` : ''}
         </span>
-        {/* Not a live region: hover changes it constantly; the inspector announces pins. */}
-        <span className={`pm-lb-ribbon-focus${hasFocus ? ` ${focusTone}` : ''}`}>
-          {focusLine(focusedItem)}
-        </span>
+        {/* Its own row, one line tall in every state: the text clips, the count never does (Slice 4M).
+            Not a live region: hover changes it constantly; the inspector announces pins. */}
+        <p className={`pm-lb-ribbon-focus${hasFocus ? ` ${focusTone}` : ''}`}>
+          <span className="pm-lb-ribbon-focus-text">{focus.text}</span>
+          {focus.tail && <>{' '}<span className="pm-lb-ribbon-focus-tail">{focus.tail}</span></>}
+        </p>
       </div>
       {/* One plain CSS grid, for Chromium 114 (VS Code 1.82): every label block and track is a direct
           child, sharing one label track and one column track (PR #156 F-03, F-04). */}
