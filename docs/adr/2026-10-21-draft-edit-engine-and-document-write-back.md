@@ -1006,6 +1006,10 @@ but a run still needs a key; running them without one is a follow-up.
   ([Amendment 2026-10-26: Slice 3b](#amendment-2026-10-26-slice-3b-proofread-coverage)).
 - A project word list (character and place names) to suppress false
   spelling flags: Slice 3b, part 2.
+- Craft flags (cliché, gesture strain, in-chapter continuity, register
+  shift), flags with a recommendation that never edit: queued as Slice 3c,
+  to be decided in an amendment of their own before any code.
+- Continuity across chapters (a story bible).
 - Draft edits on `manual` Workshop excerpts (no document to write).
 - Proofreading several files or a folder in one run.
 - Persisting flags across reloads (decided against).
