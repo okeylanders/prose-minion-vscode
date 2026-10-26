@@ -51,8 +51,9 @@ at `57489816` (the PR #174 merge), into `epic/lightbox`
 
 ## Verification
 
-- Node 18.20.8 mirror of CI (typecheck, test, lint, build): see the PR.
-  Inventory: SUITES suites / TESTS tests / 59 snapshots.
+- Node 18.20.8 mirror of CI: typecheck, test, lint (0 errors / 1,133
+  warnings, as before) and build all pass. Inventory: 562 suites / 7,846
+  tests / 59 snapshots (base 559 / 7,780).
 - 19 mutations: 17 fail tests. The 2 that survive change only speed:
   indexing every name, and a looser early exit.
 - On the 992 words of real *Alice* in the repository's fixtures, no
