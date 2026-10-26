@@ -159,6 +159,13 @@ export interface AgentRunOptions {
    * visible result remain untouched so the owning domain can parse controls.
    */
   readonly retainedAssistantContentSanitizer?: (content: string) => string;
+  /**
+   * The model every request of this run goes to, whatever the engine's model
+   * is by then (a hot-swap, or a following scope moving): the model a writer
+   * approved with its price (Craft Flags, PR #177 F-01). The context
+   * preflight measures against it too. Absent, the engine's own model.
+   */
+  readonly model?: string;
 }
 
 export interface InitialRunRequest {

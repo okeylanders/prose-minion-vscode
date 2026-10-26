@@ -88,6 +88,7 @@ export class VsCodeDocumentEditor implements DocumentEditor, vscode.Disposable {
       this.watches.delete(state);
     };
     return {
+      ended: () => state.closed || document.isClosed,
       settle: (): DocumentWatchResult => {
         end();
         if (state.closed || document.isClosed) {

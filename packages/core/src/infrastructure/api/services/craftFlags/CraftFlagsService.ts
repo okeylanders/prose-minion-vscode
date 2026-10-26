@@ -11,12 +11,19 @@
  *   are one array, so the shared salvage would keep none of them;
  * - a call the provider refuses (a key removed or replaced mid-run, credits,
  *   rate limits) is not sent, and the run says why in host-owned words. The
- *   calls start together, so the others stand as they are answered.
+ *   calls start together, so the others stand as they are answered;
+ * - the caller's `stillCurrent` is asked once the prompts are loaded, and the
+ *   calls start in that same turn: a gesture whose document closed, reopened
+ *   or changed language sends nothing (PR #177 F-02).
  *
  * `estimate` prices the same calls before anything is sent: the engine's
  * token estimator over the exact messages, at the live catalog's prices,
  * with a typical reply (`PROMPT_BUDGETS.craftFlags.typicalOutputTokens`).
- * It is an estimate, never a cap.
+ * It is an estimate, never a cap. It names the model it priced, read once
+ * before anything is awaited, and `flag` sends every call to the model it is
+ * given, the one the writer approved (`AgentRunOptions.model`), so a model
+ * that changes while the writer reads the price never receives the chapter
+ * (PR #177 F-01).
  *
  * The writer's text travels only as a JSON string value, never as
  * instructions. Nothing here knows about documents or offsets: a passage in,
@@ -85,11 +92,23 @@ export interface CraftFlagsRunRequest {
   readonly categories: readonly CraftFlagCategory[];
   /** Names the run in logs and recovery files: a path, never the text. */
   readonly label: string;
+  /**
+   * The model the writer approved with its price (the estimate's): every call
+   * goes to it, whatever the craft engine's model is by dispatch (PR #177
+   * F-01).
+   */
+  readonly model: string;
+  /**
+   * Whether the gesture's document is still the lifetime it read: asked once
+   * the prompts are ready, just before the calls are sent, with nothing
+   * awaited between; false sends nothing (`ended`, PR #177 F-02).
+   */
+  readonly stillCurrent?: () => boolean;
   readonly signal?: AbortSignal;
 }
 
 export interface CraftFlagsEstimate {
-  /** The model the calls would run on; absent with no key. */
+  /** The model the calls are priced for, and go to once approved; absent with no key. */
   readonly model?: string;
   readonly calls: number;
   readonly inputTokens: number;
@@ -112,6 +131,8 @@ export type CraftFlagsCallResult =
 
 export type CraftFlagsRunResult =
   | { readonly kind: 'unconfigured' }
+  /** The gesture's document closed, reopened or changed language before anything was sent. */
+  | { readonly kind: 'ended' }
   | { readonly kind: 'cancelled'; readonly usage?: TokenUsage }
   | {
       readonly kind: 'completed';
@@ -133,9 +154,8 @@ export class CraftFlagsService {
 
   async estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories'>): Promise<CraftFlagsEstimate> {
     await this.aiResourceManager.ensureInitialized();
-    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)
-      ? this.aiResourceManager.getResolvedModel(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)
-      : undefined;
+    // Read once, before anything is awaited: the price and the confirmation name this model, and the run goes to it.
+    const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel() || undefined;
     let inputTokens = 0;
     for (const category of request.categories) {
       const systemMessage = await this.systemMessage(category);
@@ -162,6 +182,10 @@ export class CraftFlagsService {
       return { kind: 'unconfigured' };
     }
     const systemMessages = await Promise.all(request.categories.map((category) => this.systemMessage(category)));
+    // The calls below start in this same turn, so this answers for every one of them.
+    if (request.stillCurrent && !request.stillCurrent()) {
+      return { kind: 'ended' };
+    }
     const presenter = presentOnce(this.recoveryPresenter);
     const usages: Array<TokenUsage | undefined> = [];
     let interrupted: DraftEditInterruption | undefined;
@@ -172,7 +196,7 @@ export class CraftFlagsService {
       }
       let result: ExecutionResult;
       try {
-        result = await this.call(engine, systemMessages[index], buildCraftFlagsMessage(category, request.passage), request.signal);
+        result = await this.call(engine, request.model, systemMessages[index], buildCraftFlagsMessage(category, request.passage), request.signal);
       } catch (error) {
         interrupted ??= draftEditInterruptionOf(error, 'categories');
         this.log.appendLine(`[CraftFlags] ${request.label}: ${category} not sent: ${interrupted.message}`);
@@ -205,13 +229,14 @@ export class CraftFlagsService {
     }
   }
 
-  private call(engine: AgentRunEngine, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
+  private call(engine: AgentRunEngine, model: string, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
     return engine.runInitial({
       toolName: 'craft-flags',
       systemMessage,
       userMessage,
       policy: AGENT_RUN_POLICIES.craftFlags,
       options: {
+        model,
         temperature: CRAFT_FLAGS_TEMPERATURE,
         maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens,
         ...(signal ? { signal } : {})

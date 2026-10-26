@@ -39,10 +39,10 @@ function createService(replies: Reply[], options: { engine?: boolean; prices?: C
     }
     return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, ...next };
   });
+  const engine = { runInitial, getModel: jest.fn(() => options.model ?? 'placeholder/craft-model') };
   const manager = {
     ensureInitialized: jest.fn(async () => undefined),
-    getEngine: jest.fn(() => (options.engine === false ? undefined : { runInitial })),
-    getResolvedModel: jest.fn(() => options.model ?? 'placeholder/craft-model')
+    getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
   };
   const promptLoader = { loadPrompts: jest.fn(async (files: string[]) => `SYSTEM ${files.join(' + ')}`) };
   const prices = options.prices ?? { pricing: jest.fn(async () => ({ promptUsdPerToken: 0.000003, completionUsdPerToken: 0.000015 })) };
@@ -50,10 +50,11 @@ function createService(replies: Reply[], options: { engine?: boolean; prices?: C
   const presenter = { present: jest.fn(async () => undefined) };
   const log = { appendLine: jest.fn() };
   const service = new CraftFlagsService(manager as never, promptLoader as never, prices, recovery as never, presenter, log as never);
-  return { service, runInitial, manager, promptLoader, prices, recovery, presenter, log };
+  return { service, runInitial, engine, manager, promptLoader, prices, recovery, presenter, log };
 }
 
-const request = { passage: PASSAGE, categories: ['cliche'] as const, label: 'chapter-01.md' };
+const APPROVED = 'placeholder/approved-model';
+const request = { passage: PASSAGE, categories: ['cliche'] as const, label: 'chapter-01.md', model: APPROVED };
 
 describe('CraftFlagsService.flag', () => {
   it('reports unconfigured, sending nothing, when there is no craft engine', async () => {
@@ -75,7 +76,7 @@ describe('CraftFlagsService.flag', () => {
       toolName: 'craft-flags',
       systemMessage: `SYSTEM ${files.join(' + ')}`,
       policy: AGENT_RUN_POLICIES.craftFlags,
-      options: { temperature: CRAFT_FLAGS_TEMPERATURE, maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens }
+      options: { model: APPROVED, temperature: CRAFT_FLAGS_TEMPERATURE, maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens }
     });
     expect(sent.userMessage).toBe(buildCraftFlagsMessage('cliche', PASSAGE));
     expect(JSON.parse(sent.userMessage.slice(sent.userMessage.indexOf('{')))).toEqual({ task: 'craft-flags', category: 'cliche', passage: PASSAGE });
@@ -84,6 +85,27 @@ describe('CraftFlagsService.flag', () => {
       calls: [{ kind: 'read', findings: [expect.objectContaining({ category: 'cliche', kind: 'cliche' })], malformed: 0, notesWithheld: 0 }],
       usage: expect.objectContaining(USAGE)
     });
+  });
+
+  it('sends each call to the approved model, whatever the engine\'s model is by then (PR #177 F-01)', async () => {
+    const { service, runInitial, engine } = createService([{ content: replyOf(CHILL) }], { model: 'placeholder/another-model' });
+    await service.flag(request);
+
+    expect(engine.getModel()).toBe('placeholder/another-model');
+    expect((runInitial.mock.calls[0] as unknown as [{ options: { model: string } }])[0].options.model).toBe(APPROVED);
+  });
+
+  it('sends nothing when the gesture is no longer current once the prompts are ready (PR #177 F-02)', async () => {
+    const { service, runInitial, promptLoader } = createService([{ content: replyOf(CHILL) }]);
+    let current = true;
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      current = false;
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+
+    await expect(service.flag({ ...request, stillCurrent: () => current })).resolves.toEqual({ kind: 'ended' });
+    expect(runInitial).not.toHaveBeenCalled();
+    await expect(service.flag({ ...request, stillCurrent: () => true })).resolves.toMatchObject({ kind: 'completed' });
   });
 
   it('rejects a reply that reached the output ceiling, never salvaged, and saves it for recovery', async () => {
@@ -152,6 +174,18 @@ describe('CraftFlagsService.estimate', () => {
       outputTokens,
       usd: inputTokens * 0.000003 + outputTokens * 0.000015
     });
+  });
+
+  it('names the engine\'s model as it stood before anything was awaited, and prices that model (PR #177 F-01)', async () => {
+    const { service, engine, prices, promptLoader } = createService([]);
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      engine.getModel.mockReturnValue('placeholder/changed-while-pricing');
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+    const estimate = await service.estimate(request);
+
+    expect(estimate.model).toBe('placeholder/craft-model');
+    expect(prices.pricing).toHaveBeenCalledWith('placeholder/craft-model');
   });
 
   it('leaves the price out when the catalog has none, or cannot be read, and names no model without an engine', async () => {

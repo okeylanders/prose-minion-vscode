@@ -123,6 +123,20 @@ describe('AgentRunEngine', () => {
     expect(client.createStreamingChatCompletion).not.toHaveBeenCalled();
   });
 
+  it('sends a run naming its model to that model, and measures the preflight against it (PR #177 F-01)', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(1_000_000);
+    Object.assign(client, { getModel: () => 'placeholder/engine-model' });
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    await engine.runInitial({ toolName: 'craft-flags', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.craftFlags, options: { model: 'placeholder/approved-model' } });
+
+    expect(client.createChatCompletion.mock.calls[0][1]).toMatchObject({ model: 'placeholder/approved-model' });
+    expect(window).toHaveBeenCalledWith('placeholder/approved-model');
+    expect(window).not.toHaveBeenCalledWith('placeholder/engine-model');
+    await engine.runInitial({ toolName: 'dictionary', systemMessage: 'System', userMessage: 'Word', policy: AGENT_RUN_POLICIES.dictionary });
+    expect(client.createChatCompletion.mock.calls[1][1]).not.toHaveProperty('model');
+  });
+
   it('leaves retained history unchanged on a preflight refusal and allows retry with a larger window', async () => {
     const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
     client.createChatCompletion.mockResolvedValue({ content: 'Reply' });

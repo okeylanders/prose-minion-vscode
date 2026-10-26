@@ -73,6 +73,7 @@ export class FakeDocuments implements DocumentEditor {
     const state = { edits: [] as DocumentTextChange[][], closed: false };
     this.watches.add(state);
     return {
+      ended: () => state.closed || !this.open,
       settle: (): DocumentWatchResult => {
         this.watches.delete(state);
         return state.closed || !this.open

@@ -40,6 +40,29 @@ export function findSpeechSpans(text: string): TextRange[] {
 }
 
 /**
+ * Speech as the prose writes it, with protected syntax set aside (Craft
+ * Flags, PR #177 F-03): every character of a protected region but a line
+ * break is read as a letter, so a quotation mark inside inline code or a
+ * fence neither opens nor closes speech, and offsets stay the text's own.
+ * The shared rules read that view unchanged; the narration baseline, which
+ * leaves protected regions out on its own, still reads the raw text.
+ */
+export function findSpeechSpansOutsideProtected(text: string, protectedRegions: readonly TextRange[]): TextRange[] {
+  let view = '';
+  let at = 0;
+  for (const region of [...protectedRegions].sort((a, b) => a.start - b.start)) {
+    const start = Math.max(at, region.start);
+    const end = Math.min(text.length, region.end);
+    if (end <= start) {
+      continue;
+    }
+    view += text.slice(at, start) + text.slice(start, end).replace(/[^\r\n]/g, 'x');
+    at = end;
+  }
+  return findSpeechSpans(view + text.slice(at));
+}
+
+/**
  * Single-quoted speech (PR #174 F-01, for the narration baseline). Within each
  * paragraph, a single quotation mark with nothing word-like before it opens a
  * span; one after a letter or digit ("don't", "Alice's", "the sisters' bank")

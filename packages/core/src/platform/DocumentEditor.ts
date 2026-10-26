@@ -61,6 +61,12 @@ export type DocumentWatchResult =
     };
 
 export interface DocumentWatch {
+  /**
+   * Whether the watched lifetime is over (the document closed, reopened or
+   * changed language), without ending the watch: a gesture held across
+   * awaits asks it before it sends anything (Craft Flags, PR #177 F-02).
+   */
+  ended(): boolean;
   /** The document now, and how it got there; ends the watch. */
   settle(): DocumentWatchResult;
   /** Ends the watch without reading it. */

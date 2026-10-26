@@ -7,8 +7,15 @@
  * anchor once, touches a protected placeholder, touches speech in a category
  * that leaves speech alone (cliché), or overlaps an earlier flag of its
  * category. A selection run that read the whole chapter keeps only the
- * flags inside its selection. Every flag carries the host's count of its
- * phrase in the document's narration.
+ * flags inside its selection.
+ *
+ * Speech is read with protected syntax set aside
+ * (`findSpeechSpansOutsideProtected`), in the gesture's text before overlaps
+ * are weighed, and again in the settled live text before anything is shown
+ * (`outsideSpeech`), so words the writer put in quotation marks during the
+ * run are left alone too (PR #177 F-03). Each shown flag's phrase is counted
+ * last, in the live text (`withRepeats`, N-01), and only when there is a flag
+ * to count for (N-02).
  *
  * A flag becomes an annotation with no quick fix: Craft Flags never offers
  * an edit.
@@ -19,7 +26,7 @@ import type { TextRange } from '@/domain/models/DraftEdit';
 import { CRAFT_FLAG_LEAVES_SPEECH, type CraftFlagIssue, type CraftFlagsDropCounts } from '@/domain/models/CraftFlag';
 import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
 import type { MaskedText } from '@/utils/draftEdit/protectedRegions';
-import type { PhraseRepeats } from '@/utils/craftFlags/phraseRepeats';
+import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
 import type { CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { byPlace } from '@/application/services/draftEdit/draftEditIssues';
 
@@ -38,19 +45,16 @@ export interface CraftFlagsPrepared {
   readonly reads: 'document' | 'selection';
 }
 
-/** What host code read of the whole document. */
-export interface CraftFlagsHostRead {
-  /** Speech, in order and never overlapping (`findSpeechSpans`). */
-  readonly speech: readonly TextRange[];
-  readonly repeats: PhraseRepeats;
-}
-
-/** Each finding placed in the gesture's snapshot; `shown` is the region whose flags a run shows. */
+/**
+ * Each finding placed in the gesture's snapshot; `speech` is that text's
+ * (`findSpeechSpansOutsideProtected`), and `shown` the region whose flags a
+ * run shows.
+ */
 export function placeCraftFlags(
   text: string,
   prepared: CraftFlagsPrepared,
   result: Extract<CraftFlagsRunResult, { kind: 'completed' }>,
-  host: CraftFlagsHostRead,
+  speech: readonly TextRange[],
   shown: TextRange,
   dropped: CraftFlagsDrops,
   nextId: () => string
@@ -76,7 +80,7 @@ export function placeCraftFlags(
       }
       const start = prepared.region.start + sourceStart;
       const end = prepared.region.start + sourceEnd;
-      if (CRAFT_FLAG_LEAVES_SPEECH[finding.category] && touchesAny(host.speech, start, end)) {
+      if (CRAFT_FLAG_LEAVES_SPEECH[finding.category] && touchesAny(speech, start, end)) {
         dropped.dialogue += 1;
         continue;
       }
@@ -93,8 +97,7 @@ export function placeCraftFlags(
         end,
         original,
         why: finding.why,
-        ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {}),
-        repeats: Math.max(1, host.repeats.count(original))
+        ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {})
       });
     }
   }
@@ -109,6 +112,25 @@ export function placeCraftFlags(
     }
   }
   return { issues: kept, outside };
+}
+
+/** Flags kept only where a category that leaves speech alone touches none of `speech`; the rest counted as dialogue. */
+export function outsideSpeech(issues: readonly CraftFlagIssue[], speech: readonly TextRange[], dropped: CraftFlagsDrops): CraftFlagIssue[] {
+  const kept = issues.filter((issue) => !(CRAFT_FLAG_LEAVES_SPEECH[issue.category] && touchesAny(speech, issue.start, issue.end)));
+  dropped.dialogue += issues.length - kept.length;
+  return kept;
+}
+
+/** Each flag with its phrase counted in `text`, `skipped` (speech, protected regions) left out; nothing is built for no flags. */
+export function withRepeats(issues: readonly CraftFlagIssue[], text: string, skipped: readonly TextRange[]): CraftFlagIssue[] {
+  if (issues.length === 0) {
+    return [];
+  }
+  const repeats = phraseRepeats(text, skipped);
+  return issues.map((issue) => {
+    const count = repeats.count(issue.original);
+    return count === undefined ? issue : { ...issue, repeats: Math.max(1, count) };
+  });
 }
 
 export function craftFlagAnnotation(issue: CraftFlagIssue): DocumentAnnotation {
@@ -127,7 +149,7 @@ export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion
   return [
     withStop(issue.why),
     issue.suggestion !== undefined ? `One way it could go: ${withStop(issue.suggestion)}` : '',
-    issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : ''
+    issue.repeats !== undefined && issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : ''
   ].filter(Boolean).join(' ');
 }
 

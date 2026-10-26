@@ -208,7 +208,13 @@ export {
 // --- Draft Edit (ADR 2026-10-21): the Proofread and Craft Flags passes, their runs, and the adapter's helpers ---
 export { ProofreadService } from '@services/proofread/ProofreadService';
 export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
-export { CraftFlagsUseCase, type CraftFlagsRunPlan } from '@/application/services/draftEdit/CraftFlagsUseCase';
+export {
+  CraftFlagsUseCase,
+  type CraftFlagsApproval,
+  type CraftFlagsBegin,
+  type CraftFlagsGesture,
+  type CraftFlagsRunPlan
+} from '@/application/services/draftEdit/CraftFlagsUseCase';
 export { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application/services/draftEdit/craftFlagsSummary';
 export { CRAFT_FLAG_CATEGORIES, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
 export {

@@ -75,8 +75,12 @@ export interface CraftFlagIssue {
   readonly original: string;
   readonly why: string;
   readonly suggestion?: string;
-  /** How often the phrase stands in the document's narration, this use included. */
-  readonly repeats: number;
+  /**
+   * How often the phrase stands in the live document's narration, this use
+   * included, counted once the run has settled (PR #177 N-01); absent when it
+   * was not counted (`PHRASE_REPEATS`' bound).
+   */
+  readonly repeats?: number;
 }
 
 /** Why flags were not shown, each counted, never guessed. */

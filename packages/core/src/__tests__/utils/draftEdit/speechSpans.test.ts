@@ -3,7 +3,8 @@
  * dialogue by the shared rule, and single-quoted speech whole, joined so
  * they never overlap. Text adapts public-domain *Alice*.
  */
-import { findSpeechSpans, singleQuotedSpans } from '@/utils/draftEdit/speechSpans';
+import { findSpeechSpans, findSpeechSpansOutsideProtected, singleQuotedSpans } from '@/utils/draftEdit/speechSpans';
+import { findProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 
 const spoken = (text: string) => findSpeechSpans(text).map(({ start, end }) => text.slice(start, end));
 
@@ -29,3 +30,26 @@ describe('findSpeechSpans', () => {
     expect(findSpeechSpans('Alice didn’t think it so very remarkable.')).toEqual([]);
   });
 });
+
+describe('findSpeechSpansOutsideProtected (PR #177 F-03)', () => {
+  const spoken = (text: string) => findSpeechSpansOutsideProtected(text, findProtectedRegions(text, 'markdown')).map(({ start, end }) => text.slice(start, end));
+
+  it('never lets a quotation mark inside protected syntax open or close speech', () => {
+    const text = '“She typed `"` and time stood still,” said Alice. The bank was warm.';
+    expect(findSpeechSpans(text).map(({ start, end }) => text.slice(start, end))).not.toEqual(['“She typed `"` and time stood still,”']);
+    expect(spoken(text)).toEqual(['“She typed `"` and time stood still,”']);
+    expect(spoken('She typed `"` and time stood still. Then she left.')).toEqual([]);
+  });
+
+  it('keeps the text\'s own offsets, and its paragraphs, across a fence', () => {
+    const text = '```\n"code\n\nstill code"\n```\n\n“Oh dear!” said the Rabbit.';
+    const [span] = findSpeechSpansOutsideProtected(text, findProtectedRegions(text, 'markdown'));
+    expect(text.slice(span.start, span.end)).toBe('“Oh dear!”');
+  });
+
+  it('reads as the shared rule does where nothing is protected', () => {
+    const text = '“Oh dear!” said the Rabbit. Then Alice said, \'How late it is!\' and ran.';
+    expect(findSpeechSpansOutsideProtected(text, [])).toEqual(findSpeechSpans(text));
+  });
+});
+

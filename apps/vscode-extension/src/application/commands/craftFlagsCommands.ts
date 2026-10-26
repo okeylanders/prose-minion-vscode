@@ -5,12 +5,16 @@
  * **Craft Flags** reads the active editor's document, whole, and flags line
  * notes in it: clichés, in part 1. It never changes the text.
  * - The target is captured at the gesture, in one synchronous read (D5), as
- *   Proofread's is. A selection narrows the flags shown; the chapter is still
- *   read for context, unless it is over the word ceiling, when the
- *   selection is read alone. A whole file over the ceiling is refused.
+ *   Proofread's is, and the gesture is taken at once (`begin`): its document
+ *   is watched from that read through the pricing and the confirmation, so
+ *   a close, a reopen or a language change on the way sends nothing (PR #177
+ *   F-02). A selection narrows the flags shown; the chapter is still read for
+ *   context, unless it is over the word ceiling, when the selection is read
+ *   alone. A whole file over the ceiling is refused.
  * - Every run confirms first, naming the words read, the requests, the model
  *   and the price ("≈ $0.06"), an estimate, never a cap. Cancel sends
- *   nothing.
+ *   nothing. The run goes to the model the confirmation named (F-01). The
+ *   gesture is released however the command ends.
  * - The run is cancellable from its progress notification. Its outcome is
  *   one notification, offering Open Settings when there is no key and Show
  *   Problems when flags were shown.
@@ -28,6 +32,9 @@ import {
   DRAFT_EDIT_LANGUAGE_IDS,
   describeCraftFlagsOutcome,
   describeCraftFlagsPlan,
+  type CraftFlagsApproval,
+  type CraftFlagsBegin,
+  type CraftFlagsGesture,
   type CraftFlagsOutcome,
   type CraftFlagsPass,
   type CraftFlagsRunPlan,
@@ -52,8 +59,10 @@ export type CraftFlagsCommandHost = Pick<
 
 /** The parts of `CraftFlagsUseCase` the commands use. */
 export interface CraftFlagsRunner {
-  plan(target: DraftEditTarget, pass: CraftFlagsPass): Promise<CraftFlagsRunPlan>;
-  run(target: DraftEditTarget, pass: CraftFlagsPass, signal?: AbortSignal): Promise<CraftFlagsOutcome>;
+  begin(target: DraftEditTarget, pass: CraftFlagsPass): CraftFlagsBegin;
+  plan(gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan>;
+  run(gesture: CraftFlagsGesture, approval: CraftFlagsApproval, signal?: AbortSignal): Promise<CraftFlagsOutcome>;
+  release(gesture: CraftFlagsGesture): void;
   dismiss(uri: string, issueId: string): void;
   clear(uri?: string): void;
 }
@@ -81,20 +90,33 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
   };
   const pass: CraftFlagsPass = { kind: 'craft', categories: [...CRAFT_FLAG_CATEGORIES] };
 
-  const plan = await runner.plan(target, pass);
-  if (plan.kind !== 'ready') {
-    present(host, plan, editor.label);
-    return { kind: 'ran', outcome: plan };
+  // Taken before anything is awaited: the gesture's document is watched from this read on (PR #177 F-02).
+  const begun = runner.begin(target, pass);
+  if (begun.kind !== 'gesture') {
+    present(host, begun, editor.label);
+    return { kind: 'ran', outcome: begun };
   }
-  if (!(await host.confirm(describeCraftFlagsPlan(plan, editor.label), RUN))) {
-    return { kind: 'declined' };
+  const { gesture } = begun;
+  try {
+    const plan = await runner.plan(gesture);
+    if (plan.kind !== 'ready') {
+      present(host, plan, editor.label);
+      return { kind: 'ran', outcome: plan };
+    }
+    if (!(await host.confirm(describeCraftFlagsPlan(plan, editor.label), RUN))) {
+      return { kind: 'declined' };
+    }
+    // The model the confirmation named, whatever the setting says by now (F-01).
+    const approval: CraftFlagsApproval = { model: plan.estimate.model };
+    const outcome = await host.withProgress(
+      `Craft Flags: reading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
+      (signal) => runner.run(gesture, approval, signal)
+    );
+    present(host, outcome, editor.label);
+    return { kind: 'ran', outcome };
+  } finally {
+    runner.release(gesture);
   }
-  const outcome = await host.withProgress(
-    `Craft Flags: reading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
-    (signal) => runner.run(target, pass, signal)
-  );
-  present(host, outcome, editor.label);
-  return { kind: 'ran', outcome };
 }
 
 /** Clear the active document's Craft Flags, or every document's when no editor is active. */

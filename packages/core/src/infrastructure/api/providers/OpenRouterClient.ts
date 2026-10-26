@@ -40,6 +40,12 @@ export interface OpenRouterCompletionOptions {
   /** Retained history identity: enables conversation affinity and caching policy. */
   conversationId?: string;
   claudeCacheTtl?: ClaudeCacheTtl;
+  /**
+   * The model this one request goes to, whatever the client's model is by
+   * then: a run the writer approved at a named model and price (Craft Flags,
+   * PR #177 F-01). Absent, the client's own model.
+   */
+  model?: string;
 }
 
 export interface OpenRouterReasoningOptions {
@@ -157,7 +163,7 @@ export class OpenRouterClient {
     id?: string;
     citations?: UrlCitation[];
   }> {
-    const requestedModel = this.model;
+    const requestedModel = options?.model ?? this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
@@ -234,7 +240,7 @@ export class OpenRouterClient {
     observation?: InferenceRequestObservation;
     citations?: UrlCitation[];
   }> {
-    const requestedModel = this.model;
+    const requestedModel = options?.model ?? this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({

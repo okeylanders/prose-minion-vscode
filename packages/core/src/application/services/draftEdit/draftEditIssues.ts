@@ -5,7 +5,7 @@
  */
 
 import type { DocumentAnnotation, DocumentTextChange } from '@/platform';
-import type { DraftEditDropCounts } from '@/domain/models/DraftEdit';
+import type { DraftEditDropCounts, TextRange } from '@/domain/models/DraftEdit';
 import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/models/ProofreadIssue';
 import { findProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import { shiftRanges } from '@/utils/draftEdit/shiftRanges';
@@ -40,14 +40,14 @@ export function moveIssues<T extends PlacedText>(
     .filter((issue) => liveText.slice(issue.start, issue.end) === issue.original);
 }
 
-/** Issues outside the live text's protected regions; the rest are counted as protected. */
+/** Issues outside the live text's protected regions (found here unless the caller already has them); the rest are counted as protected. */
 export function outsideProtected<T extends PlacedText>(
   issues: readonly T[],
   liveText: string,
   languageId: string,
-  dropped: { protected: number }
+  dropped: { protected: number },
+  regions: readonly TextRange[] = findProtectedRegions(liveText, languageId)
 ): T[] {
-  const regions = findProtectedRegions(liveText, languageId);
   const kept = issues.filter((issue) => !regions.some((range) => range.start < issue.end && issue.start < range.end));
   dropped.protected += issues.length - kept.length;
   return kept;

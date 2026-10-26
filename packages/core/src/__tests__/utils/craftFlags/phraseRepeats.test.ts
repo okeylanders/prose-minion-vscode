@@ -3,7 +3,7 @@
  * 2026-10-21, Amendment 2026-10-26: Slice 3c). Text adapts public-domain
  * *Alice*.
  */
-import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
+import { PHRASE_REPEATS, phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
 
 const range = (text: string, part: string, from = 0) => {
   const start = text.indexOf(part, from);
@@ -42,6 +42,22 @@ describe('phraseRepeats', () => {
 
   it('counts nothing for a phrase with no word in it', () => {
     expect(phraseRepeats('Oh dear! Oh dear!', []).count(' —! ')).toBe(0);
+  });
+
+  it('reads a phrase\'s own marks as text, never as a pattern', () => {
+    const text = 'She asked (as she always did) why. She asked (as she always did) why.';
+    expect(phraseRepeats(text, []).count('asked (as she always did) why')).toBe(2);
+    expect(phraseRepeats('A cat. A cot.', []).count('c.t')).toBe(0);
+  });
+
+  it('counts at most its bound of distinct phrases, and says nothing of the rest (PR #177 N-02)', () => {
+    const words = Array.from({ length: PHRASE_REPEATS.phrases + 1 }, (_, index) => `word${String.fromCharCode(97 + (index % 26))}${index}`);
+    const repeats = phraseRepeats(words.join(' '), []);
+    const counts = words.map((word) => repeats.count(word));
+
+    expect(counts.slice(0, PHRASE_REPEATS.phrases).every((count) => count === 1)).toBe(true);
+    expect(counts[PHRASE_REPEATS.phrases]).toBeUndefined();
+    expect(repeats.count(words[0].toUpperCase())).toBe(1);
   });
 
   it('answers the same phrase again from what it counted', () => {

@@ -17,7 +17,7 @@ jest.mock('@prose-minion/core', () => ({
   describeCraftFlagsPlan: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsPlan
 }));
 
-import type { CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type { CraftFlagsBegin, CraftFlagsGesture, CraftFlagsOutcome, CraftFlagsRunPlan, DraftEditTarget } from '@prose-minion/core';
 import { OPEN_SETTINGS_COMMAND, SHOW_PROBLEMS_COMMAND, type ProofreadEditorSnapshot } from '@app/application/commands/proofreadCommands';
 import {
   clearCraftFlags,
@@ -42,7 +42,14 @@ const editor = (overrides: Partial<ProofreadEditorSnapshot> = {}): ProofreadEdit
   uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', label: 'chapter-01.md', ...overrides
 });
 
-function setup(options: { active?: ProofreadEditorSnapshot; plan?: CraftFlagsRunPlan; confirm?: boolean; outcome?: CraftFlagsOutcome; choice?: string } = {}) {
+function setup(options: {
+  active?: ProofreadEditorSnapshot;
+  begin?: Exclude<CraftFlagsBegin, { kind: 'gesture' }>;
+  plan?: CraftFlagsRunPlan;
+  confirm?: boolean;
+  outcome?: CraftFlagsOutcome;
+  choice?: string;
+} = {}) {
   const calls: string[] = [];
   const host = {
     activeEditor: jest.fn(() => options.active),
@@ -58,13 +65,21 @@ function setup(options: { active?: ProofreadEditorSnapshot; plan?: CraftFlagsRun
     showWarning: jest.fn(async () => options.choice),
     executeCommand: jest.fn()
   } satisfies CraftFlagsCommandHost;
+  const gesture: CraftFlagsGesture = { uri: 'file:///workspace/chapter-01.md' };
   const runner = {
-    plan: jest.fn(async (): Promise<CraftFlagsRunPlan> => options.plan ?? READY),
-    run: jest.fn(async (_target: DraftEditTarget): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
+    begin: jest.fn((_target: DraftEditTarget): CraftFlagsBegin => {
+      calls.push('begin');
+      return options.begin ?? { kind: 'gesture', gesture };
+    }),
+    plan: jest.fn(async (_gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan> => options.plan ?? READY),
+    run: jest.fn(async (_gesture: CraftFlagsGesture, _approval: { model: string }): Promise<CraftFlagsOutcome> => options.outcome ?? COMPLETED),
+    release: jest.fn((_gesture: CraftFlagsGesture) => {
+      calls.push('release');
+    }),
     dismiss: jest.fn(),
     clear: jest.fn()
   } satisfies CraftFlagsRunner;
-  return { host, runner, calls };
+  return { host, runner, calls, gesture };
 }
 
 const flushed = () => new Promise((resolve) => setImmediate(resolve));
@@ -78,34 +93,60 @@ describe('Craft Flags', () => {
     expect(code.runner.plan).not.toHaveBeenCalled();
   });
 
-  it('asks every run first, naming what it reads, the model and the price; Cancel sends nothing', async () => {
-    const { host, runner, calls } = setup({ active: editor(), confirm: false });
+  it('takes the gesture first, then asks, naming what it reads, the model and the price; Cancel sends nothing and releases it', async () => {
+    const { host, runner, calls, gesture } = setup({ active: editor(), confirm: false });
     expect(await runCraftFlags(host, runner)).toEqual({ kind: 'declined' });
-    expect(calls).toEqual(['confirm:Craft Flags reads all 16 words of chapter-01.md. That is 1 request to claude-sonnet-5 (≈ $0.03).|Run Craft Flags']);
+    expect(calls).toEqual([
+      'begin',
+      'confirm:Craft Flags reads all 16 words of chapter-01.md. That is 1 request to claude-sonnet-5 (≈ $0.03).|Run Craft Flags',
+      'release'
+    ]);
+    expect(runner.plan).toHaveBeenCalledWith(gesture);
     expect(runner.run).not.toHaveBeenCalled();
   });
 
-  it('runs the gesture\'s target, a selection included, with every category, under a cancellable progress', async () => {
+  it('runs the gesture it took, at the model the confirmation named, under a cancellable progress (PR #177 F-01, F-02)', async () => {
     const selection = { start: 58, end: 84 };
-    const { host, runner, calls } = setup({ active: editor({ selection }), confirm: true });
+    const { host, runner, calls, gesture } = setup({ active: editor({ selection }), confirm: true });
     const result = await runCraftFlags(host, runner);
 
-    expect(runner.plan).toHaveBeenCalledWith(expect.objectContaining({ range: selection, version: 4 }), { kind: 'craft', categories: ['cliche'] });
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runner.begin).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
-      { kind: 'craft', categories: ['cliche'] },
-      expect.any(AbortSignal)
+      { kind: 'craft', categories: ['cliche'] }
     );
-    expect(calls[1]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
+    expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
+    expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
+    expect(calls[calls.length - 1]).toBe('release');
     expect(result).toEqual({ kind: 'ran', outcome: COMPLETED });
   });
 
-  it('says why a run that is not ready sends nothing, and asks nothing', async () => {
-    const tooLong = setup({ active: editor(), plan: { kind: 'too-long', words: 30000, limit: 25000 } });
+  it('releases the gesture when pricing or the run fails', async () => {
+    const failing = setup({ active: editor() });
+    failing.runner.plan.mockRejectedValueOnce(new Error('prompts missing'));
+    await expect(runCraftFlags(failing.host, failing.runner)).rejects.toThrow('prompts missing');
+    expect(failing.runner.release).toHaveBeenCalledWith(failing.gesture);
+
+    const running = setup({ active: editor(), confirm: true });
+    running.runner.run.mockRejectedValueOnce(new Error('the host went away'));
+    await expect(runCraftFlags(running.host, running.runner)).rejects.toThrow('the host went away');
+    expect(running.runner.release).toHaveBeenCalledWith(running.gesture);
+  });
+
+  it('says why there is no gesture, and asks nothing', async () => {
+    const tooLong = setup({ active: editor(), begin: { kind: 'too-long', words: 30000, limit: 25000 } });
     expect(await runCraftFlags(tooLong.host, tooLong.runner)).toEqual({ kind: 'ran', outcome: { kind: 'too-long', words: 30000, limit: 25000 } });
     expect(tooLong.host.confirm).not.toHaveBeenCalled();
     expect(tooLong.host.showWarning).toHaveBeenCalledWith(expect.stringContaining('reads up to 25,000 at once'));
-    expect(tooLong.runner.run).not.toHaveBeenCalled();
+    expect(tooLong.runner.plan).not.toHaveBeenCalled();
+    expect(tooLong.runner.release).not.toHaveBeenCalled();
+  });
+
+  it('shows no confirmation for a gesture whose document moved on while it was priced', async () => {
+    const changed = setup({ active: editor(), plan: { kind: 'changed' } });
+    expect(await runCraftFlags(changed.host, changed.runner)).toEqual({ kind: 'ran', outcome: { kind: 'changed' } });
+    expect(changed.host.confirm).not.toHaveBeenCalled();
+    expect(changed.host.showWarning).toHaveBeenCalledWith('chapter-01.md changed before Craft Flags could start, so nothing was sent. Run it again.');
+    expect(changed.runner.run).not.toHaveBeenCalled();
   });
 
   it('offers Open Settings with no key, and Show Problems when flags were shown', async () => {
