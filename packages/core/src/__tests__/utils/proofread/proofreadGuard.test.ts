@@ -17,19 +17,19 @@ const judge = (category: (typeof PROOFREAD_CATEGORIES)[number], original: string
 
 describe('Proofread categories', () => {
   it('fixes surface errors and only flags judgment calls', () => {
-    expect(Object.fromEntries(PROOFREAD_CATEGORIES.map((c) => [c, proofreadCategoryDisposition(c)]))).toEqual({
-      spelling: 'fix',
-      homophone: 'fix',
-      punctuation: 'fix',
-      capitalization: 'fix',
-      spacing: 'fix',
-      agreement: 'flag',
-      tense: 'flag',
-      'wrong-word': 'flag',
-      'missing-word': 'flag',
-      'extra-word': 'flag',
-      person: 'flag'
-    });
+    expect(PROOFREAD_CATEGORIES.map((c) => [c, proofreadCategoryDisposition(c)])).toEqual([
+      ['spelling', 'fix'],
+      ['homophone', 'fix'],
+      ['punctuation', 'fix'],
+      ['capitalization', 'fix'],
+      ['spacing', 'fix'],
+      ['agreement', 'flag'],
+      ['tense', 'flag'],
+      ['wrong-word', 'flag'],
+      ['missing-word', 'flag'],
+      ['extra-word', 'flag'],
+      ['person', 'flag']
+    ]);
   });
 
   it.each([
