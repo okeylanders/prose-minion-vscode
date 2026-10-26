@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3b, part 1: categories and narration baseline
 
-**Latest disposition — re-review of `f06b2afc`: Changes requested. F-02 is resolved; F-01 remains for possessives and trailing elisions inside single-quoted speech. See the re-review section below.**
+**Latest disposition — final re-review of `5eb25e09` (implementation `1b82bf4f`): Approved for merge into `epic/lightbox`. F-01 and F-02 are resolved; no blocking findings remain. Native UI and live provider-quality acceptance remain separate.**
 
 **Author:** okeylanders · **PR:** [#174](https://github.com/okeylanders/prose-minion-vscode/pull/174)
 
@@ -235,3 +235,37 @@ The ADR's Slice 3b row, the slice doc, the agent guide and the memory bank say t
 | Mutations | Old close rule: 4 tests fail. Never closing: 2 fail. Closing before a word: 2 fail |
 
 Your report above is unchanged; this response is appended. No new category was made fixable.
+
+
+## Final re-review — second correction and current epic integration (`5eb25e09`), 2026-10-26
+
+**Approved for merge into `epic/lightbox`. F-01 and F-02 are resolved; no new blocking finding was reproduced.**
+
+**Reviewed head:** `1b82bf4fd65186513e56cdd49af09da10af25e10`. **Current target and merge-base:** `44127c925b4947b071eab934f9becd5f1afab9b6`, including the independently reviewed PR #175. The correction is `cecdac55`, the epic merge `45194c86`, documentation `ff32a6e3`, and the preserved author response/inventory `1b82bf4f`. Both prior reviews and both author responses remain above.
+
+**Latest branch head:** `5eb25e09fc56e98acb9038f3f82e12beb11b4359` arrived during the full gate. Its entire three-file delta was inspected: it only queues Slice 3c craft flags in planning documents. Production code, tests, build configuration and dependencies are byte-identical to the tested `1b82bf4f`. **Slice 3c is not implemented or approved by this review**; its own ADR decisions and implementation review remain ahead, as the new plan says.
+
+### Findings closed
+
+- **F-01 resolved, including the re-review gap.** A single-quoted speech now stays excluded through ordinary plural possessives and trailing elisions. The independent straight/curly controls produce no narration from speech alone and retain past/third when the same speech follows the known narration. A leading elision after a dash also stays inside the speech. Six closing-punctuation controls verify that genuine punctuation closes release following narration in the same paragraph; an unclosed speech remains paragraph-local. The shared Lightbox dialogue matcher has not changed.
+- **F-02 remains resolved.** Both original budget witnesses remain bounded: the 55,000-word single sentence sends 20,000 words, and the 35,400-word heterogeneous-sentence passage sends 19,991. Additional input-size controls at 19,999, 20,000, 20,001 and 55,555 words all honor the cap. Distribution across a long book and the end of an oversized sentence remains covered.
+
+**Deliberate conservative trade-off:** a quoted word or unpunctuated speech closing after a letter can exclude the remainder of that paragraph. This is now documented and independently exercised. It reduces baseline coverage rather than promoting ambiguous speech into narration; insufficient evidence produces no named baseline. It is not a claim of exhaustive linguistic recognition or model-quality acceptance.
+
+### Combined-tree verification
+
+The author merged the current epic in `45194c86`, with parents `cecdac55` and `44127c92`. Its remerge diff is empty, and PR #175's changed product files match the already reviewed epic byte for byte. At code-gate time, GitHub PR merge `266f8bc5383dcf4f53d8023722d444af64fb0e0f` and reviewed head `1b82bf4f` have the **identical complete tree** `955f93284bc13cb4d8c647dd8930ce813f49d08a`. The following local checks therefore cover the actual combined tree, not merely a conflict-free textual merge. After the planning-only update, the latest GitHub merge `94d1d3f2ad52ebd4a438bcf5d405583d67e6e4a6` and branch head `5eb25e09` also match exactly (tree `7b19834d2b07849459ed0df41b0e73b1785b88ce`); their implementation remains the one tested below.
+
+| Check | Independent result on `1b82bf4f` |
+| --- | --- |
+| Node 18 typecheck | Pass: core, webview and adapter |
+| Node 18 lint | Pass: 0 errors / 1,133 existing warnings |
+| Node 18 production build + bundle verification | Pass; three existing webpack size/performance warnings |
+| Node 18 full repository Jest | **559 suites / 7,780 tests / 59 snapshots**, exit 0 |
+| Independent scratch suites | **3 suites / 50 tests pass**; original and residual defect witnesses now assert the corrected behavior |
+| Exact implementation-head CI | [Push](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40379951718) and [pull request](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40379960246): completed/success |
+| Whitespace / architecture | Pass; estimator 267 lines, no new host dependency or write authority |
+
+The four new categories' real-adapter Flag/Fix/Fix-all/individual-replacement and mixed-preview controls, the actual service multi-chunk payload, protection, tagger-failure, once-per-run and lifecycle checks all pass again on this combined head. Logs and independent suites are retained in `../pr174-final-review-evidence/`. The same Node 18.20.8/npm 10.8.2 toolchain and byte-identical retained dependency lockfile were used. No implementation or repository test was modified by the reviewer.
+
+This approval is for the reviewed implementation and current epic integration. It does **not** clear native VS Code interaction or live provider false-positive rates, permit any new category to write automatically, or change PR #172 F-02's explicitly accepted native-preview lifetime risk. The final report-only commit's exact-head CI is checked after publication.
