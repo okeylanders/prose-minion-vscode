@@ -7,7 +7,8 @@ import {
   PROTECTED_PLACEHOLDER,
   findProtectedRegions,
   maskProtectedRegions,
-  mergeRanges
+  mergeRanges,
+  readDocumentRegions
 } from '@/utils/draftEdit/protectedRegions';
 import { ALICE_MARKDOWN_CHAPTER } from '@/__tests__/utils/draftEdit/proofreadFixtures';
 
@@ -240,6 +241,39 @@ describe('findProtectedRegions: inline constructs stay inside their block (PR #1
     expect(findProtectedRegions(list, 'markdown')).toHaveLength(20000);
     // Generous: about 0.2 s here; recounting every earlier item per item took over 2 s.
     expect(Date.now() - started).toBeLessThan(1500);
+  });
+});
+
+describe('readDocumentRegions: headings, wherever Markdown puts them (Slice 3b; PR #176 F-02)', () => {
+  const headingsText = (text: string, languageId = 'markdown') =>
+    readDocumentRegions(text, languageId).headings.map((range) => text.slice(range.start, range.end));
+  const prose = 'Alice was beginning to get very tired.';
+
+  it.each([
+    ['ATX', '# The Pool of Tears', ['# The Pool of Tears']],
+    ['ATX, closed and indented', '   ## The Pool of Tears ##', ['   ## The Pool of Tears ##']],
+    ['setext, =', 'The Pool of Tears\n=================', ['The Pool of Tears\n=================']],
+    ['setext, -', 'The Pool of Tears\n---', ['The Pool of Tears\n---']],
+    ['in a block quote', '> # The Pool of Tears', ['> # The Pool of Tears']],
+    ['in a list item', '- # The Pool of Tears', ['- # The Pool of Tears']],
+    ['setext in a block quote', '> The Pool of Tears\n> =================', ['> The Pool of Tears\n> =================']],
+    ['in a list in a block quote', '> - ## The Pool of Tears', ['> - ## The Pool of Tears']]
+  ])('finds a heading: %s', (_kind, heading, expected) => {
+    expect(headingsText(`${prose}\n\n${heading}\n\n${prose}`)).toEqual(expected);
+  });
+
+  it('finds none in paragraphs, list items or block quotes of prose', () => {
+    expect(headingsText(`${prose}\n\n> ${prose}\n\n- ${prose}\n\nThe Pool # of Tears`)).toEqual([]);
+  });
+
+  it('finds none in plain text, and keeps the protected regions findProtectedRegions finds', () => {
+    const text = `# The Pool of Tears\n\n${prose} \`code\``;
+    expect(headingsText(text, 'plaintext')).toEqual([]);
+    expect(readDocumentRegions(text, 'markdown').protected).toEqual(findProtectedRegions(text, 'markdown'));
+  });
+
+  it('finds none inside fenced code', () => {
+    expect(headingsText(`\`\`\`\n# Not a heading\n\`\`\`\n\n${prose}`)).toEqual([]);
   });
 });
 

@@ -4,13 +4,14 @@
  * the whole document, never by a model, since one chunk may hold one use of
  * a name or none. Pure and deterministic.
  *
- * - **Names.** A capitalized word, three letters or more and not all
- *   capitals, is a name when at least once it follows a letter, digit, comma
- *   or semicolon on its own line: mid-sentence, where only a name is
+ * - **Names.** A capitalized word, three to `maximumLength` letters and not
+ *   all capitals, is a name when at least once it follows a letter, digit,
+ *   comma or semicolon on its own line: mid-sentence, where only a name is
  *   capitalized. A word after an opening quotation mark, a colon or a dash
- *   is never that evidence. Words in protected regions and on Markdown
- *   heading lines (title case) are not read. Month and day names, honorifics
- *   and the forms of "I" are never names.
+ *   is never that evidence. Words in the skipped regions the caller names
+ *   (protected regions, and headings, whose title case says nothing: PR #176
+ *   F-02) are not read. Month and day names, honorifics and the forms of "I"
+ *   are never names, and a longer word is never one (F-01).
  * - **Variants.** A name used at most twice is a variant of a name with the
  *   same first letter used at least three times as often, within one edit up
  *   to six letters or two from seven. Edits are counted by optimal string
@@ -18,7 +19,8 @@
  *   possessive "'s" is set aside. When two names tie as the most used
  *   candidate, neither is offered.
  * - **Never flagged:**
- *   - a word the writer's list accepts;
+ *   - a word the writer's list accepts, by the word list's own rule
+ *     (`isAcceptedWord`: a hyphenated word whose parts are all listed too);
  *   - a variant the document also uses in lower case, which makes it a word,
  *     not a misspelled name ("Rise" beside "rise");
  *   - a plural of the common name ("Tobins" beside "Tobin").
@@ -29,12 +31,14 @@
  *
  * It runs on the extension host, over the whole document, so it compares
  * only names that could be close: each common name is indexed by what is
- * left with up to two letters deleted, and a variant looks up its own. Past
- * `candidateBudget` it stops and finds nothing, rather than show a part.
+ * left with up to two letters deleted, and a variant looks up its own. Every
+ * deletion it makes, indexing or looking up, every index entry it visits and
+ * every pair of names it compares is charged to `workBudget` (PR #176 F-01). Past it the check stops and
+ * finds nothing, rather than show a part; either result reports the work.
  */
 
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { proofreadWordKey, proofreadWords } from '@/utils/proofread/proofreadWordList';
+import { isAcceptedWord, proofreadWordKey, proofreadWords } from '@/utils/proofread/proofreadWordList';
 
 export const NAME_CONSISTENCY = Object.freeze({
   /** A form used at most this often may be a variant. */
@@ -42,21 +46,25 @@ export const NAME_CONSISTENCY = Object.freeze({
   /** The common name is used at least this many times as often. */
   ratio: 3,
   minimumLength: 3,
+  /** A longer word is never a name, so no one word costs more than 211 deletions (PR #176 F-01). */
+  maximumLength: 20,
   /** Up to this many letters, one edit; longer, two. */
   shortLength: 6,
   /**
-   * The candidate names a check may look at in all. Past it the check stops
-   * and finds nothing, so a document of thousands of near-alike capitalized
-   * words (a glossary, an index) never holds up the extension host. Measured:
-   * 13,000 distinct names in 285,000 words looked at 31,234 (412 ms).
+   * The deletions made, index entries visited and names compared, in all.
+   * Past it the check stops and finds nothing, so no document (a glossary of
+   * near-alike names, thousands of capitalized words) holds up the extension
+   * host. Measured (Node 18): a novel's 4,500 distinct names in 70,500 words
+   * spent 121,845 (139 ms); a document stopping at the budget spent at most
+   * 0.6 s more than reading it, which is linear (0.1 s for 120,000 words).
    */
-  candidateBudget: 100_000
+  workBudget: 250_000
 });
 
-/** What a check found: every variant, or nothing when it stopped at its budget. */
+/** What a check found: every variant, or nothing when it stopped at its budget; `work` is what it spent. */
 export type NameVariantsResult =
-  | { readonly kind: 'checked'; readonly variants: readonly NameVariant[] }
-  | { readonly kind: 'stopped'; readonly names: number };
+  | { readonly kind: 'checked'; readonly variants: readonly NameVariant[]; readonly work: number }
+  | { readonly kind: 'stopped'; readonly names: number; readonly work: number };
 
 /** One use of a variant, and the name it is a variant of. */
 export interface NameVariant {
@@ -77,11 +85,28 @@ const NEVER_NAMES: ReadonlySet<string> = new Set([
 const UPPER = /^\p{Lu}/u;
 const LOWER = /^\p{Ll}/u;
 const EVIDENCE = /[\p{L}\p{N},;]/u;
-const HEADING_LINE = /^ {0,3}#{1,6}(?:[ \t].*)?$/gmu;
 
-/** The variants of `text`'s names, each use in order; `accepted` holds the writer's word-list keys. */
-export function findNameVariants(text: string, protectedRegions: readonly TextRange[], accepted: ReadonlySet<string>): NameVariantsResult {
-  const skipped = [...protectedRegions, ...headingLines(text)].sort((a, b) => a.start - b.start);
+/** What a check has spent, never past its budget. */
+class Work {
+  spent = 0;
+
+  /** Charge `amount` before doing it; false, charging nothing, when it would pass the budget. */
+  charge(amount: number): boolean {
+    if (this.spent + amount > NAME_CONSISTENCY.workBudget) {
+      return false;
+    }
+    this.spent += amount;
+    return true;
+  }
+}
+
+/**
+ * The variants of `text`'s names, each use in order. `skipped` holds the
+ * regions never read (protected regions and headings); `accepted` holds the
+ * writer's word-list keys.
+ */
+export function findNameVariants(text: string, skippedRegions: readonly TextRange[], accepted: ReadonlySet<string>): NameVariantsResult {
+  const skipped = [...skippedRegions].sort((a, b) => a.start - b.start);
   const uses = new Map<string, TextRange[]>();
   const named = new Set<string>();
   const lowerCase = new Set<string>();
@@ -105,11 +130,17 @@ export function findNameVariants(text: string, protectedRegions: readonly TextRa
     }
   }
 
+  const work = new Work();
+  const stopped = (): NameVariantsResult => ({ kind: 'stopped', names: named.size, work: work.spent });
   // A variant's candidates: names used at least `ratio` times, indexed by what is left with up to two letters deleted.
   const nearby = new Map<string, string[]>();
   for (const name of named) {
     if (uses.get(name)!.length >= NAME_CONSISTENCY.ratio) {
-      for (const key of deletionsOf(name)) {
+      const keys = deletionsOf(name, work);
+      if (!keys) {
+        return stopped();
+      }
+      for (const key of keys) {
         const bucket = nearby.get(key) ?? [];
         bucket.push(name);
         nearby.set(key, bucket);
@@ -117,15 +148,17 @@ export function findNameVariants(text: string, protectedRegions: readonly TextRa
     }
   }
   const variants: NameVariant[] = [];
-  const budget = { left: NAME_CONSISTENCY.candidateBudget };
   for (const variant of named) {
     const variantUses = uses.get(variant)!.length;
-    if (variantUses > NAME_CONSISTENCY.rareUses || accepted.has(proofreadWordKey(variant)) || lowerCase.has(proofreadWordKey(variant))) {
+    if (variantUses > NAME_CONSISTENCY.rareUses || isAcceptedWord(accepted, variant) || lowerCase.has(proofreadWordKey(variant))) {
       continue;
     }
-    const candidates = candidatesOf(variant, nearby, budget);
+    const candidates = candidatesOf(variant, nearby, work);
     if (!candidates) {
-      return { kind: 'stopped', names: named.size };
+      return stopped();
+    }
+    if (!work.charge(candidates.length)) {
+      return stopped();
     }
     const name = commonNameOf(variant, variantUses, candidates, uses);
     if (name) {
@@ -133,16 +166,20 @@ export function findNameVariants(text: string, protectedRegions: readonly TextRa
       uses.get(variant)!.forEach((range) => variants.push({ ...range, variant, name, variantUses, nameUses }));
     }
   }
-  return { kind: 'checked', variants: variants.sort((a, b) => a.start - b.start) };
+  return { kind: 'checked', variants: variants.sort((a, b) => a.start - b.start), work: work.spent };
 }
 
 /**
- * `word` with up to two letters deleted, itself included. Two words within
- * two edits (a swap of neighbours counting as one) always share one of
- * these, so only names sharing one are ever compared.
+ * `word` with up to two letters deleted, itself included, each charged to
+ * `work` as it is made; undefined once the budget is passed. Two words
+ * within two edits (a swap of neighbours counting as one) always share one
+ * of these, so only names sharing one are ever compared.
  */
-function deletionsOf(word: string): Set<string> {
+function deletionsOf(word: string, work: Work): Set<string> | undefined {
   const all = new Set([word]);
+  if (!work.charge(1)) {
+    return undefined;
+  }
   let frontier = [word];
   for (let depth = 0; depth < 2; depth += 1) {
     const next: string[] = [];
@@ -150,6 +187,9 @@ function deletionsOf(word: string): Set<string> {
       for (let at = 0; at < each.length; at += 1) {
         const shorter = each.slice(0, at) + each.slice(at + 1);
         if (!all.has(shorter)) {
+          if (!work.charge(1)) {
+            return undefined;
+          }
           all.add(shorter);
           next.push(shorter);
         }
@@ -160,13 +200,16 @@ function deletionsOf(word: string): Set<string> {
   return all;
 }
 
-/** The common names sharing a deletion with `variant`, and its first letter; undefined once `budget` runs out. */
-function candidatesOf(variant: string, nearby: ReadonlyMap<string, readonly string[]>, budget: { left: number }): string[] | undefined {
+/** The common names sharing a deletion with `variant`, and its first letter; undefined once the budget is passed. */
+function candidatesOf(variant: string, nearby: ReadonlyMap<string, readonly string[]>, work: Work): string[] | undefined {
+  const keys = deletionsOf(variant, work);
+  if (!keys) {
+    return undefined;
+  }
   const candidates = new Set<string>();
-  for (const key of deletionsOf(variant)) {
+  for (const key of keys) {
     const bucket = nearby.get(key) ?? [];
-    budget.left -= bucket.length;
-    if (budget.left < 0) {
+    if (!work.charge(bucket.length)) {
       return undefined;
     }
     for (const name of bucket) {
@@ -212,6 +255,7 @@ function insideAny(skipped: readonly TextRange[], from: number, range: TextRange
 function isNameShaped(word: string): boolean {
   return UPPER.test(word)
     && word.length >= NAME_CONSISTENCY.minimumLength
+    && word.length <= NAME_CONSISTENCY.maximumLength
     && word !== word.toUpperCase()
     && !/^I['’]/u.test(word)
     && !NEVER_NAMES.has(proofreadWordKey(word));
@@ -268,8 +312,3 @@ function withinEdits(a: string, b: string): boolean {
 
 /** The distance rows, grown to the longest name compared, kept between calls. */
 let rows: [Int32Array, Int32Array, Int32Array] = [new Int32Array(32), new Int32Array(32), new Int32Array(32)];
-
-/** Markdown heading lines, whose title case says nothing about names. */
-function headingLines(text: string): TextRange[] {
-  return [...text.matchAll(HEADING_LINE)].map((match) => ({ start: match.index ?? 0, end: (match.index ?? 0) + match[0].length }));
-}

@@ -91,15 +91,18 @@ describe('findNameVariants', () => {
     expect(variants(text, proofreadWordListKeys(['alcie']))).toEqual([]);
   });
 
-  it('reads nothing inside a protected region or on a heading line', () => {
-    const fenced = `${mentions('Alice', 3)} So she ran, and Alcie followed.`;
-    const start = fenced.indexOf('and Alcie');
-    expect(findNameVariants(fenced, [{ start, end: start + 'and Alcie'.length }], NONE)).toEqual({ kind: 'checked', variants: [] });
-    expect(variants(`# The Pool of Tears, and Alcie\n\n${mentions('Alice', 3)}`)).toEqual([]);
+  it('accepts a hyphenated name by the word list\'s own rule: every part listed (PR #176 N-01)', () => {
+    const text = 'I saw Glimmer-fix and Glimmer-fix and Glimmer-fix. Then, at last, I saw Glimmer-fox.';
+    expect(variants(text).map((variant) => [variant.variant, variant.name])).toEqual([['Glimmer-fox', 'Glimmer-fix']]);
+    expect(variants(text, proofreadWordListKeys(['Glimmer', 'fox']))).toEqual([]);
+    expect(variants(text, proofreadWordListKeys(['Glimmer']))).toHaveLength(1);
   });
 
-  it('reads no title-case heading word as a name', () => {
-    expect(variants(`## Down, the Rabit-Hole\n\n${mentions('Rabbit', 3)}`)).toEqual([]);
+  it('reads nothing inside a region the caller skips (its protected regions and headings)', () => {
+    const fenced = `${mentions('Alice', 3)} So she ran, and Alcie followed.`;
+    const start = fenced.indexOf('and Alcie');
+    expect(checked(findNameVariants(fenced, [{ start, end: start + 'and Alcie'.length }], NONE))).toEqual([]);
+    expect(variants(fenced).map((variant) => variant.text)).toEqual(['Alcie']);
   });
 
   it('offers none when two names tie as the most used, and the more used one otherwise', () => {
@@ -117,8 +120,54 @@ describe('findNameVariants', () => {
 
     const result = findNameVariants([...common, ...rare].join(' '), [], NONE);
 
-    expect(result).toEqual({ kind: 'stopped', names: expect.any(Number) });
-    expect(NAME_CONSISTENCY.candidateBudget).toBe(100_000);
+    expect(result).toEqual({ kind: 'stopped', names: expect.any(Number), work: expect.any(Number) });
+    expect(result.work).toBeLessThanOrEqual(NAME_CONSISTENCY.workBudget);
+    expect(NAME_CONSISTENCY.workBudget).toBe(250_000);
+  });
+
+  describe('its work is bounded where deletions are made and indexed (PR #176 F-01)', () => {
+    /** The review's witness: a deterministic 501-letter capitalized word. */
+    const oversized = (() => {
+      let seed = 9381;
+      const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+      return `A${Array.from({ length: 500 }, () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return alphabet[seed % 26];
+      }).join('')}`;
+    })();
+
+    it('reads an oversized word, rare or common, as no name, spending nothing', () => {
+      expect(findNameVariants(`Then ${oversized}.`, [], NONE)).toEqual({ kind: 'checked', variants: [], work: 0 });
+      expect(findNameVariants(Array.from({ length: 3 }, () => `Then ${oversized}.`).join(' '), [], NONE))
+        .toEqual({ kind: 'checked', variants: [], work: 0 });
+    });
+
+    it('reads a name up to maximumLength letters, and none longer', () => {
+      const name = `C${'aterpillarsnatchkin'.slice(0, NAME_CONSISTENCY.maximumLength - 1)}`;
+      const longer = `${name}s`;
+      expect(name).toHaveLength(NAME_CONSISTENCY.maximumLength);
+      expect(findNameVariants(mentions(name, 3), [], NONE).work).toBeGreaterThan(0);
+      expect(findNameVariants(mentions(longer, 3), [], NONE)).toEqual({ kind: 'checked', variants: [], work: 0 });
+    });
+
+    it('stops while indexing many long common names, within its budget', () => {
+      let seed = 3;
+      const next = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const name = () => `L${Array.from({ length: NAME_CONSISTENCY.maximumLength - 1 }, () => 'abcdefghijklmnopqrstuvwxyz'[Math.floor(next() * 26)]).join('')}`;
+      const common = Array.from({ length: 2000 }, name).map((each) => mentions(each, 3));
+
+      const result = findNameVariants(common.join(' '), [], NONE);
+
+      expect(result).toEqual({ kind: 'stopped', names: 2000, work: expect.any(Number) });
+      expect(result.work).toBeLessThanOrEqual(NAME_CONSISTENCY.workBudget);
+    });
+
+    it('charges each deletion made, each index entry visited and each name compared', () => {
+      // Alice (indexed) and Alcie (looked up) each make 16 deletions: itself, 5 of one letter, 10 of two.
+      // 9 of Alcie's are in the index (Alce, Alie, Ali, Alc, Ale, Aie, Ace, lie, lce), and one name is compared.
+      const result = findNameVariants(`${mentions('Alice', 3)} And then, at last, Alcie slept.`, [], NONE);
+      expect(result).toEqual({ kind: 'checked', variants: [expect.objectContaining({ variant: 'Alcie', name: 'Alice' })], work: 16 + 16 + 9 + 1 });
+    });
   });
 
   it('reads no word in capitals, no short word and no form of "I" as a name', () => {

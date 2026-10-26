@@ -131,7 +131,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
   });
 
   it('shows no name flags when the check stopped at its budget, says so in the log only, and the run goes on', async () => {
-    jest.spyOn(nameConsistency, 'findNameVariants').mockReturnValue({ kind: 'stopped', names: 4200 });
+    jest.spyOn(nameConsistency, 'findNameVariants').mockReturnValue({ kind: 'stopped', names: 4200, work: 250_000 });
     const { useCase, replies, target, flags, log } = proofreader();
     replies.push(read(finding('beginning', 'spelling', 'begining')));
 
@@ -139,6 +139,55 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
 
     expect(flags()).toEqual([{ text: 'beginning', code: 'proofread.spelling' }]);
     expect(log.appendLine).toHaveBeenCalledWith('[DraftEdit] Proofread chapter-01.md: no name check (4200 capitalized words are too many to compare)');
+  });
+
+  describe('reads no heading as prose: ATX, setext, or inside a block quote or list (PR #176 F-02)', () => {
+    const ROSE = 'Then, after a while, Rose looked about her. So, at last, Rose sat down. And then Rose slept.';
+
+    it.each([
+      ['ATX', '# The Rise'],
+      ['setext', 'The Rise\n========'],
+      ['in a block quote', '> # The Rise'],
+      ['in a list item', '- # The Rise']
+    ])('a heading\'s title case is no evidence of a name: %s', async (_kind, heading) => {
+      const { useCase, target, flags } = proofreader(`${ROSE}\n\n${heading}\n\n${ROSE}`);
+      await useCase.run(target(), FLAG);
+
+      expect(flags()).toEqual([]);
+    });
+
+    it('control: the same word mid-sentence in prose is read as a name', async () => {
+      const { useCase, target, flags } = proofreader(`${ROSE}\n\nWe read, again, The Rise.`);
+      await useCase.run(target(), FLAG);
+
+      expect(flags()).toEqual([{ text: 'Rise', code: 'proofread.name' }]);
+    });
+
+    it.each([
+      ['setext', 'Then Alice\n=========='],
+      ['in a block quote', '> ## Then Alice'],
+      ['in a list item', '- ### Then Alice']
+    ])('a heading\'s use of a name does not count toward how often it is used: %s', async (_kind, heading) => {
+      const twice = 'Then, after a while, Alice looked about her. So, at last, Alice sat down.';
+      const variant = 'And then Alcie slept.';
+      const withHeading = proofreader(`${heading}\n\n${twice} ${variant}`);
+      await withHeading.useCase.run(withHeading.target(), FLAG);
+      expect(withHeading.flags()).toEqual([]);
+
+      const inProse = proofreader(`${twice} Later, Alice woke. ${variant}`);
+      await inProse.useCase.run(inProse.target(), FLAG);
+      expect(inProse.flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }]);
+    });
+  });
+
+  it('drops model issues the host\'s overlap before weighing model issues against each other (PR #176 N-02)', async () => {
+    const { useCase, replies, target, flags } = proofreader('Alice sat. We saw Alice. We liked Alice. We told Alcie come after teh ceremony.');
+    replies.push(read(finding('Alcie come after teh', 'missing-word', 'Alcie to come after teh'), finding('teh', 'spelling', 'the')));
+
+    const outcome = await useCase.run(target(), FLAG);
+
+    expect(flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }, { text: 'teh', code: 'proofread.spelling' }]);
+    expect(outcome).toMatchObject({ kind: 'completed', flagged: 2, dropped: { overlapping: 1 } });
   });
 
   it('lands through its own Replace with', async () => {

@@ -91,9 +91,14 @@ export function placeFindings(
     }
   });
 
-  issues.sort(byPlace);
+  // The host's issues come first: a model issue overlapping one goes before model issues are weighed against each
+  // other, so a broad model quote the host replaced never takes an independent issue with it (PR #176 N-02).
+  const hostIssues: ProofreadIssue[] = host.findings.map((finding) => ({ id: nextId(), disposition: 'flag', ...finding }));
+  const model = issues.filter((issue) => !hostIssues.some((each) => each.start < issue.end && issue.start < each.end));
+  dropped.overlapping += issues.length - model.length;
+  model.sort(byPlace);
   const kept: ProofreadIssue[] = [];
-  for (const issue of issues) {
+  for (const issue of model) {
     const last = kept[kept.length - 1];
     if (last && issue.start < last.end) {
       dropped.overlapping += 1;
@@ -101,29 +106,13 @@ export function placeFindings(
       kept.push(issue);
     }
   }
-  const placed = withHostIssues(kept, host.findings, dropped, nextId);
+  const placed = [...kept, ...hostIssues].sort(byPlace);
   return policy.preservesMarkdownStructure ? flagStructureChanges(placed, target) : placed;
 }
 
 /** A spelling or wrong-word finding whose quote is one word the writer accepts. */
 function onAcceptedWord(finding: ProofreadFinding, accepted: ReadonlySet<string>): boolean {
   return (finding.category === 'spelling' || finding.category === 'wrong-word') && isAcceptedWord(accepted, finding.anchor.quote);
-}
-
-/** The model's issues and the host's, in order; a model issue overlapping a host issue is counted as overlapping. */
-function withHostIssues(
-  issues: readonly ProofreadIssue[],
-  findings: DraftEditHostRead['findings'],
-  dropped: DraftEditDrops,
-  nextId: () => string
-): ProofreadIssue[] {
-  if (findings.length === 0) {
-    return [...issues];
-  }
-  const hostIssues: ProofreadIssue[] = findings.map((finding) => ({ id: nextId(), disposition: 'flag', ...finding }));
-  const model = issues.filter((issue) => !hostIssues.some((host) => host.start < issue.end && issue.start < host.end));
-  dropped.overlapping += issues.length - model.length;
-  return [...model, ...hostIssues].sort(byPlace);
 }
 
 /** Fixes that would change the Markdown structure, together as Fix would make them, flagged instead. */

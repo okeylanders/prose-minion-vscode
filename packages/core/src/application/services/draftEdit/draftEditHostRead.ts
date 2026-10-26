@@ -14,9 +14,9 @@
  */
 
 import type { LogSink } from '@/platform';
-import type { DraftEditPass, DraftEditTarget } from '@/domain/models/DraftEdit';
+import type { DraftEditPass, DraftEditTarget, TextRange } from '@/domain/models/DraftEdit';
 import type { ProofreadHostCategory } from '@/domain/models/ProofreadIssue';
-import { findProtectedRegions } from '@/utils/draftEdit/protectedRegions';
+import { readDocumentRegions } from '@/utils/draftEdit/protectedRegions';
 import { findNameVariants, type NameVariant } from '@/utils/proofread/nameConsistency';
 import { measureNarrationBaseline, type NarrationBaseline } from '@/utils/proofread/narrationBaseline';
 import { proofreadWordListKeys } from '@/utils/proofread/proofreadWordList';
@@ -41,17 +41,17 @@ export interface DraftEditHostRead {
 }
 
 export function readWholeDocument(target: DraftEditTarget, pass: DraftEditPass, log: LogSink, label: string): DraftEditHostRead {
-  const protectedRegions = findProtectedRegions(target.text, target.languageId);
+  const regions = readDocumentRegions(target.text, target.languageId);
   const accepted = proofreadWordListKeys(pass.wordList ?? []);
   const region = target.range ?? { start: 0, end: target.text.length };
-  const names = findNameVariants(target.text, protectedRegions, accepted);
+  const names = findNameVariants(target.text, [...regions.protected, ...regions.headings], accepted);
   if (names.kind === 'stopped') {
     log.appendLine(`[DraftEdit] Proofread ${label}: no name check (${names.names} capitalized words are too many to compare)`);
   }
   const findings = (names.kind === 'checked' ? names.variants : [])
     .filter((variant) => variant.start >= region.start && variant.end <= region.end)
     .map(nameFinding);
-  const narration = narrationOf(target.text, protectedRegions, log, label);
+  const narration = narrationOf(target.text, regions.protected, log, label);
   return { ...(narration ? { narration } : {}), accepted, findings };
 }
 
@@ -69,7 +69,7 @@ function nameFinding(variant: NameVariant): DraftEditHostFinding {
 }
 
 /** A hint beside every chunk. A tagger that fails to load sends none, and the run goes on. */
-function narrationOf(text: string, protectedRegions: ReturnType<typeof findProtectedRegions>, log: LogSink, label: string): NarrationBaseline | undefined {
+function narrationOf(text: string, protectedRegions: readonly TextRange[], log: LogSink, label: string): NarrationBaseline | undefined {
   try {
     const narration = measureNarrationBaseline(text, protectedRegions);
     return narration.tense || narration.person ? narration : undefined;
