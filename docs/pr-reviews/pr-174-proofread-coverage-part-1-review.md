@@ -1,5 +1,7 @@
 # PR Review — Draft Edit Slice 3b, part 1: categories and narration baseline
 
+**Latest disposition — re-review of `f06b2afc`: Changes requested. F-02 is resolved; F-01 remains for possessives and trailing elisions inside single-quoted speech. See the re-review section below.**
+
 **Author:** okeylanders · **PR:** [#174](https://github.com/okeylanders/prose-minion-vscode/pull/174)
 
 **Branches:** `claude/upbeat-galileo-y1l4yf` → `epic/lightbox`
@@ -14,7 +16,7 @@
 
 **Mode:** independent complete-diff and contracts review; production baseline, service, codec, use case and VS Code adapters exercised with public-domain Alice adaptations and controlled host/transport doubles; Node 18 aggregate gates. No native VS Code or live provider run.
 
-## Summary
+## Initial review summary (`e100ef6c`)
 
 **Changes requested before integration into `epic/lightbox`: two P2 findings in the new narration baseline.**
 
@@ -160,3 +162,41 @@ The report-only publication's exact-head CI is checked after publication and rep
 | Mutations | No single-quoted spans: 3 tests fail. Every k-th sentence: 3 fail. No pieces: 1 fails |
 
 Your report above is unchanged; this response is appended. No new category was made fixable.
+
+
+## Re-review — first corrections (`9b59f59f`), 2026-10-26
+
+**Reviewed branch head:** `f06b2afccb58cc4596c2e178cbc49d4bea1b8df3` (implementation `95319050`, documentation `9b59f59f`, author response/inventory `f06b2afc`). Local gates ran at `9b59f59f300723d3c2bb3a0d0e7741eec0208555`; the subsequent commit changes only the report and test inventory, with all implementation bytes identical. The full correction delta and author response were independently inspected; the response is retained above. The branch derives from `611bebd6`; the actual epic ref advanced to `44127c92` when PR #175 merged during this re-review. Final combined-tree acceptance remains pending while F-01 is open.
+
+**Disposition: changes still requested for F-01. F-02 is resolved.**
+
+### F-01 remains · P2 · A possessive or trailing elision inside speech closes its exclusion early
+
+The original simple multi-sentence monologue is now excluded, including its interior sentences. However, [`collectSingleQuoted`](../../packages/core/src/utils/proofread/narrationBaseline.ts#L147) treats every single mark with no word character immediately after it as the end of an open speech (lines 162–164). A plural possessive or trailing elision has exactly that shape.
+
+For a curly-quoted reproduction, put this at the beginning of the same monologue, inside its opening `‘` and final `’`:
+
+> I am sitting by the sisters’ bank.
+
+The apostrophe after `sisters` prematurely ends the exclusion. The remaining unquoted-looking interior sentences are again tagged as narration. The fully quoted passage alone yields `{tense: 'present', person: 'first'}`; appending it to `ALICE_THIRD_PAST` yields `{person: 'first'}` instead of past/third. Straight-quoted speech with `sisters'` fails identically. Replacing that opening sentence with “I am sittin’ by my sister on the bank.” reproduces the same leak for a trailing elision, in both quote styles. These four controls use the real production tagger.
+
+The author response acknowledges nested single quotation marks as a limit. These witnesses are **ordinary possessives and elisions, not nested quotations**; using the usual British single-outside/double-inside quotation convention does not avoid them. The new repository possessive test covers a possessive **outside** speech, when no span is open; it does not cover this case. This is the same F-01 contract still incomplete, not a new restriction on dialect or a request to change the shared Lightbox matcher.
+
+**Required:** when single-quote/apostrophe roles are ambiguous inside speech, keep the ambiguous enclosing scope excluded rather than releasing subsequent speech sentences into the baseline. A conservative narration-only paragraph exclusion is acceptable. Add plural-possessive and trailing-elision-in-speech controls, both straight and curly, alone and following known narration.
+
+### F-02 resolved
+
+The corrected sampler counts actual words, refuses a piece that would exceed the budget, and splits oversized sentences into at most 500-word pieces before sampling by word position. The original heterogeneous-sentence and 55,000-word single-sentence witnesses now stay at or below 20,000 words. The long-book prologue control and coverage of the end of an oversized sentence pass. The new `clearOf` sweep also avoids the former per-sentence full exclusion-list scan. The shared dialogue matcher is unchanged.
+
+### Re-review verification
+
+| Check | Result on `9b59f59f` |
+| --- | --- |
+| Node 18 typecheck | Pass: core, webview and adapter |
+| Node 18 lint | Pass: 0 errors / 1,133 existing warnings |
+| Node 18 production build + bundle verification | Pass; three existing webpack size/performance warnings |
+| Node 18 full Jest | **555 suites / 7,741 tests / 59 snapshots**, exit 0 |
+| Independent scratch suites | **3 suites / 36 tests pass**, including four residual F-01 witnesses and corrected F-02 bounds |
+| Exact branch-head CI (`f06b2afc`) | [Push](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40376887459) and [pull request](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40376897243): completed/success |
+
+The unchanged category/application/payload/lifecycle witnesses were rerun against this head, not merely inferred from the original review. The source module remains below the 500-line limit (261 lines); no new host dependency, shared measurement-rule change or widened write authority was introduced. Scratch evidence is in `../pr174-rereview-evidence/`; only this report is published. Native VS Code and live provider-quality acceptance, and the explicitly accepted PR #172 preview limitation, remain separate as above.
