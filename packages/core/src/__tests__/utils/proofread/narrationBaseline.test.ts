@@ -109,6 +109,32 @@ describe('Single-quoted speech is left out whole (PR #174 F-01)', () => {
     expect(measureNarrationBaseline(`${ALICE_THIRD_PAST}\n\n${speech}`, [])).toEqual({ tense: 'past', person: 'third' });
   });
 
+  /**
+   * Inside speech, a mark after a letter may close it or belong to its word,
+   * and one after a dash may open an elision: the speech stays open. The
+   * possessive and trailing elision are the re-review's witnesses.
+   */
+  it.each([
+    ['plural possessive', 'straight', "'", "'", "I am sitting by the sisters' bank."],
+    ['plural possessive', 'curly', '‘', '’', 'I am sitting by the sisters’ bank.'],
+    ['trailing elision', 'straight', "'", "'", "I am sittin' by my sister on the bank."],
+    ['trailing elision', 'curly', '‘', '’', 'I am sittin’ by my sister on the bank.'],
+    ['leading elision after a dash', 'straight', "'", "'", "I am tired—'tis a long day."],
+    ['leading elision after a dash', 'curly', '‘', '’', 'I am tired—’tis a long day.']
+  ])('keeps speech open past a %s inside it (%s)', (_word, _marks, open, close, first) => {
+    const speech = `${open}${first} ${MONOLOGUE}${close}`;
+    expect(measureNarrationBaseline(speech, [])).toEqual({});
+    expect(measureNarrationBaseline(`${ALICE_THIRD_PAST}\n\n${speech}`, [])).toEqual({ tense: 'past', person: 'third' });
+  });
+
+  it.each([
+    ['straight', "'", "'"],
+    ['curly', '‘', '’']
+  ])('ends %s speech at a mark after its closing punctuation: narration after it in the paragraph still counts', (_marks, open, close) => {
+    const paragraph = `${open}${MONOLOGUE}${close} ${ALICE_THIRD_PAST.split('\n\n').join(' ')}`;
+    expect(measureNarrationBaseline(paragraph, [])).toEqual({ tense: 'past', person: 'third' });
+  });
+
   it('control: the same speech in double quotation marks is left out by the shared dialogue rule', () => {
     expect(measureNarrationBaseline(`${ALICE_THIRD_PAST}\n\n“${MONOLOGUE}”`, [])).toEqual({ tense: 'past', person: 'third' });
   });

@@ -12,7 +12,8 @@
  *   (`singleQuotedSpans`, below: the shared matcher leaves single quotation
  *   marks alone, since apostrophes look the same) or a protected region, or
  *   when it still holds any quotation mark. A speech is left out whole, its
- *   interior sentences too (PR #174 F-01): speech would otherwise lend its
+ *   interior sentences too, and a possessive or elision inside it does not end
+ *   it (PR #174 F-01 and its re-review): speech would otherwise lend its
  *   present tense and its "I" to a past-tense, third-person book. An
  *   apostrophe between two letters ("don't") is not a quotation mark.
  * - **Counted by the tagger** (`tagTextTokens`): finite verbs, past (`VBD`)
@@ -80,6 +81,8 @@ const QUOTATION_MARK = /["“”‘’']/gu;
 const SINGLE_QUOTATION_MARKS: ReadonlySet<string> = new Set(["'", '‘', '’']);
 const LETTER = /\p{L}/u;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+/** A character that ends speech before its closing mark: neither word-like nor space ("?", ",", "—", "…"). */
+const CLOSING_PUNCTUATION = /[^\p{L}\p{N}\s]/u;
 
 /** One stretch the tagger reads: a narration sentence, or a piece of a long one. */
 interface Piece {
@@ -124,13 +127,16 @@ export function measureNarrationBaseline(text: string, protectedRegions: readonl
 
 /**
  * Single-quoted speech, for the baseline alone (PR #174 F-01). Within each
- * paragraph, a single quotation mark between two letters or digits is an
- * apostrophe ("don't", "Alice's"). Otherwise a mark with nothing word-like
- * before it opens a span, and one with nothing word-like after it closes the
- * open span. A span still open at its paragraph's end runs to it, as speech
- * running over several paragraphs is written; so does a span an elision
- * ("'tis") opens, which only leaves more out. A closing mark with nothing
- * open, a plural possessive ("the sisters' bank"), opens nothing.
+ * paragraph, a single quotation mark with nothing word-like before it opens a
+ * span; one after a letter or digit ("don't", "Alice's", "the sisters' bank")
+ * opens nothing. An open span closes only at a mark after closing
+ * punctuation (`?'`, `,'`, `—'`) with nothing word-like after it (`closesSpeech`).
+ * A mark after a letter may close the speech or belong to its word (a plural
+ * possessive, "sisters'"; a trailing elision, "sittin'"), so it leaves the
+ * span open (the PR's re-review). A span still open at its paragraph's end
+ * runs to it, as speech running over several paragraphs is written; so does
+ * a quoted word closed after a letter, or a span an elision ("'tis") opens.
+ * Where a mark's role is unclear, more is left out, never less.
  */
 function singleQuotedSpans(text: string): TextRange[] {
   const spans: TextRange[] = [];
@@ -150,16 +156,11 @@ function collectSingleQuoted(text: string, start: number, end: number, spans: Te
     if (!SINGLE_QUOTATION_MARKS.has(text[at])) {
       continue;
     }
-    const wordBefore = at > start && WORD_CHARACTER.test(text[at - 1]);
-    const wordAfter = at + 1 < end && WORD_CHARACTER.test(text[at + 1]);
-    if (wordBefore && wordAfter) {
-      continue;
-    }
     if (openedAt === undefined) {
-      if (!wordBefore) {
+      if (!(at > start && WORD_CHARACTER.test(text[at - 1]))) {
         openedAt = at;
       }
-    } else if (!wordAfter) {
+    } else if (closesSpeech(text[at - 1], at + 1 < end ? text[at + 1] : '')) {
       spans.push({ start: openedAt, end: at + 1 });
       openedAt = undefined;
     }
@@ -167,6 +168,11 @@ function collectSingleQuoted(text: string, start: number, end: number, spans: Te
   if (openedAt !== undefined) {
     spans.push({ start: openedAt, end });
   }
+}
+
+/** Whether a mark between `before` and `after` closes open speech: after closing punctuation, before no word. */
+function closesSpeech(before: string, after: string): boolean {
+  return CLOSING_PUNCTUATION.test(before) && !WORD_CHARACTER.test(after);
 }
 
 /** The sentences touching none of `excluded`, in one sweep over both in order. */
