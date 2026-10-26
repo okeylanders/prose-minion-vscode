@@ -9,7 +9,10 @@
  * withheld, and offers the next run. The writer's words (Slice 4I, epic
  * decision 41): "Run AI analyses" before any, "Finish" when a call with a
  * lens on is not back yet (stopped, failed, or never run), and "Re-analyze"
- * when every one landed; all three keep the primary style. It says how many
+ * when every one landed; all three keep the primary style. Once a call has
+ * landed, "Finish" runs only the rest, so "Re-analyze all" sits beside it, a
+ * secondary press that runs every call again (Slice 4M, epic decision 53).
+ * Each press carries its own cost and its own reason. It says how many
  * lenses are stale after the text changed (D4), and how many earlier
  * readings a later call did not replace (Slice 4J). Every figure comes from the
  * host's estimate and board. The Opinion (Slice 4D) is priced "up to" its
@@ -43,8 +46,14 @@ export const LIGHTBOX_RUN_BUSY = 'An analysis is running. Stop it, or wait for i
 /** Why nothing can be pressed without an API key. */
 export const LIGHTBOX_RUN_NO_KEY = 'Add an OpenRouter API key in Settings to run AI analyses.';
 
-/** The run line's three presses (Slice 4I): every call, the calls not back yet, every call again. */
-export type LightboxRunLineLabel = 'Run AI analyses' | 'Finish' | 'Re-analyze';
+/**
+ * The run line's presses: every call, the calls not back yet, every call
+ * again (Slice 4I); and beside Finish, every call again (Slice 4M).
+ */
+export type LightboxRunLineLabel = 'Run AI analyses' | 'Finish' | 'Re-analyze' | 'Re-analyze all';
+
+/** The id of the run line's reason, which a press that cannot run is described by. */
+export const LIGHTBOX_RUN_REASON_ID = 'pm-lb-run-reason';
 
 export interface LightboxRunLineAction {
   label: LightboxRunLineLabel;
@@ -60,7 +69,14 @@ export interface LightboxRunLineView {
   note: string;
   /** The book-sized warning: the press is still allowed. */
   warning?: string;
+  /** The primary press: Run AI analyses, Finish or Re-analyze. */
   action?: LightboxRunLineAction;
+  /**
+   * Beside Finish once a call has landed: "Re-analyze all", every call
+   * again (Slice 4M, epic decision 53). Absent while nothing has landed,
+   * when Finish already runs every call.
+   */
+  secondaryAction?: LightboxRunLineAction;
   /** The token Stop sends; absent until the host names the run. */
   stopToken?: string;
   /** A refusal or other message from the host, writer-facing. */
@@ -101,6 +117,65 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
     ? calls.length === 1 ? ' · up to its digest bound' : ' · the Opinion up to its digest bound'
     : '';
   return `${count} · ${cost}${unknown}${bound}`;
+}
+
+/**
+ * Why one call would not fit the model's window, in the call's own name
+ * ("Call B would send about …"): a press that leaves out the call the host's
+ * reason names says this instead (Slice 4M), as a call's Run does (Slice 4I).
+ */
+export function lightboxCallTooLargeReason(
+  call: Pick<LightboxCallEstimate, 'group' | 'inputTokens' | 'reservedOutputTokens'>,
+  estimate: Pick<LightboxRunEstimate, 'model' | 'contextLength'> | null | undefined
+): string {
+  const window = (estimate?.contextLength ?? 0).toLocaleString('en-US');
+  return `Call ${call.group} would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
+    `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
+    `${estimate?.model ?? 'the Lightbox model'}'s ${window}-token window allows.`;
+}
+
+/** A reason under the run line, by its id. */
+export interface LightboxRunLineReason {
+  id: string;
+  text: string;
+}
+
+/** The reasons under the run line, each said once, and the one each press is described by. */
+export interface LightboxRunLineReasons {
+  shown: LightboxRunLineReason[];
+  action?: string;
+  secondaryAction?: string;
+}
+
+/**
+ * Each press's reason, said once under the run line (Slice 4M). A reason
+ * that holds for every press it stands under (one press, or no key for
+ * both) is said as it is; when Finish and Re-analyze all cannot run for
+ * different reasons, or only one of them cannot, each reason is led by its
+ * press's label, so it never reads as the other press's.
+ */
+export function lightboxRunLineReasons(view: Pick<LightboxRunLineView, 'action' | 'secondaryAction'>): LightboxRunLineReasons {
+  const first = view.action?.reason;
+  const second = view.secondaryAction?.reason;
+  if (second === undefined || second === first) {
+    return first === undefined
+      ? { shown: [] }
+      : {
+        shown: [{ id: LIGHTBOX_RUN_REASON_ID, text: first }],
+        action: LIGHTBOX_RUN_REASON_ID,
+        ...(second !== undefined ? { secondaryAction: LIGHTBOX_RUN_REASON_ID } : {})
+      };
+  }
+  const secondId = `${LIGHTBOX_RUN_REASON_ID}-all`;
+  const led = (action: LightboxRunLineAction | undefined, reason: string) => `${action?.label ?? ''}: ${reason}`;
+  return {
+    shown: [
+      ...(first !== undefined ? [{ id: LIGHTBOX_RUN_REASON_ID, text: led(view.action, first) }] : []),
+      { id: secondId, text: led(view.secondaryAction, second) }
+    ],
+    ...(first !== undefined ? { action: LIGHTBOX_RUN_REASON_ID } : {}),
+    secondaryAction: secondId
+  };
 }
 
 /** What a tile's "Re-analyze this tile" would cost. */
@@ -218,13 +293,20 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
     ? `Book-sized: ${estimate.sourceWords.toLocaleString('en-US')} words`
     : undefined;
 
+  // The host's reason names the largest call that does not fit. A press that makes every such call says
+  // it; Finish can leave one out (a call that landed before the window shrank), and then names its own.
+  const tooLargeReason = (calls: readonly LightboxCallEstimate[]): string | undefined => {
+    const tooLarge = calls.find((call) => call.fit === 'too-large');
+    if (!tooLarge) {
+      return undefined;
+    }
+    const makesEvery = planned.every((call) => call.fit !== 'too-large' || calls.includes(call));
+    return makesEvery
+      ? estimate?.reason ?? 'A call is too large for the model\'s window.'
+      : lightboxCallTooLargeReason(tooLarge, estimate);
+  };
   const action = (label: LightboxRunLineAction['label'], scope: LightboxRunScope, calls: readonly LightboxCallEstimate[]): LightboxRunLineAction => {
-    const tooLarge = calls.some((call) => call.fit === 'too-large');
-    const reason = providerPaused
-      ? LIGHTBOX_RUN_NO_KEY
-      : tooLarge
-        ? estimate?.reason ?? 'A call is too large for the model\'s window.'
-        : undefined;
+    const reason = providerPaused ? LIGHTBOX_RUN_NO_KEY : tooLargeReason(calls);
     return { label, scope, cost: lightboxCallsNote(calls), disabled: reason !== undefined, ...(reason ? { reason } : {}) };
   };
 
@@ -261,11 +343,15 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   }
   const note = parts.join(' · ');
   if (rest.length > 0) {
+    // Slice 4M (decision 53): once a call has landed, Finish runs only the rest, so every call again sits
+    // beside it. Until one lands, Finish already runs every call, and a second press would repeat it.
+    const landed = rest.length < planned.length;
     return {
       status: stopped ? 'stopped' : 'done',
       note,
       ...(warning ? { warning } : {}),
       action: action('Finish', { mode: 'rest' }, rest),
+      ...(landed ? { secondaryAction: action('Re-analyze all', { mode: 'all' }, planned) } : {}),
       ...(notice ? { notice } : {})
     };
   }

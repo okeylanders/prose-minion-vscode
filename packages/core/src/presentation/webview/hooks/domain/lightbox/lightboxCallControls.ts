@@ -51,7 +51,7 @@ import {
 } from '@shared/constants/lightbox';
 import { lightboxOpinionNothingToWeigh } from '@shared/constants/lightboxOpinion';
 import { lightboxLensView } from '@hooks/domain/lightbox/lightboxReadings';
-import { formatLightboxCost, LIGHTBOX_RUN_BUSY, LIGHTBOX_RUN_NO_KEY } from '@hooks/domain/lightbox/lightboxRunLine';
+import { formatLightboxCost, LIGHTBOX_RUN_BUSY, LIGHTBOX_RUN_NO_KEY, lightboxCallTooLargeReason } from '@hooks/domain/lightbox/lightboxRunLine';
 
 /** One call's run control, a widget's or the Lenses panel's. */
 export interface LightboxCallControl {
@@ -211,13 +211,7 @@ function availability(
     return { reason: NOT_PRICED, blocked: false };
   }
   if (call.fit === 'too-large') {
-    const window = (input.estimate?.contextLength ?? 0).toLocaleString('en-US');
-    return {
-      reason: `Call ${parts.group} would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
-        `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
-        `${input.estimate?.model ?? 'the Lightbox model'}'s ${window}-token window allows.`,
-      blocked: true
-    };
+    return { reason: lightboxCallTooLargeReason(call, input.estimate), blocked: true };
   }
   return { blocked: false };
 }

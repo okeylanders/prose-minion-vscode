@@ -3,7 +3,9 @@
  * first, warns when book-sized, refuses when too large, counts calls back
  * while analyzing, and afterwards counts the quotes checked and withheld.
  * Its three presses are the writer's words (Slice 4I, epic decision 41):
- * "Run AI analyses", "Finish" and "Re-analyze".
+ * "Run AI analyses", "Finish" and "Re-analyze"; once a call has landed,
+ * "Re-analyze all" stands beside "Finish" with its own cost and reason
+ * (Slice 4M, epic decision 53).
  */
 import type { LightboxBoard, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
@@ -12,7 +14,8 @@ import {
   formatLightboxCost,
   lightboxCallsNote,
   lightboxRereadAvailability,
-  lightboxRereadNote
+  lightboxRereadNote,
+  lightboxRunLineReasons
 } from '@hooks/domain/lightbox/lightboxRunLine';
 import { makeBoard } from './lightboxBoardFixtures';
 import { makeEstimate, makeReadBoard, readGroup } from './lightboxReadingBoardFixtures';
@@ -134,12 +137,14 @@ describe('the run line', () => {
     });
   });
 
-  it('counts quotes checked and withheld once everything landed, and offers Re-analyze', () => {
+  it('counts quotes checked and withheld once everything landed, and offers Re-analyze alone', () => {
     const view = line(makeReadBoard({ paraphraseOne: true }));
     expect(view.status).toBe('done');
     // Six calls: groups A–E and the Opinion (Slice 4D).
     expect(view.note).toMatch(/^\d+ quotes checked · 1 withheld · 7 calls$/);
     expect(view.action).toMatchObject({ label: 'Re-analyze', scope: { mode: 'all' }, disabled: false });
+    // Slice 4M: Re-analyze already runs every call; nothing stands beside it.
+    expect(view.secondaryAction).toBeUndefined();
   });
 
   it('says how many lenses are stale after the chapter changed, and still offers Re-analyze (D4)', () => {
@@ -153,7 +158,7 @@ describe('the run line', () => {
     expect(view.action).toMatchObject({ label: 'Re-analyze', scope: { mode: 'all' } });
   });
 
-  it('after a stop, keeps the finished groups and offers Finish at its own cost', () => {
+  it('after a stop, keeps the finished groups and offers Finish at its own cost, and Re-analyze all at every call\'s', () => {
     const board = withGroups(makeBoard(8), [
       readGroup('A'),
       { ...emptyLightboxReadingGroup('B'), status: 'cancelled', error: 'Stopped before this group came back.' },
@@ -162,14 +167,111 @@ describe('the run line', () => {
     const view = line(board);
     expect(view.status).toBe('stopped');
     expect(view.note).toContain('stopped, finished groups kept');
-    expect(view.action).toMatchObject({ label: 'Finish', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03' });
+    expect(view.action).toEqual({ label: 'Finish', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03', disabled: false });
+    expect(view.secondaryAction).toEqual({ label: 'Re-analyze all', scope: { mode: 'all' }, cost: '3 calls · est. $0.04', disabled: false });
   });
 
-  it('offers Finish after one call ran on its own, priced for the calls not back yet (Slice 4I)', () => {
+  it('offers Finish after one call ran on its own, priced for the calls not back yet (Slice 4I), and Re-analyze all beside it (Slice 4M)', () => {
     const board = withGroups(makeBoard(8), [emptyLightboxReadingGroup('A'), readGroup('B'), emptyLightboxReadingGroup('C')]);
     const view = line(board);
     expect(view.status).toBe('done');
     expect(view.action).toMatchObject({ label: 'Finish', scope: { mode: 'rest' }, cost: '2 calls · est. $0.03' });
+    expect(view.secondaryAction).toMatchObject({ label: 'Re-analyze all', scope: { mode: 'all' }, cost: '3 calls · est. $0.04', disabled: false });
+  });
+
+  describe('Re-analyze all beside Finish (Slice 4M, epic decision 53)', () => {
+    /** The writer's case: one call failed, the others landed. */
+    const oneFailed = () => withGroups(makeBoard(8), [
+      readGroup('A'),
+      { ...emptyLightboxReadingGroup('B'), status: 'failed', error: 'The call failed before a reading came back. Press Finish or Analyze to try again.' },
+      readGroup('C')
+    ]);
+
+    it('gives the Finish state both presses: Finish the failed call, or every call again', () => {
+      const view = line(oneFailed());
+      expect(view).toMatchObject({
+        status: 'done',
+        action: { label: 'Finish', scope: { mode: 'rest' }, cost: '1 call · est. $0.01', disabled: false },
+        secondaryAction: { label: 'Re-analyze all', scope: { mode: 'all' }, cost: '3 calls · est. $0.04', disabled: false }
+      });
+      expect(lightboxRunLineReasons(view)).toEqual({ shown: [] });
+    });
+
+    it('gives idle, running and every-call-landed one press, or none', () => {
+      expect(line(makeBoard(8)).secondaryAction).toBeUndefined();
+      expect(line(makeBoard(8), { estimate: undefined }).secondaryAction).toBeUndefined();
+      expect(line(makeBoard(8), { awaitingStart: true }).secondaryAction).toBeUndefined();
+      expect(line(makeReadBoard()).secondaryAction).toBeUndefined();
+    });
+
+    it('gives Finish alone while no call has landed, since Finish then runs every call', () => {
+      const stoppedAtOnce = withGroups(makeBoard(8), (['A', 'B', 'C'] as const).map((group) => ({
+        ...emptyLightboxReadingGroup(group), status: 'cancelled' as const, error: 'Stopped before this group came back.'
+      })));
+      const view = line(stoppedAtOnce);
+      expect(view.action).toMatchObject({ label: 'Finish', scope: { mode: 'rest' }, cost: '3 calls · est. $0.04' });
+      expect(view.secondaryAction).toBeUndefined();
+    });
+
+    it('disables both without a key, with the one reason said once and each press described by it', () => {
+      const view = line(oneFailed(), { providerPaused: true });
+      const reason = 'Add an OpenRouter API key in Settings to run AI analyses.';
+      expect(view.action).toMatchObject({ disabled: true, reason });
+      expect(view.secondaryAction).toMatchObject({ disabled: true, reason });
+      expect(lightboxRunLineReasons(view)).toEqual({
+        shown: [{ id: 'pm-lb-run-reason', text: reason }],
+        action: 'pm-lb-run-reason',
+        secondaryAction: 'pm-lb-run-reason'
+      });
+    });
+
+    it('disables only Re-analyze all when only a call that landed is too large, the host\'s reason led by its label', () => {
+      // Call A landed before the window shrank; Finish makes only B.
+      const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens…' });
+      estimate.groups[0].fit = 'too-large';
+      const view = line(oneFailed(), { estimate });
+      expect(view.action).toEqual({ label: 'Finish', scope: { mode: 'rest' }, cost: '1 call · est. $0.01', disabled: false });
+      expect(view.secondaryAction).toMatchObject({ disabled: true, reason: 'Group A would send about 90,000 tokens…' });
+      expect(lightboxRunLineReasons(view)).toEqual({
+        shown: [{ id: 'pm-lb-run-reason-all', text: 'Re-analyze all: Group A would send about 90,000 tokens…' }],
+        secondaryAction: 'pm-lb-run-reason-all'
+      });
+    });
+
+    it('names Finish\'s own call when it is too large and the host\'s reason names a call Finish does not make', () => {
+      const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens…' });
+      estimate.groups[0].fit = 'too-large';
+      estimate.groups[1] = { ...estimate.groups[1], fit: 'too-large', inputTokens: 80_000 };
+      const view = line(oneFailed(), { estimate });
+      const own = 'Call B would send about 80,000 tokens and reserve 12,000 for the reply, more than ' +
+        'provider/model-v1\'s 200,000-token window allows.';
+      expect(view.action).toMatchObject({ disabled: true, reason: own });
+      expect(view.secondaryAction).toMatchObject({ disabled: true, reason: 'Group A would send about 90,000 tokens…' });
+      expect(lightboxRunLineReasons(view)).toEqual({
+        shown: [
+          { id: 'pm-lb-run-reason', text: `Finish: ${own}` },
+          { id: 'pm-lb-run-reason-all', text: 'Re-analyze all: Group A would send about 90,000 tokens…' }
+        ],
+        action: 'pm-lb-run-reason',
+        secondaryAction: 'pm-lb-run-reason-all'
+      });
+    });
+
+    it('keeps the host\'s reason for Finish when Finish makes the call it names, said once for both', () => {
+      const estimate = makeEstimate({ fit: 'too-large', reason: 'Group B would send about 80,000 tokens…' });
+      estimate.groups[1].fit = 'too-large';
+      const view = line(oneFailed(), { estimate });
+      expect(view.action).toMatchObject({ disabled: true, reason: 'Group B would send about 80,000 tokens…' });
+      expect(view.secondaryAction).toMatchObject({ disabled: true, reason: 'Group B would send about 80,000 tokens…' });
+      expect(lightboxRunLineReasons(view).shown).toEqual([{ id: 'pm-lb-run-reason', text: 'Group B would send about 80,000 tokens…' }]);
+    });
+
+    it('says a single press\'s reason as it is, under the id the run line always used', () => {
+      expect(lightboxRunLineReasons(line(makeBoard(8), { providerPaused: true }))).toEqual({
+        shown: [{ id: 'pm-lb-run-reason', text: 'Add an OpenRouter API key in Settings to run AI analyses.' }],
+        action: 'pm-lb-run-reason'
+      });
+    });
   });
 
   it('shows a refusal for this board', () => {
