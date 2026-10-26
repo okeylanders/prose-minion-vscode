@@ -43,11 +43,25 @@ at `57489816` (the PR #174 merge), into `epic/lightbox`
   - The first version compared every pair and took 24 s on 8,000 rare
     names under one initial.
   - Now a deletion index (up to two letters deleted) means only close names
-    are compared. 13,000 distinct names in 285,000 words looked at 31,234
-    index entries in 412 ms.
-  - Past 100,000 entries the check stops, finds nothing, and logs it.
-    Dense synthetic names (a 10-letter alphabet) hit that budget; realistic
-    names never came near it.
+    are compared.
+  - **PR #176 F-01 (Astra):** the first budget charged only index entries
+    visited, so one 501-letter word made 125,711 deletions for free. Now:
+    - a word over 20 letters is never a name;
+    - every deletion made, entry visited and pair compared is charged
+      before it is done, to `workBudget` (250,000);
+    - past it the check stops, finds nothing and logs it;
+    - the result reports the work, and a test pins a small chapter's work
+      exactly (42).
+  - **Measured on Node 18:** a novel's 4,500 distinct names in 70,500 words
+    spend 121,845 (139 ms). A stopped document spends at most 0.6 s beyond
+    reading, and reading is linear (0.1 s for 120,000 words).
+- **Headings come from the Markdown block reader** (PR #176 F-02): ATX or
+  setext, in block quotes and lists, via `readDocumentRegions`, the same
+  reading as the protected regions. A line pattern missed setext and
+  nested headings.
+- **N-01:** a hyphenated name is accepted by the word list's own rule.
+  **N-02:** a host issue's overlaps go before model issues are weighed
+  against each other.
 
 ## Verification
 

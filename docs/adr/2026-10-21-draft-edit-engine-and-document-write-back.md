@@ -993,10 +993,14 @@ Decided now, built in part 2.
   evidence. A misspelling only ever written at a sentence's start is not
   found: the stated limit.
 - **Never read as names:**
-  - heading lines, whose title case says nothing;
-  - words in capitals, or under three letters;
+  - headings, whose title case says nothing: ATX or setext, wherever block
+    quotes and lists put them, found by the Markdown block reader
+    (`readDocumentRegions`, the same reading as the protected regions;
+    PR #176 F-02);
+  - words in capitals, under three letters, or over twenty (F-01);
   - the forms of "I".
-- **Never flagged,** beyond the list:
+- **Never flagged,** beyond the list (a hyphenated word whose parts are all
+  listed is accepted, by the word list's own rule: N-01):
   - a variant the document also writes in lower case (a word, not a
     misspelled name);
   - a plural of the common name;
@@ -1005,9 +1009,15 @@ Decided now, built in part 2.
   neighbouring letters is one edit; the length rule uses the longer form.
 - **It runs on the extension host,** so it compares only names that could
   be close: each common name is indexed by what is left with up to two
-  letters deleted. Past a budget of 100,000 index entries it stops, finds
-  nothing and logs why, rather than show a part. Measured: 13,000 distinct
-  names in 285,000 words used 31,234 (412 ms).
+  letters deleted. Every deletion made (indexing or looking up), index
+  entry visited and pair compared is charged before it is done, to a work
+  budget of 250,000 (PR #176 F-01). Past it the check stops, finds nothing
+  and logs why, rather than show a part. Measured on Node 18: a novel's
+  4,500 distinct names in 70,500 words spent 121,845 (139 ms); a stopped
+  document spent at most 0.6 s beyond reading it.
+- **Precedence:** a model issue overlapping a host issue is dropped before
+  model issues are weighed against each other, so a broad model quote the
+  host replaced never takes an independent issue with it (N-02).
 - **What host code reads of the whole document** lives in
   `draftEditHostRead` (the narration baseline moved there too).
 

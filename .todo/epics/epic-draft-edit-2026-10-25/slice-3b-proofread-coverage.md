@@ -238,11 +238,21 @@ built (part 2)" note for where the build goes beyond them.
     - a variant the document also writes in lower case, a plural, and a tie
       are never flagged.
   - **Bounded:** it runs on the extension host. A deletion index means only
-    names that could be close are compared, and past a budget of 100,000
-    index entries it stops and finds nothing, logged. A first version
-    compared every pair and took 24 seconds on 8,000 rare names under one
-    initial. The index brings 13,000 distinct names in 285,000 words to
-    412 ms.
+    names that could be close are compared. A first version compared every
+    pair and took 24 seconds on 8,000 rare names under one initial.
+  - **PR #176 review (Astra), F-01:** the budget charged only index
+    entries visited, so making deletions was free. One 501-letter word made
+    125,711 and still returned `checked`. Now a word over 20 letters is
+    never a name. Every deletion made, entry visited and pair compared is
+    charged before it is done, to a budget of 250,000. Past it the check
+    stops, finds nothing, and logs it. A novel's 4,500 distinct names spend
+    121,845 (139 ms).
+  - **F-02:** setext headings and headings in block quotes or lists counted
+    as names. The Markdown block reader now records every heading
+    (`readDocumentRegions`), and the check skips them.
+  - **N-01, N-02:** hyphenated words are accepted by the word list's own
+    rule, and a host issue's overlaps are dropped before model issues are
+    weighed against each other.
   - **Limit:** a misspelling only ever written at a sentence's start is not
     read as a name.
 - **Tests:** the word-list helpers; each detector rule with a witness and a

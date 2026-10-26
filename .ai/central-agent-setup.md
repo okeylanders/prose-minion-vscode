@@ -1650,9 +1650,13 @@ writer's own document:
   (`PROOFREAD_HOST_CATEGORIES`) a reply may never name, always flagged, and
   kept over a model's issue it overlaps. What host code reads of the whole
   document lives in `draftEditHostRead`. The check runs on the extension
-  host, so it compares only names a deletion index finds close, and past its
-  budget (`candidateBudget`) it stops and finds nothing, logged: keep any new
-  whole-document check bounded the same way.
+  host, so it compares only names a deletion index finds close, and charges
+  every deletion it makes, index entry it visits and pair it compares to
+  `workBudget` before doing it; past it the check stops and finds nothing,
+  logged (PR #176 F-01). Keep any new whole-document check bounded the same
+  way, with its work charged where it is generated, not only where it is
+  read. Headings are read from the Markdown block reader
+  (`readDocumentRegions`), never a line pattern (F-02).
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring
