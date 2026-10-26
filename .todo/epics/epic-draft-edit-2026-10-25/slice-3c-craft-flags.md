@@ -1,12 +1,13 @@
 # Slice 3c: Craft flags
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Queued (2026-10-26). After Slice 3b, before the Workshop slices,
-at the writer's request. The pass, its name and each category's approach
-are decided (the writer, 2026-10-26; see "Decided").
+**Status:** In progress (2026-10-26): part 1, the pass and cliché. After
+Slice 3b, before the Workshop slices, at the writer's request. The pass, its
+name, each category's approach and the six recommendations under "Decide in
+the ADR" are decided (the writer, 2026-10-26; see "Decided").
 **Priority:** High
-**Needs first:** an ADR amendment that records the decisions below and
-settles the rest of "Decide in the ADR" before any code.
+**Decision record:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md),
+"Amendment 2026-10-26: Slice 3c, Craft Flags".
 
 ## Decided (the writer, 2026-10-26)
 
@@ -16,6 +17,12 @@ settles the rest of "Decide in the ADR" before any code.
 - **Each category's approach as this doc describes it** under "The four
   categories": what it flags, what it leaves alone, how it reads the whole
   chapter, and what its recommendation says.
+- **All six recommendations under "Decide in the ADR"** (2–7 below):
+  whole-chapter calls per category under a ceiling, the recommendation as a
+  note with no quick fix, options never orders, `info` under its own source,
+  an own model scope following the Workshop's, and the price in the
+  confirmation.
+- **Cliché first.**
 
 ## Problem
 
