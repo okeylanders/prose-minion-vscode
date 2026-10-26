@@ -35,6 +35,11 @@ describe('phraseRepeats', () => {
     expect(phraseRepeats(text, []).count('a chill ran down her spine')).toBe(3);
   });
 
+  it('counts occurrences that overlap (PR #177 N-03)', () => {
+    expect(phraseRepeats('Never say never say never, said the Queen.', []).count('never say never')).toBe(2);
+    expect(phraseRepeats('Alice, Alice, Alice!', []).count('alice, alice')).toBe(2);
+  });
+
   it('counts inflected forms apart: the stated limit', () => {
     const text = 'A chill ran down her spine. A chill runs down his spine.';
     expect(phraseRepeats(text, []).count('a chill ran down her spine')).toBe(1);

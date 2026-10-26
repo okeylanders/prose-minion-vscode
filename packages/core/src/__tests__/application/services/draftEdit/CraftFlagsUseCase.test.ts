@@ -175,6 +175,40 @@ describe('CraftFlagsUseCase.run', () => {
       expect(annotations.flaggedText()).toEqual([]);
     });
 
+    // The re-review's witness: markup right before a single opener must not hide the speech.
+    it.each([
+      ['a tag', '<em>‘time stood still,’</em> said Alice.'],
+      ['a comment', '<!--note-->‘time stood still,’ said Alice.'],
+      ['inline code', '`x`‘time stood still,’ said Alice.']
+    ])('drops a flag in single-quoted speech right after %s', async (_case, text) => {
+      const { runOnce, annotations } = setup(text, [read(flag('time stood still'))]);
+
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { dialogue: 1 } });
+      expect(annotations.flaggedText()).toEqual([]);
+    });
+
+    it('drops a flag the writer put in tagged single quotation marks while the run read', async () => {
+      const { runOnce, annotations } = setup(NARRATION, [read(flag('time stood still'))], {
+        beforeReply: (documents) => documents.edit([
+          { offset: NARRATION.indexOf('time'), length: 0, text: '<em>‘' },
+          { offset: NARRATION.indexOf(' Then'), length: 0, text: '’</em>' }
+        ])
+      });
+
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { dialogue: 1, stale: 0 } });
+      expect(annotations.flaggedText()).toEqual([]);
+    });
+
+    it.each([
+      ['tagged narration', '<em>time stood still</em> and then she left.'],
+      ['a word\'s mark beside markup', 'Ali<b>ce</b>’s watch stopped, and time stood still.']
+    ])('still flags %s: the control', async (_case, text) => {
+      const { runOnce, annotations } = setup(text, [read(flag('time stood still'))]);
+
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 1, dropped: { dialogue: 0 } });
+      expect(annotations.flaggedText()).toEqual(['time stood still']);
+    });
+
     it('still flags narration beside protected syntax holding a quotation mark: the control', async () => {
       const text = 'She typed `"` and time stood still. Then she left.';
       const { runOnce, annotations } = setup(text, [read(flag('time stood still'))]);

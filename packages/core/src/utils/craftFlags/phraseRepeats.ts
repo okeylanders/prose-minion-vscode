@@ -10,6 +10,8 @@
  *   still,"), at word boundaries.
  * - An occurrence touching a skipped range (speech, protected regions) is
  *   not counted: the narration's lean is the finding.
+ * - Occurrences that overlap count apart ("never say never" stands twice in
+ *   "never say never say never").
  * - Inflected forms ("ran down her spine", "runs down his spine") count
  *   apart: the stated limit.
  *
@@ -58,11 +60,13 @@ export function phraseRepeats(text: string, skipped: readonly TextRange[]): Phra
         return undefined;
       }
       let count = 0;
-      for (const match of text.matchAll(patternOf(wanted))) {
-        const start = match.index ?? 0;
-        if (!touches(ranges, start, start + match[0].length)) {
+      const pattern = patternOf(wanted);
+      // Resumed one code unit past each match's start, so overlapping occurrences count (PR #177 N-03).
+      for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+        if (!touches(ranges, match.index, match.index + match[0].length)) {
           count += 1;
         }
+        pattern.lastIndex = match.index + 1;
       }
       counted.set(key, count);
       return count;
