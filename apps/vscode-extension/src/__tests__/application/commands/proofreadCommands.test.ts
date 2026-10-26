@@ -1,8 +1,9 @@
 /**
- * Proofread commands (Draft Edit Slices 1 and 2; ADR 2026-10-21 D5, D7, D8):
+ * Proofread commands (Draft Edit Slices 1 to 3; ADR 2026-10-21 D5, D6, D7, D8):
  * what is refused before anything is sent, the long-file confirmation, how
- * an outcome is presented, and how Fix and the quick fixes ask core. The host and the runner are fakes, so no VS Code API
- * is mocked. Passages are public domain (Lewis Carroll, 1865).
+ * an outcome is presented, how Fix and the quick fixes ask core, and the
+ * writer's spelling convention. The host and the runner are fakes, so no
+ * VS Code API is mocked. Passages are public domain (Lewis Carroll, 1865).
  */
 
 // The whole core barrel cannot load under jest (an ESM dependency), so the
@@ -11,7 +12,8 @@ jest.mock('@prose-minion/core', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome,
-  describeQuickFixOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeQuickFixOutcome
+  describeQuickFixOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeQuickFixOutcome,
+  isProofreadSpellingConvention: jest.requireActual('@/domain/models/DraftEdit').isProofreadSpellingConvention
 }));
 
 import type { DraftEditOutcome, DraftEditPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
@@ -52,6 +54,7 @@ function setup(options: {
   outcome?: DraftEditOutcome;
   choice?: string;
   fixReview?: 'preview' | 'apply';
+  spelling?: string;
   quickFix?: DraftEditQuickFixOutcome;
 } = {}) {
   const calls: string[] = [];
@@ -59,6 +62,7 @@ function setup(options: {
     activeEditor: jest.fn(() => options.active),
     document: jest.fn((uri: string) => (options.active?.uri === uri ? options.active : undefined)),
     fixReview: jest.fn(() => options.fixReview ?? 'preview'),
+    spellingConvention: jest.fn(() => options.spelling),
     confirm: jest.fn(async () => options.confirm ?? false),
     withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal, report: (message: string) => void) => Promise<T>) => {
       calls.push(`progress:${title}`);
@@ -220,6 +224,26 @@ describe('proofreadAndFix (Slice 2)', () => {
     const { host, runner } = setup({ active: editor({ languageId: 'json' }) });
     await expect(proofreadAndFix(host, runner)).resolves.toMatchObject({ kind: 'refused' });
     expect(runner.run).not.toHaveBeenCalled();
+  });
+});
+
+describe('the spelling convention (Slice 3)', () => {
+  it.each(['american', 'british', 'canadian', 'australian'])('sends %s with Flag and with Fix, read at the gesture', async (spelling) => {
+    const { host, runner } = setup({ active: editor(), spelling });
+    await proofreadAndFlag(host, runner);
+    await proofreadAndFix(host, runner);
+
+    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+      { kind: 'proofread', output: 'flag', spelling },
+      { kind: 'proofread', output: 'fix', review: 'preview', spelling }
+    ]);
+  });
+
+  it.each([['auto'], [undefined], ['irish'], ['British']])('names none for %p, so the passage keeps its own', async (spelling) => {
+    const { host, runner } = setup({ active: editor(), spelling });
+    await proofreadAndFlag(host, runner);
+
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag' });
   });
 });
 

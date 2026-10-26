@@ -9,17 +9,19 @@
  */
 
 // The whole core barrel cannot load under jest (an ESM dependency), so the
-// two runtime values these commands use are required from their modules.
+// runtime values these witnesses use are required from their modules.
+/* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export names. */
 jest.mock('@prose-minion/core', () => ({
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
+  PROOFREAD_SPELLING_CONVENTIONS: jest.requireActual('@/domain/models/DraftEdit').PROOFREAD_SPELLING_CONVENTIONS,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome
 }));
+/* eslint-enable @typescript-eslint/naming-convention */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
-import { DRAFT_EDIT_LANGUAGE_IDS } from '@prose-minion/core';
+import { DRAFT_EDIT_LANGUAGE_IDS, PROOFREAD_SPELLING_CONVENTIONS } from '@prose-minion/core';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -39,13 +41,22 @@ const EXTENSION_MANIFEST = path.resolve(APP_SRC_ROOT, '..', 'package.json');
 interface ExtensionManifest {
   activationEvents?: string[];
   contributes: {
-    commands: Array<{ command: string; title: string; icon?: string }>;
-    menus: Record<string, Array<{ command: string; when?: string; group?: string }>>;
+    commands: Array<{ command: string; title: string; category?: string; icon?: string }>;
+    submenus?: Array<{ id: string; label: string }>;
+    /** A menu entry names a command, or a submenu (whose items are the menu of that id). */
+    menus: Record<string, Array<{ command?: string; submenu?: string; when?: string; group?: string }>>;
   };
 }
 
 const readManifest = (): ExtensionManifest =>
   JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as ExtensionManifest;
+
+/** The editor context menu's Prose Minion submenu (Draft Edit Slice 3): its items are the menu of this id. */
+const EDITOR_CONTEXT_SUBMENU = 'prose-minion.editorContext';
+
+/** Each command as the Command Palette names it: "category: title". */
+const paletteCommands = (manifest: ExtensionManifest) => manifest.contributes.commands.map(({ category, title, ...rest }) =>
+  ({ ...rest, title: category ? `${category}: ${title}` : title }));
 
 /**
  * Providers assemble nothing: every service arrives via the CoreServices
@@ -274,13 +285,13 @@ describe('app-shell provider assembly', () => {
       'onCommand:prose-minion.lightboxSelection',
       'onCommand:prose-minion.openFileInLightbox'
     ]));
-    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+    expect(paletteCommands(manifest)).toEqual(expect.arrayContaining([
       { command: 'prose-minion.openLightbox', title: 'Prose Minion: Open Lightbox' },
       { command: 'prose-minion.lightboxSelection', title: 'Prose Minion: Open Selection in Lightbox' },
       // The icon is what the editor title's navigation group draws: tiles on a board.
       { command: 'prose-minion.openFileInLightbox', title: 'Prose Minion: Open File in Lightbox', icon: '$(layout)' }
     ]));
-    expect(manifest.contributes.menus['editor/context']).toEqual(expect.arrayContaining([
+    expect(manifest.contributes.menus[EDITOR_CONTEXT_SUBMENU]).toEqual(expect.arrayContaining([
       expect.objectContaining({ command: 'prose-minion.lightboxSelection', when: 'editorHasSelection' })
     ]));
     for (const command of ['prose-minion.openLightbox', 'prose-minion.lightboxSelection', 'prose-minion.openFileInLightbox']) {
@@ -295,8 +306,9 @@ describe('app-shell provider assembly', () => {
     const OPEN_FILE = 'prose-minion.openFileInLightbox';
 
     // The Explorer and the editor title name the file's resource; the editor
-    // context menu names the focused editor's language (VS Code when-clause
-    // contexts). Folders, untitled buffers and non-disk views get no entry.
+    // context menu's Prose Minion submenu names the focused editor's language
+    // (VS Code when-clause contexts). Folders, untitled buffers and non-disk
+    // views get no entry.
     expect(entries('explorer/context', OPEN_FILE)).toEqual([{
       command: OPEN_FILE,
       group: 'prose-minion@1',
@@ -309,19 +321,19 @@ describe('app-shell provider assembly', () => {
     }]);
     // The Lightbox's slot in the editor menu: the selection entry with a
     // selection, the file entry without one. They never show together.
-    expect(entries('editor/context', OPEN_FILE)).toEqual([{
+    expect(entries(EDITOR_CONTEXT_SUBMENU, OPEN_FILE)).toEqual([{
       command: OPEN_FILE,
-      group: 'prose-minion@3',
+      group: '2_open@2',
       when: '!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)'
     }]);
-    expect(entries('editor/context', 'prose-minion.lightboxSelection')).toEqual([{
+    expect(entries(EDITOR_CONTEXT_SUBMENU, 'prose-minion.lightboxSelection')).toEqual([{
       command: 'prose-minion.lightboxSelection',
-      group: 'prose-minion@3',
+      group: '2_open@2',
       when: 'editorHasSelection'
     }]);
 
     // The menus offer exactly the languages the command boards.
-    for (const [menu, key] of [['explorer/context', 'resourceLangId'], ['editor/title', 'resourceLangId'], ['editor/context', 'editorLangId']]) {
+    for (const [menu, key] of [['explorer/context', 'resourceLangId'], ['editor/title', 'resourceLangId'], [EDITOR_CONTEXT_SUBMENU, 'editorLangId']]) {
       const when = entries(menu, OPEN_FILE)[0].when ?? '';
       expect(when.match(new RegExp(`${key} == (\\w+)`, 'g'))).toEqual(
         LIGHTBOX_FILE_LANGUAGE_IDS.map((languageId) => `${key} == ${languageId}`)
@@ -357,19 +369,19 @@ describe('app-shell provider assembly', () => {
   it('offers Proofread and Flag on Markdown and plain text in the editor context menu (Draft Edit Slice 1)', () => {
     const manifest = readManifest();
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
-    const entries = (manifest.contributes.menus['editor/context'] ?? [])
+    const entries = (manifest.contributes.menus[EDITOR_CONTEXT_SUBMENU] ?? [])
       .filter((entry) => entry.command === PROOFREAD_FLAG_COMMAND);
 
     // With or without a selection (a selection narrows the run), on unsaved buffers too.
     expect(entries).toEqual([{
       command: PROOFREAD_FLAG_COMMAND,
-      group: 'prose-minion@4',
+      group: '3_proofread@1',
       when: 'editorLangId == markdown || editorLangId == plaintext'
     }]);
     expect((entries[0].when ?? '').match(/editorLangId == (\w+)/g)).toEqual(
       DRAFT_EDIT_LANGUAGE_IDS.map((languageId) => `editorLangId == ${languageId}`)
     );
-    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+    expect(paletteCommands(manifest)).toEqual(expect.arrayContaining([
       { command: PROOFREAD_FLAG_COMMAND, title: 'Prose Minion: Proofread and Flag' },
       { command: PROOFREAD_CLEAR_COMMAND, title: 'Prose Minion: Clear Proofread Flags' }
     ]));
@@ -387,15 +399,15 @@ describe('app-shell provider assembly', () => {
   it('offers Proofread and Fix wherever it offers Flag, and keeps the quick fixes out of the palette (Draft Edit Slice 2)', () => {
     const manifest = readManifest();
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
-    const menu = manifest.contributes.menus['editor/context'] ?? [];
+    const menu = manifest.contributes.menus[EDITOR_CONTEXT_SUBMENU] ?? [];
     const flag = menu.find((entry) => entry.command === PROOFREAD_FLAG_COMMAND);
 
     expect(menu.filter((entry) => entry.command === PROOFREAD_FIX_COMMAND)).toEqual([{
       command: PROOFREAD_FIX_COMMAND,
-      group: 'prose-minion@5',
+      group: '3_proofread@2',
       when: flag?.when
     }]);
-    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+    expect(paletteCommands(manifest)).toEqual(expect.arrayContaining([
       { command: PROOFREAD_FIX_COMMAND, title: 'Prose Minion: Proofread and Fix' }
     ]));
     const contributed = manifest.contributes.commands.map((entry) => entry.command);
@@ -419,6 +431,17 @@ describe('app-shell provider assembly', () => {
       .toContain(`getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply'`);
   });
 
+  it('declares the spelling convention Proofread holds the text to, the host\'s list plus auto, under the key the host reads (Draft Edit Slice 3)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; enum?: string[]; enumDescriptions?: string[]; default?: unknown }> } };
+    };
+    const setting = manifest.contributes.configuration.properties['proseMinion.proofread.spellingConvention'];
+    expect(setting).toMatchObject({ type: 'string', enum: ['auto', ...PROOFREAD_SPELLING_CONVENTIONS], default: 'auto' });
+    expect(setting.enumDescriptions).toHaveLength(setting.enum!.length);
+    expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
+      .toContain(`spellingConvention: () => vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.spellingConvention')`);
+  });
+
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {
     const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
     expect(extensionSource).toMatch(/const aiResourceRefresh = new AIResourceRefresh\(aiResourceManager, secretsService, platform\.settings, outputChannel\);/);
@@ -432,16 +455,25 @@ describe('app-shell provider assembly', () => {
     }
   });
 
-  it('names only declared commands in its menus, each with an activation event', () => {
+  it('names only declared commands and submenus in its menus, each command with an activation event', () => {
     const manifest = readManifest();
     const declared = new Set(manifest.contributes.commands.map((entry) => entry.command));
+    const submenus = new Set((manifest.contributes.submenus ?? []).map((entry) => entry.id));
     const activation = new Set(manifest.activationEvents ?? []);
-    const named = Object.entries(manifest.contributes.menus)
-      .flatMap(([menu, entries]) => entries.map((entry) => ({ menu, command: entry.command })));
+    const entries = Object.entries(manifest.contributes.menus)
+      .flatMap(([menu, items]) => items.map((entry) => ({ menu, ...entry })));
+    const named = entries.flatMap(({ menu, command }) => (command ? [{ menu, command }] : []));
 
     expect(named.length).toBeGreaterThan(0);
+    // Each entry names exactly one command or one submenu.
+    expect(entries.filter((entry) => (entry.command === undefined) === (entry.submenu === undefined))).toEqual([]);
     expect(named.filter(({ command }) => !declared.has(command))).toEqual([]);
     expect(named.filter(({ command }) => !activation.has(`onCommand:${command}`))).toEqual([]);
+    // A submenu named in a menu is declared, and has a menu of its own items.
+    for (const { submenu } of entries.filter((entry) => entry.submenu !== undefined)) {
+      expect(submenus.has(submenu!)).toBe(true);
+      expect(manifest.contributes.menus[submenu!]?.length).toBeGreaterThan(0);
+    }
   });
 
   it('quiesces the Workshop handler before the final deactivation flush', () => {

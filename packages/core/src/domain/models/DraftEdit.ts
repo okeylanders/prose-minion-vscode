@@ -16,10 +16,26 @@ import type { ModelScope, TokenUsage } from '@messages';
 /** How a fix reaches the document: through the writer's review, or at once. */
 export type DraftEditReview = 'preview' | 'direct';
 
-/** What a run produces: flags only, or the safe fixes applied and the rest flagged. */
+/**
+ * The spelling a Proofread run holds the text to (Slice 3). A run naming
+ * none leaves the writer's choice open: a spelling correct in any of these
+ * is not an error unless the text mixes them.
+ */
+export const PROOFREAD_SPELLING_CONVENTIONS = ['american', 'british', 'canadian', 'australian'] as const;
+
+export type ProofreadSpellingConvention = typeof PROOFREAD_SPELLING_CONVENTIONS[number];
+
+export function isProofreadSpellingConvention(value: unknown): value is ProofreadSpellingConvention {
+  return typeof value === 'string' && (PROOFREAD_SPELLING_CONVENTIONS as readonly string[]).includes(value);
+}
+
+/**
+ * What a run produces: flags only, or the safe fixes applied and the rest
+ * flagged; held to the writer's spelling convention when one is named.
+ */
 export type DraftEditPass =
-  | { readonly kind: 'proofread'; readonly output: 'flag' }
-  | { readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview };
+  | { readonly kind: 'proofread'; readonly output: 'flag'; readonly spelling?: ProofreadSpellingConvention }
+  | { readonly kind: 'proofread'; readonly output: 'fix'; readonly review: DraftEditReview; readonly spelling?: ProofreadSpellingConvention };
 
 export type DraftEditPassKind = DraftEditPass['kind'];
 
@@ -125,6 +141,8 @@ export type DraftEditOutcome =
       readonly rejectedChunks: DraftEditRejectedChunks;
       /** Chunks requested, and chunks answered (read or rejected). */
       readonly chunks: { readonly total: number; readonly completed: number };
+      /** A selection run's earlier flags outside the selection, still shown; absent when none were kept. */
+      readonly kept?: number;
       /** Why later chunks were never sent: the API key changed mid-run, or the provider refused. */
       readonly interrupted?: { readonly cause: 'key-changed' | 'provider'; readonly message: string };
       /** A Fix run's fixes; absent for Flag. */

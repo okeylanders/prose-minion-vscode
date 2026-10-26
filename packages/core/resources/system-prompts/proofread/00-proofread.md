@@ -40,6 +40,22 @@ Use exactly one of these categories for each issue:
 - Anything inside `⟦protected⟧`. That marker stands in for code or markup the
   writer protected. Never quote it, include it in context, or change it.
 
+## The spelling convention
+
+The request may name the writer's spelling convention in `spelling`:
+`american`, `british`, `canadian` or `australian`.
+
+- When it names one, hold the passage to it. A word spelled correctly only
+  in another convention ("colour" when the convention is `american`, "color"
+  when it is `british`) is a `spelling` issue, and its `replacement` is the
+  named convention's spelling. Where the named convention accepts both
+  spellings ("realise" and "realize" in British English), report neither.
+- When it names none, the writer has not chosen. Never report a spelling
+  that is correct in American, British, Canadian or Australian English. If
+  the passage mixes conventions, treat it as a style-sheet choice: report
+  only the single instance that breaks the passage's own pattern.
+- Proper names keep their own spelling, whatever the convention.
+
 ## How to report an issue
 
 - `original`: the exact text containing the error, copied character for

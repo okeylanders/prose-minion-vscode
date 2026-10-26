@@ -520,7 +520,9 @@ Slice 1 fixtures can tune it without touching logic.
   become diagnostics.
 - **Session-only lifetime.** Annotations clear on close, on
   *Clear Proofread Flags*, on the next run for that URI, and where an edit
-  overlaps them. They are not restored after reload.
+  overlaps them. They are not restored after reload. A selection run
+  replaces only the flags that overlap its selection (amended 2026-10-26,
+  Slice 3).
 
 Option rejected: **inline `**bold**` or `~~strike~~` marks.**
 
@@ -721,7 +723,10 @@ Slices follow the feature's sequencing:
      preview is open. D4's reconciliation must hold either way. Done from
      VS Code's source: see [Amendment 2026-10-25: Slice 2, the write
      side](#amendment-2026-10-25-slice-2-the-write-side).
-3. **Polish:** submenu, spelling convention, cost in the summary.
+3. **Polish:** submenu, spelling convention, cost in the summary, and a
+   selection run that replaces only its own flags. See [Amendment
+   2026-10-26: Slice 3, polish](#amendment-2026-10-26-slice-3-polish).
+   Proofread's wider coverage follows as Slice 3b.
 4. **Workshop Proofread button:** D5 (confined path), D9.
 5. **Apply to Draft:** D11, each pass a new row.
 
@@ -910,6 +915,22 @@ diff), and direct only. They kept Refactor Preview.
   does not: it could end another extension's preview. The writer applies
   or discards in the preview.
 
+## Amendment 2026-10-26: Slice 3, polish
+
+Slice 3 changes three decisions above and leaves the thresholds as they
+were:
+
+| Decision | Change |
+|---|---|
+| D8: the menus | The editor context menu holds one **Prose Minion** submenu (`contributes.submenus`, id `prose-minion.editorContext`) in place of the flat entries; its items keep their own `when` clauses. Every contributed command takes `"category": "Prose Minion"` and a short title. VS Code labels a menu item by its title alone and writes "category: title" in the Command Palette ([`actions.ts`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/platform/actions/common/actions.ts) `MenuItemAction.label`, [`commandsQuickAccess.ts`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/workbench/contrib/quickaccess/browser/commandsQuickAccess.ts)), so the palette reads as before. VS Code leaves out a submenu with nothing to show ([`menuService.ts`](https://github.com/microsoft/vscode/blob/1.82.0/src/vs/platform/actions/common/menuService.ts) `createActionGroups`), so the submenu entry carries no `when`. Open File in Lightbox's Explorer and editor-title entries now read "Open File in Lightbox". |
+| D6: the spelling convention | `proseMinion.proofread.spellingConvention`: `auto` (the default), `american`, `british`, `canadian` or `australian`. It is read at the gesture, carried on the pass as `spelling` (absent for `auto`, and for a value outside the list), and sent in each chunk's request as a JSON field beside the passage. With a named convention, a word spelled only to another one is a `spelling` issue whose replacement is the convention's spelling; the guard still judges it, so a longer respelling is flagged, not fixed. With none, a spelling correct in any of the four is never reported, unless the passage mixes conventions, and then only the instance that breaks its own pattern. |
+| D7: whose flags a run replaces | A whole-file run replaces the document's flags, as before. A selection run replaces only the flags it reads again: those that overlap the selection as the gesture read it. The rest are kept where they now sit, with their quick fixes, unless the writer dismissed, edited or cleared them during the run. Which flags lie outside is decided at the gesture, against the text the selection's offsets name, so no range is moved through the writer's edits. The summary counts the kept flags, and offers *Show Problems* whenever any flag is shown. |
+
+**Summary and thresholds.** No other summary wording or threshold changed.
+The writer's runs of Flag and Fix raised no false positive or threshold
+problem, but no fixture run with a rate was recorded, so the
+[Thresholds](#thresholds) table stands until one gives a reason to tune it.
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to
@@ -917,9 +938,11 @@ diff), and direct only. They kept Refactor Preview.
 - CriticMarkup export and accept/reject, if portable in-file marks prove
   useful.
 - A deterministic narrative-tense baseline (via `wink-pos-tagger`, dialogue
-  excluded) passed to Proofread as a hint.
+  excluded) passed to Proofread as a hint. Queued as
+  [Slice 3b](../../.todo/epics/epic-draft-edit-2026-10-25/slice-3b-proofread-coverage.md),
+  with the rest of Proofread's wider coverage.
 - A project word list (character and place names) to suppress false
-  spelling flags.
+  spelling flags. Queued in Slice 3b.
 - Draft edits on `manual` Workshop excerpts (no document to write).
 - Proofreading several files or a folder in one run.
 - Persisting flags across reloads (decided against).

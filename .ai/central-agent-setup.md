@@ -1617,6 +1617,28 @@ writer's own document:
   reading, and hands the manager exactly that key when it differs from the
   adopted one (`adoptedKeyFingerprint`); never rebuild the manager for a key
   change another way.
+- **Whose flags a run replaces** (Slice 3; the ADR's Slice 3 amendment). A
+  whole-file run replaces the document's flags. A selection run replaces only
+  those overlapping its selection: the use case notes the others at the
+  gesture (`flagsOutside`), against the text the selection's offsets name,
+  and keeps those still shown when it shows its own. Never move a selection
+  range through the writer's edits to decide it, and never bring back a flag
+  the writer dismissed, edited or cleared during the run.
+- **Settings a run reads are read at the gesture** and carried on the pass,
+  as the spelling convention is (`spelling`; absent means none named). The
+  request sends them as JSON fields beside the passage; a prompt section
+  teaches each one, and a sync test holds the prompt to the domain's list.
+
+### Editor Menus and Command Titles
+
+Every contributed command takes `"category": "Prose Minion"` and a short
+title: menus show the title alone, and the Command Palette writes
+"Prose Minion: title" (Draft Edit Slice 3). The editor context menu holds
+one **Prose Minion** submenu, `prose-minion.editorContext`. A new editor
+command goes in that submenu's menu, with its own `when` clause, never
+straight into `editor/context`. `editorContextMenu.test.ts` evaluates the
+`when` clauses as VS Code does: add a row to its table for a new editor
+state.
 
 ### Operational Tips
 

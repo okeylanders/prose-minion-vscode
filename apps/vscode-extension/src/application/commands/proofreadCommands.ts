@@ -14,6 +14,9 @@
  * - Only Markdown and plain text are proofread. The editor menu offers the
  *   command only there; from the Command Palette, anything else is refused
  *   with a message, since the project hides no command there.
+ * - The writer's spelling convention (`proseMinion.proofread.spellingConvention`)
+ *   is read at the gesture too, and goes with the pass (Slice 3). `auto`, or
+ *   a value outside the list, names none.
  * - A whole-file run over the confirmation threshold asks first, naming the
  *   word count and the number of model calls. Cancel sends nothing. A
  *   selection never asks.
@@ -36,6 +39,7 @@ import {
   DRAFT_EDIT_LANGUAGE_IDS,
   describeDraftEditOutcome,
   describeQuickFixOutcome,
+  isProofreadSpellingConvention,
   type DocumentSnapshot,
   type DraftEditOutcome,
   type DraftEditPass,
@@ -81,6 +85,8 @@ export interface ProofreadCommandHost {
   document(uri: string): ProofreadEditorSnapshot | undefined;
   /** How Fix's fixes reach the document: `proseMinion.proofread.fixReview`. */
   fixReview(): 'preview' | 'apply';
+  /** `proseMinion.proofread.spellingConvention`, as the writer set it. */
+  spellingConvention(): string | undefined;
   /** A modal question with one action besides Cancel; true when the action was chosen. */
   confirm(message: string, action: string): PromiseLike<boolean>;
   /** Runs `task` under a cancellable progress notification; cancelling aborts the signal, `report` replaces its line. */
@@ -108,11 +114,11 @@ export type ProofreadCommandOutcome =
 export const REVIEW_HINT = 'Review the fixes in Refactor Preview: tick the file to take them all, or tick them one by one, then Apply. Discard keeps them as flags.';
 
 export function proofreadAndFlag(host: ProofreadCommandHost, runner: ProofreadRunner): Promise<ProofreadCommandOutcome> {
-  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'flag' });
+  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'flag', ...spellingOf(host) });
 }
 
 export function proofreadAndFix(host: ProofreadCommandHost, runner: ProofreadRunner): Promise<ProofreadCommandOutcome> {
-  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'fix', review: reviewOf(host) });
+  return proofreadActiveEditor(host, runner, { kind: 'proofread', output: 'fix', review: reviewOf(host), ...spellingOf(host) });
 }
 
 /** *Replace with '…'*: one shown fix, applied at once. */
@@ -192,6 +198,12 @@ async function proofreadActiveEditor(host: ProofreadCommandHost, runner: Proofre
 
 function reviewOf(host: ProofreadCommandHost): DraftEditReview {
   return host.fixReview() === 'apply' ? 'direct' : 'preview';
+}
+
+/** The convention the writer named, if any: `auto` leaves it to the passage. */
+function spellingOf(host: ProofreadCommandHost): Pick<DraftEditPass, 'spelling'> {
+  const spelling = host.spellingConvention();
+  return isProofreadSpellingConvention(spelling) ? { spelling } : {};
 }
 
 /** Clear the active document's flags, or every document's when no editor is active. */

@@ -134,54 +134,72 @@
     "commands": [
       {
         "command": "prose-minion.assistantSelection",
-        "title": "Prose Minion: Assistant"
+        "title": "Assistant",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.wordLookupSelection",
-        "title": "Prose Minion: Word Lookup"
+        "title": "Word Lookup",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.openSettingsOverlay",
-        "title": "Prose Minion: Settings",
+        "title": "Settings",
+        "category": "Prose Minion",
         "icon": "$(gear)"
       },
       {
         "command": "prose-minion.showOutputChannel",
-        "title": "Prose Minion: Show Debug Output",
+        "title": "Show Debug Output",
+        "category": "Prose Minion",
         "icon": "$(bug)"
       },
       {
         "command": "prose-minion.openWorkshop",
-        "title": "Prose Minion: Open Workshop"
+        "title": "Open Workshop",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.workshopSelection",
-        "title": "Prose Minion: Send Selection to Workshop"
+        "title": "Send Selection to Workshop",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.openLightbox",
-        "title": "Prose Minion: Open Lightbox"
+        "title": "Open Lightbox",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.lightboxSelection",
-        "title": "Prose Minion: Open Selection in Lightbox"
+        "title": "Open Selection in Lightbox",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.openFileInLightbox",
-        "title": "Prose Minion: Open File in Lightbox",
+        "title": "Open File in Lightbox",
+        "category": "Prose Minion",
         "icon": "$(layout)"
       },
       {
         "command": "prose-minion.proofreadFlag",
-        "title": "Prose Minion: Proofread and Flag"
+        "title": "Proofread and Flag",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.proofreadFix",
-        "title": "Prose Minion: Proofread and Fix"
+        "title": "Proofread and Fix",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.clearProofreadFlags",
-        "title": "Prose Minion: Clear Proofread Flags"
+        "title": "Clear Proofread Flags",
+        "category": "Prose Minion"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "prose-minion.editorContext",
+        "label": "Prose Minion"
       }
     ],
     "menus": {
@@ -201,39 +219,45 @@
       ],
       "editor/context": [
         {
+          "submenu": "prose-minion.editorContext",
+          "group": "prose-minion"
+        }
+      ],
+      "prose-minion.editorContext": [
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.wordLookupSelection",
+          "group": "1_analyze@1"
+        },
+        {
           "when": "editorHasSelection",
           "command": "prose-minion.assistantSelection",
-          "group": "prose-minion@1"
+          "group": "1_analyze@2"
         },
         {
           "when": "editorHasSelection",
           "command": "prose-minion.workshopSelection",
-          "group": "prose-minion@2"
+          "group": "2_open@1"
         },
         {
           "when": "editorHasSelection",
           "command": "prose-minion.lightboxSelection",
-          "group": "prose-minion@3"
+          "group": "2_open@2"
         },
         {
           "when": "!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)",
           "command": "prose-minion.openFileInLightbox",
-          "group": "prose-minion@3"
+          "group": "2_open@2"
         },
         {
           "when": "editorLangId == markdown || editorLangId == plaintext",
           "command": "prose-minion.proofreadFlag",
-          "group": "prose-minion@4"
+          "group": "3_proofread@1"
         },
         {
           "when": "editorLangId == markdown || editorLangId == plaintext",
           "command": "prose-minion.proofreadFix",
-          "group": "prose-minion@5"
-        },
-        {
-          "when": "editorHasSelection",
-          "command": "prose-minion.wordLookupSelection",
-          "group": "prose-minion"
+          "group": "3_proofread@2"
         }
       ],
       "view/title": [
@@ -301,6 +325,20 @@
           "default": "preview",
           "markdownDescription": "How **Prose Minion: Proofread and Fix**, and the *Fix all* quick fix, bring their fixes to the file. Either way the fixes are one undoable change and the file is never saved for you, and tense and agreement issues are only ever flagged. A single *Replace with* quick fix always applies at once.",
           "order": 5.3
+        },
+        "proseMinion.proofread.spellingConvention": {
+          "type": "string",
+          "enum": ["auto", "american", "british", "canadian", "australian"],
+          "enumDescriptions": [
+            "No convention chosen: a spelling correct in American, British, Canadian or Australian English is never flagged, unless the text mixes them.",
+            "American English spelling.",
+            "British English spelling.",
+            "Canadian English spelling.",
+            "Australian English spelling."
+          ],
+          "default": "auto",
+          "markdownDescription": "The spelling **Prose Minion: Proofread** holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and **Proofread and Fix** corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling.",
+          "order": 5.4
         },
         "proseMinion.categoryModel": {
           "type": "string",

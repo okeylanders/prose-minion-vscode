@@ -50,8 +50,13 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
         ? ''
         : `${plural(outcome.flagged, 'issue')} flagged`
           + (outcome.judgmentCalls > 0 ? ` (${outcome.judgmentCalls} tense or agreement)` : '');
-      const lead = [fix ? fixLead(fix) : '', flagged].filter(Boolean).join(' · ') || 'no issues found';
+      const kept = outcome.kept ?? 0;
+      const lead = [fix ? fixLead(fix) : '', flagged].filter(Boolean).join(' · ')
+        || (kept > 0 ? 'no issues found in the selection' : 'no issues found');
       const parts = [`Proofread ${documentLabel}: ${lead}`];
+      if (kept > 0) {
+        parts.push(`${plural(kept, 'earlier flag')} outside the selection kept`);
+      }
       if (fix && fix.unknown > 0) {
         parts.push(`${plural(fix.unknown, 'fix', 'fixes')} you edited during review left as you wrote ${fix.unknown === 1 ? 'it' : 'them'}`);
       }
@@ -73,7 +78,7 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return {
         level: outcome.interrupted || rejected || fix?.answer === 'stale' || fix?.answer === 'failed' ? 'warning' : 'info',
         message,
-        hasFlags: outcome.flagged > 0
+        hasFlags: outcome.flagged + kept > 0
       };
     }
     default: {

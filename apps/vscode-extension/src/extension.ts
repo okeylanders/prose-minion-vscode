@@ -707,7 +707,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxPanelProvider?.seedSource(payload);
   };
 
-  // Proofread (Draft Edit Slices 1 and 2): the target is captured at the
+  // Proofread (Draft Edit Slices 1 to 3): the target is captured at the
   // gesture, in one synchronous read of the editor (ADR 2026-10-21 D5).
   const readProofreadDocument = (document: vscode.TextDocument, selection?: vscode.Selection): ProofreadEditorSnapshot => ({
     uri: document.uri.toString(),
@@ -728,6 +728,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     fixReview: () =>
       vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply' ? 'apply' : 'preview',
+    spellingConvention: () => vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.spellingConvention'),
     confirm: async (message, action) =>
       (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
     withProgress: (title, task) => vscode.window.withProgress(
