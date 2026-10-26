@@ -101,3 +101,57 @@ Scratch evidence and logs remain outside the checkout in `../pr176-review-eviden
 **Hold for F-01 and F-02, then re-review the corrected head for integration into `epic/lightbox`.** Exact report-head CI is checked separately after publication; an implementation/base advance requires a delta or integration recheck.
 
 Native VS Code acceptance (workspace setting, Problems and quick-fix UI) and live fixture false-positive rates remain unrun and separate. PR #172's explicitly accepted native-preview lifetime race remains **not fixed**, not reopened by this review; no global preview-discard mechanism was reintroduced. Slice 3b part 3 and queued Slice 3c are plans, not implementation-approved by this report.
+
+
+## Author response — 2026-10-26
+
+**Head:** the fixes are `93034da4` and the docs `efb709ee`; the test inventory and this response are the commit after them. Both P2 findings are fixed, and both notes are taken.
+
+### F-01 · fixed in `93034da4`
+
+You're right: the budget charged only the index entries a lookup visited, so making and indexing deletions cost nothing. Now all the work is charged where it is generated:
+
+- **No word over 20 letters is a name** (`maximumLength`). So no one word makes more than 211 deletions, and an oversized token has a defined, conservative outcome: it is never read as a name, and costs nothing.
+- **Every unit of work is charged before it is done:** each deletion made, indexing or looking up; each index entry visited; and each pair of names compared. A charge that would pass `workBudget` (250,000) is refused, and the check stops: it finds nothing, the host logs why, and nothing partial is shown. Either result reports the work spent, so the bound is asserted where the work is made.
+- **Your witnesses are tests:**
+  - your deterministic 501-letter word, once and three times: `checked`, no variants, work 0;
+  - the 20- and 21-letter boundary;
+  - 2,000 common 20-letter names: it stops while indexing, within the budget;
+  - a small chapter's work, pinned exactly at 42: 16 deletions for *Alice*, 16 for *Alcie*, 9 index entries and 1 comparison. Leaving out any of the four charges changes it.
+- **Measured on Node 18:**
+
+  | Document | Work | Time | Result |
+  | --- | --- | --- | --- |
+  | A novel: 4,500 distinct names, 70,500 words | 121,845 | 139 ms | checked |
+  | 10,000 near-alike names (10-letter alphabet, one initial) | 250,000 | 688 ms, of which reading 106 | stopped |
+  | 6,000 names of 15 to 20 letters, 123,000 words | 250,000 | 547 ms, of which reading 142 | stopped |
+
+  Reading the document is linear and is not charged; the name work stays under about 0.6 s beyond it.
+
+### F-02 · fixed in `93034da4`
+
+Confirmed: the line pattern knew only top-level ATX headings. The Markdown block reader already visits every heading wherever block quotes and lists put them. It now records each one as whole source lines, a setext underline included. `readDocumentRegions` returns the headings beside the protected regions from one reading, and the host read skips both. The pattern is gone. Plain text has no headings, as it has no protected regions.
+
+- **Your table is a test** (`DraftEditNames.test.ts`): *The Rise* as an ATX heading, a setext heading, in a block quote and in a list item flags nothing beside *Rose*. The same words mid-sentence in prose flag *Rise → Rose*, as the control.
+- **Frequency too:** *Alice* used twice in prose and once in a setext, block-quoted or list heading leaves *Alcie* alone. The third use in prose flags it.
+- **The reader's own tests** cover ATX (closed, indented), setext with `=` and `-`, in a block quote, in a list item, setext in a block quote, and a list in a block quote. Paragraphs, plain text and fenced code have no headings, and the protected regions match `findProtectedRegions`.
+
+### N-01 · taken
+
+The name check now asks the word list's own `isAcceptedWord`, so `['Glimmer', 'fox']` accepts *Glimmer-fox* there too. Your witness is a test, with `['Glimmer']` alone still flagging it.
+
+### N-02 · taken
+
+`placeFindings` now drops a model issue overlapping a host issue before weighing model issues against each other. Your witness is a test: *Alcie* and *teh* are both flagged, and one overlap is counted.
+
+### Verification
+
+| Check | Result on `93034da4` |
+| --- | --- |
+| Node 18.20.8 typecheck | Pass: core, webview and adapter |
+| Node 18.20.8 full Jest | **562 suites / 7,870 tests / 59 snapshots**, exit 0 (24 tests more than `24842647`) |
+| Node 18.20.8 lint | Pass: 0 errors / 1,133 existing warnings |
+| Node 18.20.8 build (incl. `verify:bundle`) | Pass; the three existing webpack size warnings |
+| Mutations | Each of ten fails a test: headings recorded, headings skipped, the maximum length, each of the four charges, a charge allowed to overshoot, N-01, and N-02 |
+
+The ADR's "As built (part 2)" note, the slice doc, the agent guide and the memory bank say the same. Your report above is unchanged; this response is appended.

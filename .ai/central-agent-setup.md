@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 2 (the word list and name consistency) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `57489816` (Draft Edit Slice 3b part 1, PR #174), under Node 18):
-- 562 suites / 7,846 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 2 (the word list and name consistency) with its PR #176 review fixes (F-01, F-02, N-01, N-02) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `57489816` (Draft Edit Slice 3b part 1, PR #174), under Node 18):
+- 562 suites / 7,870 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
