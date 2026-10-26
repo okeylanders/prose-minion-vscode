@@ -319,7 +319,7 @@ describe('reading waits for the selected model to be saved and confirmed (PR #14
     await eventually(() => expect(host.posted.filter((message) => message.type === MessageType.MODEL_DATA).length).toBeGreaterThan(confirmations));
     await settle();
     expect(host.posted.filter((message) => message.type === MessageType.MODEL_DATA).at(-1)?.payload)
-      .toMatchObject({ selections: { assistant: CHEAP, lightbox: CHEAP }, following: ['lightbox'] });
+      .toMatchObject({ selections: { assistant: CHEAP, lightbox: CHEAP }, following: ['lightbox', 'craft'] });
     expect(press().disabled).toBe(true);
     expect(lensCost()).toBe('Estimating…');
 

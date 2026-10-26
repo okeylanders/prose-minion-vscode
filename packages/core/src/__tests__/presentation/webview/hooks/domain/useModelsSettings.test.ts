@@ -295,8 +295,8 @@ describe('useModelsSettings', () => {
 
     it('follows until the host says otherwise, since unset is the setting’s default', () => {
       const { result } = renderHook(() => useModelsSettings());
-      expect(result.current.followingModelScopes).toEqual(['lightbox']);
-      expect(result.current.persistedState.followingModelScopes).toEqual(['lightbox']);
+      expect(result.current.followingModelScopes).toEqual(['lightbox', 'craft']);
+      expect(result.current.persistedState.followingModelScopes).toEqual(['lightbox', 'craft']);
     });
 
     it('takes which scopes follow from MODEL_DATA, and keeps what it knew when a message omits it', () => {

@@ -1,11 +1,12 @@
 /**
- * How a following model scope is offered to the writer (Lightbox Slice 4L).
+ * How a following model scope is offered to the writer (Lightbox Slice 4L;
+ * Craft Flags, Draft Edit Slice 3c).
  *
- * The Lightbox has no model of its own until the writer picks one; until
- * then it reads with the Workshop's (the assistant model) and moves when that
- * one does. Every picker that shows the Lightbox's model, the Lightbox's
- * header chip and the Settings overlay's row, says so in these words.
- * Presentation only: no transport.
+ * The Lightbox and Craft Flags have no model of their own until the writer
+ * picks one; until then each runs on the Workshop's (the assistant model)
+ * and moves when that one does. Every picker that shows such a model (the
+ * Lightbox's header chip, the Settings overlay's rows) says so in these
+ * words. Presentation only: no transport.
  */
 import type { FollowingModelScope, ModelOption } from '@messages';
 
@@ -21,6 +22,11 @@ export const MODEL_FOLLOW_COPY: Readonly<Record<FollowingModelScope, ModelFollow
     label: 'Same as Workshop',
     description: 'The Lightbox reads with the Workshop’s model and follows it when it changes. ' +
       'Pick a model to give the Lightbox its own; the Workshop keeps its model either way.'
+  },
+  craft: {
+    label: 'Same as Workshop',
+    description: 'Craft Flags reads with the Workshop’s model and follows it when it changes. ' +
+      'Pick a model to give Craft Flags its own; the Workshop keeps its model either way.'
   }
 };
 

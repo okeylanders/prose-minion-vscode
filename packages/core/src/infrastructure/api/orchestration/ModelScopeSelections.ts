@@ -7,12 +7,13 @@
  *   proofread scopes each read their own setting, with a built-in default
  *   when it is absent. A blank one is kept blank, so the hot-swap names it
  *   rather than running on a guess.
- * - **Following scopes (Lightbox Slice 4L).** The Lightbox has no model of
- *   its own until the writer picks one: its setting blank, it runs on the
- *   model of the scope it follows (`MODEL_SCOPE_FOLLOWS`: the assistant
- *   model, the Workshop's), resolved after that scope's own default, so it
- *   always names a model and moves when that one does. Picked, it is its own,
- *   and nothing the followed scope does changes it.
+ * - **Following scopes (Lightbox Slice 4L; Craft Flags, Draft Edit Slice
+ *   3c).** The Lightbox and Craft Flags have no model of their own until the
+ *   writer picks one: the setting blank, each runs on the model of the scope
+ *   it follows (`MODEL_SCOPE_FOLLOWS`: the assistant model, the Workshop's),
+ *   resolved after that scope's own default, so it always names a model and
+ *   moves when that one does. Picked, it is its own, and nothing the
+ *   followed scope does changes it.
  */
 
 import type { SettingsStore } from '@/platform';
@@ -52,7 +53,8 @@ export const MODEL_SCOPE_SETTING_KEYS: Readonly<Record<ModelScope, string>> = {
   category: 'categoryModel',
   widget: 'widgetModel',
   lightbox: 'lightboxModel',
-  proofread: 'proofreadModel'
+  proofread: 'proofreadModel',
+  craft: 'craftModel'
 };
 
 const FOLLOWING_SCOPES = Object.keys(MODEL_SCOPE_FOLLOWS) as FollowingModelScope[];

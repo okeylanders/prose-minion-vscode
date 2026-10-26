@@ -242,6 +242,8 @@ export class AIResourceManager {
     const lightboxModel = selections.lightbox;
     // Proofread's own engine (ADR 2026-10-21 D6): an own scope, built only here.
     const proofreadModel = selections.proofread;
+    // Craft Flags' own engine (ADR 2026-10-21, Slice 3c): it follows the assistant model until picked, as the Lightbox's does.
+    const craftModel = selections.craft;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -259,6 +261,7 @@ export class AIResourceManager {
     const widgetResources = this.createResourceBundle(apiKey!, 'widget', widgetModel);
     const lightboxResources = this.createResourceBundle(apiKey!, 'lightbox', lightboxModel);
     const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
+    const craftResources = this.createResourceBundle(apiKey!, 'craft', craftModel);
 
     this.aiResources = {
       assistant: assistantResources,
@@ -267,7 +270,8 @@ export class AIResourceManager {
       category: categoryResources,
       widget: widgetResources,
       lightbox: lightboxResources,
-      proofread: proofreadResources
+      proofread: proofreadResources,
+      craft: craftResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -281,7 +285,8 @@ export class AIResourceManager {
       category: categoryModel,
       widget: widgetModel,
       lightbox: lightboxModel,
-      proofread: proofreadModel
+      proofread: proofreadModel,
+      craft: craftModel
     };
     this.initialized = true;
   }
@@ -293,7 +298,7 @@ export class AIResourceManager {
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {
