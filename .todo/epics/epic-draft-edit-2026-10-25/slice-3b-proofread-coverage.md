@@ -174,6 +174,10 @@ The decisions are in the ADR's
     too. The dialogue matcher reads double quotation marks only, so
     single-quoted speech would otherwise lend its present tense and its "I"
     to the narration, and a past-tense book could read as present.
+  - **Also beyond the plan:** it runs on the extension host at about 6 µs a
+    word, so a long book is sampled evenly, every k-th narration sentence,
+    up to 20,000 words. A test with a present-tense prologue failed when the
+    sample was taken from the start.
   - It is sent beside each chunk as `narration`. The prompt reports `person`
     only against a named third person.
   - **Tests:** *Alice* in three voices, the Caterpillar's single-quoted

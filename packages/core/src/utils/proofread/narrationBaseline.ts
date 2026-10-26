@@ -15,7 +15,11 @@
  *   mark. Speech would otherwise lend its present tense and its "I" to a
  *   past-tense, third-person book.
  * - **Counted by the tagger** (`tagTextTokens`): finite verbs, past (`VBD`)
- *   and present (`VBZ`, `VBP`), and personal pronouns.
+ *   and present (`VBZ`, `VBP`), and personal pronouns. The tagger runs on
+ *   the extension host, about 6 µs a word, so a long book is sampled: every
+ *   k-th narration sentence, evenly across it, up to
+ *   `NARRATION_BASELINE.sampleWords`. A prologue in another tense cannot
+ *   speak for the book.
  * - **Named only when clear** (`NARRATION_BASELINE`). Otherwise a field is
  *   left out, and the prompt falls back to the passage's own narration.
  *
@@ -54,7 +58,9 @@ export const NARRATION_BASELINE = Object.freeze({
   /** `third` needs first-person pronouns at most this share of narration's words… */
   thirdPersonFirstShare: 0.002,
   /** …and third-person pronouns at least this share. */
-  thirdPersonShare: 0.01
+  thirdPersonShare: 0.01,
+  /** Narration words tagged at most, sampled evenly across a longer document (about 120 ms). */
+  sampleWords: 20_000
 });
 
 const PAST_TAGS: ReadonlySet<string> = new Set(['VBD']);
@@ -71,10 +77,10 @@ const LETTER = /\p{L}/u;
 /** The baseline of `text`, leaving out its protected regions. Throws when the tagger cannot load. */
 export function measureNarrationBaseline(text: string, protectedRegions: readonly TextRange[]): NarrationBaseline {
   const excluded = [...findDialogueSpans(text), ...protectedRegions];
-  const narration = proseSentenceSpans(text)
+  const narration = sampled(proseSentenceSpans(text)
     .filter((sentence) => !excluded.some((range) => range.start < sentence.end && sentence.start < range.end))
     .map((sentence) => text.slice(sentence.start, sentence.end))
-    .filter((sentence) => !holdsQuotationMark(sentence));
+    .filter((sentence) => !holdsQuotationMark(sentence)));
 
   let past = 0;
   let present = 0;
@@ -101,6 +107,13 @@ export function measureNarrationBaseline(text: string, protectedRegions: readonl
   const tense = tenseOf(past, present);
   const person = personOf(words, first, third);
   return { ...(tense ? { tense } : {}), ...(person ? { person } : {}) };
+}
+
+/** Every k-th sentence, so the words tagged stay near `sampleWords` however long the document. */
+function sampled(sentences: readonly string[]): readonly string[] {
+  const words = sentences.reduce((sum, sentence) => sum + sentence.split(/\s+/).filter(Boolean).length, 0);
+  const every = Math.ceil(words / NARRATION_BASELINE.sampleWords);
+  return every <= 1 ? sentences : sentences.filter((_, index) => index % every === 0);
 }
 
 function tenseOf(past: number, present: number): NarrativeTense | undefined {

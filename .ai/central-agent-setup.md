@@ -1631,8 +1631,9 @@ writer's own document:
   once per run, a selection run's too, from the sentences no one speaks: a
   sentence touching dialogue or a protected region, or holding any quotation
   mark (an apostrophe between letters aside), is left out, so single-quoted
-  speech never counts. A field is named only past `NARRATION_BASELINE`'s
-  thresholds. It is a hint beside each chunk, never a gate: tense and person
+  speech never counts. A long book is sampled evenly (every k-th narration
+  sentence, up to `sampleWords`): the tagger runs on the extension host. A
+  field is named only past `NARRATION_BASELINE`'s thresholds. It is a hint beside each chunk, never a gate: tense and person
   stay flag-only, and a tagger that fails to load sends none.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the

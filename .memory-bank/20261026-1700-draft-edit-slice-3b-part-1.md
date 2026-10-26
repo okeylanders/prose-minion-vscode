@@ -35,8 +35,10 @@ parts)
     100% present;
   - first-person pronouns were 8% of first-person narration's words and 0%
     of third.
-- Tagging 12,500 words took 77 ms. The thresholds are in
-  `NARRATION_BASELINE`.
+- Tagging 12,500 words took 77 ms.
+  - A longer book is sampled evenly up to 20,000 words (`sampleWords`), so
+    a single-file novel never stalls the extension host.
+  - The thresholds are in `NARRATION_BASELINE`.
 
 ## Follow-ups
 
