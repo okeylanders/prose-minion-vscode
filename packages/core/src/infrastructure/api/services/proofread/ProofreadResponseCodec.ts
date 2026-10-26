@@ -18,7 +18,7 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isProofreadCategory, type ProofreadFinding } from '@/domain/models/ProofreadIssue';
-import { ProofreadFrameError } from '@services/proofread/ProofreadResponseFrame';
+import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
 
 export interface ProofreadReply {
   readonly findings: readonly ProofreadFinding[];
@@ -31,13 +31,13 @@ export interface ProofreadReply {
 const ROOT_FIELDS: ReadonlySet<string> = new Set(['version', 'issues']);
 const ISSUE_FIELDS: ReadonlySet<string> = new Set(['category', 'original', 'before', 'after', 'replacement', 'explanation']);
 
-/** Decode a frame's root; throws `ProofreadFrameError` when the root has the wrong shape. */
+/** Decode a frame's root; throws `DraftEditFrameError` when the root has the wrong shape. */
 export function decodeProofreadReply(root: Record<string, unknown>): ProofreadReply {
   if (root.version !== undefined && root.version !== 1) {
-    throw new ProofreadFrameError('The response must be version 1');
+    throw new DraftEditFrameError('The response must be version 1');
   }
   if (!Array.isArray(root.issues)) {
-    throw new ProofreadFrameError('The response must have an issues array');
+    throw new DraftEditFrameError('The response must have an issues array');
   }
   let ignoredFields = Object.keys(root).filter((key) => !ROOT_FIELDS.has(key)).length;
   let malformed = 0;

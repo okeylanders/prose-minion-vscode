@@ -14,7 +14,7 @@ export interface DraftEditSummary {
   readonly hasFlags: boolean;
 }
 
-const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+export const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 /** One line for the writer; `documentLabel` is a path or "untitled document", never the text. */
 export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabel: string): DraftEditSummary {
@@ -156,9 +156,9 @@ export function describeQuickFixOutcome(outcome: DraftEditQuickFixOutcome, docum
 /**
  * Unreadable parts, saying only what is true of their recovery copies: a
  * failed save is never called saved (PR #171 F-06). The output channel holds
- * the store's reason.
+ * the store's reason. Craft Flags says the same of its calls (Slice 3c).
  */
-function rejectedPart({ saved, unsaved }: DraftEditRejectedChunks): string {
+export function rejectedPart({ saved, unsaved }: DraftEditRejectedChunks): string {
   const total = saved + unsaved;
   if (total === 0) {
     return '';
@@ -173,6 +173,6 @@ function rejectedPart({ saved, unsaved }: DraftEditRejectedChunks): string {
 }
 
 /** A cost the provider reported, or '' when it is unknown (never a made-up $0). */
-function costOf(costUsd: number | undefined): string {
+export function costOf(costUsd: number | undefined): string {
   return costUsd === undefined ? '' : `$${costUsd.toFixed(4)}`;
 }
