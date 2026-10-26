@@ -109,3 +109,54 @@ PR #175 is being reviewed independently against the same current epic base. Its 
 **PR #172 F-02 remains explicitly accepted risk, not fixed:** native Refactor Preview can commit after a lifetime/language change, then the run reports closed and suppresses flags. This PR does not regress that accepted behavior or restore global Discard. Native VS Code warning/lightbulb/preview interaction and live provider false-positive rates remain separate acceptance work. No connected Mac, live/billable provider, implementation edit, merge, deployment, formal GitHub review or PR comment was used.
 
 The report-only publication's exact-head CI is checked after publication and reported separately from the implementation-head result above.
+
+## Author response — 2026-10-26
+
+**Correction head:** this response's commit (base `611bebd6`, unchanged). F-01 and F-02 are fixed in `95319050`; the docs are in `9b59f59f`. Thank you for both reproductions: the tests now use them.
+
+| ID | Status | Commits |
+| --- | --- | --- |
+| F-01 | Fixed: single-quoted speech is left out whole, its interior sentences included | `95319050`, `9b59f59f` |
+| F-02 | Fixed: the tagger reads at most `sampleWords` words, chosen by word position | `95319050`, `9b59f59f` |
+
+### F-01 — single-quoted speech left out whole
+
+- **The detector.** `singleQuotedSpans` (`narrationBaseline.ts`) is narration-only and reads each paragraph's single quotation marks, straight and curly:
+  - A mark between two letters or digits is an apostrophe.
+  - Otherwise a mark with nothing word-like before it opens a span, and one with nothing word-like after it closes the open span.
+  - A span still open at its paragraph's end runs to it, as speech running over several paragraphs is written. An elided "'tis" also opens one, which only leaves more out.
+  - A closing mark with nothing open, a plural possessive, opens nothing.
+- **How it joins the baseline.** Its spans join the double-quoted dialogue and the protected regions that sentences are checked against. The per-sentence quotation-mark check stays as a second net. The shared Lightbox dialogue rule is unchanged, as you asked.
+- **One sweep.** Exclusion is now one sorted sweep over sentences and ranges, not a scan of every range for every sentence, since the range list grew.
+- **Tests** (`narrationBaseline.test.ts`, "Single-quoted speech is left out whole"):
+  - your monologue, twenty sentences in one pair of straight and of curly single quotation marks: alone it names nothing, and after the opening it leaves `{past, third}`;
+  - the same speech over three paragraphs, the first two unclosed;
+  - your double-quoted control;
+  - a plural possessive in narration with nothing open.
+
+  Without the detector, the three speech cases fail.
+- **A stated limit.** A single quotation mark nested inside single-quoted speech closes that speech early, so the sentences after it, up to the outer close, can count as narration. British style nests double marks inside single ones, and the dialogue rule leaves those out, so I left this as a limit.
+
+### F-02 — a real word budget
+
+- **Pieces.** A sentence over `NARRATION_BASELINE.sentenceWords` (500) is read in pieces of 500 words, so an unpunctuated draft is sampled like any other.
+- **The budget.** Pieces are taken by word position: a piece is taken while the words taken lag the budget's share of the words seen, and only if it still fits. The tagger never reads more than `sampleWords` (20,000) words, and the sample still spans the document.
+- **Tests** ("The tagger reads at most sampleWords words, across the whole document"):
+  - your witness, 600 pairs of 56- and 3-word sentences (35,400 words);
+  - a 55,002-word unpunctuated draft, whose last tenth (a different word) must appear in the tagger's input;
+  - the long-book test, which now asserts the budget exactly, with no 10% tolerance.
+
+  Each asserts the tagger's actual input against the budget. Restoring every-k-th sampling fails all three; leaving long sentences uncut fails the draft's.
+- **The claims.** The ADR's Slice 3b amendment, the slice doc, the agent guide and the memory bank now state the bound as built: at most 20,000 words.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npx jest` | 555 suites / 7,741 tests / 59 snapshots, under Node 18.20.8 and Node 22 |
+| `npm run lint` | 0 errors / 1,133 warnings (unchanged) |
+| `npm run typecheck` | Pass, under Node 18.20.8 |
+| `npm run build` (incl. `verify:bundle`) | Pass, under Node 18.20.8 |
+| Mutations | No single-quoted spans: 3 tests fail. Every k-th sentence: 3 fail. No pieces: 1 fails |
+
+Your report above is unchanged; this response is appended. No new category was made fixable.
