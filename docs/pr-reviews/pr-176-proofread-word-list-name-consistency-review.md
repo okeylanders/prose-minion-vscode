@@ -1,5 +1,7 @@
 # PR Review — Draft Edit Slice 3b, part 2: word list and name consistency
 
+**Latest disposition — re-review of `a23d188d`: Approved for merge into `epic/lightbox`. F-01, F-02, N-01 and N-02 are resolved; no blocking findings remain. Native/live acceptance remains separate.**
+
 **Author:** okeylanders · **PR:** [#176](https://github.com/okeylanders/prose-minion-vscode/pull/176)
 
 **Branches:** `claude/upbeat-galileo-y1l4yf` → `epic/lightbox`
@@ -10,7 +12,7 @@
 
 **Scope:** 31 changed files · +1,253 / −75 · **Reviewed:** 2026-10-26 · **Reviewer:** Astra
 
-## Summary
+## Initial review summary (`24842647`)
 
 **Changes requested before integration into `epic/lightbox`: two P2 findings in the new host name check.** Its advertised work bound does not cover the expensive deletion generation/index construction, and valid setext/container headings still become name evidence. Two nonblocking consistency/coverage notes are also recorded below.
 
@@ -155,3 +157,45 @@ The name check now asks the word list's own `isAcceptedWord`, so `['Glimmer', 'f
 | Mutations | Each of ten fails a test: headings recorded, headings skipped, the maximum length, each of the four charges, a charge allowed to overshoot, N-01, and N-02 |
 
 The ADR's "As built (part 2)" note, the slice doc, the agent guide and the memory bank say the same. Your report above is unchanged; this response is appended.
+
+## Re-review — 2026-10-26 (`a23d188d`)
+
+**Approved for merge into `epic/lightbox`. F-01, F-02, N-01 and N-02 are resolved; no blocking findings remain.**
+
+Reviewed exact head `a23d188d06b972895c872452c50a2e7014068f59` (implementation correction `93034da4`, documentation and author response included), against unchanged base `57489816467eac1e6e82a2a889487b7fc310cae9`. The 13-file correction delta was inspected independently. A fresh isolated checkout's complete tree matches GitHub exactly: `61c431d5fb7566964a9aac2fea96e4e3287d218c`. The original review and author's appended response above are retained as history, not silently replaced by this disposition.
+
+### Findings closed
+
+| Item | Independent re-review evidence |
+| --- | --- |
+| **F-01** | The original 501-character rare/common-name witnesses now return `checked`, no variants, `work: 0`; the prior 1,001-character capped-heap witness also completes promptly without generating deletions. The explicit maximum length bounds each token's expansion. Independent 2,000-rare-name and 2,000-common-name probes both stop at exactly **250,000 work units**; near-limit generation and oversized-bucket tests cannot overspend. The all-or-nothing stopped result remains intact. |
+| **F-02** | Headings now come from the existing block reader, with protected spans and heading spans returned separately. **302 independent assertions** cover 16 heading/container shapes across LF, CRLF and CR: ATX, setext, multiline, nested list/blockquote, indentation/tabs, exact source spans, rare/common frequency effects, prose controls and deliberate plaintext inclusion. The original false-positive cases no longer flag. |
+| **N-01** | The name check uses `isAcceptedWord`. The original accepted-compound witness no longer flags; eight additional cases cover complete/partial part lists, case, whole-compound entries, possessives and normalized multiword entries. A partially accepted compound still has the expected control finding. |
+| **N-02** | Host-overlapping model candidates are removed before model/model overlap pruning. The original whole-use-case witness now retains both the name and independent `teh` spelling issue, with exactly one overlap counted. |
+
+**What the work metric means:** it counts unique deletion keys, visited index entries and candidate comparisons, not every temporary string allocation or CPU instruction. The 20-character input cap also bounds duplicate deletion attempts. This establishes the intended structural bound; it is not a promise that every machine or document will finish within the author's measured time. Names beyond that maximum are deliberately skipped, as recorded in the revised ADR.
+
+### Regression coverage
+
+- **Protected text unchanged:** separate old/new Node processes compare the original and corrected production readers over **1,242 generated Markdown fixtures** (23 block types × 9 container/nesting forms × 3 line endings × with/without front matter): identical protected ranges in every case. This is independent old-versus-new comparison, not the tautological assertion that the new wrapper agrees with itself. Headings remain editable by Proofread; only the name detector skips them.
+- **Matching unchanged within the new limit:** **5,500 independent OSA-oracle cases** pass, including lengths through the maximum and over-limit exclusions. The original 266 word-list cases pass again.
+- **Lifetime and application safety retained:** all original **12 held-response host/use-case/applier probes** pass again. Names are still flag-only and non-preferred; only their explicit individual replacement can apply. Live-location, stale/protected/closed behavior, selection retention, cancellation and Clear during replacement remain covered.
+- No model-category, prompt, configuration-storage or write-authority expansion was introduced by the corrections. The new shared reader's signatures and all consumers typecheck; the existing protection, structural-edit and architecture suites pass in the full run.
+
+### Corrected-head gates
+
+Same verified dependencies and **Node 18.20.8 / npm 10.8.2** as the initial review; all checks rerun on the corrected tree rather than inferred from the previous pass.
+
+| Check | Independent result |
+| --- | --- |
+| `npm run typecheck` | Pass: core, webview and adapter |
+| `npm run lint` | Pass: 0 errors / 1,133 existing warnings |
+| `npm run build`, including `verify:bundle` | Pass; three existing webpack size/performance warnings |
+| Full typed Jest (`--runInBand`) | Pass: **562 suites / 7,870 tests / 59 snapshots**, 572.216 s, exit 0 |
+| Whitespace and reviewer scope | Pass; report-only reviewer changes |
+| Exact correction-head push CI | [Success, 40399296202](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40399296202), every verify step passed |
+| Exact correction-head PR CI | [Success, 40399305166](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40399305166), every verify step passed |
+
+Independent evidence is retained outside the checkout in `../pr176-rereview-evidence/`. The aggregate log contains the existing ts-jest configuration deprecation warning and no worker-teardown warning. The final report-only commit's exact-head CI is checked separately after publication.
+
+**Acceptance boundaries are unchanged:** native VS Code interaction and live-provider false-positive quality remain separate and unrun. This does not mark PR #172's accepted native-preview lifetime race fixed, authorize any source fix or merge, or approve implementation of planned Slice 3b part 3 / Slice 3c.
