@@ -200,3 +200,38 @@ The corrected sampler counts actual words, refuses a piece that would exceed the
 | Exact branch-head CI (`f06b2afc`) | [Push](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40376887459) and [pull request](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40376897243): completed/success |
 
 The unchanged category/application/payload/lifecycle witnesses were rerun against this head, not merely inferred from the original review. The source module remains below the 500-line limit (261 lines); no new host dependency, shared measurement-rule change or widened write authority was introduced. Scratch evidence is in `../pr174-rereview-evidence/`; only this report is published. Native VS Code and live provider-quality acceptance, and the explicitly accepted PR #172 preview limitation, remain separate as above.
+
+
+## Author response — re-review, 2026-10-26
+
+**Head:** the fix `cecdac55`; `epic/lightbox` at `44127c92` (PR #175) merged in as `45194c86`; the docs `ff32a6e3`; and this response with the test inventory. The gates ran on `45194c86`'s tree, and the commits after it change only documentation.
+
+### F-01 · fixed in `cecdac55`
+
+You're right: these are ordinary possessives and elisions, not nested quotation marks, and the limit I stated didn't cover them.
+
+- **The rule.** An open span now closes only at a mark after closing punctuation (`?’`, `,’`, `—’`) with nothing word-like after it (`closesSpeech`). A mark after a letter may close the speech or belong to its word, so it leaves the span open, to its paragraph's end if nothing closes it. Opening is unchanged: a mark after a letter or digit opens nothing. The shared dialogue rule is untouched, and `narrationBaseline.ts` is 267 lines.
+- **Your four witnesses are tests:** plural possessive and trailing elision, straight and curly. Each names nothing alone, and past and third after the opening.
+- **One more, of the same shape:** a leading elision after a dash inside speech (`—’tis`), straight and curly. There is punctuation before the mark but a word after it, so it does not close.
+- **The other direction:** speech closed after punctuation, followed by the opening's narration in the same paragraph, still names past and third. A rule that ran every span to its paragraph's end would fail it.
+- **Mutations:**
+  - the old close rule (any mark with no word after it) fails 4 tests;
+  - never closing fails 2;
+  - closing after punctuation even before a word fails 2.
+- **The cost, stated:** a quoted word closed after a letter ("the word ‘jam’ was"), or speech closed after a letter ("‘Off with her head’ said"), takes the rest of its paragraph out of the baseline. That only leaves narration out. A document left with too little names nothing, and the prompt falls back to the passage's own narration.
+
+The ADR's Slice 3b row, the slice doc, the agent guide and the memory bank say the same.
+
+### Combined tree
+
+`epic/lightbox` at `44127c92` is merged in as a merge commit, with no conflicts. PR #175 touches only Lightbox files and none of this PR's. Everything below ran on the combined tree.
+
+| Check | Result on `45194c86` (combined tree) |
+| --- | --- |
+| Node 18.20.8 typecheck | Pass: core, webview and adapter |
+| Node 18.20.8 full Jest | **559 suites / 7,780 tests / 59 snapshots**, exit 0: `epic/lightbox`'s 556 / 7,741 (your PR #175 report) and this PR's 3 / 39 |
+| Node 18.20.8 lint | Pass: 0 errors / 1,133 existing warnings |
+| Node 18.20.8 build (incl. `verify:bundle`) | Pass; the three existing webpack size warnings |
+| Mutations | Old close rule: 4 tests fail. Never closing: 2 fail. Closing before a word: 2 fail |
+
+Your report above is unchanged; this response is appended. No new category was made fixable.
