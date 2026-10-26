@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-25, Draft Edit Slice 2 (Proofread and Fix) with its PR #172 review and re-review fixes (F-01 to F-06) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `e3a7fac0` (Draft Edit Slice 1, PR #171), under Node 22 and Node 18):
-- 549 suites / 7,681 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3 (Polish: the Prose Minion submenu, the spelling convention, selection-scoped flags) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `daec95d3` (Draft Edit Slice 2, PR #172), under Node 22 and Node 18):
+- 552 suites / 7,710 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
