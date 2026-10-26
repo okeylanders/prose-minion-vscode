@@ -22,7 +22,10 @@
  *    to the document, and moves the rest through what it changed. A fix the
  *    writer left unticked, discarded or the editor refused is flagged instead;
  * 7. shows what is left as annotations, replacing the document's earlier ones,
- *    and keeps them for the session so a quick fix can name one by id.
+ *    and keeps them for the session so a quick fix can name one by id. A
+ *    selection run replaces only the flags it read again: those wholly
+ *    outside the selection, as the gesture read it, stay where they now sit
+ *    (Slice 3).
  *
  * A quick fix (*Replace with*, *Fix all*) asks the annotator where its flag
  * sits now and goes through the same applier; it never writes from a stale
@@ -137,9 +140,10 @@ export class DraftEditUseCase {
     if (!watch) {
       return { kind: 'changed' };
     }
+    const keep = this.flagsOutside(target);
     this.inFlight.add(target.uri);
     try {
-      return await this.proofread(target, pass, prepared, watch, signal, hooks);
+      return await this.proofread(target, pass, prepared, watch, keep, signal, hooks);
     } finally {
       watch.dispose();
       this.inFlight.delete(target.uri);
@@ -223,6 +227,38 @@ export class DraftEditUseCase {
     }
   }
 
+  /**
+   * The flags a selection run will not read again: those wholly outside its
+   * selection, chosen at the gesture, against the text the selection's
+   * offsets name, so no range is moved through the writer's edits. A
+   * whole-file run keeps none.
+   */
+  private flagsOutside(target: DraftEditTarget): ReadonlySet<string> {
+    const shown = target.range ? this.annotations.current(target.uri) : undefined;
+    if (!target.range || !shown || shown.version !== target.version) {
+      return new Set();
+    }
+    const { start, end } = target.range;
+    return new Set(shown.annotations.filter((annotation) => annotation.end <= start || annotation.start >= end).map((annotation) => annotation.id));
+  }
+
+  /**
+   * Of the flags a run chose to keep, those still shown at `version`, where
+   * they sit now. One the writer dismissed, edited or cleared during the run
+   * is gone from the annotator, so it is not kept.
+   */
+  private keptFlags(uri: string, version: number, keep: ReadonlySet<string>): ProofreadIssue[] {
+    const shown = keep.size > 0 ? this.annotations.current(uri) : undefined;
+    const issues = this.shownIssues.get(uri);
+    if (!shown || !issues || shown.version !== version) {
+      return [];
+    }
+    return shown.annotations.flatMap((annotation) => {
+      const issue = keep.has(annotation.id) ? issues.get(annotation.id) : undefined;
+      return issue ? [{ ...issue, start: annotation.start, end: annotation.end }] : [];
+    });
+  }
+
   /** Withdraw one flag (the Dismiss code action). */
   dismiss(uri: string, issueId: string): void {
     this.annotations.remove(uri, [issueId]);
@@ -257,6 +293,7 @@ export class DraftEditUseCase {
     pass: DraftEditPass,
     prepared: Prepared,
     watch: DocumentWatch,
+    keep: ReadonlySet<string>,
     signal: AbortSignal | undefined,
     hooks: DraftEditRunHooks
   ): Promise<DraftEditOutcome> {
@@ -264,6 +301,7 @@ export class DraftEditUseCase {
     const result = await this.proofreadPass.proofread({
       chunks: prepared.chunks.map((chunk) => chunk.text),
       label,
+      ...(pass.spelling ? { spelling: pass.spelling } : {}),
       ...(signal ? { signal } : {})
     });
     if (result.kind === 'unconfigured') {
@@ -298,10 +336,13 @@ export class DraftEditUseCase {
       return closed();
     }
     let shown: ProofreadIssue[] = [];
+    let kept: ProofreadIssue[] = [];
     // Nothing is awaited between the last settle and `show`, so the version still holds unless the host refuses it.
-    if (this.annotations.show(target.uri, leftovers.version, leftovers.issues.map(toAnnotation))) {
+    const others = this.keptFlags(target.uri, leftovers.version, keep);
+    if (this.annotations.show(target.uri, leftovers.version, [...others, ...leftovers.issues].sort(byPlace).map(toAnnotation))) {
       shown = leftovers.issues;
-      this.shownIssues.set(target.uri, new Map(shown.map((issue) => [issue.id, issue])));
+      kept = others;
+      this.shownIssues.set(target.uri, new Map([...kept, ...shown].map((issue) => [issue.id, issue])));
     } else {
       dropped.stale += leftovers.issues.length;
     }
@@ -309,7 +350,8 @@ export class DraftEditUseCase {
     const answered = result.chunks.filter((chunk) => chunk.kind !== 'unsent').length;
     const fix = leftovers.report;
     this.log.appendLine(
-      `[DraftEdit] Proofread ${label}: ${shown.length} flagged, ${answered}/${result.chunks.length} chunks answered`
+      `[DraftEdit] Proofread ${label}: ${shown.length} flagged${kept.length > 0 ? `, ${kept.length} earlier flags kept` : ''}`
+      + `, ${answered}/${result.chunks.length} chunks answered`
       + `, dropped ${JSON.stringify(dropped)}`
       + (fix ? `; fixes ${fix.answer}: ${fix.applied} applied, ${fix.notApplied} not applied, ${fix.unknown} unknown` : '')
       + (result.interrupted ? `; interrupted (${result.interrupted.cause})` : '')
@@ -321,6 +363,7 @@ export class DraftEditUseCase {
       dropped,
       rejectedChunks,
       chunks: { total: result.chunks.length, completed: answered },
+      ...(kept.length > 0 ? { kept: kept.length } : {}),
       ...(result.interrupted ? { interrupted: result.interrupted } : {}),
       ...(fix ? { fix } : {}),
       ...(result.usage ? { usage: result.usage } : {})

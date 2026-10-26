@@ -31,6 +31,19 @@ describe('describeDraftEditOutcome', () => {
       .toEqual({ level: 'info', message: 'Proofread notes.txt: no issues found', hasFlags: false });
   });
 
+  it('counts a selection run\'s kept flags, and offers the problems view for them alone (Slice 3)', () => {
+    expect(describeDraftEditOutcome(completed({ flagged: 2, judgmentCalls: 0, kept: 5 }), 'chapter-03.md')).toEqual({
+      level: 'info',
+      message: 'Proofread chapter-03.md: 2 issues flagged · 5 earlier flags outside the selection kept · $0.0040',
+      hasFlags: true
+    });
+    expect(describeDraftEditOutcome(completed({ flagged: 0, judgmentCalls: 0, kept: 1, usage: undefined }), 'chapter-03.md')).toEqual({
+      level: 'info',
+      message: 'Proofread chapter-03.md: no issues found in the selection · 1 earlier flag outside the selection kept',
+      hasFlags: true
+    });
+  });
+
   it('counts what was not placed and what could not be read', () => {
     const outcome = completed({
       flagged: 1,

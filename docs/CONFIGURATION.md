@@ -36,7 +36,7 @@ Scoped models per feature. Each scope can use a different model to balance cost 
 | `proseMinion.contextModel` | Context | `openai/gpt-5.4` | Context assistant |
 | `proseMinion.widgetModel` | Conversation Widgets | `anthropic/claude-sonnet-5` | Quality-first pre-commit generation, including Gesture Playground |
 | `proseMinion.categoryModel` | Category Search | `openai/gpt-oss-120b:nitro` | Semantic word discovery |
-| `proseMinion.proofreadModel` | Proofread | `anthropic/claude-haiku-5.5` | Proofread from the editor's right-click menu; precision-first, never follows the Assistant model |
+| `proseMinion.proofreadModel` | Proofread | `anthropic/claude-haiku-5.5` | Proofread from the editor's right-click **Prose Minion** menu; precision-first, never follows the Assistant model |
 
 Model IDs are curated and verified against the live OpenRouter API. See the Model Browser in the Settings Overlay for the full list.
 
@@ -50,6 +50,15 @@ Model IDs are curated and verified against the live OpenRouter API. See the Mode
 | `proseMinion.maxTokens` | number (100–100000) | `10000` | General AI-tool response limit. Bounded workflows may use their own documented output allowance; responses hitting a cap show a truncation notice. |
 | `proseMinion.includeCraftGuides` | boolean | `true` | Include craft guides in AI prompts (writing best practices, sensory details, scene examples) |
 | `proseMinion.applyContextWindowTrimming` | boolean | `true` | Auto-trim large inputs to prevent context window errors |
+
+---
+
+## Proofread Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.proofread.fixReview` | `preview` \| `apply` | `preview` | How **Proofread and Fix** and the *Fix all* quick fix bring their fixes to the file: through Refactor Preview, with each fix unticked until you tick it, or at once. Either way the fixes are one undoable change, and the file is never saved for you. |
+| `proseMinion.proofread.spellingConvention` | `auto` \| `american` \| `british` \| `canadian` \| `australian` | `auto` | The spelling Proofread holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and Fix corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling. |
 
 ---
 

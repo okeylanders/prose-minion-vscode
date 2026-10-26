@@ -218,10 +218,13 @@ export { DraftEditApplier } from '@/application/services/draftEdit/DraftEditAppl
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,
+  PROOFREAD_SPELLING_CONVENTIONS,
+  isProofreadSpellingConvention,
   type DraftEditFixReport,
   type DraftEditOutcome,
   type DraftEditPass,
   type DraftEditReview,
-  type DraftEditTarget
+  type DraftEditTarget,
+  type ProofreadSpellingConvention
 } from '@/domain/models/DraftEdit';
 export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

@@ -18,6 +18,9 @@ jest.mock('p-limit', () => ({
   }
 }));
 
+import * as fs from 'fs';
+import * as path from 'path';
+import { PROOFREAD_SPELLING_CONVENTIONS } from '@/domain/models/DraftEdit';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -97,6 +100,26 @@ describe('ProofreadService', () => {
       usage: { promptTokens: 200, completionTokens: 40, totalTokens: 240, costUsd: 0.002, requestCount: 2 }
     });
     expect(result).not.toHaveProperty('interrupted');
+  });
+
+  it('sends the writer\'s spelling convention with every chunk, beside the passage (Slice 3)', async () => {
+    const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }]);
+    await service.proofread({ chunks, label: 'chapter-01.md', spelling: 'australian' });
+
+    const quoted = runInitial.mock.calls.map((call) => {
+      const [request] = call as unknown as [{ userMessage: string }];
+      return JSON.parse(request.userMessage.slice(request.userMessage.indexOf('{')));
+    });
+    expect(quoted).toEqual(chunks.map((passage) => ({ task: 'proofread', spelling: 'australian', passage })));
+  });
+
+  it('teaches the model every spelling convention a request can name (Slice 3)', () => {
+    const prompt = fs.readFileSync(path.resolve(__dirname, '../../../../../../resources/system-prompts/proofread/00-proofread.md'), 'utf8');
+    const section = prompt.slice(prompt.indexOf('## The spelling convention'), prompt.indexOf('## How to report an issue'));
+
+    expect(section).toContain('`spelling`');
+    expect(section.match(/`(american|british|canadian|australian)`/g)?.slice(0, PROOFREAD_SPELLING_CONVENTIONS.length))
+      .toEqual(PROOFREAD_SPELLING_CONVENTIONS.map((convention) => `\`${convention}\``));
   });
 
   it('rejects a reply that reached the output ceiling or cannot be read, captures it, and presents recovery once per run', async () => {

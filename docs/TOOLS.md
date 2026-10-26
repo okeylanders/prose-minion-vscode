@@ -95,12 +95,13 @@ Semantic word discovery by meaning, not exact match. Uses the Category Search mo
 
 ### 6. Proofread
 
-Marks mechanical errors in an open Markdown or plain-text file: spelling,
+Finds mechanical errors in an open Markdown or plain-text file: spelling,
 homophones, punctuation, capitalization, spacing, agreement, and tense. Right-
-click in the editor and choose **Prose Minion: Proofread and Flag**. A selection
-narrows the run; with nothing selected the whole file is proofread. Uses the
-Proofread model scope (`proseMinion.proofreadModel`, a fast, inexpensive model by
-default).
+click in the editor and choose **Prose Minion ▸ Proofread and Flag** or
+**Proofread and Fix**; the Command Palette names them **Prose Minion: Proofread
+and Flag** and **Prose Minion: Proofread and Fix**. A selection narrows the run;
+with nothing selected the whole file is proofread. Uses the Proofread model
+scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
 
 - **Never changes the text.** Each issue is a diagnostic: a squiggle, an entry in
   the Problems panel, and a suggested correction in its message. Tense and
@@ -112,12 +113,25 @@ default).
   whose text you change disappears. Each flag offers **Dismiss**;
   **Prose Minion: Clear Proofread Flags** removes them all. Closing the file
   clears its flags, and they are not restored after a reload.
+- **Proofreads section by section.** A selection run replaces only the flags
+  inside the selection; flags elsewhere in the file stay, and the summary
+  counts them.
+- **Fixes the safe ones.** **Proofread and Fix** applies the spelling,
+  homophone, punctuation, capitalization, and spacing fixes as one change you
+  can undo, and flags the rest. By default the fixes open in Refactor Preview,
+  unticked: tick the file to take them all, or tick them one by one, then
+  Apply. Tense and agreement are only ever flagged. A flag's lightbulb offers
+  **Replace with '…'** and **Fix all Proofread issues in this file**
+  (`proseMinion.proofread.fixReview`).
+- **Holds your spelling convention.** Set
+  `proseMinion.proofread.spellingConvention` to American, British, Canadian, or
+  Australian English, or leave it at `auto` to flag only a spelling that breaks
+  the text's own pattern.
 - **Asks before long runs.** A whole file over 15,000 words asks first. The run
   can be cancelled from its progress notification, and its summary reports what
   was flagged and what it cost.
 
-Proofread and Fix (applying corrections) arrives in a later release; see
-[ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
+See [ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
 
 ---
 

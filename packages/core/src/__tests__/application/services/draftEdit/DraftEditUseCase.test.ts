@@ -110,6 +110,13 @@ const FLAG = { kind: 'proofread', output: 'flag' } as const;
 const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0 };
 
 describe('DraftEditUseCase.run: placing and showing flags', () => {
+  it('sends the pass\'s spelling convention with the chunks (Slice 3)', async () => {
+    const { useCase, requests } = setup();
+    await useCase.run(target(), { ...FLAG, spelling: 'british' });
+
+    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', spelling: 'british' }]);
+  });
+
   it('places each finding by its quote and shows it as an annotation on the live version', async () => {
     const { useCase, requests, shown } = setup({ result: read(WEATHER, RUNS, THE_THE) });
     const outcome = await useCase.run(target(), FLAG);

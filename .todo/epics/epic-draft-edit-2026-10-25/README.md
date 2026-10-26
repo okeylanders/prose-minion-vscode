@@ -1,6 +1,7 @@
 # Epic: Draft Edit
 
-**Status:** In progress. Slice 1 merged (PR #171); Slice 2 built and in review.
+**Status:** In progress. Slices 1 and 2 merged (PRs #171, #172); Slice 3 built
+and in review; Slice 3b (Proofread coverage) queued next.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -61,13 +62,16 @@ bubbles, then Apply Recommendations and Apply Variation.
 |---|---|---|---|
 | 0 | Spec | Feature notes, ADR (Accepted), this epic; `epic/lightbox` merged in; recovery registry moved (`d058e8d2`) | Done |
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
-| 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Built; in review |
-| 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, summary refinements | Planned |
+| 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
+| 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Built; in review |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Queued next |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
 Each slice builds on the one before. Slice 2 needs Slice 1's anchoring and
-issue ledger. Slice 4 needs Slice 2's write side.
+issue ledger. Slice 4 needs Slice 2's write side. Slice 3b comes before the
+Workshop slices at the writer's request (2026-10-26), so the button there
+proofreads with the wider coverage.
 
 ## Project rules (from the integration branch)
 
@@ -148,4 +152,17 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   - The Refactor Preview spike, read from VS Code's source, is in the ADR's
     Slice 2 amendment. The writer chose review with the fixes unticked, as
     VS Code opens them.
-
+- **2026-10-25. Slice 2 merged** into `epic/lightbox` as `daec95d3`, after
+  Astra's third re-review closed F-01 and F-03 to F-06, with F-02 the
+  writer's accepted limit. The writer reports Fix and Refactor Preview
+  working well in their editor.
+- **2026-10-26. Slice 3 built** on `claude/upbeat-galileo-y1l4yf`, restarted
+  from `epic/lightbox` at `daec95d3`:
+  - the **Prose Minion** submenu in the editor context menu, with every
+    command under the "Prose Minion" category;
+  - `proseMinion.proofread.spellingConvention`, sent with each chunk;
+  - a selection run that replaces only the flags it reads again.
+  - No threshold or other summary wording changed: no fixture run with a
+    rate was recorded. See the ADR's "Amendment 2026-10-26: Slice 3,
+    polish".
+  - Slice 3b, Proofread's wider coverage, is queued as the next slice.
