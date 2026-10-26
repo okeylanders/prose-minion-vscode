@@ -2,10 +2,20 @@
 
 **Epic:** [Draft Edit](README.md)
 **Status:** Queued (2026-10-26). After Slice 3b, before the Workshop slices,
-at the writer's request.
+at the writer's request. The pass, its name and each category's approach
+are decided (the writer, 2026-10-26; see "Decided").
 **Priority:** High
-**Needs first:** an ADR amendment. Decide at least the first three questions
-under "Decide in the ADR" before any code.
+**Needs first:** an ADR amendment that records the decisions below and
+settles the rest of "Decide in the ADR" before any code.
+
+## Decided (the writer, 2026-10-26)
+
+- **A second pass, Craft Flags,** beside Proofread on the Draft Edit
+  engine, with its own command in the **Prose Minion** editor menu. Not
+  Proofread categories. (Question 1 below.)
+- **Each category's approach as this doc describes it** under "The four
+  categories": what it flags, what it leaves alone, how it reads the whole
+  chapter, and what its recommendation says.
 
 ## Problem
 
@@ -163,9 +173,10 @@ How it works:
 
 ## Decide in the ADR
 
-1. **One pass or Proofread categories.**
-   - **Recommended: a second pass** on the Draft Edit engine (working name
-     *Craft Flags*; the name is the writer's call). It gets its own
+1. **One pass or Proofread categories.** *Decided: a second pass, Craft
+   Flags.*
+   - **Recommended: a second pass** on the Draft Edit engine, named *Craft
+     Flags* (the writer's choice, 2026-10-26). It gets its own
      `DraftEditPass` member, policy row, prompts, codec and guard (D1).
    - It shares the anchoring, the issue ledger, the Problems panel,
      Dismiss, Clear, live-text following, and selection runs replacing

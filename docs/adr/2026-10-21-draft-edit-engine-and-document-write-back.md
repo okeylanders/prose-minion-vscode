@@ -1047,8 +1047,10 @@ but a run still needs a key; running them without one is a follow-up.
   spelling flags: built in Slice 3b, part 2
   (`proseMinion.proofread.wordList`).
 - Craft flags (cliché, gesture strain, in-chapter continuity, register
-  shift), flags with a recommendation that never edit: queued as Slice 3c,
-  to be decided in an amendment of their own before any code.
+  shift), flags with a recommendation that never edit: queued as Slice 3c.
+  The writer chose a second pass, *Craft Flags*, beside Proofread
+  (2026-10-26); the rest is decided in an amendment of its own before any
+  code.
 - Continuity across chapters (a story bible).
 - Draft edits on `manual` Workshop excerpts (no document to write).
 - Proofreading several files or a folder in one run.

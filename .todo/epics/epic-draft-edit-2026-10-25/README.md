@@ -66,7 +66,7 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
 | 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Part 1 merged (PR #174); part 2 in review; part 3 next |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; needs an ADR amendment |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; a second pass, *Craft Flags*, decided; needs an ADR amendment |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -186,3 +186,7 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   `57489816`: the word list (`proseMinion.proofread.wordList`) and name
   consistency, a host check over the whole document. See the slice doc's
   "Part 2: as built".
+- **2026-10-26. Slice 3c decided in part** by the writer: a second pass,
+  *Craft Flags*, with its own command beside Proofread, and each category's
+  approach as the slice doc describes it. The rest of its questions go to
+  its ADR amendment.
