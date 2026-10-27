@@ -52,7 +52,8 @@ The ADR rows decide the build. No new question was put to the writer.
 - Mutations: 16, all caught. One survived at first: the related-text check
   in `moveIssues` was hidden by a test whose edit also moved the flag's own
   side. The test now uses a same-length replacement.
-- Node 18 mirror: see the PR.
+- Node 18.20.8 mirror on `0c21ad63`: typecheck, lint (0 / 1,133) and build
+  pass; 579 suites / 8,164 tests / 59 snapshots (base 576 / 8,120).
 
 ## Follow-ups
 
