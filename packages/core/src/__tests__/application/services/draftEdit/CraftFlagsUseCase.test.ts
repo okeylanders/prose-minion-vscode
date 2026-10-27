@@ -21,7 +21,7 @@ describe('CraftFlagsUseCase.run', () => {
 
     expect(requests[0].passage).not.toContain('```\na chill ran down her spine');
     expect(requests[0].passage).toContain('⟦protected⟧');
-    expect(requests[0].categories).toEqual(['cliche', 'register', 'gesture']);
+    expect(requests[0].categories).toEqual(['cliche', 'register', 'gesture', 'continuity']);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, reads: 'document', calls: { total: 1, completed: 1 } });
     expect(annotations.flaggedText()).toEqual(['a chill ran down her spine']);
     expect(annotations.shown[0]).toEqual({
@@ -334,7 +334,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     const planned = useCase.plan(gesture);
     letPricingGo();
     expect(await planned).toEqual({ kind: 'ready', words: expect.any(Number), reads: 'document', selection: false, estimate: ESTIMATE });
-    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche', 'register', 'gesture'] });
+    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche', 'register', 'gesture', 'continuity'], breaks: [] });
   });
 
   it('shows no confirmation when the document closes and reopens at its version while it is priced', async () => {

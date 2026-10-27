@@ -7,6 +7,8 @@ import {
   CRAFT_FLAG_CATEGORIES,
   CRAFT_FLAG_KINDS,
   CRAFT_FLAG_LEAVES_SPEECH,
+  CONTINUITY_DEFINITIONS,
+  CONTINUITY_KINDS,
   GESTURE_STRAIN_DEFINITIONS,
   GESTURE_STRAIN_KINDS,
   REGISTER_SHIFT_DEFINITIONS,
@@ -19,21 +21,22 @@ describe('craftFlagCategoriesOf (Slice 3c part 2)', () => {
   it('keeps the known categories the setting names, each once, in their own order', () => {
     expect(craftFlagCategoriesOf(['register', 'cliche'])).toEqual(['cliche', 'register']);
     expect(craftFlagCategoriesOf(['gesture', 'register', 'cliche'])).toEqual(['cliche', 'register', 'gesture']);
+    expect(craftFlagCategoriesOf(['continuity', 'cliche'])).toEqual(['cliche', 'continuity']);
     expect(craftFlagCategoriesOf(['register', 'register'])).toEqual(['register']);
-    expect(craftFlagCategoriesOf(['cliche', 'continuity', 'Gesture', 3, null])).toEqual(['cliche']);
+    expect(craftFlagCategoriesOf(['cliche', 'plot', 'Gesture', 3, null])).toEqual(['cliche']);
   });
 
   it('turns nothing on for a setting that is not a list of categories', () => {
-    for (const value of [undefined, null, 'cliche', {}, [], ['continuity']]) {
+    for (const value of [undefined, null, 'cliche', {}, [], ['plot']]) {
       expect(craftFlagCategoriesOf(value)).toEqual([]);
     }
   });
 });
 
 describe('the categories and their kinds', () => {
-  it('offers cliché, register shift and gesture strain, each leaving speech alone', () => {
-    expect(CRAFT_FLAG_CATEGORIES).toEqual(['cliche', 'register', 'gesture']);
-    expect(CRAFT_FLAG_LEAVES_SPEECH).toEqual({ cliche: true, register: true, gesture: true });
+  it('offers cliché, register shift, gesture strain and continuity, each leaving speech alone', () => {
+    expect(CRAFT_FLAG_CATEGORIES).toEqual(['cliche', 'register', 'gesture', 'continuity']);
+    expect(CRAFT_FLAG_LEAVES_SPEECH).toEqual({ cliche: true, register: true, gesture: true, continuity: true });
   });
 
   it('gives register shift its own four kinds, each defined, and no category another\'s', () => {
@@ -54,5 +57,16 @@ describe('gesture strain\'s kinds (Slice 3c part 3)', () => {
     expect(isCraftFlagKind('gesture', 'cliche')).toBe(false);
     expect(isCraftFlagKind('register', 'thin')).toBe(false);
     expect(isCraftFlagKind('cliche', 'redundant')).toBe(false);
+  });
+});
+
+describe('continuity\'s kinds (Slice 3c part 4)', () => {
+  it('are its own five, each defined, and no other category\'s', () => {
+    expect(CRAFT_FLAG_KINDS.continuity).toEqual(CONTINUITY_KINDS);
+    expect(CONTINUITY_KINDS).toEqual(['body', 'object', 'place', 'time', 'people']);
+    expect(Object.keys(CONTINUITY_DEFINITIONS)).toEqual([...CONTINUITY_KINDS]);
+    expect(isCraftFlagKind('continuity', 'body')).toBe(true);
+    expect(isCraftFlagKind('continuity', 'thin')).toBe(false);
+    expect(isCraftFlagKind('gesture', 'body')).toBe(false);
   });
 });

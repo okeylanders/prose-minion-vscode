@@ -29,9 +29,11 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { FAMILIAR_PHRASE_DEFINITIONS } from '@shared/constants/familiarPhrasing';
 import {
+  CONTINUITY_DEFINITIONS,
   GESTURE_STRAIN_DEFINITIONS,
   REGISTER_SHIFT_DEFINITIONS,
   isCraftFlagKind,
+  type ContinuityHolds,
   type CraftFlagCategory,
   type CraftFlagFinding,
   type CraftFlagKind
@@ -68,7 +70,8 @@ const CRAFT_FLAG_DEFINITIONS: Readonly<Record<CraftFlagKind, string>> = {
   cliche: FAMILIAR_PHRASE_DEFINITIONS.cliche,
   weighted: FAMILIAR_PHRASE_DEFINITIONS.weighted,
   ...REGISTER_SHIFT_DEFINITIONS,
-  ...GESTURE_STRAIN_DEFINITIONS
+  ...GESTURE_STRAIN_DEFINITIONS,
+  ...CONTINUITY_DEFINITIONS
 };
 
 /** The host's why, for a flag whose own broke the fence: the definition of its kind. */
@@ -81,9 +84,14 @@ export function craftFlagHostWhy(kind: CraftFlagKind): string {
 const ROOT_FIELDS: Readonly<Record<CraftFlagCategory, ReadonlySet<string>>> = {
   cliche: new Set(['version', 'flags']),
   register: new Set(['version', 'flags', 'register']),
-  gesture: new Set(['version', 'flags'])
+  gesture: new Set(['version', 'flags']),
+  continuity: new Set(['version', 'flags'])
 };
-const FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'suggestion']);
+const NOTE_FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'suggestion']);
+/** A continuity flag quotes its earlier side too, and says which side the chapter keeps; it offers no suggestion, which would pick a side. */
+const PAIR_FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'earlier', 'holds']);
+const QUOTE_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after']);
+const HOLDS: Readonly<Record<string, ContinuityHolds | undefined>> = { earlier: 'earlier', later: 'later', neither: undefined };
 
 /** Decode a frame's root for one category's call; throws `DraftEditFrameError` when the root has the wrong shape. */
 export function decodeCraftFlagsReply(root: Record<string, unknown>, category: CraftFlagCategory): CraftFlagsReply {
@@ -105,11 +113,17 @@ export function decodeCraftFlagsReply(root: Record<string, unknown>, category: C
       continue;
     }
     const flag = item as Record<string, unknown>;
-    ignoredFields += Object.keys(flag).filter((key) => !FLAG_FIELDS.has(key)).length;
-    const decoded = decodeFlag(flag, category);
+    const fields = category === 'continuity' ? PAIR_FLAG_FIELDS : NOTE_FLAG_FIELDS;
+    ignoredFields += Object.keys(flag).filter((key) => !fields.has(key)).length;
+    const pair = category === 'continuity' ? decodePair(flag) : undefined;
+    const decoded = pair === null ? undefined : decodeFlag(category === 'continuity' ? { ...flag, suggestion: undefined } : flag, category);
     if (!decoded) {
       malformed += 1;
       continue;
+    }
+    if (pair) {
+      ignoredFields += pair.ignoredFields;
+      decoded.finding = { ...decoded.finding, earlier: pair.earlier, ...(pair.holds ? { holds: pair.holds } : {}) };
     }
     findings.push(ground?.line !== undefined ? { ...decoded.finding, register: ground.line } : decoded.finding);
     notesWithheld += decoded.withheld ? 1 : 0;
@@ -119,17 +133,18 @@ export function decodeCraftFlagsReply(root: Record<string, unknown>, category: C
 
 function decodeFlag(flag: Record<string, unknown>, category: CraftFlagCategory): { finding: CraftFlagFinding; withheld: boolean } | undefined {
   const B = PROMPT_BUDGETS.craftFlags;
-  const { original, before, after, kind, why, suggestion } = flag;
+  const { kind, why, suggestion } = flag;
   if (!isCraftFlagKind(category, kind)) {
     return undefined;
   }
-  if (typeof original !== 'string' || original.trim().length === 0 || original.length > B.quoteCharacters) {
+  const anchor = decodeQuote(flag);
+  if (!anchor) {
     return undefined;
   }
   if (typeof why !== 'string' || why.trim().length === 0) {
     return undefined;
   }
-  if (!optionalString(before) || !optionalString(after) || !optionalString(suggestion)) {
+  if (!optionalString(suggestion)) {
     return undefined;
   }
   const whyFits = craftFlagPhrasingFault(why) === undefined;
@@ -137,11 +152,7 @@ function decodeFlag(flag: Record<string, unknown>, category: CraftFlagCategory):
   const suggestionFits = offered === undefined || craftFlagPhrasingFault(offered) === undefined;
   return {
     finding: {
-      anchor: {
-        quote: original,
-        ...(typeof before === 'string' && before.length > 0 ? { before: before.slice(-B.contextCharacters) } : {}),
-        ...(typeof after === 'string' && after.length > 0 ? { after: after.slice(0, B.contextCharacters) } : {})
-      },
+      anchor,
       category,
       kind,
       why: whyFits ? clip(why.trim(), B.whyCharacters) : craftFlagHostWhy(kind),
@@ -169,6 +180,43 @@ function registerLine(value: unknown, hasFlags: boolean): { line?: string; withh
   return fault === undefined || fault === 'figure'
     ? { line: clip(line, PROMPT_BUDGETS.craftFlags.registerCharacters), withheld: false }
     : { withheld: true };
+}
+
+/** A quote and its context, from a flag or a continuity pair's earlier side; undefined when either is malformed. */
+function decodeQuote(source: Record<string, unknown>): CraftFlagFinding['anchor'] | undefined {
+  const B = PROMPT_BUDGETS.craftFlags;
+  const { original, before, after } = source;
+  if (typeof original !== 'string' || original.trim().length === 0 || original.length > B.quoteCharacters) {
+    return undefined;
+  }
+  if (!optionalString(before) || !optionalString(after)) {
+    return undefined;
+  }
+  return {
+    quote: original,
+    ...(typeof before === 'string' && before.length > 0 ? { before: before.slice(-B.contextCharacters) } : {}),
+    ...(typeof after === 'string' && after.length > 0 ? { after: after.slice(0, B.contextCharacters) } : {})
+  };
+}
+
+/**
+ * A continuity flag's earlier side and which side the chapter keeps; null
+ * when either is malformed (no earlier quote, or a `holds` outside its
+ * values), which drops the flag. `neither`, null or no `holds` keeps none.
+ */
+function decodePair(flag: Record<string, unknown>): { earlier: CraftFlagFinding['anchor']; holds?: ContinuityHolds; ignoredFields: number } | null {
+  const { earlier, holds } = flag;
+  if (typeof earlier !== 'object' || earlier === null || Array.isArray(earlier)) {
+    return null;
+  }
+  const side = earlier as Record<string, unknown>;
+  const anchor = decodeQuote(side);
+  const known = holds === undefined || holds === null || (typeof holds === 'string' && holds in HOLDS);
+  if (!anchor || !known) {
+    return null;
+  }
+  const kept = typeof holds === 'string' ? HOLDS[holds] : undefined;
+  return { earlier: anchor, ...(kept ? { holds: kept } : {}), ignoredFields: Object.keys(side).filter((key) => !QUOTE_FIELDS.has(key)).length };
 }
 
 function optionalString(value: unknown): boolean {

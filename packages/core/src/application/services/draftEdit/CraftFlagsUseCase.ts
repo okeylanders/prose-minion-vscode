@@ -27,7 +27,10 @@
  * 4. It places each flag by its quote; drops one that touches a protected
  *    placeholder, or speech in a category that leaves speech alone (read
  *    with protected syntax set aside, F-03); and keeps only the flags inside
- *    a selection.
+ *    a selection. A continuity pair is placed on both sides, and dropped
+ *    across a section start (Slice 3c part 4): the chapter's sections are
+ *    found at the gesture, and the lines that open them are sent with
+ *    continuity's request.
  * 5. It settles the watch: each flag follows its own occurrence through the
  *    writer's edits since the gesture, and one an edit touched is dropped as
  *    stale. A document that closed shows nothing. The live text's protected
@@ -50,6 +53,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import { findSpeechSpansOutsideProtected } from '@/utils/draftEdit/speechSpans';
+import { chapterSectionStarts } from '@/utils/chapterSections';
 import type { CraftFlagsEstimate, CraftFlagsRunRequest, CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { moveIssues, outsideProtected } from '@/application/services/draftEdit/draftEditIssues';
 import {
@@ -63,7 +67,7 @@ import {
 
 /** The Craft Flags pass as this use case needs it: a passage in, passage-relative flags out, and their price before. */
 export interface CraftFlagsPassPort {
-  estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories'>): Promise<CraftFlagsEstimate>;
+  estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks'>): Promise<CraftFlagsEstimate>;
   flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult>;
 }
 
@@ -106,6 +110,10 @@ interface Held {
   readonly prepared: CraftFlagsPrepared;
   /** The gesture text's protected regions, over the whole document. */
   readonly protectedRegions: readonly TextRange[];
+  /** Where each of the gesture text's sections after the first begins, ascending. */
+  readonly sectionStarts: readonly number[];
+  /** The lines that open the read passage's sections after the first, masked as the passage is: continuity's request lists them. */
+  readonly breaks: readonly string[];
   readonly watch: DocumentWatch;
   /** A selection run's earlier flags outside its selection, chosen at the gesture. */
   readonly keep: ReadonlySet<string>;
@@ -142,15 +150,26 @@ export class CraftFlagsUseCase {
       return { kind: 'changed' };
     }
     const gesture: CraftFlagsGesture = { uri: target.uri };
+    const sectionStarts = chapterSectionStarts(target.text, prepared.protectedRegions);
     this.inFlight.add(target.uri);
-    this.held.set(gesture, { target, pass, prepared, protectedRegions: prepared.protectedRegions, watch, keep: this.flagsOutside(target), ran: false });
+    this.held.set(gesture, {
+      target,
+      pass,
+      prepared,
+      protectedRegions: prepared.protectedRegions,
+      sectionStarts,
+      breaks: breakLines(target.text, sectionStarts, prepared.region, prepared.protectedRegions),
+      watch,
+      keep: this.flagsOutside(target),
+      ran: false
+    });
     return { kind: 'gesture', gesture };
   }
 
   /** Price a held gesture. A lifetime that ends while it is priced shows no confirmation. */
   async plan(gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan> {
     const held = this.open(gesture);
-    const estimate = await this.craftPass.estimate({ passage: held.prepared.masked.text, categories: held.pass.categories });
+    const estimate = await this.craftPass.estimate({ passage: held.prepared.masked.text, categories: held.pass.categories, breaks: held.breaks });
     // Asked once the price is in: nothing could end the lifetime before pricing began, since `begin` took it synchronously.
     if (held.watch.ended()) {
       this.release(gesture);
@@ -199,6 +218,7 @@ export class CraftFlagsUseCase {
     const result = await this.craftPass.flag({
       passage: prepared.masked.text,
       categories: held.pass.categories,
+      breaks: held.breaks,
       label,
       model: approval.model,
       stillCurrent: () => !watch.ended(),
@@ -221,7 +241,8 @@ export class CraftFlagsUseCase {
     };
     const dropped = noCraftFlagDrops();
     const shownRegion = target.range ?? { start: 0, end: target.text.length };
-    const placed = placeCraftFlags(target.text, prepared, result, speech, shownRegion, dropped, () => `craft-${++this.sequence}`);
+    const scope = { speech, shown: shownRegion, sectionStarts: held.sectionStarts };
+    const placed = placeCraftFlags(target.text, prepared, result, scope, dropped, () => `craft-${++this.sequence}`);
     const settled = watch.settle();
     if (settled.kind === 'closed') {
       this.log.appendLine(`[DraftEdit] Craft Flags ${label}: the document closed during the run; nothing shown`);
@@ -343,6 +364,22 @@ export class CraftFlagsUseCase {
     }
     return shown.annotations.filter((annotation) => keep.has(annotation.id));
   }
+}
+
+/**
+ * The line that opens each section starting inside `region`, as the passage
+ * sends it: protected text in it masked, so a break line never carries what
+ * the passage withholds.
+ */
+function breakLines(text: string, starts: readonly number[], region: TextRange, protectedRegions: readonly TextRange[]): string[] {
+  return starts.filter((start) => region.start <= start && start < region.end).map((start) => {
+    const lineEnd = text.indexOf('\n', start);
+    const end = Math.min(lineEnd === -1 ? text.length : lineEnd, region.end);
+    const inLine = protectedRegions
+      .filter((range) => range.end > start && range.start < end)
+      .map((range) => ({ start: Math.max(range.start, start) - start, end: Math.min(range.end, end) - start }));
+    return maskProtectedRegions(text.slice(start, end), inLine).text.trim();
+  });
 }
 
 function byStart(a: DocumentAnnotation, b: DocumentAnnotation): number {

@@ -2,13 +2,16 @@
  * The Craft Flags prompts and their worked examples (ADR 2026-10-21,
  * Amendment 2026-10-26: Slice 3c): cliché's vocabulary shared with the
  * Lightbox, register shift's own (part 2), gesture strain's own and the
- * host's beat counts (part 3), the fence's words in the prompt, and examples
- * that read through the production frame, codec, anchoring and placement.
+ * host's beat counts (part 3), continuity's pairs (part 4), the fence's words
+ * in the prompt, and examples that read through the production frame, codec,
+ * anchoring and placement.
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { FAMILIAR_PHRASE_DEFINITIONS, FAMILIAR_PHRASE_KINDS } from '@shared/constants/familiarPhrasing';
 import {
+  CONTINUITY_DEFINITIONS,
+  CONTINUITY_KINDS,
   CRAFT_FLAG_KINDS,
   GESTURE_STRAIN_DEFINITIONS,
   GESTURE_STRAIN_KINDS,
@@ -22,7 +25,8 @@ import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
 import { findSpeechSpans } from '@/utils/draftEdit/speechSpans';
 import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
 import { CRAFT_FLAG_FORBIDDEN_PHRASES, craftFlagPhrasingFault } from '@/utils/craftFlags/craftFlagPhrasing';
-import { craftFlagMessage, withRepeats } from '@/application/services/draftEdit/craftFlagsPlacement';
+import { craftFlagAnnotation, craftFlagMessage, withRepeats } from '@/application/services/draftEdit/craftFlagsPlacement';
+import { chapterSectionStarts } from '@/utils/chapterSections';
 
 const PROMPTS = path.resolve(__dirname, '../../../../../../resources/system-prompts');
 const readPrompt = (file: string) => fs.readFileSync(path.join(PROMPTS, file), 'utf8');
@@ -36,7 +40,8 @@ describe('The Craft Flags prompts', () => {
     expect(CRAFT_FLAG_PROMPTS).toEqual({
       cliche: ['craft-flags/10-cliche.md', 'craft-flags/11-cliche-example.md'],
       register: ['craft-flags/20-register.md', 'craft-flags/21-register-example.md'],
-      gesture: ['craft-flags/30-gesture.md', 'craft-flags/31-gesture-example.md']
+      gesture: ['craft-flags/30-gesture.md', 'craft-flags/31-gesture-example.md'],
+      continuity: ['craft-flags/40-continuity.md', 'craft-flags/41-continuity-example.md']
     });
   });
 
@@ -261,5 +266,86 @@ describe('The gesture strain worked example (Slice 3c part 3)', () => {
     expect(speech.some((span) => span.start <= shrug && shrug < span.end)).toBe(true);
     expect(passage).toContain('Her eyes fell on its waistcoat');
     expect(reply.findings.some((finding) => /shrugging|fell on/.test(finding.anchor.quote))).toBe(false);
+  });
+});
+
+describe('The continuity prompt (Slice 3c part 4)', () => {
+  const [continuity] = CRAFT_FLAG_PROMPTS.continuity.map(readPrompt);
+  const prose = continuity.replace(/\s+/g, ' ');
+
+  it('defines its kinds in the domain\'s words, verbatim, and no others', () => {
+    for (const kind of CONTINUITY_KINDS) {
+      expect(continuity).toContain(`- \`${kind}\`: ${CONTINUITY_DEFINITIONS[kind]}.`);
+    }
+    const named = [...section(continuity, '## The kinds', '## What to leave alone').matchAll(/^- `([a-z]+)`:/gm)].map((match) => match[1]);
+    expect(named).toEqual([...CRAFT_FLAG_KINDS.continuity]);
+  });
+
+  it('asks for both places quoted, the two facts side by side, which version the chapter keeps, and no suggestion', () => {
+    const pair = section(continuity, '## The pair', '## The reply').replace(/\s+/g, ' ');
+    expect(pair).toContain('`earlier`: the earlier place');
+    expect(pair).toContain('Never say which one is right.');
+    expect(pair).toContain('`holds`: which version the rest of the chapter keeps, when it keeps one: `earlier`, `later` or `neither`.');
+    expect(pair).toContain('A continuity flag has no `suggestion`');
+  });
+
+  it('leaves alone a change the text explains, anything across a break it is told of, and dialogue on either side', () => {
+    const alone = section(continuity, '## What to leave alone', '## The pair').replace(/\s+/g, ' ');
+    expect(alone).toContain('`breaks` lists, in order, the lines that open each section of the chapter after the first');
+    expect(alone).toContain('Never pair two places on different sides of one');
+    expect(alone).toContain('never set a narration fact against a spoken one');
+    expect(prose).toContain('A change the text explains');
+  });
+});
+
+describe('The continuity worked example (Slice 3c part 4)', () => {
+  const [, continuityExample] = CRAFT_FLAG_PROMPTS.continuity.map(readPrompt);
+  const passage = section(continuityExample, '## Passage', '## Response').replace('## Passage', '').trim();
+  const frame = section(continuityExample, '## Response', 'Nothing else is flagged').match(/```\n([\s\S]*?)\n```/)?.[1] ?? '';
+  const reply = decodeCraftFlagsReply(readCraftFlagsFrame(frame).root, 'continuity');
+  const speech = findSpeechSpans(passage);
+  const place = (anchor: Parameters<typeof anchorQuote>[1]) => {
+    const anchored = anchorQuote(passage, anchor);
+    expect({ quote: anchor.quote, kind: anchored.kind }).toEqual({ quote: anchor.quote, kind: 'anchored' });
+    return anchored.kind === 'anchored' ? { start: anchored.start, end: anchored.end } : { start: 0, end: 0 };
+  };
+
+  it('reads through the production frame reader and codec, whole, every note shown as written', () => {
+    expect(reply).toMatchObject({ malformed: 0, ignoredFields: 0, notesWithheld: 0 });
+    expect(reply.findings.map((finding) => [finding.kind, finding.holds])).toEqual([['place', undefined], ['body', 'earlier']]);
+    expect(reply.findings.every((finding) => finding.earlier !== undefined && finding.suggestion === undefined)).toBe(true);
+  });
+
+  it('quotes both sides of each pair once, in narration, the earlier first, within one section', () => {
+    const starts = chapterSectionStarts(passage);
+    expect(starts).toEqual([passage.indexOf('* * *')]);
+    for (const finding of reply.findings) {
+      const later = place(finding.anchor);
+      const earlier = place(finding.earlier!);
+      expect(earlier.end).toBeLessThanOrEqual(later.start);
+      for (const side of [earlier, later]) {
+        expect(speech.some((span) => span.start < side.end && side.start < span.end)).toBe(false);
+      }
+      expect(starts.some((start) => earlier.start < start && start <= later.start)).toBe(false);
+    }
+  });
+
+  it('leaves the Rabbit\'s spoken waistcoat, and the change across the break, alone', () => {
+    const red = passage.indexOf('red waistcoat');
+    expect(speech.some((span) => span.start <= red && red < span.end)).toBe(true);
+    expect(passage.indexOf('cool of the evening')).toBeGreaterThan(passage.indexOf('* * *'));
+    expect(reply.findings.some((finding) => /waistcoat|evening|afternoon|well/.test(`${finding.anchor.quote} ${finding.earlier?.quote}`))).toBe(false);
+  });
+
+  it('says, beside the eyes, that the chapter keeps the earlier version, and links the other side', () => {
+    const eyes = reply.findings.find((finding) => finding.kind === 'body')!;
+    const later = place(eyes.anchor);
+    const earlier = place(eyes.earlier!);
+    const issue = {
+      id: 'c1', category: 'continuity' as const, kind: eyes.kind, ...later, original: passage.slice(later.start, later.end), why: eyes.why,
+      related: [{ ...earlier, original: passage.slice(earlier.start, earlier.end) }], holds: eyes.holds
+    };
+    expect(craftFlagMessage(issue)).toMatch(/ The rest of the chapter keeps the earlier version\.$/);
+    expect(craftFlagAnnotation(issue).related).toEqual([{ ...earlier, message: 'The other side of this pair: “pink eyes”' }]);
   });
 });

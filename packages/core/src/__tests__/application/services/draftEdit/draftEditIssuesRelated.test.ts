@@ -32,7 +32,10 @@ describe('a placed issue\'s related places', () => {
     const touched = TEXT.slice(0, pink) + 'red' + TEXT.slice(pink + 4);
     expect(moveIssues([pair()], [[{ offset: pink, length: 4, text: 'red' }]], touched)).toEqual([]);
     // No edit reported, but the live text says something else there: the side is held to its own text.
-    expect(moveIssues([pair()], [], touched)).toEqual([]);
+    // Same length, so the flag's own side still reads as placed and only the earlier side can drop the pair.
+    const recoloured = TEXT.slice(0, pink) + 'gray' + TEXT.slice(pink + 4);
+    expect(recoloured.slice(pair().start, pair().end)).toBe('blue eyes');
+    expect(moveIssues([pair()], [], recoloured)).toEqual([]);
   });
 
   it('drops a pair either side of which stands in a protected region, and counts it', () => {

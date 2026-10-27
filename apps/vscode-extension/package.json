@@ -339,15 +339,16 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["cliche", "register", "gesture"],
+            "enum": ["cliche", "register", "gesture", "continuity"],
             "enumDescriptions": [
               "Cliché: a phrase worn smooth by use, standing in for something the scene could name exactly.",
               "Register shift: narration that leaves the register the chapter keeps, such as slang in formal narration or a modern word in a period one.",
-              "Gesture strain: a gesture a reader stumbles on: one the body cannot make, choreography to assemble, a stock beat the chapter leans on, or one that names its own body part."
+              "Gesture strain: a gesture a reader stumbles on: one the body cannot make, choreography to assemble, a stock beat the chapter leans on, or one that names its own body part.",
+              "Continuity: two places in the chapter that cannot both be true, such as eyes that change colour or a seated character still standing, never across a scene break."
             ]
           },
           "uniqueItems": true,
-          "default": ["cliche", "register", "gesture"],
+          "default": ["cliche", "register", "gesture", "continuity"],
           "markdownDescription": "Which line notes **Prose Minion: Craft Flags** looks for. Each one is a request of its own, priced in the confirmation before anything is sent. Words inside quotation marks are always left alone; a gesture in a dialogue beat is narration, and is read.",
           "order": 5.7
         },
