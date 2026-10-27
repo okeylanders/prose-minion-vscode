@@ -49,7 +49,7 @@ and read what the persona read.
 Add a "Read in" block under Context in tab 1. It shows the manifest rows that
 are **not** writer attachments: origin `host` or `tool`, with kind `resource`,
 `tool-evidence`, `dictionary`, or `transcript`. It shows the current chat
-target's rows and names that participant ("Read in by Ada"), the same way the
+target's rows and names that participant ("Read in by Jill"), the same way the
 gauge names whose context it measures. Stale rows stay visible but dimmed, as
 they are in the popover.
 
