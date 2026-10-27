@@ -126,11 +126,11 @@ describe('The register shift worked example (Slice 3c part 2)', () => {
 
   it('reads through the production frame reader and codec, whole, every note and its register line shown as written', () => {
     expect(reply).toMatchObject({ malformed: 0, ignoredFields: 0, notesWithheld: 0 });
-    expect(reply.findings.map((finding) => finding.kind)).toEqual(['ornate', 'jargon', 'period']);
+    expect(reply.findings.map((finding) => finding.kind)).toEqual(['ornate', 'jargon', 'slang', 'period']);
     expect(typeof root.register).toBe('string');
-    expect(craftFlagPhrasingFault(root.register as string)).toBeUndefined();
-    // The register line names the period its period flag is read against.
-    expect(root.register).toMatch(/Victorian/);
+    // The register line names the period its period flag is read against, by its years, which only a register line may carry.
+    expect(craftFlagPhrasingFault(root.register as string)).toBe('figure');
+    expect(root.register).toMatch(/Victorian English of the 1860s/);
     for (const finding of reply.findings) {
       expect(finding.register).toBe(root.register);
     }
@@ -146,13 +146,23 @@ describe('The register shift worked example (Slice 3c part 2)', () => {
     }
   });
 
-  it('leaves the Rabbit\'s okay alone, inside its speech, and flags the narration\'s', () => {
+  it('leaves the Rabbit\'s okay alone, inside its speech, and flags the narration\'s as slang, not as out of its period (PR #178 N-01)', () => {
     const speech = findSpeechSpans(passage);
     const okays = [...passage.matchAll(/\bokay\b/g)].map((match) => match.index ?? 0);
     expect(okays).toHaveLength(2);
     expect(okays.map((at) => speech.some((span) => span.start <= at && at < span.end))).toEqual([true, false]);
-    const period = reply.findings.find((finding) => finding.kind === 'period');
-    const anchored = period ? anchorQuote(passage, period.anchor) : undefined;
-    expect(anchored?.kind === 'anchored' ? anchored.start : -1).toBe(okays[1]);
+    const startOf = (kind: string) => {
+      const finding = reply.findings.find((each) => each.kind === kind);
+      const anchored = finding ? anchorQuote(passage, finding.anchor) : undefined;
+      return anchored?.kind === 'anchored' ? anchored.start : -1;
+    };
+    expect(startOf('slang')).toBe(okays[1]);
+    expect(startOf('period')).toBe(passage.indexOf('on autopilot'));
+  });
+
+  it('flags a word for its date only against a period the narration itself sets (PR #178 N-01)', () => {
+    // The passage names its own summer; the period flag is read against it, not against the example's source.
+    expect(passage).toContain('in the summer of 1862');
+    expect(reply.findings.find((finding) => finding.kind === 'period')?.anchor.quote).toBe('on autopilot');
   });
 });
