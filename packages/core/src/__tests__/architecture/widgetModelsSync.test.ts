@@ -5,6 +5,12 @@ import * as path from 'path';
 import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 
 const EXPECTED_SHARED_MODEL_IDS = [
+  'openai/gpt-6.1-terra',
+  'openai/gpt-6.1-terra-pro',
+  'inception/mercury-3',
+  'deepseek/deepseek-v4.1-flash-1017',
+  'moonshotai/kimi-k3.1-pro',
+  'minimax/minimax-m3.1-flash',
   'meta/muse-spark-1.1',
   'meta/muse-spark-1.3',
   'meta/muse-wonder',
@@ -43,6 +49,9 @@ const EXPECTED_SHARED_MODEL_IDS = [
 ] as const;
 
 const RETIRED_MODEL_IDS = [
+  'deepseek/deepseek-r1',
+  'sao10k/l3.3-euryale-70b',
+  'arcee-ai/trinity-large-thinking',
   'anthropic/claude-opus-4.7-fast',
   'anthropic/claude-opus-4.8-fast',
   'anthropic/claude-opus-5-fast',

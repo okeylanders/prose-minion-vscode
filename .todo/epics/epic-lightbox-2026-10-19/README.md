@@ -132,6 +132,10 @@ lens, and adds its items to 4D's digest.
 
 ## Verification (every slice)
 
+**Shared model catalog:** [October 27 audit](model-audit-2026-10-27.md)
+adds six opt-in models directly on `epic/lightbox`, removes three unavailable
+choices, and records capability, pricing, endpoint, and cache-policy evidence.
+
 - `npm run typecheck`, `npm run lint` (no new warnings), `npx jest` (full suite)
 - `packages/core/src` has no `from 'vscode'` (the architecture tests guard this)
 - New modules stay under 500 lines, and new Lightbox modules join the

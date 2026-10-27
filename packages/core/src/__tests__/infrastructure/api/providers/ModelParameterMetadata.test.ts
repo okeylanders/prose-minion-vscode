@@ -15,8 +15,8 @@ describe('ModelParameterMetadata', () => {
   });
 
   it('distinguishes published, estimated, undisclosed, and routed-system counts', () => {
-    expect(getModelParameterMetadata('deepseek/deepseek-r1')).toEqual({
-      label: '671B params · 37B active',
+    expect(getModelParameterMetadata('deepseek/deepseek-v4-pro')).toEqual({
+      label: '1.6T params · 49B active',
       confidence: 'published'
     });
     expect(getModelParameterMetadata('z-ai/glm-5.3-flash')).toEqual({
