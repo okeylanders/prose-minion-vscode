@@ -97,3 +97,11 @@ Scratch evidence is outside the repository in `../pr182-review-evidence/`: produ
 Resolve **F-01, F-02 and F-03** before integration, with regression witnesses and controls. Corrected code requires independent delta review and final-head checks. The exact report-only commit will be verified remotely, and its CI followed separately.
 
 Native editor rendering/interaction and live editorial acceptance remain separate from automated host-side correctness. The reviewer has not merged, released, modified source/tests/dependencies, rewritten prior reports, posted comments/formal reviews, or accessed the connected Mac.
+
+## Verification completion — 2026-10-27 20:36 UTC
+
+The full independent typed Jest run on implementation `4ff69dde` completed successfully: **589 suites / 8,330 tests / 59 snapshots**, **558.431 s**, exit 0. All local aggregate checks now pass, together with the previously completed typecheck, lint and production build.
+
+Report commit `069e76b5dc85b537ef846ce051a2fdfffd077757` was verified remotely as exactly this new report path, with parent `4ff69dde890344ec038fb9cae4a8e07ae3471272`, matching the submitted bytes. Its [push CI 40578061470](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40578061470) and [PR CI 40578072613](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40578072613) both completed successfully; every verify step passed.
+
+**Disposition unchanged: F-01, F-02 and F-03 remain open and require correction.** Green regression checks do not cover the independent counterexamples above. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
