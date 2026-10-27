@@ -38,3 +38,29 @@ describe('shiftRanges', () => {
     expect(moved).toEqual({ id: 'x', start: 3, end: 5, severity: 'warning' });
   });
 });
+
+describe('shiftRanges: related ranges (Slice 3c part 4)', () => {
+  const pair = { id: 'p', start: 30, end: 37, related: [{ start: 10, end: 14, message: 'the other side' }] };
+
+  it('moves each related range by the same rule, on its own, keeping its fields', () => {
+    expect(shiftRanges([pair], [{ offset: 20, length: 0, text: 'Oh! ' }]))
+      .toEqual([{ ...pair, start: 34, end: 41, related: [{ start: 10, end: 14, message: 'the other side' }] }]);
+    expect(shiftRanges([pair], [{ offset: 0, length: 0, text: '>>' }]))
+      .toEqual([{ ...pair, start: 32, end: 39, related: [{ start: 12, end: 16, message: 'the other side' }] }]);
+  });
+
+  it('drops the range when a change touches a related range, though its own text is untouched', () => {
+    expect(shiftRanges([pair], [{ offset: 11, length: 2, text: 'ed' }])).toEqual([]);
+    expect(shiftRanges([pair], [{ offset: 12, length: 0, text: 'x' }])).toEqual([]);
+  });
+
+  it('drops it, too, when the change touches its own text', () => {
+    expect(shiftRanges([pair], [{ offset: 31, length: 1, text: '' }])).toEqual([]);
+  });
+
+  it('applies a multi-cursor event to both sides, from the last change to the first', () => {
+    const changes = [{ offset: 0, length: 0, text: '>>' }, { offset: 20, length: 5, text: '' }];
+    expect(shiftRanges([pair], changes))
+      .toEqual([{ ...pair, start: 27, end: 34, related: [{ start: 12, end: 16, message: 'the other side' }] }]);
+  });
+});
