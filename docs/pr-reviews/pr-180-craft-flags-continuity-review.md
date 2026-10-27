@@ -148,3 +148,87 @@ The full independent typed Jest run on implementation `08ef8057` completed succe
 Report commit `7c4aab172f75d24ce394efecc0ae81c09e4d0c49` was verified remotely as exactly this new report path, with parent `08ef805766bce5e575b9862cb930f3c6d1d07d57`, matching the submitted bytes. Its [push CI 40512885485](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40512885485) and [PR CI 40512895562](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40512895562) both completed successfully; every verify step passed.
 
 **Disposition unchanged: F-01–F-03 remain open and require correction.** Green regression tests do not cover the reproduced failures above. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
+
+## Author response (`7e45db54`, `81446970`)
+
+**All five are taken, in this PR.** Your text above is unchanged. F-01 to F-03 were real holes in the scene-break rule. N-01 and N-02 are defects in my own commits, so I fixed them rather than leaving them as optional. The section rule now has one home, `application/services/draftEdit/craftFlagsSections.ts`, which placement and the settled check both read.
+
+### F-01 · protected markers no longer choose the signal
+
+- **The fix is at the detector, before selection.** `detectChapterSections(paragraphs, ignored?)` asks `ignored(paragraph, line)` of each paragraph that would mark a section. A marker it answers true for marks nothing and fires nothing, and the signal and heading level are chosen from the rest. Paragraph numbers do not change.
+- **`chapterSectionStarts`** answers from the marker line's own offset: inside a protected region means left out.
+  - A start is now the line the marker starts on. That is the paragraph's first line, or, after front matter's closing line in the same paragraph, the next line. Before, such a heading's start sat inside the front matter and was dropped.
+- **The Lightbox passes no predicate,** so its lane reads exactly as before. `LightboxSections.test.ts` runs unchanged, and a test pins `detectChapterSections(p, () => false)` to `detectChapterSections(p)`.
+- **Controls:**
+  - `chapterSections.test.ts`:
+    - your example, where the raw read gives the fake heading and the protected read gives `* * *`;
+    - heading-level competition, where a fenced `# Fake chapter` loses to `## The Pool of Tears` / `## A Caucus-Race`;
+    - the front-matter line case;
+    - a predicate leaving out ¶2 moves the level to 2 with `fired` updated.
+  - `CraftFlagsContinuity.test.ts`, through the production use case:
+    - your example sends `breaks: ['* * *']` and drops the pair (`acrossBreak: 1`);
+    - heading competition sends `['## The Pool of Tears']` and drops it.
+
+### F-02 · live sections are read before `show`
+
+- **After the settle,** once protected text and speech are read again in the live text, `withinOneSection` reads the live sections, with the live protected regions. It drops a pair a live section start divides, as `acrossBreak`.
+  - It reads sections only when a pair is left.
+  - Each pair keeps the sides `moveIssues` carried through the edits; nothing is searched again.
+- **Controls** (`CraftFlagsContinuity.test.ts`):
+  - **Dropped:** `* * *`, `## New scene` and `Chapter Two` inserted between the sides during the reply, each with `acrossBreak: 1, stale: 0` and nothing shown.
+  - **Kept and moved:** a paragraph of prose inserted between the sides, `* * *` inside a fenced block inserted between them, and a break appended after both.
+  - **Selection run:** a break inserted before its later side drops the pair.
+
+### F-03 · the whole pair lies in one section
+
+- **One predicate:** `spansSectionStart(starts, span)` is a binary search for the first start after `span.start`, true when it is before `span.end`.
+  - Placement passes `{ earlier.start, later.end }` with the gesture's sections.
+  - The settled check passes `pairSpan(issue)`, every place of the issue, with the live sections.
+- **Controls,** each finding read through the production frame and codec (`malformed: 0`) before the use case places it:
+  - your 45-character later quote across `* * *` (`acrossBreak: 1`, `unanchored: 0`, `breaks: ['* * *']`);
+  - a later quote running on past a break;
+  - an earlier quote holding a break;
+  - a broad later quote inside one section, which is shown.
+- **The placement check stands on its own.** A heading the writer adds after the pair switches the live signal to headings, so the live text reads no break. The pair is still dropped, because the reply was placed against the sections it was sent. This case caught the one mutation that survived at first: the old placement predicate, which the live check had been hiding.
+
+### N-01 · `holds` is one of its own values
+
+`HOLDS` is a `Map`, read with `has`/`get`. The six names you probed (`constructor`, `toString`, `__proto__`, `hasOwnProperty`, `isPrototypeOf`, `valueOf`) are each malformed. Null, absent and `neither` keep no side, as before. Kinds already used `includes`, so they were not affected.
+
+### N-02 · linear, and nothing when continuity is off
+
+- **One walk each.** Protected regions are sorted and merged, so:
+  - section starts check each marker with one forward cursor over them (`insideAscending`);
+  - break lines advance a cursor and read only the regions on their own line.
+- **Off means nothing is read.** `continuitySections` reads nothing when continuity is not among the categories, and `withinOneSection` reads nothing when no pair is left. Tests count every region read and assert zero for both.
+- **Pinned by counted reads, never a clock:**
+  - `chapterSectionStarts`: 4× the headings gives at most 4× the reads (+100), and ≤ 4 reads per heading at 2,000.
+  - `continuitySections`, starts and break lines together: about 9 reads per heading. The old break-line walk took 6,006,997 reads at 2,000 and fails the test.
+
+**Mutations: 14,** each failing a test:
+- the old placement predicate;
+- no live recheck;
+- a live recheck on the flag's own place only;
+- a live recheck ignoring protected text;
+- sections read whatever the categories;
+- live sections read with no pair;
+- both edges of `spansSectionStart`;
+- nothing ignored;
+- a marker's start at its paragraph;
+- candidates left out only after selection;
+- break lines unmasked;
+- a cursor that never advances;
+- `holds` read with `in`.
+
+The ADR's "Scene breaks" row now states the rule as built, and Part 4 gains a "PR #180 review (Astra), as built" note. The slice doc's "Part 4: as built", AGENTS.md's continuity bullet, `docs/TOOLS.md` and the memory bank say the same.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2:
+
+- on `7e45db54`: typecheck passes; Jest 580 suites / 8,190 tests / 59 snapshots, up 1 suite and 26 tests; build, with `verify:bundle`, passes;
+- lint on `7e45db54` found one new warning, in my own test (a kebab-case object key), so `81446970` reads it by index; lint on `81446970` is 0 errors / 1,133 warnings, as at the base;
+- `81446970` changes only that test and the test inventory, and its suite passes;
+- `git diff --check` from `08ef8057` passes.
+
+Native Problems/hover navigation and the fixture run remain unrun, as you note. No provider calls were made.
