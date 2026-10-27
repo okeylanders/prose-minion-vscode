@@ -68,8 +68,8 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
 | 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 after Slice 3c |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Parts 1 to 3 (the pass and cliché, register shift, gesture strain) merged (PRs #177, #178, #179); part 4 (continuity) in review; then the fixture run |
-| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | Built after part 4; a release blocker |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Parts 1 to 4 (the pass and cliché, register shift, gesture strain, continuity) merged (PRs #177 to #180); then the fixture run |
+| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | In review; a release blocker |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -224,6 +224,10 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   `684bad24`: continuity, a flag's related range on the annotation port, and
   the section detector in a shared home. See the slice doc's "Part 4: as
   built".
+- **2026-10-27. Slice 3c, part 4 merged** (PR #180, `b24bdd04`), after
+  Astra's review (three P2 findings on the scene-break rule, two P3 notes)
+  and two re-reviews, the last clear. Slice 3c's four categories are in;
+  the fixture run decides their defaults.
 - **2026-10-27. Reasoning levels decided and built.** A Proofread chunk on
   the default model spent about 3,700 of its 4,000 output tokens thinking
   and was cut off. The writer decided a named level per pass (`off`,
