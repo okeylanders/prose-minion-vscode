@@ -65,7 +65,7 @@ function setup(options: {
     showInformation: jest.fn(async () => options.choice),
     showWarning: jest.fn(async () => options.choice),
     executeCommand: jest.fn(),
-    craftFlagCategories: jest.fn(() => ('categories' in options ? options.categories : ['cliche', 'register']))
+    craftFlagCategories: jest.fn(() => ('categories' in options ? options.categories : ['cliche', 'register', 'gesture']))
   } satisfies CraftFlagsCommandHost;
   const gesture: CraftFlagsGesture = { uri: 'file:///workspace/chapter-01.md' };
   const runner = {
@@ -114,7 +114,7 @@ describe('Craft Flags', () => {
 
     expect(runner.begin).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
-      { kind: 'craft', categories: ['cliche', 'register'] }
+      { kind: 'craft', categories: ['cliche', 'register', 'gesture'] }
     );
     expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
     expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
@@ -122,11 +122,12 @@ describe('Craft Flags', () => {
     expect(result).toEqual({ kind: 'ran', outcome: COMPLETED });
   });
 
-  it('asks about the categories the setting turns on, each once, in their own order, read at the gesture (Slice 3c part 2)', async () => {
+  it('asks about the categories the setting turns on, each once, in their own order, read at the gesture (Slice 3c parts 2 and 3)', async () => {
     const cases: Array<[unknown, string[]]> = [
       [['register'], ['register']],
       [['register', 'cliche', 'register'], ['cliche', 'register']],
-      [['cliche', 'gesture', 7], ['cliche']]
+      [['gesture', 'cliche'], ['cliche', 'gesture']],
+      [['cliche', 'continuity', 7], ['cliche']]
     ];
     for (const [setting, categories] of cases) {
       const { host, runner } = setup({ active: editor(), categories: setting });
@@ -136,7 +137,7 @@ describe('Craft Flags', () => {
     }
   });
 
-  it.each([[[]], [['gesture']], ['cliche'], [undefined]])('refuses, reading nothing, when no category is on (%j)', async (setting) => {
+  it.each([[[]], [['continuity']], ['cliche'], [undefined]])('refuses, reading nothing, when no category is on (%j)', async (setting) => {
     const { host, runner } = setup({ active: editor(), categories: setting });
     expect(await runCraftFlags(host, runner)).toEqual({
       kind: 'refused',

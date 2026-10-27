@@ -38,8 +38,9 @@ protected. Never quote it or include it in context.
 - `suggestion`: one way this scene could carry the moment instead, in its
   own terms: a phrase or a clause, offered as a possibility.
 
-Flag each use you find. The host counts how often a phrase recurs and says
-so beside the note, so never count it yourself.
+Flag each use you find, unless the category's own section says which uses
+to flag. The host counts how often a phrase recurs and says so beside the
+note, so never count it yourself.
 
 ## How a note is phrased
 

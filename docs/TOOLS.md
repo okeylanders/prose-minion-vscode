@@ -185,9 +185,20 @@ follows the Workshop's model until you pick one.
   English, plain and unhurried." Dialogue is left alone, and so is a
   character's own marked thought. A word is flagged for its date only when
   the narration sets a period.
+- **Gesture strain.** A gesture a reader stumbles on: one the body cannot
+  make as written (`impossible`; "her eyes dropped" and other accepted
+  figures are left alone), choreography the reader stops to assemble
+  (`complicated`), a stock beat that carries nothing (`thin`), or one that
+  names its own body part (`redundant`: "nodded his head"). A thin beat is
+  flagged only where the chapter leans on it or it alone carries a turn.
+  Prose Minion counts each stock beat a flag names (nod, shrug, sigh,
+  smile, grin, frown, wink, smirk, a shake of the head, a roll of the eyes),
+  every form together, and says so: "Nods appear 7 times in this
+  document." A gesture in a dialogue beat is narration, and is read; words
+  inside quotation marks are left alone.
 - **Choose what it looks for.** `proseMinion.craftFlags.categories` turns
-  each category on or off. Both are on by default, and each is a request of
-  its own, priced in the confirmation.
+  each category on or off. All three are on by default, and each is a
+  request of its own, priced in the confirmation.
 - **Options, never orders.** A note that tells you what to do, grades the
   writing, quotes, or states a count is not shown as written: a why becomes
   a plain description of the phrase's kind, and a suggestion is left out.
@@ -197,7 +208,7 @@ follows the Workshop's model until you pick one.
   Under that, a selection reads the whole chapter for context and flags only
   the selection.
 
-Gesture strain and in-chapter continuity follow (Slice 3c).
+In-chapter continuity follows (Slice 3c).
 
 ---
 

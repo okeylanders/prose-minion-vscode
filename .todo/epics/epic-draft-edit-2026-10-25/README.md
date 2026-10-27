@@ -3,7 +3,8 @@
 **Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
 3b (Proofread coverage) parts 1 and 2 merged (PRs #174, #176); Slice 3c
 (Craft Flags) part 1, the pass and cliché, merged (PR #177); part 2,
-register shift, built and in review.
+register shift, merged (PR #178); part 3, gesture strain, built and in
+review.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -67,7 +68,7 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
 | 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 after Slice 3c |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Part 1 (the pass and cliché) merged (PR #177); part 2 (register shift) in review; gesture, continuity next |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Parts 1 (the pass and cliché) and 2 (register shift) merged (PRs #177, #178); part 3 (gesture strain) in review; continuity next |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -207,3 +208,12 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
 - **2026-10-27. Slice 3c, part 2 built**, restarted from `epic/lightbox` at
   `f7b0c851`: register shift and `proseMinion.craftFlags.categories`. See the
   slice doc's "Part 2: as built".
+- **2026-10-27. Slice 3c, part 2 merged** (PR #178), after Astra's review
+  and one re-review.
+- **2026-10-27. Slice 3c, part 3 decided** by the writer: the model judges
+  every gesture flag, a thin beat's included, and host code only counts
+  each stock beat beside the note. There is no host-flagged density
+  threshold.
+- **2026-10-27. Slice 3c, part 3 built**, restarted from `epic/lightbox` at
+  `98819b34`: gesture strain and its stock-beat counts. See the slice doc's
+  "Part 3: as built".

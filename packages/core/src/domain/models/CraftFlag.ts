@@ -13,8 +13,8 @@ import type { TokenUsage } from '@messages';
 import type { DraftEditAnchor, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
 
-/** Cliché (part 1) and register shift (part 2). Gesture strain and continuity join in later parts. */
-export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register'] as const;
+/** Cliché (part 1), register shift (part 2) and gesture strain (part 3). Continuity joins in a later part. */
+export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register', 'gesture'] as const;
 
 export type CraftFlagCategory = typeof CRAFT_FLAG_CATEGORIES[number];
 
@@ -49,15 +49,33 @@ export const REGISTER_SHIFT_DEFINITIONS: Readonly<Record<RegisterShiftKind, stri
 };
 
 /**
+ * Gesture strain's kinds (Slice 3c part 3): how a gesture makes a reader
+ * stumble. No other surface names them.
+ */
+export const GESTURE_STRAIN_KINDS = ['impossible', 'complicated', 'thin', 'redundant'] as const;
+
+export type GestureStrainKind = typeof GESTURE_STRAIN_KINDS[number];
+
+/** What each kind is, in the words the gesture prompt uses. */
+export const GESTURE_STRAIN_DEFINITIONS: Readonly<Record<GestureStrainKind, string>> = {
+  impossible: 'a gesture the body cannot make as written, where no accepted figure of speech covers it',
+  complicated: 'choreography the reader stops to assemble',
+  thin: 'a stock beat that carries nothing, where the chapter leans on it or it alone carries the feeling at a turn',
+  redundant: 'a gesture that names the body part its verb already implies'
+};
+
+/**
  * The kinds each category's flags carry. A cliché is `cliche` or `weighted`,
  * from the vocabulary the Lightbox shares (`FAMILIAR_PHRASE_KINDS`); an
  * `idiom` or a `stock` phrase is familiar, not a fault, and never flagged. A
- * register shift is one of `REGISTER_SHIFT_KINDS`.
+ * register shift is one of `REGISTER_SHIFT_KINDS`, and a gesture strain one
+ * of `GESTURE_STRAIN_KINDS`.
  */
 export const CRAFT_FLAG_KINDS = {
   cliche: ['cliche', 'weighted'],
-  register: REGISTER_SHIFT_KINDS
-} as const satisfies Readonly<Record<CraftFlagCategory, readonly (FamiliarPhraseKind | RegisterShiftKind)[]>>;
+  register: REGISTER_SHIFT_KINDS,
+  gesture: GESTURE_STRAIN_KINDS
+} as const satisfies Readonly<Record<CraftFlagCategory, readonly (FamiliarPhraseKind | RegisterShiftKind | GestureStrainKind)[]>>;
 
 export type CraftFlagKind = typeof CRAFT_FLAG_KINDS[CraftFlagCategory][number];
 
@@ -66,14 +84,16 @@ export function isCraftFlagKind(category: CraftFlagCategory, value: unknown): va
 }
 
 /**
- * Whether a category leaves speech alone. Both do: a character's idiom, and
- * their register, are their voice (the Lightbox's rule, epic decision 26).
- * Host code drops such a flag where it touches speech, whatever the reply
- * says.
+ * Whether a category leaves speech alone. All do: a character's idiom, their
+ * register, and a gesture they describe are their voice (the Lightbox's rule,
+ * epic decision 26). A gesture in a dialogue beat is narration, outside the
+ * quotation marks, so it is still read. Host code drops a flag where it
+ * touches speech, whatever the reply says.
  */
 export const CRAFT_FLAG_LEAVES_SPEECH: Readonly<Record<CraftFlagCategory, boolean>> = {
   cliche: true,
-  register: true
+  register: true,
+  gesture: true
 };
 
 /** What a Craft Flags run reads: the categories it asks about, each in a call of its own. */
@@ -116,9 +136,24 @@ export interface CraftFlagIssue {
   /**
    * How often the phrase stands in the live document's narration, this use
    * included, counted once the run has settled (PR #177 N-01); absent when it
-   * was not counted (`PHRASE_REPEATS`' bound).
+   * was not counted (`PHRASE_REPEATS`' bound), and on a gesture flag that
+   * names a stock beat, which `beats` counts instead.
    */
   readonly repeats?: number;
+  /**
+   * A gesture flag's stock beats (Slice 3c part 3): each beat its words name,
+   * in their order, with how often the beat stands in the live document's
+   * narration, every form together, this use included. Absent on other
+   * categories' flags, and on a gesture flag that names no listed beat.
+   */
+  readonly beats?: readonly CraftFlagBeatCount[];
+}
+
+/** One stock beat's count, named as the message names it. */
+export interface CraftFlagBeatCount {
+  /** The beat in the plural, as a note names it: "nods", "head shakes". */
+  readonly beat: string;
+  readonly count: number;
 }
 
 /** Why flags were not shown, each counted, never guessed. */

@@ -435,7 +435,12 @@ const WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS = new Set([
   'lexicalDensity',
   'calculateLexicalDensityPercent',
   'lexical_density',
-  'gesture-analysis'
+  'gesture-analysis',
+  // Craft Flags' gesture strain (Draft Edit Slice 3c part 3) is a flag category, not the Workshop's Gesture Playground.
+  'GESTURE_STRAIN_KINDS',
+  'GESTURE_STRAIN_DEFINITIONS',
+  'GestureStrainKind',
+  '31-gesture-example'
 ]);
 
 interface WorkshopFeatureSemanticOccurrence {

@@ -3,8 +3,8 @@
  * 2026-10-26: Slice 3c).
  *
  * **Craft Flags** reads the active editor's document, whole, and flags line
- * notes in it: clichés and register shifts, one call each. It never changes
- * the text.
+ * notes in it: clichés, register shifts and gesture strain, one call each. It
+ * never changes the text.
  * - The categories are read at the gesture from
  *   `proseMinion.craftFlags.categories` (`craftFlagCategoriesOf`); with none
  *   on, the run is refused before anything is read (Slice 3c part 2).

@@ -29,6 +29,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { FAMILIAR_PHRASE_DEFINITIONS } from '@shared/constants/familiarPhrasing';
 import {
+  GESTURE_STRAIN_DEFINITIONS,
   REGISTER_SHIFT_DEFINITIONS,
   isCraftFlagKind,
   type CraftFlagCategory,
@@ -62,11 +63,12 @@ export interface CraftFlagsReply {
   readonly ignoredFields: number;
 }
 
-/** Every kind's definition: the shared familiar-phrase vocabulary, and register shift's own. */
+/** Every kind's definition: the shared familiar-phrase vocabulary, and register shift's and gesture strain's own. */
 const CRAFT_FLAG_DEFINITIONS: Readonly<Record<CraftFlagKind, string>> = {
   cliche: FAMILIAR_PHRASE_DEFINITIONS.cliche,
   weighted: FAMILIAR_PHRASE_DEFINITIONS.weighted,
-  ...REGISTER_SHIFT_DEFINITIONS
+  ...REGISTER_SHIFT_DEFINITIONS,
+  ...GESTURE_STRAIN_DEFINITIONS
 };
 
 /** The host's why, for a flag whose own broke the fence: the definition of its kind. */
@@ -78,7 +80,8 @@ export function craftFlagHostWhy(kind: CraftFlagKind): string {
 /** Each category's root fields; a register reply also names the register it reads shifts against. */
 const ROOT_FIELDS: Readonly<Record<CraftFlagCategory, ReadonlySet<string>>> = {
   cliche: new Set(['version', 'flags']),
-  register: new Set(['version', 'flags', 'register'])
+  register: new Set(['version', 'flags', 'register']),
+  gesture: new Set(['version', 'flags'])
 };
 const FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'suggestion']);
 

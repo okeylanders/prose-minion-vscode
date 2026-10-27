@@ -2,7 +2,8 @@
 
 **Epic:** [Draft Edit](README.md)
 **Status:** In progress (2026-10-27): part 1, the pass and cliché, merged
-(PR #177); part 2, register shift, built. After Slice 3b, before the
+(PR #177); part 2, register shift, merged (PR #178); part 3, gesture
+strain, built. After Slice 3b, before the
 Workshop slices, at the writer's request. The pass, its
 name, each category's approach and the six recommendations under "Decide in
 the ADR" are decided (the writer, 2026-10-26; see "Decided").
@@ -74,6 +75,37 @@ decides it.
   gesture; none on refuses the run.
 - **Not yet:** the fixture run's hits and false positives for either
   category.
+
+## Part 3: as built (2026-10-27)
+
+Gesture strain, built on `claude/upbeat-galileo-y1l4yf` from
+`epic/lightbox` at `98819b34` (the PR #178 merge). The ADR's "Part 3:
+gesture strain" decides it.
+
+- **The writer's choice:** the model judges every gesture flag, a thin
+  beat's included, and host code only counts. That replaces this doc's
+  host-flagged density threshold: nothing waits on calibrating one.
+- **Kinds:** `impossible`, `complicated`, `thin` and `redundant`
+  (`GESTURE_STRAIN_KINDS` and their definitions, in the domain).
+- **Stock beats, counted:** `STOCK_BEATS` (`utils/craftFlags/stockBeats.ts`)
+  covers nod, shrug, sigh, smile, grin, frown, wink, smirk, a shake of the
+  head and a roll of the eyes, each with its forms written out.
+  - A gesture flag naming one gets the beat's count, every form together,
+    in the live document's narration: "Nods appear 4 times in this
+    document."
+  - It is a closed list, not the tagger's lemmas as this doc first proposed.
+    The tagger would add 0.1 to 0.3 s per 25,000 words on the extension host.
+- **Dialogue:** a gesture in a dialogue beat is narration, and read. Words
+  in quotation marks are speech, dropped by host code.
+- **Prompts:** `craft-flags/30-gesture.md` and `31-gesture-example.md`. The
+  example is an *Alice* adaptation with one flag of each kind and the
+  sister's nods counted, read through the production codec, anchoring and
+  placement in `craftFlagsPrompt.test.ts`.
+- **`proseMinion.craftFlags.categories`:** gains `gesture`, on by default.
+- **Not yet:**
+  - the fixture run's hits and false positives;
+  - a gesture that contradicts its line;
+  - the Gesture Playground handoff.
 
 ## Problem
 
@@ -290,7 +322,7 @@ How it works:
 2. The pass and **cliché**. *Built (part 1).* It is closest to what exists (the Lightbox's
    familiar-phrase definitions) and proves the pass end to end.
 3. **Register shift**, with the chapter's register named by its own call. *Built (part 2).*
-4. **Gesture strain**, with the host's stock-beat counts.
+4. **Gesture strain**, with the host's stock-beat counts. *Built (part 3).*
 5. **Continuity**, with the port's related information and the shared
    section detector.
 

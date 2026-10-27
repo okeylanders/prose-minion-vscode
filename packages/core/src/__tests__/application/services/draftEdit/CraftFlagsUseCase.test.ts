@@ -7,82 +7,12 @@
  * is a stand-in returning chosen flags; the document and its annotator are
  * the shared fakes. Text adapts public-domain *Alice*, with clichés added.
  */
-import { CRAFT_FLAG_CATEGORIES, type CraftFlagFinding, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
-import type { DraftEditTarget } from '@/domain/models/DraftEdit';
+import type { CraftFlagFinding } from '@/domain/models/CraftFlag';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { CraftFlagsUseCase, type CraftFlagsPassPort } from '@/application/services/draftEdit/CraftFlagsUseCase';
 import type { CraftFlagsCallResult, CraftFlagsRunRequest } from '@services/craftFlags/CraftFlagsService';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL, decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { withPhraseScanLimit } from '@/__tests__/utils/craftFlags/phraseScanLimit';
-
-const CHAPTER = [
-  'Alice was beginning to get very tired of sitting by her sister on the bank, and time stood still.',
-  '',
-  '“Oh dear! Oh dear! I am as busy as a bee!” said the Rabbit. Alice said, \'My heart was in my throat!\' and laughed.',
-  '',
-  'When the Rabbit took a watch out of its waistcoat-pocket, a chill ran down her spine, and time stood still.',
-  '',
-  '```',
-  'a chill ran down her spine',
-  '```'
-].join('\n');
-
-const PASS: CraftFlagsPass = { kind: 'craft', categories: [...CRAFT_FLAG_CATEGORIES] };
-const MODEL = 'placeholder/craft-model';
-const ESTIMATE = { model: MODEL, calls: 1, inputTokens: 900, outputTokens: 1500, usd: 0.03 };
-
-const flag = (quote: string, { before, ...extra }: Partial<CraftFlagFinding> & { before?: string } = {}): CraftFlagFinding => ({
-  anchor: { quote, ...(before ? { before } : {}) },
-  category: 'cliche',
-  kind: 'cliche',
-  why: 'A stopped clock stands in for the jolt.',
-  suggestion: 'the pink eyes, as she sees them',
-  ...extra
-});
-
-function setup(
-  text = CHAPTER,
-  calls: CraftFlagsCallResult[] = [],
-  options: { beforeReply?: (documents: FakeDocuments) => void; languageId?: string } = {}
-) {
-  const documents = new FakeDocuments(text, undefined, options.languageId);
-  const annotations = new FakeAnnotations(documents);
-  const requests: CraftFlagsRunRequest[] = [];
-  const pass: CraftFlagsPassPort = {
-    estimate: jest.fn(async () => ESTIMATE),
-    flag: jest.fn(async (request: CraftFlagsRunRequest) => {
-      requests.push(request);
-      if (request.stillCurrent && !request.stillCurrent()) {
-        return { kind: 'ended' as const };
-      }
-      options.beforeReply?.(documents);
-      return { kind: 'completed' as const, calls, usage: { promptTokens: 900, completionTokens: 300, totalTokens: 1200, costUsd: 0.02 } };
-    })
-  };
-  const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
-  const useCase = new CraftFlagsUseCase(pass, documents, annotations, log);
-  const target = (range?: { start: number; end: number }): DraftEditTarget => ({
-    uri: documents.uri,
-    version: documents.version,
-    text: documents.text,
-    languageId: documents.languageId,
-    relativePath: 'chapter-01.md',
-    ...(range ? { range } : {})
-  });
-  /** A gesture begun, priced and run at the approved model, as the command does. */
-  const runOnce = async (at: DraftEditTarget = target(), signal?: AbortSignal): Promise<CraftFlagsOutcome> => {
-    const begun = useCase.begin(at, PASS);
-    if (begun.kind !== 'gesture') {
-      return begun;
-    }
-    return useCase.run(begun.gesture, { model: MODEL }, signal);
-  };
-  return { documents, annotations, pass, requests, log, useCase, target, runOnce };
-}
-
-const read = (...findings: CraftFlagFinding[]): CraftFlagsCallResult => ({ kind: 'read', findings, malformed: 0, notesWithheld: 0 });
-const rangeOf = (text: string, part: string) => ({ start: text.indexOf(part), end: text.indexOf(part) + part.length });
+import { CHAPTER, ESTIMATE, MODEL, PASS, flag, rangeOf, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
 
 describe('CraftFlagsUseCase.run', () => {
   it('reads the whole document, protected regions masked, and shows its flags with no quick fix', async () => {
@@ -91,7 +21,7 @@ describe('CraftFlagsUseCase.run', () => {
 
     expect(requests[0].passage).not.toContain('```\na chill ran down her spine');
     expect(requests[0].passage).toContain('⟦protected⟧');
-    expect(requests[0].categories).toEqual(['cliche', 'register']);
+    expect(requests[0].categories).toEqual(['cliche', 'register', 'gesture']);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, reads: 'document', calls: { total: 1, completed: 1 } });
     expect(annotations.flaggedText()).toEqual(['a chill ran down her spine']);
     expect(annotations.shown[0]).toEqual({
@@ -404,7 +334,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     const planned = useCase.plan(gesture);
     letPricingGo();
     expect(await planned).toEqual({ kind: 'ready', words: expect.any(Number), reads: 'document', selection: false, estimate: ESTIMATE });
-    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche', 'register'] });
+    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche', 'register', 'gesture'] });
   });
 
   it('shows no confirmation when the document closes and reopens at its version while it is priced', async () => {
