@@ -309,6 +309,7 @@ export class DraftEditUseCase {
       label,
       ...(pass.spelling ? { spelling: pass.spelling } : {}),
       ...(pass.wordList ? { wordList: pass.wordList } : {}),
+      ...(pass.reasoning ? { reasoning: pass.reasoning } : {}),
       ...(host.narration ? { narration: host.narration } : {}),
       ...(signal ? { signal } : {})
     });

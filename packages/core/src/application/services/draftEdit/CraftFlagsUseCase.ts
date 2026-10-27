@@ -69,7 +69,7 @@ import { continuitySections, withinOneSection } from '@/application/services/dra
 
 /** The Craft Flags pass as this use case needs it: a passage in, passage-relative flags out, and their price before. */
 export interface CraftFlagsPassPort {
-  estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks'>): Promise<CraftFlagsEstimate>;
+  estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate>;
   flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult>;
 }
 
@@ -171,7 +171,12 @@ export class CraftFlagsUseCase {
   /** Price a held gesture. A lifetime that ends while it is priced shows no confirmation. */
   async plan(gesture: CraftFlagsGesture): Promise<CraftFlagsRunPlan> {
     const held = this.open(gesture);
-    const estimate = await this.craftPass.estimate({ passage: held.prepared.masked.text, categories: held.pass.categories, breaks: held.breaks });
+    const estimate = await this.craftPass.estimate({
+      passage: held.prepared.masked.text,
+      categories: held.pass.categories,
+      breaks: held.breaks,
+      ...(held.pass.reasoning ? { reasoning: held.pass.reasoning } : {})
+    });
     // Asked once the price is in: nothing could end the lifetime before pricing began, since `begin` took it synchronously.
     if (held.watch.ended()) {
       this.release(gesture);
@@ -223,6 +228,7 @@ export class CraftFlagsUseCase {
       breaks: held.breaks,
       label,
       model: approval.model,
+      ...(held.pass.reasoning ? { reasoning: held.pass.reasoning } : {}),
       stillCurrent: () => !watch.ended(),
       ...(signal ? { signal } : {})
     });

@@ -228,6 +228,7 @@ export { DraftEditApplier } from '@/application/services/draftEdit/DraftEditAppl
 export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 export {
   DRAFT_EDIT_LANGUAGE_IDS,
+  DRAFT_EDIT_PASS_POLICIES,
   PROOFREAD_SPELLING_CONVENTIONS,
   isProofreadSpellingConvention,
   type DraftEditFixReport,
@@ -240,4 +241,5 @@ export {
   type ProofreadSpellingConvention
 } from '@/domain/models/DraftEdit';
 export { proofreadWordList } from '@/utils/proofread/proofreadWordList';
+export { REASONING_LEVELS, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
 export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

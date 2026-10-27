@@ -34,10 +34,12 @@ import type { TokenUsage } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { DRAFT_EDIT_PASS_POLICIES } from '@/domain/models/DraftEdit';
 import type { CraftFlagCategory, CraftFlagFinding } from '@/domain/models/CraftFlag';
+import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { reasoningBudget, reasoningRequest, type ReasoningRequest } from '@orchestration/ReasoningRequest';
 import { estimateRequestTokens } from '@orchestration/RequestContextPreflight';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import { PromptLoader } from '@/tools/shared/prompts';
@@ -48,7 +50,13 @@ import {
   type RejectedModelResponseRecoveryPresenter
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
-import { draftEditInterruptionOf, presentOnce, type DraftEditInterruption } from '@services/draftEdit/DraftEditCalls';
+import {
+  draftEditCeilingRejection,
+  draftEditInterruptionOf,
+  presentOnce,
+  reportedThinking,
+  type DraftEditInterruption
+} from '@services/draftEdit/DraftEditCalls';
 import { decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { sumTokenUsage } from '@/utils/tokenUsage';
 
@@ -107,6 +115,8 @@ export interface CraftFlagsRunRequest {
    * F-01).
    */
   readonly model: string;
+  /** How much the model may think per call (2026-10-27); absent, the pass's default. Priced in the estimate. */
+  readonly reasoning?: ReasoningLevel;
   /**
    * Whether the gesture's document is still the lifetime it read: asked once
    * the prompts are ready, just before the calls are sent, with nothing
@@ -161,7 +171,7 @@ export class CraftFlagsService {
     private readonly log: LogSink
   ) {}
 
-  async estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks'>): Promise<CraftFlagsEstimate> {
+  async estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate> {
     await this.aiResourceManager.ensureInitialized();
     // Read once, before anything is awaited: the price and the confirmation name this model, and the run goes to it.
     const model = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope)?.getModel() || undefined;
@@ -173,7 +183,9 @@ export class CraftFlagsService {
         { role: 'user', content: buildCraftFlagsMessage(category, request.passage, request.breaks) }
       ]);
     }
-    const outputTokens = request.categories.length * PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    // Typical thinking is half the level's budget: an assumption the fixture run revisits, priced, never a cap.
+    const thinking = Math.round(reasoningBudget(this.levelOf(request)) / 2);
+    const outputTokens = request.categories.length * (PROMPT_BUDGETS.craftFlags.typicalOutputTokens + thinking);
     const pricing = model ? await this.pricingOf(model) : undefined;
     return {
       ...(model ? { model } : {}),
@@ -196,7 +208,9 @@ export class CraftFlagsService {
       return { kind: 'ended' };
     }
     const presenter = presentOnce(this.recoveryPresenter);
+    const ask = reasoningRequest(this.levelOf(request), PROMPT_BUDGETS.craftFlags.outputTokens);
     const usages: Array<TokenUsage | undefined> = [];
+    const answered: ExecutionResult[] = [];
     let interrupted: DraftEditInterruption | undefined;
 
     const calls = await Promise.all(request.categories.map(async (category, index): Promise<CraftFlagsCallResult> => {
@@ -205,24 +219,33 @@ export class CraftFlagsService {
       }
       let result: ExecutionResult;
       try {
-        result = await this.call(engine, request.model, systemMessages[index], buildCraftFlagsMessage(category, request.passage, request.breaks), request.signal);
+        result = await this.call(engine, request.model, ask, systemMessages[index], buildCraftFlagsMessage(category, request.passage, request.breaks), request.signal);
       } catch (error) {
         interrupted ??= draftEditInterruptionOf(error, 'categories');
         this.log.appendLine(`[CraftFlags] ${request.label}: ${category} not sent: ${interrupted.message}`);
         return { kind: 'unsent' };
       }
       usages.push(result.usage);
+      answered.push(result);
       if (result.cancelled) {
         return { kind: 'unsent' };
       }
-      return this.read(result, request.label, category, presenter);
+      return this.read(result, ask.maxTokens, request.label, category, presenter);
     }));
 
+    const thinking = reportedThinking(answered);
+    if (thinking !== undefined) {
+      this.log.appendLine(`[CraftFlags] ${request.label}: the model reported ${thinking.toLocaleString('en-US')} tokens of thinking across ${answered.length} call${answered.length === 1 ? '' : 's'}`);
+    }
     const usage = sumTokenUsage(usages);
     if (request.signal?.aborted) {
       return { kind: 'cancelled', ...(usage ? { usage } : {}) };
     }
     return { kind: 'completed', calls, ...(interrupted ? { interrupted } : {}), ...(usage ? { usage } : {}) };
+  }
+
+  private levelOf(request: Pick<CraftFlagsRunRequest, 'reasoning'>): ReasoningLevel {
+    return request.reasoning ?? DRAFT_EDIT_PASS_POLICIES.craft.reasoning;
   }
 
   private systemMessage(category: CraftFlagCategory): Promise<string> {
@@ -238,7 +261,7 @@ export class CraftFlagsService {
     }
   }
 
-  private call(engine: AgentRunEngine, model: string, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
+  private call(engine: AgentRunEngine, model: string, ask: ReasoningRequest, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
     return engine.runInitial({
       toolName: 'craft-flags',
       systemMessage,
@@ -247,7 +270,8 @@ export class CraftFlagsService {
       options: {
         model,
         temperature: CRAFT_FLAGS_TEMPERATURE,
-        maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens,
+        maxTokens: ask.maxTokens,
+        reasoning: ask.reasoning,
         ...(signal ? { signal } : {})
       }
     });
@@ -255,6 +279,7 @@ export class CraftFlagsService {
 
   private async read(
     result: ExecutionResult,
+    maxTokens: number,
     label: string,
     category: CraftFlagCategory,
     presenter: RejectedModelResponseRecoveryPresenter
@@ -262,7 +287,7 @@ export class CraftFlagsService {
     const content = result.rawContent ?? result.content;
     let rejection: string;
     if (result.finishReason === 'length') {
-      rejection = `the reply reached the ${PROMPT_BUDGETS.craftFlags.outputTokens.toLocaleString('en-US')}-token output ceiling`;
+      rejection = draftEditCeilingRejection(result, maxTokens, 'proseMinion.craftFlags.reasoning');
     } else {
       try {
         const frame = readCraftFlagsFrame(content);

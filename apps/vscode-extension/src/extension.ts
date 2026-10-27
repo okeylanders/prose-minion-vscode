@@ -761,6 +761,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.fixReview') === 'apply' ? 'apply' : 'preview',
     spellingConvention: () => vscode.workspace.getConfiguration('proseMinion').get<string>('proofread.spellingConvention'),
     wordList: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('proofread.wordList'),
+    proofreadReasoning: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('proofread.reasoning'),
     confirm: async (message, action) =>
       (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
     withProgress: (title, task) => vscode.window.withProgress(
@@ -778,7 +779,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Craft Flags (Slice 3c): Proofread's editor and window, and its own categories, read at the gesture.
   const craftFlagsCommandHost: CraftFlagsCommandHost = {
     ...proofreadCommandHost,
-    craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories')
+    craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories'),
+    craftFlagsReasoning: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.reasoning')
   };
 
   const handleWordLookupSelection = () => {

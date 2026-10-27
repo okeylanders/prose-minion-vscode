@@ -12,6 +12,7 @@
 import type { TokenUsage } from '@messages';
 import type { DraftEditAnchor, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
+import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
 
 /** Cliché (part 1), register shift (part 2), gesture strain (part 3) and continuity (part 4). */
 export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register', 'gesture', 'continuity'] as const;
@@ -125,6 +126,8 @@ export interface CraftFlagsPass {
   readonly kind: 'craft';
   /** Never empty; each category at most once. */
   readonly categories: readonly CraftFlagCategory[];
+  /** Read at the gesture (2026-10-27); absent, the pass's default. */
+  readonly reasoning?: ReasoningLevel;
 }
 
 /** One flag as a reply reports it: quoted, never located. */

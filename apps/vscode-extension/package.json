@@ -352,6 +352,19 @@
           "markdownDescription": "Which line notes **Prose Minion: Craft Flags** looks for. Each one is a request of its own, priced in the confirmation before anything is sent. Words inside quotation marks are always left alone; a gesture in a dialogue beat is narration, and is read.",
           "order": 5.7
         },
+        "proseMinion.craftFlags.reasoning": {
+          "type": "string",
+          "enum": ["off", "light", "standard", "deep"],
+            "enumDescriptions": [
+              "No thinking: the model answers at once.",
+              "A little thinking: a budget of about 1,000 tokens.",
+              "Some thinking: a budget of about 4,000 tokens.",
+              "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+            ],
+          "default": "standard",
+          "markdownDescription": "How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level, and some always think. Models that do not think ignore this.",
+          "order": 5.75
+        },
         "proseMinion.proofread.fixReview": {
           "type": "string",
           "enum": [
@@ -388,6 +401,19 @@
           "default": [],
           "markdownDescription": "Names and invented words **Prose Minion: Proofread** accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive (*Dinah's*), and never flagged as a variant of another name. An entry of several words counts word by word. Set it in your workspace settings to keep a list per project.",
           "order": 5.5
+        },
+        "proseMinion.proofread.reasoning": {
+          "type": "string",
+          "enum": ["off", "light", "standard", "deep"],
+            "enumDescriptions": [
+              "No thinking: the model answers at once.",
+              "A little thinking: a budget of about 1,000 tokens.",
+              "Some thinking: a budget of about 4,000 tokens.",
+              "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+            ],
+          "default": "light",
+          "markdownDescription": "How much a thinking model may think before it proofreads each passage. The budget comes on top of the reply's own room, so thinking never cuts a reply short on a model that honors it. Models differ: some take only a rough level, and some always think. If a reply is still cut off, the Output panel says how much went to thinking. Models that do not think ignore this.",
+          "order": 5.55
         },
         "proseMinion.categoryModel": {
           "type": "string",

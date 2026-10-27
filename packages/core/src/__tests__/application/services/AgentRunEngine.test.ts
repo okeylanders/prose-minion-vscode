@@ -137,6 +137,30 @@ describe('AgentRunEngine', () => {
     expect(client.createChatCompletion.mock.calls[1][1]).not.toHaveProperty('model');
   });
 
+  it('sends a run\'s reasoning setting through, and returns the reasoning tokens its call reported (2026-10-27)', async () => {
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply', finishReason: 'length', reasoningTokens: 3_700 });
+    const result = await engine.runInitial({ toolName: 'proofread', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.proofread, options: { maxTokens: 5_024, reasoning: { maxTokens: 1_024 } } });
+
+    expect(client.createChatCompletion.mock.calls[0][1]).toMatchObject({ maxTokens: 5_024, reasoning: { maxTokens: 1_024 } });
+    expect(result).toMatchObject({ finishReason: 'length', reasoningTokens: 3_700 });
+    expect(result.usage).toBeUndefined();
+
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    expect(await engine.runInitial({ toolName: 'proofread', systemMessage: 'System', userMessage: 'Hello', policy: AGENT_RUN_POLICIES.proofread }))
+      .not.toHaveProperty('reasoningTokens');
+  });
+
+  it('returns the reasoning tokens a streamed call reported on its final chunk', async () => {
+    client.createStreamingChatCompletion.mockImplementation(async function* () {
+      yield { token: 'Reply', done: false };
+      yield { token: '', done: true, usage: { promptTokens: 3, completionTokens: 290, totalTokens: 293 }, reasoningTokens: 280, finishReason: 'stop' };
+    });
+    const result = await engine.runInitial({ toolName: 'assistant', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.dictionary, options: { onToken: jest.fn() } });
+    expect(result).toMatchObject({ content: 'Reply', reasoningTokens: 280 });
+  });
+
   it('leaves retained history unchanged on a preflight refusal and allows retry with a larger window', async () => {
     const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
     client.createChatCompletion.mockResolvedValue({ content: 'Reply' });

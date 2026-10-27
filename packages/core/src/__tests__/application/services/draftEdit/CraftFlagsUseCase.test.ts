@@ -314,6 +314,24 @@ describe('CraftFlagsUseCase.run', () => {
   });
 });
 
+describe('CraftFlagsUseCase: the reasoning level (2026-10-27)', () => {
+  it('prices and sends the level the pass names, and names none when the pass does not', async () => {
+    for (const [pass, reasoning] of [[{ ...PASS, reasoning: 'deep' as const }, 'deep'], [PASS, undefined]] as const) {
+      const { useCase, target, requests, pass: port } = setup(CHAPTER, []);
+      const begun = useCase.begin(target(), pass);
+      if (begun.kind !== 'gesture') {
+        throw new Error('no gesture');
+      }
+      await useCase.plan(begun.gesture);
+      await useCase.run(begun.gesture, { model: MODEL });
+      const [priced] = (port.estimate as jest.Mock).mock.calls[0] as [Record<string, unknown>];
+      expect(priced.reasoning).toBe(reasoning);
+      expect(requests[0].reasoning).toBe(reasoning);
+      expect('reasoning' in requests[0]).toBe(reasoning !== undefined);
+    }
+  });
+});
+
 describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)', () => {
   /** A gesture whose price is held until the test lets it go. */
   function heldPricing() {

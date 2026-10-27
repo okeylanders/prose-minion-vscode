@@ -25,7 +25,7 @@ const CHILL = { original: 'a chill ran down her spine', before: 'its waistcoat-p
 const replyOf = (...flags: unknown[]) =>
   `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}`;
 
-type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean } | Error;
+type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
 
 function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string } = {}) {
   const queue = [...replies];
@@ -76,7 +76,13 @@ describe('CraftFlagsService.flag', () => {
       toolName: 'craft-flags',
       systemMessage: `SYSTEM ${files.join(' + ')}`,
       policy: AGENT_RUN_POLICIES.craftFlags,
-      options: { model: APPROVED, temperature: CRAFT_FLAGS_TEMPERATURE, maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens }
+      // The default level, standard: its budget on top of the reply's own ceiling (2026-10-27).
+      options: {
+        model: APPROVED,
+        temperature: CRAFT_FLAGS_TEMPERATURE,
+        maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.standard,
+        reasoning: { maxTokens: PROMPT_BUDGETS.reasoning.standard }
+      }
     });
     expect(sent.userMessage).toBe(buildCraftFlagsMessage('cliche', PASSAGE));
     expect(JSON.parse(sent.userMessage.slice(sent.userMessage.indexOf('{')))).toEqual({ task: 'craft-flags', category: 'cliche', passage: PASSAGE });
@@ -178,6 +184,28 @@ describe('CraftFlagsService.flag', () => {
     expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('output ceiling'));
   });
 
+  it.each([
+    ['off', PROMPT_BUDGETS.craftFlags.outputTokens, { effort: 'none' }],
+    ['light', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.light, { maxTokens: PROMPT_BUDGETS.reasoning.light }],
+    ['deep', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.deep, { maxTokens: PROMPT_BUDGETS.reasoning.deep }]
+  ] as const)('sends the %s level the writer set, its budget on top of the reply\'s ceiling (2026-10-27)', async (reasoning, maxTokens, sent) => {
+    const { service, runInitial } = createService([{ content: replyOf(CHILL) }]);
+    await service.flag({ ...request, reasoning });
+    const [call] = runInitial.mock.calls[0] as unknown as [{ options: Record<string, unknown> }];
+    expect(call.options).toMatchObject({ maxTokens, reasoning: sent });
+  });
+
+  it('says the model spent the ceiling thinking, with Craft Flags\' own setting, when most of its output was reasoning', async () => {
+    const { service, recovery } = createService([
+      { content: replyOf(CHILL).slice(0, 60), finishReason: 'length', usage: { ...USAGE, completionTokens: 12_000 }, reasoningTokens: 11_000 }
+    ]);
+    await service.flag(request);
+    expect(recovery.capture).toHaveBeenCalledWith(expect.objectContaining({
+      rejection: 'the model spent 11,000 of 12,000 output tokens thinking and reached the 12,000-token ceiling; '
+        + 'lower proseMinion.craftFlags.reasoning or choose another model'
+    }));
+  });
+
   it('rejects a reply whose frame cannot be read, and says what was wrong without its text', async () => {
     const { service, log } = createService([{ content: 'Here are the clichés: a chill ran down her spine' }]);
     expect(await service.flag(request)).toMatchObject({ kind: 'completed', calls: [{ kind: 'rejected' }] });
@@ -218,14 +246,14 @@ describe('CraftFlagsService.flag', () => {
 });
 
 describe('CraftFlagsService.estimate', () => {
-  it('prices the exact messages with the engine\'s estimator, and a typical reply per call', async () => {
+  it('prices the exact messages with the engine\'s estimator, and a typical reply and half the default level\'s thinking per call', async () => {
     const { service } = createService([]);
     const estimate = await service.estimate(request);
     const inputTokens = estimateRequestTokens([
       { role: 'system', content: `SYSTEM ${[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.cliche].join(' + ')}` },
       { role: 'user', content: buildCraftFlagsMessage('cliche', PASSAGE) }
     ]);
-    const outputTokens = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    const outputTokens = PROMPT_BUDGETS.craftFlags.typicalOutputTokens + PROMPT_BUDGETS.reasoning.standard / 2;
 
     expect(estimate).toEqual({
       model: 'placeholder/craft-model',
@@ -234,6 +262,14 @@ describe('CraftFlagsService.estimate', () => {
       outputTokens,
       usd: inputTokens * 0.000003 + outputTokens * 0.000015
     });
+  });
+
+  it('prices the level the writer set: no thinking at off, half the deep budget at deep', async () => {
+    const { service } = createService([]);
+    const typical = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    await expect(service.estimate({ ...request, reasoning: 'off' })).resolves.toMatchObject({ outputTokens: typical });
+    await expect(service.estimate({ ...request, categories: ['cliche', 'gesture'], reasoning: 'deep' }))
+      .resolves.toMatchObject({ outputTokens: 2 * (typical + PROMPT_BUDGETS.reasoning.deep / 2) });
   });
 
   it('names the engine\'s model as it stood before anything was awaited, and prices that model (PR #177 F-01)', async () => {
