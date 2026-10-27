@@ -35,8 +35,13 @@ export function isProofreadCategory(value: unknown): value is ProofreadCategory 
   return typeof value === 'string' && (PROOFREAD_CATEGORIES as readonly string[]).includes(value);
 }
 
-/** What host code finds over the whole document (Slice 3b): `name`, a rare spelling of a common name. */
-export const PROOFREAD_HOST_CATEGORIES = ['name'] as const;
+/**
+ * What host code finds over the whole document (Slice 3b): `name`, a rare
+ * spelling of a common name (part 2); `quotation`, a double quotation mark
+ * its paragraph leaves unpaired or misshapes, and `consistency`, a word the
+ * document spells two ways (part 3).
+ */
+export const PROOFREAD_HOST_CATEGORIES = ['name', 'quotation', 'consistency'] as const;
 
 export type ProofreadHostCategory = typeof PROOFREAD_HOST_CATEGORIES[number];
 

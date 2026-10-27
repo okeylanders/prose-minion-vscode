@@ -106,8 +106,10 @@ describe('decodeProofreadReply', () => {
     const reply = read(replyOf(
       WEATHER_ISSUE,
       { ...RUNS_ISSUE, category: 'style' },
-      // A host category (Slice 3b): host code finds names over the whole document, never a model.
+      // Host categories (Slice 3b): host code finds these over the whole document, never a model.
       { ...RUNS_ISSUE, category: 'name' },
+      { ...RUNS_ISSUE, category: 'quotation' },
+      { ...RUNS_ISSUE, category: 'consistency' },
       { ...RUNS_ISSUE, original: '' },
       { ...RUNS_ISSUE, explanation: '  ' },
       { ...RUNS_ISSUE, before: 42 },
@@ -117,7 +119,7 @@ describe('decodeProofreadReply', () => {
       THE_THE_ISSUE
     ));
     expect(reply.findings.map((finding) => finding.anchor.quote)).toEqual(['weather', 'the the']);
-    expect(reply.malformed).toBe(8);
+    expect(reply.malformed).toBe(10);
   });
 
   it('omits empty context and a missing replacement, and clips long context nearest the quote', () => {

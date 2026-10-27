@@ -1,8 +1,9 @@
 # Slice 3b: Proofread coverage
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Part 1 merged (PR #174, 2026-10-26). Part 2 built; in review.
-Part 3 follows. The immediate follow-up to Slice 3 (the writer's call,
+**Status:** Parts 1 and 2 merged (PRs #174, #176, 2026-10-26). Part 3
+(quotation marks and consistency) built 2026-10-27; in review. Then the
+fixture run. The immediate follow-up to Slice 3 (the writer's call,
 2026-10-26), before the Workshop slices.
 **Priority:** High
 **Needs first:** an ADR amendment. Several items extend D6's closed
@@ -262,3 +263,63 @@ built (part 2)" note for where the build goes beyond them.
   repository's fixtures it finds no variant; a measure of its false
   positives waits for the fixture run.
 - **Not yet:** the fixture run; part 3 (quotation marks and consistency).
+
+## Part 3: as built
+
+The decisions are in the ADR's Slice 3b amendment, part 3, with an "As
+built (part 3)" note for where the build goes beyond them. Built after
+Slice 3c and the reasoning levels, the writer's call (2026-10-27): "a better
+stopping point" before the release.
+
+- **Quotation marks** (item 8): `utils/proofread/quotationMarks.ts`,
+  category `quotation`.
+  - Double marks are read paragraph by paragraph, a mark's role taken from
+    its place, then its shape.
+  - A mark is flagged once, for one of these:
+    - still open at its paragraph's end;
+    - still open where the next quotation opens;
+    - closing with nothing open;
+    - a curly mark of the wrong shape.
+  - A paragraph opening with a quotation mark continues the speech before
+    it.
+  - No *Replace with*: where a missing mark belongs is the writer's to say.
+- **Consistency** (item 9): `utils/proofread/spellingConsistency.ts` over the
+  closed table `utils/proofread/variantSpellings.ts`, category
+  `consistency`.
+  - The table has 61 words and 195 inflection pairs.
+  - The less used spelling is flagged, or the named convention's other.
+    The convention decides only where it is clear.
+  - A tie flags nothing.
+  - The *Replace with* is the same inflection of the other spelling, in the
+    case it is written, never preferred.
+  - A capitalized word mid-sentence is a name, and not read.
+  - A listed word counts, but is never flagged.
+- **Both** are host categories, flag-only warnings, winning over an
+  overlapping model issue. A selection run shows only those inside it. The
+  prompt is unchanged.
+- **Beyond the plan:** the wrong-shape curly mark; the convention decides
+  only where it spells one way; "all right" only within one line.
+- **Not in the table on purpose:** "the Rabbit" and "the rabbit". The
+  slice's example is a name written both ways; the name check reads names,
+  and leaves a word the document also writes in lower case alone.
+- **Measured** on Node 18 over 124,800 words: quotation marks 6 ms;
+  consistency 118 ms, 94 of them splitting the text into words. A chapter
+  costs a few milliseconds.
+- **Tests:**
+  - each detector's rules with witnesses and controls;
+  - the table's shape (each form once, ASCII, two words at most, known
+    conventions);
+  - a run end to end: the flags, the convention, a selection, Fix never
+    making them, the word list, and model overlap;
+  - the codec refusing either category from a model.
+- **Mutations: 24, each failing a test.**
+  - In the first run, two survived: a straight mark its place leaves
+    undecided closing an open quotation (`*"Hello"*`), and "all right" read
+    across a line, whose test was a tie either way. One more failed only to
+    compile.
+  - A case was added for each, and the one was rewritten so that it
+    compiles. All three now fail a test.
+- **Limits:** an inch mark reads as a quotation mark; a word capitalized
+  only after its first letter is not read; "all right" meaning "all
+  correct" is flagged where "alright" is the more used.
+- **Not yet:** the fixture run.

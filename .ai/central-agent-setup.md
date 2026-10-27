@@ -1662,6 +1662,21 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   way, with its work charged where it is generated, not only where it is
   read. Headings are read from the Markdown block reader
   (`readDocumentRegions`), never a line pattern (F-02).
+- **Quotation marks and consistency** (Slice 3b, part 3). Two more host
+  categories, `quotation` and `consistency`, read by host code over the
+  whole document in `draftEditHostRead`, beside the names, flag-only.
+  - `findQuotationSlips` reads double marks paragraph by paragraph, a mark's
+    role from its place, then its shape. It flags each mark once, with no
+    replacement. A paragraph that opens with a quotation mark continues the
+    speech before it.
+  - `findInconsistentSpellings` reads the closed table `VARIANT_SPELLINGS`:
+    every inflection written out, ASCII, each form once, held by a test. It
+    flags the less used spelling, or, where an entry names the convention's
+    side, the one the named convention does not use. A capitalized word
+    mid-sentence (`followsMidSentence`) is a name, and is not read.
+  - Both are linear in the document, so they need no budget. A check whose
+    work can grow faster than the text charges a budget, as the name check
+    does.
 - **Reasoning levels** (2026-10-27; the ADR's reasoning-levels amendment).
   Proofread and Craft Flags each send a named level (`REASONING_LEVELS`:
   `off`, `light`, `standard`, `deep`), read at the gesture from
