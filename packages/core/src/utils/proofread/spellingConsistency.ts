@@ -23,6 +23,8 @@
  * - **A word the writer's list accepts** counts, but is never flagged, nor
  *   is a part of a hyphenated word the list accepts: "grey-green" listed
  *   keeps its "grey" (PR #182 F-02).
+ * - **Linear however long a word.** Whatever is asked of a whole word, the
+ *   list and the name check, is asked once, not once per part (PR #182 F-04).
  *
  * "all right" in the sense "all correct" is read as the spelling of
  * "alright", so where "alright" is the more used it is flagged: the stated
@@ -81,6 +83,22 @@ export function findInconsistentSpellings(
   convention?: ProofreadSpellingConvention
 ): InconsistentSpelling[] {
   const found: InconsistentSpelling[] = [];
+  // Whether the list holds a hyphenated word whole, by its start: asked once a word, however many of its parts are flagged.
+  const listedWords = new Map<number, boolean>();
+  const isListed = (original: string, start: number, end: number, wordStart: number, wordEnd: number): boolean => {
+    if (isAcceptedWord(accepted, original)) {
+      return true;
+    }
+    if (wordStart === start && wordEnd === end) {
+      return false;
+    }
+    let listed = listedWords.get(wordStart);
+    if (listed === undefined) {
+      listed = isAcceptedWord(accepted, text.slice(wordStart, wordEnd));
+      listedWords.set(wordStart, listed);
+    }
+    return listed;
+  };
   usesOf(text, skippedRegions).forEach(([first, second], entry) => {
     const counts = [first.length / STRIDE, second.length / STRIDE] as const;
     if (counts[0] === 0 || counts[1] === 0) {
@@ -97,7 +115,7 @@ export function findInconsistentSpellings(
     for (let at = 0; at < runs.length; at += STRIDE) {
       const [start, end, inflection, wordStart, wordEnd] = runs.slice(at, at + STRIDE);
       const original = text.slice(start, end);
-      if (isAcceptedWord(accepted, original) || ((wordStart !== start || wordEnd !== end) && isAcceptedWord(accepted, text.slice(wordStart, wordEnd)))) {
+      if (isListed(original, start, end, wordStart, wordEnd)) {
         continue;
       }
       found.push({
@@ -128,8 +146,18 @@ function usesOf(text: string, skippedRegions: readonly TextRange[]): Uses {
   };
   const uses: Uses = VARIANT_SPELLINGS.map((): [number[], number[]] => [[], []]);
   // Only a word that is a form is asked whether it is skipped or a name: most words are neither.
+  // A hyphenated word's parts share its name check, made once: it reads the whole word.
+  let checked: ProofreadWord | undefined;
+  let named = false;
   const use = (ref: FormRef, word: ProofreadWord, start: number, end: number, wordEnd = end): void => {
-    if (!inSkipped(start, end) && !isName(text, word)) {
+    if (inSkipped(start, end)) {
+      return;
+    }
+    if (checked !== word) {
+      checked = word;
+      named = isName(text, word);
+    }
+    if (!named) {
       uses[ref.entry][ref.side].push(start, end, ref.inflection, word.start, wordEnd);
     }
   };

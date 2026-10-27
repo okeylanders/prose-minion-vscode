@@ -1117,6 +1117,11 @@ but a run still needs a key; running them without one is a follow-up.
       where it is written (PR #182 F-01): lowering a word can change a
       part's length ("İ" lowers to two code units), so the lowered word
       only looks the part up.
+    - What is asked of a whole word, the word list and the name check, is
+      asked once a word, never once a part (PR #182 F-04). Asked per part,
+      a hyphenated word of k parts was read k times, work growing with the
+      square of its length on the extension host. An empty list is never
+      asked at all.
     - "all right" is read only with spaces or tabs between its words,
       never across a line, since its *Replace with* would join two lines.
     - A capitalized word mid-sentence is a name, by the name check's own

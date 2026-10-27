@@ -13,6 +13,31 @@ const flagged = (text: string, options: { accepted?: ReadonlySet<string>; skippe
   findInconsistentSpellings(text, options.skipped ?? [], options.accepted ?? NONE, options.convention)
     .map((use) => ({ text: text.slice(use.start, use.end), original: use.original, replacement: use.replacement }));
 
+/**
+ * `work`'s result, and how many characters it handed the word scanner
+ * (`matchAll`, which `proofreadWords` reads with) and `toUpperCase`: the work
+ * a whole word costs, counted without a clock.
+ */
+function measured<T>(work: () => T): { result: T; scanned: number; uppercased: number } {
+  let scanned = 0;
+  let uppercased = 0;
+  const { matchAll, toUpperCase } = String.prototype;
+  const scan = jest.spyOn(String.prototype, 'matchAll').mockImplementation(function (this: string, pattern: RegExp) {
+    scanned += this.length;
+    return matchAll.call(this, pattern);
+  });
+  const upper = jest.spyOn(String.prototype, 'toUpperCase').mockImplementation(function (this: string) {
+    uppercased += this.length;
+    return toUpperCase.call(this);
+  });
+  try {
+    return { result: work(), scanned, uppercased };
+  } finally {
+    scan.mockRestore();
+    upper.mockRestore();
+  }
+}
+
 describe('findInconsistentSpellings', () => {
   it('flags every use of the less used spelling, with the same inflection of the other, and says the counts', () => {
     const text = 'The grey cat sat on the grey wall. A gray dawn came, and the sky was greying.';
@@ -142,6 +167,27 @@ describe('findInconsistentSpellings', () => {
     expect(findInconsistentSpellings(alone, [], compound).map((use) => use.start)).toEqual([alone.indexOf('grey dawn')]);
     // A listed part keeps its uses, in the compound and alone.
     expect(flagged('A grey-green cloak. A grey dawn. A gray sky. A gray sea. A gray hill.', { accepted: proofreadWordListKeys(['grey']) })).toEqual([]);
+  });
+
+  it('reads a long hyphenated word in work that grows with the text, whatever its parts and the list (PR #182 F-04)', () => {
+    // Every flagged part once asked the list about the whole word, parsing it again, and the name check uppercased it again.
+    const compound = `Grey-${Array(1_999).fill('grey').join('-')}`;
+    const text = `${compound}. A gray sky.`;
+    const empty = measured(() => findInconsistentSpellings(text, [], NONE, 'american'));
+    expect(empty.result).toHaveLength(2_000);
+    // An empty list is never asked: the text is scanned once, into words.
+    expect(empty.scanned).toBe(text.length);
+    expect(empty.uppercased).toBeLessThanOrEqual(2 * text.length);
+    const unrelated = measured(() => findInconsistentSpellings(text, [], proofreadWordListKeys(['unrelated']), 'american'));
+    expect(unrelated.result).toHaveLength(2_000);
+    expect(unrelated.scanned).toBeLessThanOrEqual(4 * text.length);
+    expect(unrelated.uppercased).toBeLessThanOrEqual(2 * text.length);
+    // The compound listed: none of its parts, and "grey" alone is still flagged.
+    const alone = `${text} A grey dawn.`;
+    const { result, scanned, uppercased } = measured(() => findInconsistentSpellings(alone, [], proofreadWordListKeys([compound]), 'american'));
+    expect(result.map((use) => use.start)).toEqual([alone.lastIndexOf('grey')]);
+    expect(scanned).toBeLessThanOrEqual(4 * alone.length);
+    expect(uppercased).toBeLessThanOrEqual(2 * alone.length);
   });
 
   it('never pairs "analyzes" with "analyses", the plural of "analysis" in every convention', () => {

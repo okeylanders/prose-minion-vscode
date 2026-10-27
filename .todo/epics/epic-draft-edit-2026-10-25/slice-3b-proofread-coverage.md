@@ -339,3 +339,12 @@ on `4ff69dde` and controls:
   read as closing. A mark's place is now read past `*` and `_`, and the
   next-paragraph check uses the same place rule. Slips inside emphasis are
   still flagged.
+
+The re-review (`ca04dae7`) found the three resolved and one new P2:
+
+- **F-04:** F-02's fix asked the word list about the whole compound once
+  per flagged part, reparsing it each time, and the name check (since the
+  PR's first commit) uppercased the whole word once per part: work growing
+  with the square of a long compound's length. Both are now asked once a
+  word, and an empty list is never asked. A test counts the characters the
+  word scanner and `toUpperCase` are handed, never a clock.

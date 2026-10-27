@@ -71,6 +71,13 @@ Three P2 findings, fixed with witnesses failing on `4ff69dde`:
 - **F-03:** emphasis beside a mark (`*“...and then?”*`) misplaced it. Places
   are read past `*` and `_`; the next-paragraph check asks the same rule.
 
+Re-review (`ca04dae7`): F-01–F-03 resolved; **F-04**, quadratic work on a
+long compound. The F-02 fix reparsed the whole compound per flagged part,
+and `isName` uppercased it per part. Both are now once a word; an empty list
+is never asked. Measured on a 2,000-part compound (10,012 characters): the
+word scanner is handed 10,012 characters (28,011 with an unrelated list),
+against 20,016,012 before.
+
 ## Next
 
 The PR into `epic/lightbox`, then release prep (2.12.0) on the writer's
