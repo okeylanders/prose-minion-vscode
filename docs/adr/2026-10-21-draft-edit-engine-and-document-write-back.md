@@ -1045,6 +1045,112 @@ Host checks run inside a Proofread run, over the whole document, and a
 selection run shows only those inside its selection. They need no model,
 but a run still needs a key; running them without one is a follow-up.
 
+**As built (part 3), where the build goes beyond the above:**
+
+- **Quotation marks** (`findQuotationSlips`, `utils/proofread/quotationMarks.ts`):
+  - Read paragraph by paragraph (the blank-line rule), protected text set
+    aside, character by character, so the work is linear in the document
+    (6 ms for 124,800 words on Node 18).
+  - **A mark's role.** Its place decides when it is plain. With nothing
+    written before it and something after, it opens. Nothing written before
+    means a paragraph's start, a space, an opening bracket, a block quote's
+    `>` or a dash. With something before and nothing after (a space, the
+    paragraph's end, closing punctuation or a dash), it closes. Otherwise
+    “ opens, ” closes, and a straight " closes an open quotation or opens
+    one. The two styles close each other, as the dialogue rule reads them.
+  - **Emphasis is read past** (PR #182 F-03). A mark's place is read
+    beyond the `*` and `_` written beside it, so `*“...and then?”*` places
+    its marks as `“...and then?”` does. Read at the raw neighbour, the
+    emphasis made the opening mark a closing one, and balanced speech
+    opening with an ellipsis or a dash was flagged twice. A run of markers
+    is read only by the marks beside it, so the walk stays linear. Slips
+    inside emphasis are still flagged.
+  - **Five kinds:**
+    - still open where its paragraph ends;
+    - still open where the next quotation opens (the earlier mark is
+      flagged);
+    - a closing mark with nothing open;
+    - beyond the decision, a curly mark of the wrong shape: a ” where a
+      quotation opens or a “ where one closes. It is flagged and read as its
+      place calls for, so one slip makes one flag.
+  - **Speech going on.** A paragraph opens a quotation that goes on from the
+    one before when its first mark, past a block quote's marker or emphasis,
+    opens, by the same place rule the paragraph's own reading uses.
+  - **Each mark is flagged at most once,** with no replacement, a wrong
+    shape included: where a missing mark belongs is the writer's to say.
+  - **Not read:** single quotation marks (apostrophes outnumber them),
+    guillemets, low-9 marks. **Limit:** a straight " after a number (an inch
+    mark) is read as a quotation mark.
+- **Consistency** (`findInconsistentSpellings`,
+  `utils/proofread/spellingConsistency.ts`; the table `VARIANT_SPELLINGS`,
+  `variantSpellings.ts`):
+  - **The table:** 61 words, each with its two spellings side by side, one
+    pair per inflection, every form written out (195 pairs: grey and gray
+    with greyer, greying and the rest). It covers:
+    - words spelled either way in every convention (OK and okay, email and
+      e-mail, all right and alright);
+    - -or and -our, -er and -re, -l- and -ll-, -ize and -ise, -yze and -yse;
+    - toward and afterward with their -s forms, among and amid with their
+      -st forms;
+    - judgment, skeptic, cozy, pajamas, mustache, plow, defense, offense
+      and pretense.
+
+    Kept out on purpose: pairs whose forms mean different things
+    (anymore and any more, everyday and every day, while and whilst, since
+    "a while"), "analyses" (also the plural of "analysis"), past tenses both
+    conventions write (burned and burnt), and spellings American writers
+    keep for a sense of their own (theatre, glamour). A sync test holds every
+    form to ASCII letters and hyphens, at most two words, each form once.
+  - **Conventions.** Each entry names the side a convention spells, only
+    where it is clear:
+    - American spells the first side, and British, Canadian and Australian
+      the second, for -our, -re, -ll- and grey;
+    - Canadian follows American for -ize, -yze, skeptic and cozy;
+    - British takes -ize or -ise (Oxford spelling);
+    - Canada takes toward or towards.
+
+    Elsewhere the counts decide. When a convention decided, the explanation
+    names it ("British spelling uses “grey”").
+  - **Read as words:** one walk over the document's words (`proofreadWords`),
+    each looked up once.
+    - A hyphenated word is read whole, then part by part, each part placed
+      where it is written (PR #182 F-01): lowering a word can change a
+      part's length ("İ" lowers to two code units), so the lowered word
+      only looks the part up.
+    - What is asked of a whole word, the word list and the name check, is
+      asked once a word, never once a part (PR #182 F-04). Asked per part,
+      a hyphenated word of k parts was read k times, work growing with the
+      square of its length on the extension host. An empty list is never
+      asked at all.
+    - "all right" is read only with spaces or tabs between its words,
+      never across a line, since its *Replace with* would join two lines.
+    - A capitalized word mid-sentence is a name, by the name check's own
+      test (`followsMidSentence`), and is not read: "Mr Gray", "the Labour
+      vote".
+    - **Limit:** a word capitalized only after its first letter ("gREY") is
+      not read. That keeps the walk from copying almost any word.
+  - **A tie flags nothing.** A word the writer lists counts, but is never
+    flagged, nor is a part of a hyphenated word the list holds whole:
+    "grey-green" listed keeps its "grey", while "grey" alone elsewhere is
+    still read (PR #182 F-02).
+  - **Replace with** the same inflection of the other spelling, in the case
+    it is written ("Grey" to "Gray", "OK" to "okay", "OKAY" to "OK"), never
+    preferred.
+  - **Measured** on Node 18: 118 ms for 124,800 words, 94 of them splitting
+    the text into words, as the name check also does; a chapter costs a few
+    milliseconds.
+  - **Limit:** "all right" meaning "all correct" reads as the spelling of
+    "alright", so it is flagged where "alright" is the more used.
+- **In the run.** Both join `PROOFREAD_HOST_CATEGORIES` and
+  `draftEditHostRead`:
+  - a model reply naming either is malformed;
+  - both are flagged as warnings, and win over a model issue they overlap;
+  - in a selection run, only those inside the selection show.
+
+  The prompt is unchanged. A model issue on the same mark or word is
+  dropped as overlapping. One elsewhere, such as a closing mark added at a
+  speech's end, still shows: a fix the host does not offer.
+
 ## Amendment 2026-10-26: Slice 3c, Craft Flags
 
 The writer's decisions (2026-10-26):

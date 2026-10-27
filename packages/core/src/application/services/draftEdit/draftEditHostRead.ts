@@ -5,8 +5,10 @@
  * - the narration baseline, sent beside each chunk (part 1);
  * - the keys of the writer's accepted words, the backstop that drops a
  *   `spelling` or `wrong-word` finding on one (part 2);
- * - the name variants, as host issues (part 2). A selection run reads the
- *   whole document but keeps only those inside its selection.
+ * - host issues: the name variants (part 2), and the quotation marks a
+ *   paragraph leaves unpaired and the words the document spells two ways
+ *   (part 3). A selection run reads the whole document but keeps only those
+ *   inside its selection.
  *
  * Everything is read from the gesture's snapshot, as the model's findings
  * are, so both follow the writer's edits the same way. Logs name the run,
@@ -20,6 +22,8 @@ import { readDocumentRegions } from '@/utils/draftEdit/protectedRegions';
 import { findNameVariants, type NameVariant } from '@/utils/proofread/nameConsistency';
 import { measureNarrationBaseline, type NarrationBaseline } from '@/utils/proofread/narrationBaseline';
 import { proofreadWordListKeys } from '@/utils/proofread/proofreadWordList';
+import { findQuotationSlips, type QuotationSlip, type QuotationSlipKind } from '@/utils/proofread/quotationMarks';
+import { findInconsistentSpellings, type InconsistentSpelling } from '@/utils/proofread/spellingConsistency';
 
 /** An issue host code found, placed in the gesture's snapshot; placement gives it an id. */
 export interface DraftEditHostFinding {
@@ -48,9 +52,13 @@ export function readWholeDocument(target: DraftEditTarget, pass: ProofreadPass, 
   if (names.kind === 'stopped') {
     log.appendLine(`[DraftEdit] Proofread ${label}: no name check (${names.names} capitalized words are too many to compare)`);
   }
-  const findings = (names.kind === 'checked' ? names.variants : [])
-    .filter((variant) => variant.start >= region.start && variant.end <= region.end)
-    .map(nameFinding);
+  const findings = [
+    ...(names.kind === 'checked' ? names.variants : []).map(nameFinding),
+    ...findQuotationSlips(target.text, regions.protected).map(quotationFinding),
+    ...findInconsistentSpellings(target.text, regions.protected, accepted, pass.spelling).map(consistencyFinding)
+  ]
+    .filter((finding) => finding.start >= region.start && finding.end <= region.end)
+    .sort((a, b) => a.start - b.start);
   const narration = narrationOf(target.text, regions.protected, log, label);
   return { ...(narration ? { narration } : {}), accepted, findings };
 }
@@ -66,6 +74,49 @@ function nameFinding(variant: NameVariant): DraftEditHostFinding {
     explanation: `“${variant.variant}” appears ${uses} in this document, and “${variant.name}” ${variant.nameUses} times.`
       + ` If “${variant.variant}” is another name, add it to the Proofread word list.`
   };
+}
+
+/** A slip is flagged with no replacement: where the missing mark belongs is the writer's to say. */
+function quotationFinding(slip: QuotationSlip): DraftEditHostFinding {
+  return { category: 'quotation', start: slip.start, end: slip.end, original: slip.mark, explanation: quotationExplanation(slip.kind) };
+}
+
+function quotationExplanation(kind: QuotationSlipKind): string {
+  switch (kind) {
+    case 'unclosed':
+      return 'This quotation mark opens a quotation that is still open where its paragraph ends.'
+        + ' If the speech goes on, the next paragraph opens with a quotation mark; otherwise a closing mark is missing.';
+    case 'unclosed-before-next':
+      return 'This quotation mark opens a quotation that is still open where the next one opens: a closing mark is missing.';
+    case 'unopened':
+      return 'This closing quotation mark has no opening mark before it in its paragraph.';
+    case 'closing-mark-opens':
+      return 'This closing quotation mark (”) stands where a quotation opens; an opening mark (“) may be meant.';
+    case 'opening-mark-closes':
+      return 'This opening quotation mark (“) stands where a quotation closes; a closing mark (”) may be meant.';
+    default: {
+      const unknown: never = kind;
+      return unknown;
+    }
+  }
+}
+
+const CONVENTION_NAMES = { american: 'American', british: 'British', canadian: 'Canadian', australian: 'Australian' } as const;
+
+function consistencyFinding(use: InconsistentSpelling): DraftEditHostFinding {
+  return {
+    category: 'consistency',
+    start: use.start,
+    end: use.end,
+    original: use.original,
+    replacement: use.replacement,
+    explanation: `This document spells this word “${use.spelling}” ${times(use.uses)} and “${use.otherSpelling}” ${times(use.otherUses)}.`
+      + (use.convention ? ` ${CONVENTION_NAMES[use.convention]} spelling uses “${use.otherSpelling}”.` : '')
+  };
+}
+
+function times(count: number): string {
+  return count === 1 ? 'once' : count === 2 ? 'twice' : `${count.toLocaleString('en-US')} times`;
 }
 
 /** A hint beside every chunk. A tagger that fails to load sends none, and the run goes on. */

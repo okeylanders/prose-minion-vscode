@@ -261,8 +261,12 @@ function isNameShaped(word: string): boolean {
     && !NEVER_NAMES.has(proofreadWordKey(word));
 }
 
-/** Whether the nearest character before `start` on its line is a letter, digit, comma or semicolon. */
-function followsMidSentence(text: string, start: number): boolean {
+/**
+ * Whether the nearest character before `start` on its line is a letter,
+ * digit, comma or semicolon: mid-sentence, where only a name is capitalized.
+ * The consistency check reads it too (part 3).
+ */
+export function followsMidSentence(text: string, start: number): boolean {
   let at = start - 1;
   while (at >= 0 && (text[at] === ' ' || text[at] === '\t' || text[at] === ' ')) {
     at -= 1;
