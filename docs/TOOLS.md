@@ -196,8 +196,19 @@ follows the Workshop's model until you pick one.
   every form together, and says so: "Nods appear 7 times in this
   document." A gesture in a dialogue beat is narration, and is read; words
   inside quotation marks are left alone.
+- **Continuity.** Two places in the chapter that cannot both be true: a
+  body, a thing, a place or position, the time, or who is there, stated one
+  way and later another, with nothing between to explain it. The flag sits
+  on the later place, and the earlier one is linked under it in the
+  Problems panel and the hover. The note sets the two facts side by side
+  and says which version the rest of the chapter keeps, when it keeps one,
+  never which is right, so it offers no rewording. Facts on either side of
+  a scene break, a heading or a chapter line are never paired, even one
+  you add while the run is in flight (one inside a code block does not
+  count), and neither is anything a character says: people misremember. An
+  edit to either place withdraws the flag.
 - **Choose what it looks for.** `proseMinion.craftFlags.categories` turns
-  each category on or off. All three are on by default, and each is a
+  each category on or off. All four are on by default, and each is a
   request of its own, priced in the confirmation.
 - **Options, never orders.** A note that tells you what to do, grades the
   writing, quotes, or states a count is not shown as written: a why becomes
@@ -208,7 +219,8 @@ follows the Workshop's model until you pick one.
   Under that, a selection reads the whole chapter for context and flags only
   the selection.
 
-In-chapter continuity follows (Slice 3c).
+Continuity across chapters, which needs a story bible, is not in this
+slice.
 
 ---
 

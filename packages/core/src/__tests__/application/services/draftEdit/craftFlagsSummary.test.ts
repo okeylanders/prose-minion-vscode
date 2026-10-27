@@ -6,7 +6,7 @@ import { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application
 import type { CraftFlagsOutcome } from '@/domain/models/CraftFlag';
 
 const ESTIMATE = { model: 'anthropic/claude-sonnet-5', calls: 1, inputTokens: 9000, outputTokens: 1500 };
-const NONE = { unanchored: 0, protected: 0, dialogue: 0, overlapping: 0, stale: 0, malformed: 0 };
+const NONE = { unanchored: 0, protected: 0, dialogue: 0, acrossBreak: 0, overlapping: 0, stale: 0, malformed: 0 };
 const completed = (extra: Partial<Extract<CraftFlagsOutcome, { kind: 'completed' }>> = {}): CraftFlagsOutcome => ({
   kind: 'completed',
   flagged: 4,
@@ -49,6 +49,11 @@ describe('describeCraftFlagsOutcome', () => {
       message: 'Craft Flags chapter-03.md: 4 flags · 1 left alone in dialogue · 2 not placed · 1 note not shown as written · $0.0610',
       hasFlags: true
     });
+  });
+
+  it('says how many continuity pairs it left alone across a scene break, apart from those not placed (Slice 3c part 4)', () => {
+    expect(describeCraftFlagsOutcome(completed({ dropped: { ...NONE, acrossBreak: 2, unanchored: 1 } }), 'chapter-03.md').message)
+      .toBe('Craft Flags chapter-03.md: 4 flags · 2 left alone across a scene break · 1 not placed');
   });
 
   it('says when nothing was flagged, in the selection when it was one, and keeps earlier flags in view', () => {

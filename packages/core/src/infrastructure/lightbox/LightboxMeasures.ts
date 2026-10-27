@@ -64,7 +64,7 @@ import {
   measureLightboxNumbers,
   type LightboxWriterAverages
 } from '@/infrastructure/lightbox/LightboxNumbers';
-import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
+import { detectChapterSections } from '@/utils/chapterSections';
 import { measureLightboxSteering } from '@/infrastructure/lightbox/LightboxSteeringMeasure';
 import {
   LIGHTBOX_STYLE_FLAG_IDS,
@@ -290,7 +290,7 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       averageWordsPerSentence: inputs.stats.averageWordsPerSentence,
       writer: inputs.writer ?? { summary: { kind: 'absent', note: LIGHTBOX_BASELINE_NOTES.notMeasured } }
     }),
-    sections: detectLightboxSections(inputs.paragraphs.map((paragraph) => paragraph.text)),
+    sections: detectChapterSections(inputs.paragraphs.map((paragraph) => paragraph.text)),
     steering: measureLightboxSteering({ text: inputs.text, paragraphs: inputs.paragraphs.map((paragraph) => paragraph.text) })
   };
 }

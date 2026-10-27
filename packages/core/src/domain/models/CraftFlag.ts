@@ -13,8 +13,8 @@ import type { TokenUsage } from '@messages';
 import type { DraftEditAnchor, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
 
-/** Cliché (part 1), register shift (part 2) and gesture strain (part 3). Continuity joins in a later part. */
-export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register', 'gesture'] as const;
+/** Cliché (part 1), register shift (part 2), gesture strain (part 3) and continuity (part 4). */
+export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register', 'gesture', 'continuity'] as const;
 
 export type CraftFlagCategory = typeof CRAFT_FLAG_CATEGORIES[number];
 
@@ -65,17 +65,38 @@ export const GESTURE_STRAIN_DEFINITIONS: Readonly<Record<GestureStrainKind, stri
 };
 
 /**
+ * Continuity's kinds (Slice 3c part 4): what two places in the chapter
+ * disagree about. No other surface names them.
+ */
+export const CONTINUITY_KINDS = ['body', 'object', 'place', 'time', 'people'] as const;
+
+export type ContinuityKind = typeof CONTINUITY_KINDS[number];
+
+/** What each kind is, in the words the continuity prompt uses. */
+export const CONTINUITY_DEFINITIONS: Readonly<Record<ContinuityKind, string>> = {
+  body: 'a body that changes with nothing to change it: hair, eyes, height, a scar, an injury on the other side',
+  object: 'a thing that is where it cannot be: a cup in a hand that was empty, a coat taken off twice',
+  place: 'a place or position that changes with no move: seated and then standing with no rise, one room and then another',
+  time: 'the light, the weather or the hour changing with no time passing',
+  people: 'who is present, or who someone is, changing with no cause: a voice after its speaker left, a count or a kinship that changes'
+};
+
+/** Which side of a continuity pair the rest of the chapter keeps, when it keeps one. */
+export type ContinuityHolds = 'earlier' | 'later';
+
+/**
  * The kinds each category's flags carry. A cliché is `cliche` or `weighted`,
  * from the vocabulary the Lightbox shares (`FAMILIAR_PHRASE_KINDS`); an
  * `idiom` or a `stock` phrase is familiar, not a fault, and never flagged. A
- * register shift is one of `REGISTER_SHIFT_KINDS`, and a gesture strain one
- * of `GESTURE_STRAIN_KINDS`.
+ * register shift is one of `REGISTER_SHIFT_KINDS`, a gesture strain one of
+ * `GESTURE_STRAIN_KINDS`, and a continuity pair one of `CONTINUITY_KINDS`.
  */
 export const CRAFT_FLAG_KINDS = {
   cliche: ['cliche', 'weighted'],
   register: REGISTER_SHIFT_KINDS,
-  gesture: GESTURE_STRAIN_KINDS
-} as const satisfies Readonly<Record<CraftFlagCategory, readonly (FamiliarPhraseKind | RegisterShiftKind | GestureStrainKind)[]>>;
+  gesture: GESTURE_STRAIN_KINDS,
+  continuity: CONTINUITY_KINDS
+} as const satisfies Readonly<Record<CraftFlagCategory, readonly (FamiliarPhraseKind | RegisterShiftKind | GestureStrainKind | ContinuityKind)[]>>;
 
 export type CraftFlagKind = typeof CRAFT_FLAG_KINDS[CraftFlagCategory][number];
 
@@ -86,14 +107,17 @@ export function isCraftFlagKind(category: CraftFlagCategory, value: unknown): va
 /**
  * Whether a category leaves speech alone. All do: a character's idiom, their
  * register, and a gesture they describe are their voice (the Lightbox's rule,
- * epic decision 26). A gesture in a dialogue beat is narration, outside the
- * quotation marks, so it is still read. Host code drops a flag where it
- * touches speech, whatever the reply says.
+ * epic decision 26), and a character may misremember or lie, so a narration
+ * fact is never set against a spoken one. A gesture in a dialogue beat is
+ * narration, outside the quotation marks, so it is still read. Host code
+ * drops a flag where it, or a continuity pair's other side, touches speech,
+ * whatever the reply says.
  */
 export const CRAFT_FLAG_LEAVES_SPEECH: Readonly<Record<CraftFlagCategory, boolean>> = {
   cliche: true,
   register: true,
-  gesture: true
+  gesture: true,
+  continuity: true
 };
 
 /** What a Craft Flags run reads: the categories it asks about, each in a call of its own. */
@@ -118,6 +142,10 @@ export interface CraftFlagFinding {
    * the fence withheld the line.
    */
   readonly register?: string;
+  /** A continuity pair's earlier side, quoted as the flag's own is (Slice 3c part 4); the flag's own anchor is the later side. */
+  readonly earlier?: DraftEditAnchor;
+  /** Which side the rest of the chapter keeps, when the reply says it keeps one. */
+  readonly holds?: ContinuityHolds;
 }
 
 /** One flag placed in the document, with host-derived offsets and the host's repeat count. */
@@ -133,6 +161,10 @@ export interface CraftFlagIssue {
   readonly suggestion?: string;
   /** A register shift's ground, as its finding carried it. */
   readonly register?: string;
+  /** A continuity pair's earlier side, placed, with the exact text it held when placed (Slice 3c part 4). */
+  readonly related?: readonly CraftFlagPlace[];
+  /** Which side of a continuity pair the rest of the chapter keeps. */
+  readonly holds?: ContinuityHolds;
   /**
    * How often the phrase stands in the live document's narration, this use
    * included, counted once the run has settled (PR #177 N-01); absent when it
@@ -149,6 +181,13 @@ export interface CraftFlagIssue {
   readonly beats?: readonly CraftFlagBeatCount[];
 }
 
+/** A place a flag is also about, and the exact text at it when it was placed. */
+export interface CraftFlagPlace {
+  readonly start: number;
+  readonly end: number;
+  readonly original: string;
+}
+
 /** One stock beat's count, named as the message names it. */
 export interface CraftFlagBeatCount {
   /** The beat in the plural, as a note names it: "nods", "head shakes". */
@@ -158,12 +197,14 @@ export interface CraftFlagBeatCount {
 
 /** Why flags were not shown, each counted, never guessed. */
 export interface CraftFlagsDropCounts {
-  /** The quote was not found, or was found more than once. */
+  /** The quote was not found, or was found more than once; or a continuity pair's sides overlap or come out of order. */
   readonly unanchored: number;
   /** The quote touched front matter, code, a link target or markup, as sent or as the live text now stands. */
   readonly protected: number;
   /** The quote touched speech, in a category that leaves a character's words alone. */
   readonly dialogue: number;
+  /** A continuity pair's two sides stood in different sections of the chapter, across a scene break or a heading. */
+  readonly acrossBreak: number;
   /** The quote overlapped an earlier flag of its category. */
   readonly overlapping: number;
   /** The writer edited the flagged text while the run was in flight. */

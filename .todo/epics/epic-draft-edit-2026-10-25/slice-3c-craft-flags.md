@@ -3,7 +3,8 @@
 **Epic:** [Draft Edit](README.md)
 **Status:** In progress (2026-10-27): part 1, the pass and cliché, merged
 (PR #177); part 2, register shift, merged (PR #178); part 3, gesture
-strain, built. After Slice 3b, before the
+strain, merged (PR #179); part 4, continuity, built. Every category is
+built; the fixture run remains. After Slice 3b, before the
 Workshop slices, at the writer's request. The pass, its
 name, each category's approach and the six recommendations under "Decide in
 the ADR" are decided (the writer, 2026-10-26; see "Decided").
@@ -106,6 +107,49 @@ gesture strain" decides it.
   - the fixture run's hits and false positives;
   - a gesture that contradicts its line;
   - the Gesture Playground handoff.
+
+## Part 4: as built (2026-10-27)
+
+Continuity, built on `claude/upbeat-galileo-y1l4yf` from `epic/lightbox` at
+`684bad24` (the PR #179 merge). The ADR's "Part 4: continuity" decides it.
+
+- **The pair:** a flag quotes the later place, and `earlier` the earlier
+  one. `why` sets the two facts side by side, and `holds` says which
+  version the rest of the chapter keeps (`earlier`, `later` or `neither`).
+  There is no `suggestion`: it would pick a side.
+- **Kinds:** `body`, `object`, `place`, `time` and `people`
+  (`CONTINUITY_KINDS` and their definitions, in the domain).
+- **Placed by host code, both sides.** A pair is dropped when either side
+  fails to anchor, is protected or touches speech; when its sides overlap
+  or come out of order; or when a section starts anywhere from its earlier
+  side's start to its later side's end, counted as "left alone across a
+  scene break". That last check runs at placement and again in the settled
+  live text, so a break the writer adds during the run counts too (PR #180
+  F-02, F-03).
+- **Scene breaks:** the Lightbox's Sections detector and the blank-line
+  paragraph rule moved to `utils/chapterSections.ts` and
+  `utils/blankLineParagraphs.ts`, with neutral types, unchanged; the
+  Lightbox keeps its paragraph rule id. The lines that open each section
+  are sent with continuity's request (`breaks`). A marker any line of
+  whose syntax starts inside protected text, past its indentation (a
+  heading in a code block, prose over a fenced block's `---`, or over an
+  indented comment), is left out before the signal is chosen, so it never
+  hides a real break (F-01 and its re-reviews); the Lightbox leaves out
+  none.
+  Sections are read only when continuity runs, in work linear in the text
+  (N-02). A guard keeps Draft Edit off the Lightbox's infrastructure.
+- **The port:** `DocumentAnnotation.related`. The earlier side is linked
+  under the flag (`DiagnosticRelatedInformation`), moves with the writer's
+  edits, and an edit touching it drops the flag. This meets the
+  completion criterion above.
+- **The note:** the why, then "The rest of the chapter keeps the earlier
+  version." or "… this version.", and no phrase count.
+- **Prompts:** `craft-flags/40-continuity.md` and `41-continuity-example.md`
+  (*Alice*: pink eyes turned blue, a seated Alice still standing; the
+  Rabbit's spoken waistcoat and a change across `* * *` left alone).
+- **`proseMinion.craftFlags.categories`:** gains `continuity`, on by
+  default.
+- **Not yet:** the fixture run; continuity across chapters (a story bible).
 
 ## Problem
 
@@ -323,7 +367,7 @@ How it works:
    familiar-phrase definitions) and proves the pass end to end.
 3. **Register shift**, with the chapter's register named by its own call. *Built (part 2).*
 4. **Gesture strain**, with the host's stock-beat counts. *Built (part 3).*
-5. **Continuity**, with the port's related information and the shared
+5. **Continuity**, *built (part 4)*, with the port's related information and the shared
    section detector.
 
 It may ship as two or three PRs into `epic/lightbox`.

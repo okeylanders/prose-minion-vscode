@@ -10,6 +10,16 @@
  * flags inside its selection. A register shift keeps its reply's register
  * line, shown in its message.
  *
+ * A continuity pair (Slice 3c part 4) is placed on both sides, each by its
+ * own quote, and dropped when either side is: when either fails to anchor,
+ * touches a protected placeholder or touches speech. It is dropped, too, when
+ * its earlier side does not end before its later side starts (counted as
+ * unanchored), or when a section of the chapter starts anywhere inside it,
+ * from its earlier side's start to its later side's end (`acrossBreak`;
+ * `spansSectionStart`, PR #180 F-03). The flag sits on the later side, which
+ * decides whether it is inside a selection; the earlier side is its related
+ * place.
+ *
  * Speech is read with protected syntax set aside
  * (`findSpeechSpansOutsideProtected`), in the gesture's text before overlaps
  * are weighed, and again in the settled live text before anything is shown
@@ -25,18 +35,25 @@
 
 import type { DocumentAnnotation } from '@/platform';
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { CRAFT_FLAG_LEAVES_SPEECH, type CraftFlagBeatCount, type CraftFlagIssue, type CraftFlagsDropCounts } from '@/domain/models/CraftFlag';
+import {
+  CRAFT_FLAG_LEAVES_SPEECH,
+  type CraftFlagBeatCount,
+  type CraftFlagFinding,
+  type CraftFlagIssue,
+  type CraftFlagsDropCounts
+} from '@/domain/models/CraftFlag';
 import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
 import type { MaskedText } from '@/utils/draftEdit/protectedRegions';
 import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
 import { stockBeatCounts, stockBeatsIn } from '@/utils/craftFlags/stockBeats';
 import type { CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
-import { byPlace } from '@/application/services/draftEdit/draftEditIssues';
+import { byPlace, placesOf } from '@/application/services/draftEdit/draftEditIssues';
+import { spansSectionStart } from '@/application/services/draftEdit/craftFlagsSections';
 
 export type CraftFlagsDrops = { -readonly [K in keyof CraftFlagsDropCounts]: number };
 
 export function noCraftFlagDrops(): CraftFlagsDrops {
-  return { unanchored: 0, protected: 0, dialogue: 0, overlapping: 0, stale: 0, malformed: 0 };
+  return { unanchored: 0, protected: 0, dialogue: 0, acrossBreak: 0, overlapping: 0, stale: 0, malformed: 0 };
 }
 
 /** The passage a run sends: its region of the document, masked. */
@@ -48,17 +65,22 @@ export interface CraftFlagsPrepared {
   readonly reads: 'document' | 'selection';
 }
 
-/**
- * Each finding placed in the gesture's snapshot; `speech` is that text's
- * (`findSpeechSpansOutsideProtected`), and `shown` the region whose flags a
- * run shows.
- */
+/** What placing reads in the gesture's snapshot besides the passage. */
+export interface CraftFlagsPlacementScope {
+  /** The snapshot's speech (`findSpeechSpansOutsideProtected`). */
+  readonly speech: readonly TextRange[];
+  /** The region whose flags a run shows. */
+  readonly shown: TextRange;
+  /** Where each section after the first begins (`chapterSectionStarts`), ascending; none when continuity does not run. */
+  readonly sectionStarts: readonly number[];
+}
+
+/** Each finding placed in the gesture's snapshot. */
 export function placeCraftFlags(
   text: string,
   prepared: CraftFlagsPrepared,
   result: Extract<CraftFlagsRunResult, { kind: 'completed' }>,
-  speech: readonly TextRange[],
-  shown: TextRange,
+  scope: CraftFlagsPlacementScope,
   dropped: CraftFlagsDrops,
   nextId: () => string
 ): { readonly issues: CraftFlagIssue[]; readonly outside: number } {
@@ -70,39 +92,32 @@ export function placeCraftFlags(
     }
     dropped.malformed += call.malformed;
     for (const finding of call.findings) {
-      const anchored = anchorQuote(prepared.masked.text, finding.anchor);
-      if (anchored.kind !== 'anchored') {
-        dropped.unanchored += 1;
+      const later = placeQuote(prepared, finding.anchor);
+      const earlier = finding.earlier ? placeQuote(prepared, finding.earlier) : undefined;
+      const fault = [later, earlier].find((side): side is Unplaced => typeof side === 'string');
+      if (fault) {
+        dropped[fault] += 1;
         continue;
       }
-      const sourceStart = prepared.masked.toSource(anchored.start);
-      const sourceEnd = prepared.masked.toSource(anchored.end);
-      if (prepared.masked.touchesPlaceholder(anchored) || sourceStart === undefined || sourceEnd === undefined) {
-        dropped.protected += 1;
-        continue;
-      }
-      const start = prepared.region.start + sourceStart;
-      const end = prepared.region.start + sourceEnd;
-      if (CRAFT_FLAG_LEAVES_SPEECH[finding.category] && touchesAny(speech, start, end)) {
+      const flagged = later as TextRange;
+      const pair = earlier as TextRange | undefined;
+      if (CRAFT_FLAG_LEAVES_SPEECH[finding.category] && [flagged, pair].some((side) => side && touchesAny(scope.speech, side.start, side.end))) {
         dropped.dialogue += 1;
         continue;
       }
-      if (start < shown.start || end > shown.end) {
+      if (pair && pair.end > flagged.start) {
+        dropped.unanchored += 1;
+        continue;
+      }
+      if (pair && spansSectionStart(scope.sectionStarts, { start: pair.start, end: flagged.end })) {
+        dropped.acrossBreak += 1;
+        continue;
+      }
+      if (flagged.start < scope.shown.start || flagged.end > scope.shown.end) {
         outside += 1;
         continue;
       }
-      const original = text.slice(start, end);
-      placed.push({
-        id: nextId(),
-        category: finding.category,
-        kind: finding.kind,
-        start,
-        end,
-        original,
-        why: finding.why,
-        ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {}),
-        ...(finding.register !== undefined ? { register: finding.register } : {})
-      });
+      placed.push(issueOf(finding, text, flagged, pair, nextId()));
     }
   }
 
@@ -118,9 +133,42 @@ export function placeCraftFlags(
   return { issues: kept, outside };
 }
 
-/** Flags kept only where a category that leaves speech alone touches none of `speech`; the rest counted as dialogue. */
+type Unplaced = 'unanchored' | 'protected';
+
+/** A quote placed in the document, through the masked passage it was found in. */
+function placeQuote(prepared: CraftFlagsPrepared, anchor: CraftFlagFinding['anchor']): TextRange | Unplaced {
+  const anchored = anchorQuote(prepared.masked.text, anchor);
+  if (anchored.kind !== 'anchored') {
+    return 'unanchored';
+  }
+  const sourceStart = prepared.masked.toSource(anchored.start);
+  const sourceEnd = prepared.masked.toSource(anchored.end);
+  if (prepared.masked.touchesPlaceholder(anchored) || sourceStart === undefined || sourceEnd === undefined) {
+    return 'protected';
+  }
+  return { start: prepared.region.start + sourceStart, end: prepared.region.start + sourceEnd };
+}
+
+function issueOf(finding: CraftFlagFinding, text: string, flagged: TextRange, pair: TextRange | undefined, id: string): CraftFlagIssue {
+  return {
+    id,
+    category: finding.category,
+    kind: finding.kind,
+    start: flagged.start,
+    end: flagged.end,
+    original: text.slice(flagged.start, flagged.end),
+    why: finding.why,
+    ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {}),
+    ...(finding.register !== undefined ? { register: finding.register } : {}),
+    ...(pair ? { related: [{ start: pair.start, end: pair.end, original: text.slice(pair.start, pair.end) }] } : {}),
+    ...(finding.holds !== undefined ? { holds: finding.holds } : {})
+  };
+}
+
+/** Flags kept only where a category that leaves speech alone touches none of `speech`, on any side; the rest counted as dialogue. */
 export function outsideSpeech(issues: readonly CraftFlagIssue[], speech: readonly TextRange[], dropped: CraftFlagsDrops): CraftFlagIssue[] {
-  const kept = issues.filter((issue) => !(CRAFT_FLAG_LEAVES_SPEECH[issue.category] && touchesAny(speech, issue.start, issue.end)));
+  const kept = issues.filter((issue) =>
+    !(CRAFT_FLAG_LEAVES_SPEECH[issue.category] && placesOf(issue).some((place) => touchesAny(speech, place.start, place.end))));
   dropped.dialogue += issues.length - kept.length;
   return kept;
 }
@@ -137,6 +185,10 @@ export function withRepeats(issues: readonly CraftFlagIssue[], text: string, ski
   const repeats = phraseRepeats(text, skipped);
   const beatCounts = stockBeatCounts(text, skipped);
   return issues.map((issue) => {
+    if (issue.category === 'continuity') {
+      // A phrase counted across the chapter says nothing about a contradiction.
+      return issue;
+    }
     const named = issue.category === 'gesture' ? stockBeatsIn(issue.original) : [];
     if (named.length > 0) {
       return { ...issue, beats: named.map((beat) => ({ beat: beat.plural, count: Math.max(1, beatCounts.count(beat)) })) };
@@ -153,20 +205,30 @@ export function craftFlagAnnotation(issue: CraftFlagIssue): DocumentAnnotation {
     end: issue.end,
     severity: 'info',
     code: `craft.${issue.category}`,
-    message: craftFlagMessage(issue)
+    message: craftFlagMessage(issue),
+    ...(issue.related ? { related: issue.related.map((place) => ({ start: place.start, end: place.end, message: pairLine(place.original) })) } : {})
   };
+}
+
+/** A continuity pair's other side, in host words: "The other side of this pair: “…”". */
+function pairLine(original: string): string {
+  const text = original.replace(/\s+/gu, ' ').trim();
+  return `The other side of this pair: “${text.length > 60 ? `${text.slice(0, 59)}…` : text}”`;
 }
 
 /**
  * The why, then "One way it could go: …", then a register shift's ground
- * ("The chapter's narration: …"), then the host's count when the phrase
- * recurs, or each named stock beat's that recurs.
+ * ("The chapter's narration: …"), then which side of a continuity pair the
+ * rest of the chapter keeps, then the host's count when the phrase recurs,
+ * or each named stock beat's that recurs.
  */
-export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'register' | 'repeats' | 'beats'>): string {
+export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'register' | 'holds' | 'repeats' | 'beats'>): string {
   return [
     withStop(issue.why),
     issue.suggestion !== undefined ? `One way it could go: ${withStop(issue.suggestion)}` : '',
     issue.register !== undefined ? `The chapter's narration: ${withStop(issue.register)}` : '',
+    issue.holds === 'earlier' ? 'The rest of the chapter keeps the earlier version.' : '',
+    issue.holds === 'later' ? 'The rest of the chapter keeps this version.' : '',
     issue.repeats !== undefined && issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : '',
     beatLine(issue.beats ?? [])
   ].filter(Boolean).join(' ');

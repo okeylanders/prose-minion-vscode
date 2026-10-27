@@ -3,8 +3,8 @@
  * 3c): the shared frame, and the codec's rule (forgiving per reply,
  * fail-closed per flag), with every note held to the phrasing fence, a
  * register reply's line naming the register its flags shift from (part 2),
- * and gesture strain's own kinds (part 3). Replies are about public-domain
- * *Alice*.
+ * gesture strain's own kinds (part 3), and continuity's pairs (part 4).
+ * Replies are about public-domain *Alice*.
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -222,5 +222,70 @@ describe('decodeCraftFlagsReply: a gesture strain reply (Slice 3c part 3)', () =
     expect(reply.ignoredFields).toBe(1);
     expect(reply.findings[0]).not.toHaveProperty('register');
     expect(readGesture([NOD]).findings).toHaveLength(1);
+  });
+});
+
+describe('decodeCraftFlagsReply: a continuity reply (Slice 3c part 4)', () => {
+  const EYES = {
+    original: 'blue eyes',
+    before: 'and saw its',
+    after: 'blink at the time.',
+    kind: 'body',
+    why: 'The eyes are pink as it runs by and blue when it checks its watch.',
+    earlier: { original: 'pink eyes', before: 'a fine blue waistcoat, and its', after: 'were bright with hurry.' },
+    holds: 'earlier'
+  };
+  const readPair = (flags: unknown[]) => decodeCraftFlagsReply(readCraftFlagsFrame(frameOf({ version: 1, flags })).root, 'continuity');
+
+  it('reads the later side as the flag\'s own quote, the earlier as its pair, and which side the chapter keeps', () => {
+    const [finding] = readPair([EYES]).findings;
+    expect(finding).toEqual({
+      anchor: { quote: 'blue eyes', before: 'and saw its', after: 'blink at the time.' },
+      category: 'continuity',
+      kind: 'body',
+      why: EYES.why,
+      earlier: { quote: 'pink eyes', before: 'a fine blue waistcoat, and its', after: 'were bright with hurry.' },
+      holds: 'earlier'
+    });
+  });
+
+  it('reads neither, null or no holds as no side kept', () => {
+    for (const holds of ['neither', null, undefined]) {
+      const [finding] = readPair([{ ...EYES, holds }]).findings;
+      expect(finding).not.toHaveProperty('holds');
+    }
+    expect(readPair([{ ...EYES, holds: 'later' }]).findings[0].holds).toBe('later');
+  });
+
+  it('drops as malformed a pair with no earlier side, an earlier side with no quote or too long a one, or a holds outside its values', () => {
+    const long = 'x'.repeat(PROMPT_BUDGETS.craftFlags.quoteCharacters + 1);
+    const reply = readPair([
+      { ...EYES, earlier: undefined },
+      { ...EYES, earlier: 'pink eyes' },
+      { ...EYES, earlier: { before: 'its' } },
+      { ...EYES, earlier: { original: long } },
+      { ...EYES, holds: 'both' },
+      { ...EYES, kind: 'thin' }
+    ]);
+    expect(reply).toMatchObject({ findings: [], malformed: 6 });
+  });
+
+  it('drops as malformed a holds that names what every object inherits, never reading it as a value (PR #180 N-01)', () => {
+    const inherited = ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'isPrototypeOf', 'valueOf'];
+    const reply = readPair(inherited.map((holds) => ({ ...EYES, holds })));
+    expect(reply).toMatchObject({ findings: [], malformed: inherited.length });
+  });
+
+  it('ignores and counts a suggestion, which would pick a side, and a field the earlier side does not define', () => {
+    const reply = readPair([{ ...EYES, suggestion: 'the eyes stay pink', earlier: { ...EYES.earlier, note: 'x' } }]);
+    expect(reply.ignoredFields).toBe(2);
+    expect(reply.findings[0]).not.toHaveProperty('suggestion');
+  });
+
+  it('never reads an earlier side on another category\'s flag', () => {
+    const reply = decodeCraftFlagsReply(readCraftFlagsFrame(frameOf({ version: 1, flags: [{ ...EYES, kind: 'cliche' }] })).root, 'cliche');
+    expect(reply.ignoredFields).toBe(2);
+    expect(reply.findings[0]).not.toHaveProperty('earlier');
+    expect(reply.findings[0]).not.toHaveProperty('holds');
   });
 });

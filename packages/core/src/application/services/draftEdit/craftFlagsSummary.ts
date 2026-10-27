@@ -63,6 +63,7 @@ export function describeCraftFlagsOutcome(outcome: CraftFlagsOutcome, documentLa
         `Craft Flags ${documentLabel}: ${lead}`,
         kept > 0 ? `${plural(kept, 'earlier flag')} outside the selection kept` : '',
         dropped.dialogue > 0 ? `${dropped.dialogue} left alone in dialogue` : '',
+        dropped.acrossBreak > 0 ? `${dropped.acrossBreak} left alone across a scene break` : '',
         unplaced > 0 ? `${unplaced} not placed` : '',
         outcome.notesWithheld > 0 ? `${plural(outcome.notesWithheld, 'note')} not shown as written` : '',
         rejectedPart(outcome.rejectedCalls),

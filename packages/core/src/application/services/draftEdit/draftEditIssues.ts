@@ -23,12 +23,22 @@ export interface PlacedText {
   readonly end: number;
   /** The exact text at `start..end` when the issue was placed. */
   readonly original: string;
+  /** Other places the issue is about (a continuity pair's earlier side, Slice 3c part 4), each held to its own text. */
+  readonly related?: readonly PlacedRange[];
+}
+
+/** A placed range and the exact text at it when it was placed. */
+export interface PlacedRange {
+  readonly start: number;
+  readonly end: number;
+  readonly original: string;
 }
 
 /**
  * Issues moved through a document's change events, in order. An issue a
  * change touched, or whose text is no longer its original, is left out: it
  * follows its own occurrence, and is never searched for again (PR #171 F-03).
+ * Its related ranges are held to the same rule.
  */
 export function moveIssues<T extends PlacedText>(
   issues: readonly T[],
@@ -37,10 +47,10 @@ export function moveIssues<T extends PlacedText>(
 ): T[] {
   return events
     .reduce<T[]>((current, changes) => shiftRanges(current, changes), [...issues])
-    .filter((issue) => liveText.slice(issue.start, issue.end) === issue.original);
+    .filter((issue) => placesOf(issue).every((place) => liveText.slice(place.start, place.end) === place.original));
 }
 
-/** Issues outside the live text's protected regions (found here unless the caller already has them); the rest are counted as protected. */
+/** Issues outside the live text's protected regions (found here unless the caller already has them), on every side; the rest are counted as protected. */
 export function outsideProtected<T extends PlacedText>(
   issues: readonly T[],
   liveText: string,
@@ -48,9 +58,15 @@ export function outsideProtected<T extends PlacedText>(
   dropped: { protected: number },
   regions: readonly TextRange[] = findProtectedRegions(liveText, languageId)
 ): T[] {
-  const kept = issues.filter((issue) => !regions.some((range) => range.start < issue.end && issue.start < range.end));
+  const kept = issues.filter((issue) =>
+    !placesOf(issue).some((place) => regions.some((range) => range.start < place.end && place.start < range.end)));
   dropped.protected += issues.length - kept.length;
   return kept;
+}
+
+/** An issue's own place, then its related ones. */
+export function placesOf(issue: PlacedText): readonly PlacedRange[] {
+  return issue.related ? [issue, ...issue.related] : [issue];
 }
 
 export function byPlace(a: PlacedText, b: PlacedText): number {

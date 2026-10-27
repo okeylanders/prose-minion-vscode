@@ -68,7 +68,7 @@ Model IDs are curated and verified against the live OpenRouter API. See the Mode
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `proseMinion.craftFlags.categories` | array of `cliche` \| `register` \| `gesture` | `["cliche", "register", "gesture"]` | Which line notes **Craft Flags** looks for: clichés, shifts of register in narration, and gesture strain. Each one is a request of its own, priced in the confirmation before anything is sent. With none on, Craft Flags does not run. |
+| `proseMinion.craftFlags.categories` | array of `cliche` \| `register` \| `gesture` \| `continuity` | `["cliche", "register", "gesture", "continuity"]` | Which line notes **Craft Flags** looks for: clichés, shifts of register in narration, gesture strain, and continuity within a chapter. Each one is a request of its own, priced in the confirmation before anything is sent. With none on, Craft Flags does not run. |
 
 ---
 

@@ -12,6 +12,11 @@
  *   document change runs through core's `shiftRanges`: a flag after the edit
  *   moves with its text; a flag the edit touches is dropped, because its text
  *   is no longer what was flagged.
+ * - **Related places** (Slice 3c part 4). A flag's `related` ranges (a
+ *   continuity pair's earlier side) are its `relatedInformation`, which the
+ *   Problems panel and the hover list under it, each a link to its place.
+ *   They move with the flag through `shiftRanges`, and an edit touching one
+ *   drops the flag.
  * - **Session-only.** A document's flags clear when it closes, on Clear, or
  *   when the next run replaces them; nothing is restored after a reload.
  * - **Code actions.** A flag with a replacement offers *Replace with '…'*,
@@ -194,6 +199,12 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
       );
       diagnostic.source = this.family.source;
       diagnostic.code = annotation.code;
+      if (annotation.related && annotation.related.length > 0) {
+        diagnostic.relatedInformation = annotation.related.map((place) => new vscode.DiagnosticRelatedInformation(
+          new vscode.Location(document.uri, new vscode.Range(document.positionAt(place.start), document.positionAt(place.end))),
+          place.message
+        ));
+      }
       return diagnostic;
     }));
   }

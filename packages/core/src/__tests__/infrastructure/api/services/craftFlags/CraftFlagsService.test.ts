@@ -126,6 +126,17 @@ describe('CraftFlagsService.flag', () => {
     expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'read', findings: [{ category: 'gesture', kind: 'redundant' }] }] });
   });
 
+  it('sends continuity\'s request the passage\'s breaks, before the passage, and no other category\'s (Slice 3c part 4)', async () => {
+    const { service, runInitial } = createService([{ content: replyOf(CHILL) }, { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags: [] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }]);
+    await service.flag({ ...request, categories: ['cliche', 'continuity'], breaks: ['* * *'] });
+
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string }])[0].userMessage);
+    expect(sent).toEqual([buildCraftFlagsMessage('cliche', PASSAGE, ['* * *']), buildCraftFlagsMessage('continuity', PASSAGE, ['* * *'])]);
+    expect(sent[0]).not.toContain('breaks');
+    expect(JSON.parse(sent[1].slice(sent[1].indexOf('{')))).toEqual({ task: 'craft-flags', category: 'continuity', breaks: ['* * *'], passage: PASSAGE });
+    expect(Object.keys(JSON.parse(sent[1].slice(sent[1].indexOf('{'))))).toEqual(['task', 'category', 'breaks', 'passage']);
+  });
+
   it('rejects a register reply with flags and no register line, and saves it for recovery', async () => {
     const SHIFT = { original: 'actually', kind: 'slang', why: 'A casual word in a formal narration.' };
     const { service, recovery, log } = createService([{ content: replyOf(SHIFT) }]);

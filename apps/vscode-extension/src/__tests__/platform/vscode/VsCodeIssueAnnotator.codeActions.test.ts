@@ -1,7 +1,8 @@
 /**
  * `VsCodeIssueAnnotator`'s quick fixes and `current` (Draft Edit Slice 2;
- * ADR 2026-10-21 D3, D7). Every action is a command back into core, never a
- * raw edit. VS Code is a controlled double; text is synthetic, around *Alice*.
+ * ADR 2026-10-21 D3, D7), and a flag's related places (Slice 3c part 4).
+ * Every action is a command back into core, never a raw edit. VS Code is a
+ * controlled double; text is synthetic, around *Alice*.
  */
 
 /* eslint-disable @typescript-eslint/naming-convention -- the double mirrors VS Code's own API names, and the mocked barrel's exports. */
@@ -28,7 +29,14 @@ jest.mock('vscode', () => {
   class Diagnostic {
     source?: string;
     code?: unknown;
+    relatedInformation?: unknown[];
     constructor(readonly range: Range, readonly message: string, readonly severity: number) {}
+  }
+  class Location {
+    constructor(readonly uri: unknown, readonly range: Range) {}
+  }
+  class DiagnosticRelatedInformation {
+    constructor(readonly location: Location, readonly message: string) {}
   }
   class CodeAction {
     diagnostics?: unknown[];
@@ -54,6 +62,8 @@ jest.mock('vscode', () => {
     Uri: { parse: (value: string) => ({ toString: () => value }) },
     Range,
     Diagnostic,
+    Location,
+    DiagnosticRelatedInformation,
     CodeAction,
     DiagnosticSeverity: { Warning: 1, Information: 2 },
     CodeActionKind: { QuickFix: 'quickfix' },
@@ -79,6 +89,7 @@ interface Diagnostic {
   range: { start: { offset: number }; end: { offset: number } };
   source?: string;
   code?: unknown;
+  relatedInformation?: Array<{ location: { range: { start: { offset: number }; end: { offset: number } } }; message: string }>;
 }
 interface Action {
   title: string;
@@ -248,5 +259,61 @@ describe('VsCodeIssueAnnotator: the Craft Flags family', () => {
     expect(craftDiagnostics()).toEqual([]);
     expect(proofread.current(URI)?.annotations.map((each) => each.id)).toEqual(['proofread-1']);
     expect(host.diagnostics.get(URI)).toHaveLength(1);
+  });
+});
+
+/**
+ * A flag's related places (Draft Edit Slice 3c part 4): a continuity pair's
+ * earlier side, shown under the flag, moved with the writer's edits, and the
+ * flag withdrawn when an edit touches it.
+ */
+describe('VsCodeIssueAnnotator: related places', () => {
+  let craft: VsCodeIssueAnnotator;
+  const shown = () => host.collections.get(CRAFT_FLAGS.collection)?.get(URI) ?? [];
+  const pair = (): DocumentAnnotation => {
+    const later = annotation('craft-1', 'her sister is reading', undefined, 'craft.continuity');
+    const start = TEXT.indexOf('Alice');
+    return { ...later, related: [{ start, end: start + 'Alice'.length, message: 'The other side of this pair: “Alice”' }] };
+  };
+
+  beforeEach(() => {
+    document.version = 3;
+    workspace.textDocuments = [document];
+    host.collections.forEach((collection) => collection.clear());
+    craft = new VsCodeIssueAnnotator({ dismiss: 'dismissCraft', clear: 'clearCraft' }, CRAFT_FLAGS);
+  });
+
+  afterEach(() => craft.dispose());
+
+  it('shows each related place as related information, a link to its range with its line', () => {
+    craft.show(URI, 3, [pair()]);
+
+    expect(shown()[0].relatedInformation?.map((each) => [each.location.range.start.offset, each.location.range.end.offset, each.message]))
+      .toEqual([[0, 5, 'The other side of this pair: “Alice”']]);
+  });
+
+  it('moves a related place with the writer\'s edits, as it moves the flag', () => {
+    craft.show(URI, 3, [pair()]);
+    document.version = 4;
+    host.changes.fire({ document, contentChanges: [{ rangeOffset: 0, rangeLength: 0, text: 'Poor ' }] });
+
+    const [moved] = craft.current(URI)?.annotations ?? [];
+    expect(moved.related).toEqual([{ start: 5, end: 10, message: 'The other side of this pair: “Alice”' }]);
+    expect(shown()[0].relatedInformation?.[0].location.range.start.offset).toBe(5);
+  });
+
+  it('withdraws the flag when an edit touches its related place, though its own text is untouched', () => {
+    craft.show(URI, 3, [pair()]);
+    document.version = 4;
+    host.changes.fire({ document, contentChanges: [{ rangeOffset: 1, rangeLength: 3, text: 'ic' }] });
+
+    expect(craft.current(URI)?.annotations).toEqual([]);
+    expect(shown()).toEqual([]);
+  });
+
+  it('gives a flag with no related places no related information', () => {
+    craft.show(URI, 3, [annotation('craft-2', 'vrey', undefined, 'craft.cliche')]);
+
+    expect(shown()[0].relatedInformation).toBeUndefined();
   });
 });

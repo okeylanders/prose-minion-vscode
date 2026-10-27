@@ -1083,7 +1083,6 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxPlotTiles.ts',
   'infrastructure/lightbox/LightboxPlotCarry.ts',
   'infrastructure/lightbox/LightboxPlotHandoff.ts',
-  'infrastructure/lightbox/LightboxSections.ts',
   // Slice 4D: group F, the Opinion.
   'infrastructure/lightbox/LightboxOpinionWire.ts',
   'infrastructure/lightbox/LightboxOpinionCodec.ts',
@@ -1530,6 +1529,18 @@ describe('architectural boundaries', () => {
       'utils/craftFlags/craftFlagPhrasing.ts'
     ]));
     expect(craftModules.filter((file) => writes.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
+  });
+
+  it('keeps Draft Edit off the Lightbox\'s infrastructure: what both read lives in a shared home (ADR 2026-10-21, Slice 3c part 4)', () => {
+    const lightbox = /from\s+['"]@\/infrastructure\/lightbox\//;
+    const draftEdit = collectSourceFiles(SRC_ROOT)
+      .map((file) => path.relative(SRC_ROOT, file).split(path.sep).join('/'))
+      .filter((file) => !file.startsWith('__tests__/'))
+      .filter((file) => /^(?:application\/services\/draftEdit|infrastructure\/api\/services\/(?:draftEdit|craftFlags|proofread)|utils\/(?:draftEdit|craftFlags|proofread))\//.test(file)
+        || ['utils/chapterSections.ts', 'utils/blankLineParagraphs.ts', 'shared/types/chapterSections.ts'].includes(file));
+
+    expect(draftEdit).toEqual(expect.arrayContaining(['application/services/draftEdit/CraftFlagsUseCase.ts', 'utils/chapterSections.ts']));
+    expect(draftEdit.filter((file) => lightbox.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))).toEqual([]);
   });
 
   it('application handlers do not construct infrastructure services', () => {

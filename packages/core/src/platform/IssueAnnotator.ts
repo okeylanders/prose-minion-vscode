@@ -31,6 +31,20 @@ export interface DocumentAnnotation {
    * call's suggestion.
    */
   readonly fix?: { readonly replacement: string; readonly preferred: boolean };
+  /**
+   * Other places in the same document the flag is about, at the same
+   * `version` (Craft Flags' continuity, Slice 3c part 4: the earlier side of
+   * a pair). They move with the writer's edits as the flag does, and an edit
+   * touching any of them withdraws the flag: it no longer says what it said.
+   */
+  readonly related?: readonly DocumentAnnotationRelated[];
+}
+
+/** A place a flag points to, with a host-written line saying what is there. */
+export interface DocumentAnnotationRelated {
+  readonly start: number;
+  readonly end: number;
+  readonly message: string;
 }
 
 /** A document's shown annotations, where they sit now, at its current version. */
