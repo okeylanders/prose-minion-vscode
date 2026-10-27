@@ -1,5 +1,7 @@
 # PR Review — Draft Edit reasoning levels
 
+**Latest disposition — re-review of correction `a89ea725` (author-response head `9b6befc0`): No remaining blocking findings. F-01 resolved. Full Node 18 verification passes; native/live acceptance remains separate.**
+
 **Disposition: Changes requested — one P2 model-compatibility finding.**
 
 **Author:** okeylanders · **PR:** [#181](https://github.com/okeylanders/prose-minion-vscode/pull/181) · **Reviewer:** Astra · **Reviewed:** 2026-10-27
@@ -163,3 +165,37 @@ Node 18.20.8 / npm 10.8.2 on `a89ea725`:
 - `git diff --check` passes.
 
 All four ran on `a89ea725` before it was pushed. No module crosses 500 lines because of this change. No provider calls were made.
+
+## Independent re-review — 2026-10-27 16:55 UTC
+
+Reviewed correction `a89ea725` and author-response head `9b6befc0f532f33797ae1064a9140375ee8b56cc` (tree `3f9c9679912ab2fde531aee5d529da5d8e6a3982`). The original report, verification appendix and author response above are preserved.
+
+### F-01 resolved
+
+The author chose explicit refusal rather than silently selecting another effort. Both passes now consult the injected reasoning-catalog port at `off`; a live boolean `mandatory: true` produces `reasoning-required` before inference, with the model and the correct pair of settings in the warning. No replacement model/level, retry, annotation or text write occurs on this path.
+
+Proofread captures its run model before catalog/prompt awaits and pins every chunk to it. Craft Flags checks the priced model before confirmation and the approved model before dispatch, retaining the final document-lifetime check before its calls start. Refused plans release the gesture; use-case cleanup remains intact. The shared adapter is constructed at the extension composition root; core remains host-agnostic.
+
+Unknown, missing, malformed or offline capability metadata is explicitly distinct from a mandatory model: the request remains `off`, its uncertainty is logged, and the provider remains authoritative. This is the documented fallback, not evidence that an unknown model accepts disabling reasoning. No paid fallback/retry is introduced.
+
+### Independent verification on the corrected head
+
+| Check | Result |
+| --- | --- |
+| Full typed Jest, Node 18.20.8 | **586 suites / 8,294 tests / 59 snapshots passed**, 602.086 s |
+| Typecheck | Core, webview and adapter passed |
+| Lint | 0 errors / 1,133 existing warnings |
+| Production build + `verify:bundle` | Passed; three existing webpack size/performance warnings |
+| Diff hygiene | `git diff --check` passed; no tracked implementation/test changes from review |
+| Exact-head push CI | [40543304467: success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40543304467), every verify step passed |
+| Exact-head PR CI | [40543315376: success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40543315376), every verify step passed |
+
+Additional scratch controls, outside repository test counts:
+
+- **34 production service → engine → client scenarios** now use the real `liveCatalogReasoning`/catalog reader behind controlled transport. Both cited mandatory-model fixtures at `off` produce the refusal with **zero inference requests**; their `light` controls still complete. All-level headroom/pricing, no-level scope isolation, fragmented terminal-usage telemetry and strict ceiling rejection continue to pass.
+- Proofread keeps the checked model across **10 real `p-limit`-queued chunks** despite a transport-model change after the first three dispatch. A separate held-catalog case preserves the checked model after a change; cancelling during that read dispatches zero chunks.
+- **39 four-category service/use-case scenarios** pass: all 24 completion orders, approved-model identity, isolated failures/rejections, cancellation, and a document lifetime ending during held prompt preparation.
+
+The isolated worktree uses the same verified dependency lockfile and Node/npm versions as the initial review. Scratch evidence is in `../pr181-rereview-evidence/`. No live inference or native VS Code acceptance was performed. These checks establish host-side request/refusal behavior, not model adherence, editorial quality or actual spend.
+
+**Disposition: no remaining blocking findings.** The exact report-only commit created by this appendix will be verified remotely and its CI followed separately. Merging/releasing remains outside the reviewer's authorization; the writer's native/live acceptance remains separate.
