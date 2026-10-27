@@ -5,8 +5,8 @@
  * Each finding is anchored by its quote in the passage its call read, and
  * mapped back to the document. It is dropped, and counted, when it does not
  * anchor once, touches a protected placeholder, touches speech in a category
- * that leaves speech alone (cliché and register shift both do), or overlaps
- * an earlier flag of its category. A selection run that read the whole
+ * that leaves speech alone (every category does), or overlaps an earlier flag
+ * of its category. A selection run that read the whole
  * chapter keeps only the flags inside its selection. A register shift keeps
  * its reply's register line, shown in its message.
  *
@@ -16,7 +16,8 @@
  * (`outsideSpeech`), so words the writer put in quotation marks during the
  * run are left alone too (PR #177 F-03). Each shown flag's phrase is counted
  * last, in the live text (`withRepeats`, N-01), and only when there is a flag
- * to count for (N-02).
+ * to count for (N-02). A gesture flag that names a stock beat counts the
+ * beat instead, every form together (Slice 3c part 3).
  *
  * A flag becomes an annotation with no quick fix: Craft Flags never offers
  * an edit.
@@ -24,10 +25,11 @@
 
 import type { DocumentAnnotation } from '@/platform';
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { CRAFT_FLAG_LEAVES_SPEECH, type CraftFlagIssue, type CraftFlagsDropCounts } from '@/domain/models/CraftFlag';
+import { CRAFT_FLAG_LEAVES_SPEECH, type CraftFlagBeatCount, type CraftFlagIssue, type CraftFlagsDropCounts } from '@/domain/models/CraftFlag';
 import { anchorQuote } from '@/utils/draftEdit/anchorEdits';
 import type { MaskedText } from '@/utils/draftEdit/protectedRegions';
 import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
+import { stockBeatCounts, stockBeatsIn } from '@/utils/craftFlags/stockBeats';
 import type { CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { byPlace } from '@/application/services/draftEdit/draftEditIssues';
 
@@ -123,13 +125,22 @@ export function outsideSpeech(issues: readonly CraftFlagIssue[], speech: readonl
   return kept;
 }
 
-/** Each flag with its phrase counted in `text`, `skipped` (speech, protected regions) left out; nothing is built for no flags. */
+/**
+ * Each flag with its phrase counted in `text`, `skipped` (speech, protected
+ * regions) left out, or, for a gesture flag that names stock beats, each
+ * beat counted; nothing is built for no flags.
+ */
 export function withRepeats(issues: readonly CraftFlagIssue[], text: string, skipped: readonly TextRange[]): CraftFlagIssue[] {
   if (issues.length === 0) {
     return [];
   }
   const repeats = phraseRepeats(text, skipped);
+  const beatCounts = stockBeatCounts(text, skipped);
   return issues.map((issue) => {
+    const named = issue.category === 'gesture' ? stockBeatsIn(issue.original) : [];
+    if (named.length > 0) {
+      return { ...issue, beats: named.map((beat) => ({ beat: beat.plural, count: Math.max(1, beatCounts.count(beat)) })) };
+    }
     const count = repeats.count(issue.original);
     return count === undefined ? issue : { ...issue, repeats: Math.max(1, count) };
   });
@@ -149,15 +160,30 @@ export function craftFlagAnnotation(issue: CraftFlagIssue): DocumentAnnotation {
 /**
  * The why, then "One way it could go: …", then a register shift's ground
  * ("The chapter's narration: …"), then the host's count when the phrase
- * recurs.
+ * recurs, or each named stock beat's that recurs.
  */
-export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'register' | 'repeats'>): string {
+export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'register' | 'repeats' | 'beats'>): string {
   return [
     withStop(issue.why),
     issue.suggestion !== undefined ? `One way it could go: ${withStop(issue.suggestion)}` : '',
     issue.register !== undefined ? `The chapter's narration: ${withStop(issue.register)}` : '',
-    issue.repeats !== undefined && issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : ''
+    issue.repeats !== undefined && issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : '',
+    beatLine(issue.beats ?? [])
   ].filter(Boolean).join(' ');
+}
+
+/** "Nods appear 7 times in this document, and smiles 4 times.", for the beats that recur; empty when none does. */
+function beatLine(beats: readonly CraftFlagBeatCount[]): string {
+  const recurring = beats.filter((each) => each.count > 1);
+  if (recurring.length === 0) {
+    return '';
+  }
+  const [first, ...rest] = recurring;
+  const parts = [
+    `${first.beat[0].toUpperCase()}${first.beat.slice(1)} appear ${first.count} times in this document`,
+    ...rest.map((each) => `${each.beat} ${each.count} times`)
+  ];
+  return parts.length === 1 ? `${parts[0]}.` : `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}.`;
 }
 
 function withStop(text: string): string {

@@ -44,7 +44,7 @@ const APOSTROPHES = "'’‘";
 const DASHES = '-–—‒―';
 
 export function phraseRepeats(text: string, skipped: readonly TextRange[]): PhraseRepeats {
-  const ranges = merged(skipped);
+  const ranges = joinedRanges(skipped);
   const counted = new Map<string, number>();
   return {
     count(phrase: string): number | undefined {
@@ -60,7 +60,7 @@ export function phraseRepeats(text: string, skipped: readonly TextRange[]): Phra
       if (counted.size >= PHRASE_REPEATS.phrases) {
         return undefined;
       }
-      const count = occurrences(text, patternOf(wanted), ranges);
+      const count = matchesOutside(text, patternOf(wanted), ranges);
       counted.set(key, count);
       return count;
     }
@@ -68,14 +68,15 @@ export function phraseRepeats(text: string, skipped: readonly TextRange[]): Phra
 }
 
 /**
- * How many times `pattern` matches outside `skipped`, occurrences that
- * overlap included (PR #177 N-03): each search resumes one whole code point
- * past the last match's start (F-04). One code unit is not enough: under the
- * `u` flag a search resumed inside a surrogate pair backs up to its start and
- * finds the same match again. A match never starts before its search, so
- * each step moves forward and the walk ends.
+ * How many times `pattern` (global) matches outside `skipped` (as
+ * `joinedRanges` gives them), occurrences that overlap included (PR #177
+ * N-03): each search resumes one whole code point past the last match's
+ * start (F-04). One code unit is not enough: under the `u` flag a search
+ * resumed inside a surrogate pair backs up to its start and finds the same
+ * match again. A match never starts before its search, so each step moves
+ * forward and the walk ends. Stock beats are counted by the same walk.
  */
-function occurrences(text: string, pattern: RegExp, skipped: readonly TextRange[]): number {
+export function matchesOutside(text: string, pattern: RegExp, skipped: readonly TextRange[]): number {
   let count = 0;
   for (let from = 0; from <= text.length; ) {
     pattern.lastIndex = from;
@@ -116,7 +117,7 @@ function patternOf(phrase: string): RegExp {
 }
 
 /** Ranges sorted and joined where they touch, so one binary search answers. */
-function merged(ranges: readonly TextRange[]): TextRange[] {
+export function joinedRanges(ranges: readonly TextRange[]): TextRange[] {
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const out: Array<{ start: number; end: number }> = [];
   for (const range of sorted) {

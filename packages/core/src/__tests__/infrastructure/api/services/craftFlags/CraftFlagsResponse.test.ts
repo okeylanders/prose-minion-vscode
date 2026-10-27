@@ -1,9 +1,10 @@
 /**
  * Reading a Craft Flags reply (ADR 2026-10-21, Amendment 2026-10-26: Slice
  * 3c): the shared frame, and the codec's rule (forgiving per reply,
- * fail-closed per flag), with every note held to the phrasing fence, and a
- * register reply's line naming the register its flags shift from (part 2).
- * Replies are about public-domain *Alice*.
+ * fail-closed per flag), with every note held to the phrasing fence, a
+ * register reply's line naming the register its flags shift from (part 2),
+ * and gesture strain's own kinds (part 3). Replies are about public-domain
+ * *Alice*.
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -176,5 +177,39 @@ describe('decodeCraftFlagsReply: a register reply (Slice 3c part 2)', () => {
     const reply = read([CHILL], { register: LINE });
     expect(reply.ignoredFields).toBe(1);
     expect(reply.findings[0]).not.toHaveProperty('register');
+  });
+});
+
+describe('decodeCraftFlagsReply: a gesture strain reply (Slice 3c part 3)', () => {
+  const NOD = {
+    original: 'nodded her head',
+    before: 'said Alice. Her sister',
+    after: 'and turned a page.',
+    kind: 'redundant',
+    why: 'The nod already holds the head, so the beat is told twice.',
+    suggestion: 'her sister nodded and turned a page'
+  };
+  const readGesture = (flags: unknown[], extra: Record<string, unknown> = {}) =>
+    decodeCraftFlagsReply(readCraftFlagsFrame(frameOf({ version: 1, flags, ...extra })).root, 'gesture');
+
+  it('reads each of its four kinds, and no other category\'s', () => {
+    const kinds = ['impossible', 'complicated', 'thin', 'redundant'];
+    const reply = readGesture([...kinds.map((kind) => ({ ...NOD, kind })), { ...NOD, kind: 'cliche' }, { ...NOD, kind: 'slang' }]);
+    expect(reply.findings.map((finding) => [finding.category, finding.kind])).toEqual(kinds.map((kind) => ['gesture', kind]));
+    expect(reply.malformed).toBe(2);
+  });
+
+  it('gives a withheld why its kind\'s definition', () => {
+    const reply = readGesture([{ ...NOD, kind: 'thin', why: 'This nod should go.' }]);
+    expect(reply.findings[0].why).toBe(craftFlagHostWhy('thin'));
+    expect(craftFlagHostWhy('thin')).toBe('A stock beat that carries nothing, where the chapter leans on it or it alone carries the feeling at a turn.');
+    expect(reply.notesWithheld).toBe(1);
+  });
+
+  it('defines no root field of its own: a register line is ignored and counted, and none is needed', () => {
+    const reply = readGesture([NOD], { register: 'A plain narration.' });
+    expect(reply.ignoredFields).toBe(1);
+    expect(reply.findings[0]).not.toHaveProperty('register');
+    expect(readGesture([NOD]).findings).toHaveLength(1);
   });
 });

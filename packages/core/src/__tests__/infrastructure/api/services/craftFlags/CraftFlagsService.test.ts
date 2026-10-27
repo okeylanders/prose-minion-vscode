@@ -112,6 +112,20 @@ describe('CraftFlagsService.flag', () => {
     });
   });
 
+  it('asks gesture strain in a call of its own, with its own prompt, at the approved model (Slice 3c part 3)', async () => {
+    const NOD = { original: 'nodded her head', before: 'said Alice. Her sister', after: 'and turned a page.', kind: 'redundant', why: 'The nod already holds the head.' };
+    const { service, runInitial, promptLoader } = createService([
+      { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags: [NOD] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }
+    ]);
+    const result = await service.flag({ ...request, categories: ['gesture'] });
+
+    expect(promptLoader.loadPrompts.mock.calls).toEqual([[[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.gesture]]]);
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string; options: { model: string } }])[0]);
+    expect(sent.map((each) => each.userMessage)).toEqual([buildCraftFlagsMessage('gesture', PASSAGE)]);
+    expect(sent.map((each) => each.options.model)).toEqual([APPROVED]);
+    expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'read', findings: [{ category: 'gesture', kind: 'redundant' }] }] });
+  });
+
   it('rejects a register reply with flags and no register line, and saves it for recovery', async () => {
     const SHIFT = { original: 'actually', kind: 'slang', why: 'A casual word in a formal narration.' };
     const { service, recovery, log } = createService([{ content: replyOf(SHIFT) }]);
