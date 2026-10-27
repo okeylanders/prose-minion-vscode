@@ -19,6 +19,12 @@ export interface OpenRouterModel {
     completion: string;
   };
   context_length: number;
+  /**
+   * The model's reasoning options, as the catalog gives them; read only
+   * through `getCachedAlwaysReasons`. `mandatory: true` marks a model that
+   * always reasons and rejects `effort: 'none'` (PR #181 F-01).
+   */
+  reasoning?: unknown;
 }
 
 export interface OpenRouterModelsResponse {
@@ -1208,6 +1214,21 @@ export class OpenRouterModels {
     return Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0
       ? { promptUsdPerToken: prompt, completionUsdPerToken: completion }
       : undefined;
+  }
+
+  /**
+   * Whether the live catalog marks `model` as always reasoning
+   * (`reasoning.mandatory`): true or false only as the catalog states it;
+   * undefined for the offline fallback, a model it does not list, or an
+   * entry without a boolean `mandatory` (PR #181 F-01).
+   */
+  static getCachedAlwaysReasons(model: string): boolean | undefined {
+    const live = this.findCachedModel(model);
+    if (!live || live.isFallback || typeof live.reasoning !== 'object' || live.reasoning === null) {
+      return undefined;
+    }
+    const mandatory: unknown = (live.reasoning as { mandatory?: unknown }).mandatory;
+    return typeof mandatory === 'boolean' ? mandatory : undefined;
   }
 
   private static findCachedModel(model: string): OpenRouterModel | undefined {

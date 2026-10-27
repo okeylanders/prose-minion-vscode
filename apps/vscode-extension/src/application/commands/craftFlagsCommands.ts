@@ -33,9 +33,11 @@
 
 import {
   DRAFT_EDIT_LANGUAGE_IDS,
+  DRAFT_EDIT_PASS_POLICIES,
   craftFlagCategoriesOf,
   describeCraftFlagsOutcome,
   describeCraftFlagsPlan,
+  reasoningLevelOf,
   type CraftFlagsApproval,
   type CraftFlagsBegin,
   type CraftFlagsGesture,
@@ -62,6 +64,8 @@ export type CraftFlagsCommandHost = Pick<
 > & {
   /** `proseMinion.craftFlags.categories`, as the writer set it: anything, until normalized. */
   craftFlagCategories(): unknown;
+  /** `proseMinion.craftFlags.reasoning`, as the writer set it: anything, until normalized. */
+  craftFlagsReasoning(): unknown;
 };
 
 /** The parts of `CraftFlagsUseCase` the commands use. */
@@ -99,7 +103,11 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
   if (categories.length === 0) {
     return refuse(host, 'No Craft Flags category is on. Choose one in the setting Prose Minion › Craft Flags: Categories.');
   }
-  const pass: CraftFlagsPass = { kind: 'craft', categories };
+  const pass: CraftFlagsPass = {
+    kind: 'craft',
+    categories,
+    reasoning: reasoningLevelOf(host.craftFlagsReasoning(), DRAFT_EDIT_PASS_POLICIES.craft.reasoning)
+  };
 
   // Taken before anything is awaited: the gesture's document is watched from this read on (PR #177 F-02).
   const begun = runner.begin(target, pass);

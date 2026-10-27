@@ -12,6 +12,7 @@
 import type { TokenUsage } from '@messages';
 import type { DraftEditAnchor, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
+import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
 
 /** Cliché (part 1), register shift (part 2), gesture strain (part 3) and continuity (part 4). */
 export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register', 'gesture', 'continuity'] as const;
@@ -125,6 +126,8 @@ export interface CraftFlagsPass {
   readonly kind: 'craft';
   /** Never empty; each category at most once. */
   readonly categories: readonly CraftFlagCategory[];
+  /** Read at the gesture (2026-10-27); absent, the pass's default. */
+  readonly reasoning?: ReasoningLevel;
 }
 
 /** One flag as a reply reports it: quoted, never located. */
@@ -219,6 +222,8 @@ export type CraftFlagsOutcome =
   /** Over the word ceiling, with no selection small enough to read alone; nothing was sent. */
   | { readonly kind: 'too-long'; readonly words: number; readonly limit: number }
   | { readonly kind: 'unconfigured' }
+  /** The reasoning level was `off`, and the model catalog marks the approved model as always reasoning, so nothing was sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   | { readonly kind: 'busy' }
   /** The document was no longer open at the version the gesture read, so nothing was sent. */
   | { readonly kind: 'changed' }

@@ -1299,6 +1299,33 @@ spoken one. These rows decide how it is built.
   Counted-read tests hold the work linear: 2,000 headings holding code take
   about 9 reads each, where the quadratic walk took about 6,000,000 reads.
 
+## Amendment 2026-10-27: reasoning levels for Proofread and Craft Flags
+
+**Why.** On 2026-10-27 a Proofread chunk on the default model came back cut
+off mid-string. Its recovery sidecar recorded `finishReason: "length"` and
+4,000 completion tokens, the whole ceiling, against a saved reply of 1,155
+characters: about 3,700 tokens went to the model's hidden reasoning. Neither
+pass sent a reasoning setting, so each model reasoned as its own default
+chose, and a reasoning model could spend the reply's whole ceiling thinking.
+Cut replies stay rejected, never salvaged (D6): the fix is the cause.
+
+The writer decided the shape (2026-10-27): a reasoning level per pass, set
+apart from the reply's own ceiling, named rather than counted, Proofread
+`light` and Craft Flags `standard` by default, these two passes only.
+
+| Decision | Change |
+|---|---|
+| Levels | **`off`, `light`, `standard` and `deep`** (`REASONING_LEVELS`, in the domain). Each but `off` names a thinking budget in `PROMPT_BUDGETS.reasoning`: 1,024 tokens (the smallest Anthropic accepts), 4,000 and 12,000. Named, not counted: only some models honor a token count (below), and a level reads sensibly on all of them. |
+| The request | **The reply keeps its own ceiling; thinking gets a budget on top.** `off` sends `reasoning: { effort: 'none' }` with the pass's reply ceiling as `max_tokens`. Any other level sends `reasoning: { max_tokens: <budget> }` and `max_tokens` = the reply ceiling + the budget (`reasoningRequest`). Proofread's reply ceiling stays 4,000 tokens and Craft Flags' 8,000. |
+| Across models | **A level is a request, never a guarantee.** OpenRouter normalizes `reasoning` across providers: a model that takes a token budget (Anthropic, Gemini, some Qwen) is held to it closely; one that takes only an effort (OpenAI's reasoning models, Grok) gets the budget as an effort, roughly; one that always reasons (DeepSeek R1, Kimi K2 Thinking, some GLM and Qwen variants) may ignore a budget, and one the catalog marks `reasoning.mandatory` rejects `off` outright (next row); one that does not reason ignores the setting. Nothing below depends on a budget being honored. |
+| A model that always reasons (PR #181 F-01) | **`off` is refused, never sent, on a model the catalog marks as always reasoning.** OpenRouter's catalog gives a model's reasoning options; one with `reasoning.mandatory: true` rejects `effort: 'none'`. At `off`, each pass asks the live catalog (`ReasoningCatalog`, `liveCatalogReasoning`, over `OpenRouterModels.getCachedAlwaysReasons`) about the exact model it sends to, and on a mandatory one sends nothing and says why in host words: "Proofread sent nothing: the model catalog says … always reasons, so it cannot be asked for reasoning off. Set `proseMinion.proofread.reasoning` to light or higher, or choose another model in `proseMinion.proofreadModel`" (Craft Flags names its own two settings). It never sends a request the provider will refuse, never lets the model think anyway, and never picks another level or model for the writer. **Which model:** Proofread reads its engine's model once at the run's start and sends every chunk to it (`AgentRunOptions.model`), so the model checked is the model sent, and a model chosen mid-run takes the next run. Craft Flags asks about the model its estimate priced before the confirmation is shown (`plan` returns `reasoning-required`, with no confirmation), and again in `flag`, about the approved model, before any of its calls is sent, since the catalog may be read in between; a model chosen while the confirmation is open never receives the chapter (PR #177 F-01). **Only `off` asks,** so the default levels fetch nothing. **When the catalog cannot say** (offline, an unlisted model, no boolean `mandatory`, or a failed read), `off` is sent as asked and logged, and the provider's own answer stands: a refusal stops the run as any provider refusal does. The alternative was to send such a model its lowest effort instead, and say so; refusing was chosen because it decides nothing for the writer. |
+| Reasoning tokens | **Measured when reported.** The client reads `usage.completion_tokens_details.reasoning_tokens` onto each call's result, and `ExecutionResult.reasoningTokens` carries the final call's. **Never `TokenUsage`:** the Workshop session shape and the Lightbox board codec list usage fields exactly, and a persisted format does not change for a diagnostic. |
+| A reply the thinking cut off | **Said in host words.** A reply that reaches the ceiling with reported reasoning tokens over half its completion tokens is rejected with "the model spent N of M output tokens thinking and reached the ceiling; lower `proseMinion.proofread.reasoning` (or `craftFlags.reasoning`) or choose another model", in the log line and the recovery sidecar's `rejection`. Otherwise the rejection names the ceiling as before, now the request's whole `max_tokens`. |
+| Settings | **`proseMinion.proofread.reasoning`** (default `light`) and **`proseMinion.craftFlags.reasoning`** (default `standard`): enums of the four levels, read at the gesture and carried on the pass (`reasoning`), as the spelling convention is. A value outside the enum reads as the pass's default. A sync test holds the manifest's enums and defaults to the domain's. |
+| Craft Flags' estimate | **Typical thinking counted.** Each call's output is priced at its typical reply plus half its level's budget, still "≈ $…", never a cap. The fixture run revisits both numbers. Proofread prices nothing, as before. |
+| Scope | **These two passes.** Every other model scope sends no reasoning setting and keeps its model's default. A level belongs to the request, never the model: Craft Flags following the assistant model shares only the model id, so its level never reaches the Workshop. Another scope can take a setting of its own later, with the same levels. |
+| To confirm | The names `reasoning.max_tokens`, `effort: 'none'` (where a model supports it) and `completion_tokens_details.reasoning_tokens` are OpenRouter's, as the PR #181 review confirmed from its reasoning documentation on 2026-10-27 (the build container cannot reach it). The writer's acceptance pass runs one Proofread chunk at `off` and one at `light` on the default model and reads both sidecars or log lines, before the release. |
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to

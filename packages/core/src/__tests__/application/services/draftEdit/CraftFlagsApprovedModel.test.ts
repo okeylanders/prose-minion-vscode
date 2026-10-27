@@ -74,7 +74,7 @@ async function createHost(values: Record<string, unknown>) {
       return `SYSTEM ${files.join(' + ')}`;
     }
   };
-  const service = new CraftFlagsService(manager, promptLoader as never, prices, { capture: jest.fn() } as never, { present: jest.fn() }, log);
+  const service = new CraftFlagsService(manager, promptLoader as never, prices, { alwaysReasons: async () => undefined }, { capture: jest.fn() } as never, { present: jest.fn() }, log);
   const documents = new FakeDocuments(TEXT);
   const useCase = new CraftFlagsUseCase(service, documents, new FakeAnnotations(documents), log);
   const target = { uri: documents.uri, version: documents.version, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md' };

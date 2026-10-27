@@ -46,7 +46,7 @@ describe('Proofread categories', () => {
   });
 
   it('never lets a Proofread fix change line breaks, or the Markdown structure (PR #172 F-03)', () => {
-    expect(proofread).toEqual({ modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true });
+    expect(proofread).toEqual({ modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true, reasoning: 'light' });
   });
 });
 

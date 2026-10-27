@@ -15,6 +15,8 @@ jest.mock('@prose-minion/core', () => ({
   CRAFT_FLAG_CATEGORIES: jest.requireActual('@/domain/models/CraftFlag').CRAFT_FLAG_CATEGORIES,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   PROOFREAD_SPELLING_CONVENTIONS: jest.requireActual('@/domain/models/DraftEdit').PROOFREAD_SPELLING_CONVENTIONS,
+  DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
+  REASONING_LEVELS: jest.requireActual('@/domain/models/ReasoningLevel').REASONING_LEVELS,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome
 }));
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -22,7 +24,13 @@ jest.mock('@prose-minion/core', () => ({
 import * as fs from 'fs';
 import * as path from 'path';
 import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
-import { CRAFT_FLAG_CATEGORIES, DRAFT_EDIT_LANGUAGE_IDS, PROOFREAD_SPELLING_CONVENTIONS } from '@prose-minion/core';
+import {
+  CRAFT_FLAG_CATEGORIES,
+  DRAFT_EDIT_LANGUAGE_IDS,
+  DRAFT_EDIT_PASS_POLICIES,
+  PROOFREAD_SPELLING_CONVENTIONS,
+  REASONING_LEVELS
+} from '@prose-minion/core';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -506,6 +514,23 @@ describe('app-shell provider assembly', () => {
     expect(setting.items?.enumDescriptions).toHaveLength(CRAFT_FLAG_CATEGORIES.length);
     expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
       .toContain(`craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories')`);
+  });
+
+  it('declares each pass\'s reasoning level: the four levels, the pass\'s default, under the key the host reads (2026-10-27)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown; enum?: string[]; enumDescriptions?: string[] }> } };
+    };
+    const entry = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const passes = [
+      ['proofread', 'proofreadReasoning', DRAFT_EDIT_PASS_POLICIES.proofread.reasoning],
+      ['craftFlags', 'craftFlagsReasoning', DRAFT_EDIT_PASS_POLICIES.craft.reasoning]
+    ] as const;
+    for (const [section, hostMethod, fallback] of passes) {
+      const setting = manifest.contributes.configuration.properties[`proseMinion.${section}.reasoning`];
+      expect(setting).toMatchObject({ type: 'string', enum: [...REASONING_LEVELS], default: fallback });
+      expect(setting.enumDescriptions).toHaveLength(REASONING_LEVELS.length);
+      expect(entry).toContain(`${hostMethod}: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('${section}.reasoning')`);
+    }
   });
 
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {

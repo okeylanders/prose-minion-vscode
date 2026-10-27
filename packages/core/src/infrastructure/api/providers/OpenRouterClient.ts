@@ -48,10 +48,15 @@ export interface OpenRouterCompletionOptions {
   model?: string;
 }
 
-export interface OpenRouterReasoningOptions {
-  effort: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'none';
-  exclude?: boolean;
-}
+/**
+ * How much a reasoning model may think: an effort, or a token budget
+ * (`maxTokens`, sent as `reasoning.max_tokens`; Draft Edit's reasoning
+ * levels, ADR 2026-10-21). OpenRouter normalizes either across providers;
+ * a model may honor it closely, roughly or not at all.
+ */
+export type OpenRouterReasoningOptions =
+  | { effort: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'none'; exclude?: boolean }
+  | { maxTokens: number; exclude?: boolean };
 
 export interface OpenRouterWebSearchTool {
   type: 'openrouter:web_search';
@@ -96,6 +101,21 @@ interface OpenRouterErrorPayload {
   metadata?: {
     error_type?: unknown;
   };
+}
+
+/** The wire shape of a reasoning setting: a token budget goes as `max_tokens`. */
+function toReasoningRequest(reasoning: OpenRouterReasoningOptions): Record<string, unknown> {
+  const exclude = reasoning.exclude !== undefined ? { exclude: reasoning.exclude } : {};
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- OpenRouter's wire field.
+  return 'maxTokens' in reasoning ? { max_tokens: reasoning.maxTokens, ...exclude } : { effort: reasoning.effort, ...exclude };
+}
+
+/** Reasoning tokens a usage block reports (`completion_tokens_details.reasoning_tokens`), when it reports a whole number of them. */
+function toReasoningTokens(raw: unknown): number | undefined {
+  const field = (value: unknown, key: string): unknown =>
+    (typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[key] : undefined);
+  const value = field(field(raw, 'completion_tokens_details'), 'reasoning_tokens');
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
 /** A structured provider failure that callers can classify without parsing copy. */
@@ -159,6 +179,8 @@ export class OpenRouterClient {
     content: string;
     finishReason?: string;
     usage?: TokenUsage;
+    /** Completion tokens the provider reported as reasoning; absent when unreported. */
+    reasoningTokens?: number;
     observation?: InferenceRequestObservation;
     id?: string;
     citations?: UrlCitation[];
@@ -172,7 +194,7 @@ export class OpenRouterClient {
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
       usage: { include: true },
-      ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
+      ...(options?.reasoning ? { reasoning: toReasoningRequest(options.reasoning) } : {}),
       ...(options?.tools ? { tools: options.tools } : {})
     }, options?.signal);
 
@@ -191,11 +213,13 @@ export class OpenRouterClient {
     }
 
     const usage = this.toTokenUsage(data.usage);
+    const reasoningTokens = toReasoningTokens(data.usage);
     return {
       id: data.id,
       content: this.toAssistantContent(data.choices[0].message.content),
       finishReason: data.choices[0]?.finish_reason,
       usage,
+      ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
       citations: this.toUrlCitations(data.choices[0].message.annotations),
       observation: usage ? this.toObservation(
         data.model || requestedModel,
@@ -236,6 +260,7 @@ export class OpenRouterClient {
     done: boolean;
     id?: string;
     usage?: TokenUsage;
+    reasoningTokens?: number;
     finishReason?: string;
     observation?: InferenceRequestObservation;
     citations?: UrlCitation[];
@@ -250,7 +275,7 @@ export class OpenRouterClient {
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
       stream_options: { include_usage: true },
-      ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
+      ...(options?.reasoning ? { reasoning: toReasoningRequest(options.reasoning) } : {}),
       ...(options?.tools ? { tools: options.tools } : {})
     }, options?.signal);
 
@@ -269,6 +294,7 @@ export class OpenRouterClient {
     try {
       let finishReason: string | undefined;
       let usage: TokenUsage | undefined;
+      let reasoningTokens: number | undefined;
       let responseModel = requestedModel;
       // Tests and non-browser host adapters may provide a minimal fetch shape
       // without Headers; stream frames still carry the canonical response id.
@@ -281,6 +307,7 @@ export class OpenRouterClient {
         done: true,
         id: responseId,
         usage,
+        ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
         finishReason,
         observation: usage ? this.toObservation(
           responseModel,
@@ -331,6 +358,7 @@ export class OpenRouterClient {
               finishReason = finish;
             }
             if (chunkUsage) usage = chunkUsage;
+            reasoningTokens = toReasoningTokens(parsed.usage) ?? reasoningTokens;
             if (typeof parsed.model === 'string' && parsed.model) responseModel = parsed.model;
             if (parsed.openrouter_metadata !== undefined) routerMetadata = parsed.openrouter_metadata;
             const chunkCitations = this.toUrlCitations(

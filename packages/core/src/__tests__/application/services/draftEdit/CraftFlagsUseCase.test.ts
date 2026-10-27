@@ -314,6 +314,24 @@ describe('CraftFlagsUseCase.run', () => {
   });
 });
 
+describe('CraftFlagsUseCase: the reasoning level (2026-10-27)', () => {
+  it('prices and sends the level the pass names, and names none when the pass does not', async () => {
+    for (const [pass, reasoning] of [[{ ...PASS, reasoning: 'deep' as const }, 'deep'], [PASS, undefined]] as const) {
+      const { useCase, target, requests, pass: port } = setup(CHAPTER, []);
+      const begun = useCase.begin(target(), pass);
+      if (begun.kind !== 'gesture') {
+        throw new Error('no gesture');
+      }
+      await useCase.plan(begun.gesture);
+      await useCase.run(begun.gesture, { model: MODEL });
+      const [priced] = (port.estimate as jest.Mock).mock.calls[0] as [Record<string, unknown>];
+      expect(priced.reasoning).toBe(reasoning);
+      expect(requests[0].reasoning).toBe(reasoning);
+      expect('reasoning' in requests[0]).toBe(reasoning !== undefined);
+    }
+  });
+});
+
 describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)', () => {
   /** A gesture whose price is held until the test lets it go. */
   function heldPricing() {
@@ -416,5 +434,53 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     }
     expect(await useCase.plan(begun.gesture)).toEqual({ kind: 'unconfigured' });
     expect(useCase.begin(target(), PASS).kind).toBe('gesture');
+  });
+});
+
+describe('CraftFlagsUseCase: reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  const OFF = { ...PASS, reasoning: 'off' as const };
+
+  function begun(context: ReturnType<typeof setup>) {
+    const gesture = context.useCase.begin(context.target(), OFF);
+    if (gesture.kind !== 'gesture') {
+      throw new Error('no gesture');
+    }
+    return gesture.gesture;
+  }
+
+  it('asks about the model it priced, at the pass\'s level, before any confirmation', async () => {
+    const context = setup(CHAPTER, []);
+    await context.useCase.plan(begun(context));
+
+    expect(context.pass.refusesReasoning).toHaveBeenCalledWith({ model: MODEL, label: 'chapter-01.md', reasoning: 'off' });
+  });
+
+  it('refuses with no confirmation and nothing sent, naming the model, and ends the gesture', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.refusesReasoning as jest.Mock).mockResolvedValueOnce(true);
+
+    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'reasoning-required', model: MODEL });
+    expect(context.pass.flag).not.toHaveBeenCalled();
+    expect(context.useCase.begin(context.target(), OFF).kind).toBe('gesture');
+  });
+
+  it('shows no confirmation when the lifetime ends while the catalog is read', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.refusesReasoning as jest.Mock).mockImplementationOnce(async () => {
+      context.documents.close();
+      context.documents.open = true;
+      return false;
+    });
+
+    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'changed' });
+  });
+
+  it('says what the run says when the approved model is refused at the calls, and shows nothing', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.flag as jest.Mock).mockResolvedValueOnce({ kind: 'reasoning-required', model: MODEL });
+    const gesture = begun(context);
+
+    expect(await context.useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'reasoning-required', model: MODEL });
+    expect(context.annotations.shows).toEqual([]);
   });
 });

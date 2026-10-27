@@ -559,6 +559,78 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  /* eslint-disable @typescript-eslint/naming-convention -- OpenRouter's wire fields. */
+  it('sends a reasoning token budget as reasoning.max_tokens, and reads the reasoning tokens the usage reports (2026-10-27)', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1',
+        choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'length' }],
+        usage: { prompt_tokens: 50, completion_tokens: 5_024, total_tokens: 5_074, completion_tokens_details: { reasoning_tokens: 4_700 } }
+      })
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const response = await new OpenRouterClient('key', 'model/requested').createChatCompletion(
+        [{ role: 'user', content: 'Hello' }],
+        { maxTokens: 5_024, reasoning: { maxTokens: 1_024 } }
+      );
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(body.reasoning).toEqual({ max_tokens: 1_024 });
+      expect(body.max_tokens).toBe(5_024);
+      expect(response.reasoningTokens).toBe(4_700);
+      // Never part of the usage the persisted shapes list exactly.
+      expect(response.usage).not.toHaveProperty('reasoningTokens');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('reports no reasoning tokens when the usage gives none, or gives something other than a whole number', async () => {
+    const originalFetch = global.fetch;
+    try {
+      for (const details of [undefined, {}, { reasoning_tokens: -1 }, { reasoning_tokens: 2.5 }, { reasoning_tokens: '9' }]) {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            id: 'response-1',
+            choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10, ...(details ? { completion_tokens_details: details } : {}) }
+          })
+        }) as unknown as typeof fetch;
+        const response = await new OpenRouterClient('key', 'model/requested').createChatCompletion([{ role: 'user', content: 'Hello' }]);
+        expect(response).not.toHaveProperty('reasoningTokens');
+      }
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('streams a reasoning budget the same way, and carries the reported reasoning tokens on the final chunk', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue(streamingResponse(
+      { id: 'gen-1', choices: [{ delta: { content: 'Hi' } }] },
+      { id: 'gen-1', choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 5, completion_tokens: 300, total_tokens: 305, completion_tokens_details: { reasoning_tokens: 280 } } },
+      '[DONE]'
+    ));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const chunks = [];
+      for await (const chunk of new OpenRouterClient('key', 'model/requested').createStreamingChatCompletion(
+        [{ role: 'user', content: 'Hello' }],
+        { reasoning: { maxTokens: 4_000, exclude: true } }
+      )) {
+        chunks.push(chunk);
+      }
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).reasoning).toEqual({ max_tokens: 4_000, exclude: true });
+      expect(chunks.at(-1)).toMatchObject({ done: true, reasoningTokens: 280 });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+  /* eslint-enable @typescript-eslint/naming-convention */
+
   it('preserves structured web citations outside the model-authored response text', async () => {
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockResolvedValue({

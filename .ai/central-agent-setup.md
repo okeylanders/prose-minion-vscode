@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-27, Draft Edit Slice 3c part 4 (continuity) with PR #180's review fixes, on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `684bad24` (Draft Edit Slice 3c part 3, PR #179), under Node 18):
-- 580 suites / 8,223 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-27, Draft Edit reasoning levels with PR #181 F-01's fix (`a89ea725`) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `b24bdd04` (Draft Edit Slice 3c part 4, PR #180), under Node 18):
+- 586 suites / 8,294 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1662,6 +1662,32 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   way, with its work charged where it is generated, not only where it is
   read. Headings are read from the Markdown block reader
   (`readDocumentRegions`), never a line pattern (F-02).
+- **Reasoning levels** (2026-10-27; the ADR's reasoning-levels amendment).
+  Proofread and Craft Flags each send a named level (`REASONING_LEVELS`:
+  `off`, `light`, `standard`, `deep`), read at the gesture from
+  `proseMinion.proofread.reasoning` (`light`) and
+  `proseMinion.craftFlags.reasoning` (`standard`) and carried on the pass;
+  the defaults are `DRAFT_EDIT_PASS_POLICIES`' and the manifest's, held
+  together by a sync test. `reasoningRequest` turns a level into the request:
+  `off` is `effort: 'none'`; any other level sends its budget
+  (`PROMPT_BUDGETS.reasoning`) as `reasoning.max_tokens` and adds it to the
+  reply's own ceiling, so thinking never takes the reply's room on a model
+  that honors it. A level is a request, never a guarantee: never depend on a
+  model keeping it. Reasoning tokens a provider reports ride on each call's
+  result and `ExecutionResult.reasoningTokens`, **never `TokenUsage`**, whose
+  fields persisted shapes list exactly. A reply cut off at its ceiling with
+  most of its output spent thinking is rejected in host words naming the
+  setting (`draftEditCeilingRejection`), never salvaged. Every other model
+  scope sends no reasoning setting; a level belongs to the request, never
+  the model. **`off` is never sent to a model that always reasons** (PR #181
+  F-01): at `off` alone, each pass asks the live catalog
+  (`ReasoningCatalog`, `refusesReasoningOff`) about the exact model it sends
+  to (Proofread's run model, pinned on every chunk; Craft Flags' priced model
+  before the confirmation, and its approved model again before the calls),
+  and a model marked `reasoning.mandatory` is refused with nothing sent
+  (`reasoning-required`), never given another level or model. A catalog that
+  cannot say sends `off` as asked. A new pass with a level asks the same
+  check.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring

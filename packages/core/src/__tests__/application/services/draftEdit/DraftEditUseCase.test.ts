@@ -118,6 +118,12 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', spelling: 'british' }]);
   });
 
+  it('sends the pass\'s reasoning level with the chunks, and none when the pass names none (2026-10-27)', async () => {
+    const { useCase, requests } = setup();
+    await useCase.run(target(), { ...FLAG, reasoning: 'off' });
+    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', reasoning: 'off' }]);
+  });
+
   it('places each finding by its quote and shows it as an annotation on the live version', async () => {
     const { useCase, requests, shown } = setup({ result: read(WEATHER, RUNS, THE_THE) });
     const outcome = await useCase.run(target(), FLAG);

@@ -7,7 +7,7 @@
 
 import type { CraftFlagsOutcome } from '@/domain/models/CraftFlag';
 import type { CraftFlagsRunPlan } from '@/application/services/draftEdit/CraftFlagsUseCase';
-import { costOf, plural, rejectedPart, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
+import { costOf, plural, reasoningRequiredMessage, rejectedPart, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
 
 /**
  * The confirmation for a run that is ready: what it reads, the calls, the
@@ -40,6 +40,8 @@ export function describeCraftFlagsOutcome(outcome: CraftFlagsOutcome, documentLa
       };
     case 'unconfigured':
       return { level: 'warning', message: 'Craft Flags needs an OpenRouter API key.', hasFlags: false };
+    case 'reasoning-required':
+      return { level: 'warning', message: reasoningRequiredMessage('Craft Flags', outcome.model, 'proseMinion.craftFlags.reasoning', 'proseMinion.craftModel'), hasFlags: false };
     case 'busy':
       return { level: 'info', message: `Craft Flags is already running on ${documentLabel}.`, hasFlags: false };
     case 'changed':

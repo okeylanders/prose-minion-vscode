@@ -309,11 +309,15 @@ export class DraftEditUseCase {
       label,
       ...(pass.spelling ? { spelling: pass.spelling } : {}),
       ...(pass.wordList ? { wordList: pass.wordList } : {}),
+      ...(pass.reasoning ? { reasoning: pass.reasoning } : {}),
       ...(host.narration ? { narration: host.narration } : {}),
       ...(signal ? { signal } : {})
     });
     if (result.kind === 'unconfigured') {
       return { kind: 'unconfigured' };
+    }
+    if (result.kind === 'reasoning-required') {
+      return { kind: 'reasoning-required', model: result.model };
     }
     if (result.kind === 'cancelled') {
       return { kind: 'cancelled', ...(result.usage ? { usage: result.usage } : {}) };

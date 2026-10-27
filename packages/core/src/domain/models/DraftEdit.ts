@@ -15,6 +15,7 @@
 
 import type { ModelScope, TokenUsage } from '@messages';
 import type { CraftFlagsPass } from '@/domain/models/CraftFlag';
+import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
 
 /** How a fix reaches the document: through the writer's review, or at once. */
 export type DraftEditReview = 'preview' | 'direct';
@@ -35,12 +36,14 @@ export function isProofreadSpellingConvention(value: unknown): value is Proofrea
 /**
  * The writer's settings a Proofread run reads at the gesture: the spelling
  * convention (Slice 3) and the word list (Slice 3b), each absent when none
- * is named.
+ * is named, and the reasoning level (2026-10-27), absent meaning the pass's
+ * default.
  */
 export interface ProofreadSettings {
   readonly spelling?: ProofreadSpellingConvention;
   /** Names and invented words the writer accepts, normalized (`proofreadWordList`); never empty. */
   readonly wordList?: readonly string[];
+  readonly reasoning?: ReasoningLevel;
 }
 
 /**
@@ -64,12 +67,14 @@ export interface DraftEditPassPolicy {
   readonly allowsNewlineChanges: boolean;
   /** Whether fixes must leave the document's Markdown structure as it was (Proofread: always, PR #172 F-03). */
   readonly preservesMarkdownStructure: boolean;
+  /** The reasoning level a run sends when the writer names none (the writer's choice, 2026-10-27). */
+  readonly reasoning: ReasoningLevel;
 }
 
 export const DRAFT_EDIT_PASS_POLICIES: Readonly<Record<DraftEditPassKind, DraftEditPassPolicy>> = {
-  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true },
+  proofread: { modelScope: 'proofread', allowsNewlineChanges: false, preservesMarkdownStructure: true, reasoning: 'light' },
   // Craft Flags never writes: nothing reads its fix rules, which take the strictest values should that change.
-  craft: { modelScope: 'craft', allowsNewlineChanges: false, preservesMarkdownStructure: true }
+  craft: { modelScope: 'craft', allowsNewlineChanges: false, preservesMarkdownStructure: true, reasoning: 'standard' }
 };
 
 /** A half-open span of UTF-16 code units: `start` included, `end` excluded. */
@@ -146,6 +151,8 @@ export interface DraftEditFixReport {
 export type DraftEditOutcome =
   | { readonly kind: 'empty' }
   | { readonly kind: 'unconfigured' }
+  /** The reasoning level was `off`, and the model catalog marks the run's model as always reasoning, so nothing was sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   | { readonly kind: 'busy' }
   /** The document was no longer open at the version the gesture read, so nothing was sent. */
   | { readonly kind: 'changed' }

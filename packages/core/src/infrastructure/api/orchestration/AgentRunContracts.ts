@@ -200,6 +200,12 @@ export interface ExecutionResult {
   readonly artifacts: CapabilityArtifact[];
   readonly usage?: TokenUsage;
   readonly finishReason?: string;
+  /**
+   * The final inference call's completion tokens the provider reported as
+   * reasoning; absent when unreported. Never part of `usage`: persisted
+   * usage shapes list their fields exactly (ADR 2026-10-21, reasoning levels).
+   */
+  readonly reasoningTokens?: number;
   /** Provider generation id for the final inference call, when supplied. */
   readonly providerResponseId?: string;
   /** Actual provider-reported model id for the final inference call. */

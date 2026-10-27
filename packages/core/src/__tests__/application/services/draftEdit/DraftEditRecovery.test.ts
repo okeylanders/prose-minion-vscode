@@ -63,8 +63,9 @@ async function summaryWith(writable: readonly boolean[]) {
   });
   const presenter = { present: jest.fn(async () => undefined) };
   const service = new ProofreadService(
-    { ensureInitialized: async () => undefined, getEngine: () => ({ runInitial }) } as never,
+    { ensureInitialized: async () => undefined, getEngine: () => ({ runInitial, getModel: () => 'placeholder/proofread-model' }) } as never,
     { loadPrompts: async () => 'SYSTEM' } as never,
+    { alwaysReasons: async () => undefined },
     store,
     presenter,
     log as never

@@ -25,6 +25,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROOFREAD_PROMPTS, ProofreadService } from '@services/proofread/ProofreadService';
+import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
 import {
   RUNS_ISSUE,
   THE_THE_ISSUE,
@@ -35,9 +36,11 @@ import { ALICE_OPENING_SEEDED, ALICE_RABBIT_SEEDED } from '@/__tests__/utils/dra
 
 const USAGE = { promptTokens: 100, completionTokens: 20, totalTokens: 120, costUsd: 0.001 };
 
-type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean } | Error;
+type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
 
-function createService(replies: Reply[], options: { engine?: boolean } = {}) {
+const PROOFREAD_MODEL = 'placeholder/proofread-model';
+
+function createService(replies: Reply[], options: { engine?: boolean; catalog?: ReasoningCatalog; model?: string } = {}) {
   const queue = [...replies];
   const runInitial = jest.fn(async () => {
     const next = queue.shift();
@@ -49,16 +52,18 @@ function createService(replies: Reply[], options: { engine?: boolean } = {}) {
     }
     return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, ...next };
   });
+  const engine = { runInitial, getModel: jest.fn(() => options.model ?? PROOFREAD_MODEL) };
   const manager = {
     ensureInitialized: jest.fn(async () => undefined),
-    getEngine: jest.fn(() => (options.engine === false ? undefined : { runInitial }))
+    getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
   };
+  const catalog = options.catalog ?? { alwaysReasons: jest.fn(async () => undefined) };
   const promptLoader = { loadPrompts: jest.fn(async (files: string[]) => `SYSTEM ${files.join(' + ')}`) };
   const recovery = { capture: jest.fn(async () => ({ filePath: '/project/prose-minion/recovery/x.txt', toolName: 'proofread', storageScope: 'project' })) };
   const presenter = { present: jest.fn(async () => undefined) };
   const log = { appendLine: jest.fn() };
-  const service = new ProofreadService(manager as never, promptLoader as never, recovery as never, presenter, log as never);
-  return { service, runInitial, manager, promptLoader, recovery, presenter, log };
+  const service = new ProofreadService(manager as never, promptLoader as never, catalog, recovery as never, presenter, log as never);
+  return { service, runInitial, engine, manager, catalog, promptLoader, recovery, presenter, log };
 }
 
 const chunks = [ALICE_OPENING_SEEDED, ALICE_RABBIT_SEEDED];
@@ -85,7 +90,12 @@ describe('ProofreadService', () => {
       toolName: 'proofread',
       systemMessage: `SYSTEM ${PROOFREAD_PROMPTS.join(' + ')}`,
       policy: AGENT_RUN_POLICIES.proofread,
-      options: { temperature: 0, maxTokens: PROMPT_BUDGETS.proofread.outputTokens }
+      // The default level, light: its budget on top of the reply's own ceiling (2026-10-27).
+      options: {
+        temperature: 0,
+        maxTokens: PROMPT_BUDGETS.proofread.outputTokens + PROMPT_BUDGETS.reasoning.light,
+        reasoning: { maxTokens: PROMPT_BUDGETS.reasoning.light }
+      }
     });
     const quoted = JSON.parse(request.userMessage.slice(request.userMessage.indexOf('{')));
     expect(quoted).toEqual({ task: 'proofread', passage: ALICE_OPENING_SEEDED });
@@ -183,6 +193,46 @@ describe('ProofreadService', () => {
     expect(presenter.present).toHaveBeenCalledTimes(1);
   });
 
+  describe('reasoning levels (ADR 2026-10-21, Amendment 2026-10-27)', () => {
+    it.each([
+      ['off', PROMPT_BUDGETS.proofread.outputTokens, { effort: 'none' }],
+      ['light', PROMPT_BUDGETS.proofread.outputTokens + PROMPT_BUDGETS.reasoning.light, { maxTokens: PROMPT_BUDGETS.reasoning.light }],
+      ['standard', PROMPT_BUDGETS.proofread.outputTokens + PROMPT_BUDGETS.reasoning.standard, { maxTokens: PROMPT_BUDGETS.reasoning.standard }],
+      ['deep', PROMPT_BUDGETS.proofread.outputTokens + PROMPT_BUDGETS.reasoning.deep, { maxTokens: PROMPT_BUDGETS.reasoning.deep }]
+    ] as const)('sends the %s level on every chunk, its budget on top of the reply\'s ceiling', async (reasoning, maxTokens, sent) => {
+      const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }]);
+      await service.proofread({ chunks, label: 'chapter-01.md', reasoning });
+      for (const [call] of runInitial.mock.calls as unknown as Array<[{ options: Record<string, unknown> }]>) {
+        expect(call.options).toMatchObject({ maxTokens, reasoning: sent });
+      }
+    });
+
+    it('says the model spent the ceiling thinking, and the setting to lower, when most of its output was reasoning', async () => {
+      const { service, recovery, log } = createService([
+        { content: replyOf(WEATHER_ISSUE).slice(0, 80), finishReason: 'length', usage: { ...USAGE, completionTokens: 5_024 }, reasoningTokens: 4_700 },
+        { content: replyOf(WEATHER_ISSUE).slice(0, 80), finishReason: 'length', usage: { ...USAGE, completionTokens: 5_024 }, reasoningTokens: 900 }
+      ]);
+      await service.proofread({ chunks, label: 'chapter-01.md' });
+      const [thought, wrote] = recovery.capture.mock.calls.map((call: unknown[]) => (call[0] as { rejection: string }).rejection);
+      expect(thought).toBe(
+        'the model spent 4,700 of 5,024 output tokens thinking and reached the 5,024-token ceiling; '
+        + 'lower proseMinion.proofread.reasoning or choose another model'
+      );
+      expect(wrote).toBe('the reply reached the 5,024-token output ceiling');
+      expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('chunk 1 rejected: the model spent 4,700 of 5,024'));
+    });
+
+    it('logs the thinking the calls reported, and nothing when none reported any', async () => {
+      const reported = createService([{ content: replyOf(), reasoningTokens: 300 }, { content: replyOf(), reasoningTokens: 120 }]);
+      await reported.service.proofread({ chunks, label: 'chapter-01.md' });
+      expect(reported.log.appendLine).toHaveBeenCalledWith('[Proofread] chapter-01.md: the model reported 420 tokens of thinking across 2 chunks');
+
+      const silent = createService([{ content: replyOf() }, { content: replyOf() }]);
+      await silent.service.proofread({ chunks, label: 'chapter-01.md' });
+      expect(silent.log.appendLine).not.toHaveBeenCalledWith(expect.stringContaining('thinking'));
+    });
+  });
+
   it('counts malformed issues and logs ignored fields and repairs without naming them', async () => {
     const { service, log } = createService([
       { content: replyOf(WEATHER_ISSUE, { ...RUNS_ISSUE, category: 'style', vibe: 'whimsical' }) },
@@ -236,5 +286,57 @@ describe('ProofreadService', () => {
 
     expect(result).toEqual({ kind: 'cancelled', usage: expect.objectContaining({ totalTokens: 120 }) });
     expect(runInitial).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ProofreadService at reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  type SentOptions = { options: { model?: string; reasoning?: unknown } };
+  const sentOptions = (runInitial: jest.Mock) => (runInitial.mock.calls as unknown as Array<[SentOptions]>).map(([call]) => call.options);
+  const saying = (answer: boolean | undefined) => ({ alwaysReasons: jest.fn(async (_model: string) => answer) });
+
+  it('refuses before anything is sent, naming the run\'s model', async () => {
+    const catalog = saying(true);
+    const { service, runInitial, promptLoader } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+    const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+    expect(result).toEqual({ kind: 'reasoning-required', model: PROOFREAD_MODEL });
+    expect(catalog.alwaysReasons).toHaveBeenCalledWith(PROOFREAD_MODEL);
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
+  });
+
+  it('sends off to every chunk on a model the catalog says can stop, and as asked when it cannot say', async () => {
+    for (const answer of [false, undefined]) {
+      const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog: saying(answer) });
+      const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+      expect(result.kind).toBe('completed');
+      expect(sentOptions(runInitial)).toEqual(chunks.map(() => expect.objectContaining({ model: PROOFREAD_MODEL, reasoning: { effort: 'none' } })));
+    }
+  });
+
+  it('never asks the catalog at any other level, the default included', async () => {
+    for (const reasoning of ['light', 'standard', 'deep', undefined] as const) {
+      const catalog = saying(true);
+      const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+      await service.proofread({ chunks, label: 'chapter-01.md', ...(reasoning ? { reasoning } : {}) });
+
+      expect(catalog.alwaysReasons).not.toHaveBeenCalled();
+      expect(runInitial).toHaveBeenCalledTimes(chunks.length);
+    }
+  });
+
+  it('sends every chunk to the model it checked, though the engine\'s model changes while the prompts load and between chunks', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model !== PROOFREAD_MODEL) };
+    const { service, runInitial, engine, promptLoader } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      engine.getModel.mockReturnValue('placeholder/always-reasons');
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+    const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+    expect(result.kind).toBe('completed');
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[PROOFREAD_MODEL]]);
+    expect(sentOptions(runInitial).map((options) => options.model)).toEqual([PROOFREAD_MODEL, PROOFREAD_MODEL]);
   });
 });

@@ -435,6 +435,16 @@ export interface PromptBudgets {
     /** A register reply's line naming the register the narration keeps is clipped to this. */
     registerCharacters: number;
   }>;
+  /**
+   * The thinking budget each reasoning level names, in tokens, sent on top
+   * of a reply's own ceiling (ADR 2026-10-21, reasoning levels). `off` has
+   * none; `light` is the smallest budget Anthropic accepts.
+   */
+  readonly reasoning: Readonly<{
+    light: number;
+    standard: number;
+    deep: number;
+  }>;
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
@@ -709,5 +719,10 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     whyCharacters: 300,
     suggestionCharacters: 200,
     registerCharacters: 160
+  },
+  reasoning: {
+    light: 1_024,
+    standard: 4_000,
+    deep: 12_000
   }
 };

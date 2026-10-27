@@ -104,6 +104,8 @@ interface TurnResult {
   readonly visibleContent?: string;
   readonly finishReason?: string;
   readonly usage?: TokenUsage;
+  /** Completion tokens the provider reported as reasoning; absent when unreported. */
+  readonly reasoningTokens?: number;
   readonly observation?: InferenceRequestObservation;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
@@ -575,6 +577,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        ...(last.reasoningTokens !== undefined ? { reasoningTokens: last.reasoningTokens } : {}),
         providerResponseId: last.providerResponseId,
         modelId: latestObservation?.modelId,
         citations: runCitations,
@@ -799,6 +802,7 @@ export class AgentRunEngine {
           providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
+          ...(response.reasoningTokens !== undefined ? { reasoningTokens: response.reasoningTokens } : {}),
           observation: response.observation,
           citations: response.citations,
           cancelled: this.isAborted(options.signal),
@@ -815,6 +819,7 @@ export class AgentRunEngine {
 
     let content = '';
     let usage: TokenUsage | undefined;
+    let reasoningTokens: number | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
     let providerResponseId: string | undefined;
@@ -828,6 +833,7 @@ export class AgentRunEngine {
         if (chunk.done) {
           providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
+          reasoningTokens = chunk.reasoningTokens ?? reasoningTokens;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
           citations = chunk.citations ?? citations;
@@ -905,6 +911,7 @@ export class AgentRunEngine {
       visibleContent: visibilityGuard?.content,
       finishReason,
       usage,
+      ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
       observation,
       citations,
       cancelled,

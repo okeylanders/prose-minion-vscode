@@ -11,6 +11,9 @@
 jest.mock('@prose-minion/core', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
+  DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
+  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome,
   describeQuickFixOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeQuickFixOutcome,
   isProofreadSpellingConvention: jest.requireActual('@/domain/models/DraftEdit').isProofreadSpellingConvention,
@@ -57,6 +60,7 @@ function setup(options: {
   fixReview?: 'preview' | 'apply';
   spelling?: string;
   wordList?: unknown;
+  reasoning?: unknown;
   quickFix?: DraftEditQuickFixOutcome;
 } = {}) {
   const calls: string[] = [];
@@ -66,6 +70,7 @@ function setup(options: {
     fixReview: jest.fn(() => options.fixReview ?? 'preview'),
     spellingConvention: jest.fn(() => options.spelling),
     wordList: jest.fn(() => options.wordList),
+    proofreadReasoning: jest.fn(() => options.reasoning),
     confirm: jest.fn(async () => options.confirm ?? false),
     withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal, report: (message: string) => void) => Promise<T>) => {
       calls.push(`progress:${title}`);
@@ -117,7 +122,7 @@ describe('proofreadAndFlag', () => {
 
     expect(runner.run).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId, relativePath: 'chapter-01.md' },
-      { kind: 'proofread', output: 'flag' },
+      { kind: 'proofread', output: 'flag', reasoning: 'light' },
       expect.any(AbortSignal),
       expect.any(Object)
     );
@@ -174,6 +179,17 @@ describe('proofreadAndFlag', () => {
     expect(host.executeCommand).toHaveBeenCalledWith(OPEN_SETTINGS_COMMAND);
   });
 
+  it('says what to change when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
+    const { host, runner } = setup({ active: editor(), outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    await proofreadAndFlag(host, runner);
+
+    expect(host.showWarning).toHaveBeenCalledWith(
+      'Proofread sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
+        + 'Set proseMinion.proofread.reasoning to light or higher, or choose another model in proseMinion.proofreadModel.'
+    );
+    expect(host.executeCommand).not.toHaveBeenCalled();
+  });
+
   it('warns when the run was interrupted', async () => {
     const interrupted = { cause: 'provider' as const, message: 'OpenRouter is rate limiting requests.' };
     const { host, runner } = setup({ active: editor(), outcome: { ...COMPLETED, interrupted } });
@@ -209,7 +225,7 @@ describe('proofreadAndFix (Slice 2)', () => {
 
     expect(runner.run).toHaveBeenCalledWith(
       expect.objectContaining({ uri: 'file:///workspace/chapter-01.md', version: 4 }),
-      { kind: 'proofread', output: 'fix', review: 'preview' },
+      { kind: 'proofread', output: 'fix', review: 'preview', reasoning: 'light' },
       expect.any(AbortSignal),
       expect.objectContaining({ onReview: expect.any(Function) })
     );
@@ -220,7 +236,7 @@ describe('proofreadAndFix (Slice 2)', () => {
     const { host, runner } = setup({ active: editor(), fixReview: 'apply' });
     await proofreadAndFix(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'fix', review: 'direct' });
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'fix', review: 'direct', reasoning: 'light' });
   });
 
   it('refuses a language it does not read, as Flag does', async () => {
@@ -237,8 +253,8 @@ describe('the spelling convention (Slice 3)', () => {
     await proofreadAndFix(host, runner);
 
     expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
-      { kind: 'proofread', output: 'flag', spelling },
-      { kind: 'proofread', output: 'fix', review: 'preview', spelling }
+      { kind: 'proofread', output: 'flag', spelling, reasoning: 'light' },
+      { kind: 'proofread', output: 'fix', review: 'preview', spelling, reasoning: 'light' }
     ]);
   });
 
@@ -246,7 +262,7 @@ describe('the spelling convention (Slice 3)', () => {
     const { host, runner } = setup({ active: editor(), spelling });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag' });
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
   });
 });
 
@@ -258,8 +274,8 @@ describe('the word list (Slice 3b)', () => {
 
     const wordList = ['Dinah', 'Mad', 'Hatter'];
     expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
-      { kind: 'proofread', output: 'flag', spelling: 'british', wordList },
-      { kind: 'proofread', output: 'fix', review: 'preview', spelling: 'british', wordList }
+      { kind: 'proofread', output: 'flag', spelling: 'british', wordList, reasoning: 'light' },
+      { kind: 'proofread', output: 'fix', review: 'preview', spelling: 'british', wordList, reasoning: 'light' }
     ]);
     expect(host.wordList).toHaveBeenCalledTimes(2);
   });
@@ -268,7 +284,28 @@ describe('the word list (Slice 3b)', () => {
     const { host, runner } = setup({ active: editor(), wordList });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag' });
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
+  });
+});
+
+describe('the reasoning level (2026-10-27)', () => {
+  it.each(['off', 'light', 'standard', 'deep'])('sends %s with Flag and with Fix, read at the gesture', async (reasoning) => {
+    const { host, runner } = setup({ active: editor(), reasoning });
+    await proofreadAndFlag(host, runner);
+    await proofreadAndFix(host, runner);
+
+    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+      { kind: 'proofread', output: 'flag', reasoning },
+      { kind: 'proofread', output: 'fix', review: 'preview', reasoning }
+    ]);
+    expect(host.proofreadReasoning).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([[undefined], ['Light'], ['high'], [3], [['deep']]])('reads %p as the default, light', async (reasoning) => {
+    const { host, runner } = setup({ active: editor(), reasoning });
+    await proofreadAndFlag(host, runner);
+
+    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
   });
 });
 

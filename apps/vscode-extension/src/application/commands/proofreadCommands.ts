@@ -39,10 +39,12 @@
 
 import {
   DRAFT_EDIT_LANGUAGE_IDS,
+  DRAFT_EDIT_PASS_POLICIES,
   describeDraftEditOutcome,
   describeQuickFixOutcome,
   isProofreadSpellingConvention,
   proofreadWordList,
+  reasoningLevelOf,
   type DocumentSnapshot,
   type DraftEditOutcome,
   type ProofreadPass,
@@ -93,6 +95,8 @@ export interface ProofreadCommandHost {
   spellingConvention(): string | undefined;
   /** `proseMinion.proofread.wordList`, as the writer set it: anything, until normalized. */
   wordList(): unknown;
+  /** `proseMinion.proofread.reasoning`, as the writer set it: anything, until normalized. */
+  proofreadReasoning(): unknown;
   /** A modal question with one action besides Cancel; true when the action was chosen. */
   confirm(message: string, action: string): PromiseLike<boolean>;
   /** Runs `task` under a cancellable progress notification; cancelling aborts the signal, `report` replaces its line. */
@@ -206,13 +210,18 @@ function reviewOf(host: ProofreadCommandHost): DraftEditReview {
   return host.fixReview() === 'apply' ? 'direct' : 'preview';
 }
 
-/** The writer's settings, read at the gesture: the convention named, if any (`auto` leaves it to the passage), and the word list, if any. */
+/**
+ * The writer's settings, read at the gesture: the convention named, if any
+ * (`auto` leaves it to the passage), the word list, if any, and the reasoning
+ * level, an unknown value read as the pass's default.
+ */
 function settingsOf(host: ProofreadCommandHost): ProofreadSettings {
   const spelling = host.spellingConvention();
   const wordList = proofreadWordList(host.wordList());
   return {
     ...(isProofreadSpellingConvention(spelling) ? { spelling } : {}),
-    ...(wordList.length > 0 ? { wordList } : {})
+    ...(wordList.length > 0 ? { wordList } : {}),
+    reasoning: reasoningLevelOf(host.proofreadReasoning(), DRAFT_EDIT_PASS_POLICIES.proofread.reasoning)
   };
 }
 

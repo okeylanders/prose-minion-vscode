@@ -12,6 +12,9 @@ jest.mock('@prose-minion/core', () => ({
   craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
+  DRAFT_EDIT_PASS_POLICIES: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_PASS_POLICIES,
+  reasoningLevelOf: jest.requireActual('@/domain/models/ReasoningLevel').reasoningLevelOf,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
   describeCraftFlagsPlan: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsPlan
 }));
@@ -50,6 +53,8 @@ function setup(options: {
   choice?: string;
   /** `proseMinion.craftFlags.categories`, as the writer set it; the manifest's default when not given. */
   categories?: unknown;
+  /** `proseMinion.craftFlags.reasoning`, as the writer set it; unset when not given. */
+  reasoning?: unknown;
 } = {}) {
   const calls: string[] = [];
   const host = {
@@ -65,7 +70,8 @@ function setup(options: {
     showInformation: jest.fn(async () => options.choice),
     showWarning: jest.fn(async () => options.choice),
     executeCommand: jest.fn(),
-    craftFlagCategories: jest.fn(() => ('categories' in options ? options.categories : ['cliche', 'register', 'gesture', 'continuity']))
+    craftFlagCategories: jest.fn(() => ('categories' in options ? options.categories : ['cliche', 'register', 'gesture', 'continuity'])),
+    craftFlagsReasoning: jest.fn(() => options.reasoning)
   } satisfies CraftFlagsCommandHost;
   const gesture: CraftFlagsGesture = { uri: 'file:///workspace/chapter-01.md' };
   const runner = {
@@ -114,7 +120,7 @@ describe('Craft Flags', () => {
 
     expect(runner.begin).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
-      { kind: 'craft', categories: ['cliche', 'register', 'gesture', 'continuity'] }
+      { kind: 'craft', categories: ['cliche', 'register', 'gesture', 'continuity'], reasoning: 'standard' }
     );
     expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
     expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
@@ -133,9 +139,22 @@ describe('Craft Flags', () => {
     for (const [setting, categories] of cases) {
       const { host, runner } = setup({ active: editor(), categories: setting });
       await runCraftFlags(host, runner);
-      expect(runner.begin).toHaveBeenCalledWith(expect.anything(), { kind: 'craft', categories });
+      expect(runner.begin).toHaveBeenCalledWith(expect.anything(), { kind: 'craft', categories, reasoning: 'standard' });
       expect(host.craftFlagCategories).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it.each([
+    ['off', 'off'],
+    ['deep', 'deep'],
+    [undefined, 'standard'],
+    ['Standard', 'standard'],
+    [7, 'standard']
+  ])('sends the reasoning level the setting names (%p as %s), read at the gesture (2026-10-27)', async (setting, reasoning) => {
+    const { host, runner } = setup({ active: editor(), reasoning: setting });
+    await runCraftFlags(host, runner);
+    expect(runner.begin).toHaveBeenCalledWith(expect.anything(), { kind: 'craft', categories: ['cliche', 'register', 'gesture', 'continuity'], reasoning });
+    expect(host.craftFlagsReasoning).toHaveBeenCalledTimes(1);
   });
 
   it.each([[[]], [['plot']], ['cliche'], [undefined]])('refuses, reading nothing, when no category is on (%j)', async (setting) => {
@@ -175,6 +194,18 @@ describe('Craft Flags', () => {
     expect(changed.host.confirm).not.toHaveBeenCalled();
     expect(changed.host.showWarning).toHaveBeenCalledWith('chapter-01.md changed before Craft Flags could start, so nothing was sent. Run it again.');
     expect(changed.runner.run).not.toHaveBeenCalled();
+  });
+
+  it('shows no confirmation, and says what to change, when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
+    const refused = setup({ active: editor(), plan: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    expect(await runCraftFlags(refused.host, refused.runner)).toEqual({ kind: 'ran', outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    expect(refused.host.confirm).not.toHaveBeenCalled();
+    expect(refused.runner.run).not.toHaveBeenCalled();
+    expect(refused.runner.release).toHaveBeenCalled();
+    expect(refused.host.showWarning).toHaveBeenCalledWith(
+      'Craft Flags sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
+        + 'Set proseMinion.craftFlags.reasoning to light or higher, or choose another model in proseMinion.craftModel.'
+    );
   });
 
   it('offers Open Settings with no key, and Show Problems when flags were shown', async () => {
