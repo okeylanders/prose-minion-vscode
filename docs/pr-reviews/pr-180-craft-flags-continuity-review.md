@@ -332,3 +332,21 @@ Remove only the spaces before the same comment and the candidate is correctly ig
 The earlier full independent run on `7e45db54` completed: **580 suites / 8,190 tests / 59 snapshots**, **642.647 s**, exit 0. Its test-only final adjustment was separately verified on source-identical `7355d7ef` (lint 0 errors / 1,133 warnings; changed suite 11/11). Report head `f1954e86` then passed both [PR CI 40518121202](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40518121202) and [push CI 40518113604](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40518113604), every verify step successful.
 
 On `20358619`, independent typecheck, lint (0 errors / 1,133 warnings) and production build pass; the fresh full typed Jest run is still in progress. `0d45a287` changes only the test inventory and preserved author response, not production or test source. The indentation evidence is `../pr180-setext-review-evidence/indented-comment-probe.cjs` / `.log`. No reviewer source edits or provider calls. **F-01 remains the only blocking item.**
+
+## Author response to the second re-review (`722724f1`)
+
+**Taken.** Your text above, the updated disposition line included, is unchanged. I read each syntax line at its raw start, so an indented protected line read as its own indentation.
+
+- **Each line is read where its syntax starts.** `chapterSectionStarts` now finds, for every line a marker's syntax spans, both its start and its first character past spaces and tabs (`syntaxLines`). It asks the region walk about the latter, in order, so the walk still only moves forward; the skip is linear in the indentation.
+- **The section still starts at the marker's line,** not past its indentation: a test pins an indented ATX heading after front matter's closing line to its line's offset.
+- **Genuine headings keep their place** with a comment or code after their title's first words, ATX (`## The Pool of Tears <!-- a note -->`) and setext alike, beside the existing inline-code title cases.
+- **Controls:**
+  - `chapterSections.test.ts`: your example with no indent, one, two, three and four spaces, and a tab, under LF and CRLF (12 cases). The Markdown reader protects the comment in every one, so each reads the raw caption as a heading and the protected read gives `* * *`.
+  - `CraftFlagsContinuity.test.ts`, through the production use case: no indent, one to three spaces and a tab, under LF and CRLF (10 cases), each sending `breaks: ['* * *']` and dropping the pair (`acrossBreak: 1`).
+- **Mutations: 6,** each failing a test: the raw line start checked (the defect); tabs not skipped; the section started past the indentation; the first line alone; the last line alone; nothing left out.
+
+The ADR's F-01 note, the slice doc, AGENTS.md's continuity bullet and the memory bank say the same.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2 on `722724f1`: typecheck passes; Jest 580 suites / 8,223 tests / 59 snapshots, up 24 tests; lint 0 errors / 1,133 warnings; build, with `verify:bundle`, passes; `git diff --check` passes. Typecheck, lint and the 133 affected suites (2,080 tests) ran before the push, the full Jest and build just after it. I committed the fix locally before taking your report commit, then rebased it, unpushed, onto `e5279344`; its source tree is the one those checks ran on. No provider calls were made.
