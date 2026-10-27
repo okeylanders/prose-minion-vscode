@@ -105,3 +105,53 @@ The full independent typed Jest run on implementation `4ff69dde` completed succe
 Report commit `069e76b5dc85b537ef846ce051a2fdfffd077757` was verified remotely as exactly this new report path, with parent `4ff69dde890344ec038fb9cae4a8e07ae3471272`, matching the submitted bytes. Its [push CI 40578061470](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40578061470) and [PR CI 40578072613](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40578072613) both completed successfully; every verify step passed.
 
 **Disposition unchanged: F-01, F-02 and F-03 remain open and require correction.** Green regression checks do not cover the independent counterexamples above. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
+
+## Author response (`5fd75565`)
+
+**All three are taken.** Your report above, through the verification appendix, is unchanged. Each counterexample now passes through the production use case and applier, and each fix has a witness that fails on `4ff69dde`.
+
+### F-01: a compound's parts are placed where they are written
+
+The hyphen walk now splits the word as written for offsets, and the lowered word only to look each part up (`spellingConsistency.ts`, `usesOf`). Lowering never adds or removes a hyphen, so the two splits pair index by index. A flag's bounds, its original and the case of its replacement all come from the part as written.
+
+- `Aİ-gray paint. The grey sky. The grey sea.` flags `[3,7)`, `gray`, with *Replace with* `grey`; choosing it through `DraftEditUseCase.applyShown` and `DraftEditApplier` writes `Aİ-grey paint. The grey sky. The grey sea.` and nothing else.
+- Controls: the ASCII `Ai-gray …` flags the same bounds; a later part after two expanding characters (`Aİİ-paint-gray`) is placed exactly.
+
+I did not reject the mapping instead: with offsets taken from the word as written there is no shifted edit left to reject, and the part is still read.
+
+### F-02: a listed compound keeps its parts
+
+Each use now also records the start and end of the word that holds it (`STRIDE` 5). Before a use is flagged, the word list is asked about the use, then, when the use is part of a hyphenated word, about that word whole. A listed compound still counts toward the document's totals.
+
+- With `grey-green` listed, `A grey-green cloak. A gray sky. A gray sea.` is not flagged. `blue-grey` listed keeps a later part too.
+- The compound still counts: two listed `grey-green` against one `gray` flags the `gray`.
+- `grey` written alone elsewhere is still flagged, alone: only its own range, never the compound's part. Its individual *Replace with* writes `gray dawn` and leaves `grey-green` as written.
+- A listed part (`grey`) still keeps its uses, alone and in a compound.
+
+### F-03: emphasis is read past
+
+`placeOf` now reads a mark's neighbours past the `*` and `_` written beside it, within the paragraph, so `*“...and then?”*` places its marks as `“...and then?”` does. A run of markers is read only by the marks beside it, so the walk stays linear, and offsets are untouched. The next-paragraph check now asks `placeOf` too: a paragraph's first mark continues the speech before it exactly when the paragraph's own reading gives that mark the role "open".
+
+- Your 24 witnesses pass as balanced: two quote styles × `*`, `**`, `_`, `__` × `...`, `…`, `—` (`quotationMarks.test.ts`), plus a paragraph that is only `*“...and then?”*`. Through the use case, three such sentences in one paragraph flag nothing.
+- Slips inside emphasis are still flagged, one per kind: left open (`*“...and then?*`), a misshaped opener (`*”No!”*`), a misshaped closer (`_“Who are you?“_`), a closing mark with nothing open (`**”**`), and one left open before the next (`*“...and then?* *“Who are you?”*`). Through the use case, the left-open control flags its mark.
+- Continuation reads past emphasis both ways: `*“...And yet …”*` continues the speech before it; `”*...*` is a closing mark its place leaves undecided, so it continues nothing, and both slips are flagged.
+- One older test moved. `She whispered *"Hello"* …` was the witness for a straight mark whose place says nothing. With emphasis read past, its place now decides, so the witness is `Alice could answer "yes"/"no" and nothing else.`, where the slash leaves the place undecided. The emphasis sentence stays as a balanced case.
+
+### Controls
+
+- **Mutations: 34, each caught by a failing test.** The 24 from the PR, their patterns updated, plus:
+  - F-01: parts placed by the lowered word;
+  - F-02: the compound's acceptance not asked; the holding word's end, or its start, not kept;
+  - F-03: emphasis not read past before the mark, or after it; `_` not emphasis; `*` not emphasis; the backward read stopping one short of the paragraph's start; the next-paragraph check reading the raw neighbour.
+- **The witnesses against `4ff69dde`:** with only the two source files reverted, 8 tests fail: the five new unit tests and the three new use-case tests.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2 on `5fd75565`:
+- typecheck passes;
+- Jest 589 suites / 8,338 tests / 59 snapshots;
+- lint 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes;
+- `git diff --check` passes.
+
+All ran on `5fd75565` before it was pushed. `quotationMarks.ts` is now 191 lines and `spellingConsistency.ts` 216. No provider calls were made. The ADR's "As built (part 3)" note, the slice doc and the memory bank record the three changes.
