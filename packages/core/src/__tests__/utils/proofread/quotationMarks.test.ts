@@ -26,8 +26,45 @@ describe('findQuotationSlips', () => {
   });
 
   it('closes an open quotation with a straight mark its place leaves undecided', () => {
-    // Emphasis on both sides: the place says nothing of either mark, so the second closes what the first opened.
+    // A slash on one side and a letter on the other: the place says nothing of the second mark, or the third.
+    expect(slips('Alice could answer "yes"/"no" and nothing else.')).toEqual([]);
+  });
+
+  it('reads a mark\'s place past the emphasis beside it, curly or straight (PR #182 F-03)', () => {
+    const styles = [['“', '”'], ['"', '"']];
+    const wrappers = ['*', '**', '_', '__'];
+    const leads = ['...', '…', '—'];
+    for (const [open, close] of styles) {
+      for (const wrapper of wrappers) {
+        for (const lead of leads) {
+          const text = `She said, ${wrapper}${open}${lead}and then?${close}${wrapper}`;
+          expect({ text, slips: slips(text) }).toEqual({ text, slips: [] });
+        }
+      }
+    }
+    expect(slips('*“...and then?”*')).toEqual([]);
     expect(slips('She whispered *"Hello"* and left the hall.')).toEqual([]);
+  });
+
+  it('still flags slips in emphasized text: the controls', () => {
+    const unclosed = 'She said, *“...and then?* The Rabbit hurried away.';
+    expect(slips(unclosed)).toEqual([at(unclosed, '“', 'unclosed')]);
+    const misshapedOpener = 'She said, *”No!”*';
+    expect(slips(misshapedOpener)).toEqual([at(misshapedOpener, '”', 'closing-mark-opens')]);
+    const misshapedCloser = 'She said, _“Who are you?“_ and waited.';
+    expect(slips(misshapedCloser)).toEqual([at(misshapedCloser, '“', 'opening-mark-closes', 1)]);
+    const unopened = 'Alice said nothing.**”** She sat down again.';
+    expect(slips(unopened)).toEqual([at(unopened, '”', 'unopened')]);
+    const before = '*“...and then?* *“Who are you?”*';
+    expect(slips(before)).toEqual([at(before, '“', 'unclosed-before-next')]);
+  });
+
+  it('reads a paragraph\'s first mark past emphasis when deciding whether speech goes on', () => {
+    const text = '“You are old, Father William,” the young man said, “and your hair has become very white;\n\n*“...And yet you stand on your head.”*';
+    expect(slips(text)).toEqual([]);
+    // A ” its place leaves undecided closes, so it is no speech going on: the earlier paragraph's quotation is unclosed.
+    const closing = '“You are old, said the young man.\n\n”*...* he trailed off.';
+    expect(slips(closing)).toEqual([at(closing, '“', 'unclosed'), at(closing, '”', 'unopened')]);
   });
 
   it('flags a quotation still open where its paragraph ends, curly or straight', () => {

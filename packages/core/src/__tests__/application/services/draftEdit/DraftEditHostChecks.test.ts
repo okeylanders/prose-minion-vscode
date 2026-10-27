@@ -9,7 +9,10 @@
  *   way;
  * - a selection run reads the whole document, and shows only what lies
  *   inside its selection;
- * - Fix never makes either.
+ * - Fix never makes either;
+ * - a consistency flag's own *Replace with* writes the word it names, and
+ *   nothing of a listed compound (PR #182 F-01, F-02);
+ * - emphasis around balanced speech is no slip (F-03).
  * The document and annotator behave as VS Code's do (`fakeDocuments.ts`);
  * text adapts public-domain *Alice*.
  */
@@ -124,5 +127,40 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
     await useCase.run(target(), { ...FLAG, wordList: ['gray'] });
 
     expect(flags()).toEqual([{ text: '“', code: 'proofread.quotation' }]);
+  });
+
+  it('writes a hyphenated word\'s part where it stands, when its Replace with is chosen (PR #182 F-01)', async () => {
+    const text = 'Aİ-gray paint. The grey sky. The grey sea.';
+    const { document, useCase, target, flags, annotations } = proofreader(text);
+    await useCase.run(target(), FLAG);
+    expect(flags()).toEqual([{ text: 'gray', code: 'proofread.consistency' }]);
+
+    const outcome = await useCase.applyShown(document.snapshot(), { issueIds: [annotations.shown[0].id] }, 'direct');
+
+    expect(outcome).toMatchObject({ kind: 'done', applied: 1, refused: 0 });
+    expect(document.text).toBe('Aİ-grey paint. The grey sky. The grey sea.');
+  });
+
+  it('never offers to change a listed compound, and its Replace with on the part standing alone leaves the compound (PR #182 F-02)', async () => {
+    const text = 'Alice wore a grey-green cloak, and the grey dawn came. A gray sky, a gray sea, a gray hill.';
+    const { document, useCase, target, flags, annotations } = proofreader(text);
+    await useCase.run(target(), { ...FLAG, wordList: ['grey-green'] });
+    expect(annotations.shown.map((annotation) => annotation.start)).toEqual([text.indexOf('grey dawn')]);
+    expect(flags()).toEqual([{ text: 'grey', code: 'proofread.consistency' }]);
+
+    await useCase.applyShown(document.snapshot(), { issueIds: [annotations.shown[0].id] }, 'direct');
+
+    expect(document.text).toBe('Alice wore a grey-green cloak, and the gray dawn came. A gray sky, a gray sea, a gray hill.');
+  });
+
+  it('reads emphasized speech that opens with an ellipsis or a dash as balanced, and still flags one left open (PR #182 F-03)', async () => {
+    const balanced = 'Alice said, *“...and then?”* The Hatter said, **"—No!"** The Dormouse said, _“…Treacle.”_';
+    const clean = proofreader(balanced);
+    await clean.useCase.run(clean.target(), FLAG);
+    expect(clean.flags()).toEqual([]);
+
+    const open = proofreader('Alice said, *“...and then?* The Hatter said nothing.');
+    await open.useCase.run(open.target(), FLAG);
+    expect(open.flags()).toEqual([{ text: '“', code: 'proofread.quotation' }]);
   });
 });

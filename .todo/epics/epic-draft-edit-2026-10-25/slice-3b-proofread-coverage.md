@@ -323,3 +323,19 @@ stopping point" before the release.
   only after its first letter is not read; "all right" meaning "all
   correct" is flagged where "alright" is the more used.
 - **Not yet:** the fixture run.
+
+### PR #182 review
+
+Astra's review found three P2 defects, each fixed with witnesses that fail
+on `4ff69dde` and controls:
+
+- **F-01:** a hyphenated word's parts were placed by the lowered word, so a
+  character lowering to two code units ("İ") shifted a part's flag and its
+  *Replace with*. Parts are now placed by the word as written.
+- **F-02:** a listed compound ("grey-green") still had its part flagged.
+  Each use now keeps the word holding it, and a part of a listed compound is
+  never flagged; it still counts.
+- **F-03:** emphasis beside a mark (`*“...and then?”*`) made an opening mark
+  read as closing. A mark's place is now read past `*` and `_`, and the
+  next-paragraph check uses the same place rule. Slips inside emphasis are
+  still flagged.

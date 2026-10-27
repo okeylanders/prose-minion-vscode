@@ -7,9 +7,10 @@
  *
  * - **Read as words** (`proofreadWords`), with case, apostrophe shape and a
  *   possessive set aside. A hyphenated word is read whole, then part by part
- *   ("grey-green"). "all right" is two words with only spaces or tabs
- *   between them; across a line break it is not read, since its
- *   *Replace with* would join two lines.
+ *   ("grey-green"), each part placed where it is written (PR #182 F-01).
+ *   "all right" is two words with only spaces or tabs between them; across
+ *   a line break it is not read, since its *Replace with* would join two
+ *   lines.
  * - **Never read:** words in the skipped regions (protected text), and a
  *   capitalized word mid-sentence (`followsMidSentence`), which is a name:
  *   "Mr Gray", "Pearl Harbor", "the Labour vote".
@@ -19,7 +20,9 @@
  * - **With a spelling convention named,** the spelling that convention uses
  *   wins whatever the counts. A word the convention spells either way falls
  *   back to the counts.
- * - **A word the writer's list accepts** counts, but is never flagged.
+ * - **A word the writer's list accepts** counts, but is never flagged, nor
+ *   is a part of a hyphenated word the list accepts: "grey-green" listed
+ *   keeps its "grey" (PR #182 F-02).
  *
  * "all right" in the sense "all correct" is read as the spelling of
  * "alright", so where "alright" is the more used it is flagged: the stated
@@ -58,16 +61,17 @@ interface FormRef {
 }
 
 /**
- * Each entry's uses, by side: flat runs of start, end and inflection, so a
- * long document's thousands of uses make no object each.
+ * Each entry's uses, by side: flat runs of start, end, inflection and the
+ * start and end of the word holding the use (a hyphenated word's, for one
+ * of its parts), so a long document's thousands of uses make no object each.
  */
 type Uses = readonly [number[], number[]][];
 
 const { words: ONE_WORD, phrases: TWO_WORDS } = indexForms(VARIANT_SPELLINGS);
 const SPACES = /^[ \t]+$/u;
 const UPPER = /^\p{Lu}/u;
-/** Three numbers a use. */
-const STRIDE = 3;
+/** Five numbers a use. */
+const STRIDE = 5;
 
 /** Each use of a spelling `text` should not keep, in order. */
 export function findInconsistentSpellings(
@@ -91,9 +95,9 @@ export function findInconsistentSpellings(
     const other = 1 - flagged;
     const runs = [first, second][flagged];
     for (let at = 0; at < runs.length; at += STRIDE) {
-      const [start, end, inflection] = [runs[at], runs[at + 1], runs[at + 2]];
+      const [start, end, inflection, wordStart, wordEnd] = runs.slice(at, at + STRIDE);
       const original = text.slice(start, end);
-      if (isAcceptedWord(accepted, original)) {
+      if (isAcceptedWord(accepted, original) || ((wordStart !== start || wordEnd !== end) && isAcceptedWord(accepted, text.slice(wordStart, wordEnd)))) {
         continue;
       }
       found.push({
@@ -124,9 +128,9 @@ function usesOf(text: string, skippedRegions: readonly TextRange[]): Uses {
   };
   const uses: Uses = VARIANT_SPELLINGS.map((): [number[], number[]] => [[], []]);
   // Only a word that is a form is asked whether it is skipped or a name: most words are neither.
-  const use = (ref: FormRef, word: ProofreadWord, start: number, end: number): void => {
+  const use = (ref: FormRef, word: ProofreadWord, start: number, end: number, wordEnd = end): void => {
     if (!inSkipped(start, end) && !isName(text, word)) {
-      uses[ref.entry][ref.side].push(start, end, ref.inflection);
+      uses[ref.entry][ref.side].push(start, end, ref.inflection, word.start, wordEnd);
     }
   };
   const words = proofreadWords(text);
@@ -146,14 +150,16 @@ function usesOf(text: string, skippedRegions: readonly TextRange[]): Uses {
     if (whole) {
       use(whole, word, word.start, word.end);
     } else if (key.includes('-')) {
+      // Each part is placed by the word as written: lowering can change a part's length ("İ" is two code units lowered).
+      const keys = key.split('-');
       let offset = word.start;
-      for (const part of key.split('-')) {
-        const ref = ONE_WORD.get(part);
+      word.text.split('-').forEach((part, index) => {
+        const ref = ONE_WORD.get(keys[index]);
         if (ref) {
-          use(ref, word, offset, offset + part.length);
+          use(ref, word, offset, offset + part.length, word.end);
         }
         offset += part.length + 1;
-      }
+      });
     }
   }
   return uses;

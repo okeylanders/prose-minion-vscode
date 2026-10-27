@@ -14,6 +14,10 @@
  *   closes. Otherwise “ opens, ” closes, and a straight " closes an open
  *   quotation or opens one. The two styles close each other (“Hello," she
  *   said), as the dialogue rule reads them.
+ * - **Emphasis is read past** (PR #182 F-03). A place is read beyond the
+ *   `*` and `_` written beside a mark, so `*“...and then?”*` places its
+ *   marks as `“...and then?”` does, and a paragraph's first mark is placed
+ *   by the same rule when it decides whether speech goes on.
  * - **A curly mark of the wrong shape** (a ” where a quotation opens, a “
  *   where one closes) is flagged, and read as the mark its place calls for,
  *   so one slip makes one flag and the paragraph's later quotations read
@@ -125,11 +129,28 @@ function readParagraph(text: string, paragraph: BlankLineParagraph, skipped: Ski
   return slips.sort((a, b) => a.start - b.start);
 }
 
-/** What a mark's place says of it, when it says anything. */
+/** What a mark's place says of it, when it says anything, read past the emphasis beside it. */
 function placeOf(text: string, at: number, paragraph: BlankLineParagraph): Role | undefined {
-  const opens = at === paragraph.start || OPENS_AFTER.test(text[at - 1]);
-  const closes = at + 1 >= paragraph.end || CLOSES_BEFORE.test(text[at + 1]);
+  let before = at - 1;
+  while (before >= paragraph.start && isEmphasis(text[before])) {
+    before -= 1;
+  }
+  let after = at + 1;
+  while (after < paragraph.end && isEmphasis(text[after])) {
+    after += 1;
+  }
+  const opens = before < paragraph.start || OPENS_AFTER.test(text[before]);
+  const closes = after >= paragraph.end || CLOSES_BEFORE.test(text[after]);
   return opens && !closes ? 'open' : closes && !opens ? 'close' : undefined;
+}
+
+/**
+ * Emphasis's markers. A run of them is read only by the marks beside it,
+ * each placed at most twice (a paragraph's first mark by the continuation
+ * check too), so the walk stays linear.
+ */
+function isEmphasis(character: string): boolean {
+  return character === '*' || character === '_';
 }
 
 /** Whether `paragraph` opens with a quotation mark that opens a quotation: speech going on from the paragraph before. */
@@ -142,9 +163,8 @@ function opensWithQuotation(text: string, paragraph: BlankLineParagraph, skipped
   if (at >= paragraph.end || skipped.contains(at) || (mark !== STRAIGHT && mark !== OPENING && mark !== CLOSING)) {
     return false;
   }
-  // Nothing of the paragraph's own is written before it, so only what follows can make it close.
-  const closes = at + 1 >= paragraph.end || CLOSES_BEFORE.test(text[at + 1]);
-  return mark === CLOSING ? !closes : true;
+  // The role `readParagraph` gives a first mark: with nothing written before it, only a ” its place leaves undecided closes.
+  return mark !== CLOSING || placeOf(text, at, paragraph) === 'open';
 }
 
 /** The skipped regions, asked in ascending order: one walk over them in all. */

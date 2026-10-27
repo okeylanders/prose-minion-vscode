@@ -59,6 +59,18 @@ case was added for each:
   used.
 - "the Rabbit" and "the rabbit" are not in the table.
 
+## PR #182 review (Astra, `069e76b5`)
+
+Three P2 findings, fixed with witnesses failing on `4ff69dde`:
+- **F-01:** a hyphenated word's parts were placed by the lowered word; "İ"
+  lowers to two code units, shifting the flag and its *Replace with*. Parts
+  are now placed as written.
+- **F-02:** a listed compound ("grey-green") had its part flagged. Each use
+  keeps the word holding it (five numbers a use); a listed compound's part
+  counts but is never flagged.
+- **F-03:** emphasis beside a mark (`*“...and then?”*`) misplaced it. Places
+  are read past `*` and `_`; the next-paragraph check asks the same rule.
+
 ## Next
 
 The PR into `epic/lightbox`, then release prep (2.12.0) on the writer's

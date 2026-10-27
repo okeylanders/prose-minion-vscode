@@ -1058,6 +1058,13 @@ but a run still needs a key; running them without one is a follow-up.
     paragraph's end, closing punctuation or a dash), it closes. Otherwise
     “ opens, ” closes, and a straight " closes an open quotation or opens
     one. The two styles close each other, as the dialogue rule reads them.
+  - **Emphasis is read past** (PR #182 F-03). A mark's place is read
+    beyond the `*` and `_` written beside it, so `*“...and then?”*` places
+    its marks as `“...and then?”` does. Read at the raw neighbour, the
+    emphasis made the opening mark a closing one, and balanced speech
+    opening with an ellipsis or a dash was flagged twice. A run of markers
+    is read only by the marks beside it, so the walk stays linear. Slips
+    inside emphasis are still flagged.
   - **Five kinds:**
     - still open where its paragraph ends;
     - still open where the next quotation opens (the earlier mark is
@@ -1068,7 +1075,7 @@ but a run still needs a key; running them without one is a follow-up.
       place calls for, so one slip makes one flag.
   - **Speech going on.** A paragraph opens a quotation that goes on from the
     one before when its first mark, past a block quote's marker or emphasis,
-    opens.
+    opens, by the same place rule the paragraph's own reading uses.
   - **Each mark is flagged at most once,** with no replacement, a wrong
     shape included: where a missing mark belongs is the writer's to say.
   - **Not read:** single quotation marks (apostrophes outnumber them),
@@ -1106,7 +1113,10 @@ but a run still needs a key; running them without one is a follow-up.
     names it ("British spelling uses “grey”").
   - **Read as words:** one walk over the document's words (`proofreadWords`),
     each looked up once.
-    - A hyphenated word is read whole, then part by part.
+    - A hyphenated word is read whole, then part by part, each part placed
+      where it is written (PR #182 F-01): lowering a word can change a
+      part's length ("İ" lowers to two code units), so the lowered word
+      only looks the part up.
     - "all right" is read only with spaces or tabs between its words,
       never across a line, since its *Replace with* would join two lines.
     - A capitalized word mid-sentence is a name, by the name check's own
@@ -1115,7 +1125,9 @@ but a run still needs a key; running them without one is a follow-up.
     - **Limit:** a word capitalized only after its first letter ("gREY") is
       not read. That keeps the walk from copying almost any word.
   - **A tie flags nothing.** A word the writer lists counts, but is never
-    flagged.
+    flagged, nor is a part of a hyphenated word the list holds whole:
+    "grey-green" listed keeps its "grey", while "grey" alone elsewhere is
+    still read (PR #182 F-02).
   - **Replace with** the same inflection of the other spelling, in the case
     it is written ("Grey" to "Gray", "OK" to "okay", "OKAY" to "OK"), never
     preferred.

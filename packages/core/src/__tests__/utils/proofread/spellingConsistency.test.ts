@@ -102,6 +102,17 @@ describe('findInconsistentSpellings', () => {
       .toEqual([{ text: 'neighbor', original: 'neighbor', replacement: 'neighbour' }]);
   });
 
+  it('places a hyphenated word\'s part where it is written, where lowering the word changes a length before it (PR #182 F-01)', () => {
+    // "İ" lowers to two code units: placed by the lowered word, the flag would cover "ray ".
+    const text = 'Aİ-gray paint. The grey sky. The grey sea.';
+    const [use] = findInconsistentSpellings(text, [], NONE);
+    expect(use).toMatchObject({ start: 3, end: 7, original: 'gray', replacement: 'grey' });
+    const ascii = 'Ai-gray paint. The grey sky. The grey sea.';
+    expect(findInconsistentSpellings(ascii, [], NONE)[0]).toMatchObject({ start: 3, end: 7, original: 'gray', replacement: 'grey' });
+    const later = 'Aİİ-paint-gray. The grey sky. The grey sea.';
+    expect(flagged(later)).toEqual([{ text: 'gray', original: 'gray', replacement: 'grey' }]);
+  });
+
   it('never reads a word in a skipped region', () => {
     const text = 'The grey sea, and `color = gray` in the code, and the grey sky.';
     const code = { start: text.indexOf('`'), end: text.lastIndexOf('`') + 1 };
@@ -114,6 +125,23 @@ describe('findInconsistentSpellings', () => {
     expect(flagged('It was all right. It was all right. It was alright.', { accepted })).toEqual([]);
     expect(flagged('It was alright. It was alright. It was all right.', { accepted }))
       .toEqual([{ text: 'all right', original: 'all right', replacement: 'alright' }]);
+  });
+
+  it('never flags a part of a hyphenated word the writer accepts, but counts it, and flags the part standing alone (PR #182 F-02)', () => {
+    const compound = proofreadWordListKeys(['grey-green']);
+    const text = 'A grey-green cloak. A gray sky. A gray sea.';
+    expect(flagged(text, { accepted: compound })).toEqual([]);
+    expect(flagged(text)).toEqual([{ text: 'grey', original: 'grey', replacement: 'gray' }]);
+    // A listed compound's later part, too.
+    expect(flagged('A blue-grey cloak. A gray sky. A gray sea.', { accepted: proofreadWordListKeys(['blue-grey']) })).toEqual([]);
+    // The listed compound counts: two "grey" to one "gray".
+    expect(flagged('A grey-green cloak. A grey-green hat. A gray sky.', { accepted: compound }))
+      .toEqual([{ text: 'gray', original: 'gray', replacement: 'grey' }]);
+    // The compound is listed, not its part: "grey" written alone is flagged, the compound's is not.
+    const alone = 'A grey-green cloak. A grey dawn. A gray sky. A gray sea. A gray hill.';
+    expect(findInconsistentSpellings(alone, [], compound).map((use) => use.start)).toEqual([alone.indexOf('grey dawn')]);
+    // A listed part keeps its uses, in the compound and alone.
+    expect(flagged('A grey-green cloak. A grey dawn. A gray sky. A gray sea. A gray hill.', { accepted: proofreadWordListKeys(['grey']) })).toEqual([]);
   });
 
   it('never pairs "analyzes" with "analyses", the plural of "analysis" in every convention', () => {
