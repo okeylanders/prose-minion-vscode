@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 4: continuity
 
-**Latest disposition — re-review of `7e45db54` / `81446970`: F-01 remains open (protected setext underline); F-02, F-03, N-01 and N-02 resolved. See the re-review appendix.**
+**Latest disposition — second re-review of `20358619`: F-01 remains open (indentation before protected syntax); F-02, F-03, N-01 and N-02 resolved. See the second re-review appendix.**
 
 **Disposition: Changes requested — three P2 continuity-boundary findings. Two nonblocking P3 hardening notes.**
 
@@ -296,3 +296,39 @@ The ADR's F-01 note, its "Scene breaks" row, the slice doc, AGENTS.md's continui
 ### Verification
 
 Node 18.20.8 / npm 10.8.2 on `20358619`: typecheck passes; Jest 580 suites / 8,199 tests / 59 snapshots, up 9 tests; lint 0 errors / 1,133 warnings; build, with `verify:bundle`, passes; `git diff --check` passes. Typecheck, lint and the 133 affected suites ran before the push, the full Jest and build just after it. No provider calls were made.
+
+## Second re-review — `20358619`; author response `0d45a287`
+
+**Disposition: F-01 still requires one correction: indentation before protected syntax bypasses the line eligibility check. F-02, F-03, N-01 and N-02 remain resolved.**
+
+The protected-underline example and its variation are fixed. The prior six regressions and expanded boundary matrix still pass, as do the four-category orchestration, detector compatibility, section-span, masking and linear-work checks. The remaining defect is the raw offset used to decide whether a syntax line is protected.
+
+### F-01 · P2 · Test the syntax after indentation, not the whitespace preceding it
+
+**Current location:** [`chapterSections.ts:262–284`](../../packages/core/src/utils/chapterSections.ts#L262), `lineStarts` and its `starts.some(inside)` consumer.
+
+```markdown
+Opening words.
+
+A caption
+  <!-- a note -->
+---
+
+Alice had pink eyes.
+
+* * *
+
+Alice had blue eyes.
+```
+
+The production Markdown reader reports **no heading** and protects `<!-- a note -->` (the spaces before `<` are not part of that range). `headingOf` nevertheless recognizes the mixed paragraph as a setext candidate. The new callback checks each physical line's offset; on the comment line that offset points at the first space, outside the protected range. The fake caption heading wins and hides the genuine scene break: **`breaks: ['A caption']`, `flagged: 1`, `acrossBreak: 0`**.
+
+Remove only the spaces before the same comment and the candidate is correctly ignored: **`breaks: ['* * *']`, `flagged: 0`, `acrossBreak: 1`**. One, two and three spaces reproduce the bypass under both LF and CRLF (six failures, two unindented controls); the comment is masked in every request. This is the same F-01 failure mechanism, not a new requirement to change Lightbox's raw detector or the documented paragraph boundary rule.
+
+**Requested correction:** make marker eligibility test the relevant syntax position after leading horizontal whitespace, while preserving the marker's actual section offset and the ordered-region work bound. A line whose substantive text is protected must not become eligible merely because it is indented. Retain genuine ATX/setext headings with inline-code or inline-comment content after ordinary title text. Add production-use-case controls for zero through three spaces, tabs where recognized as protected, and both line endings, verifying the real break is sent and the pair rejected.
+
+### Verification checkpoint
+
+The earlier full independent run on `7e45db54` completed: **580 suites / 8,190 tests / 59 snapshots**, **642.647 s**, exit 0. Its test-only final adjustment was separately verified on source-identical `7355d7ef` (lint 0 errors / 1,133 warnings; changed suite 11/11). Report head `f1954e86` then passed both [PR CI 40518121202](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40518121202) and [push CI 40518113604](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40518113604), every verify step successful.
+
+On `20358619`, independent typecheck, lint (0 errors / 1,133 warnings) and production build pass; the fresh full typed Jest run is still in progress. `0d45a287` changes only the test inventory and preserved author response, not production or test source. The indentation evidence is `../pr180-setext-review-evidence/indented-comment-probe.cjs` / `.log`. No reviewer source edits or provider calls. **F-01 remains the only blocking item.**
