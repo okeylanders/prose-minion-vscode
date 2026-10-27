@@ -278,3 +278,21 @@ Changing **only the protected code text** from `---` to `not an underline` resto
 - Typecheck and production build pass on `7e45db54`; full typed Jest is still running. Its lint has 0 errors / 1,134 warnings, the one new test-key warning already corrected in `81446970`. That commit changes only an equivalent assertion form and test inventory; `7355d7ef` adds only the preserved author response. On `7355d7ef`, final-head lint passes with 0 errors / 1,133 warnings, and the changed suite passes all 11 tests (4.717 s). Production-source bytes are unchanged from `7e45db54`. No full-suite result for this correction is claimed yet.
 
 Evidence is in `../pr180-rereview-evidence/`, including `setext-protected-probe.cjs` / `.log`. No source changes or live/provider calls were made. **F-01 remains the only blocking finding; native/live acceptance is still separate.**
+
+## Author response to the re-review (`20358619`)
+
+**F-01's setext case is taken.** Your text above, the disposition line at the top included, is unchanged. You were right: I checked where a marker starts, but a setext heading's syntax runs through its underline, and the underline was the protected line.
+
+- **The predicate reads every line of a marker's syntax.** `detectChapterSections(paragraphs, ignored?)` now asks `ignored(paragraph, firstLine, lastLine)`. For an ATX heading, a break or a chapter line, the first and last line are the same line; for a setext heading they run from its first text line through its underline (`headingOf` reports how many lines it spans). `chapterSectionStarts` finds each of those lines' start in one walk of the paragraph and leaves the marker out when any of them starts inside a protected region. The walk over the regions still only moves forward.
+- **What stays:** a heading whose title holds code past its first character keeps its place ("The `hidden` hall" over `===`, and the ATX form). A section's start is still its marker's first line. The Lightbox passes no predicate, so its lane is unchanged, and the raw read still gives `A caption` as a heading.
+- **The limit, stated:** a setext heading directly under a comment or a code block in the same paragraph is left out with it, since its syntax opens in protected text. That is the paragraph model's existing limit (a heading that does not open its paragraph cannot split it); the detector's header now says so, and a test pins it.
+- **Controls:**
+  - `chapterSections.test.ts`: your example with a backtick fence, a tilde fence and an HTML comment, each raw (the caption) and protected (`* * *`); the protected-text-only variation; CRLF line ends; a genuine setext title with code; the protected-first-line limit; and the lines the predicate is asked (`[2, 0, 2]` for a two-line setext title, one line for a break and an ATX heading).
+  - `CraftFlagsContinuity.test.ts`, through the production use case: your example and its `not an underline` variation each send `breaks: ['* * *']` and drop the pair (`acrossBreak: 1`).
+- **Mutations: 4,** each failing a test: the first line alone asked (the old check); a setext heading spanning one line; the last line alone asked; the section's start taken from its last line. The third survived at first, since every case so far had a protected underline; the protected-first-line case catches it. The earlier 14 were rerun against the new detector, the three whose code moved adapted to it: all caught.
+
+The ADR's F-01 note, its "Scene breaks" row, the slice doc, AGENTS.md's continuity bullet and the memory bank say the same.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2 on `20358619`: typecheck passes; Jest 580 suites / 8,199 tests / 59 snapshots, up 9 tests; lint 0 errors / 1,133 warnings; build, with `verify:bundle`, passes; `git diff --check` passes. Typecheck, lint and the 133 affected suites ran before the push, the full Jest and build just after it. No provider calls were made.
