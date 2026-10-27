@@ -55,7 +55,8 @@ density threshold. It replaces the slice doc's host-flagged threshold.
   test added a nod at the document's start, so the shifted speech ranges
   happened to give the same count from the gesture's own text. The test
   now adds it at the end.
-- Node 18 mirror: see the PR.
+- Node 18.20.8 mirror on `12a5cef5`: typecheck, lint (0 / 1,133) and build
+  pass; 576 suites / 8,117 tests / 59 snapshots (base 574 / 8,089).
 
 ## Follow-ups
 
