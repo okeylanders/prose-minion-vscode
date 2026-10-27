@@ -79,12 +79,10 @@ describe('chapterSectionStarts', () => {
   it('leaves the detector as it was when nothing is ignored: paragraph numbers, signal and level unchanged', () => {
     const paragraphs = [BANK, '# Fake chapter', '## The Pool of Tears', HOLE, '* * *', HALL];
     expect(detectChapterSections(paragraphs, () => false)).toEqual(detectChapterSections(paragraphs));
-    expect(detectChapterSections(paragraphs, (paragraph) => paragraph === 2)).toMatchObject({
-      signal: 'headings',
-      level: 2,
-      sections: [{ from: 1, to: 2 }, { from: 3, to: 6, marker: 3 }],
-      fired: { headings: [3], 'scene-breaks': [5] }
-    });
+    const left = detectChapterSections(paragraphs, (paragraph) => paragraph === 2);
+    expect(left).toMatchObject({ signal: 'headings', level: 2, sections: [{ from: 1, to: 2 }, { from: 3, to: 6, marker: 3 }] });
+    expect(left.fired.headings).toEqual([3]);
+    expect(left.fired['scene-breaks']).toEqual([5]);
   });
 
   it('reads the protected regions once over, however many headings hold code (N-02)', () => {
