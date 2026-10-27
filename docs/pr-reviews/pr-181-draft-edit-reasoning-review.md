@@ -76,3 +76,11 @@ Evidence/logs remain outside the repository in `../pr181-review-evidence/`. Only
 **Resolve F-01 before integration.** Corrections need delta review and exact final-head CI verification. This report is not a formal GitHub review submission.
 
 Native VS Code setting/Output/recovery presentation and the writer's live `off`/`light` acceptance on supported models remain unrun. Documentation and mocked transport establish the protocol, not model-specific adherence, editorial quality or actual cost. The narrowly accepted native Refactor Preview lifetime race from PR #172 is unrelated to this request-construction issue.
+
+## Verification completion — 2026-10-27 16:12 UTC
+
+The full independent typed Jest run on implementation `304d5da6` completed successfully: **583 suites / 8,265 tests / 59 snapshots**, **647.884 s**, exit 0. All local aggregate checks now pass, together with the previously completed typecheck, lint and production build.
+
+Report commit `c7ec46f7acd3ef705028f7e7030896d068cc519d` was verified remotely as exactly this new report path, with parent `304d5da646687bc2f51daa47a286e9ac055f4b23`, matching the submitted bytes. Its [push CI 40537219395](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40537219395) and [PR CI 40537227466](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40537227466) both completed successfully; every verify step passed.
+
+**Disposition unchanged: F-01 remains open and requires correction.** The incompatibility is established by the provider's documented contract and public model metadata, not contradicted by mocked regression success. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
