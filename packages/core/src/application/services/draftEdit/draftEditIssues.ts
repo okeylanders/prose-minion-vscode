@@ -5,7 +5,7 @@
  */
 
 import type { DocumentAnnotation, DocumentTextChange } from '@/platform';
-import type { DraftEditDropCounts } from '@/domain/models/DraftEdit';
+import type { DraftEditDropCounts, TextRange } from '@/domain/models/DraftEdit';
 import { proofreadCategoryDisposition, type ProofreadIssue } from '@/domain/models/ProofreadIssue';
 import { findProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import { shiftRanges } from '@/utils/draftEdit/shiftRanges';
@@ -17,35 +17,43 @@ export function noDrops(): DraftEditDrops {
   return { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed: 0, accepted: 0 };
 }
 
+/** What any pass's placed issue holds that moving and protecting it reads (Proofread's, and Craft Flags' since Slice 3c). */
+export interface PlacedText {
+  readonly start: number;
+  readonly end: number;
+  /** The exact text at `start..end` when the issue was placed. */
+  readonly original: string;
+}
+
 /**
  * Issues moved through a document's change events, in order. An issue a
  * change touched, or whose text is no longer its original, is left out: it
  * follows its own occurrence, and is never searched for again (PR #171 F-03).
  */
-export function moveIssues(
-  issues: readonly ProofreadIssue[],
+export function moveIssues<T extends PlacedText>(
+  issues: readonly T[],
   events: ReadonlyArray<readonly DocumentTextChange[]>,
   liveText: string
-): ProofreadIssue[] {
+): T[] {
   return events
-    .reduce<ProofreadIssue[]>((current, changes) => shiftRanges(current, changes), [...issues])
+    .reduce<T[]>((current, changes) => shiftRanges(current, changes), [...issues])
     .filter((issue) => liveText.slice(issue.start, issue.end) === issue.original);
 }
 
-/** Issues outside the live text's protected regions; the rest are counted as protected. */
-export function outsideProtected(
-  issues: readonly ProofreadIssue[],
+/** Issues outside the live text's protected regions (found here unless the caller already has them); the rest are counted as protected. */
+export function outsideProtected<T extends PlacedText>(
+  issues: readonly T[],
   liveText: string,
   languageId: string,
-  dropped: DraftEditDrops
-): ProofreadIssue[] {
-  const regions = findProtectedRegions(liveText, languageId);
+  dropped: { protected: number },
+  regions: readonly TextRange[] = findProtectedRegions(liveText, languageId)
+): T[] {
   const kept = issues.filter((issue) => !regions.some((range) => range.start < issue.end && issue.start < range.end));
   dropped.protected += issues.length - kept.length;
   return kept;
 }
 
-export function byPlace(a: ProofreadIssue, b: ProofreadIssue): number {
+export function byPlace(a: PlacedText, b: PlacedText): number {
   return a.start - b.start || a.end - b.end;
 }
 

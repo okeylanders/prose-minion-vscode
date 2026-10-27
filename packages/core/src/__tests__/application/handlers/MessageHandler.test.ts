@@ -89,7 +89,8 @@ function createTestAssembly(): TestAssembly {
     shell: createFakeShellService(),
     editor: createFakeEditorContext(),
     documents: createFakeDocumentEditor(),
-    annotations: createFakeIssueAnnotator()
+    annotations: createFakeIssueAnnotator(),
+    craftAnnotations: createFakeIssueAnnotator()
   };
 
   const scheduleRefresh = jest.fn();

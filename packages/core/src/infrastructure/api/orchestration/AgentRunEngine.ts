@@ -738,7 +738,7 @@ export class AgentRunEngine {
     retained: boolean,
     options: AgentRunOptions
   ): Promise<CapabilityFulfillment> {
-    const contextLength = OpenRouterModels.getCachedContextLength(provider.getModel?.() ?? this.model);
+    const contextLength = OpenRouterModels.getCachedContextLength(options.model ?? provider.getModel?.() ?? this.model);
     if (contextLength === undefined) {
       return capability.fulfill(request);
     }
@@ -759,7 +759,7 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
-    const model = provider.getModel?.() ?? this.model;
+    const model = options.model ?? provider.getModel?.() ?? this.model;
     const contextLength = OpenRouterModels.getCachedContextLength(model);
     if (contextLength !== undefined) {
       this.contextPreflightUnavailableModel = undefined;
@@ -782,6 +782,7 @@ export class AgentRunEngine {
       signal: options.signal,
       tools: options.tools,
       reasoning: options.reasoning,
+      ...(options.model ? { model: options.model } : {}),
       ...(conversationId ? {
         conversationId,
         claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))

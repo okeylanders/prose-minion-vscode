@@ -148,7 +148,8 @@ export class MessageHandler {
     'proseMinion.categoryModel',
     'proseMinion.widgetModel',
     'proseMinion.lightboxModel',
-    'proseMinion.proofreadModel'
+    'proseMinion.proofreadModel',
+    'proseMinion.craftModel'
   ] as const;
 
   private readonly UI_KEYS = [

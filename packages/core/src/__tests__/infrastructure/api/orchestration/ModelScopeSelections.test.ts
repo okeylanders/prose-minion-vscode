@@ -1,8 +1,9 @@
 /**
  * ModelScopeSelections (Lightbox Slice 4L): the one rule that turns the
  * `proseMinion.*Model` settings into the model each scope runs on. The
- * Lightbox follows the assistant model (the Workshop's) until it has one of
- * its own. Model ids are placeholders.
+ * Lightbox and Craft Flags (Draft Edit Slice 3c) each follow the assistant
+ * model (the Workshop's) until they have one of their own. Model ids are
+ * placeholders.
  */
 import {
   DEFAULT_PROOFREAD_MODEL,
@@ -73,8 +74,36 @@ describe('resolveModelScopeSelections: the Lightbox model scope (Slice 4L)', () 
       category: DEFAULT_CATEGORY_MODEL,
       widget: DEFAULT_WIDGET_MODEL,
       lightbox: defaults.assistant,
-      proofread: DEFAULT_PROOFREAD_MODEL
+      proofread: DEFAULT_PROOFREAD_MODEL,
+      craft: defaults.assistant
     });
+  });
+});
+
+describe('resolveModelScopeSelections: the Craft Flags model scope (Draft Edit Slice 3c)', () => {
+  const CRAFT = 'placeholder/craft-model';
+
+  it('follows the assistant model until it has its own, and moves when that one does', () => {
+    const values: Record<string, unknown> = { assistantModel: WORKSHOP };
+    expect(resolveModelScopeSelections(settingsOf(values)).craft).toBe(WORKSHOP);
+    expect(followingModelScopes(settingsOf(values))).toContain('craft');
+
+    values.assistantModel = 'placeholder/workshop-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values)).craft).toBe('placeholder/workshop-model-next');
+  });
+
+  it('runs on its own model once picked, apart from the Lightbox\'s, and the assistant model never moves it', () => {
+    const values: Record<string, unknown> = { assistantModel: WORKSHOP, craftModel: ` ${CRAFT} ` };
+    expect(resolveModelScopeSelections(settingsOf(values))).toMatchObject({ assistant: WORKSHOP, lightbox: WORKSHOP, craft: CRAFT });
+    expect(followingModelScopes(settingsOf(values))).toEqual(['lightbox']);
+
+    values.assistantModel = 'placeholder/workshop-model-next';
+    expect(resolveModelScopeSelections(settingsOf(values)).craft).toBe(CRAFT);
+  });
+
+  it('never moves the Lightbox\'s model, nor the Lightbox\'s it', () => {
+    expect(resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX })).craft).toBe(WORKSHOP);
+    expect(resolveModelScopeSelections(settingsOf({ assistantModel: WORKSHOP, craftModel: 'placeholder/craft-model' })).lightbox).toBe(WORKSHOP);
   });
 });
 
@@ -103,8 +132,9 @@ describe('resolveModelScopeSelections: the Proofread model scope (ADR 2026-10-21
 
 describe('the following scopes', () => {
   it('reports which scopes have no model of their own', () => {
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox']);
-    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual([]);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP }))).toEqual(['lightbox', 'craft']);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX }))).toEqual(['craft']);
+    expect(followingModelScopes(settingsOf({ assistantModel: WORKSHOP, lightboxModel: LIGHTBOX, craftModel: 'placeholder/craft-model' }))).toEqual([]);
     expect(ownFollowingModel(settingsOf({ lightboxModel: 42 }), 'lightbox')).toBeUndefined();
   });
 
@@ -116,10 +146,11 @@ describe('the following scopes', () => {
       category: 'categoryModel',
       widget: 'widgetModel',
       lightbox: 'lightboxModel',
-      proofread: 'proofreadModel'
+      proofread: 'proofreadModel',
+      craft: 'craftModel'
     });
-    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant' });
-    expect(['lightbox', 'assistant', 'widget', 'toString', undefined].map(isFollowingModelScope))
-      .toEqual([true, false, false, false, false]);
+    expect(MODEL_SCOPE_FOLLOWS).toEqual({ lightbox: 'assistant', craft: 'assistant' });
+    expect(['lightbox', 'craft', 'assistant', 'widget', 'toString', undefined].map(isFollowingModelScope))
+      .toEqual([true, true, false, false, false, false]);
   });
 });

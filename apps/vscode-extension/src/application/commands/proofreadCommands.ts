@@ -45,7 +45,7 @@ import {
   proofreadWordList,
   type DocumentSnapshot,
   type DraftEditOutcome,
-  type DraftEditPass,
+  type ProofreadPass,
   type DraftEditQuickFixOutcome,
   type DraftEditQuickFixRequest,
   type DraftEditReview,
@@ -105,7 +105,7 @@ export interface ProofreadCommandHost {
 /** The parts of `DraftEditUseCase` the commands use. */
 export interface ProofreadRunner {
   plan(target: DraftEditTarget): DraftEditRunPlan;
-  run(target: DraftEditTarget, pass: DraftEditPass, signal?: AbortSignal, hooks?: DraftEditRunHooks): Promise<DraftEditOutcome>;
+  run(target: DraftEditTarget, pass: ProofreadPass, signal?: AbortSignal, hooks?: DraftEditRunHooks): Promise<DraftEditOutcome>;
   applyShown(document: DocumentSnapshot, request: DraftEditQuickFixRequest, review: DraftEditReview): Promise<DraftEditQuickFixOutcome>;
   dismiss(uri: string, issueId: string): void;
   clear(uri?: string): void;
@@ -165,7 +165,7 @@ async function quickFix(
   return outcome;
 }
 
-async function proofreadActiveEditor(host: ProofreadCommandHost, runner: ProofreadRunner, pass: DraftEditPass): Promise<ProofreadCommandOutcome> {
+async function proofreadActiveEditor(host: ProofreadCommandHost, runner: ProofreadRunner, pass: ProofreadPass): Promise<ProofreadCommandOutcome> {
   const editor = host.activeEditor();
   if (!editor) {
     return refuse(host, 'Open a Markdown or plain-text file to proofread.');

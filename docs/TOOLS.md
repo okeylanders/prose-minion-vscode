@@ -4,7 +4,7 @@
 
 ## Overview
 
-Prose Minion includes **10 integrated prose tools** organized in clean architecture — 6 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
+Prose Minion includes **11 integrated prose tools** organized in clean architecture — 7 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
 
 ### AI-Powered Tools (require OpenRouter API key)
 
@@ -16,15 +16,16 @@ Prose Minion includes **10 integrated prose tools** organized in clean architect
 | 4 | **Dictionary Utility** | Dictionary | `tools/utility/dictionaryUtility.ts` |
 | 5 | **Category Search** | Category Search | `infrastructure/api/services/search/CategorySearchService.ts` |
 | 6 | **Proofread** | Proofread | `infrastructure/api/services/proofread/ProofreadService.ts` |
+| 7 | **Craft Flags** | Craft Flags | `infrastructure/api/services/craftFlags/CraftFlagsService.ts` |
 
 ### Measurement Tools (no API key required)
 
 | # | Tool | Location |
 |---|------|----------|
-| 7 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
-| 8 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
-| 9 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
-| 10 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
+| 8 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
+| 9 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
+| 10 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
+| 11 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
 
 ---
 
@@ -151,11 +152,46 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
 
 See [ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
 
+### 7. Craft Flags
+
+**Location**: `packages/core/src/infrastructure/api/services/craftFlags/CraftFlagsService.ts`
+(the run: `application/services/draftEdit/CraftFlagsUseCase.ts`)
+
+Leaves the notes a line editor leaves in a fiction draft: each a flag on a
+few words, with a short note on what they are doing and one way they could
+go. Right-click in the editor and choose **Prose Minion ▸ Craft Flags**; the
+Command Palette names it **Prose Minion: Craft Flags**. It reads the whole
+chapter. Uses the Craft Flags model scope (`proseMinion.craftModel`), which
+follows the Workshop's model until you pick one.
+
+- **Never changes the text.** Each flag is an information diagnostic under
+  the source **Prose Minion Craft**, apart from Proofread's, with its note as
+  the message: why the words stand out, then "One way it could go: …". It
+  offers only *Dismiss this Craft flag* and *Clear all Craft flags in this
+  file*: no quick fix. **Prose Minion: Clear Craft Flags** removes them all.
+  A Craft Flags run never replaces Proofread's flags.
+- **Clichés, first.** A phrase worn smooth by use, or a familiar phrase asked
+  to carry a turn. Idioms and stock phrases are familiar, not faults, and
+  are never flagged: the same four kinds the Lightbox's familiar phrasing
+  names. A cliché in dialogue is the character's voice, and is left alone.
+  A phrase the chapter leans on says so: "This phrase appears 3 times in
+  this document."
+- **Options, never orders.** A note that tells you what to do, grades the
+  writing, quotes, or states a count is not shown as written: a why becomes
+  a plain description of the phrase's kind, and a suggestion is left out.
+- **Asks first, with a price.** Every run names the words it reads, the
+  model, and an estimated price ("≈ $0.06"), never a cap. A chapter over
+  25,000 words is refused whole; select a part and that part is read alone.
+  Under that, a selection reads the whole chapter for context and flags only
+  the selection.
+
+Gesture strain, register shift and in-chapter continuity follow (Slice 3c).
+
 ---
 
 ## Measurement Tools (No API Key Required)
 
-### 7. Prose Statistics
+### 8. Prose Statistics
 
 **Location**: `packages/core/src/tools/measure/passageProseStats/index.ts`
 
@@ -176,7 +212,7 @@ Comprehensive prose metrics:
 - Publishing format with trim size and page estimate
 - Optional chapter breakdown tables on save/copy
 
-### 8. Style Flags
+### 9. Style Flags
 
 **Location**: `packages/core/src/tools/measure/styleFlags/index.ts`
 
@@ -194,7 +230,7 @@ Identifies style patterns that need attention:
 
 Output: count per category + example sentences.
 
-### 9. Word Frequency
+### 10. Word Frequency
 
 **Location**: `packages/core/src/tools/measure/wordFrequency/index.ts`
 
@@ -209,7 +245,7 @@ Comprehensive word usage analysis:
 
 Configurable via `proseMinion.wordFrequency.*` settings. POS tagging uses `wink-pos-tagger` bundled with the extension.
 
-### 10. Word Search
+### 11. Word Search
 
 Advanced word pattern matching with context windows and cluster detection.
 
@@ -260,7 +296,7 @@ Loaded by `packages/core/src/tools/shared/guides.ts` when `proseMinion.includeCr
   composite workflows may use their own documented allowance; Gesture
   Dictionary generation uses 14,000 so the readable scan and menu can complete.
   Responses hitting a provider cap show a truncation notice.
-- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `proofreadModel`. See the in-app **Model Browser** for the full curated list.
+- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `proofreadModel`, `craftModel`. See the in-app **Model Browser** for the full curated list.
 - Curated model IDs are defined in `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts` and verified against the live OpenRouter API.
 
 ---

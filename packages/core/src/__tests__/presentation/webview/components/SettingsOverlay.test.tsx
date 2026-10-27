@@ -152,6 +152,25 @@ describe('SettingsOverlay', () => {
       expect(onModelChange).toHaveBeenCalledTimes(1);
     });
 
+    it('gives Craft Flags a row of its own that follows the Workshop until picked, apart from the Lightbox (Draft Edit Slice 3c)', () => {
+      const CRAFT = 'placeholder/craft-model';
+      const { onModelChange, onFollowModel } = renderOverlay({
+        modelOptions: [...modelOptions, { id: CRAFT, label: 'Craft placeholder' }],
+        modelSelections: { assistant: WORKSHOP, lightbox: LIGHTBOX, craft: WORKSHOP },
+        followingModelScopes: ['craft']
+      });
+      const craft = screen.getByText('Craft Flags Model').closest('label')?.querySelector('select') as HTMLSelectElement;
+
+      expect(craft.value).toBe('');
+      expect(craft.selectedOptions[0].textContent).toBe('Same as Workshop (Workshop placeholder)');
+      expect(lightboxSelect().value).toBe(LIGHTBOX);
+      fireEvent.change(craft, { target: { value: CRAFT } });
+      expect(onModelChange).toHaveBeenLastCalledWith('craft', CRAFT);
+      fireEvent.change(craft, { target: { value: '' } });
+      expect(onFollowModel).toHaveBeenCalledWith('craft');
+      expect(onModelChange).not.toHaveBeenCalledWith('lightbox', expect.anything());
+    });
+
     it('offers no "Same as" choice on a scope that follows nothing', () => {
       renderOverlay({ modelOptions, modelSelections: { assistant: WORKSHOP } });
 

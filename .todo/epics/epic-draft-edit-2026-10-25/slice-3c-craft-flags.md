@@ -1,12 +1,13 @@
 # Slice 3c: Craft flags
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Queued (2026-10-26). After Slice 3b, before the Workshop slices,
-at the writer's request. The pass, its name and each category's approach
-are decided (the writer, 2026-10-26; see "Decided").
+**Status:** In progress (2026-10-26): part 1, the pass and cliché. After
+Slice 3b, before the Workshop slices, at the writer's request. The pass, its
+name, each category's approach and the six recommendations under "Decide in
+the ADR" are decided (the writer, 2026-10-26; see "Decided").
 **Priority:** High
-**Needs first:** an ADR amendment that records the decisions below and
-settles the rest of "Decide in the ADR" before any code.
+**Decision record:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md),
+"Amendment 2026-10-26: Slice 3c, Craft Flags".
 
 ## Decided (the writer, 2026-10-26)
 
@@ -16,6 +17,38 @@ settles the rest of "Decide in the ADR" before any code.
 - **Each category's approach as this doc describes it** under "The four
   categories": what it flags, what it leaves alone, how it reads the whole
   chapter, and what its recommendation says.
+- **All six recommendations under "Decide in the ADR"** (2–7 below):
+  whole-chapter calls per category under a ceiling, the recommendation as a
+  note with no quick fix, options never orders, `info` under its own source,
+  an own model scope following the Workshop's, and the price in the
+  confirmation.
+- **Cliché first.**
+
+## Part 1: as built (2026-10-26)
+
+The pass and cliché, built on `claude/upbeat-galileo-y1l4yf` from
+`epic/lightbox` at `fd145a6a` (the PR #176 merge). The ADR's "Amendment
+2026-10-26: Slice 3c" decides it, and its "As built (part 1)" note records
+where the build goes beyond it.
+
+- **The pass:** `CraftFlagsPass` in `DraftEditPass`, a `craft` policy row,
+  and its own run (`CraftFlagsUseCase`), which takes no applier.
+- **Its flags:** `Platform.craftAnnotations`. In VS Code, a second
+  `VsCodeIssueAnnotator` (`CRAFT_FLAGS`): collection
+  `prose-minion.craftFlags`, source `Prose Minion Craft`, `info`, Dismiss and
+  Clear only.
+- **The commands:** **Craft Flags** in the **Prose Minion** submenu (its own
+  group), and **Clear Craft Flags** in the palette.
+- **The model:** `proseMinion.craftModel`, following the Workshop's until
+  picked.
+- **Cliché:**
+  - one whole-chapter call (`craft-flags/00`, `10`, `11`);
+  - kinds `cliche` and `weighted`, from `FAMILIAR_PHRASE_KINDS`, which the
+    Lightbox shares;
+  - flags in speech dropped by host code;
+  - each phrase counted over the narration;
+  - each note held to `craftFlagPhrasing`.
+- **Cost:** every run confirms with the words, the model and "≈ $…".
 
 ## Problem
 
@@ -228,8 +261,8 @@ How it works:
 
 ## Order
 
-1. The ADR amendment.
-2. The pass and **cliché**. It is closest to what exists (the Lightbox's
+1. The ADR amendment. *Done (`84f11928`).*
+2. The pass and **cliché**. *Built (part 1).* It is closest to what exists (the Lightbox's
    familiar-phrase definitions) and proves the pass end to end.
 3. **Register shift**, with the chapter's register measure.
 4. **Gesture strain**, with the host's stock-beat counts.

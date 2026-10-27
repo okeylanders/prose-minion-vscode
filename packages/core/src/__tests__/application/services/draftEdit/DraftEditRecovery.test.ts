@@ -71,6 +71,7 @@ async function summaryWith(writable: readonly boolean[]) {
   );
   const documents = {
     watch: (uri: string, version: number) => ({
+      ended: () => false,
       settle: () => ({ kind: 'open' as const, snapshot: { uri, version, text: TEXT, languageId: 'plaintext' }, edits: [] }),
       dispose: () => undefined
     }),

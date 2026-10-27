@@ -1,4 +1,4 @@
-/** Closed response contracts for durable rejected-model-response recovery artifacts (Conversation Widgets, the Lightbox, and Proofread). */
+/** Closed response contracts for durable rejected-model-response recovery artifacts (Conversation Widgets, the Lightbox, Proofread and Craft Flags). */
 
 /* eslint-disable @typescript-eslint/naming-convention -- persisted tool ids are protocol literals. */
 export const RECOVERABLE_RESPONSE_CONTRACTS = {
@@ -42,6 +42,11 @@ export const RECOVERABLE_RESPONSE_CONTRACTS = {
     id: 'proofread-v1',
     intendedContentType: 'application/json',
     protocol: 'First-line ===PROOFREAD_V1===, then JSON {version: 1, issues: [{category, original, before, after, replacement, explanation}]}, then final-line ===END_PROOFREAD_V1===.'
+  },
+  'craft-flags': {
+    id: 'craft-flags-v1',
+    intendedContentType: 'application/json',
+    protocol: 'First-line ===CRAFT_FLAGS_V1===, then JSON {version: 1, flags: [{original, before, after, kind, why, suggestion}]}, then final-line ===END_CRAFT_FLAGS_V1===.'
   }
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */

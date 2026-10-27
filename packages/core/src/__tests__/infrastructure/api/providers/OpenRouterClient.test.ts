@@ -24,6 +24,32 @@ const streamingResponse = (...events: unknown[]): Response => {
   } as unknown as Response;
 };
 
+describe('a request that names its model (PR #177 F-01)', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => { global.fetch = originalFetch; });
+
+  it.each([false, true])('goes to that model, not the client\'s, and the client\'s otherwise (streaming=%s)', async streaming => {
+    const models: string[] = [];
+    global.fetch = jest.fn(async (_url, init) => {
+      models.push(JSON.parse(init!.body as string).model);
+      /* eslint-disable @typescript-eslint/naming-convention -- OpenRouter's wire names. */
+      return streaming
+        ? streamingResponse({ model: models[models.length - 1], choices: [{ delta: { content: 'Reply' }, finish_reason: 'stop' }] }, '[DONE]')
+        : { ok: true, json: async () => ({ model: models[models.length - 1], choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
+      /* eslint-enable @typescript-eslint/naming-convention */
+    }) as typeof fetch;
+    const client = new OpenRouterClient('key', 'placeholder/client-model');
+    for (const options of [{ model: 'placeholder/approved-model' }, {}]) {
+      if (streaming) {
+        for await (const _chunk of client.createStreamingChatCompletion([], options)) { /* drain */ }
+      } else {
+        await client.createChatCompletion([], options);
+      }
+    }
+    expect(models).toEqual(['placeholder/approved-model', 'placeholder/client-model']);
+  });
+});
+
 describe('estimated cache window', () => {
   const originalFetch = global.fetch;
   afterEach(() => { global.fetch = originalFetch; jest.restoreAllMocks(); });

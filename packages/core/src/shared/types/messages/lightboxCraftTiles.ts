@@ -27,12 +27,13 @@
 
 import type { LightboxReadingTileBase, LightboxVerifiedQuote } from './lightboxReadings';
 import type { LightboxNumberStatId } from './lightboxNumbers';
+import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
 
 /** The cognitive-economy tiers, from invisible infrastructure to the chapter's own. */
 export type LightboxStockTier = 'functional' | 'decorated' | 'weighted' | 'signature';
 
-/** What kind of familiar phrasing a phrase is. Familiar is not a fault. */
-export type LightboxFamiliarKind = 'idiom' | 'cliche' | 'stock' | 'weighted';
+/** What kind of familiar phrasing a phrase is: the vocabulary Craft Flags shares (Slice 3c). Familiar is not a fault. */
+export type LightboxFamiliarKind = FamiliarPhraseKind;
 
 /** How a paragraph ends: it lands, holds a pause, or opens onto what follows. */
 export type LightboxParagraphEnding = 'lands' | 'holds' | 'opens';

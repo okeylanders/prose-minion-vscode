@@ -51,6 +51,12 @@ export const AGENT_RUN_POLICIES = {
     id: 'proofread', capabilityCatalog: 'none', retention: 'discard',
     maxCapabilityRounds: 0, maxCorrectionTurns: 0,
     onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
+  }),
+  /** Draft Edit's Craft Flags calls (Slice 3c): one capability-free call per category, nothing retained. */
+  craftFlags: policy({
+    id: 'craft-flags', capabilityCatalog: 'none', retention: 'discard',
+    maxCapabilityRounds: 0, maxCorrectionTurns: 0,
+    onCapabilityLimit: 'returnLastResponse', visibleArtifact: 'final-response', cleanupOwner: 'engine'
   })
 } as const;
 
@@ -82,5 +88,6 @@ export const AGENT_RUN_ROUTE_MATRIX = [
   { caller: 'DictionaryService standard and parallel blocks', policy: AGENT_RUN_POLICIES.dictionary },
   { caller: 'CategorySearchService batches', policy: AGENT_RUN_POLICIES.categorySearch },
   { caller: 'ContextAssistantService', policy: AGENT_RUN_POLICIES.context },
-  { caller: 'ProofreadService chunks', policy: AGENT_RUN_POLICIES.proofread }
+  { caller: 'ProofreadService chunks', policy: AGENT_RUN_POLICIES.proofread },
+  { caller: 'CraftFlagsService categories', policy: AGENT_RUN_POLICIES.craftFlags }
 ] as const;

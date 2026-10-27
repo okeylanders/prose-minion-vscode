@@ -10,18 +10,20 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft';
 
 /**
  * A scope with no model of its own until the writer picks one (Lightbox
- * Slice 4L). Unset, it runs on the model of the scope it follows, and moves
- * when that one does; picked, its model is its own.
+ * Slice 4L; Craft Flags, Draft Edit Slice 3c). Unset, it runs on the model
+ * of the scope it follows, and moves when that one does; picked, its model
+ * is its own.
  */
-export type FollowingModelScope = 'lightbox';
+export type FollowingModelScope = 'lightbox' | 'craft';
 
-/** What each following scope follows: the Lightbox, the assistant model (the Workshop's). */
+/** What each following scope follows: the assistant model (the Workshop's). */
 export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, Exclude<ModelScope, FollowingModelScope>>> = {
-  lightbox: 'assistant'
+  lightbox: 'assistant',
+  craft: 'assistant'
 };
 
 export function isFollowingModelScope(scope: unknown): scope is FollowingModelScope {

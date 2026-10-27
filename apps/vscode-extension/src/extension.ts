@@ -70,6 +70,9 @@ import {
   ProofreadService,
   DraftEditUseCase,
   DraftEditApplier,
+  CraftFlagsService,
+  CraftFlagsUseCase,
+  liveCatalogPrices,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -84,7 +87,7 @@ import { VsCodeWorkspace } from './platform/vscode/VsCodeWorkspace';
 import { VsCodeShellService } from './platform/vscode/VsCodeShellService';
 import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
-import { VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
+import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
 import {
   PROOFREAD_CLEAR_COMMAND,
@@ -102,6 +105,14 @@ import {
   proofreadAndFlag,
   replaceProofreadIssue
 } from './application/commands/proofreadCommands';
+import {
+  CRAFT_FLAGS_CLEAR_COMMAND,
+  CRAFT_FLAGS_COMMAND,
+  CRAFT_FLAGS_DISMISS_COMMAND,
+  clearCraftFlags,
+  dismissCraftFlag,
+  runCraftFlags
+} from './application/commands/craftFlagsCommands';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
@@ -134,6 +145,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     fixAll: PROOFREAD_FIX_ALL_COMMAND
   });
   context.subscriptions.push(issueAnnotator);
+  // Craft Flags' own flags (Slice 3c): a second collection and source, with Dismiss and Clear only.
+  const craftAnnotator = new VsCodeIssueAnnotator({ dismiss: CRAFT_FLAGS_DISMISS_COMMAND, clear: CRAFT_FLAGS_CLEAR_COMMAND }, CRAFT_FLAGS);
+  context.subscriptions.push(craftAnnotator);
   // Draft Edit's runs follow their open document's edits, and end when it closes (PR #171 F-03, F-04);
   // a review held when its document closes is logged, since VS Code gives no way to end it (PR #172 F-02, F-06).
   const documentEditor = new VsCodeDocumentEditor(outputChannel);
@@ -148,7 +162,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     shell: new VsCodeShellService(),
     editor: editorContext,
     documents: documentEditor,
-    annotations: issueAnnotator
+    annotations: issueAnnotator,
+    craftAnnotations: craftAnnotator
   };
 
   // SPRINT 01: Initialize infrastructure layer (dependency injection)
@@ -457,6 +472,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     platform.documents,
     platform.annotations,
     new DraftEditApplier(platform.documents),
+    outputChannel
+  );
+  // Craft Flags (Slice 3c): one call per category on the manager-owned `craft` scope, priced from the live
+  // catalog before a run; its run takes no applier, so it only ever flags.
+  const craftFlags = new CraftFlagsUseCase(
+    new CraftFlagsService(
+      aiResourceManager,
+      resourceLoader.getPromptLoader(),
+      liveCatalogPrices(outputChannel),
+      rejectedModelResponseRecovery,
+      rejectedModelResponseRecoveryPresenter,
+      outputChannel
+    ),
+    platform.documents,
+    platform.craftAnnotations,
     outputChannel
   );
 
@@ -782,7 +812,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(PROOFREAD_FIX_ALL_COMMAND, (uri?: unknown) =>
       fixAllProofreadIssues(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_CLEAR_COMMAND, (uri?: unknown) => clearProofreadFlags(proofreadCommandHost, draftEdit, uri)),
-    vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId))
+    vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId)),
+    vscode.commands.registerCommand(CRAFT_FLAGS_COMMAND, () => runCraftFlags(proofreadCommandHost, craftFlags)),
+    vscode.commands.registerCommand(CRAFT_FLAGS_CLEAR_COMMAND, (uri?: unknown) => clearCraftFlags(proofreadCommandHost, craftFlags, uri)),
+    vscode.commands.registerCommand(CRAFT_FLAGS_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissCraftFlag(craftFlags, uri, issueId))
   );
 }
 

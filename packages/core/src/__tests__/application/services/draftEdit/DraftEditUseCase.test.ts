@@ -85,6 +85,7 @@ function setup(options: {
         return undefined;
       }
       return {
+        ended: () => (options.live ?? { text: TEXT }) === 'closed',
         settle: () => {
           const live = options.live ?? { text: TEXT };
           return live === 'closed'

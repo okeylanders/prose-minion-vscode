@@ -7,9 +7,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   PROOFREAD_CLOSING_SENTINEL,
   PROOFREAD_OPENING_SENTINEL,
-  ProofreadFrameError,
   readProofreadFrame
 } from '@services/proofread/ProofreadResponseFrame';
+import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
 import { decodeProofreadReply } from '@services/proofread/ProofreadResponseCodec';
 import {
   RUNS_ISSUE,
@@ -68,8 +68,8 @@ describe('readProofreadFrame', () => {
       readProofreadFrame(frameOf(`{"version":1,"issues":[{"category": ${secret}}]}`));
       throw new Error('expected a refusal');
     } catch (error) {
-      expect(error).toBeInstanceOf(ProofreadFrameError);
-      expect(`${(error as ProofreadFrameError).message} ${(error as ProofreadFrameError).diagnostic}`).not.toContain(secret);
+      expect(error).toBeInstanceOf(DraftEditFrameError);
+      expect(`${(error as DraftEditFrameError).message} ${(error as DraftEditFrameError).diagnostic}`).not.toContain(secret);
     }
   });
 });

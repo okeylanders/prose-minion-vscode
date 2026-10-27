@@ -20,6 +20,11 @@
  *   offers *Fix all*. Each flag offers Dismiss, and Clear for its document.
  *   Every action is a command into core, which writes through its applier;
  *   none is a raw edit (D7).
+ * - **One family per instance** (Slice 3c). Proofread's flags and Craft
+ *   Flags' are two instances, each with its own collection, source and
+ *   words (`VsCodeFlagFamily`), so neither replaces the other's flags, and
+ *   the Problems panel filters them apart. An instance given no `replace`
+ *   or `fixAll` command (Craft Flags) never offers that action.
  */
 import * as vscode from 'vscode';
 import {
@@ -30,26 +35,40 @@ import {
   type ShownAnnotations
 } from '@prose-minion/core';
 
-export const DRAFT_EDIT_DIAGNOSTIC_SOURCE = 'Prose Minion';
+/** Which flags an instance shows, and how it names them. */
+export interface VsCodeFlagFamily {
+  /** The diagnostic collection's name. */
+  readonly collection: string;
+  /** Each diagnostic's `source`, which the Problems panel filters by. */
+  readonly source: string;
+  /** The flags' name in the code actions' titles: "Dismiss this Proofread flag". */
+  readonly noun: string;
+}
+
+export const PROOFREAD_FLAGS: VsCodeFlagFamily = { collection: 'prose-minion.draftEdit', source: 'Prose Minion', noun: 'Proofread' };
+export const CRAFT_FLAGS: VsCodeFlagFamily = { collection: 'prose-minion.craftFlags', source: 'Prose Minion Craft', noun: 'Craft' };
+
+export const DRAFT_EDIT_DIAGNOSTIC_SOURCE = PROOFREAD_FLAGS.source;
 
 export interface VsCodeIssueAnnotatorCommands {
   /** Invoked with `(uri, issueId)`. */
   readonly dismiss: string;
   /** Invoked with `(uri)`. */
   readonly clear: string;
-  /** Invoked with `(uri, issueId)`: apply that flag's replacement. */
-  readonly replace: string;
-  /** Invoked with `(uri)`: apply every fix Proofread would make in the document. */
-  readonly fixAll: string;
+  /** Invoked with `(uri, issueId)`: apply that flag's replacement. Absent: *Replace with* is never offered. */
+  readonly replace?: string;
+  /** Invoked with `(uri)`: apply every fix Proofread would make in the document. Absent: *Fix all* is never offered. */
+  readonly fixAll?: string;
 }
 
 export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionProvider, vscode.Disposable {
-  private readonly collection = vscode.languages.createDiagnosticCollection('prose-minion.draftEdit');
+  private readonly collection: vscode.DiagnosticCollection;
   /** Each document's shown annotations, at the document's current offsets. */
   private readonly shown = new Map<string, DocumentAnnotation[]>();
   private readonly subscriptions: vscode.Disposable[];
 
-  constructor(private readonly commands: VsCodeIssueAnnotatorCommands) {
+  constructor(private readonly commands: VsCodeIssueAnnotatorCommands, private readonly family: VsCodeFlagFamily = PROOFREAD_FLAGS) {
+    this.collection = vscode.languages.createDiagnosticCollection(family.collection);
     this.subscriptions = [
       vscode.workspace.onDidChangeTextDocument((event) => this.follow(event)),
       vscode.workspace.onDidCloseTextDocument((document) => this.clear(document.uri.toString())),
@@ -110,7 +129,7 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
     const current = this.shown.get(uri) ?? [];
     const actions: vscode.CodeAction[] = [];
     for (const diagnostic of context.diagnostics) {
-      if (diagnostic.source !== DRAFT_EDIT_DIAGNOSTIC_SOURCE) {
+      if (diagnostic.source !== this.family.source) {
         continue;
       }
       // Diagnostics come back as copies: match ours by code and place.
@@ -120,25 +139,25 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
       if (!annotation) {
         continue;
       }
-      if (annotation.fix) {
+      if (annotation.fix && this.commands.replace) {
         const replace = new vscode.CodeAction(replaceTitle(annotation.fix.replacement), vscode.CodeActionKind.QuickFix);
         replace.diagnostics = [diagnostic];
         replace.isPreferred = annotation.fix.preferred;
         replace.command = { title: replace.title, command: this.commands.replace, arguments: [uri, annotation.id] };
         actions.push(replace);
       }
-      const dismiss = new vscode.CodeAction('Dismiss this Proofread flag', vscode.CodeActionKind.QuickFix);
+      const dismiss = new vscode.CodeAction(`Dismiss this ${this.family.noun} flag`, vscode.CodeActionKind.QuickFix);
       dismiss.diagnostics = [diagnostic];
       dismiss.command = { title: dismiss.title, command: this.commands.dismiss, arguments: [uri, annotation.id] };
       actions.push(dismiss);
     }
     if (actions.length > 0) {
-      if (current.some((annotation) => annotation.fix?.preferred)) {
-        const fixAll = new vscode.CodeAction('Fix all Proofread issues in this file', vscode.CodeActionKind.QuickFix);
+      if (this.commands.fixAll && current.some((annotation) => annotation.fix?.preferred)) {
+        const fixAll = new vscode.CodeAction(`Fix all ${this.family.noun} issues in this file`, vscode.CodeActionKind.QuickFix);
         fixAll.command = { title: fixAll.title, command: this.commands.fixAll, arguments: [uri] };
         actions.push(fixAll);
       }
-      const clear = new vscode.CodeAction('Clear all Proofread flags in this file', vscode.CodeActionKind.QuickFix);
+      const clear = new vscode.CodeAction(`Clear all ${this.family.noun} flags in this file`, vscode.CodeActionKind.QuickFix);
       clear.command = { title: clear.title, command: this.commands.clear, arguments: [uri] };
       actions.push(clear);
     }
@@ -173,7 +192,7 @@ export class VsCodeIssueAnnotator implements IssueAnnotator, vscode.CodeActionPr
         annotation.message,
         annotation.severity === 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information
       );
-      diagnostic.source = DRAFT_EDIT_DIAGNOSTIC_SOURCE;
+      diagnostic.source = this.family.source;
       diagnostic.code = annotation.code;
       return diagnostic;
     }));

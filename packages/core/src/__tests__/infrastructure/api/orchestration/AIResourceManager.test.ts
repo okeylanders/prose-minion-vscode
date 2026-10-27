@@ -385,3 +385,61 @@ describe('AIResourceManager, the proofread scope (Draft Edit Slice 1)', () => {
     expect(manager.getResolvedModel('proofread')).toBe(PROOFREAD);
   });
 });
+
+/**
+ * Craft Flags' model scope (Draft Edit Slice 3c): an engine of its own that
+ * follows the assistant model until the writer picks one, as the Lightbox's
+ * does. Model ids are placeholders; no provider is called.
+ */
+describe('AIResourceManager: the Craft Flags engine (Draft Edit Slice 3c)', () => {
+  const WORKSHOP = 'placeholder/workshop-model';
+  const CRAFT = 'placeholder/craft-model';
+  const built: AIResourceManager[] = [];
+  afterEach(() => built.splice(0).forEach((manager) => manager.dispose()));
+
+  async function managerWith(configured: Record<string, string | undefined>, apiKey: string | null = 'key') {
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey: jest.fn().mockResolvedValue(apiKey ?? undefined) } as never,
+      { get: jest.fn((_section, key, fallback) => configured[key] ?? fallback) } as never,
+      { createProvider: jest.fn() } as never
+    );
+    built.push(manager);
+    await manager.ensureInitialized();
+    return manager;
+  }
+
+  it('builds an engine of its own, on the assistant model while it has none, and moves with it', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP };
+    const manager = await managerWith(configured);
+    const craft = manager.getEngine('craft');
+
+    expect(craft).toBeDefined();
+    expect(craft).not.toBe(manager.getEngine('assistant'));
+    expect(craft).not.toBe(manager.getEngine('lightbox'));
+    expect(craft?.getModel()).toBe(WORKSHOP);
+
+    configured.assistantModel = 'placeholder/workshop-model-next';
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('craft')).toBe(craft);
+    expect(craft?.getModel()).toBe('placeholder/workshop-model-next');
+  });
+
+  it('keeps its own model once picked: the assistant model never moves it, nor it the Lightbox\'s', async () => {
+    const configured: Record<string, string | undefined> = { assistantModel: WORKSHOP, craftModel: CRAFT };
+    const manager = await managerWith(configured);
+
+    expect(manager.getEngine('craft')?.getModel()).toBe(CRAFT);
+    expect(manager.getEngine('lightbox')?.getModel()).toBe(WORKSHOP);
+    configured.assistantModel = 'placeholder/workshop-model-next';
+    await manager.refreshModelSelections();
+    expect(manager.getEngine('craft')?.getModel()).toBe(CRAFT);
+  });
+
+  it('has no engine without an API key, but still resolves its model', async () => {
+    const manager = await managerWith({ assistantModel: WORKSHOP }, null);
+
+    expect(manager.getEngine('craft')).toBeUndefined();
+    expect(manager.getResolvedModel('craft')).toBe(WORKSHOP);
+  });
+});

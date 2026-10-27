@@ -29,16 +29,17 @@ import { acceptedWordsIn } from '@/utils/proofread/proofreadWordList';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
-import { AgentRunUnavailableError, type AgentRunEngine } from '@orchestration/AgentRunEngine';
+import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { PromptLoader } from '@/tools/shared/prompts';
 import type { LogSink } from '@/platform';
 import {
   persistRejectedModelResponse,
   type RejectedModelResponseRecovery,
-  type RejectedModelResponseRecoveryPresenter,
-  type RejectedModelResponseRecoveryReceipt
+  type RejectedModelResponseRecoveryPresenter
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
-import { ProofreadFrameError, readProofreadFrame } from '@services/proofread/ProofreadResponseFrame';
+import { draftEditInterruptionOf, presentOnce, type DraftEditInterruption } from '@services/draftEdit/DraftEditCalls';
+import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
+import { readProofreadFrame } from '@services/proofread/ProofreadResponseFrame';
 import { decodeProofreadReply } from '@services/proofread/ProofreadResponseCodec';
 import { sumTokenUsage } from '@/utils/tokenUsage';
 
@@ -72,11 +73,7 @@ export type ProofreadChunkResult =
   | { readonly kind: 'unsent' };
 
 /** Why a run stopped starting chunks before it reached the end. */
-export interface ProofreadInterruption {
-  readonly cause: 'key-changed' | 'provider';
-  /** Host-owned words for the writer. */
-  readonly message: string;
-}
+export type ProofreadInterruption = DraftEditInterruption;
 
 export type ProofreadRunResult =
   | { readonly kind: 'unconfigured' }
@@ -105,7 +102,7 @@ export class ProofreadService {
       return { kind: 'unconfigured' };
     }
     const systemMessage = await this.promptLoader.loadPrompts([...PROOFREAD_PROMPTS]);
-    const presenter = onceOnly(this.recoveryPresenter);
+    const presenter = presentOnce(this.recoveryPresenter);
     const usages: Array<TokenUsage | undefined> = [];
     let interrupted: ProofreadInterruption | undefined;
     const limit = pLimit(PROMPT_BUDGETS.proofread.concurrency);
@@ -118,7 +115,7 @@ export class ProofreadService {
       try {
         result = await this.call(engine, systemMessage, buildUserMessage(chunk, contextOf(request, chunk)), request.signal);
       } catch (error) {
-        interrupted ??= interruptionOf(error);
+        interrupted ??= draftEditInterruptionOf(error, 'chunks');
         this.log.appendLine(`[Proofread] ${request.label}: chunk ${index + 1} not sent: ${interrupted.message}`);
         return { kind: 'unsent' };
       }
@@ -179,7 +176,7 @@ export class ProofreadService {
         }
         return { kind: 'read', findings: reply.findings, malformed: reply.malformed };
       } catch (error) {
-        if (!(error instanceof ProofreadFrameError)) {
+        if (!(error instanceof DraftEditFrameError)) {
           throw error;
         }
         rejection = error.diagnostic ? `${error.message}. ${error.diagnostic}` : error.message;
@@ -221,31 +218,5 @@ function contextOf(request: ProofreadRunRequest, chunk: string): ProofreadChunkC
     ...(request.spelling ? { spelling: request.spelling } : {}),
     ...(request.narration ? { narration: request.narration } : {}),
     acceptedWords: acceptedWordsIn(request.wordList ?? [], chunk)
-  };
-}
-
-function interruptionOf(error: unknown): ProofreadInterruption {
-  if (error instanceof AgentRunUnavailableError) {
-    return error.reason === 'missing-credentials'
-      ? { cause: 'key-changed', message: 'The API key changed during the run, so the remaining chunks were not sent.' }
-      : { cause: 'provider', message: error.message };
-  }
-  return {
-    cause: 'provider',
-    message: `The provider call failed, so the remaining chunks were not sent: ${error instanceof Error ? error.message : String(error)}`
-  };
-}
-
-/** A presenter that shows only the first capture of a run, so failed chunks never open a pile of editors. */
-function onceOnly(presenter: RejectedModelResponseRecoveryPresenter): RejectedModelResponseRecoveryPresenter {
-  let presented = false;
-  return {
-    present(receipt: RejectedModelResponseRecoveryReceipt): Promise<void> {
-      if (presented) {
-        return Promise.resolve();
-      }
-      presented = true;
-      return presenter.present(receipt);
-    }
   };
 }

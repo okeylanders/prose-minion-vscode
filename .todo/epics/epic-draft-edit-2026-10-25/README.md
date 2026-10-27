@@ -1,8 +1,8 @@
 # Epic: Draft Edit
 
 **Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
-3b (Proofread coverage) part 1 merged (PR #174), part 2 built and in review;
-Slice 3c (craft flags) queued.
+3b (Proofread coverage) parts 1 and 2 merged (PRs #174, #176); Slice 3c
+(Craft Flags) part 1, the pass and cliché, built and in review.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -65,8 +65,8 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
-| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Part 1 merged (PR #174); part 2 in review; part 3 next |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Queued; a second pass, *Craft Flags*, decided; needs an ADR amendment |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 after Slice 3c |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Part 1 (the pass and cliché) in review; register, gesture, continuity next |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -190,3 +190,11 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   *Craft Flags*, with its own command beside Proofread, and each category's
   approach as the slice doc describes it. The rest of its questions go to
   its ADR amendment.
+- **2026-10-26. Slice 3b, part 2 merged** into `epic/lightbox` as
+  `fd145a6a`, after Astra approved it.
+- **2026-10-26. Slice 3c decided** by the writer: the slice doc's six
+  recommendations adopted, and cliché first. The ADR's "Amendment
+  2026-10-26: Slice 3c" records them and decides part 1.
+- **2026-10-26. Slice 3c, part 1 built**, restarted from `epic/lightbox` at
+  `fd145a6a`: the Craft Flags pass, its own flags and model, and cliché.
+  See the slice doc's "Part 1: as built".

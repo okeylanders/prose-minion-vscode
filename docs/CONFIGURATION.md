@@ -37,6 +37,7 @@ Scoped models per feature. Each scope can use a different model to balance cost 
 | `proseMinion.widgetModel` | Conversation Widgets | `anthropic/claude-sonnet-5` | Quality-first pre-commit generation, including Gesture Playground |
 | `proseMinion.categoryModel` | Category Search | `openai/gpt-oss-120b:nitro` | Semantic word discovery |
 | `proseMinion.proofreadModel` | Proofread | `anthropic/claude-haiku-5.5` | Proofread from the editor's right-click **Prose Minion** menu; precision-first, never follows the Assistant model |
+| `proseMinion.craftModel` | Craft Flags | *(empty)* | Craft Flags from the editor's right-click **Prose Minion** menu. Empty, it uses the Assistant model and follows it when it changes; pick a model to give Craft Flags its own |
 
 Model IDs are curated and verified against the live OpenRouter API. See the Model Browser in the Settings Overlay for the full list.
 

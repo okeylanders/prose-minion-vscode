@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3b part 2 (the word list and name consistency) with its PR #176 review fixes (F-01, F-02, N-01, N-02) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `57489816` (Draft Edit Slice 3b part 1, PR #174), under Node 18):
-- 562 suites / 7,870 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review and re-review fixes (F-01 to F-04, N-01 to N-03) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
+- 573 suites / 8,054 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -887,7 +887,7 @@ npm run package  # Creates .vsix file
 ### OpenRouter API
 
 - **API key stored in VSCode SecretStorage** - OS-level encryption via platform keychains (macOS Keychain, Windows Credential Manager, Linux libsecret); automatic migration from legacy settings-based storage
-- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, and `lightboxModel`, the Lightbox's own: empty by default, it follows `assistantModel` (the Workshop's) until the writer picks one, and neither ever writes the other ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24)
+- Scoped models per role: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `widgetModel`, `proofreadModel`, `lightboxModel` and `craftModel`. The last two are the Lightbox's and Craft Flags' own: empty by default, each follows `assistantModel` (the Workshop's) until the writer picks one, and none ever writes another ([ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D6 addendum, 2026-10-24; [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md), Slice 3c)
 - Unified `maxTokens` across tools (default 10000) with truncation notices when responses hit the cap
 - Cost tracking available through OpenRouter dashboard
 - Managed via Settings overlay UI (gear icon) with Save/Clear buttons
@@ -1539,8 +1539,8 @@ records, when it saves, or how a saved one comes back:
 ### Draft Edit
 
 Follow [ADR 2026-10-21](docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md)
-when touching Proofread or anything that reads, flags, or (later) edits the
-writer's own document:
+when touching Proofread, Craft Flags, or anything that reads, flags, or
+(later) edits the writer's own document:
 
 - **Passes are policies.** A new behavior joins `DraftEditPass` and
   `DRAFT_EDIT_PASS_POLICIES` and brings its own prompt, codec, and guard.
@@ -1548,11 +1548,12 @@ writer's own document:
 - **Quotes, not offsets.** A model returns quoted text with context; host code
   anchors it (`utils/draftEdit/anchorEdits.ts`) and fails closed on
   ambiguity. Never ask a model for offsets or line numbers.
-- **One door.** Only `DraftEditUseCase` and `DraftEditApplier` may reach
-  `DocumentEditor` or `IssueAnnotator`, by type or through `Platform`'s
-  members, and only the applier calls `applyEdits`; `boundaries.test.ts`
-  enforces both. Widgets stay write-free. Never build a `WorkspaceEdit` for
-  the writer's text anywhere else: a quick fix is a command into core.
+- **One door.** Only the runs (`DraftEditUseCase`, `CraftFlagsUseCase`) and
+  `DraftEditApplier` may reach `DocumentEditor` or `IssueAnnotator`, by type
+  or through `Platform`'s members, and only the applier calls `applyEdits`;
+  `boundaries.test.ts` enforces both. Widgets stay write-free. Never build a
+  `WorkspaceEdit` for the writer's text anywhere else: a quick fix is a
+  command into core.
 - **A write is read back, never trusted** (Slice 2; the ADR's Slice 2
   amendment). The applier makes one change (one undo step), never saves, and
   reads what landed by replaying the document from the edits' version
@@ -1665,6 +1666,63 @@ writer's own document:
   as the spelling convention is (`spelling`; absent means none named). The
   request sends them as JSON fields beside the passage; a prompt section
   teaches each one, and a sync test holds the prompt to the domain's list.
+- **Craft Flags is a second pass that only flags** (Slice 3c; the ADR's
+  Slice 3c amendment).
+  - **Its own run and flags.** `CraftFlagsPass` joins `DraftEditPass`, but
+    it runs in `CraftFlagsUseCase`, which takes no applier. A Craft Flags
+    issue has no replacement field, and a reply's `replacement` is ignored.
+    No Craft Flags module may name the applier or `applyEdits`
+    (`boundaries.test.ts`).
+  - **Its own annotator.** `Platform.craftAnnotations` is, in VS Code, a
+    second `VsCodeIssueAnnotator` (`CRAFT_FLAGS`): its own collection and
+    source (`Prose Minion Craft`), `info`, Dismiss and Clear only. Neither
+    pass's run replaces the other's flags.
+  - **One call per category over the whole chapter,** under
+    `PROMPT_BUDGETS.craftFlags.chapterWords`. Over it, a selection is read
+    alone. A selection under it reads the chapter and shows only its own
+    flags.
+  - **The `craft` model scope** (`proseMinion.craftModel`) follows the
+    assistant model until picked, as the Lightbox's does.
+  - **The note.** It is the `why`, then "One way it could go: " and the
+    `suggestion`, then the host's repeat line. Every note is held to
+    `craftFlagPhrasing`, a fence of word lists with its limits stated: a
+    why that breaks it becomes the host's line for its kind, and a
+    suggestion is withheld.
+  - **Every run confirms first** with an estimated price ("≈ $…", never a
+    cap) from `CraftFlagsService.estimate`, priced through a port so tests
+    never reach the catalog.
+  - **The approved model is the model** (PR #177 F-01). The estimate reads
+    the engine's model once, before any await, and the run sends every call
+    to it (`AgentRunOptions.model`). Never resolve the model again at
+    dispatch.
+  - **A gesture is held** (PR #177 F-02): `begin` (synchronous, with the
+    watch), `plan`, `run` once, `release` however it ends. Before pricing
+    ends and before sending, ask `DocumentWatch.ended()`; the service asks
+    `stillCurrent` in the turn its calls start. A URI and a version do not
+    name a lifetime.
+  - **Cliché's kinds are the shared vocabulary.** `cliche` and `weighted`
+    come from `FAMILIAR_PHRASE_KINDS` (`shared/constants/familiarPhrasing.ts`),
+    which the Lightbox's `LightboxFamiliarKind` is too.
+    `craftFlagsPrompt.test.ts` holds both prompts to it.
+  - **Speech.** A category that leaves speech alone
+    (`CRAFT_FLAG_LEAVES_SPEECH`) drops a flag touching
+    `findSpeechSpansOutsideProtected` (`utils/draftEdit/speechSpans.ts`): the
+    shared double-quote rule plus single-quoted speech, joined, read with
+    protected syntax set aside, in the gesture's text and again in the
+    settled live text (PR #177 F-03). Set aside means read as if absent: a
+    mark inside protected syntax is no mark, and a single mark beside it is
+    judged by the prose past it, never by the markup or a stand-in letter
+    (the re-review). The narration baseline reads `findSpeechSpans` on the
+    raw text, as before.
+  - **Repeats are counted by host code** (`phraseRepeats`) in the live text
+    once the run settles, and only when there is a flag: one scan per
+    distinct phrase, at most `PHRASE_REPEATS.phrases` (PR #177 N-01, N-02).
+    Case, apostrophes, dashes and space are folded, at word boundaries;
+    overlapping occurrences count (N-03). The walk resumes a whole code point
+    past each match's start, never one code unit: a `u`-flag search resumed
+    inside a surrogate pair finds the same match forever (F-04). A test of a
+    scan bounds it by its search count (`withPhraseScanLimit`), never a
+    clock. Inflected forms count apart: the stated limit.
 
 ### Editor Menus and Command Titles
 

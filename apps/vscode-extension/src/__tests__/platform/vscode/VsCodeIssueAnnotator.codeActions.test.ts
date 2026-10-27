@@ -20,6 +20,8 @@ jest.mock('vscode', () => {
   const changes = emitter();
   const closes = emitter();
   const diagnostics = new Map<string, unknown[]>();
+  // Each named collection keeps its own diagnostics; Proofread's is `diagnostics`.
+  const collections = new Map<string, Map<string, unknown[]>>([['prose-minion.draftEdit', diagnostics]]);
   class Range {
     constructor(readonly start: { offset: number }, readonly end: { offset: number }) {}
   }
@@ -37,12 +39,16 @@ jest.mock('vscode', () => {
   return {
     workspace: { textDocuments: [] as unknown[], onDidChangeTextDocument: changes.event, onDidCloseTextDocument: closes.event },
     languages: {
-      createDiagnosticCollection: () => ({
-        set: (uri: unknown, list: unknown[]) => diagnostics.set(String(uri), list),
-        delete: (uri: unknown) => diagnostics.delete(String(uri)),
-        clear: () => diagnostics.clear(),
-        dispose: () => diagnostics.clear()
-      }),
+      createDiagnosticCollection: (name: string) => {
+        const own = collections.get(name) ?? new Map<string, unknown[]>();
+        collections.set(name, own);
+        return {
+          set: (uri: unknown, list: unknown[]) => own.set(String(uri), list),
+          delete: (uri: unknown) => own.delete(String(uri)),
+          clear: () => own.clear(),
+          dispose: () => own.clear()
+        };
+      },
       registerCodeActionsProvider: () => ({ dispose: () => undefined })
     },
     Uri: { parse: (value: string) => ({ toString: () => value }) },
@@ -51,7 +57,7 @@ jest.mock('vscode', () => {
     CodeAction,
     DiagnosticSeverity: { Warning: 1, Information: 2 },
     CodeActionKind: { QuickFix: 'quickfix' },
-    mockHost: { changes, diagnostics }
+    mockHost: { changes, diagnostics, collections }
   };
 }, { virtual: true });
 
@@ -62,11 +68,12 @@ jest.mock('@prose-minion/core', () => ({
 
 import * as vscode from 'vscode';
 import type { DocumentAnnotation } from '@prose-minion/core';
-import { DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
+import { CRAFT_FLAGS, DRAFT_EDIT_DIAGNOSTIC_SOURCE, VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 
 interface MockHost {
   changes: { fire(event: unknown): void };
   diagnostics: Map<string, Diagnostic[]>;
+  collections: Map<string, Map<string, Diagnostic[]>>;
 }
 interface Diagnostic {
   range: { start: { offset: number }; end: { offset: number } };
@@ -190,5 +197,56 @@ describe('VsCodeIssueAnnotator.current', () => {
 
     expect(annotator.current(URI)).toBeUndefined();
     expect(annotator.current('file:///workspace/other.md')).toBeUndefined();
+  });
+});
+
+/**
+ * Craft Flags' family (Draft Edit Slice 3c): a second instance with its own
+ * collection, source and words, Dismiss and Clear only, and no reach into
+ * Proofread's flags.
+ */
+describe('VsCodeIssueAnnotator: the Craft Flags family', () => {
+  let proofread: VsCodeIssueAnnotator;
+  let craft: VsCodeIssueAnnotator;
+  const craftDiagnostics = () => host.collections.get(CRAFT_FLAGS.collection)?.get(URI) ?? [];
+  const actionsIn = (annotator: VsCodeIssueAnnotator, diagnostics: Diagnostic[]) =>
+    annotator.provideCodeActions(document as never, {} as never, { diagnostics } as never) as unknown as Action[];
+
+  beforeEach(() => {
+    document.version = 3;
+    workspace.textDocuments = [document];
+    host.collections.forEach((collection) => collection.clear());
+    proofread = new VsCodeIssueAnnotator(COMMANDS);
+    craft = new VsCodeIssueAnnotator({ dismiss: 'dismissCraft', clear: 'clearCraft' }, CRAFT_FLAGS);
+  });
+
+  afterEach(() => {
+    proofread.dispose();
+    craft.dispose();
+  });
+
+  it('shows its flags under its own collection and source, and offers only Dismiss and Clear, even for a flag with a fix', () => {
+    craft.show(URI, 3, [annotation('craft-1', 'get vrey tired', { replacement: 'tire', preferred: true }, 'craft.cliche')]);
+
+    expect(CRAFT_FLAGS).toEqual({ collection: 'prose-minion.craftFlags', source: 'Prose Minion Craft', noun: 'Craft' });
+    expect(craftDiagnostics().map((diagnostic) => [diagnostic.source, diagnostic.code])).toEqual([['Prose Minion Craft', 'craft.cliche']]);
+    expect(host.diagnostics.get(URI)).toBeUndefined();
+    expect(actionsIn(craft, craftDiagnostics()).map((action) => [action.title, action.command?.command, action.command?.arguments])).toEqual([
+      ['Dismiss this Craft flag', 'dismissCraft', [URI, 'craft-1']],
+      ['Clear all Craft flags in this file', 'clearCraft', [URI]]
+    ]);
+  });
+
+  it('keeps the two families apart: neither shows, clears nor answers for the other\'s flags', () => {
+    proofread.show(URI, 3, [annotation('proofread-1', 'vrey', { replacement: 'very', preferred: true })]);
+    craft.show(URI, 3, [annotation('craft-1', 'her sister is reading', undefined, 'craft.cliche')]);
+    const proofreadDiagnostics = host.diagnostics.get(URI) ?? [];
+
+    expect(actionsIn(craft, proofreadDiagnostics)).toEqual([]);
+    expect(actionsIn(proofread, craftDiagnostics())).toEqual([]);
+    craft.clear(URI);
+    expect(craftDiagnostics()).toEqual([]);
+    expect(proofread.current(URI)?.annotations.map((each) => each.id)).toEqual(['proofread-1']);
+    expect(host.diagnostics.get(URI)).toHaveLength(1);
   });
 });

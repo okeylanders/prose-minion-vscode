@@ -1045,6 +1045,135 @@ Host checks run inside a Proofread run, over the whole document, and a
 selection run shows only those inside its selection. They need no model,
 but a run still needs a key; running them without one is a follow-up.
 
+## Amendment 2026-10-26: Slice 3c, Craft Flags
+
+The writer's decisions (2026-10-26):
+
+- **A second pass, *Craft Flags*,** beside Proofread on this engine, with
+  its own command in the **Prose Minion** editor menu. Its categories are
+  cliché, gesture strain, continuity and register shift, each as the
+  [slice doc](../../.todo/epics/epic-draft-edit-2026-10-25/slice-3c-craft-flags.md)
+  describes it. They are flags with a recommendation, and never change the
+  text.
+- **The slice doc's six recommendations:**
+  - one whole-chapter call per category, in parallel, under a word ceiling;
+  - the recommendation as a note in the flag's message ("One way it could
+    go: …"), with no quick fix;
+  - phrased as options, never orders;
+  - `info` severity under a diagnostic source of its own;
+  - a model scope of its own that follows the Workshop's model until picked;
+  - a cost estimate in the confirmation before a run.
+- **Cliché first.** It is closest to what exists (the Lightbox's familiar
+  phrasing), and it proves the pass end to end.
+
+Slice 3c ships in parts, each a PR into `epic/lightbox`. This amendment
+decides the pass and cliché (part 1). Register shift, gesture strain and
+continuity each get their own rows here when they are built, in that order.
+
+### Part 1: the pass and cliché
+
+| Decision | Change |
+|---|---|
+| D1: a second pass | `DraftEditPass` is `ProofreadPass \| CraftFlagsPass`. `CraftFlagsPass` is `{ kind: 'craft'; categories }`, the categories drawn from `CRAFT_FLAG_CATEGORIES` (`['cliche']` in part 1). Its policy row names the `craft` model scope. Its fix fields take the strictest values, though nothing reads them: the pass never writes. `DraftEditUseCase` runs Proofread only (`ProofreadPass`). |
+| D1: its own run | **`CraftFlagsUseCase`,** beside `DraftEditUseCase`, not a branch inside it. It sends one whole-chapter call per category, and only flags. It takes no applier, so it cannot write. It shares with Proofread: the protected-region masking; anchoring by quote (`anchorQuote`); the watch from the gesture's version, moving each flag through the writer's edits (a flag an edit touched is stale); the live text's protected regions; and a selection run replacing only the flags that overlap its selection (Slice 3). One Craft Flags run per document at a time. It is independent of Proofread's: each shows its own flags. |
+| D3, D7: flags of its own | **A second `IssueAnnotator`, `Platform.craftAnnotations`.** In VS Code it is a second `VsCodeIssueAnnotator`: diagnostic collection `prose-minion.craftFlags`, source `Prose Minion Craft`, code `craft.<category>`, severity `info`. It offers *Dismiss this Craft flag* and *Clear all Craft flags in this file*, never *Replace with* or *Fix all*. A Craft Flags run never replaces Proofread's flags, nor Proofread's run its flags, and the Problems panel filters the two apart by source. |
+| D8: the commands | **Craft Flags** (`prose-minion.craftFlags`) and **Clear Craft Flags** (`prose-minion.clearCraftFlags`), category "Prose Minion", in the **Prose Minion** editor submenu with Proofread's `when` clause. The Dismiss command is internal, never contributed. The rules live behind a host port in `application/commands/craftFlagsCommands.ts`. |
+| D10: the guards | The runs (`DraftEditUseCase`, `CraftFlagsUseCase`) and the applier may reach `DocumentEditor` and `IssueAnnotator`; only the applier asks for `applyEdits`, as before. New: no Craft Flags module names `DraftEditApplier` or `applyEdits`. A Craft Flags issue has no replacement field, so no annotation it makes carries a fix, and a reply's `replacement` is a field the format does not define: ignored and counted. |
+| The model scope | **`craft`,** set by `proseMinion.craftModel`. It is empty by default, and follows `assistantModel` (the Workshop's) until the writer picks one, as `lightboxModel` does (Lightbox Slice 4L). It has its own engine in `AIResourceManager`, its own policy (`craftFlags`: capability-free, nothing kept), a Settings overlay row, and "Same as Workshop" in its picker. Calls run at temperature 0.2: low enough that a chapter flags alike from run to run, above 0 because each flag carries a note in prose. |
+| Reading the chapter | **One call per category over the whole document,** protected regions masked, sent as `{ "task": "craft-flags", "category": "cliche", "passage": … }`, a JSON string value, never instructions. The calls run in parallel. **The word ceiling** is `PROMPT_BUDGETS.craftFlags.chapterWords` (25,000): a long chapter at the Workshop's model and a reply fit any model the scope offers. Over it, a selection run reads its selection alone and says so; a whole-file run is refused, asking for a selection. Under it, a selection run reads the whole chapter for context and shows only the flags inside its selection. The output ceiling is 8,000 tokens; a reply that reaches it is rejected and saved for recovery, as Proofread's chunks are. `salvageModelJson` keeps whole root members, and the flags are one array, so it would keep nothing. |
+| The reply | Framed by `===CRAFT_FLAGS_V1===` and `===END_CRAFT_FLAGS_V1===`, read by the frame reader Proofread now shares (`DraftEditResponseFrame`). Its root is `{ "version": 1, "flags": [{ "original", "before"?, "after"?, "kind", "why", "suggestion"? }] }`. As Proofread's: forgiving per reply, fail-closed per flag. A flag missing a field, with a kind outside its category's, or quoting more than 160 characters is dropped and counted. |
+| What a flag says | Its message: the `why` (what the phrase stands in for here), then "One way it could go: " and the `suggestion` (one way this scene could say it), then the host's repeat line. There is no quick fix: Dismiss and Clear. |
+| The phrasing fence | **`craftFlagPhrasing`** (`utils/craftFlags/`). A `why` and a `suggestion` hold none of these: a listed order or correction word (should, must, need to, have to, fix, cut, delete, remove, replace, rewrite, wrong, bad, in their forms); a double quotation mark (the flag already sits on the words); or a digit (counts are the host's). And no clause opens with a listed imperative (try, use, consider, swap, …). A `why` that breaks it is replaced by the host's line for its kind; a `suggestion` that breaks it is withheld. Either way the flag stays, and the summary counts the notes withheld. The limits, stated plainly: these are English word lists, not a parse, so a listed word used to describe is withheld too (the safe failure), and an order phrased without one passes. The Lightbox's steering fence is not imported. Draft Edit takes no Lightbox infrastructure (the slice doc's rule for sections), and that fence forbids offering words, which a suggestion here exists to do. |
+| Cliché: what it flags | A phrase worn smooth by use, standing in for something this scene could name exactly. Its `kind` is `cliche` or `weighted` (a familiar beat asked to hold a peak, a turn or a coda). `idiom` and `stock` are familiar, not faults, and never flagged. |
+| Cliché: one vocabulary | **`FAMILIAR_PHRASE_KINDS`** (`shared/constants/familiarPhrasing.ts`) holds the four kinds and their definitions. `LightboxFamiliarKind` is that type. The cliché prompt states each definition verbatim, and a sync test holds it there, and holds the Lightbox's prompt to the same four kinds. |
+| Cliché: dialogue | **Left alone.** A character's idiom is their voice (the Lightbox's rule, epic decision 26). Host code drops a flag that touches speech, counted as `dialogue`: the shared dialogue rule (`findDialogueSpans`, double quotation marks) and single-quoted speech, whole, by the narration baseline's rule (Slice 3b part 1, PR #174 F-01). That rule moves to `utils/draftEdit/speechSpans.ts`, shared by both. The prompt asks the same. |
+| Cliché: repeats | **Host code counts each flagged phrase over the whole document's narration** (speech and protected regions left out), case, curly apostrophes, dashes and runs of space folded, at word boundaries. Two or more add "This phrase appears N times in this document." to every flag on it. Inflected forms ("ran down her spine", "runs down his spine") count apart: the stated limit, which gesture strain's lemma counts may lift. |
+| Cost before a run | **Every run confirms first,** naming the words read, the calls, the model, and the price: "≈ $0.06", or "< $0.01". The price is an estimate, never a cap. It is the engine's token estimator over the exact messages times the live catalog's prompt price, plus a typical reply (`PROMPT_BUDGETS.craftFlags.typicalOutputTokens`) times its completion price. With no live pricing, the confirmation says the price is unknown. The catalog is fetched once if nothing has fetched it (a free request, never billable), through a port tests replace. |
+| The summary | One notification, worded in core (`describeCraftFlagsOutcome`): "Craft Flags chapter-03.md: 4 flags · 1 left alone in dialogue · $0.0610". It offers *Show Problems* when flags were shown and *Open Settings* when there is no key. |
+
+**On by default.** Cliché runs whenever the writer runs Craft Flags: the
+command is the opt-in. When a second category joins,
+`proseMinion.craftFlags.categories` chooses which run, and the fixture run
+(the slice doc's) decides each one's default.
+
+**As built (part 1), where the build goes beyond the above:**
+
+- **The calls start together.** A call the provider refuses is not sent,
+  and the summary says why, but the other calls are already out and stand
+  as they are answered. "Stops starting calls" means nothing with the calls
+  in parallel.
+- **A run with no key says so before the confirmation.** The estimate names
+  no model without an engine, so the plan is `unconfigured`, and nothing is
+  priced that would not be sent.
+- **A selection with no words in it is empty,** whatever the document
+  holds.
+- **Overlaps are judged within a category.** Two categories may flag the
+  same words; part 1 has one.
+- **The fence's lists** are `CRAFT_FLAG_FORBIDDEN_FORMS`, the two-word orders
+  in `CRAFT_FLAG_FORBIDDEN_PHRASES`, and `CRAFT_FLAG_IMPERATIVE_OPENERS`.
+  Softening words ("perhaps", "instead") are set aside before a clause's
+  opening verb is read. "Say" is not an opener: "say, her shoulders lock" is
+  a hedge, not an order.
+- **The host's why** for a withheld one is the shared definition of the
+  flag's kind (`FAMILIAR_PHRASE_DEFINITIONS`).
+- **Speech spans are joined** (`findSpeechSpans`): a single-quoted line
+  inside double-quoted speech is one span, so one binary search answers
+  whether a flag touches speech.
+- **Its recovery contract** is `craft-flags-v1` in
+  `RECOVERABLE_RESPONSE_CONTRACTS`.
+
+**PR #177 review (Astra), as built:**
+
+- **F-01: the run goes to the model its confirmation named.** The estimate
+  reads the craft engine's model once, before anything is awaited, and
+  prices that model. The approval carries it to the run, and every call
+  names it (`AgentRunOptions.model`, through to
+  `OpenRouterCompletionOptions.model`). The context preflight measures
+  against it too. A model that changes while the price is read, while the
+  confirmation is open or while the prompts load, by the writer's own
+  setting or by the Workshop model it follows, never receives the chapter.
+  The next run uses the new model.
+- **F-02: a gesture is held from its first read.** `begin` takes it
+  synchronously, with the document watch, at the writer's gesture. `plan`
+  and `run` ask the watch whether its lifetime ended (`DocumentWatch.ended()`,
+  a new port method that does not end the watch) once the price is in, and
+  before sending. The service asks again (`stillCurrent`) once the prompts
+  are ready, in the same turn the calls start. A close, a reopen or a
+  language change shows no confirmation, or sends nothing (`changed`). The
+  gesture is released however the command ends. An ordinary edit while the
+  price is read is followed, as an edit while the model reads is.
+- **F-03: speech is read with protected syntax set aside**
+  (`findSpeechSpansOutsideProtected`), as if the protected region were not
+  there. A quotation mark inside one neither opens nor closes speech: the
+  shared rules read a view in which each of its characters but white space
+  is a letter, so offsets, and the paragraphs the blank-line rule finds, stay
+  the text's own. A single quotation mark beside one is judged by the prose
+  on its far side, never by the view's letters or the markup's characters,
+  so `<em>‘Late,’</em> said Alice` reads as `‘Late,’ said Alice` does (the
+  re-review: letters alone hid an opener right after a tag, comment or code
+  span). It is read in the gesture's text before overlaps are weighed, and
+  again in the settled live text (`outsideSpeech`), so words put in
+  quotation marks during the run are left alone and counted as `dialogue`.
+  The shared dialogue rule and the narration baseline are unchanged.
+- **N-01: repeats are counted in the live text,** after the run settles.
+- **N-02: repeats are counted only when there is a flag,** one regular
+  expression scan of the text per distinct phrase, at most
+  `PHRASE_REPEATS.phrases` (40) per document; a phrase past that shows no
+  count. Measured on Node 18: a 250,000-word manuscript with a 36-character
+  selection reached the model stub in about 0.1 s (2.86 s before), and 40
+  phrases over 1.2 million characters were counted in 87 ms.
+- **N-03 (re-review): occurrences that overlap count,** as they did before
+  the scan changed: "never say never" stands twice in "never say never say
+  never".
+- **F-04 (second re-review): the overlap walk always moves forward.** Each
+  search resumes one whole code point past the last match's start, never one
+  UTF-16 code unit: under the `u` flag a search resumed inside a surrogate
+  pair backs up and finds the same match again, so a phrase opening on an
+  astral letter (`𝓽𝓲𝓶𝓮 stood still`) once never finished its count, on the
+  extension host. A match that starts before its search ends the walk.
+  Tests bound every phrase scan by a count of the pattern's searches, never
+  by a clock.
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to
@@ -1057,10 +1186,10 @@ but a run still needs a key; running them without one is a follow-up.
   spelling flags: built in Slice 3b, part 2
   (`proseMinion.proofread.wordList`).
 - Craft flags (cliché, gesture strain, in-chapter continuity, register
-  shift), flags with a recommendation that never edit: queued as Slice 3c.
-  The writer chose a second pass, *Craft Flags*, beside Proofread
-  (2026-10-26); the rest is decided in an amendment of its own before any
-  code.
+  shift), flags with a recommendation that never edit: Slice 3c, a second
+  pass, *Craft Flags*
+  ([Amendment 2026-10-26: Slice 3c](#amendment-2026-10-26-slice-3c-craft-flags)).
+  Cliché is part 1; the other three follow.
 - Continuity across chapters (a story bible).
 - Draft edits on `manual` Workshop excerpts (no document to write).
 - Proofreading several files or a folder in one run.

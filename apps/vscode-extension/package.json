@@ -109,7 +109,9 @@
     "onCommand:prose-minion.openFileInLightbox",
     "onCommand:prose-minion.proofreadFlag",
     "onCommand:prose-minion.proofreadFix",
-    "onCommand:prose-minion.clearProofreadFlags"
+    "onCommand:prose-minion.clearProofreadFlags",
+    "onCommand:prose-minion.craftFlags",
+    "onCommand:prose-minion.clearCraftFlags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -194,6 +196,16 @@
         "command": "prose-minion.clearProofreadFlags",
         "title": "Clear Proofread Flags",
         "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.craftFlags",
+        "title": "Craft Flags",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.clearCraftFlags",
+        "title": "Clear Craft Flags",
+        "category": "Prose Minion"
       }
     ],
     "submenus": [
@@ -258,6 +270,11 @@
           "when": "editorLangId == markdown || editorLangId == plaintext",
           "command": "prose-minion.proofreadFix",
           "group": "3_proofread@2"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.craftFlags",
+          "group": "4_craft@1"
         }
       ],
       "view/title": [
@@ -311,6 +328,12 @@
           "default": "anthropic/claude-haiku-5.5",
           "markdownDescription": "AI model for Proofread (the editor's right-click **Prose Minion: Proofread** commands). Proofreading wants precise, repeatable corrections across many small calls, so the default is a fast, inexpensive model. Enter any OpenRouter model ID.",
           "order": 5.2
+        },
+        "proseMinion.craftModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI model for Craft Flags (the editor's right-click **Prose Minion: Craft Flags** command), which reads a whole chapter and flags line notes such as clichés. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here gives Craft Flags its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
+          "order": 5.6
         },
         "proseMinion.proofread.fixReview": {
           "type": "string",

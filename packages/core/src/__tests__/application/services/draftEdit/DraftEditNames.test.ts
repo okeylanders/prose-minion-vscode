@@ -13,7 +13,7 @@
 import * as nameConsistency from '@/utils/proofread/nameConsistency';
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
-import type { DraftEditPass } from '@/domain/models/DraftEdit';
+import type { ProofreadPass } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
 import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
@@ -26,7 +26,7 @@ const TEXT = `${OPENING}\n\n${DINAH}\n\n${FALLING}`;
 const finding = (quote: string, category: ProofreadFinding['category'], replacement?: string): ProofreadFinding =>
   ({ anchor: { quote }, category, ...(replacement !== undefined ? { replacement } : {}), explanation: 'A seeded error.' });
 const read = (...findings: ProofreadFinding[]): ProofreadRunResult => ({ kind: 'completed', chunks: [{ kind: 'read', findings, malformed: 0 }] });
-const FLAG: DraftEditPass = { kind: 'proofread', output: 'flag' };
+const FLAG: ProofreadPass = { kind: 'proofread', output: 'flag' };
 
 function proofreader(text = TEXT) {
   const document = new FakeDocuments(text);

@@ -8,7 +8,7 @@
  */
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
-import type { DraftEditPass, TextRange } from '@/domain/models/DraftEdit';
+import type { ProofreadPass, TextRange } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
 import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
@@ -24,7 +24,7 @@ const VREY = finding('vrey', 'spelling', 'very');
 const IS_READING = finding('is reading', 'tense', 'was reading');
 const CONVERSASHIONS = finding('conversashions', 'spelling', 'conversations');
 
-const FLAG: DraftEditPass = { kind: 'proofread', output: 'flag' };
+const FLAG: ProofreadPass = { kind: 'proofread', output: 'flag' };
 const read = (...findings: ProofreadFinding[]): ProofreadRunResult => ({ kind: 'completed', chunks: [{ kind: 'read', findings, malformed: 0 }] });
 
 function deferred<T>() {

@@ -17,7 +17,7 @@ jest.mock('@prose-minion/core', () => ({
   proofreadWordList: jest.requireActual('@/utils/proofread/proofreadWordList').proofreadWordList
 }));
 
-import type { DraftEditOutcome, DraftEditPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type { DraftEditOutcome, ProofreadPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
 import {
   OPEN_SETTINGS_COMMAND,
   REVIEW_HINT,
@@ -79,7 +79,7 @@ function setup(options: {
     plan: jest.fn((target: DraftEditTarget): DraftEditRunPlan => ({
       words: 14, chunks: 1, wholeFile: target.range === undefined, needsConfirmation: false, ...options.plan
     })),
-    run: jest.fn(async (_target: DraftEditTarget, pass: DraftEditPass, _signal?: AbortSignal, hooks?: { onReview?(fixes: number): void }) => {
+    run: jest.fn(async (_target: DraftEditTarget, pass: ProofreadPass, _signal?: AbortSignal, hooks?: { onReview?(fixes: number): void }) => {
       if (pass.output === 'fix') {
         hooks?.onReview?.(2);
       }

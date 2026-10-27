@@ -11,7 +11,7 @@
  */
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
-import type { DraftEditOutcome, DraftEditPass } from '@/domain/models/DraftEdit';
+import type { DraftEditOutcome, ProofreadPass } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
 import {
@@ -31,8 +31,8 @@ const BEGINING: ProofreadFinding = { anchor: { quote: 'begining' }, category: 's
 const VREY: ProofreadFinding = { anchor: { quote: 'vrey' }, category: 'spelling', replacement: 'very', explanation: 'A typo.' };
 const IS_READING: ProofreadFinding = { anchor: { quote: 'is reading' }, category: 'tense', replacement: 'was reading', explanation: 'The narration is past tense.' };
 
-const PREVIEW: DraftEditPass = { kind: 'proofread', output: 'fix', review: 'preview' };
-const DIRECT: DraftEditPass = { kind: 'proofread', output: 'fix', review: 'direct' };
+const PREVIEW: ProofreadPass = { kind: 'proofread', output: 'fix', review: 'preview' };
+const DIRECT: ProofreadPass = { kind: 'proofread', output: 'fix', review: 'direct' };
 
 function read(...findings: ProofreadFinding[]): ProofreadRunResult {
   return { kind: 'completed', chunks: [{ kind: 'read', findings, malformed: 0 }] };
@@ -45,7 +45,7 @@ function setup(host?: HostBehavior, result: ProofreadRunResult | Promise<Proofre
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
   const useCase = new DraftEditUseCase(pass, document, annotations, new DraftEditApplier(document), log);
   const onReview = jest.fn();
-  const run = (fix: DraftEditPass = PREVIEW) => useCase.run(
+  const run = (fix: ProofreadPass = PREVIEW) => useCase.run(
     { uri: document.uri, version: document.version, text: document.text, languageId: 'markdown', relativePath: 'chapter-01.md' },
     fix,
     undefined,
@@ -204,7 +204,7 @@ describe('DraftEditUseCase: a direct fix the writer fences as it goes out (PR #1
 
 
 describe('DraftEditUseCase: fixes that would change the Markdown structure (PR #172 F-03)', () => {
-  function run(text: string, findings: ProofreadFinding[], pass: DraftEditPass = PREVIEW) {
+  function run(text: string, findings: ProofreadFinding[], pass: ProofreadPass = PREVIEW) {
     const document = new FakeDocuments(text, undefined, 'markdown', 2);
     const annotations = new FakeAnnotations(document);
     const proofread: ProofreadPassPort = { proofread: jest.fn(async (): Promise<ProofreadRunResult> => read(...findings)) };
