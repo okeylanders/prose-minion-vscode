@@ -1,5 +1,7 @@
 # PR Review — Draft Edit Slice 3c, part 4: continuity
 
+**Latest disposition — re-review of `7e45db54` / `81446970`: F-01 remains open (protected setext underline); F-02, F-03, N-01 and N-02 resolved. See the re-review appendix.**
+
 **Disposition: Changes requested — three P2 continuity-boundary findings. Two nonblocking P3 hardening notes.**
 
 **Author:** okeylanders · **PR:** [#180](https://github.com/okeylanders/prose-minion-vscode/pull/180) · **Reviewer:** Astra · **Reviewed:** 2026-10-27
@@ -232,3 +234,47 @@ Node 18.20.8 / npm 10.8.2:
 - `git diff --check` from `08ef8057` passes.
 
 Native Problems/hover navigation and the fixture run remain unrun, as you note. No provider calls were made.
+
+## Re-review — `7e45db54`, `81446970`; author response `7355d7ef`
+
+**Disposition: F-01 remains open for a mixed-paragraph setext case. F-02, F-03, N-01 and N-02 are resolved.**
+
+The original six boundary reproductions now produce the expected exclusions. The live check uses the moved pair, and gesture placement and settlement share the full-span predicate. The `Map` rejects all six inherited `holds` names while retaining the intentional null/absent/`neither` cases. Ordered cursors fix the measured cross product, and disabled-continuity/no-pair paths do not read sections.
+
+### F-01 · P2 · The setext underline itself must not come from protected code
+
+**Current locations:** [`chapterSections.ts:125–128,175–179,244–247`](../../packages/core/src/utils/chapterSections.ts#L125).
+
+Filtering before signal selection fixes a protected heading whose *first line* is inside code. A setext candidate can still begin in unprotected prose and derive its underline from a fenced block in the same blank-line paragraph:
+
+````markdown
+Opening words.
+
+A caption
+```
+---
+```
+
+Alice had pink eyes.
+
+* * *
+
+Alice had blue eyes.
+````
+
+This is valid Markdown: the production block reader reports **no Markdown headings** and protects exactly the fenced ` ```\n---\n``` ` span. However, `headingOf` uses that protected `---` to invent the level-two heading **`A caption ``` `**. `ignored` is asked only about the unprotected `A caption` start, so the invented heading wins, `breaks` is **`['A caption']`**, and the pink/blue pair is shown across the real scene break (**`flagged: 1`, `acrossBreak: 0`**).
+
+Changing **only the protected code text** from `---` to `not an underline` restores `breaks: ['* * *']` and drops the same pair (`acrossBreak: 1`). The protected text therefore still determines which unprotected boundaries exist. This is not the documented limit about a genuine heading lacking a preceding blank line: the supposed heading is not a heading at all; its decisive syntax is inside a recognized protected block.
+
+**Requested correction:** the syntax that establishes a candidate must be eligible prose, including a setext underline, not only its first character. Preserve raw Lightbox behavior when no protected exclusions are requested, and keep genuine headings with inline-code titles working. Add production-use-case controls for the example and its protected-text-only variation, with the genuine break sent and pair dropped in both. The existing candidate-start controls should stay.
+
+### Independent correction checks completed so far
+
+- Original six boundary cases now pass, plus an expanded protected-wrapper/marker/CRLF/live-edit/selection/broad-quote/frontmatter matrix and detector/span oracles. The mixed-paragraph case above was then tested separately and remains failing in 16 protected-wrapper/underline/newline variants.
+- **39** four-category orchestration scenarios still pass, including all 24 completion orders and approved-model, failure, cancellation and lifetime controls.
+- **100,000** section-span binary searches match a simple predicate; **10,000** selection/clipping/masking cases match naive break-line extraction. Access-throwing proxies verify the disabled/no-pair short circuits.
+- On the same 500 / 1,000 / 2,000-heading probes, detector protected-boundary reads fall from 374,250 / 1,498,500 / 5,997,000 to **1,499 / 2,999 / 5,999**. Complete section preparation with two inline-code regions per heading uses **6,987 / 13,987 / 27,987** reads, linear in the input.
+- **10,000** randomized unignored detector inputs still exactly match the pre-refactor Lightbox implementation; valid and malformed `holds` probes now satisfy the enum contract.
+- Typecheck and production build pass on `7e45db54`; full typed Jest is still running. Its lint has 0 errors / 1,134 warnings, the one new test-key warning already corrected in `81446970`. That commit changes only an equivalent assertion form and test inventory; `7355d7ef` adds only the preserved author response. On `7355d7ef`, final-head lint passes with 0 errors / 1,133 warnings, and the changed suite passes all 11 tests (4.717 s). Production-source bytes are unchanged from `7e45db54`. No full-suite result for this correction is claimed yet.
+
+Evidence is in `../pr180-rereview-evidence/`, including `setext-protected-probe.cjs` / `.log`. No source changes or live/provider calls were made. **F-01 remains the only blocking finding; native/live acceptance is still separate.**
