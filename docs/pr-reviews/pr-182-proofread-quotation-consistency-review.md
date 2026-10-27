@@ -155,3 +155,45 @@ Node 18.20.8 / npm 10.8.2 on `5fd75565`:
 - `git diff --check` passes.
 
 All ran on `5fd75565` before it was pushed. `quotationMarks.ts` is now 191 lines and `spellingConsistency.ts` 216. No provider calls were made. The ADR's "As built (part 3)" note, the slice doc and the memory bank record the three changes.
+
+## Independent re-review — 2026-10-27 21:04 UTC
+
+Reviewed correction `5fd75565` and author-response head `391a4b4cefe7bcb9a0824addbdaa16fe4ff6903d`. The original report, verification appendix and author response above are preserved.
+
+### F-01, F-02 and F-03 resolved
+
+- **F-01:** the compound's original segments now determine source offsets; folded segments are lookup keys only. All original wrong-range witnesses now point to and replace the intended component. Surrounding Unicode, punctuation and whitespace survive individual application.
+- **F-02:** each use retains its containing word's range. A listed compound's parts are no longer offered for replacement; its occurrences still count, and an unlisted standalone component remains independently flaggable.
+- **F-03:** role inference reads past adjacent emphasis markers in both directions, and continuation detection shares that role decision. All 40 original formatted/plain quotation scenarios are now clean, while 48 additional emphasized genuine-slip controls retain their flags.
+
+Independent scratch checks additionally passed **444 spelling scenarios** (every table inflection in both directions plus Unicode-offset/accepted-parent controls) and **33 production use-case/individual-application scenarios**. These are separate from repository Jest counts. No provider calls were made.
+
+### F-04 — P2: cache the containing word's acceptance instead of reparsing it for every part
+
+**New regression in the F-02 correction. Location:** `packages/core/src/utils/proofread/spellingConsistency.ts:97–100`, calling `proofreadWordList.ts:85–91`.
+
+Every flagged component now calls `isAcceptedWord` on the entire containing compound. That helper reparses the entire string with `proofreadWords` **before** checking whether the accepted set is empty. A compound containing `k` recognized parts therefore incurs `k` whole-compound scans: quadratic synchronous work on the extension host, with no work budget. A nonempty unrelated word list has the same repeated-scan problem; moving the empty-list check alone does not fix it.
+
+**Reproduction:** American convention, no word-list entries, and:
+
+```js
+const text = Array(n).fill('grey').join('-') + '. A gray sky.';
+findInconsistentSpellings(text, [], new Set(), 'american');
+```
+
+The convention legitimately flags each `grey`, so this exercises ordinary output semantics rather than invalid input. The number of output issues is linear; the new repeated parent parsing is not.
+
+**Deterministic work evidence:** instrumenting the existing `String.prototype.matchAll` calls records the total source lengths sent into the production word scanner. At `n = 25,600`, the input is **128,012 UTF-16 units**, but the corrected detector submits **3,277,004,812 units** across **51,201 scans**. The same input on `4ff69dde` submits **230,412 units** across **25,601 scans**. Doubling the compound from 6,400 to 12,800 to 25,600 parts approximately quadruples the corrected scan volume (204,851,212 → 819,302,412 → 3,277,004,812), not merely the result count.
+
+For context, the instrumented Node 18 detector took approximately **0.47 s / 1.25 s / 5.78 s** at those sizes; the original implementation took **31 / 48 / 67 ms**. Timing is illustrative, not the regression assertion. A separate real `DraftEditUseCase` run accepts a 6,400-part Markdown witness and emits all 6,400 flags with a controlled empty model reply, both with an empty list and `['unrelated']`; no input limit prevents the path. The host reading is synchronous, before the provider await, so its work prevents cancellation/editor events from being serviced while it runs.
+
+**Correction:** compute/cache whole-word acceptance once per original word, retain that result for all its parts, and keep counting accepted occurrences as F-02 requires. Check related whole-parent work in the part loop as well. Add a deterministic work-count/volume regression test with a long compound, empty and unrelated nonempty lists, plus accepted-parent and standalone-component controls. Do not solve this by dropping legitimate compound parts or weakening the accepted-word promise. The documented “both checks are linear, so need no budget” claim needs to remain true; otherwise a charged work bound is required.
+
+### Verification on the corrected head
+
+- Typecheck passed; lint passed with **0 errors / 1,133 existing warnings**; production build and `verify:bundle` passed with the same three existing webpack warnings.
+- Full independent typed Jest on Node 18 is still running; its terminal result will be recorded separately.
+- Exact-head [push CI 40581762268](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40581762268) and [PR CI 40581769285](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40581769285) both succeeded; every verify step passed.
+- Evidence is outside the repository in `../pr182-rereview-evidence/`, including `compound-work*.cjs/.log`, `compound-usecase.cjs/.log`, and the correction controls. The isolated worktree uses the same verified dependency lockfile and Node/npm versions.
+
+**Disposition: F-01–F-03 resolved; F-04 remains blocking.** This is a report-only update, not a source fix or formal GitHub review. Native/live acceptance remains unrun and separate. The exact report-only commit will be verified remotely and its CI followed.
