@@ -1247,13 +1247,46 @@ spoken one. These rows decide how it is built.
 | Its kinds | **`body`, `object`, `place`, `time` and `people`** (`CONTINUITY_KINDS`, with their definitions in `CONTINUITY_DEFINITIONS`, in `domain/models/CraftFlag.ts`), as the slice doc lists them: bodies, things, places and positions, time, and people. The prompt states each definition verbatim, held there by a sync test. Every kind's host why passes the fence (PR #179 N-02's test covers them). |
 | The reply | A continuity flag quotes the **later** side as every flag does (`original`, `before`, `after`) and the **earlier** side in `earlier` (`{ "original", "before"?, "after"? }`), with `why` (the two facts side by side) and `holds` (`earlier`, `later` or `neither`: which one the rest of the chapter keeps, when it keeps one). It has **no `suggestion`**: one way it could go would pick a side, and the note never says which is right. A `suggestion` on a continuity flag is a field its format does not define: ignored and counted. A flag with no `earlier`, an `earlier` with no quote or a quote over the ceiling, or a `holds` outside its three values is malformed. |
 | Placing a pair | **Both sides are anchored by host code**, each by its own quote and context. The pair is dropped when either side does not anchor once, touches a protected placeholder, or touches speech; when the two overlap or the earlier side does not come first (counted as unanchored); or when they stand in different sections (counted as `acrossBreak`, below). The flag sits on the later side, and a selection run shows a pair whose later side is in its selection, wherever the earlier side is. |
-| Scene breaks | **The Lightbox's Sections detector moves to a shared home** (`utils/chapterSections.ts`, `detectChapterSections`, with neutral types in `shared/types/chapterSections.ts` that the Lightbox's message types name). So does the blank-line paragraph rule it reads (`utils/blankLineParagraphs.ts`, `splitBlankLineParagraphs`). `splitLightboxParagraphs` keeps its rule id and returns what it did, so a saved board's fingerprint holds. Draft Edit takes no Lightbox infrastructure. A section starts where the detector says: headings, else scene breaks, else chapter lines. A start inside a protected region is ignored. **Host code drops a pair across a section start**, and a continuity request lists the lines that open each section after the first (`breaks`), in order, so the model need not guess what the host reads as a break. |
+| Scene breaks | **The Lightbox's Sections detector moves to a shared home** (`utils/chapterSections.ts`, `detectChapterSections`, with neutral types in `shared/types/chapterSections.ts` that the Lightbox's message types name). So does the blank-line paragraph rule it reads (`utils/blankLineParagraphs.ts`, `splitBlankLineParagraphs`). `splitLightboxParagraphs` keeps its rule id and returns what it did, so a saved board's fingerprint holds. Draft Edit takes no Lightbox infrastructure. A section starts where the detector says: headings, else scene breaks, else chapter lines. A marker inside a protected region is left out before the signal is chosen (PR #180 F-01). **Host code drops a pair a section start divides**, anywhere from its earlier side's start to its later side's end, when the reply is placed and again in the settled live text (F-02, F-03). A continuity request lists the lines that open each section after the first (`breaks`), in order, so the model need not guess what the host reads as a break. |
 | Dialogue | **Left alone on both sides** (`CRAFT_FLAG_LEAVES_SPEECH.continuity`): a pair either side of which touches speech is dropped. Characters lie and misremember, so a narration fact is never flagged against a spoken one. The prompt asks the model to read dialogue as context only. |
 | The port: related ranges | **`DocumentAnnotation` gains `related?: readonly { start; end; message }[]`,** in the same document. `shiftRanges` moves each related range through the writer's edits as it moves the flag's own, and drops the annotation when an edit touches either. A run's issues carry the same (`related`, with each side's `original`), so `moveIssues` drops a pair whose either side changed, and the live text's protected regions and speech are checked on both sides. In VS Code, `VsCodeIssueAnnotator` shows each as `DiagnosticRelatedInformation`, which the Problems panel and the hover list under the flag. |
 | What a flag says | The `why` (the two facts side by side), then the host's line for `holds`: "The rest of the chapter keeps the earlier version." or "The rest of the chapter keeps this version.", or nothing for `neither`. The related range's message is host text: "The other side of this pair: “…”", the earlier quote clipped to 60 characters. There is no phrase count: a phrase counted across a chapter says nothing about a contradiction. |
 | Which categories run | `proseMinion.craftFlags.categories` gains `continuity`. All four are on by default until the fixture run decides each one's default. |
 | Cost | One call per category: four by default, all priced in the confirmation. |
 | Not in this part | Continuity across chapters: a story bible, queued separately. Slice 3b's word list is its first piece. |
+
+**PR #180 review (Astra), as built:**
+
+- **F-01: protected text never decides which markers divide the chapter.**
+  `chapterSectionStarts` used to choose the signal from every paragraph and
+  only then drop starts inside protected text. A heading in a fenced code
+  block made headings win, was then dropped, and the real scene break was
+  never read. `detectChapterSections` now takes an optional `ignored`
+  predicate: a marker that starts inside protected text marks nothing and
+  fires nothing, and the signal and heading level are chosen from the rest.
+  The Lightbox passes none, so its lane reads exactly as before. A section's
+  start is the line its marker starts on: its paragraph's first line, or the
+  line after front matter's closing line in the same paragraph.
+- **F-02: a section the writer adds during the run divides a pair too.**
+  After the settle, once protected text and speech are read again, the live
+  text's sections are read (`withinOneSection`, only when a pair is left).
+  A pair a live section start divides is dropped as `acrossBreak`. Each pair
+  follows its own sides through the edits; nothing is searched again.
+- **F-03: the whole pair lies in one section.** The rule read only as far
+  as the later side's start, so a later quote that began before a break and
+  held the fact after it was shown. One predicate, `spansSectionStart`, now
+  reads from the earlier side's start to the later side's end. Placement
+  uses it on the gesture's sections (the ones the reply was read with) and
+  the settled check on the live text's.
+- **N-01: `holds` is one of its own values.** It was checked with `in`, so
+  `constructor` or `__proto__` decoded. It is now read from a `Map`, and an
+  inherited name is malformed.
+- **N-02: linear section work, and none when continuity is off.**
+  Protected regions are sorted and merged, so section starts and break lines
+  each walk them once (a cursor) instead of once per section. A run whose
+  categories leave out continuity reads no sections at gesture or settle.
+  Counted-read tests hold the work linear: 2,000 headings holding code take
+  about 9 reads each, where the quadratic walk took about 6,000,000 reads.
 
 ## Out of scope (follow-ups)
 

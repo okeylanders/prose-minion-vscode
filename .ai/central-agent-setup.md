@@ -1738,9 +1738,15 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     version the rest of the chapter keeps) and no `suggestion`, which would
     pick a side. Both sides are anchored by host code; a pair is dropped when
     either side fails to anchor, is protected or touches speech, when its
-    sides overlap or come out of order, or when a section starts between them
-    (`acrossBreak`, from `chapterSectionStarts`). The lines that open each
-    section are sent with continuity's request (`breaks`), masked. The flag
+    sides overlap or come out of order, or when a section starts anywhere
+    from its earlier side's start to its later side's end (`acrossBreak`,
+    `spansSectionStart`; PR #180 F-03), checked on the gesture's sections at
+    placement and on the live text's after the settle (`withinOneSection`,
+    F-02). Sections come from `chapterSectionStarts`, which leaves out a
+    marker inside protected text before choosing the signal (F-01), and are
+    read only when continuity runs, walking protected regions once (N-02).
+    The lines that open each section are sent with continuity's request
+    (`breaks`), masked. The flag
     sits on the later side; the earlier is its related place: the port's
     `DocumentAnnotation.related`, moved by `shiftRanges` (an edit touching
     either side drops the flag), held to its own text by `moveIssues`, read

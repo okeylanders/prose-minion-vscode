@@ -121,14 +121,20 @@ Continuity, built on `claude/upbeat-galileo-y1l4yf` from `epic/lightbox` at
   (`CONTINUITY_KINDS` and their definitions, in the domain).
 - **Placed by host code, both sides.** A pair is dropped when either side
   fails to anchor, is protected or touches speech; when its sides overlap
-  or come out of order; or when a section starts between them, counted as
-  "left alone across a scene break".
+  or come out of order; or when a section starts anywhere from its earlier
+  side's start to its later side's end, counted as "left alone across a
+  scene break". That last check runs at placement and again in the settled
+  live text, so a break the writer adds during the run counts too (PR #180
+  F-02, F-03).
 - **Scene breaks:** the Lightbox's Sections detector and the blank-line
   paragraph rule moved to `utils/chapterSections.ts` and
   `utils/blankLineParagraphs.ts`, with neutral types, unchanged; the
   Lightbox keeps its paragraph rule id. The lines that open each section
-  are sent with continuity's request (`breaks`). A guard keeps Draft Edit
-  off the Lightbox's infrastructure.
+  are sent with continuity's request (`breaks`). A marker inside protected
+  text (a heading in a code block) is left out before the signal is chosen,
+  so it never hides a real break (F-01); the Lightbox leaves out none.
+  Sections are read only when continuity runs, in work linear in the text
+  (N-02). A guard keeps Draft Edit off the Lightbox's infrastructure.
 - **The port:** `DocumentAnnotation.related`. The earlier side is linked
   under the flag (`DiagnosticRelatedInformation`), moves with the writer's
   edits, and an edit touching it drops the flag. This meets the

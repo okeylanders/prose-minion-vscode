@@ -28,14 +28,16 @@
  *    placeholder, or speech in a category that leaves speech alone (read
  *    with protected syntax set aside, F-03); and keeps only the flags inside
  *    a selection. A continuity pair is placed on both sides, and dropped
- *    across a section start (Slice 3c part 4): the chapter's sections are
- *    found at the gesture, and the lines that open them are sent with
- *    continuity's request.
+ *    when a section starts inside it (Slice 3c part 4): when continuity runs,
+ *    the chapter's sections are found at the gesture, and the lines that open
+ *    them are sent with its request (`craftFlagsSections`).
  * 5. It settles the watch: each flag follows its own occurrence through the
  *    writer's edits since the gesture, and one an edit touched is dropped as
  *    stale. A document that closed shows nothing. The live text's protected
  *    regions and speech are read again, and a flag now inside either is
- *    dropped. Each phrase is counted in the live text last (N-01).
+ *    dropped; so are its sections, when a pair is left, and a pair a section
+ *    the writer added now divides is dropped across a break (PR #180 F-02).
+ *    Each phrase is counted in the live text last (N-01).
  * 6. It shows the flags, replacing the document's earlier Craft Flags. A
  *    selection run replaces only those that overlap its selection, as the
  *    gesture read it (Slice 3's rule).
@@ -53,7 +55,6 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import { findSpeechSpansOutsideProtected } from '@/utils/draftEdit/speechSpans';
-import { chapterSectionStarts } from '@/utils/chapterSections';
 import type { CraftFlagsEstimate, CraftFlagsRunRequest, CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { moveIssues, outsideProtected } from '@/application/services/draftEdit/draftEditIssues';
 import {
@@ -64,6 +65,7 @@ import {
   withRepeats,
   type CraftFlagsPrepared
 } from '@/application/services/draftEdit/craftFlagsPlacement';
+import { continuitySections, withinOneSection } from '@/application/services/draftEdit/craftFlagsSections';
 
 /** The Craft Flags pass as this use case needs it: a passage in, passage-relative flags out, and their price before. */
 export interface CraftFlagsPassPort {
@@ -150,15 +152,15 @@ export class CraftFlagsUseCase {
       return { kind: 'changed' };
     }
     const gesture: CraftFlagsGesture = { uri: target.uri };
-    const sectionStarts = chapterSectionStarts(target.text, prepared.protectedRegions);
+    const sections = continuitySections(target.text, prepared.protectedRegions, prepared.region, pass.categories);
     this.inFlight.add(target.uri);
     this.held.set(gesture, {
       target,
       pass,
       prepared,
       protectedRegions: prepared.protectedRegions,
-      sectionStarts,
-      breaks: breakLines(target.text, sectionStarts, prepared.region, prepared.protectedRegions),
+      sectionStarts: sections.starts,
+      breaks: sections.breaks,
       watch,
       keep: this.flagsOutside(target),
       ran: false
@@ -254,7 +256,12 @@ export class CraftFlagsUseCase {
     const liveRegions = findProtectedRegions(live.text, live.languageId);
     const liveSpeech = findSpeechSpansOutsideProtected(live.text, liveRegions);
     const current = withRepeats(
-      outsideSpeech(outsideProtected(moved, live.text, live.languageId, dropped, liveRegions), liveSpeech, dropped),
+      withinOneSection(
+        outsideSpeech(outsideProtected(moved, live.text, live.languageId, dropped, liveRegions), liveSpeech, dropped),
+        live.text,
+        liveRegions,
+        dropped
+      ),
       live.text,
       [...liveSpeech, ...liveRegions]
     );
@@ -364,22 +371,6 @@ export class CraftFlagsUseCase {
     }
     return shown.annotations.filter((annotation) => keep.has(annotation.id));
   }
-}
-
-/**
- * The line that opens each section starting inside `region`, as the passage
- * sends it: protected text in it masked, so a break line never carries what
- * the passage withholds.
- */
-function breakLines(text: string, starts: readonly number[], region: TextRange, protectedRegions: readonly TextRange[]): string[] {
-  return starts.filter((start) => region.start <= start && start < region.end).map((start) => {
-    const lineEnd = text.indexOf('\n', start);
-    const end = Math.min(lineEnd === -1 ? text.length : lineEnd, region.end);
-    const inLine = protectedRegions
-      .filter((range) => range.end > start && range.start < end)
-      .map((range) => ({ start: Math.max(range.start, start) - start, end: Math.min(range.end, end) - start }));
-    return maskProtectedRegions(text.slice(start, end), inLine).text.trim();
-  });
 }
 
 function byStart(a: DocumentAnnotation, b: DocumentAnnotation): number {

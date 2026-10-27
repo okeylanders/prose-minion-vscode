@@ -91,7 +91,8 @@ const NOTE_FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'af
 /** A continuity flag quotes its earlier side too, and says which side the chapter keeps; it offers no suggestion, which would pick a side. */
 const PAIR_FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'earlier', 'holds']);
 const QUOTE_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after']);
-const HOLDS: Readonly<Record<string, ContinuityHolds | undefined>> = { earlier: 'earlier', later: 'later', neither: undefined };
+/** `holds`'s values, as a map so a name an object inherits (`constructor`, `__proto__`) is no value (PR #180 N-01). */
+const HOLDS: ReadonlyMap<string, ContinuityHolds | undefined> = new Map([['earlier', 'earlier'], ['later', 'later'], ['neither', undefined]]);
 
 /** Decode a frame's root for one category's call; throws `DraftEditFrameError` when the root has the wrong shape. */
 export function decodeCraftFlagsReply(root: Record<string, unknown>, category: CraftFlagCategory): CraftFlagsReply {
@@ -211,11 +212,11 @@ function decodePair(flag: Record<string, unknown>): { earlier: CraftFlagFinding[
   }
   const side = earlier as Record<string, unknown>;
   const anchor = decodeQuote(side);
-  const known = holds === undefined || holds === null || (typeof holds === 'string' && holds in HOLDS);
+  const known = holds === undefined || holds === null || (typeof holds === 'string' && HOLDS.has(holds));
   if (!anchor || !known) {
     return null;
   }
-  const kept = typeof holds === 'string' ? HOLDS[holds] : undefined;
+  const kept = typeof holds === 'string' ? HOLDS.get(holds) : undefined;
   return { earlier: anchor, ...(kept ? { holds: kept } : {}), ignoredFields: Object.keys(side).filter((key) => !QUOTE_FIELDS.has(key)).length };
 }
 

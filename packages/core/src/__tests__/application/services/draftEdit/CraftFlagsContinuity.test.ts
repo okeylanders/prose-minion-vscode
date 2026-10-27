@@ -1,12 +1,17 @@
 /**
  * Continuity in a Craft Flags run (ADR 2026-10-21, Amendment 2026-10-26:
  * Slice 3c part 4). A pair is placed on both sides, the flag on the later,
- * the earlier its related place; it is dropped across a section start, when
- * either side touches speech or a protected region, or when its sides are
- * out of order; and the earlier side follows the writer's edits as the flag
- * does. Text adapts public-domain *Alice*, with slips of continuity added.
+ * the earlier its related place; it is dropped when a section starts inside
+ * it, when either side touches speech or a protected region, or when its
+ * sides are out of order; and the earlier side follows the writer's edits as
+ * the flag does. A section is the chapter's own, never one in code (PR #180
+ * F-01); the whole pair lies in one, from its earlier side's start to its
+ * later side's end (F-03); and a section the writer adds during the run
+ * divides it too (F-02). Text adapts public-domain *Alice*, with slips of
+ * continuity added.
  */
 import type { CraftFlagFinding } from '@/domain/models/CraftFlag';
+import { decodeCraftFlagsReply, readCraftFlagsFrame, CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { MODEL, PASS, flag, read, setup } from '@/__tests__/application/services/draftEdit/craftFlagsHarness';
 
 const pair = (later: string, earlier: string, extra: Partial<CraftFlagFinding> = {}): CraftFlagFinding => flag(later, {
@@ -117,5 +122,104 @@ describe('A continuity pair (Slice 3c part 4)', () => {
       beforeReply: (documents) => documents.edit([{ offset: 0, length: 0, text: '```\n' }, { offset: BANK.length, length: 0, text: '\n```' }])
     });
     expect(await fenced.runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { protected: 1 } });
+  });
+});
+
+const PINK = 'Alice had pink eyes.';
+const BLUE = 'Alice had blue eyes.';
+const TWO = `${PINK}\n\n${BLUE}`;
+
+/** A continuity reply's findings, read through the production frame and codec. */
+function replied(flags: unknown[]): readonly CraftFlagFinding[] {
+  const frame = `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}`;
+  const reply = decodeCraftFlagsReply(readCraftFlagsFrame(frame).root, 'continuity');
+  expect(reply.malformed).toBe(0);
+  return reply.findings;
+}
+const why = 'The eyes are pink at first and blue later, with nothing between to change them.';
+
+describe('A continuity pair and the chapter\'s sections (PR #180)', () => {
+  it('reads the scene break a heading in code would hide, and leaves the pair across it alone (F-01)', async () => {
+    const text = [PINK, '```markdown', '# Fake chapter', '```', '* * *', BLUE].join('\n\n');
+    const { runOnce, requests } = setup(text, [read(pair('blue eyes', 'pink eyes'))]);
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+    expect(requests[0].breaks).toEqual(['* * *']);
+  });
+
+  it('chooses the heading level from the headings outside code (F-01)', async () => {
+    const text = [PINK, '```', '# Fake chapter', '```', '## The Pool of Tears', BLUE].join('\n\n');
+    const { runOnce, requests } = setup(text, [read(pair('blue eyes', 'pink eyes'))]);
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+    expect(requests[0].breaks).toEqual(['## The Pool of Tears']);
+  });
+
+  it.each([
+    ['a scene break', '* * *'],
+    ['a heading', '## New scene'],
+    ['a chapter line', 'Chapter Two']
+  ])('drops a pair that %s the writer added between its sides during the run divides (F-02)', async (_name, marker) => {
+    const { runOnce, annotations } = setup(TWO, [read(pair('blue eyes', 'pink eyes'))], {
+      beforeReply: (documents) => documents.edit([{ offset: TWO.indexOf(BLUE), length: 0, text: `${marker}\n\n` }])
+    });
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1, stale: 0 } });
+    expect(annotations.shown).toEqual([]);
+  });
+
+  it.each([
+    ['a paragraph of prose between its sides', TWO.indexOf(BLUE), 'She walked away.\n\n'],
+    ['a break inside code between its sides', TWO.indexOf(BLUE), '```\n\n* * *\n\n```\n\n'],
+    ['a break after both its sides', TWO.length, '\n\n* * *\n\nShe slept.']
+  ])('keeps a pair through %s, its later side moved with the edit (F-02)', async (_name, offset, inserted) => {
+    const { runOnce, annotations } = setup(TWO, [read(pair('blue eyes', 'pink eyes'))], {
+      beforeReply: (documents) => documents.edit([{ offset, length: 0, text: inserted }])
+    });
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 1 });
+    expect(annotations.flaggedText()).toEqual(['blue eyes']);
+    expect(annotations.shown[0].related?.[0].start).toBe(TWO.indexOf('pink eyes'));
+  });
+
+  it('drops a selection run\'s pair that a break the writer added during the run divides (F-02)', async () => {
+    const { runOnce, target, annotations } = setup(TWO, [read(pair('blue eyes', 'pink eyes'))], {
+      beforeReply: (documents) => documents.edit([{ offset: TWO.indexOf(BLUE), length: 0, text: '* * *\n\n' }])
+    });
+    const start = TWO.indexOf(BLUE);
+    expect(await runOnce(target({ start, end: start + BLUE.length }))).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+    expect(annotations.shown).toEqual([]);
+  });
+
+  it('drops a pair whose later quote starts before a break and holds the fact after it (F-03)', async () => {
+    const text = [PINK, 'She walked away.', '* * *', BLUE].join('\n\n');
+    const findings = replied([{ original: 'She walked away.\n\n* * *\n\nAlice had blue eyes.', kind: 'body', why, earlier: { original: 'pink eyes' }, holds: 'earlier' }]);
+    const { runOnce, requests } = setup(text, [read(...findings)]);
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1, unanchored: 0 } });
+    expect(requests[0].breaks).toEqual(['* * *']);
+  });
+
+  it('places a pair against the sections its reply was read with, though a heading added later reads the break as none (F-03)', async () => {
+    const text = [PINK, 'She walked away.', '* * *', BLUE].join('\n\n');
+    const findings = replied([{ original: 'She walked away.\n\n* * *\n\nAlice had blue eyes.', kind: 'body', why, earlier: { original: 'pink eyes' } }]);
+    // A heading after the pair: the live text's signal is headings, and the break divides nothing there.
+    const { runOnce } = setup(text, [read(...findings)], {
+      beforeReply: (documents) => documents.edit([{ offset: text.length, length: 0, text: '\n\n## Afterword\n\nShe slept.' }])
+    });
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+  });
+
+  it('drops a pair whose later quote runs on past a break, or whose earlier quote holds one (F-03)', async () => {
+    const tail = [PINK, BLUE, '* * *', 'She slept.'].join('\n\n');
+    const later = replied([{ original: 'Alice had blue eyes.\n\n* * *\n\nShe slept.', kind: 'body', why, earlier: { original: 'pink eyes' } }]);
+    expect(await setup(tail, [read(...later)]).runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+
+    const head = [PINK, '* * *', `She walked away. ${BLUE}`].join('\n\n');
+    const earlier = replied([{ original: 'blue eyes', kind: 'body', why, earlier: { original: 'pink eyes.\n\n* * *\n\nShe walked' } }]);
+    expect(await setup(head, [read(...earlier)]).runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+  });
+
+  it('shows a pair whose broad later quote lies in its earlier side\'s section', async () => {
+    const text = [PINK, `She walked away. ${BLUE}`, '* * *', 'She slept.'].join('\n\n');
+    const findings = replied([{ original: 'She walked away. Alice had blue eyes.', kind: 'body', why, earlier: { original: 'pink eyes' }, holds: 'earlier' }]);
+    const { runOnce, annotations } = setup(text, [read(...findings)]);
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 1 });
+    expect(annotations.flaggedText()).toEqual(['She walked away. Alice had blue eyes.']);
   });
 });

@@ -203,9 +203,10 @@ follows the Workshop's model until you pick one.
   Problems panel and the hover. The note sets the two facts side by side
   and says which version the rest of the chapter keeps, when it keeps one,
   never which is right, so it offers no rewording. Facts on either side of
-  a scene break, a heading or a chapter line are never paired, and neither
-  is anything a character says: people misremember. An edit to either place
-  withdraws the flag.
+  a scene break, a heading or a chapter line are never paired, even one
+  you add while the run is in flight (one inside a code block does not
+  count), and neither is anything a character says: people misremember. An
+  edit to either place withdraws the flag.
 - **Choose what it looks for.** `proseMinion.craftFlags.categories` turns
   each category on or off. All four are on by default, and each is a
   request of its own, priced in the confirmation.

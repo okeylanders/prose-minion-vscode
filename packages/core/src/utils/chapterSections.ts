@@ -34,6 +34,14 @@
  * Text before the first marker is its own opening section. With no signal
  * dividing the chapter, there are no sections, and the lane says so.
  *
+ * **Markers that are not markers** (Draft Edit, PR #180 F-01). A caller may
+ * name markers to leave out (`ignored`): Craft Flags leaves out a marker that
+ * starts inside protected text, a heading in a fenced code block. A marker
+ * left out marks nothing and fires nothing, and the signal and heading level
+ * are chosen from the rest, so protected text never decides which of the
+ * chapter's own markers divide it. Paragraph numbers do not change. The
+ * Lightbox names none, and reads every marker as before.
+ *
  * **Front matter** (PR #156 F-02). A leading YAML block is metadata, never
  * structure, even when blank lines split it across paragraphs: `---` as the
  * chapter's first line, then lines that read as YAML (a `key:` with no space
@@ -62,7 +70,7 @@
 
 import type { ChapterSection, ChapterSectionSignal, ChapterSectionsMeasure } from '@shared/types/chapterSections';
 import type { TextRange } from '@/domain/models/DraftEdit';
-import { splitBlankLineParagraphs } from '@/utils/blankLineParagraphs';
+import { splitBlankLineParagraphs, type BlankLineParagraph } from '@/utils/blankLineParagraphs';
 
 const ATX = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const SETEXT_UNDERLINE = /^ {0,3}(={3,}|-{3,})[ \t]*$/;
@@ -89,8 +97,17 @@ interface Marker {
   level?: number;
 }
 
-/** The chapter's sections from its paragraphs (index 0 is ¶1), and where each signal fired. */
-export function detectChapterSections(paragraphs: readonly string[]): ChapterSectionsMeasure {
+/**
+ * The chapter's sections from its paragraphs (index 0 is ¶1), and where each
+ * signal fired. `ignored`, when given, is asked of each paragraph that would
+ * mark a section, with the paragraph's number and the index of the line its
+ * marker starts on, in paragraph order; a marker it answers true for is left
+ * out (F-01).
+ */
+export function detectChapterSections(
+  paragraphs: readonly string[],
+  ignored?: (paragraph: number, line: number) => boolean
+): ChapterSectionsMeasure {
   const headings: Marker[] = [];
   const breaks: Marker[] = [];
   const chapters: Marker[] = [];
@@ -98,18 +115,24 @@ export function detectChapterSections(paragraphs: readonly string[]): ChapterSec
   paragraphs.forEach((text, index) => {
     const paragraph = index + 1;
     // Within front matter nothing is a marker; after its closing line, its paragraph reads on.
-    const lines = !frontMatter || paragraph > frontMatter.paragraph
-      ? linesOf(text)
-      : paragraph === frontMatter.paragraph ? linesOf(text).slice(frontMatter.line + 1) : [];
+    const first = !frontMatter || paragraph > frontMatter.paragraph
+      ? 0
+      : paragraph === frontMatter.paragraph ? frontMatter.line + 1 : undefined;
+    const lines = first === undefined ? [] : linesOf(text).slice(first);
     if (lines.length === 0) {
       return;
     }
     const heading = headingOf(lines);
+    const isBreak = !heading && (THEMATIC_BREAK.test(lines[0]) || LONE_MARK.test(lines[0]));
+    const isChapter = !heading && !isBreak && lines[0].length <= LABEL_CHARACTERS && CHAPTER_LINE.test(lines[0]);
+    if ((!heading && !isBreak && !isChapter) || ignored?.(paragraph, first ?? 0)) {
+      return;
+    }
     if (heading) {
       headings.push({ paragraph, ...heading });
-    } else if (THEMATIC_BREAK.test(lines[0]) || LONE_MARK.test(lines[0])) {
+    } else if (isBreak) {
       breaks.push({ paragraph, label: '' });
-    } else if (lines[0].length <= LABEL_CHARACTERS && CHAPTER_LINE.test(lines[0])) {
+    } else {
       chapters.push({ paragraph, label: lines[0].trim() });
     }
   });
@@ -205,16 +228,49 @@ function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: s
 }
 
 /**
- * Where each section after the first begins in `text`: the offset of the
- * paragraph its marker opens, in order; empty when nothing divides the
- * chapter. A start inside one of `ignored` (protected regions: code, front
- * matter) is left out, so a break written inside code divides nothing.
+ * Where each section after the first begins in `text`, in order: the offset
+ * of the line its marker starts on (its paragraph's first, or, after front
+ * matter's closing line in the same paragraph, the next); empty when nothing
+ * divides the chapter. A marker that starts inside one of `ignored`
+ * (protected regions: code, comments, front matter), which must be sorted
+ * and never overlap, is left out before the signal is chosen (F-01), so a
+ * heading written inside code neither divides the chapter nor hides a break
+ * that does. Linear in the text and in `ignored` (PR #180 N-02).
  */
 export function chapterSectionStarts(text: string, ignored: readonly TextRange[] = []): number[] {
   const paragraphs = splitBlankLineParagraphs(text);
-  return detectChapterSections(paragraphs.map((paragraph) => paragraph.text)).sections
-    .flatMap((section) => (section.from > 1 ? [paragraphs[section.from - 1].start] : []))
-    .filter((offset) => !ignored.some((range) => range.start <= offset && offset < range.end));
+  const inside = insideAscending(ignored);
+  const markerStarts = new Map<number, number>();
+  const measure = detectChapterSections(paragraphs.map((paragraph) => paragraph.text), (paragraph, line) => {
+    const start = lineStart(paragraphs[paragraph - 1], line);
+    markerStarts.set(paragraph, start);
+    return inside(start);
+  });
+  return measure.sections.flatMap((section) =>
+    (section.from > 1 ? [markerStarts.get(section.from) ?? paragraphs[section.from - 1].start] : []));
+}
+
+/** Where line `line` of a blank-line paragraph starts in the text it was read from. */
+function lineStart(paragraph: BlankLineParagraph, line: number): number {
+  let offset = 0;
+  for (let index = 0; index < line; index++) {
+    offset = paragraph.text.indexOf('\n', offset) + 1;
+  }
+  return paragraph.start + offset;
+}
+
+/**
+ * Whether each offset, asked in ascending order, lies inside one of `ranges`
+ * (sorted, never overlapping): one walk over them, however many are asked.
+ */
+function insideAscending(ranges: readonly TextRange[]): (offset: number) => boolean {
+  let next = 0;
+  return (offset) => {
+    while (next < ranges.length && ranges[next].end <= offset) {
+      next++;
+    }
+    return next < ranges.length && ranges[next].start <= offset;
+  };
 }
 
 function label(text: string): string {

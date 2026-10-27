@@ -14,9 +14,11 @@
  * own quote, and dropped when either side is: when either fails to anchor,
  * touches a protected placeholder or touches speech. It is dropped, too, when
  * its earlier side does not end before its later side starts (counted as
- * unanchored), or when a section of the chapter starts between them
- * (`acrossBreak`). The flag sits on the later side, which decides whether it
- * is inside a selection; the earlier side is its related place.
+ * unanchored), or when a section of the chapter starts anywhere inside it,
+ * from its earlier side's start to its later side's end (`acrossBreak`;
+ * `spansSectionStart`, PR #180 F-03). The flag sits on the later side, which
+ * decides whether it is inside a selection; the earlier side is its related
+ * place.
  *
  * Speech is read with protected syntax set aside
  * (`findSpeechSpansOutsideProtected`), in the gesture's text before overlaps
@@ -46,6 +48,7 @@ import { phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
 import { stockBeatCounts, stockBeatsIn } from '@/utils/craftFlags/stockBeats';
 import type { CraftFlagsRunResult } from '@services/craftFlags/CraftFlagsService';
 import { byPlace, placesOf } from '@/application/services/draftEdit/draftEditIssues';
+import { spansSectionStart } from '@/application/services/draftEdit/craftFlagsSections';
 
 export type CraftFlagsDrops = { -readonly [K in keyof CraftFlagsDropCounts]: number };
 
@@ -68,7 +71,7 @@ export interface CraftFlagsPlacementScope {
   readonly speech: readonly TextRange[];
   /** The region whose flags a run shows. */
   readonly shown: TextRange;
-  /** Where each section after the first begins (`chapterSectionStarts`), ascending. */
+  /** Where each section after the first begins (`chapterSectionStarts`), ascending; none when continuity does not run. */
   readonly sectionStarts: readonly number[];
 }
 
@@ -106,7 +109,7 @@ export function placeCraftFlags(
         dropped.unanchored += 1;
         continue;
       }
-      if (pair && scope.sectionStarts.some((start) => pair.start < start && start <= flagged.start)) {
+      if (pair && spansSectionStart(scope.sectionStarts, { start: pair.start, end: flagged.end })) {
         dropped.acrossBreak += 1;
         continue;
       }

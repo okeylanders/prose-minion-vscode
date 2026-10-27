@@ -270,6 +270,12 @@ describe('decodeCraftFlagsReply: a continuity reply (Slice 3c part 4)', () => {
     expect(reply).toMatchObject({ findings: [], malformed: 6 });
   });
 
+  it('drops as malformed a holds that names what every object inherits, never reading it as a value (PR #180 N-01)', () => {
+    const inherited = ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'isPrototypeOf', 'valueOf'];
+    const reply = readPair(inherited.map((holds) => ({ ...EYES, holds })));
+    expect(reply).toMatchObject({ findings: [], malformed: inherited.length });
+  });
+
   it('ignores and counts a suggestion, which would pick a side, and a field the earlier side does not define', () => {
     const reply = readPair([{ ...EYES, suggestion: 'the eyes stay pink', earlier: { ...EYES.earlier, note: 'x' } }]);
     expect(reply.ignoredFields).toBe(2);

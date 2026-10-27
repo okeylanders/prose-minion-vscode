@@ -60,3 +60,25 @@ The ADR rows decide the build. No new question was put to the writer.
 - The fixture run's hits and false positives, for all four categories.
 - Continuity across chapters: a story bible, queued separately.
 - Then Slice 3b part 3.
+
+## Review (PR #180, Astra, 2026-10-27)
+
+Changes requested: three P2 findings, all on the scene-break rule, and two
+P3 notes. All five fixed in this PR.
+- **F-01:** a marker inside protected text (a heading in a code block) is
+  left out before the signal is chosen. `detectChapterSections` takes an
+  optional `ignored` predicate; the Lightbox passes none.
+- **F-02:** the settled live text's sections are read again, and a pair a
+  section the writer added during the run divides is dropped
+  (`withinOneSection`).
+- **F-03:** one predicate, `spansSectionStart`, reads the whole pair, from
+  its earlier side's start to its later side's end, at placement and after
+  the settle.
+- **N-01:** `holds` is read from a `Map`, so an inherited name is malformed.
+- **N-02:** section starts and break lines walk protected regions once, and
+  nothing is read when continuity does not run. Counted-read tests hold it.
+
+The new module is `application/services/draftEdit/craftFlagsSections.ts`.
+Mutations: 14, all caught. One survived at first: the live recheck hid
+the placement check. A case where a heading added after the pair makes the
+live text read no break now holds the placement check on its own.
