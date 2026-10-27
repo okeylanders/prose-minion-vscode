@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 1: Craft Flags and cliché
 
-**Latest disposition — second re-review of `18e8b34e`: Changes requested. F-01, F-02 and F-03 resolved; new F-04 (P2) remains: the overlapping repeat scan can loop forever on an astral-leading phrase. N-01/N-02 remain addressed.**
+**Latest disposition — third re-review of `fc48e580`: Approve from source and automated/controlled-host review. F-01 through F-04 are resolved; no remaining blocking findings. All 8,054 tests pass. Native/live quality acceptance and the accepted PR #172 preview limitation remain separate.**
 
 **Author:** okeylanders · **PR:** [#177](https://github.com/okeylanders/prose-minion-vscode/pull/177) · **Reviewer:** Astra · **Reviewed:** 2026-10-26
 
@@ -365,3 +365,27 @@ Node 18.20.8 on `c139335f`:
 - Jest: 573 suites / 8,054 tests / 59 snapshots, up 8 tests;
 - lint: 0 errors / 1,133 warnings;
 - build, with `verify:bundle`, passes.
+
+## Third re-review — 2026-10-27 (`fc48e580`)
+
+**Approve from source and automated/controlled-host review: F-04 is resolved, with no remaining blocking findings.** F-01, F-02 and F-03 remain resolved. This is a review recommendation, not native VS Code/live-model acceptance or a merge action.
+
+Reviewed head `fc48e5803f70be5fb0d506196da372d751d9fcb5`, functional fix `c139335f1de62fbba900ce7b1efceb9a6d899c9f`, tree `d4b5e87a7ebfcf6a09360b4de1b56b3266c0520a`, against unchanged base `fd145a6a44f3bd725c3c9f5ca9602c600906918d`. The eight-file correction delta, new test helper and author response were independently inspected in a fresh isolated checkout. The author preserved the entire second re-review; all historical findings/responses remain above.
+
+### F-04 closure and regression evidence
+
+`occurrences` now advances from each match's start by a complete code point. Its guard rejects a match before the requested search position. Thus every successful iteration strictly increases the cursor, including skipped/protected occurrences, while still allowing legitimate overlaps. A valid surrogate pair is never split by the resume step.
+
+The exact formerly hanging primary witnesses now finish: the pure counter returns **2** for two astral-leading phrases; the production codec → use-case path returns **completed / one flag / zero document writes**, with all drop counts zero. Both bounded subprocesses exit 0. This is the same synthetic payload and production path that hung on `18e8b34e`, not a replaced algorithm in the probe.
+
+The added test helper counts the phrase regex's searches and throws at a deterministic limit, restoring its spy in `finally`. This safely detects synchronous nontermination without trusting a Jest timeout. Independent instrumentation verified **4,156 sticky-position oracle cases** (astral/BMP/ASCII, overlaps, skipped ranges and lone surrogates), and **17,530 production regex searches** all advanced strictly at code-point boundaries. All ten bounded subprocess witnesses return correct counts, including five former hangs. Twelve production frame → codec → use-case scenarios complete with correct repeat messages, speech/protected/live exclusions and zero writes. The exact new helper throws on the old counter at its 21st scan, while the fixed two-occurrence counter completes in three searches; success and rejection both restore `RegExp.exec`. A fault-injected match before the cursor also terminates safely.
+
+### Final verification
+
+- **F-01/F-02:** all **77 production-chain model/lifetime/cleanup scenarios** pass again at this exact head. Host/service/command/write-boundary code is unchanged by this correction; all 41 focused architecture-boundary tests pass too.
+- **F-03 remains resolved:** 18 prior failures plus six controls, 20 focused speech cases, 35 production placement cases, 12,000 raw-preservation comparisons and 12,000 protected-aware oracle cases pass again. All 134 ordinary repeat cases and four focused suites / 81 tests pass; the large-document lazy-count benchmark remains prompt.
+- **Full Node 18.20.8 / npm 10.8.2 gates pass:** 573 suites, 8,054 tests and 59 snapshots (522.949 s, exit 0); typecheck, lint and build including bundle verification all exit 0. Existing warning baseline remains 1,133 lint warnings and three webpack warnings.
+- `git diff --check` passes for the implementation correction. Dependency lockfile is unchanged; no repository source/tests/dependencies were edited by the reviewer.
+- Implementation CI [push](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40427963373) / [PR](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40427967413): **both succeeded**, with every install/typecheck/tests/lint/build step verified. Exact report-head CI is verified separately after publication.
+
+The original blocking findings are all closed. N-01/N-02's live/lazy counting and N-03's overlapping counts remain addressed. Inflected forms still count separately as documented. Native/browser/live quality acceptance and PR #172's explicitly accepted, not-fixed preview-lifetime limitation remain separate; neither has been represented as repaired or natively verified here. No source fixes, formal GitHub reviews/comments, merge/deploy actions or live provider calls were performed.
