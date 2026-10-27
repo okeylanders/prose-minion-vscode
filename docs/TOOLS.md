@@ -176,6 +176,18 @@ follows the Workshop's model until you pick one.
   names. A cliché in dialogue is the character's voice, and is left alone.
   A phrase the chapter leans on says so: "This phrase appears 3 times in
   this document."
+- **Register shifts.** Narration that leaves the register the chapter
+  keeps: a word from outside the period the narration sets (`period`), slang
+  in formal narration (`slang`), legal or corporate wording where the
+  narration keeps none (`jargon`), or a sudden ornate passage in plain prose
+  (`ornate`). The call first names the register the chapter's narration
+  keeps, and each flag says so: "The chapter's narration: a wry, formal
+  English, plain and unhurried." Dialogue is left alone, and so is a
+  character's own marked thought. A word is flagged for its date only when
+  the narration sets a period.
+- **Choose what it looks for.** `proseMinion.craftFlags.categories` turns
+  each category on or off. Both are on by default, and each is a request of
+  its own, priced in the confirmation.
 - **Options, never orders.** A note that tells you what to do, grades the
   writing, quotes, or states a count is not shown as written: a why becomes
   a plain description of the phrase's kind, and a suggestion is left out.
@@ -185,7 +197,7 @@ follows the Workshop's model until you pick one.
   Under that, a selection reads the whole chapter for context and flags only
   the selection.
 
-Gesture strain, register shift and in-chapter continuity follow (Slice 3c).
+Gesture strain and in-chapter continuity follow (Slice 3c).
 
 ---
 
