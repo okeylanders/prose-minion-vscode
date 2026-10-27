@@ -1,9 +1,12 @@
 /**
- * The Sections lane's detector (ADR 2026-10-19 D4, D5; Slice 4C). Pure: no
- * host, no I/O, no model. It reads the board's paragraph model (paragraphs
- * split on blank lines, each trimmed) and finds the chapter's own structure,
- * in this order; the first signal that divides the chapter into two or more
- * sections wins:
+ * A chapter's sections (ADR 2026-10-19 D4, D5; Slice 4C): the Lightbox's
+ * Sections lane, and, since Draft Edit Slice 3c part 4, the breaks Craft
+ * Flags' continuity never pairs across. Moved here from the Lightbox's
+ * infrastructure unchanged, so Draft Edit takes no Lightbox infrastructure.
+ * Pure: no host, no I/O, no model. It reads a chapter's blank-line
+ * paragraphs (`splitBlankLineParagraphs`, each trimmed) and finds the
+ * chapter's own structure, in this order; the first signal that divides the
+ * chapter into two or more sections wins:
  *
  * 1. **Headings.** A paragraph that opens with a Markdown heading:
  *    - ATX: one to six `#`, a space, and text (`## The hall`), with up to
@@ -57,7 +60,9 @@
  * `Word:` lines up to a later `---` is taken for front matter.
  */
 
-import type { LightboxSection, LightboxSectionSignal, LightboxSectionsMeasure } from '@messages';
+import type { ChapterSection, ChapterSectionSignal, ChapterSectionsMeasure } from '@shared/types/chapterSections';
+import type { TextRange } from '@/domain/models/DraftEdit';
+import { splitBlankLineParagraphs } from '@/utils/blankLineParagraphs';
 
 const ATX = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const SETEXT_UNDERLINE = /^ {0,3}(={3,}|-{3,})[ \t]*$/;
@@ -85,7 +90,7 @@ interface Marker {
 }
 
 /** The chapter's sections from its paragraphs (index 0 is ¶1), and where each signal fired. */
-export function detectLightboxSections(paragraphs: readonly string[]): LightboxSectionsMeasure {
+export function detectChapterSections(paragraphs: readonly string[]): ChapterSectionsMeasure {
   const headings: Marker[] = [];
   const breaks: Marker[] = [];
   const chapters: Marker[] = [];
@@ -109,7 +114,7 @@ export function detectLightboxSections(paragraphs: readonly string[]): LightboxS
     }
   });
   /* eslint-disable @typescript-eslint/naming-convention -- signals are kebab-case protocol literals. */
-  const fired: Record<LightboxSectionSignal, number[]> = {
+  const fired: Record<ChapterSectionSignal, number[]> = {
     headings: headings.map((marker) => marker.paragraph),
     'scene-breaks': breaks.map((marker) => marker.paragraph),
     'chapter-lines': chapters.map((marker) => marker.paragraph)
@@ -184,11 +189,11 @@ function frontMatterEnd(paragraphs: readonly string[]): { paragraph: number; lin
 }
 
 /** Sections opened by `markers` (ascending), with text before the first as its own opening section. */
-function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: string): LightboxSection[] {
+function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: string): ChapterSection[] {
   if (markers.length === 0 || count === 0) {
     return [];
   }
-  const sections: LightboxSection[] = [];
+  const sections: ChapterSection[] = [];
   if (markers[0].paragraph > 1) {
     sections.push({ from: 1, to: markers[0].paragraph - 1, label: openingLabel });
   }
@@ -197,6 +202,19 @@ function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: s
     sections.push({ from: marker.paragraph, to: next - 1, label: marker.label, marker: marker.paragraph });
   });
   return sections;
+}
+
+/**
+ * Where each section after the first begins in `text`: the offset of the
+ * paragraph its marker opens, in order; empty when nothing divides the
+ * chapter. A start inside one of `ignored` (protected regions: code, front
+ * matter) is left out, so a break written inside code divides nothing.
+ */
+export function chapterSectionStarts(text: string, ignored: readonly TextRange[] = []): number[] {
+  const paragraphs = splitBlankLineParagraphs(text);
+  return detectChapterSections(paragraphs.map((paragraph) => paragraph.text)).sections
+    .flatMap((section) => (section.from > 1 ? [paragraphs[section.from - 1].start] : []))
+    .filter((offset) => !ignored.some((range) => range.start <= offset && offset < range.end));
 }
 
 function label(text: string): string {

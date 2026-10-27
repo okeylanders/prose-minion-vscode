@@ -1,13 +1,14 @@
 /**
  * The Sections lane's detector (ADR 2026-10-19 D4, D5; Slice 4C): code only,
- * from the paragraph model. Headings at the highest level that divides the
+ * from the paragraph model. Shared with Draft Edit since Slice 3c part 4
+ * (`detectChapterSections`). Headings at the highest level that divides the
  * chapter, then scene breaks (`---` decided by the blank-line rule), then
  * chapter lines in digits, roman numerals or words; none found says so. The
  * paragraphs are synthetic lines and sentences from "Alice's Adventures in
  * Wonderland" (1865, public domain); one board is built from the worked
  * example by the production service, so every board measures its sections.
  */
-import { detectLightboxSections } from '@/infrastructure/lightbox/LightboxSections';
+import { detectChapterSections } from '@/utils/chapterSections';
 import { splitLightboxParagraphs } from '@/infrastructure/lightbox/LightboxParagraphs';
 import { lightboxSectionsNote } from '@hooks/domain/lightbox/lightboxPlot';
 import { boardWithNumbers } from './lightboxCraftFixtures';
@@ -16,7 +17,7 @@ import { ALICE } from './lightboxPlotFixtures';
 /* eslint-disable @typescript-eslint/naming-convention -- the Sections signals are kebab-case protocol literals. */
 
 const PROSE = 'Alice was beginning to get very tired of sitting by her sister on the bank.';
-const sections = (text: string) => detectLightboxSections(splitLightboxParagraphs(text).map((paragraph) => paragraph.text));
+const sections = (text: string) => detectChapterSections(splitLightboxParagraphs(text).map((paragraph) => paragraph.text));
 const ranges = (text: string) => sections(text).sections.map((section) => [section.from, section.to, section.label]);
 
 describe('the Sections detector (Slice 4C)', () => {

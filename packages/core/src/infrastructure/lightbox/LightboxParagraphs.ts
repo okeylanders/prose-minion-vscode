@@ -23,6 +23,7 @@ import { createHash } from 'node:crypto';
 import type { LightboxParagraphMetric, LightboxRibbonColumn } from '@messages';
 import { countWords } from '@/utils/textUtils';
 import { countDialogueWords } from '@/utils/dialogueSpans';
+import { splitBlankLineParagraphs } from '@/utils/blankLineParagraphs';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 
 /** A paragraph of the source text. `text` is trimmed; offsets bound it exactly. */
@@ -51,35 +52,15 @@ export interface LightboxParagraphRange {
  */
 export const LIGHTBOX_PARAGRAPH_RULE_ID = 'blank-line-2026-10-19';
 
-/** Split `text` into paragraphs with the shared blank-line rule. */
+/** Split `text` into paragraphs with the shared blank-line rule (`splitBlankLineParagraphs`), numbered from 1. */
 export function splitLightboxParagraphs(text: string): LightboxParagraph[] {
-  const paragraphs: LightboxParagraph[] = [];
-  // A fresh literal per call, so the global regex's lastIndex is never shared.
-  const paragraphBreak = /\n\s*\n/g;
-  let chunkStart = 0;
-  let match: RegExpExecArray | null;
-  while ((match = paragraphBreak.exec(text)) !== null) {
-    pushParagraph(text, chunkStart, match.index, paragraphs);
-    chunkStart = match.index + match[0].length;
-  }
-  pushParagraph(text, chunkStart, text.length, paragraphs);
-  return paragraphs;
-}
-
-function pushParagraph(text: string, from: number, to: number, paragraphs: LightboxParagraph[]): void {
-  const chunk = text.slice(from, to);
-  const trimmed = chunk.trim();
-  if (trimmed.length === 0) {
-    return;
-  }
-  const start = from + (chunk.length - chunk.trimStart().length);
-  paragraphs.push({
-    index: paragraphs.length + 1,
-    text: trimmed,
-    start,
-    end: start + trimmed.length,
-    words: countWords(trimmed)
-  });
+  return splitBlankLineParagraphs(text).map((paragraph, index) => ({
+    index: index + 1,
+    text: paragraph.text,
+    start: paragraph.start,
+    end: paragraph.end,
+    words: countWords(paragraph.text)
+  }));
 }
 
 /** Words, sentences, rhythm and dialogue share for one paragraph. */
