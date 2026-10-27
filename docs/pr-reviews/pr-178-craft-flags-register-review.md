@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 2: register shift
 
-**Disposition: No blocking implementation findings. One nonblocking prompt-quality note (N-01). Native VS Code and live-provider fixture acceptance remain separate and unrun.**
+**Latest disposition — re-review of `7936977b`: No blocking findings; N-01 resolved. Native VS Code and live-provider fixture acceptance remain separate and unrun.**
 
 **Author:** okeylanders · **PR:** [#178](https://github.com/okeylanders/prose-minion-vscode/pull/178) · **Reviewer:** Astra · **Reviewed:** 2026-10-27
 
@@ -103,3 +103,25 @@ Node 18.20.8 on `e03502fb`:
 - Jest: 574 suites / 8,089 tests / 59 snapshots, up 1 test;
 - lint: 0 errors / 1,133 warnings;
 - build, with `verify:bundle`, passes.
+
+## Re-review — 2026-10-27 (`7936977b`)
+
+**No blocking findings; N-01 is resolved.** Reviewed implementation `7936977b62ecb5c3d216b7ab55fd66dfd424b5ed` (functional prompt correction `e03502fb04bc618ebb5f3d1b2212ab01ea562658`), tree `44280b49b451ff2a558f6397a783147e6a65d132`, against the unchanged base `f7b0c851`. The five-file delta from report `6342688e` changes the worked example, its tests and documentation only: no runtime TypeScript, manifest, policy, budget or dependency change. The original review and the author's appended response are preserved.
+
+The narration itself now establishes **summer 1862**, the register line names the **1860s**, and the two distinctions are explicit: `okay` is an informal/slang mismatch, while `on autopilot` is the temporal example. This is a sound correction to the reported historical premise: Merriam-Webster dates the first known use of *autopilot* to 1917, after the example's stated setting. [Dictionary entry](https://www.merriam-webster.com/dictionary/autopilot). The Rabbit's own `okay` remains a negative speech control.
+
+Independent production frame → codec → anchoring → speech → placement checks return all four intended flags, with no malformed/ignored/withheld/dropped entries. Deliberately adding the Rabbit's quoted phrase is rejected as dialogue. Three frame variants and the original 144-case independent codec matrix pass on the corrected tree. The new repository test explicitly requires the period to appear in narration, rather than only in the response's register line.
+
+Fresh isolated Node 18.20.8 / npm 10.8.2 verification:
+
+| Check | Result |
+| --- | --- |
+| Full typed Jest | Pass: **574 suites / 8,089 tests / 59 snapshots**, 523.897 s, exit 0 |
+| Typecheck | Pass: core, webview and adapter |
+| Lint | Pass: 0 errors / 1,133 existing warnings |
+| Build and `verify:bundle` | Pass; three existing webpack size/performance warnings |
+| Diff hygiene | `git diff --check` passes |
+| Exact correction-head push CI | [Success, 40453030186](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40453030186); every verify step passed |
+| Exact correction-head PR CI | [Success, 40453033554](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40453033554); every verify step passed |
+
+The earlier final report head `6342688e` also finished [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40451523846) and [PR CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40451528052) successfully, every verify step checked. This re-review update changes only the report; check its exact-head CI separately after publication. Native UI and live quality/ship-default acceptance remain unrun and are not inferred from the corrected example. PR #172's accepted preview limitation is unchanged.
