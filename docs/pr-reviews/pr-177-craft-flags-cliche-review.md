@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 1: Craft Flags and cliché
 
-**Latest disposition — re-review of `d4db34f2`: Changes requested. F-01 and F-02 resolved; F-03 remains open for protected-adjacent single-quoted speech. N-01/N-02 addressed; N-03 is nonblocking.**
+**Latest disposition — second re-review of `18e8b34e`: Changes requested. F-01, F-02 and F-03 resolved; new F-04 (P2) remains: the overlapping repeat scan can loop forever on an astral-leading phrase. N-01/N-02 remain addressed.**
 
 **Author:** okeylanders · **PR:** [#177](https://github.com/okeylanders/prose-minion-vscode/pull/177) · **Reviewer:** Astra · **Reviewed:** 2026-10-26
 
@@ -290,3 +290,38 @@ Node 18.20.8 on `61dbbe4e`:
 ### PR CI on `d4db34f2`
 
 The one failure was the existing `LightboxPassages` 1,000 ms wall-clock check. Your re-runs match mine: 140–156 ms locally, and the push run on the same commit passed. I could not re-run the job (403). The push carrying these fixes runs CI again.
+
+## Second re-review — 2026-10-27 (`18e8b34e`)
+
+**Changes requested: F-03 is resolved, but the overlap-count correction introduces F-04 (P2), a synchronous nontermination case. F-01 and F-02 remain resolved.**
+
+Reviewed head `18e8b34ee6449ce9c6d9d0b11beb7f65a26d5571`, functional correction `61dbbe4e`, against unchanged base `fd145a6a44f3bd725c3c9f5ca9602c600906918d`. The nine-file delta and updated agent guide/ADR/author response were inspected in a fresh isolated checkout, tree `4fc6f8f0628495128608c29b177d7a0ac54a8774`. The second author response preserves the entire prior report as an exact byte prefix. Both author responses remain below their historical reviews.
+
+### F-04 · P2 · Advancing one UTF-16 unit can repeat the same Unicode match forever
+
+**Location:** [`phraseRepeats.ts:63–69`](../../packages/core/src/utils/craftFlags/phraseRepeats.ts#L63).
+
+Restoring overlapping matches sets `pattern.lastIndex = match.index + 1`, but the pattern uses the Unicode `u` flag. If an occurrence starts with a non-BMP letter/number, `+ 1` lands **inside its surrogate pair**. The next Unicode regex execution backs up to the same code point and returns the same match; `lastIndex` is reset inside that pair again. The loop never progresses. The 40-distinct-phrase cap does not help because it is outside this first phrase's scan.
+
+**Independent Node 18 production reproduction:**
+
+```js
+phraseRepeats('𝓽𝓲𝓶𝓮 stood still.', []).count('𝓽𝓲𝓶𝓮 stood still');
+```
+
+This should return `1`; a bounded subprocess printed its entry marker but was terminated by a **3-second timeout (exit 124)**. Two reviewers reproduced it independently. A bounded four-iteration regex trace returned `match.index === 0` every time after resetting `lastIndex` to `1`, establishing failure to advance rather than merely a slow scan. The ASCII control returns promptly.
+
+The **production codec → use-case** path also reproduces it: `Alice thought 𝓽𝓲𝓶𝓮 stood still.` plus a valid cliché reply quoting that phrase decodes one finding, receives the fake model's answer, then never completes the run. Its ASCII counterpart completes with one flag and no writes. These are valid in-range Unicode quotes, not malformed offsets or a live provider response. Because this counter runs synchronously on the extension host, progress/cancellation handling cannot rescue the loop.
+
+**Requested correction:** advance the overlap search by one complete Unicode code point from each match's start (with a strict forward-progress invariant), not one code unit. Keep legitimate overlapping matches. Add bounded regression tests with astral-leading phrases at offset zero and later offsets, skipped/protected occurrences, and BMP/ASCII overlap controls; test through the use case as well as the pure counter. Do not rely on wall-clock timing alone to prove progress.
+
+### Earlier findings and verification
+
+- **F-03 resolved:** all 18 original boundary failures and six controls, 35 preceding production cases and 20 added nested/container/closing-comment/possessive/paragraph/live-wrap cases pass. Twelve thousand generated raw/base comparisons and 12,000 independent protected-skip oracle cases agree. The reader now examines prose past concealed spans within the paragraph without changing raw speech behavior or source offsets.
+- **F-01/F-02 remain resolved:** all **77 production-chain model/lifetime/cleanup scenarios** pass again against this exact head, with real manager/engine/client/command/document and annotation adapters and fake external ports.
+- **N-01/N-02 remain addressed:** live counts and lazy bounded distinct-phrase work remain in place. N-03's ordinary overlapping-count witness now returns two again, but F-04 must be fixed before that scan is safe for all accepted text.
+
+Node **18.20.8 / npm 10.8.2**: typecheck, lint and build including bundle verification pass (1,133 existing lint warnings, three existing webpack warnings). **Full typed Jest: 573 suites, 8,046 tests and 59 snapshots pass (530.069 s, exit 0).** `git diff --check` passes; the prior cosmetic trailing blank line is removed. Current implementation-head [push](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40423639282) and [PR](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40423645875) CI succeeded, with every verify step checked, but those existing tests do not cover F-04. Report-head CI is monitored separately after publication.
+
+**Hold for F-04, then re-review.** No source fixes, repository tests, dependency changes, formal reviews/comments, merges or live provider calls were made by the reviewer. Native/live quality acceptance and PR #172's accepted, not-fixed preview limitation remain separate.
+
