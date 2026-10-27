@@ -1662,6 +1662,24 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   way, with its work charged where it is generated, not only where it is
   read. Headings are read from the Markdown block reader
   (`readDocumentRegions`), never a line pattern (F-02).
+- **Reasoning levels** (2026-10-27; the ADR's reasoning-levels amendment).
+  Proofread and Craft Flags each send a named level (`REASONING_LEVELS`:
+  `off`, `light`, `standard`, `deep`), read at the gesture from
+  `proseMinion.proofread.reasoning` (`light`) and
+  `proseMinion.craftFlags.reasoning` (`standard`) and carried on the pass;
+  the defaults are `DRAFT_EDIT_PASS_POLICIES`' and the manifest's, held
+  together by a sync test. `reasoningRequest` turns a level into the request:
+  `off` is `effort: 'none'`; any other level sends its budget
+  (`PROMPT_BUDGETS.reasoning`) as `reasoning.max_tokens` and adds it to the
+  reply's own ceiling, so thinking never takes the reply's room on a model
+  that honors it. A level is a request, never a guarantee: never depend on a
+  model keeping it. Reasoning tokens a provider reports ride on each call's
+  result and `ExecutionResult.reasoningTokens`, **never `TokenUsage`**, whose
+  fields persisted shapes list exactly. A reply cut off at its ceiling with
+  most of its output spent thinking is rejected in host words naming the
+  setting (`draftEditCeilingRejection`), never salvaged. Every other model
+  scope sends no reasoning setting; a level belongs to the request, never
+  the model.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring
