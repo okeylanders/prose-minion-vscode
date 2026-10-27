@@ -87,6 +87,41 @@ describe('CraftFlagsService.flag', () => {
     });
   });
 
+  it('asks each category in a call of its own, with its own prompt, the register call naming its register (Slice 3c part 2)', async () => {
+    const SHIFT = { original: 'actually', before: 'But when the Rabbit', after: 'took a watch', kind: 'slang', why: 'A casual word in a formal narration.' };
+    const LINE = 'A wry, formal English, plain and unhurried.';
+    const { service, runInitial, promptLoader } = createService([
+      { content: replyOf(CHILL) },
+      { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, register: LINE, flags: [SHIFT] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }
+    ]);
+    const result = await service.flag({ ...request, categories: ['cliche', 'register'] });
+
+    expect(promptLoader.loadPrompts.mock.calls).toEqual([
+      [[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.cliche]],
+      [[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.register]]
+    ]);
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string; options: { model: string } }])[0]);
+    expect(sent.map((each) => each.userMessage)).toEqual([buildCraftFlagsMessage('cliche', PASSAGE), buildCraftFlagsMessage('register', PASSAGE)]);
+    expect(sent.map((each) => each.options.model)).toEqual([APPROVED, APPROVED]);
+    expect(result).toMatchObject({
+      kind: 'completed',
+      calls: [
+        { kind: 'read', findings: [{ category: 'cliche', kind: 'cliche' }] },
+        { kind: 'read', findings: [{ category: 'register', kind: 'slang', register: LINE }] }
+      ]
+    });
+  });
+
+  it('rejects a register reply with flags and no register line, and saves it for recovery', async () => {
+    const SHIFT = { original: 'actually', kind: 'slang', why: 'A casual word in a formal narration.' };
+    const { service, recovery, log } = createService([{ content: replyOf(SHIFT) }]);
+    const result = await service.flag({ ...request, categories: ['register'] });
+
+    expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'rejected', saved: true }] });
+    expect(recovery.capture).toHaveBeenCalledTimes(1);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('register rejected: A register reply with flags must state the register the narration keeps'));
+  });
+
   it('sends each call to the approved model, whatever the engine\'s model is by then (PR #177 F-01)', async () => {
     const { service, runInitial, engine } = createService([{ content: replyOf(CHILL) }], { model: 'placeholder/another-model' });
     await service.flag(request);

@@ -432,6 +432,8 @@ export interface PromptBudgets {
     whyCharacters: number;
     /** A flag's suggestion is clipped to this. */
     suggestionCharacters: number;
+    /** A register reply's line naming the register the narration keeps is clipped to this. */
+    registerCharacters: number;
   }>;
 }
 
@@ -705,6 +707,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     quoteCharacters: 160,
     contextCharacters: 120,
     whyCharacters: 300,
-    suggestionCharacters: 200
+    suggestionCharacters: 200,
+    registerCharacters: 160
   }
 };

@@ -9,8 +9,7 @@
 // The whole core barrel cannot load under jest (an ESM dependency), so the
 // runtime values these commands use are required from their modules.
 jest.mock('@prose-minion/core', () => ({
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export names.
-  CRAFT_FLAG_CATEGORIES: jest.requireActual('@/domain/models/CraftFlag').CRAFT_FLAG_CATEGORIES,
+  craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   describeCraftFlagsOutcome: jest.requireActual('@/application/services/draftEdit/craftFlagsSummary').describeCraftFlagsOutcome,
@@ -49,6 +48,8 @@ function setup(options: {
   confirm?: boolean;
   outcome?: CraftFlagsOutcome;
   choice?: string;
+  /** `proseMinion.craftFlags.categories`, as the writer set it; the manifest's default when not given. */
+  categories?: unknown;
 } = {}) {
   const calls: string[] = [];
   const host = {
@@ -63,7 +64,8 @@ function setup(options: {
     }),
     showInformation: jest.fn(async () => options.choice),
     showWarning: jest.fn(async () => options.choice),
-    executeCommand: jest.fn()
+    executeCommand: jest.fn(),
+    craftFlagCategories: jest.fn(() => ('categories' in options ? options.categories : ['cliche', 'register']))
   } satisfies CraftFlagsCommandHost;
   const gesture: CraftFlagsGesture = { uri: 'file:///workspace/chapter-01.md' };
   const runner = {
@@ -112,12 +114,36 @@ describe('Craft Flags', () => {
 
     expect(runner.begin).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId: 'markdown', relativePath: 'chapter-01.md', range: selection },
-      { kind: 'craft', categories: ['cliche'] }
+      { kind: 'craft', categories: ['cliche', 'register'] }
     );
     expect(runner.run).toHaveBeenCalledWith(gesture, { model: 'anthropic/claude-sonnet-5' }, expect.any(AbortSignal));
     expect(calls[2]).toBe('progress:Craft Flags: reading chapter-01.md (selection)…');
     expect(calls[calls.length - 1]).toBe('release');
     expect(result).toEqual({ kind: 'ran', outcome: COMPLETED });
+  });
+
+  it('asks about the categories the setting turns on, each once, in their own order, read at the gesture (Slice 3c part 2)', async () => {
+    const cases: Array<[unknown, string[]]> = [
+      [['register'], ['register']],
+      [['register', 'cliche', 'register'], ['cliche', 'register']],
+      [['cliche', 'gesture', 7], ['cliche']]
+    ];
+    for (const [setting, categories] of cases) {
+      const { host, runner } = setup({ active: editor(), categories: setting });
+      await runCraftFlags(host, runner);
+      expect(runner.begin).toHaveBeenCalledWith(expect.anything(), { kind: 'craft', categories });
+      expect(host.craftFlagCategories).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it.each([[[]], [['gesture']], ['cliche'], [undefined]])('refuses, reading nothing, when no category is on (%j)', async (setting) => {
+    const { host, runner } = setup({ active: editor(), categories: setting });
+    expect(await runCraftFlags(host, runner)).toEqual({
+      kind: 'refused',
+      message: 'No Craft Flags category is on. Choose one in the setting Prose Minion › Craft Flags: Categories.'
+    });
+    expect(runner.begin).not.toHaveBeenCalled();
+    expect(host.showWarning).toHaveBeenCalledWith('No Craft Flags category is on. Choose one in the setting Prose Minion › Craft Flags: Categories.');
   });
 
   it('releases the gesture when pricing or the run fails', async () => {

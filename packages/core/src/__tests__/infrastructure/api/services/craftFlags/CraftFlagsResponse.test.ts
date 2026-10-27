@@ -1,8 +1,9 @@
 /**
  * Reading a Craft Flags reply (ADR 2026-10-21, Amendment 2026-10-26: Slice
  * 3c): the shared frame, and the codec's rule (forgiving per reply,
- * fail-closed per flag), with every note held to the phrasing fence. Replies
- * are about public-domain *Alice*.
+ * fail-closed per flag), with every note held to the phrasing fence, and a
+ * register reply's line naming the register its flags shift from (part 2).
+ * Replies are about public-domain *Alice*.
  */
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -112,5 +113,68 @@ describe('decodeCraftFlagsReply', () => {
     expect(() => read([], { version: 2 })).toThrow('version 1');
     expect(() => decodeCraftFlagsReply({ version: 1, issues: [] }, 'cliche')).toThrow('a flags array');
     expect(read([], {}).findings).toEqual([]);
+  });
+});
+
+describe('decodeCraftFlagsReply: a register reply (Slice 3c part 2)', () => {
+  const OKAY = {
+    original: 'okay',
+    before: 'deciding that it was probably',
+    after: ', she ran across the',
+    kind: 'period',
+    why: 'A later, American word in a narration that keeps an older, formal English.',
+    suggestion: 'that it could do no great harm'
+  };
+  const LINE = 'A wry, formal Victorian English, plain and unhurried, close on Alice.';
+  const readRegister = (flags: unknown[], extra: Record<string, unknown> = {}) =>
+    decodeCraftFlagsReply(readCraftFlagsFrame(frameOf({ version: 1, flags, ...extra })).root, 'register');
+
+  it('carries the reply\'s register line on each of its findings', () => {
+    const reply = readRegister([OKAY, { ...OKAY, original: 'leverage the situation', kind: 'jargon' }], { register: `  ${LINE}  ` });
+    expect(reply).toMatchObject({ malformed: 0, notesWithheld: 0, ignoredFields: 0 });
+    expect(reply.findings.map((finding) => [finding.kind, finding.register])).toEqual([['period', LINE], ['jargon', LINE]]);
+  });
+
+  it.each([[undefined], [''], ['   '], [7], [null]])('rejects a reply with flags and no register line to shift from (%j)', (register) => {
+    expect(() => readRegister([OKAY], register === undefined ? {} : { register })).toThrow('must state the register the narration keeps');
+  });
+
+  it('counts a malformed flag as a flag: it too needs a line to shift from', () => {
+    expect(() => readRegister([{ ...OKAY, kind: 'cliche' }])).toThrow('must state the register the narration keeps');
+  });
+
+  it('needs no register line for a reply with nothing to flag', () => {
+    expect(readRegister([])).toEqual({ findings: [], malformed: 0, notesWithheld: 0, ignoredFields: 0 });
+    expect(readRegister([], { register: LINE }).ignoredFields).toBe(0);
+  });
+
+  it('holds the line to the fence, but lets it name a period by its years', () => {
+    expect(readRegister([OKAY], { register: 'A plain, cool narration of the 1920s.' }).findings[0].register).toBe('A plain, cool narration of the 1920s.');
+    for (const broken of ['You should keep a formal register.', 'A “formal” Victorian English.', 'Keep it formal and plain.']) {
+      const reply = readRegister([OKAY], { register: broken });
+      expect(reply.findings).toHaveLength(1);
+      expect(reply.findings[0]).not.toHaveProperty('register');
+      expect(reply.notesWithheld).toBe(1);
+    }
+  });
+
+  it('clips a long line to its ceiling', () => {
+    const line = `A formal Victorian English ${'and plain '.repeat(40)}`;
+    const [finding] = readRegister([OKAY], { register: line }).findings;
+    expect(finding.register).toHaveLength(PROMPT_BUDGETS.craftFlags.registerCharacters);
+    expect(finding.register?.endsWith('…')).toBe(true);
+  });
+
+  it('reads only its own kinds, and gives a withheld why its kind\'s definition', () => {
+    const reply = readRegister([{ ...OKAY, kind: 'cliche' }, { ...OKAY, kind: 'ornate', why: 'It must go.' }], { register: LINE });
+    expect(reply.malformed).toBe(1);
+    expect(reply.findings.map((finding) => finding.why)).toEqual([craftFlagHostWhy('ornate')]);
+    expect(craftFlagHostWhy('ornate')).toBe('A sudden heightened, ornate passage in narration that keeps a plain register.');
+  });
+
+  it('ignores and counts a register line on a cliché reply, a field the cliché format does not define', () => {
+    const reply = read([CHILL], { register: LINE });
+    expect(reply.ignoredFields).toBe(1);
+    expect(reply.findings[0]).not.toHaveProperty('register');
   });
 });

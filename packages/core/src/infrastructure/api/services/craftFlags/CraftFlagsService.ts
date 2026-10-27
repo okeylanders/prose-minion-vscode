@@ -57,7 +57,8 @@ export const CRAFT_FLAGS_SHARED_PROMPT = 'craft-flags/00-craft-flags.md';
 
 /** Each category's own section and worked example, after the shared rules. */
 export const CRAFT_FLAG_PROMPTS: Readonly<Record<CraftFlagCategory, readonly string[]>> = {
-  cliche: ['craft-flags/10-cliche.md', 'craft-flags/11-cliche-example.md']
+  cliche: ['craft-flags/10-cliche.md', 'craft-flags/11-cliche-example.md'],
+  register: ['craft-flags/20-register.md', 'craft-flags/21-register-example.md']
 };
 
 /** Low enough that a chapter flags alike from run to run; above 0, because each flag carries a note in prose. */

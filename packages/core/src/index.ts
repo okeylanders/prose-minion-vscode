@@ -216,7 +216,7 @@ export {
   type CraftFlagsRunPlan
 } from '@/application/services/draftEdit/CraftFlagsUseCase';
 export { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application/services/draftEdit/craftFlagsSummary';
-export { CRAFT_FLAG_CATEGORIES, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
+export { CRAFT_FLAG_CATEGORIES, craftFlagCategoriesOf, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
 export {
   DraftEditUseCase,
   type DraftEditQuickFixOutcome,

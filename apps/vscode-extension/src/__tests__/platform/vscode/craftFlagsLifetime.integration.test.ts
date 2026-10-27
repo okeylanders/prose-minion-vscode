@@ -71,7 +71,7 @@ jest.mock('vscode', () => {
 // The whole core barrel cannot load under jest (an ESM dependency), so the
 // runtime values the adapters, the command and this test use are required from their modules.
 jest.mock('@prose-minion/core', () => ({
-  CRAFT_FLAG_CATEGORIES: jest.requireActual('@/domain/models/CraftFlag').CRAFT_FLAG_CATEGORIES,
+  craftFlagCategoriesOf: jest.requireActual('@/domain/models/CraftFlag').craftFlagCategoriesOf,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   shiftRanges: jest.requireActual('@/utils/draftEdit/shiftRanges').shiftRanges,
   CraftFlagsUseCase: jest.requireActual('@/application/services/draftEdit/CraftFlagsUseCase').CraftFlagsUseCase,
@@ -182,7 +182,8 @@ function start(document: FakeDocument) {
     withProgress: (_title, task) => task(new AbortController().signal, () => undefined),
     showInformation: jest.fn(async () => undefined),
     showWarning: jest.fn(async () => undefined),
-    executeCommand: jest.fn()
+    executeCommand: jest.fn(),
+    craftFlagCategories: () => ['cliche']
   };
   const ran = runCraftFlags(commandHost, useCase);
   return {

@@ -137,7 +137,7 @@ describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () 
     expect(plan.estimate).toMatchObject({ model: CHEAP });
     expect(plan.estimate.usd).toBeLessThan(0.01);
     expect(outcome.kind).toBe('completed');
-    expect(host.sent).toEqual([CHEAP]);
+    expect(host.sent).toEqual(PASS.categories.map(() => CHEAP));
   });
 
   it.each([
@@ -151,7 +151,7 @@ describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () 
 
     expect(host.manager.getEngine('craft')?.getModel()).toBe(EXPENSIVE);
     expect(plan.estimate.model).toBe(CHEAP);
-    expect(host.sent).toEqual([CHEAP]);
+    expect(host.sent).toEqual(PASS.categories.map(() => CHEAP));
   });
 
   it('sends to the craft model as it stands when nothing changed: the control', async () => {
@@ -159,6 +159,6 @@ describe('Craft Flags runs at the model the writer approved (PR #177 F-01)', () 
     const { plan } = await approvedThenRun(host, {});
 
     expect(plan.estimate.model).toBe(EXPENSIVE);
-    expect(host.sent).toEqual([EXPENSIVE]);
+    expect(host.sent).toEqual(PASS.categories.map(() => EXPENSIVE));
   });
 });

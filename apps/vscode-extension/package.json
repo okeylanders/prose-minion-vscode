@@ -332,8 +332,23 @@
         "proseMinion.craftModel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "AI model for Craft Flags (the editor's right-click **Prose Minion: Craft Flags** command), which reads a whole chapter and flags line notes such as clichés. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here gives Craft Flags its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
+          "markdownDescription": "AI model for Craft Flags (the editor's right-click **Prose Minion: Craft Flags** command), which reads a whole chapter and flags line notes such as clichés and shifts of register. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here gives Craft Flags its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
           "order": 5.6
+        },
+        "proseMinion.craftFlags.categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["cliche", "register"],
+            "enumDescriptions": [
+              "Cliché: a phrase worn smooth by use, standing in for something the scene could name exactly.",
+              "Register shift: narration that leaves the register the chapter keeps, such as slang in formal narration or a modern word in a period one."
+            ]
+          },
+          "uniqueItems": true,
+          "default": ["cliche", "register"],
+          "markdownDescription": "Which line notes **Prose Minion: Craft Flags** looks for. Each one is a request of its own, priced in the confirmation before anything is sent. Dialogue is always left alone.",
+          "order": 5.7
         },
         "proseMinion.proofread.fixReview": {
           "type": "string",

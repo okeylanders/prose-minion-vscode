@@ -10,18 +10,31 @@
  *   (`CRAFT_FLAG_KINDS`), or quoting more than a phrase is dropped and
  *   counted. The kind is never guessed.
  * - Only a root of the wrong shape (no `flags` array, or a `version` other
- *   than 1) rejects the reply.
+ *   than 1) rejects the reply. So does a register reply with flags and no
+ *   `register` line: its flags have nothing they shift from (Slice 3c part
+ *   2).
  *
  * Each note is held to the phrasing fence (`craftFlagPhrasing`). A why that
  * breaks it is replaced by the host's line for its kind, and a suggestion
  * that breaks it is withheld; the flag stays, and the notes withheld are
  * counted. Notes are clipped to their ceilings; a quote never is, because a
  * clipped quote would place the flag somewhere else.
+ *
+ * A register reply's `register` line, the register the narration keeps, is
+ * a note too: held to the fence but for its digit rule (a period may be
+ * named by its years), withheld and counted when it breaks it, clipped, and
+ * carried on each of the reply's findings.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { FAMILIAR_PHRASE_DEFINITIONS } from '@shared/constants/familiarPhrasing';
-import { isCraftFlagKind, type CraftFlagCategory, type CraftFlagFinding, type CraftFlagKind } from '@/domain/models/CraftFlag';
+import {
+  REGISTER_SHIFT_DEFINITIONS,
+  isCraftFlagKind,
+  type CraftFlagCategory,
+  type CraftFlagFinding,
+  type CraftFlagKind
+} from '@/domain/models/CraftFlag';
 import { craftFlagPhrasingFault } from '@/utils/craftFlags/craftFlagPhrasing';
 import { DraftEditFrameError, readDraftEditFrame, type DraftEditFrame, type DraftEditFrameSpec } from '@services/draftEdit/DraftEditResponseFrame';
 
@@ -49,13 +62,24 @@ export interface CraftFlagsReply {
   readonly ignoredFields: number;
 }
 
-/** The host's why, for a flag whose own broke the fence: the shared definition of its kind. */
+/** Every kind's definition: the shared familiar-phrase vocabulary, and register shift's own. */
+const CRAFT_FLAG_DEFINITIONS: Readonly<Record<CraftFlagKind, string>> = {
+  cliche: FAMILIAR_PHRASE_DEFINITIONS.cliche,
+  weighted: FAMILIAR_PHRASE_DEFINITIONS.weighted,
+  ...REGISTER_SHIFT_DEFINITIONS
+};
+
+/** The host's why, for a flag whose own broke the fence: the definition of its kind. */
 export function craftFlagHostWhy(kind: CraftFlagKind): string {
-  const definition = FAMILIAR_PHRASE_DEFINITIONS[kind];
+  const definition = CRAFT_FLAG_DEFINITIONS[kind];
   return `${definition[0].toUpperCase()}${definition.slice(1)}.`;
 }
 
-const ROOT_FIELDS: ReadonlySet<string> = new Set(['version', 'flags']);
+/** Each category's root fields; a register reply also names the register it reads shifts against. */
+const ROOT_FIELDS: Readonly<Record<CraftFlagCategory, ReadonlySet<string>>> = {
+  cliche: new Set(['version', 'flags']),
+  register: new Set(['version', 'flags', 'register'])
+};
 const FLAG_FIELDS: ReadonlySet<string> = new Set(['original', 'before', 'after', 'kind', 'why', 'suggestion']);
 
 /** Decode a frame's root for one category's call; throws `DraftEditFrameError` when the root has the wrong shape. */
@@ -66,9 +90,11 @@ export function decodeCraftFlagsReply(root: Record<string, unknown>, category: C
   if (!Array.isArray(root.flags)) {
     throw new DraftEditFrameError('The response must have a flags array');
   }
-  let ignoredFields = Object.keys(root).filter((key) => !ROOT_FIELDS.has(key)).length;
+  let ignoredFields = Object.keys(root).filter((key) => !ROOT_FIELDS[category].has(key)).length;
   let malformed = 0;
   let notesWithheld = 0;
+  const ground = category === 'register' ? registerLine(root.register, root.flags.length > 0) : undefined;
+  notesWithheld += ground?.withheld ? 1 : 0;
   const findings: CraftFlagFinding[] = [];
   for (const item of root.flags as unknown[]) {
     if (typeof item !== 'object' || item === null || Array.isArray(item)) {
@@ -82,7 +108,7 @@ export function decodeCraftFlagsReply(root: Record<string, unknown>, category: C
       malformed += 1;
       continue;
     }
-    findings.push(decoded.finding);
+    findings.push(ground?.line !== undefined ? { ...decoded.finding, register: ground.line } : decoded.finding);
     notesWithheld += decoded.withheld ? 1 : 0;
   }
   return { findings, malformed, notesWithheld, ignoredFields };
@@ -120,6 +146,26 @@ function decodeFlag(flag: Record<string, unknown>, category: CraftFlagCategory):
     },
     withheld: !whyFits || !suggestionFits
   };
+}
+
+/**
+ * A register reply's line naming the register the narration keeps. Required
+ * when the reply has flags; held to the fence but for its digit rule, since a
+ * period may be named by its years ("the 1920s"); a line that breaks it is
+ * withheld, and the flags stay.
+ */
+function registerLine(value: unknown, hasFlags: boolean): { line?: string; withheld: boolean } | undefined {
+  if (!hasFlags) {
+    return undefined;
+  }
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new DraftEditFrameError('A register reply with flags must state the register the narration keeps');
+  }
+  const line = value.trim();
+  const fault = craftFlagPhrasingFault(line);
+  return fault === undefined || fault === 'figure'
+    ? { line: clip(line, PROMPT_BUDGETS.craftFlags.registerCharacters), withheld: false }
+    : { withheld: true };
 }
 
 function optionalString(value: unknown): boolean {

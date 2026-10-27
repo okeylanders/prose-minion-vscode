@@ -5,9 +5,10 @@
  * Each finding is anchored by its quote in the passage its call read, and
  * mapped back to the document. It is dropped, and counted, when it does not
  * anchor once, touches a protected placeholder, touches speech in a category
- * that leaves speech alone (cliché), or overlaps an earlier flag of its
- * category. A selection run that read the whole chapter keeps only the
- * flags inside its selection.
+ * that leaves speech alone (cliché and register shift both do), or overlaps
+ * an earlier flag of its category. A selection run that read the whole
+ * chapter keeps only the flags inside its selection. A register shift keeps
+ * its reply's register line, shown in its message.
  *
  * Speech is read with protected syntax set aside
  * (`findSpeechSpansOutsideProtected`), in the gesture's text before overlaps
@@ -97,7 +98,8 @@ export function placeCraftFlags(
         end,
         original,
         why: finding.why,
-        ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {})
+        ...(finding.suggestion !== undefined ? { suggestion: finding.suggestion } : {}),
+        ...(finding.register !== undefined ? { register: finding.register } : {})
       });
     }
   }
@@ -144,11 +146,16 @@ export function craftFlagAnnotation(issue: CraftFlagIssue): DocumentAnnotation {
   };
 }
 
-/** The why, then "One way it could go: …", then the host's count when the phrase recurs. */
-export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'repeats'>): string {
+/**
+ * The why, then "One way it could go: …", then a register shift's ground
+ * ("The chapter's narration: …"), then the host's count when the phrase
+ * recurs.
+ */
+export function craftFlagMessage(issue: Pick<CraftFlagIssue, 'why' | 'suggestion' | 'register' | 'repeats'>): string {
   return [
     withStop(issue.why),
     issue.suggestion !== undefined ? `One way it could go: ${withStop(issue.suggestion)}` : '',
+    issue.register !== undefined ? `The chapter's narration: ${withStop(issue.register)}` : '',
     issue.repeats !== undefined && issue.repeats > 1 ? `This phrase appears ${issue.repeats} times in this document.` : ''
   ].filter(Boolean).join(' ');
 }

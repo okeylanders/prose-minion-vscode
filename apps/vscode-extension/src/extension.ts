@@ -111,7 +111,8 @@ import {
   CRAFT_FLAGS_DISMISS_COMMAND,
   clearCraftFlags,
   dismissCraftFlag,
-  runCraftFlags
+  runCraftFlags,
+  type CraftFlagsCommandHost
 } from './application/commands/craftFlagsCommands';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
@@ -774,6 +775,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showWarning: (message, ...actions) => vscode.window.showWarningMessage(message, ...actions),
     executeCommand: (command) => void vscode.commands.executeCommand(command)
   };
+  // Craft Flags (Slice 3c): Proofread's editor and window, and its own categories, read at the gesture.
+  const craftFlagsCommandHost: CraftFlagsCommandHost = {
+    ...proofreadCommandHost,
+    craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories')
+  };
 
   const handleWordLookupSelection = () => {
     const payload = getSelectionPayload();
@@ -813,8 +819,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       fixAllProofreadIssues(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_CLEAR_COMMAND, (uri?: unknown) => clearProofreadFlags(proofreadCommandHost, draftEdit, uri)),
     vscode.commands.registerCommand(PROOFREAD_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissProofreadIssue(draftEdit, uri, issueId)),
-    vscode.commands.registerCommand(CRAFT_FLAGS_COMMAND, () => runCraftFlags(proofreadCommandHost, craftFlags)),
-    vscode.commands.registerCommand(CRAFT_FLAGS_CLEAR_COMMAND, (uri?: unknown) => clearCraftFlags(proofreadCommandHost, craftFlags, uri)),
+    vscode.commands.registerCommand(CRAFT_FLAGS_COMMAND, () => runCraftFlags(craftFlagsCommandHost, craftFlags)),
+    vscode.commands.registerCommand(CRAFT_FLAGS_CLEAR_COMMAND, (uri?: unknown) => clearCraftFlags(craftFlagsCommandHost, craftFlags, uri)),
     vscode.commands.registerCommand(CRAFT_FLAGS_DISMISS_COMMAND, (uri?: unknown, issueId?: unknown) => dismissCraftFlag(craftFlags, uri, issueId))
   );
 }

@@ -3,7 +3,11 @@
  * 2026-10-26: Slice 3c).
  *
  * **Craft Flags** reads the active editor's document, whole, and flags line
- * notes in it: clichés, in part 1. It never changes the text.
+ * notes in it: clichés and register shifts, one call each. It never changes
+ * the text.
+ * - The categories are read at the gesture from
+ *   `proseMinion.craftFlags.categories` (`craftFlagCategoriesOf`); with none
+ *   on, the run is refused before anything is read (Slice 3c part 2).
  * - The target is captured at the gesture, in one synchronous read (D5), as
  *   Proofread's is, and the gesture is taken at once (`begin`): its document
  *   is watched from that read through the pricing and the confirmation, so
@@ -28,8 +32,8 @@
  */
 
 import {
-  CRAFT_FLAG_CATEGORIES,
   DRAFT_EDIT_LANGUAGE_IDS,
+  craftFlagCategoriesOf,
   describeCraftFlagsOutcome,
   describeCraftFlagsPlan,
   type CraftFlagsApproval,
@@ -51,11 +55,14 @@ const OPEN_SETTINGS = 'Open Settings';
 const SHOW_PROBLEMS = 'Show Problems';
 const RUN = 'Run Craft Flags';
 
-/** The parts of the host Craft Flags uses: the same editor and window as Proofread's. */
+/** The parts of the host Craft Flags uses: the same editor and window as Proofread's, and its own setting. */
 export type CraftFlagsCommandHost = Pick<
   ProofreadCommandHost,
   'activeEditor' | 'confirm' | 'withProgress' | 'showInformation' | 'showWarning' | 'executeCommand'
->;
+> & {
+  /** `proseMinion.craftFlags.categories`, as the writer set it: anything, until normalized. */
+  craftFlagCategories(): unknown;
+};
 
 /** The parts of `CraftFlagsUseCase` the commands use. */
 export interface CraftFlagsRunner {
@@ -88,7 +95,11 @@ export async function runCraftFlags(host: CraftFlagsCommandHost, runner: CraftFl
     relativePath: editor.label,
     ...(editor.selection ? { range: editor.selection } : {})
   };
-  const pass: CraftFlagsPass = { kind: 'craft', categories: [...CRAFT_FLAG_CATEGORIES] };
+  const categories = craftFlagCategoriesOf(host.craftFlagCategories());
+  if (categories.length === 0) {
+    return refuse(host, 'No Craft Flags category is on. Choose one in the setting Prose Minion › Craft Flags: Categories.');
+  }
+  const pass: CraftFlagsPass = { kind: 'craft', categories };
 
   // Taken before anything is awaited: the gesture's document is watched from this read on (PR #177 F-02).
   const begun = runner.begin(target, pass);
