@@ -32,9 +32,11 @@ Asked 2026-10-27, with the recommended option chosen.
   is ignored and counted.
 - **Speech** is left alone (`CRAFT_FLAG_LEAVES_SPEECH.register`). Free
   indirect discourse and anachronism are the prompt's rules.
-- **Prompts:** `craft-flags/20-register.md` and `21-register-example.md`
-  (*Alice*, with an ornate image, a boardroom phrase and a narration "okay";
-  the Rabbit's "okay" in speech is left alone).
+- **Prompts:** `craft-flags/20-register.md` and `21-register-example.md`.
+  The example adapts *Alice*, its passage setting its own summer (1862),
+  with an ornate image, a boardroom phrase, a narration "okay" (slang: the
+  word dates from 1839, so it is no anachronism there, PR #178 N-01) and
+  "on autopilot" (period). The Rabbit's "okay" in speech is left alone.
 - **`proseMinion.craftFlags.categories`:** array, both on by default, read
   at the gesture through `CraftFlagsCommandHost.craftFlagCategories()`, and
   normalized by `craftFlagCategoriesOf`. None on refuses the run.
@@ -45,8 +47,10 @@ Asked 2026-10-27, with the recommended option chosen.
   allowance, root fields, the fence, the clip, the withheld count,
   malformed flags needing a line, the speech drop, the message, the
   placement copy, refusing with none on, and canonical order.
-- Node 18 mirror: typecheck pass; 574 suites / 8,088 tests / 59 snapshots
-  (base 573 / 8,054); lint and build: see the PR.
+- Node 18 mirror: typecheck, lint (0 / 1,133) and build pass; 574 suites /
+  8,089 tests / 59 snapshots after N-01 (base 573 / 8,054).
+- Astra's review (`6342688e`): no blocking findings; N-01 (P3), the worked
+  example's period flag on "okay" was historically wrong, fixed.
 
 ## Follow-ups
 

@@ -70,3 +70,36 @@ These controlled probes are not native extension-host UI tests or live-model acc
 Native confirmation/Problems UI and the live seeded-fixture hit/false-positive results remain unverified. The part-2 ADR explicitly makes both categories provisionally enabled; the slice document still makes a recorded fixture run the gate for shipped defaults. This review does not substitute codec/anchor tests for that quality decision or authorize paid calls. A selection read alone has only the selection's register, as the ADR acknowledges.
 
 PR #172's narrowly accepted native Refactor Preview lifetime race remains **unchanged and not fixed**. Craft Flags has no preview/write path, and that acceptance does not waive pre-call ownership or model-consent checks.
+
+## Author response (`e03502fb`)
+
+**N-01 is taken.** Your text above is unchanged.
+
+### N-01 · the worked example's period flag
+
+You were right, and it was worse than a style point: the example taught the model a false premise. `okay` is in print by 1839 and in *Little Women* by 1868, so a Victorian narrator could use it, and the example called it a later word. It also set its period only through the register line, never in its own narration, which is exactly what the prompt's `period` rule forbids.
+
+**The example now** (`21-register-example.md`):
+
+- **Sets its own period.** The passage names its summer, "that golden afternoon in the summer of 1862". The register line reads "A wry, formal Victorian English of the 1860s…" (years are allowed there).
+- **Calls the narration's `okay` what it is: `slang`.** It is a casual American word in formal narration. The closing note says why it is not a word out of its period.
+- **Gives `period` an unmistakable case:** "on autopilot", from the aviation of a later century, in narration.
+- **Keeps the controls:** the Rabbit's "okay", in its speech, is left alone.
+
+**Tests** (`craftFlagsPrompt.test.ts`):
+
+- the kinds in order: ornate, jargon, slang, period;
+- the register line names the 1860s, and the phrasing fence finds only its years (`figure`), the one fault a register line may carry;
+- the slang flag sits on the narration's `okay` and the period flag on "on autopilot";
+- a new test: the passage sets its own period, and the `period` flag is read against it.
+
+As you say, none of this measures a live false-positive rate. The fixture run still decides that.
+
+### Verification
+
+Node 18.20.8 on `e03502fb`:
+
+- typecheck passes;
+- Jest: 574 suites / 8,089 tests / 59 snapshots, up 1 test;
+- lint: 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes.

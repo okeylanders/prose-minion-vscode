@@ -840,7 +840,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-27, Draft Edit Slice 3c part 2 (register shift) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `f7b0c851` (Draft Edit Slice 3c part 1, PR #177), under Node 18):
-- 574 suites / 8,088 tests / 59 snapshots
+- 574 suites / 8,089 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
