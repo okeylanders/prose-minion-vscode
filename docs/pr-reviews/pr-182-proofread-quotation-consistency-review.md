@@ -197,3 +197,11 @@ For context, the instrumented Node 18 detector took approximately **0.47 s / 1.2
 - Evidence is outside the repository in `../pr182-rereview-evidence/`, including `compound-work*.cjs/.log`, `compound-usecase.cjs/.log`, and the correction controls. The isolated worktree uses the same verified dependency lockfile and Node/npm versions.
 
 **Disposition: F-01–F-03 resolved; F-04 remains blocking.** This is a report-only update, not a source fix or formal GitHub review. Native/live acceptance remains unrun and separate. The exact report-only commit will be verified remotely and its CI followed.
+
+## Re-review verification completion — 2026-10-27 21:14 UTC
+
+The independent typed Jest run on corrected implementation/author-response head `391a4b4c` passed: **589 suites / 8,338 tests / 59 snapshots**, **551.153 s**, exit 0. Typecheck, lint and the production build had already passed. This completes all local aggregate checks for that head.
+
+Re-review report `ca04dae7fe20d2aa868ec659ce0f5f45f3ede529` was verified remotely as this report alone, with parent `391a4b4cefe7bcb9a0824addbdaa16fe4ff6903d`, matching the submitted bytes. Its [push CI 40583834893](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40583834893) and [PR CI 40583845878](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40583845878) both succeeded, with every verify step passing.
+
+**Disposition unchanged: F-01–F-03 are resolved; F-04 remains open.** The repeated whole-word scan is independently reproduced despite regression success. This appendix's exact report-only head will be checked separately; no source change, native acceptance or live inference is implied.
