@@ -1213,13 +1213,26 @@ threshold.
 | Thin | A stock beat (a nod, a smile, a sigh, a shrug) that carries nothing. **The model flags one only where the chapter leans on that beat, or where it alone carries the feeling at a turn in the scene.** Every book has nods, so a nod is never flagged for being a nod. |
 | Stock beats, counted | **A closed list, `STOCK_BEATS`** (`utils/craftFlags/stockBeats.ts`): nod, shrug, sigh, smile, grin, frown, wink, smirk, a shake of the head ("shook her head") and a roll of the eyes ("rolled his eyes"). Each beat's forms are written out and matched at word boundaries, with case folded. A gesture flag whose words name a listed beat gets that beat's count: every form, in the live document's narration (speech and protected regions left out), once the run has settled, as the phrase counts are. A beat is counted only when a gesture flag names it, with one scan of the text per beat, so at most the list's length per document. **Not the tagger's lemmas,** as the slice doc proposed. A closed list's forms are exact. The tagger would add 0.1 to 0.3 s per 25,000 words on the extension host (Node 18, measured), and the narration baseline already holds it to a budget. The limits, stated plainly: a form used for something else ("the land of Nod") counts too, and a beat written without a listed form ("dipped her chin") is not counted. |
 | What a flag says | The `why` (what the gesture is doing in the scene), "One way it could go: " and the `suggestion` (one way the body could carry it), then the host's count of each beat it names that appears more than once: "Nods appear 7 times in this document." With two or more beats: "Nods appear 7 times in this document, and smiles 4 times." A gesture flag that names no listed beat carries the phrase count line, as the other categories' flags do. |
-| Complicated | Choreography the reader has to stop and assemble: several limbs and turns in one sentence, each placed. One flag, on the stretch the reader has to assemble, held to the quote ceiling (160 characters). A longer stretch is quoted by its hardest part. |
+| Complicated | Choreography the reader stops to assemble: several limbs and turns in one sentence, each placed. One flag, on the stretch the reader has to assemble, held to the quote ceiling (160 characters). A longer stretch is quoted by its hardest part. |
 | Redundant | The gesture names the body part its verb already implies: "nodded his head", "shrugged her shoulders", "blinked her eyes". |
 | Dialogue beats | **A gesture is narration, even inside a dialogue beat** ("she said, and shrugged"), so it is read there. Words inside quotation marks are speech: a gesture a character describes is their voice. Host code drops a flag that touches speech (`CRAFT_FLAG_LEAVES_SPEECH.gesture`), as for the other categories, and the beat counts leave speech out. |
 | The reply | Its root is cliché's: `{ "version": 1, "flags": [...] }`. A `register` on a gesture reply is a field its format does not define: ignored and counted (`ROOT_FIELDS`). |
 | Not in this part | A gesture that contradicts its line (a laugh on a grim line): too often deliberate, so it waits for the fixture run. A code action handing a flagged gesture to the Workshop's Gesture Playground waits for the Workshop seam (Slice 4). |
 | Which categories run | `proseMinion.craftFlags.categories` gains `gesture`. All three are on by default until the fixture run decides each one's default. |
 | Cost | One call per category: three by default, all priced in the confirmation ("That is 3 requests to …"). |
+
+**PR #179 review (Astra), as built:**
+
+- **N-01: a beat's aliases that overlap are one gesture.** "An eye roll of
+  her eyes" once counted two eye rolls. A beat is now counted by the phrase
+  walk with overlaps joined (`matchesOutside(…, 'once')`): each search
+  resumes at the last match's end. Phrase counts still count each overlap
+  ("never say never" stands twice in "never say never say never"). The
+  compound eye roll takes the simple verb's forms ("eye-rolled").
+- **N-02: every host why passes its own fence.** `complicated`'s definition
+  said "has to", which the fence withholds, so the fallback for a withheld
+  why would have been withheld too. It now reads "choreography the reader
+  stops to assemble", and a test holds every kind's host why to the fence.
 
 ## Out of scope (follow-ups)
 

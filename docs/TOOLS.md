@@ -187,7 +187,7 @@ follows the Workshop's model until you pick one.
   the narration sets a period.
 - **Gesture strain.** A gesture a reader stumbles on: one the body cannot
   make as written (`impossible`; "her eyes dropped" and other accepted
-  figures are left alone), choreography the reader has to stop and assemble
+  figures are left alone), choreography the reader stops to assemble
   (`complicated`), a stock beat that carries nothing (`thin`), or one that
   names its own body part (`redundant`: "nodded his head"). A thin beat is
   flagged only where the chapter leans on it or it alone carries a turn.

@@ -44,6 +44,19 @@ describe('A gesture strain flag (Slice 3c part 3)', () => {
     expect(annotations.shown[0].message).not.toMatch(/This phrase appears/);
   });
 
+  it('counts a compound\'s every form with the beat it names, and a beat\'s overlapping aliases once (PR #179 N-01)', async () => {
+    const rolled = 'She eye-rolled at the Rabbit. Later she rolled her eyes at the Hatter.';
+    const first = setup(rolled, [read(strain('rolled her eyes', { before: 'Later she ' }))]);
+    await first.runOnce();
+    expect(first.annotations.shown[0].message).toMatch(/ Eye rolls appear 2 times in this document\.$/);
+
+    const aliased = 'Alice gave an eye roll of her eyes, and said nothing.';
+    const second = setup(aliased, [read(strain('an eye roll of her eyes'))]);
+    await second.runOnce();
+    expect(second.annotations.flaggedText()).toEqual(['an eye roll of her eyes']);
+    expect(second.annotations.shown[0].message).not.toMatch(/appear/);
+  });
+
   it('says no count for a beat the narration holds once', async () => {
     const text = 'Alice was tired of the bank, and her sister shrugged her shoulders.';
     const { runOnce, annotations } = setup(text, [read(strain('shrugged her shoulders', { kind: 'redundant' }))]);

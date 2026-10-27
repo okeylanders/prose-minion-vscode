@@ -59,7 +59,7 @@ export type GestureStrainKind = typeof GESTURE_STRAIN_KINDS[number];
 /** What each kind is, in the words the gesture prompt uses. */
 export const GESTURE_STRAIN_DEFINITIONS: Readonly<Record<GestureStrainKind, string>> = {
   impossible: 'a gesture the body cannot make as written, where no accepted figure of speech covers it',
-  complicated: 'choreography the reader has to stop and assemble',
+  complicated: 'choreography the reader stops to assemble',
   thin: 'a stock beat that carries nothing, where the chapter leans on it or it alone carries the feeling at a turn',
   redundant: 'a gesture that names the body part its verb already implies'
 };

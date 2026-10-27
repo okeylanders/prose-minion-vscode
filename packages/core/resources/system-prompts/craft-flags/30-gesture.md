@@ -6,7 +6,7 @@ narration, that stops the reader instead of carrying the scene.
 ## The kinds
 
 - `impossible`: a gesture the body cannot make as written, where no accepted figure of speech covers it.
-- `complicated`: choreography the reader has to stop and assemble.
+- `complicated`: choreography the reader stops to assemble.
 - `thin`: a stock beat that carries nothing, where the chapter leans on it or it alone carries the feeling at a turn.
 - `redundant`: a gesture that names the body part its verb already implies.
 

@@ -68,15 +68,24 @@ export function phraseRepeats(text: string, skipped: readonly TextRange[]): Phra
 }
 
 /**
- * How many times `pattern` (global) matches outside `skipped` (as
- * `joinedRanges` gives them), occurrences that overlap included (PR #177
- * N-03): each search resumes one whole code point past the last match's
- * start (F-04). One code unit is not enough: under the `u` flag a search
- * resumed inside a surrogate pair backs up to its start and finds the same
- * match again. A match never starts before its search, so each step moves
- * forward and the walk ends. Stock beats are counted by the same walk.
+ * How a walk counts matches that overlap: a phrase counts each (PR #177
+ * N-03); a stock beat's aliases that overlap are one gesture written once
+ * ("an eye roll of her eyes"; PR #179 N-01).
  */
-export function matchesOutside(text: string, pattern: RegExp, skipped: readonly TextRange[]): number {
+export type OverlappingMatches = 'each' | 'once';
+
+/**
+ * How many times `pattern` (global) matches outside `skipped` (as
+ * `joinedRanges` gives them). With `each`, occurrences that overlap all
+ * count (PR #177 N-03): each search resumes one whole code point past the
+ * last match's start (F-04). One code unit is not enough: under the `u` flag
+ * a search resumed inside a surrogate pair backs up to its start and finds
+ * the same match again. With `once`, a search resumes at the last match's
+ * end, never before that code point. A match never starts before its
+ * search, so each step moves forward and the walk ends. Stock beats are
+ * counted by the same walk.
+ */
+export function matchesOutside(text: string, pattern: RegExp, skipped: readonly TextRange[], overlapping: OverlappingMatches = 'each'): number {
   let count = 0;
   for (let from = 0; from <= text.length; ) {
     pattern.lastIndex = from;
@@ -87,7 +96,8 @@ export function matchesOutside(text: string, pattern: RegExp, skipped: readonly 
     if (!touches(skipped, match.index, match.index + match[0].length)) {
       count += 1;
     }
-    from = match.index + ((text.codePointAt(match.index) ?? 0) > 0xffff ? 2 : 1);
+    const next = match.index + ((text.codePointAt(match.index) ?? 0) > 0xffff ? 2 : 1);
+    from = overlapping === 'each' ? next : Math.max(next, match.index + match[0].length);
   }
   return count;
 }

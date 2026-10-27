@@ -1720,10 +1720,12 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     Host code counts each stock beat a gesture flag names: `STOCK_BEATS`
     (`utils/craftFlags/stockBeats.ts`), a closed list with every form written
     out, counted in the live narration by `phraseRepeats`' walk
-    (`matchesOutside`), at most one scan per beat. That count stands in for
-    the phrase line ("Nods appear 4 times in this document."). There is no
-    density threshold and no tagger. A gesture in a dialogue beat is
-    narration; words in quotation marks are speech. The Workshop's feature
+    (`matchesOutside`), at most one scan per beat. A beat's aliases that
+    overlap are one gesture (`'once'`), while a phrase's overlaps each count
+    (PR #179 N-01). That count stands in for the phrase line ("Nods appear 4
+    times in this document."). Every kind's host why passes the fence (N-02).
+    There is no density threshold and no tagger. A gesture in a dialogue beat
+    is narration; words in quotation marks are speech. The Workshop's feature
     guard reads `GESTURE_*` and `Gesture[A-Z]` names as the Gesture
     Playground's, so each Craft Flags name of that shape is listed in
     `WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS` (`boundaries.test.ts`).

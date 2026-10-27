@@ -15,6 +15,8 @@ import {
   readCraftFlagsFrame
 } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
+import { CRAFT_FLAG_CATEGORIES, CRAFT_FLAG_KINDS } from '@/domain/models/CraftFlag';
+import { craftFlagPhrasingFault } from '@/utils/craftFlags/craftFlagPhrasing';
 
 const CHILL = {
   original: 'a chill ran down her spine',
@@ -204,6 +206,15 @@ describe('decodeCraftFlagsReply: a gesture strain reply (Slice 3c part 3)', () =
     expect(reply.findings[0].why).toBe(craftFlagHostWhy('thin'));
     expect(craftFlagHostWhy('thin')).toBe('A stock beat that carries nothing, where the chapter leans on it or it alone carries the feeling at a turn.');
     expect(reply.notesWithheld).toBe(1);
+  });
+
+  it('gives every kind of every category a host why its own fence would show (PR #179 N-02)', () => {
+    for (const category of CRAFT_FLAG_CATEGORIES) {
+      for (const kind of CRAFT_FLAG_KINDS[category]) {
+        expect({ kind, fault: craftFlagPhrasingFault(craftFlagHostWhy(kind)) }).toEqual({ kind, fault: undefined });
+      }
+    }
+    expect(craftFlagHostWhy('complicated')).toBe('Choreography the reader stops to assemble.');
   });
 
   it('defines no root field of its own: a register line is ignored and counted, and none is needed', () => {

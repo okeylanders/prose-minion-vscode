@@ -12,7 +12,8 @@
  *   extension host.
  * - Counted in narration: an occurrence touching a skipped range (speech,
  *   protected regions) is not counted, by the walk phrase counts use
- *   (`matchesOutside`).
+ *   (`matchesOutside`). Unlike a phrase's, a beat's matches that overlap are
+ *   one gesture: "an eye roll of her eyes" is one eye roll (PR #179 N-01).
  * - Bounded: a beat is counted only when asked about, by one scan of the
  *   text, so at most `STOCK_BEATS.length` scans per document.
  * - The limits, stated plainly: a form used for something else ("the land of
@@ -56,7 +57,7 @@ export const STOCK_BEATS: readonly StockBeat[] = Object.freeze([
   beat(
     'eye-roll',
     'eye rolls',
-    `roll(?:s|ed|ing)?\\s+${POSSESSIVE}\\s+eyes|rolls?\\s+of\\s+${DETERMINER}\\s+eyes|eye[\\s-]?roll(?:s|ing)?`
+    `roll(?:s|ed|ing)?\\s+${POSSESSIVE}\\s+eyes|rolls?\\s+of\\s+${DETERMINER}\\s+eyes|eye[\\s-]?roll(?:s|ed|ing)?`
   )
 ]);
 
@@ -84,7 +85,7 @@ export function stockBeatCounts(text: string, skipped: readonly TextRange[]): St
       if (known !== undefined) {
         return known;
       }
-      const count = matchesOutside(text, beat.pattern, ranges);
+      const count = matchesOutside(text, beat.pattern, ranges, 'once');
       counted.set(beat.id, count);
       return count;
     }

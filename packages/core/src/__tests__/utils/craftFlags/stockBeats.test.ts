@@ -49,6 +49,14 @@ describe('stockBeatCounts', () => {
     expect(count('She shook the tablecloth. He shook his fist.', 'head-shake')).toBe(0);
     expect(count('She rolled her eyes. An eye roll; another eye-roll. He rolls his eyes.', 'eye-roll')).toBe(4);
     expect(count('The barrel rolled down the hill.', 'eye-roll')).toBe(0);
+    // The compound takes the simple verb's forms (PR #179 N-01).
+    expect(count('She eye-rolled; he eye-rolls; they were eye-rolling.', 'eye-roll')).toBe(3);
+  });
+
+  it('counts a beat\'s aliases that overlap as one gesture, and ones that do not apart (PR #179 N-01)', () => {
+    expect(count('An eye roll of her eyes.', 'eye-roll')).toBe(1);
+    expect(count('A shake of the head, shaking her head.', 'head-shake')).toBe(2);
+    expect(count('She rolled her eyes, rolled her eyes again.', 'eye-roll')).toBe(2);
   });
 
   it('leaves out an occurrence that touches a skipped range: speech, protected regions', () => {
