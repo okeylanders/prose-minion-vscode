@@ -90,7 +90,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/; parsers/ModelJsonRepair.ts reads a model's JSON with a structure-only repair under a content guard, and salvages a reply cut off at its ceiling (Lightbox Slice 4H; feature-agnostic, imports nothing); asked, it reports the root's member keys in the text's order (`rootKeys`, Slice 4K)
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points, and the Sections detector (Slice 4C); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); each block's own fields and a member closed out of its block moved back into it (`LightboxBlockFormat`, Slice 4K); how a run's groups start, settle and stop, keeping each lens's reading until a usable new one replaces it, with its provenance and earlier mark (`LightboxReadingState`, Slice 4J)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette, story and craft blocks), quote verifier, dialogue anchor, spark phrasing, sentence pairs (handoff adjacency), term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over (+ craft quotes), spark lane, handoff checks (field and tile); the numbers (standouts, instance filters) and the writer's baseline (Slice 4B); group E's plot codec, gates, tiles, carry and handoff points (Slice 4C; its Sections detector is `utils/chapterSections.ts` since Draft Edit Slice 3c part 4); group F's Opinion: wire, codec, text rules, gates, the board's digest, reply, call and handoff (Slice 4D); the inspector's passages: instance finders by each figure's own rule, the board's text kept beside it, passages cut from it (Slice 4E); group G's craft steering: the measure (counts, splits, short runs, constructions), wire, text rules, codec, tiles with the example's anchor, and Bring's points (Slice 4F); where a steering note's instance stands, dialogue being voice (Slice 4G); each paragraph's instances and dialogue spans, indexed once per text (PR #162); context shelf and opaque file keys; the boards the service keeps (`LightboxRetainedBoards`), a board's assembly and a saved board's rebuilt parts, the source key, and the rule ids a board records (Slice 5A); each block's own fields and a member closed out of its block moved back into it (`LightboxBlockFormat`, Slice 4K); how a run's groups start, settle and stop, keeping each lens's reading until a usable new one replaces it, with its provenance and earlier mark (`LightboxReadingState`, Slice 4J)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/   # storage/ holds the saved Lightbox board's codec (format 1, by layer), its files (one folder per source, read whole) and store (Slice 5A; PR #163), its rewrites in place under a claim (Slice 5A.1), and its claims, live or abandoned by age (PR #164); from Slice 5A.2 one file per board: saves in place at the revision a window read, new files (`LightboxBoardNewFile`), every chapter's listing, a picked file read where it lies, and the store's contracts in `LightboxBoardStoreContracts`
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -120,7 +120,7 @@ packages/core/src/
             ├── lightboxCraftTiles.ts # Group D tiles: tier mix, signature, familiar phrase, air-lock, echo, endings, handoff, number usage
             ├── lightboxNumbers.ts  # The measured numbers: rows, standouts, the writer's baseline summary, sentence summary
             ├── lightboxPlotTiles.ts # Group E tiles: template (freshness, engagement by movement tile id), template beat, pressure thread, artifact, synopsis, movement
-            ├── lightboxSections.ts # The measured Sections lane: signal, sections, and where each signal fired
+            ├── lightboxSections.ts # The measured Sections lane: signal, sections, and where each signal fired (the Lightbox's names for `shared/types/chapterSections.ts`)
             ├── lightboxOpinion.ts  # Group F's Opinion tile: observations and their cites, three views, what was withheld, the digest it read
             ├── lightboxSteering.ts # Group G's craft steering: the measure per figure, the reading and instance-note tiles, stance, nudge, the one example
             ├── lightboxContextFiles.ts # Lightbox context files and their messages
@@ -1182,7 +1182,11 @@ D3, D4 and D7 (Slices 4B, 4C, 4D and 4F) when adding a lens or a reading tile ki
   tiling the chapter) pass one set gate, fresh and carried alike, and a
   failure withholds the whole set as one claim naming the rule it broke.
 - **Measured lanes are recomputed, never carried.** The Sections lane
-  (`LightboxSections`) is measured with every board and is never stale.
+  (`detectChapterSections`, `utils/chapterSections.ts`, shared with Draft
+  Edit since its Slice 3c part 4) is measured with every board and is never
+  stale. The blank-line paragraph rule it reads is
+  `splitBlankLineParagraphs`; `splitLightboxParagraphs` numbers its
+  paragraphs and keeps the rule id.
 - **A group that reads the board (group F, the Opinion, Slice 4D).**
   `lightboxGroupReadsBoard` marks it.
   - **When it runs.** It runs after a press's chapter groups settle, only
@@ -1729,6 +1733,22 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     guard reads `GESTURE_*` and `Gesture[A-Z]` names as the Gesture
     Playground's, so each Craft Flags name of that shape is listed in
     `WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS` (`boundaries.test.ts`).
+  - **Continuity: a pair on two places** (Slice 3c part 4). A flag quotes the
+    later place, and its `earlier` side the earlier one, with `holds` (which
+    version the rest of the chapter keeps) and no `suggestion`, which would
+    pick a side. Both sides are anchored by host code; a pair is dropped when
+    either side fails to anchor, is protected or touches speech, when its
+    sides overlap or come out of order, or when a section starts between them
+    (`acrossBreak`, from `chapterSectionStarts`). The lines that open each
+    section are sent with continuity's request (`breaks`), masked. The flag
+    sits on the later side; the earlier is its related place: the port's
+    `DocumentAnnotation.related`, moved by `shiftRanges` (an edit touching
+    either side drops the flag), held to its own text by `moveIssues`, read
+    against protected regions and speech on every side (`placesOf`), and in
+    VS Code `DiagnosticRelatedInformation`. A new check of a placed issue
+    reads every place, never the flag's own alone. Draft Edit takes no
+    Lightbox infrastructure (`boundaries.test.ts`): what both read lives in
+    `utils/chapterSections.ts` and `utils/blankLineParagraphs.ts`.
   - **Which categories run** is `proseMinion.craftFlags.categories`, read at
     the gesture and normalized by `craftFlagCategoriesOf` (known ids, once
     each, canonical order). None on refuses the run before anything is
