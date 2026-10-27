@@ -205,3 +205,47 @@ The independent typed Jest run on corrected implementation/author-response head 
 Re-review report `ca04dae7fe20d2aa868ec659ce0f5f45f3ede529` was verified remotely as this report alone, with parent `391a4b4cefe7bcb9a0824addbdaa16fe4ff6903d`, matching the submitted bytes. Its [push CI 40583834893](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40583834893) and [PR CI 40583845878](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40583845878) both succeeded, with every verify step passing.
 
 **Disposition unchanged: F-01–F-03 are resolved; F-04 remains open.** The repeated whole-word scan is independently reproduced despite regression success. This appendix's exact report-only head will be checked separately; no source change, native acceptance or live inference is implied.
+
+## Author response to the re-review (`5945c846`)
+
+**F-04 is taken.** Your re-review above is unchanged. F-02's correction asked the word list about the whole compound once per flagged part, and `isAcceptedWord` parsed the whole compound before it even looked at the list. Fixing that, I found a second repeat of the same shape in the part loop, older than F-02. `isName` reads the whole word, uppercasing it and scanning back over the whitespace before it, and it ran once per part of a compound that starts with a capital. That one has been there since `4ff69dde`. Both are now asked once per word.
+
+### The fix
+
+- **The list, once per word** (`spellingConsistency.ts`, `isListed`). A use is checked against the list on its own first, as before. A part is then checked against its whole word, and the answer is kept by the word's start for its other parts. A listed compound still counts toward the totals, and the same word written alone is still read on its own (F-02 unchanged).
+- **An empty list is never asked.** `isAcceptedWord` now returns before parsing when the list is empty. Placement's backstop (`draftEditPlacement.ts`) and the name check share the helper; its answers are unchanged.
+- **The name check, once per word** (`usesOf`). A word's parts are handled one after another, so `use` keeps the last word it checked and its answer.
+- **Linear, as documented.** Per word, the walk now does a constant number of whole-word passes: the split, the key, the name check, and at most one list parse. Per part, it parses only the part. The ADR's "both checks are linear, so they need no budget" stays true, so no budget was added.
+
+### The regression test
+
+`spellingConsistency.test.ts` counts the characters handed to `String.prototype.matchAll`, which the word scanner reads with, and to `toUpperCase`, with no clock. The input is a 2,000-part compound starting with a capital, plus `. A gray sky.` (10,012 characters), under the American convention, so every part is flagged.
+
+| Case | Scanned: `4ff69dde` / `5fd75565` / now | Uppercased: `4ff69dde` / `5fd75565` / now | Bound (scanned; uppercased) |
+|---|---|---|---|
+| Empty list | 18,012 / 20,016,012 / 10,012 | 19,998,005 / 19,998,005 / 10,004 | exactly the text, one scan; ≤ 2 × text |
+| `unrelated` listed | 18,012 / 20,016,012 / 28,011 | 19,998,005 / 19,998,005 / 10,004 | ≤ 4 × text; ≤ 2 × text |
+| The compound listed, with ` A grey dawn.` (10,025 characters) | 18,029 / 20,016,029 / 28,028 | 19,998,005 / 19,998,000 / 9,999 | ≤ 4 × text; ≤ 2 × text |
+
+The output holds in each case: 2,000 flags with either list, and only the standalone `grey` when the compound is listed. (`4ff69dde` flagged all 2,001 there, the F-02 defect.) The test fails on both earlier commits. On `4ff69dde` the word scanner was linear, but the name check was not.
+
+### Controls
+
+- **Mutations: 19, each caught by a failing test.** These are the consistency and wiring mutations from the first response, their patterns updated where the code moved, plus four for F-04:
+  - the whole word asked per part;
+  - its answer never kept;
+  - the name check made per part;
+  - an empty list parsed.
+  One, the compound's acceptance not asked, at first only failed to compile (`if (true)` left code TypeScript calls unreachable). Rewritten to compile, it fails three tests.
+- The quotation mutations were not re-run: `quotationMarks.ts` is unchanged since `5fd75565`.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2 on `6fe526fc`, whose source is byte for byte `5945c846`'s (moved onto your `f5a2d668` before the push; only your appendix differs):
+- typecheck passes;
+- Jest 589 suites / 8,339 tests / 59 snapshots;
+- lint 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes;
+- `git diff --check` passes.
+
+All ran before the push. `spellingConsistency.ts` is 244 lines. No provider calls were made. The ADR's "As built (part 3)" note, the slice doc and the memory bank record F-04.
