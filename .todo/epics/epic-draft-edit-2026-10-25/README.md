@@ -1,10 +1,10 @@
 # Epic: Draft Edit
 
 **Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
-3b (Proofread coverage) parts 1 and 2 merged (PRs #174, #176); Slice 3c
-(Craft Flags) part 1, the pass and cliché, merged (PR #177); part 2,
-register shift, merged (PR #178); part 3, gesture strain, merged (PR
-#179); part 4, continuity, built and in review.
+3b (Proofread coverage) parts 1 and 2 merged (PRs #174, #176), part 3
+(quotation marks and consistency) built and in review; Slice 3c (Craft
+Flags) parts 1 to 4 merged (PRs #177 to #180); reasoning levels merged (PR
+#181). Next: the release, then the fixture run.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -67,9 +67,9 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
-| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 after Slice 3c |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 in review |
 | 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Parts 1 to 4 (the pass and cliché, register shift, gesture strain, continuity) merged (PRs #177 to #180); then the fixture run |
-| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | In review; a release blocker |
+| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | Merged (PR #181) |
 | 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
 | 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
 
@@ -242,3 +242,11 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   refuses a mandatory one with nothing sent; a catalog that cannot say sends
   `off` as asked. OpenRouter's field names are confirmed from its
   documentation.
+- **2026-10-27. Reasoning levels merged** (PR #181, `1b2b3ac9`), after
+  Astra's review (F-01, refusing `off` on a model that always reasons) and
+  her re-review, clear.
+- **2026-10-27. Slice 3b, part 3 built**, restarted from `epic/lightbox` at
+  `1b2b3ac9`: quotation marks (`quotation`) and consistency
+  (`consistency`), two host checks over the whole document, flag-only. The
+  writer's call: finish 3b before the release, "a better stopping point".
+  See the slice doc's "Part 3: as built".

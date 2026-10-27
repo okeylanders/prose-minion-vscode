@@ -390,7 +390,7 @@
             "Australian English spelling."
           ],
           "default": "auto",
-          "markdownDescription": "The spelling **Prose Minion: Proofread** holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and **Proofread and Fix** corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling.",
+          "markdownDescription": "The spelling **Prose Minion: Proofread** holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and **Proofread and Fix** corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling. When a file writes a word both ways (*grey* and *gray*), the convention's spelling is the one kept; with `auto`, the more used.",
           "order": 5.4
         },
         "proseMinion.proofread.wordList": {
@@ -399,7 +399,7 @@
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Names and invented words **Prose Minion: Proofread** accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive (*Dinah's*), and never flagged as a variant of another name. An entry of several words counts word by word. Set it in your workspace settings to keep a list per project.",
+          "markdownDescription": "Names and invented words **Prose Minion: Proofread** accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive (*Dinah's*), and never flagged as a variant of another name or as a word spelled two ways. An entry of several words counts word by word. Set it in your workspace settings to keep a list per project.",
           "order": 5.5
         },
         "proseMinion.proofread.reasoning": {

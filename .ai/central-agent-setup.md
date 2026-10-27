@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-27, Draft Edit reasoning levels with PR #181 F-01's fix (`a89ea725`) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `b24bdd04` (Draft Edit Slice 3c part 4, PR #180), under Node 18):
-- 586 suites / 8,294 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-27, Draft Edit Slice 3b part 3's review fixes (`5945c846`, PR #182 F-01–F-04) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `1b2b3ac9` (Draft Edit reasoning levels, PR #181), under Node 18):
+- 589 suites / 8,339 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1662,6 +1662,21 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   way, with its work charged where it is generated, not only where it is
   read. Headings are read from the Markdown block reader
   (`readDocumentRegions`), never a line pattern (F-02).
+- **Quotation marks and consistency** (Slice 3b, part 3). Two more host
+  categories, `quotation` and `consistency`, read by host code over the
+  whole document in `draftEditHostRead`, beside the names, flag-only.
+  - `findQuotationSlips` reads double marks paragraph by paragraph, a mark's
+    role from its place, then its shape. It flags each mark once, with no
+    replacement. A paragraph that opens with a quotation mark continues the
+    speech before it.
+  - `findInconsistentSpellings` reads the closed table `VARIANT_SPELLINGS`:
+    every inflection written out, ASCII, each form once, held by a test. It
+    flags the less used spelling, or, where an entry names the convention's
+    side, the one the named convention does not use. A capitalized word
+    mid-sentence (`followsMidSentence`) is a name, and is not read.
+  - Both are linear in the document, so they need no budget. A check whose
+    work can grow faster than the text charges a budget, as the name check
+    does.
 - **Reasoning levels** (2026-10-27; the ADR's reasoning-levels amendment).
   Proofread and Craft Flags each send a named level (`REASONING_LEVELS`:
   `off`, `light`, `standard`, `deep`), read at the gesture from

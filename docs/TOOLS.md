@@ -152,6 +152,18 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
   **Replace with** offers the common spelling, never as Proofread's own fix.
   A name used only at the start of sentences is not read as a name; a listed
   word is never flagged.
+- **Catches a quotation mark left open.** Proofread reads every paragraph's
+  double quotation marks. It flags one still open where the paragraph ends
+  or the next quotation opens, a closing mark with nothing open, and a curly
+  mark turned the wrong way. Speech running over paragraphs, each opening
+  with a quotation mark, is not flagged. These are flags only: where the
+  missing mark belongs is yours to say.
+- **Catches a word spelled two ways.** When one file writes *grey* and
+  *gray*, *toward* and *towards*, *OK* and *okay*, or *colour* and *color*,
+  Proofread flags the spelling used less, with a **Replace with** the other.
+  With a spelling convention set, the convention's spelling wins. A
+  capitalized word mid-sentence is read as a name and left alone (*Mr Gray*),
+  and a listed word is never flagged.
 - **Asks before long runs.** A whole file over 15,000 words asks first. The run
   can be cancelled from its progress notification, and its summary reports what
   was flagged and what it cost.

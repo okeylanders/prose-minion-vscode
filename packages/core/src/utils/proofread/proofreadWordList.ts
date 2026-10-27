@@ -83,8 +83,11 @@ export function acceptedWordsIn(list: readonly string[], text: string): string[]
 
 /** Whether `quote` is one word the list accepts: whole, or every part of a hyphenated word. */
 export function isAcceptedWord(accepted: ReadonlySet<string>, quote: string): boolean {
+  if (accepted.size === 0) {
+    return false;
+  }
   const words = proofreadWords(quote);
-  if (accepted.size === 0 || words.length !== 1) {
+  if (words.length !== 1) {
     return false;
   }
   const key = proofreadWordKey(words[0].text);
