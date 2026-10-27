@@ -64,6 +64,14 @@ Model IDs are curated and verified against the live OpenRouter API. See the Mode
 
 ---
 
+## Craft Flags Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `proseMinion.craftFlags.categories` | array of `cliche` \| `register` | `["cliche", "register"]` | Which line notes **Craft Flags** looks for: clichés, and shifts of register in narration. Each one is a request of its own, priced in the confirmation before anything is sent. With none on, Craft Flags does not run. |
+
+---
+
 ## UI Settings
 
 | Setting | Type | Default | Description |

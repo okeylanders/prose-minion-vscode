@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review and re-review fixes (F-01 to F-04, N-01 to N-03) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
-- 573 suites / 8,054 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-27, Draft Edit Slice 3c part 2 (register shift) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `f7b0c851` (Draft Edit Slice 3c part 1, PR #177), under Node 18):
+- 574 suites / 8,089 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1704,6 +1704,21 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     come from `FAMILIAR_PHRASE_KINDS` (`shared/constants/familiarPhrasing.ts`),
     which the Lightbox's `LightboxFamiliarKind` is too.
     `craftFlagsPrompt.test.ts` holds both prompts to it.
+  - **Register shift's ground is its own reply's** (Slice 3c part 2, the
+    writer's choice). The reply's root names the register the narration
+    keeps (`register`). A reply with flags and no line is rejected, never
+    read against a guess. The line is held to `craftFlagPhrasing` but for
+    its digit rule (a period's years), withheld and counted when it breaks
+    it, and ends each flag's note ("The chapter's narration: …"). Its kinds
+    are `REGISTER_SHIFT_KINDS`, defined in the domain and held verbatim in
+    its prompt. A root field belongs to one category (`ROOT_FIELDS`): a
+    cliché reply's `register` is ignored and counted.
+  - **Which categories run** is `proseMinion.craftFlags.categories`, read at
+    the gesture and normalized by `craftFlagCategoriesOf` (known ids, once
+    each, canonical order). None on refuses the run before anything is
+    read. A new category joins `CRAFT_FLAG_CATEGORIES`, the manifest's
+    enum, `CRAFT_FLAG_KINDS`, `CRAFT_FLAG_LEAVES_SPEECH`, `ROOT_FIELDS` and
+    `CRAFT_FLAG_PROMPTS`, with its prompt, worked example and sync test.
   - **Speech.** A category that leaves speech alone
     (`CRAFT_FLAG_LEAVES_SPEECH`) drops a flag touching
     `findSpeechSpansOutsideProtected` (`utils/draftEdit/speechSpans.ts`): the

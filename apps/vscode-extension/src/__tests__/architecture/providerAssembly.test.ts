@@ -12,6 +12,7 @@
 // runtime values these witnesses use are required from their modules.
 /* eslint-disable @typescript-eslint/naming-convention -- the mocked barrel's export names. */
 jest.mock('@prose-minion/core', () => ({
+  CRAFT_FLAG_CATEGORIES: jest.requireActual('@/domain/models/CraftFlag').CRAFT_FLAG_CATEGORIES,
   DRAFT_EDIT_LANGUAGE_IDS: jest.requireActual('@/domain/models/DraftEdit').DRAFT_EDIT_LANGUAGE_IDS,
   PROOFREAD_SPELLING_CONVENTIONS: jest.requireActual('@/domain/models/DraftEdit').PROOFREAD_SPELLING_CONVENTIONS,
   describeDraftEditOutcome: jest.requireActual('@/application/services/draftEdit/draftEditSummary').describeDraftEditOutcome
@@ -21,7 +22,7 @@ jest.mock('@prose-minion/core', () => ({
 import * as fs from 'fs';
 import * as path from 'path';
 import { LIGHTBOX_FILE_LANGUAGE_IDS } from '@app/application/commands/openFileInLightbox';
-import { DRAFT_EDIT_LANGUAGE_IDS, PROOFREAD_SPELLING_CONVENTIONS } from '@prose-minion/core';
+import { CRAFT_FLAG_CATEGORIES, DRAFT_EDIT_LANGUAGE_IDS, PROOFREAD_SPELLING_CONVENTIONS } from '@prose-minion/core';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -491,6 +492,20 @@ describe('app-shell provider assembly', () => {
       contributes: { configuration: { properties: Record<string, { type?: string; default?: unknown }> } };
     };
     expect(manifest.contributes.configuration.properties['proseMinion.craftModel']).toMatchObject({ type: 'string', default: '' });
+  });
+
+  it('declares which Craft Flags categories run, every one on by default, under the key the host reads (Slice 3c part 2)', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      contributes: { configuration: { properties: Record<string, {
+        type?: string; uniqueItems?: boolean; default?: unknown; items?: { type?: string; enum?: string[]; enumDescriptions?: string[] };
+      }> } };
+    };
+    const setting = manifest.contributes.configuration.properties['proseMinion.craftFlags.categories'];
+    expect(setting).toMatchObject({ type: 'array', uniqueItems: true, items: { type: 'string', enum: [...CRAFT_FLAG_CATEGORIES] } });
+    expect(setting.default).toEqual([...CRAFT_FLAG_CATEGORIES]);
+    expect(setting.items?.enumDescriptions).toHaveLength(CRAFT_FLAG_CATEGORIES.length);
+    expect(fs.readFileSync(EXTENSION_ENTRY, 'utf8'))
+      .toContain(`craftFlagCategories: () => vscode.workspace.getConfiguration('proseMinion').get<unknown>('craftFlags.categories')`);
   });
 
   it('gives the shared AI manager its key and model subscriptions for the extension\'s lifetime, before any webview (PR #171 F-01)', () => {

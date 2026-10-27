@@ -13,8 +13,8 @@ import type { TokenUsage } from '@messages';
 import type { DraftEditAnchor, DraftEditRejectedChunks } from '@/domain/models/DraftEdit';
 import type { FamiliarPhraseKind } from '@shared/constants/familiarPhrasing';
 
-/** Part 1: cliché. Register shift, gesture strain and continuity join in later parts. */
-export const CRAFT_FLAG_CATEGORIES = ['cliche'] as const;
+/** Cliché (part 1) and register shift (part 2). Gesture strain and continuity join in later parts. */
+export const CRAFT_FLAG_CATEGORIES = ['cliche', 'register'] as const;
 
 export type CraftFlagCategory = typeof CRAFT_FLAG_CATEGORIES[number];
 
@@ -23,13 +23,41 @@ export function isCraftFlagCategory(value: unknown): value is CraftFlagCategory 
 }
 
 /**
+ * The categories a run asks about, from `proseMinion.craftFlags.categories`
+ * as the writer set it: known ids, each once, in the canonical order;
+ * anything else is ignored. Empty when none is on.
+ */
+export function craftFlagCategoriesOf(value: unknown): CraftFlagCategory[] {
+  const named = Array.isArray(value) ? value : [];
+  return CRAFT_FLAG_CATEGORIES.filter((category) => named.includes(category));
+}
+
+/**
+ * Register shift's kinds (Slice 3c part 2): what the words bring into
+ * narration that keeps another register. No other surface names them.
+ */
+export const REGISTER_SHIFT_KINDS = ['period', 'slang', 'jargon', 'ornate'] as const;
+
+export type RegisterShiftKind = typeof REGISTER_SHIFT_KINDS[number];
+
+/** What each kind is, in the words the register prompt uses. */
+export const REGISTER_SHIFT_DEFINITIONS: Readonly<Record<RegisterShiftKind, string>> = {
+  period: 'a word or phrase from outside the period the narration sets',
+  slang: 'casual or slang wording in narration that keeps a plainer or more formal register',
+  jargon: 'technical, legal, clinical or corporate wording in narration that keeps none',
+  ornate: 'a sudden heightened, ornate passage in narration that keeps a plain register'
+};
+
+/**
  * The kinds each category's flags carry. A cliché is `cliche` or `weighted`,
  * from the vocabulary the Lightbox shares (`FAMILIAR_PHRASE_KINDS`); an
- * `idiom` or a `stock` phrase is familiar, not a fault, and never flagged.
+ * `idiom` or a `stock` phrase is familiar, not a fault, and never flagged. A
+ * register shift is one of `REGISTER_SHIFT_KINDS`.
  */
 export const CRAFT_FLAG_KINDS = {
-  cliche: ['cliche', 'weighted']
-} as const satisfies Readonly<Record<CraftFlagCategory, readonly FamiliarPhraseKind[]>>;
+  cliche: ['cliche', 'weighted'],
+  register: REGISTER_SHIFT_KINDS
+} as const satisfies Readonly<Record<CraftFlagCategory, readonly (FamiliarPhraseKind | RegisterShiftKind)[]>>;
 
 export type CraftFlagKind = typeof CRAFT_FLAG_KINDS[CraftFlagCategory][number];
 
@@ -38,12 +66,14 @@ export function isCraftFlagKind(category: CraftFlagCategory, value: unknown): va
 }
 
 /**
- * Whether a category leaves speech alone: cliché does, since a character's
- * idiom is their voice (the Lightbox's rule, epic decision 26). Host code
- * drops such a flag where it touches speech, whatever the reply says.
+ * Whether a category leaves speech alone. Both do: a character's idiom, and
+ * their register, are their voice (the Lightbox's rule, epic decision 26).
+ * Host code drops such a flag where it touches speech, whatever the reply
+ * says.
  */
 export const CRAFT_FLAG_LEAVES_SPEECH: Readonly<Record<CraftFlagCategory, boolean>> = {
-  cliche: true
+  cliche: true,
+  register: true
 };
 
 /** What a Craft Flags run reads: the categories it asks about, each in a call of its own. */
@@ -62,6 +92,12 @@ export interface CraftFlagFinding {
   readonly why: string;
   /** One way this scene could say it; absent when the reply gave none or the fence withheld it. */
   readonly suggestion?: string;
+  /**
+   * A register shift's ground: the register the reply says the narration
+   * keeps (its root's `register` line); absent for other categories, and when
+   * the fence withheld the line.
+   */
+  readonly register?: string;
 }
 
 /** One flag placed in the document, with host-derived offsets and the host's repeat count. */
@@ -75,6 +111,8 @@ export interface CraftFlagIssue {
   readonly original: string;
   readonly why: string;
   readonly suggestion?: string;
+  /** A register shift's ground, as its finding carried it. */
+  readonly register?: string;
   /**
    * How often the phrase stands in the live document's narration, this use
    * included, counted once the run has settled (PR #177 N-01); absent when it

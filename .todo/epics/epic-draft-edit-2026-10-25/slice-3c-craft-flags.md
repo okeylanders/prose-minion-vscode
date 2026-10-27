@@ -1,8 +1,9 @@
 # Slice 3c: Craft flags
 
 **Epic:** [Draft Edit](README.md)
-**Status:** In progress (2026-10-26): part 1, the pass and cliché. After
-Slice 3b, before the Workshop slices, at the writer's request. The pass, its
+**Status:** In progress (2026-10-27): part 1, the pass and cliché, merged
+(PR #177); part 2, register shift, built. After Slice 3b, before the
+Workshop slices, at the writer's request. The pass, its
 name, each category's approach and the six recommendations under "Decide in
 the ADR" are decided (the writer, 2026-10-26; see "Decided").
 **Priority:** High
@@ -49,6 +50,30 @@ where the build goes beyond it.
   - each phrase counted over the narration;
   - each note held to `craftFlagPhrasing`.
 - **Cost:** every run confirms with the words, the model and "≈ $…".
+
+## Part 2: as built (2026-10-27)
+
+Register shift, built on `claude/upbeat-galileo-y1l4yf` from `epic/lightbox`
+at `f7b0c851` (the PR #177 merge). The ADR's "Part 2: register shift"
+decides it.
+
+- **The writer's choice:** the register call names the register the
+  narration keeps, in its own reply (`register`, at the root), and flags
+  shifts from it. No second call, and no host measure.
+- **Kinds:** `period`, `slang`, `jargon` and `ornate`
+  (`REGISTER_SHIFT_KINDS` and their definitions, in the domain).
+- **The register line:** required in a reply with flags; held to the
+  phrasing fence but for a period's years; clipped; carried on each flag,
+  whose note ends "The chapter's narration: …".
+- **Left alone:** dialogue, by host code; a character's marked thought, and
+  a period the narration does not set, by the prompt.
+- **Prompts:** `craft-flags/20-register.md` and `21-register-example.md` (an
+  *Alice* adaptation, read through the production codec and anchoring in
+  `craftFlagsPrompt.test.ts`).
+- **`proseMinion.craftFlags.categories`:** both on by default, read at the
+  gesture; none on refuses the run.
+- **Not yet:** the fixture run's hits and false positives for either
+  category.
 
 ## Problem
 
@@ -264,7 +289,7 @@ How it works:
 1. The ADR amendment. *Done (`84f11928`).*
 2. The pass and **cliché**. *Built (part 1).* It is closest to what exists (the Lightbox's
    familiar-phrase definitions) and proves the pass end to end.
-3. **Register shift**, with the chapter's register measure.
+3. **Register shift**, with the chapter's register named by its own call. *Built (part 2).*
 4. **Gesture strain**, with the host's stock-beat counts.
 5. **Continuity**, with the port's related information and the shared
    section detector.

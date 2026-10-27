@@ -1174,6 +1174,28 @@ command is the opt-in. When a second category joins,
   Tests bound every phrase scan by a count of the pattern's searches, never
   by a clock.
 
+### Part 2: register shift
+
+The writer's decision (2026-10-27): **the register call states the
+chapter's register itself.** The call already reads the whole chapter, so
+its reply names the register the narration keeps before it flags anything,
+and each flag is a shift against that line. No second call, no host measure
+of formality: numbers read formality, never period, voice or a purple
+passage, and the model judges the shift either way.
+
+| Decision | Change |
+|---|---|
+| The category | **`register`** joins `CRAFT_FLAG_CATEGORIES` (`['cliche', 'register']`): narration that leaves the register the chapter keeps. Its own call, prompt (`craft-flags/20-register.md`) and worked example (`21-register-example.md`). |
+| Its kinds | `period`, `slang`, `jargon` and `ornate` (`REGISTER_SHIFT_KINDS`, with their definitions in `REGISTER_SHIFT_DEFINITIONS`, in `domain/models/CraftFlag.ts`; no other surface names them). The prompt states each definition verbatim, held there by a sync test. The host's why for a withheld one is its kind's definition, as cliché's is. |
+| The chapter's register | **The reply's root carries `register`:** one line naming the register the narration keeps ("plain, wry, unhurried close third in an older English"). It is required in a register reply that has flags: a reply with flags and no line has nothing they shift from, so it is rejected and saved for recovery, as an unreadable reply is. A reply with no flags may omit it. It is held to the phrasing fence, except the digit rule (a period may be named by its years: "the 1920s"); a line that breaks it is not shown, the flags stay, and the summary counts it among the notes not shown as written. It is clipped to `PROMPT_BUDGETS.craftFlags.registerCharacters` (160). A cliché reply's `register` is a field the format does not define: ignored and counted. |
+| What a flag says | The `why` (the register the words bring), "One way it could go: " and the `suggestion` (one way it could go in the chapter's own register), then **"The chapter's narration: "** and the reply's register line, then the host's repeat line. The slice doc's recommendation: the register the chapter keeps, the one the phrase brings, and one way it could go in the chapter's own. |
+| Dialogue | **Left alone,** by the same host drop as cliché's (`CRAFT_FLAG_LEAVES_SPEECH.register`): a character's register is their voice. |
+| Free indirect discourse | Left to the prompt: where the text marks narration as a character's thought, their idiom is theirs, and the note names that possibility when the line is unclear. Host code cannot tell thought from narration, so it does not try. |
+| Anachronism | **`period` only against a period the chapter's own narration sets,** named in its `register` line. Without one, a word is never flagged for its date. A project setting (period, place) could supply one later. The prompt holds this; host code cannot check it. |
+| A selection read alone | Over the word ceiling, a selection is read alone, so its register line is the selection's, not the chapter's: the stated limit. |
+| Which categories run | **`proseMinion.craftFlags.categories`,** an array of category ids, both on by default, read at the gesture and normalized in core (`craftFlagCategoriesOf`: known ids, each once, in the canonical order; anything else ignored). None on refuses the run before anything is read, naming the setting. The fixture run (the slice doc's) decides each category's default; until it does, both are on. |
+| Cost | Unchanged: one call per category, all priced in the confirmation ("That is 2 requests to …"). |
+
 ## Out of scope (follow-ups)
 
 - Apply Recommendations and Apply Variation (D11; Feature: Workshop Apply to

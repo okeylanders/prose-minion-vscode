@@ -91,7 +91,7 @@ describe('CraftFlagsUseCase.run', () => {
 
     expect(requests[0].passage).not.toContain('```\na chill ran down her spine');
     expect(requests[0].passage).toContain('⟦protected⟧');
-    expect(requests[0].categories).toEqual(['cliche']);
+    expect(requests[0].categories).toEqual(['cliche', 'register']);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, reads: 'document', calls: { total: 1, completed: 1 } });
     expect(annotations.flaggedText()).toEqual(['a chill ran down her spine']);
     expect(annotations.shown[0]).toEqual({
@@ -103,6 +103,53 @@ describe('CraftFlagsUseCase.run', () => {
       message: 'A stopped clock stands in for the jolt. One way it could go: the pink eyes, as she sees them.'
     });
     expect(annotations.shown[0]).not.toHaveProperty('fix');
+  });
+
+  describe('a register shift (Slice 3c part 2)', () => {
+    const LINE = 'A wry, formal English, plain and unhurried';
+    const shift = (quote: string, extra: Partial<CraftFlagFinding> & { before?: string } = {}) => flag(quote, {
+      category: 'register',
+      kind: 'slang',
+      why: 'A casual phrase in a narration that keeps a formal English',
+      suggestion: 'she grew weary of the bank',
+      register: LINE,
+      ...extra
+    });
+
+    it('shows its note with the register its reply says the narration keeps, then the host\'s count', async () => {
+      const text = 'Alice was totally over sitting by her sister on the bank. Later, she was totally over the daisies too.';
+      const { runOnce, annotations } = setup(text, [read(shift('totally over', { before: 'Alice was ' }))]);
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 1 });
+
+      expect(annotations.flaggedText()).toEqual(['totally over']);
+      expect(annotations.shown[0]).toMatchObject({
+        code: 'craft.register',
+        severity: 'info',
+        message: 'A casual phrase in a narration that keeps a formal English. One way it could go: she grew weary of the bank.'
+          + ' The chapter\'s narration: A wry, formal English, plain and unhurried. This phrase appears 2 times in this document.'
+      });
+    });
+
+    it('shows its note without the line when the fence withheld it', async () => {
+      const { runOnce, annotations } = setup(CHAPTER, [read(shift('time stood still', { before: 'on the bank, and ', register: undefined }))]);
+      await runOnce();
+      expect(annotations.shown[0].message).not.toMatch(/narration:/);
+    });
+
+    it('leaves a character\'s register alone: a shift in speech is dropped and counted', async () => {
+      const { runOnce, annotations } = setup(CHAPTER, [read(shift('I am as busy as a bee'), shift('My heart was in my throat'))]);
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { dialogue: 2 } });
+      expect(annotations.shown).toEqual([]);
+    });
+
+    it('keeps a cliché and a register shift on the same words: overlaps are weighed within a category', async () => {
+      const { runOnce, annotations } = setup(CHAPTER, [
+        read(flag('a chill ran down her spine', { before: 'waistcoat-pocket, ' })),
+        read(shift('a chill ran down her spine', { before: 'waistcoat-pocket, ', kind: 'ornate' }))
+      ]);
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 2, dropped: { overlapping: 0 } });
+      expect(annotations.shown.map((annotation) => annotation.code).sort()).toEqual(['craft.cliche', 'craft.register']);
+    });
   });
 
   it('sends every call to the model the writer approved (PR #177 F-01)', async () => {
@@ -357,7 +404,7 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     const planned = useCase.plan(gesture);
     letPricingGo();
     expect(await planned).toEqual({ kind: 'ready', words: expect.any(Number), reads: 'document', selection: false, estimate: ESTIMATE });
-    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche'] });
+    expect(pass.estimate).toHaveBeenCalledWith({ passage: expect.stringContaining('⟦protected⟧'), categories: ['cliche', 'register'] });
   });
 
   it('shows no confirmation when the document closes and reopens at its version while it is priced', async () => {
