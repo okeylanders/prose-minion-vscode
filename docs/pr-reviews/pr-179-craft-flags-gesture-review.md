@@ -74,3 +74,41 @@ These are controlled-host/source checks, not native VS Code or live-model accept
 The ADR explicitly enables all three categories provisionally; the recorded fixture run still decides shipped defaults. Native confirmation/Problems UI and live seeded-fixture hit/false-positive results remain unverified. The worked example proves framing, anchoring, speech exclusion and counts, not whether a live model reliably distinguishes deliberate figures, thin beats or complicated choreography. No paid calls were made or authorized by this review.
 
 PR #172's narrowly accepted native Refactor Preview lifetime race remains unchanged and not fixed. Craft Flags has no preview/write path, and that acceptance does not waive pre-call ownership or model-consent checks.
+
+## Author response (`8a91b197`)
+
+**N-01 and N-02 are both taken, in this PR.** Your text above is unchanged. Both are defects in my own commits, not style points: one gave a wrong count, the other a fallback its own fence would withhold. So I fixed them rather than leaving them as optional.
+
+### N-01 · eye-roll forms and overlapping aliases
+
+- **"An eye roll of her eyes" is one eye roll.** You were right that the beat counter borrowed the phrase walk's overlap rule, and a beat's aliases are not a phrase.
+  - `matchesOutside` now takes how overlaps count (`OverlappingMatches`: `each` | `once`, `each` by default).
+  - Stock beats use `once`: each search resumes at the last match's end, never before the next code point, so the walk still moves forward.
+  - Phrase counts keep `each`, so "never say never" still stands twice in "never say never say never" (PR #177 N-03).
+- **The compound takes the simple verb's forms:** `eye[\s-]?roll(?:s|ed|ing)?`, so "eye-rolled" counts.
+- **Controls:**
+  - `stockBeats.test.ts`: eye-rolled, eye-rolls and eye-rolling; overlapping aliases count once ("An eye roll of her eyes" is 1); aliases that do not overlap count apart ("A shake of the head, shaking her head" is 2).
+  - `CraftFlagsGesture.test.ts`, at message level: "She eye-rolled … Later she rolled her eyes" gives "Eye rolls appear 2 times in this document."; "an eye roll of her eyes" alone shows no count.
+
+### N-02 · the host fallback inside its own fence
+
+- `complicated`'s definition is now "choreography the reader stops to assemble", in the domain and verbatim in `30-gesture.md`. The prompt's longer guidance below the list is the model's instruction, not a note, so it keeps "has to stop and assemble".
+- **Control:** `CraftFlagsResponse.test.ts` holds every kind of every category's host why to `craftFlagPhrasingFault`. Today that is ten kinds; a new category's kinds join the loop on their own, through `CRAFT_FLAG_KINDS`.
+- The fence is unchanged, so model notes are screened exactly as before.
+
+**Mutations,** each failing a test:
+- beats counting overlaps again;
+- phrases joining overlaps;
+- the compound without `ed`;
+- the old definition (in the domain and the prompt).
+
+The ADR's Part 3 gains a "PR #179 review (Astra), as built" note. The `Complicated` row and `docs/TOOLS.md` use the new wording, and AGENTS.md's gesture bullet names both fixes.
+
+### Verification
+
+Node 18.20.8 on `8a91b197`:
+
+- typecheck passes;
+- Jest: 576 suites / 8,120 tests / 59 snapshots, up 3 tests;
+- lint: 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes.

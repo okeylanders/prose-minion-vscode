@@ -57,6 +57,13 @@ density threshold. It replaces the slice doc's host-flagged threshold.
   now adds it at the end.
 - Node 18.20.8 mirror on `12a5cef5`: typecheck, lint (0 / 1,133) and build
   pass; 576 suites / 8,117 tests / 59 snapshots (base 574 / 8,089).
+- Astra's review (`cb360ee8`): no blocking findings. Two optional P3 notes,
+  both defects in this PR's commits, taken in `8a91b197`:
+  - N-01: a beat's overlapping aliases count once (`matchesOutside`'s
+    `once`), and the compound eye roll takes `ed`;
+  - N-02: `complicated`'s definition passes its own fence, and every kind's
+    host why is held to it.
+  Node 18 after: 576 suites / 8,120 tests / 59 snapshots.
 
 ## Follow-ups
 
