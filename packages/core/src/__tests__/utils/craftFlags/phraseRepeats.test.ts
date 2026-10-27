@@ -4,6 +4,7 @@
  * *Alice*.
  */
 import { PHRASE_REPEATS, phraseRepeats } from '@/utils/craftFlags/phraseRepeats';
+import { withPhraseScanLimit } from '@/__tests__/utils/craftFlags/phraseScanLimit';
 
 const range = (text: string, part: string, from = 0) => {
   const start = text.indexOf(part, from);
@@ -38,6 +39,36 @@ describe('phraseRepeats', () => {
   it('counts occurrences that overlap (PR #177 N-03)', () => {
     expect(phraseRepeats('Never say never say never, said the Queen.', []).count('never say never')).toBe(2);
     expect(phraseRepeats('Alice, Alice, Alice!', []).count('alice, alice')).toBe(2);
+  });
+
+  // A phrase opening on a letter outside the Basic Multilingual Plane (two code units) once
+  // resumed inside its own surrogate pair and found itself again, forever. Every scan here is
+  // bounded: a scan that does not move forward fails on its count, never by hanging.
+  describe('moves forward by whole code points (PR #177 F-04)', () => {
+    const SCRIPT_TIME = '𝓽𝓲𝓶𝓮';
+
+    it.each([
+      ['at the start', `${SCRIPT_TIME} stood still.`, `${SCRIPT_TIME} stood still`, 1],
+      ['later in the text', `Alice thought ${SCRIPT_TIME} stood still, and ${SCRIPT_TIME} stood still again.`, `${SCRIPT_TIME} stood still`, 2],
+      ['overlapping itself', '𝓪 𝓪 𝓪, and 𝓪 𝓪.', '𝓪 𝓪', 3],
+      ['closing on one', `Alice wrote ${SCRIPT_TIME} twice: ${SCRIPT_TIME}.`, SCRIPT_TIME, 2]
+    ])('counts a phrase of astral letters %s', async (_case, text, phrase, expected) => {
+      const { result, scans } = await withPhraseScanLimit(20, () => phraseRepeats(text, []).count(phrase));
+      expect(result).toBe(expected);
+      // One scan per occurrence, and one that finds none.
+      expect(scans).toBe(expected + 1);
+    });
+
+    it('leaves out an astral occurrence touching a skipped range', async () => {
+      const text = `“${SCRIPT_TIME} stood still,” said Alice, and ${SCRIPT_TIME} stood still.`;
+      const { result } = await withPhraseScanLimit(20, () => phraseRepeats(text, [range(text, `“${SCRIPT_TIME} stood still,”`)]).count(`${SCRIPT_TIME} stood still`));
+      expect(result).toBe(1);
+    });
+
+    it('still counts single-unit overlaps, ASCII and accented: the control', async () => {
+      expect((await withPhraseScanLimit(20, () => phraseRepeats('Never say never say never.', []).count('never say never'))).result).toBe(2);
+      expect((await withPhraseScanLimit(20, () => phraseRepeats('é é é, and é é.', []).count('é é'))).result).toBe(3);
+    });
   });
 
   it('counts inflected forms apart: the stated limit', () => {

@@ -11,13 +11,14 @@
  * - An occurrence touching a skipped range (speech, protected regions) is
  *   not counted: the narration's lean is the finding.
  * - Occurrences that overlap count apart ("never say never" stands twice in
- *   "never say never say never").
+ *   "never say never say never"), found by one forward walk that always
+ *   moves on by a whole code point (PR #177 F-04).
  * - Inflected forms ("ran down her spine", "runs down his spine") count
  *   apart: the stated limit.
  *
  * **Bounded on the extension host** (PR #177 N-02). Nothing is built for the
- * whole document up front: each distinct phrase asked about is one scan of
- * the text by a regular expression, and at most `PHRASE_REPEATS.phrases`
+ * whole document up front: each distinct phrase asked about is one forward
+ * walk of the text by a regular expression, and at most `PHRASE_REPEATS.phrases`
  * distinct phrases are counted per document. A phrase past that is not
  * counted (`undefined`), never guessed.
  */
@@ -59,19 +60,35 @@ export function phraseRepeats(text: string, skipped: readonly TextRange[]): Phra
       if (counted.size >= PHRASE_REPEATS.phrases) {
         return undefined;
       }
-      let count = 0;
-      const pattern = patternOf(wanted);
-      // Resumed one code unit past each match's start, so overlapping occurrences count (PR #177 N-03).
-      for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
-        if (!touches(ranges, match.index, match.index + match[0].length)) {
-          count += 1;
-        }
-        pattern.lastIndex = match.index + 1;
-      }
+      const count = occurrences(text, patternOf(wanted), ranges);
       counted.set(key, count);
       return count;
     }
   };
+}
+
+/**
+ * How many times `pattern` matches outside `skipped`, occurrences that
+ * overlap included (PR #177 N-03): each search resumes one whole code point
+ * past the last match's start (F-04). One code unit is not enough: under the
+ * `u` flag a search resumed inside a surrogate pair backs up to its start and
+ * finds the same match again. A match never starts before its search, so
+ * each step moves forward and the walk ends.
+ */
+function occurrences(text: string, pattern: RegExp, skipped: readonly TextRange[]): number {
+  let count = 0;
+  for (let from = 0; from <= text.length; ) {
+    pattern.lastIndex = from;
+    const match = pattern.exec(text);
+    if (!match || match.index < from) {
+      break;
+    }
+    if (!touches(skipped, match.index, match.index + match[0].length)) {
+      count += 1;
+    }
+    from = match.index + ((text.codePointAt(match.index) ?? 0) > 0xffff ? 2 : 1);
+  }
+  return count;
 }
 
 /** The phrase as a pattern: its folds as character classes, whole words only. */

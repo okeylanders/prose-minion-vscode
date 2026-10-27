@@ -13,6 +13,8 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { CraftFlagsUseCase, type CraftFlagsPassPort } from '@/application/services/draftEdit/CraftFlagsUseCase';
 import type { CraftFlagsCallResult, CraftFlagsRunRequest } from '@services/craftFlags/CraftFlagsService';
 import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL, decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
+import { withPhraseScanLimit } from '@/__tests__/utils/craftFlags/phraseScanLimit';
 
 const CHAPTER = [
   'Alice was beginning to get very tired of sitting by her sister on the bank, and time stood still.',
@@ -129,6 +131,29 @@ describe('CraftFlagsUseCase.run', () => {
 
     expect(annotations.flaggedText()).toEqual(['time stood still']);
     expect(annotations.shown[0].message).not.toMatch(/appears/);
+  });
+
+  // The second re-review's witness: a reply quoting a phrase that opens on an astral letter
+  // never finished its run, because the repeat count resumed inside a surrogate pair. Each
+  // run here is bounded by the scan count, never by a clock.
+  it.each([
+    ['once', 'Alice thought 𝓽𝓲𝓶𝓮 stood still.', undefined],
+    ['twice', 'Alice thought 𝓽𝓲𝓶𝓮 stood still. Later, 𝓽𝓲𝓶𝓮 stood still.', 2]
+  ])('finishes a run whose flag opens on an astral letter, standing %s (PR #177 F-04)', async (_case, text, repeats) => {
+    const reply = `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags: [
+      { original: '𝓽𝓲𝓶𝓮 stood still', before: 'Alice thought ', after: '.', kind: 'cliche', why: 'A stopped clock stands in for the jolt.', suggestion: 'the pink eyes, as she sees them' }
+    ] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}`;
+    const decoded = decodeCraftFlagsReply(readCraftFlagsFrame(reply).root, 'cliche');
+    const { runOnce, annotations } = setup(text, [{ kind: 'read', findings: decoded.findings, malformed: decoded.malformed, notesWithheld: decoded.notesWithheld }]);
+
+    const { result: outcome } = await withPhraseScanLimit(20, runOnce);
+    expect(outcome).toMatchObject({ kind: 'completed', flagged: 1 });
+    expect(annotations.flaggedText()).toEqual(['𝓽𝓲𝓶𝓮 stood still']);
+    if (repeats) {
+      expect(annotations.shown[0].message).toMatch(new RegExp(` This phrase appears ${repeats} times in this document\\.$`, 'u'));
+    } else {
+      expect(annotations.shown[0].message).not.toMatch(/appears/);
+    }
   });
 
   it('leaves speech alone: a flag in double- or single-quoted speech is dropped and counted', async () => {
