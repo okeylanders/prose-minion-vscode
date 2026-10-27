@@ -76,18 +76,29 @@ function nameFinding(variant: NameVariant): DraftEditHostFinding {
   };
 }
 
-const QUOTATION_EXPLANATIONS: Readonly<Record<QuotationSlipKind, string>> = {
-  unclosed: 'This quotation mark opens a quotation that is still open where its paragraph ends.'
-    + ' If the speech goes on, the next paragraph opens with a quotation mark; otherwise a closing mark is missing.',
-  'unclosed-before-next': 'This quotation mark opens a quotation that is still open where the next one opens: a closing mark is missing.',
-  unopened: 'This closing quotation mark has no opening mark before it in its paragraph.',
-  'closing-mark-opens': 'This closing quotation mark (”) stands where a quotation opens; an opening mark (“) may be meant.',
-  'opening-mark-closes': 'This opening quotation mark (“) stands where a quotation closes; a closing mark (”) may be meant.'
-};
-
 /** A slip is flagged with no replacement: where the missing mark belongs is the writer's to say. */
 function quotationFinding(slip: QuotationSlip): DraftEditHostFinding {
-  return { category: 'quotation', start: slip.start, end: slip.end, original: slip.mark, explanation: QUOTATION_EXPLANATIONS[slip.kind] };
+  return { category: 'quotation', start: slip.start, end: slip.end, original: slip.mark, explanation: quotationExplanation(slip.kind) };
+}
+
+function quotationExplanation(kind: QuotationSlipKind): string {
+  switch (kind) {
+    case 'unclosed':
+      return 'This quotation mark opens a quotation that is still open where its paragraph ends.'
+        + ' If the speech goes on, the next paragraph opens with a quotation mark; otherwise a closing mark is missing.';
+    case 'unclosed-before-next':
+      return 'This quotation mark opens a quotation that is still open where the next one opens: a closing mark is missing.';
+    case 'unopened':
+      return 'This closing quotation mark has no opening mark before it in its paragraph.';
+    case 'closing-mark-opens':
+      return 'This closing quotation mark (”) stands where a quotation opens; an opening mark (“) may be meant.';
+    case 'opening-mark-closes':
+      return 'This opening quotation mark (“) stands where a quotation closes; a closing mark (”) may be meant.';
+    default: {
+      const unknown: never = kind;
+      return unknown;
+    }
+  }
 }
 
 const CONVENTION_NAMES = { american: 'American', british: 'British', canadian: 'Canadian', australian: 'Australian' } as const;
