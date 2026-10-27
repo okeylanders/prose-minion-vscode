@@ -45,6 +45,7 @@ export function setup(
   const requests: CraftFlagsRunRequest[] = [];
   const pass: CraftFlagsPassPort = {
     estimate: jest.fn(async () => ESTIMATE),
+    refusesReasoning: jest.fn(async () => false),
     flag: jest.fn(async (request: CraftFlagsRunRequest) => {
       requests.push(request);
       if (request.stillCurrent && !request.stillCurrent()) {

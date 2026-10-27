@@ -49,3 +49,26 @@ OpenRouter's documentation was unreachable from the build container. The
 writer's acceptance pass runs one Proofread chunk at `off` and one at
 `light`, and reads the log line or sidecar: `reasoning.max_tokens`,
 `effort: 'none'` and `completion_tokens_details.reasoning_tokens`.
+
+## PR #181 review (Astra, 2026-10-27)
+
+**F-01 (P2): `off` must not reach a model that always reasons.** OpenRouter's
+catalog marks such a model `reasoning.mandatory: true`, and it rejects
+`effort: 'none'`; two selectable models are marked (Astra checked the live
+catalog; this container cannot reach it). Fixed:
+
+- `OpenRouterModels.getCachedAlwaysReasons` reads a live entry's boolean
+  `reasoning.mandatory`, else unknown; `liveCatalogReasoning` /
+  `refusesReasoningOff` (`services/draftEdit/DraftEditReasoningSupport.ts`)
+  ask it only at `off`.
+- Proofread reads its model once at the run's start, checks it, and pins it
+  on every chunk. Craft Flags checks the priced model before the
+  confirmation (`plan` → `reasoning-required`, no confirmation) and the
+  approved model again in `flag`, before any call.
+- A refusal sends nothing and names both settings to change. A catalog that
+  cannot say sends `off` as asked; the provider's answer stands.
+- Refusing, not mapping to a lowest effort, because it decides nothing for
+  the writer; the ADR records the alternative.
+
+The field names are now confirmed from OpenRouter's documentation by the
+review; the writer's acceptance pass still runs `off` and `light` once each.

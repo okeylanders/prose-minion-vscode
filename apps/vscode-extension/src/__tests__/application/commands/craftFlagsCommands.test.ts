@@ -196,6 +196,18 @@ describe('Craft Flags', () => {
     expect(changed.runner.run).not.toHaveBeenCalled();
   });
 
+  it('shows no confirmation, and says what to change, when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
+    const refused = setup({ active: editor(), plan: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    expect(await runCraftFlags(refused.host, refused.runner)).toEqual({ kind: 'ran', outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    expect(refused.host.confirm).not.toHaveBeenCalled();
+    expect(refused.runner.run).not.toHaveBeenCalled();
+    expect(refused.runner.release).toHaveBeenCalled();
+    expect(refused.host.showWarning).toHaveBeenCalledWith(
+      'Craft Flags sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
+        + 'Set proseMinion.craftFlags.reasoning to light or higher, or choose another model in proseMinion.craftModel.'
+    );
+  });
+
   it('offers Open Settings with no key, and Show Problems when flags were shown', async () => {
     const unconfigured = setup({ active: editor(), plan: { kind: 'unconfigured' }, choice: 'Open Settings' });
     await runCraftFlags(unconfigured.host, unconfigured.runner);

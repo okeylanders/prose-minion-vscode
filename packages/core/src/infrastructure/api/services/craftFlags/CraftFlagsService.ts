@@ -25,6 +25,11 @@
  * that changes while the writer reads the price never receives the chapter
  * (PR #177 F-01).
  *
+ * At reasoning `off`, `refusesReasoning` asks the catalog whether that model
+ * always reasons, before the writer is shown a price, and `flag` asks again
+ * before it sends anything: such a model is refused, never sent `off`, and
+ * never swapped for another (PR #181 F-01).
+ *
  * The writer's text travels only as a JSON string value, never as
  * instructions. Nothing here knows about documents or offsets: a passage in,
  * passage-relative findings out.
@@ -57,6 +62,7 @@ import {
   reportedThinking,
   type DraftEditInterruption
 } from '@services/draftEdit/DraftEditCalls';
+import { refusesReasoningOff, type ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
 import { decodeCraftFlagsReply, readCraftFlagsFrame } from '@services/craftFlags/CraftFlagsResponseCodec';
 import { sumTokenUsage } from '@/utils/tokenUsage';
 
@@ -150,6 +156,8 @@ export type CraftFlagsCallResult =
 
 export type CraftFlagsRunResult =
   | { readonly kind: 'unconfigured' }
+  /** The level was `off`, and the catalog marks the approved model as always reasoning: nothing was sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   /** The gesture's document closed, reopened or changed language before anything was sent. */
   | { readonly kind: 'ended' }
   | { readonly kind: 'cancelled'; readonly usage?: TokenUsage }
@@ -166,6 +174,7 @@ export class CraftFlagsService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
     private readonly prices: CraftFlagsPriceSource,
+    private readonly reasoningCatalog: ReasoningCatalog,
     private readonly recovery: RejectedModelResponseRecovery,
     private readonly recoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly log: LogSink
@@ -196,11 +205,24 @@ export class CraftFlagsService {
     };
   }
 
+  /**
+   * Whether a run at the request's level must refuse `model`, the one it would
+   * be approved for: only at `off`, on a model the catalog marks as always
+   * reasoning (PR #181 F-01).
+   */
+  refusesReasoning(request: Pick<CraftFlagsRunRequest, 'model' | 'reasoning' | 'label'>): Promise<boolean> {
+    return refusesReasoningOff(this.levelOf(request), request.model, this.reasoningCatalog, this.log, `[CraftFlags] ${request.label}`);
+  }
+
   async flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult> {
     await this.aiResourceManager.ensureInitialized();
     const engine = this.aiResourceManager.getEngine(DRAFT_EDIT_PASS_POLICIES.craft.modelScope);
     if (!engine) {
       return { kind: 'unconfigured' };
+    }
+    // Asked again of the approved model: the catalog may have been read since the plan asked.
+    if (await this.refusesReasoning(request)) {
+      return { kind: 'reasoning-required', model: request.model };
     }
     const systemMessages = await Promise.all(request.categories.map((category) => this.systemMessage(category)));
     // The calls below start in this same turn, so this answers for every one of them.

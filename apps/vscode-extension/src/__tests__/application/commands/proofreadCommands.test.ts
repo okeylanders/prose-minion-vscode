@@ -179,6 +179,17 @@ describe('proofreadAndFlag', () => {
     expect(host.executeCommand).toHaveBeenCalledWith(OPEN_SETTINGS_COMMAND);
   });
 
+  it('says what to change when reasoning off meets a model that always reasons (PR #181 F-01)', async () => {
+    const { host, runner } = setup({ active: editor(), outcome: { kind: 'reasoning-required', model: 'test/always-reasons' } });
+    await proofreadAndFlag(host, runner);
+
+    expect(host.showWarning).toHaveBeenCalledWith(
+      'Proofread sent nothing: the model catalog says test/always-reasons always reasons, so it cannot be asked for reasoning off. '
+        + 'Set proseMinion.proofread.reasoning to light or higher, or choose another model in proseMinion.proofreadModel.'
+    );
+    expect(host.executeCommand).not.toHaveBeenCalled();
+  });
+
   it('warns when the run was interrupted', async () => {
     const interrupted = { cause: 'provider' as const, message: 'OpenRouter is rate limiting requests.' };
     const { host, runner } = setup({ active: editor(), outcome: { ...COMPLETED, interrupted } });

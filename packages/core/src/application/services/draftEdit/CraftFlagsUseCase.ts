@@ -21,7 +21,9 @@
  * 2. `plan` and `run` ask the watch whether its lifetime is over (a close, a
  *    reopen or a language change) before they price and before each call is
  *    sent. A lifetime that ended shows no confirmation and sends nothing
- *    (`changed`): a URI and a version do not name a lifetime.
+ *    (`changed`): a URI and a version do not name a lifetime. At reasoning
+ *    `off`, `plan` also asks whether the model it prices always reasons, and
+ *    refuses it with no confirmation (`reasoning-required`, PR #181 F-01).
  * 3. `run` sends one call per category, in parallel, every one to the
  *    approved model (the only step that calls a model).
  * 4. It places each flag by its quote; drops one that touches a protected
@@ -70,6 +72,8 @@ import { continuitySections, withinOneSection } from '@/application/services/dra
 /** The Craft Flags pass as this use case needs it: a passage in, passage-relative flags out, and their price before. */
 export interface CraftFlagsPassPort {
   estimate(request: Pick<CraftFlagsRunRequest, 'passage' | 'categories' | 'breaks' | 'reasoning'>): Promise<CraftFlagsEstimate>;
+  /** Whether a run at the request's level must refuse the model it would be approved for (PR #181 F-01). */
+  refusesReasoning(request: Pick<CraftFlagsRunRequest, 'model' | 'reasoning' | 'label'>): Promise<boolean>;
   flag(request: CraftFlagsRunRequest): Promise<CraftFlagsRunResult>;
 }
 
@@ -87,6 +91,8 @@ export type CraftFlagsBegin =
 export type CraftFlagsRunPlan =
   /** No API key: the run would send nothing, so there is nothing to price. */
   | { readonly kind: 'unconfigured' }
+  /** Reasoning `off` on a model the catalog marks as always reasoning: no confirmation, nothing sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   /** The document closed, reopened or changed language while it was priced: no confirmation, nothing sent. */
   | { readonly kind: 'changed' }
   | {
@@ -187,6 +193,16 @@ export class CraftFlagsUseCase {
       this.release(gesture);
       return { kind: 'unconfigured' };
     }
+    const label = runLabel(held.target);
+    if (await this.craftPass.refusesReasoning({ model, label, ...(held.pass.reasoning ? { reasoning: held.pass.reasoning } : {}) })) {
+      this.release(gesture);
+      return { kind: 'reasoning-required', model };
+    }
+    // Asked again after the catalog was read, so a confirmation is never shown for a lifetime that just ended.
+    if (held.watch.ended()) {
+      this.release(gesture);
+      return { kind: 'changed' };
+    }
     return {
       kind: 'ready',
       words: held.prepared.words,
@@ -220,7 +236,7 @@ export class CraftFlagsUseCase {
     if (watch.ended()) {
       return { kind: 'changed' };
     }
-    const label = `${target.relativePath ?? 'untitled document'}${target.range ? ' (selection)' : ''}`;
+    const label = runLabel(target);
     const speech = findSpeechSpansOutsideProtected(target.text, held.protectedRegions);
     const result = await this.craftPass.flag({
       passage: prepared.masked.text,
@@ -234,6 +250,9 @@ export class CraftFlagsUseCase {
     });
     if (result.kind === 'unconfigured') {
       return { kind: 'unconfigured' };
+    }
+    if (result.kind === 'reasoning-required') {
+      return { kind: 'reasoning-required', model: result.model };
     }
     if (result.kind === 'ended') {
       this.log.appendLine(`[DraftEdit] Craft Flags ${label}: the document closed or changed language before the calls were sent; nothing sent`);
@@ -381,4 +400,9 @@ export class CraftFlagsUseCase {
 
 function byStart(a: DocumentAnnotation, b: DocumentAnnotation): number {
   return a.start - b.start || a.end - b.end;
+}
+
+/** Names the run in logs: a path, never the text. */
+function runLabel(target: DraftEditTarget): string {
+  return `${target.relativePath ?? 'untitled document'}${target.range ? ' (selection)' : ''}`;
 }

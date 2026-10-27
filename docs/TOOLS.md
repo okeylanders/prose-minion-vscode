@@ -143,8 +143,9 @@ scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
 - **Thinks as much as you set.** `proseMinion.proofread.reasoning` (`light`
   by default) gives a thinking model its budget on top of the reply's own
   room, so thinking does not cut a reply short; `off` asks it not to think.
-  A reply that thinking still cut off is set aside, and the Output panel
-  says how much went to thinking.
+  A model that always thinks cannot be asked for `off`: Proofread sends
+  nothing and says which setting to change. A reply that thinking still cut
+  off is set aside, and the Output panel says how much went to thinking.
 - **Catches a misspelled name.** Proofread reads the whole file for names
   (capitalized words used mid-sentence) and flags a rare spelling beside a
   common one: *Alcie*, once, beside *Alice*, three times or more. Its
@@ -216,7 +217,8 @@ follows the Workshop's model until you pick one.
   each category on or off. All four are on by default, and each is a
   request of its own, priced in the confirmation. How much a thinking model
   may think for each is `proseMinion.craftFlags.reasoning` (`standard` by
-  default), counted in the price.
+  default), counted in the price. At `off`, a model that always thinks is
+  refused before the confirmation, and nothing is sent.
 - **Options, never orders.** A note that tells you what to do, grades the
   writing, quotes, or states a count is not shown as written: a why becomes
   a plain description of the phrase's kind, and a suggestion is left out.

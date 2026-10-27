@@ -56,6 +56,7 @@ async function runWith(usages: Array<typeof REPORTED_USAGE | undefined>) {
   const service = new ProofreadService(
     manager,
     { loadPrompts: async () => 'SYSTEM' } as never,
+    { alwaysReasons: async () => undefined },
     { capture: jest.fn(async () => undefined) },
     { present: jest.fn(async () => undefined) },
     log as never

@@ -18,6 +18,7 @@ import {
   type CraftFlagsPriceSource
 } from '@services/craftFlags/CraftFlagsService';
 import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
+import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
 
 const USAGE = { promptTokens: 4000, completionTokens: 600, totalTokens: 4600, costUsd: 0.02 };
 const PASSAGE = 'But when the Rabbit actually took a watch out of its waistcoat-pocket, a chill ran down her spine.';
@@ -27,7 +28,7 @@ const replyOf = (...flags: unknown[]) =>
 
 type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
 
-function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string } = {}) {
+function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string; catalog?: ReasoningCatalog } = {}) {
   const queue = [...replies];
   const runInitial = jest.fn(async () => {
     const next = queue.shift();
@@ -49,8 +50,9 @@ function createService(replies: Reply[], options: { engine?: boolean; prices?: C
   const recovery = { capture: jest.fn(async () => ({ filePath: '/project/prose-minion/recovery/x.txt', toolName: 'craft-flags', storageScope: 'project' })) };
   const presenter = { present: jest.fn(async () => undefined) };
   const log = { appendLine: jest.fn() };
-  const service = new CraftFlagsService(manager as never, promptLoader as never, prices, recovery as never, presenter, log as never);
-  return { service, runInitial, engine, manager, promptLoader, prices, recovery, presenter, log };
+  const catalog = options.catalog ?? { alwaysReasons: jest.fn(async () => undefined) };
+  const service = new CraftFlagsService(manager as never, promptLoader as never, prices, catalog, recovery as never, presenter, log as never);
+  return { service, runInitial, engine, manager, catalog, promptLoader, prices, recovery, presenter, log };
 }
 
 const APPROVED = 'placeholder/approved-model';
@@ -292,5 +294,54 @@ describe('CraftFlagsService.estimate', () => {
     const unconfigured = await createService([], { engine: false }).service.estimate(request);
     expect(unconfigured).not.toHaveProperty('model');
     expect(unconfigured).not.toHaveProperty('usd');
+  });
+});
+
+describe('CraftFlagsService at reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  type SentOptions = { options: { model?: string; reasoning?: unknown } };
+  const sentOptions = (runInitial: jest.Mock) => (runInitial.mock.calls as unknown as Array<[SentOptions]>).map(([call]) => call.options);
+  const ALL = ['cliche', 'register', 'gesture', 'continuity'] as const;
+  const replies = () => ALL.map(() => ({ content: replyOf() }));
+
+  it('asks about the approved model at off, and at no other level', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model === APPROVED) };
+    const { service } = createService([], { catalog, model: 'placeholder/engine-model' });
+
+    await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', reasoning: 'off' })).resolves.toBe(true);
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
+    for (const reasoning of ['light', 'standard', 'deep', undefined] as const) {
+      await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', ...(reasoning ? { reasoning } : {}) })).resolves.toBe(false);
+    }
+    expect(catalog.alwaysReasons).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends none of the four calls to an approved model that always reasons', async () => {
+    const catalog = { alwaysReasons: jest.fn(async () => true) };
+    const stillCurrent = jest.fn(() => true);
+    const { service, runInitial, promptLoader } = createService(replies(), { catalog });
+    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off', stillCurrent });
+
+    expect(result).toEqual({ kind: 'reasoning-required', model: APPROVED });
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
+    expect(stillCurrent).not.toHaveBeenCalled();
+  });
+
+  it('sends all four calls at off to an approved model that can stop, though the engine\'s model now always reasons', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model !== APPROVED) };
+    const { service, runInitial } = createService(replies(), { catalog, model: 'placeholder/always-reasons' });
+    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
+
+    expect(result).toMatchObject({ kind: 'completed', calls: ALL.map(() => ({ kind: 'read' })) });
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
+    expect(sentOptions(runInitial)).toEqual(ALL.map(() => expect.objectContaining({ model: APPROVED, reasoning: { effort: 'none' } })));
+  });
+
+  it('sends off as asked when the catalog cannot say', async () => {
+    const { service, runInitial, log } = createService(replies(), { catalog: { alwaysReasons: async () => undefined } });
+    await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
+
+    expect(runInitial).toHaveBeenCalledTimes(ALL.length);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('cannot say whether placeholder/approved-model can stop reasoning'));
   });
 });

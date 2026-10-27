@@ -25,6 +25,7 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { PROOFREAD_PROMPTS, ProofreadService } from '@services/proofread/ProofreadService';
+import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
 import {
   RUNS_ISSUE,
   THE_THE_ISSUE,
@@ -37,7 +38,9 @@ const USAGE = { promptTokens: 100, completionTokens: 20, totalTokens: 120, costU
 
 type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
 
-function createService(replies: Reply[], options: { engine?: boolean } = {}) {
+const PROOFREAD_MODEL = 'placeholder/proofread-model';
+
+function createService(replies: Reply[], options: { engine?: boolean; catalog?: ReasoningCatalog; model?: string } = {}) {
   const queue = [...replies];
   const runInitial = jest.fn(async () => {
     const next = queue.shift();
@@ -49,16 +52,18 @@ function createService(replies: Reply[], options: { engine?: boolean } = {}) {
     }
     return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, ...next };
   });
+  const engine = { runInitial, getModel: jest.fn(() => options.model ?? PROOFREAD_MODEL) };
   const manager = {
     ensureInitialized: jest.fn(async () => undefined),
-    getEngine: jest.fn(() => (options.engine === false ? undefined : { runInitial }))
+    getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
   };
+  const catalog = options.catalog ?? { alwaysReasons: jest.fn(async () => undefined) };
   const promptLoader = { loadPrompts: jest.fn(async (files: string[]) => `SYSTEM ${files.join(' + ')}`) };
   const recovery = { capture: jest.fn(async () => ({ filePath: '/project/prose-minion/recovery/x.txt', toolName: 'proofread', storageScope: 'project' })) };
   const presenter = { present: jest.fn(async () => undefined) };
   const log = { appendLine: jest.fn() };
-  const service = new ProofreadService(manager as never, promptLoader as never, recovery as never, presenter, log as never);
-  return { service, runInitial, manager, promptLoader, recovery, presenter, log };
+  const service = new ProofreadService(manager as never, promptLoader as never, catalog, recovery as never, presenter, log as never);
+  return { service, runInitial, engine, manager, catalog, promptLoader, recovery, presenter, log };
 }
 
 const chunks = [ALICE_OPENING_SEEDED, ALICE_RABBIT_SEEDED];
@@ -281,5 +286,57 @@ describe('ProofreadService', () => {
 
     expect(result).toEqual({ kind: 'cancelled', usage: expect.objectContaining({ totalTokens: 120 }) });
     expect(runInitial).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ProofreadService at reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  type SentOptions = { options: { model?: string; reasoning?: unknown } };
+  const sentOptions = (runInitial: jest.Mock) => (runInitial.mock.calls as unknown as Array<[SentOptions]>).map(([call]) => call.options);
+  const saying = (answer: boolean | undefined) => ({ alwaysReasons: jest.fn(async (_model: string) => answer) });
+
+  it('refuses before anything is sent, naming the run\'s model', async () => {
+    const catalog = saying(true);
+    const { service, runInitial, promptLoader } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+    const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+    expect(result).toEqual({ kind: 'reasoning-required', model: PROOFREAD_MODEL });
+    expect(catalog.alwaysReasons).toHaveBeenCalledWith(PROOFREAD_MODEL);
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
+  });
+
+  it('sends off to every chunk on a model the catalog says can stop, and as asked when it cannot say', async () => {
+    for (const answer of [false, undefined]) {
+      const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog: saying(answer) });
+      const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+      expect(result.kind).toBe('completed');
+      expect(sentOptions(runInitial)).toEqual(chunks.map(() => expect.objectContaining({ model: PROOFREAD_MODEL, reasoning: { effort: 'none' } })));
+    }
+  });
+
+  it('never asks the catalog at any other level, the default included', async () => {
+    for (const reasoning of ['light', 'standard', 'deep', undefined] as const) {
+      const catalog = saying(true);
+      const { service, runInitial } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+      await service.proofread({ chunks, label: 'chapter-01.md', ...(reasoning ? { reasoning } : {}) });
+
+      expect(catalog.alwaysReasons).not.toHaveBeenCalled();
+      expect(runInitial).toHaveBeenCalledTimes(chunks.length);
+    }
+  });
+
+  it('sends every chunk to the model it checked, though the engine\'s model changes while the prompts load and between chunks', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model !== PROOFREAD_MODEL) };
+    const { service, runInitial, engine, promptLoader } = createService([{ content: replyOf() }, { content: replyOf() }], { catalog });
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      engine.getModel.mockReturnValue('placeholder/always-reasons');
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+    const result = await service.proofread({ chunks, label: 'chapter-01.md', reasoning: 'off' });
+
+    expect(result.kind).toBe('completed');
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[PROOFREAD_MODEL]]);
+    expect(sentOptions(runInitial).map((options) => options.model)).toEqual([PROOFREAD_MODEL, PROOFREAD_MODEL]);
   });
 });

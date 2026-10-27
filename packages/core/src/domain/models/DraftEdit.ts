@@ -151,6 +151,8 @@ export interface DraftEditFixReport {
 export type DraftEditOutcome =
   | { readonly kind: 'empty' }
   | { readonly kind: 'unconfigured' }
+  /** The reasoning level was `off`, and the model catalog marks the run's model as always reasoning, so nothing was sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   | { readonly kind: 'busy' }
   /** The document was no longer open at the version the gesture read, so nothing was sent. */
   | { readonly kind: 'changed' }

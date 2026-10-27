@@ -355,14 +355,14 @@
         "proseMinion.craftFlags.reasoning": {
           "type": "string",
           "enum": ["off", "light", "standard", "deep"],
-            "enumDescriptions": [
-              "No thinking: the model answers at once.",
-              "A little thinking: a budget of about 1,000 tokens.",
-              "Some thinking: a budget of about 4,000 tokens.",
-              "Much thinking: a budget of about 12,000 tokens; slower and costlier."
-            ],
+          "enumDescriptions": [
+            "No thinking: the model answers at once. Refused, with nothing sent, on a model that always thinks.",
+            "A little thinking: a budget of about 1,000 tokens.",
+            "Some thinking: a budget of about 4,000 tokens.",
+            "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+          ],
           "default": "standard",
-          "markdownDescription": "How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level, and some always think. Models that do not think ignore this.",
+          "markdownDescription": "How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Craft Flags then sends nothing and says so, and you choose a level or another model. Models that do not think ignore this.",
           "order": 5.75
         },
         "proseMinion.proofread.fixReview": {
@@ -405,14 +405,14 @@
         "proseMinion.proofread.reasoning": {
           "type": "string",
           "enum": ["off", "light", "standard", "deep"],
-            "enumDescriptions": [
-              "No thinking: the model answers at once.",
-              "A little thinking: a budget of about 1,000 tokens.",
-              "Some thinking: a budget of about 4,000 tokens.",
-              "Much thinking: a budget of about 12,000 tokens; slower and costlier."
-            ],
+          "enumDescriptions": [
+            "No thinking: the model answers at once. Refused, with nothing sent, on a model that always thinks.",
+            "A little thinking: a budget of about 1,000 tokens.",
+            "Some thinking: a budget of about 4,000 tokens.",
+            "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+          ],
           "default": "light",
-          "markdownDescription": "How much a thinking model may think before it proofreads each passage. The budget comes on top of the reply's own room, so thinking never cuts a reply short on a model that honors it. Models differ: some take only a rough level, and some always think. If a reply is still cut off, the Output panel says how much went to thinking. Models that do not think ignore this.",
+          "markdownDescription": "How much a thinking model may think before it proofreads each passage. The budget comes on top of the reply's own room, so thinking never cuts a reply short on a model that honors it. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Proofread then sends nothing and says so, and you choose a level or another model. If a reply is still cut off, the Output panel says how much went to thinking. Models that do not think ignore this.",
           "order": 5.55
         },
         "proseMinion.categoryModel": {

@@ -14,6 +14,11 @@
  *   refuse every later chunk too, so it stops the run the same way, with
  *   the provider's host-owned message.
  *
+ * Every chunk goes to the model the run read at its start (PR #181 F-01): a
+ * model chosen mid-run takes the next run. At reasoning `off`, that model is
+ * checked against the catalog first, and one that always reasons is refused
+ * before anything is sent (`refusesReasoningOff`).
+ *
  * The writer's text travels only as a JSON string value, never as
  * instructions. Nothing here knows about documents or offsets: chunks in,
  * chunk-relative findings out.
@@ -46,6 +51,7 @@ import {
   reportedThinking,
   type DraftEditInterruption
 } from '@services/draftEdit/DraftEditCalls';
+import { refusesReasoningOff, type ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
 import { DraftEditFrameError } from '@services/draftEdit/DraftEditResponseFrame';
 import { readProofreadFrame } from '@services/proofread/ProofreadResponseFrame';
 import { decodeProofreadReply } from '@services/proofread/ProofreadResponseCodec';
@@ -87,6 +93,8 @@ export type ProofreadInterruption = DraftEditInterruption;
 
 export type ProofreadRunResult =
   | { readonly kind: 'unconfigured' }
+  /** The level was `off`, and the catalog marks the run's model as always reasoning: nothing was sent (PR #181 F-01). */
+  | { readonly kind: 'reasoning-required'; readonly model: string }
   | { readonly kind: 'cancelled'; readonly usage?: TokenUsage }
   | {
       readonly kind: 'completed';
@@ -100,6 +108,7 @@ export class ProofreadService {
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
+    private readonly reasoningCatalog: ReasoningCatalog,
     private readonly recovery: RejectedModelResponseRecovery,
     private readonly recoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly log: LogSink
@@ -111,9 +120,15 @@ export class ProofreadService {
     if (!engine) {
       return { kind: 'unconfigured' };
     }
+    // Read once, before anything is awaited: the check below and every chunk name this model.
+    const model = engine.getModel();
+    const level = request.reasoning ?? DRAFT_EDIT_PASS_POLICIES.proofread.reasoning;
+    if (model && await refusesReasoningOff(level, model, this.reasoningCatalog, this.log, `[Proofread] ${request.label}`)) {
+      return { kind: 'reasoning-required', model };
+    }
     const systemMessage = await this.promptLoader.loadPrompts([...PROOFREAD_PROMPTS]);
     const presenter = presentOnce(this.recoveryPresenter);
-    const ask = reasoningRequest(request.reasoning ?? DRAFT_EDIT_PASS_POLICIES.proofread.reasoning, PROMPT_BUDGETS.proofread.outputTokens);
+    const ask = reasoningRequest(level, PROMPT_BUDGETS.proofread.outputTokens);
     const usages: Array<TokenUsage | undefined> = [];
     const answered: ExecutionResult[] = [];
     let interrupted: ProofreadInterruption | undefined;
@@ -125,7 +140,7 @@ export class ProofreadService {
       }
       let result: ExecutionResult;
       try {
-        result = await this.call(engine, ask, systemMessage, buildUserMessage(chunk, contextOf(request, chunk)), request.signal);
+        result = await this.call(engine, model, ask, systemMessage, buildUserMessage(chunk, contextOf(request, chunk)), request.signal);
       } catch (error) {
         interrupted ??= draftEditInterruptionOf(error, 'chunks');
         this.log.appendLine(`[Proofread] ${request.label}: chunk ${index + 1} not sent: ${interrupted.message}`);
@@ -155,13 +170,14 @@ export class ProofreadService {
     };
   }
 
-  private call(engine: AgentRunEngine, ask: ReasoningRequest, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
+  private call(engine: AgentRunEngine, model: string, ask: ReasoningRequest, systemMessage: string, userMessage: string, signal?: AbortSignal): Promise<ExecutionResult> {
     return engine.runInitial({
       toolName: 'proofread',
       systemMessage,
       userMessage,
       policy: AGENT_RUN_POLICIES.proofread,
       options: {
+        ...(model ? { model } : {}),
         temperature: 0,
         maxTokens: ask.maxTokens,
         reasoning: ask.reasoning,

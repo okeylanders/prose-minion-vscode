@@ -316,6 +316,9 @@ export class DraftEditUseCase {
     if (result.kind === 'unconfigured') {
       return { kind: 'unconfigured' };
     }
+    if (result.kind === 'reasoning-required') {
+      return { kind: 'reasoning-required', model: result.model };
+    }
     if (result.kind === 'cancelled') {
       return { kind: 'cancelled', ...(result.usage ? { usage: result.usage } : {}) };
     }

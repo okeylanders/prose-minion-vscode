@@ -162,6 +162,7 @@ function start(document: FakeDocument) {
       await pricing.promise;
       return ESTIMATE;
     }),
+    refusesReasoning: jest.fn(async () => false),
     flag: jest.fn(async (request: { passage: string; stillCurrent?: () => boolean }) => {
       if (request.stillCurrent && !request.stillCurrent()) {
         return { kind: 'ended' as const };

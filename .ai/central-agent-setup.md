@@ -1679,7 +1679,15 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   most of its output spent thinking is rejected in host words naming the
   setting (`draftEditCeilingRejection`), never salvaged. Every other model
   scope sends no reasoning setting; a level belongs to the request, never
-  the model.
+  the model. **`off` is never sent to a model that always reasons** (PR #181
+  F-01): at `off` alone, each pass asks the live catalog
+  (`ReasoningCatalog`, `refusesReasoningOff`) about the exact model it sends
+  to (Proofread's run model, pinned on every chunk; Craft Flags' priced model
+  before the confirmation, and its approved model again before the calls),
+  and a model marked `reasoning.mandatory` is refused with nothing sent
+  (`reasoning-required`), never given another level or model. A catalog that
+  cannot say sends `off` as asked. A new pass with a level asks the same
+  check.
 - **The prompt and its worked example move together.** `proofreadPrompt.test.ts`
   holds the prompt's category list to `PROOFREAD_CATEGORIES`, and reads the
   example's response through the production frame reader, codec, anchoring

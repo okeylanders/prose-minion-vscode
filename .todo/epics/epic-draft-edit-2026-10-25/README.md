@@ -236,3 +236,9 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   two passes only. See the ADR's "Amendment 2026-10-27: reasoning levels".
   To confirm in the writer's acceptance pass: OpenRouter's field names, by
   one Proofread chunk at `off` and one at `light`.
+- **2026-10-27. Reasoning levels reviewed** (PR #181). Astra's F-01: `off`
+  must never reach a model the catalog marks as always reasoning. Each pass
+  now asks the live catalog at `off` about the exact model it sends to, and
+  refuses a mandatory one with nothing sent; a catalog that cannot say sends
+  `off` as asked. OpenRouter's field names are confirmed from its
+  documentation.

@@ -16,6 +16,16 @@ export interface DraftEditSummary {
 
 export const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
+/**
+ * Why a pass sent nothing at reasoning `off` (PR #181 F-01): the model always
+ * reasons, so the writer raises the level or picks another model. Names the
+ * settings, never the text.
+ */
+export function reasoningRequiredMessage(pass: string, model: string, levelSetting: string, modelSetting: string): string {
+  return `${pass} sent nothing: the model catalog says ${model} always reasons, so it cannot be asked for reasoning off. `
+    + `Set ${levelSetting} to light or higher, or choose another model in ${modelSetting}.`;
+}
+
 /** One line for the writer; `documentLabel` is a path or "untitled document", never the text. */
 export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabel: string): DraftEditSummary {
   switch (outcome.kind) {
@@ -23,6 +33,8 @@ export function describeDraftEditOutcome(outcome: DraftEditOutcome, documentLabe
       return { level: 'info', message: `Nothing to proofread in ${documentLabel}.`, hasFlags: false };
     case 'unconfigured':
       return { level: 'warning', message: 'Proofread needs an OpenRouter API key.', hasFlags: false };
+    case 'reasoning-required':
+      return { level: 'warning', message: reasoningRequiredMessage('Proofread', outcome.model, 'proseMinion.proofread.reasoning', 'proseMinion.proofreadModel'), hasFlags: false };
     case 'busy':
       return { level: 'info', message: `Proofread is already running on ${documentLabel}.`, hasFlags: false };
     case 'changed':

@@ -436,3 +436,51 @@ describe('CraftFlagsUseCase: the gesture held from its first read (PR #177 F-02)
     expect(useCase.begin(target(), PASS).kind).toBe('gesture');
   });
 });
+
+describe('CraftFlagsUseCase: reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  const OFF = { ...PASS, reasoning: 'off' as const };
+
+  function begun(context: ReturnType<typeof setup>) {
+    const gesture = context.useCase.begin(context.target(), OFF);
+    if (gesture.kind !== 'gesture') {
+      throw new Error('no gesture');
+    }
+    return gesture.gesture;
+  }
+
+  it('asks about the model it priced, at the pass\'s level, before any confirmation', async () => {
+    const context = setup(CHAPTER, []);
+    await context.useCase.plan(begun(context));
+
+    expect(context.pass.refusesReasoning).toHaveBeenCalledWith({ model: MODEL, label: 'chapter-01.md', reasoning: 'off' });
+  });
+
+  it('refuses with no confirmation and nothing sent, naming the model, and ends the gesture', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.refusesReasoning as jest.Mock).mockResolvedValueOnce(true);
+
+    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'reasoning-required', model: MODEL });
+    expect(context.pass.flag).not.toHaveBeenCalled();
+    expect(context.useCase.begin(context.target(), OFF).kind).toBe('gesture');
+  });
+
+  it('shows no confirmation when the lifetime ends while the catalog is read', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.refusesReasoning as jest.Mock).mockImplementationOnce(async () => {
+      context.documents.close();
+      context.documents.open = true;
+      return false;
+    });
+
+    expect(await context.useCase.plan(begun(context))).toEqual({ kind: 'changed' });
+  });
+
+  it('says what the run says when the approved model is refused at the calls, and shows nothing', async () => {
+    const context = setup(CHAPTER, []);
+    (context.pass.flag as jest.Mock).mockResolvedValueOnce({ kind: 'reasoning-required', model: MODEL });
+    const gesture = begun(context);
+
+    expect(await context.useCase.run(gesture, { model: MODEL })).toEqual({ kind: 'reasoning-required', model: MODEL });
+    expect(context.annotations.shows).toEqual([]);
+  });
+});

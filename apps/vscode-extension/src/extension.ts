@@ -73,6 +73,7 @@ import {
   CraftFlagsService,
   CraftFlagsUseCase,
   liveCatalogPrices,
+  liveCatalogReasoning,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -460,10 +461,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // `proofread` scope, the applier (the one door to the writer's document),
   // and the one run per document that places its flags or makes its fixes.
   // Built here and used by the editor commands below; it joins CoreServices
-  // when a webview handler first needs it (the Workshop, Slice 4).
+  // when a webview handler first needs it (the Workshop, Slice 4). Both passes
+  // read the live catalog's reasoning marks at reasoning off (PR #181 F-01).
+  const reasoningCatalog = liveCatalogReasoning(outputChannel);
   const proofreadService = new ProofreadService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
+    reasoningCatalog,
     rejectedModelResponseRecovery,
     rejectedModelResponseRecoveryPresenter,
     outputChannel
@@ -482,6 +486,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       aiResourceManager,
       resourceLoader.getPromptLoader(),
       liveCatalogPrices(outputChannel),
+      reasoningCatalog,
       rejectedModelResponseRecovery,
       rejectedModelResponseRecoveryPresenter,
       outputChannel
