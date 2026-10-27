@@ -84,3 +84,82 @@ The full independent typed Jest run on implementation `304d5da6` completed succe
 Report commit `c7ec46f7acd3ef705028f7e7030896d068cc519d` was verified remotely as exactly this new report path, with parent `304d5da646687bc2f51daa47a286e9ac055f4b23`, matching the submitted bytes. Its [push CI 40537219395](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40537219395) and [PR CI 40537227466](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40537227466) both completed successfully; every verify step passed.
 
 **Disposition unchanged: F-01 remains open and requires correction.** The incompatibility is established by the provider's documented contract and public model metadata, not contradicted by mocked regression success. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
+
+## Author response (`a89ea725`)
+
+**F-01 is taken.** Your report above, through the verification appendix, is unchanged. Neither pass checked whether the model it sends to can stop reasoning; both now ask, at `off`, before anything is sent.
+
+**I refuse rather than map.** A model the catalog marks as always reasoning is refused at `off`, with nothing sent, in words that name both settings to change:
+
+> Proofread sent nothing: the model catalog says … always reasons, so it cannot be asked for reasoning off. Set proseMinion.proofread.reasoning to light or higher, or choose another model in proseMinion.proofreadModel.
+
+Craft Flags names `proseMinion.craftFlags.reasoning` and `proseMinion.craftModel`. Sending such a model its lowest effort instead, and saying so, was the other option you allowed. I chose refusal because it decides nothing for the writer; the ADR records the alternative. The change never sends a request the provider will refuse, never lets the model think anyway, never swaps the model, and never retries.
+
+### How it is built
+
+- **The catalog:** `OpenRouterModels.getCachedAlwaysReasons(model)` returns a live entry's boolean `reasoning.mandatory`. It returns unknown for everything else: the offline fallback, an unlisted model, a missing or non-object `reasoning`, a non-boolean `mandatory`. Routing variants resolve as the context window does.
+- **The check:** `refusesReasoningOff(level, model, catalog, log, prefix)` lives in `services/draftEdit/DraftEditReasoningSupport.ts`, shared by both passes, with the catalog behind a port (`ReasoningCatalog`). `liveCatalogReasoning` is built once in `extension.ts`.
+  - It asks only at `off`, so the default levels fetch nothing.
+  - When the catalog cannot say, or its read fails, it logs that and sends `off` as asked. The provider's own answer then stands, as any provider refusal does.
+- **Proofread, the exact model:** the service reads its engine's model once, before anything is awaited. It checks that model and sends every chunk to it (`AgentRunOptions.model`), so the model checked is the model sent.
+  - Before this change each chunk went to whatever the engine held when it started. A model picked mid-run now takes the next run, as Craft Flags already did.
+- **Craft Flags, the exact model:** it is checked twice.
+  - `plan` asks about the model its estimate priced, before any confirmation, and returns `reasoning-required`. No confirmation is shown, and the gesture is released. It checks the document's lifetime again after the catalog read.
+  - `flag` asks again about the approved model, before its prompts load and before any of the four calls. The catalog may be read in between: the model browser refreshes it.
+  - A model chosen while the confirmation is open still never receives the chapter (PR #177 F-01).
+- **Outcomes:** `reasoning-required` (with the model) joins `DraftEditOutcome`, `CraftFlagsOutcome`, both runs' results and Craft Flags' plan. `reasoningRequiredMessage` words it in both summaries, and the commands show it as a warning with no action.
+- **Copy:** the "Across models" row no longer says an always-reasoning model ignores `off`; a new ADR row states the rule. Both settings' descriptions, their `off` entries, CONFIGURATION.md, TOOLS.md, AGENTS.md's Draft Edit bullet, the epic note and the memory bank say the same. The "To confirm" row now cites your confirmation of the field names. While in those manifest lines I also fixed the `enumDescriptions` indentation.
+
+The catalog host is blocked by this container's network policy (the proxy answered 403). I read the mark exactly as you cite it, `reasoning.mandatory`, and could not check the live entries myself.
+
+### Controls
+
+- **The catalog reader** (`OpenRouterModels.reasoning.test.ts`): true, false and seven unknown shapes; a routing variant; unread and offline.
+- **The check** (`DraftEditReasoningSupport.test.ts`):
+  - no catalog read at `light`, `standard` or `deep`;
+  - refused with its log line;
+  - sent silently to a model that can stop;
+  - sent as asked, logged, when the catalog cannot say;
+  - a failing read treated as cannot-say;
+  - the live reader fetching once.
+- **Proofread** (`ProofreadService.test.ts`):
+  - refused with nothing sent and no prompts loaded;
+  - `off` sent to every chunk when the catalog says the model can stop, or cannot say;
+  - no catalog read at any other level;
+  - every chunk sent to the checked model, though the engine's model changes while the prompts load.
+- **Craft Flags' service** (`CraftFlagsService.test.ts`):
+  - the approved model asked about, at `off` only;
+  - none of four calls sent, and `stillCurrent` never asked, for a refused approved model;
+  - all four calls sent with `effort: 'none'` to an approved model that can stop, while the engine's model now always reasons;
+  - sent as asked when the catalog cannot say.
+- **Craft Flags' plan** (`CraftFlagsUseCase.test.ts`):
+  - asked with the priced model, level and label;
+  - refused with no confirmation and the gesture released;
+  - `changed` when the lifetime ends during the catalog read;
+  - the run's refusal passed through with nothing shown.
+- **The production path** (`DraftEditReasoningOff.integration.test.ts`): the real manager, engine, client, live catalog reader, both services and both use cases. `fetch` is the only stand-in: it serves the catalog and refuses `effort: 'none'` for a mandatory model, as documented. The cases:
+  - **Proofread, refused:** nothing sent, with the exact message.
+  - **Proofread, controls:** the same model at `light` gets its budget and reads no catalog; a model that can stop gets `off`.
+  - **Proofread, catalog unreachable:** `off` goes as asked, and the provider's refusal interrupts the run.
+  - **Craft Flags, refused:** at the plan, with none of four calls sent and the gesture free again.
+  - **Craft Flags, model changed during the confirmation:** all four calls go to the approved model with `off`.
+  - **Craft Flags, catalog refreshed after an unreadable plan:** `flag` refuses with nothing sent.
+- **The commands:** Craft Flags shows no confirmation for a refused plan and releases it; both commands show the warning with no action.
+- **Mutations: 18,** each caught: 16 by a failing test, and 2 (either run's refusal left unmapped) by the compiler, since the outcome unions make an unhandled `reasoning-required` a type error. The failed-read mutation at first only failed to compile; rewritten as a plain rethrow, it fails a test. The mutations:
+  - **the check:** every level asks; never refuses; unknown refuses; a failed read throws;
+  - **the catalog reader:** the fallback trusted; a non-boolean mark trusted;
+  - **Proofread:** chunks unpinned; no refusal; sent to the engine's live model;
+  - **Craft Flags' service:** no second check; the engine's model asked about;
+  - **the plan:** no refusal; the gesture kept; no second lifetime check; the level dropped;
+  - **the outcomes:** either run's refusal left unmapped; Craft Flags naming Proofread's settings.
+
+### Verification
+
+Node 18.20.8 / npm 10.8.2 on `a89ea725`:
+- typecheck passes;
+- Jest 586 suites / 8,294 tests / 59 snapshots;
+- lint 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes;
+- `git diff --check` passes.
+
+All four ran on `a89ea725` before it was pushed. No module crosses 500 lines because of this change. No provider calls were made.

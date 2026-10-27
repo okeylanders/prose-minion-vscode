@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-27, Draft Edit reasoning levels on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `b24bdd04` (Draft Edit Slice 3c part 4, PR #180), under Node 18):
-- 583 suites / 8,265 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-27, Draft Edit reasoning levels with PR #181 F-01's fix (`a89ea725`) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `b24bdd04` (Draft Edit Slice 3c part 4, PR #180), under Node 18):
+- 586 suites / 8,294 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
