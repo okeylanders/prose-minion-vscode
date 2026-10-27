@@ -1,0 +1,76 @@
+# PR Review — Draft Edit Slice 3c, part 3: gesture strain
+
+**Disposition: No blocking findings. Two optional P3 cleanup notes. Native VS Code and live-provider fixture acceptance remain separate and unrun.**
+
+**Author:** okeylanders · **PR:** [#179](https://github.com/okeylanders/prose-minion-vscode/pull/179) · **Reviewer:** Astra · **Reviewed:** 2026-10-27
+
+**Branches:** `claude/upbeat-galileo-y1l4yf` → `epic/lightbox`
+
+**Implementation head:** `d50bb1b28abd6195cc8e89f1a9e5ac5237f60be3`
+
+**Base and merge-base:** `98819b34889f89f1acae589e206ae67aa3b2d9e6`
+
+**Scope:** 28 files · +922 / −146 · implementation tree `1c6c994ec0a82cc5ff95c3a1de321318ab5797b5`
+
+## Summary
+
+Gesture strain joins the existing category-owned, flag-only path. Its four kinds, definitions, prompt, worked example, root-field allowlist, speech policy and manifest agree. The model judges the finding; host code alone attaches a live narration count. There is no new write path, replacement, preview or Gesture Playground coupling.
+
+The third parallel request preserves the approved model, per-category replies and rejection isolation. Stock-beat counts are lazy and cached by beat, use settled text and current speech/protected ranges, and do not consume or replace other categories' phrase counts. No source correction is required for integration into the epic. The notes below are small completeness/consistency improvements, not evidence that live editorial quality has been measured.
+
+## Nonblocking notes
+
+### N-01 · P3 · Polish the eye-roll forms and overlapping aliases
+
+**Location:** [`stockBeats.ts:56–59,87`](../../packages/core/src/utils/craftFlags/stockBeats.ts#L56).
+
+The compound alternative accepts `eye-roll`, `eye-rolls` and `eye-rolling`, but not the ordinary past tense `eye-rolled`. For `She eye-rolled. Later she rolled her eyes.`, a gesture flag on `rolled her eyes` receives **1**, so no recurrence line appears. Including `ed` in that alternative would make the listed compound consistent with the simple verb's forms. The closed-list limitation is explicit; this is completeness polish, not a claim that every paraphrase must be recognized.
+
+A second, uncommon edge comes from reusing overlapping *phrase* matching for aliases of the *same beat*: `An eye roll of her eyes.` matches both `eye roll` and `roll of her eyes`, producing **“Eye rolls appear 2 times in this document.”** from one written gesture. If tightening this, coalesce overlapping same-beat matches without changing the intentionally overlapping phrase counter (`never say never` in `never say never say never`). Add message-level controls for both cases. Protected occurrences remain excluded correctly.
+
+### N-02 · P3 · Keep the host fallback inside its own phrasing fence
+
+**Locations:** [`CraftFlag.ts:60–64`](../../packages/core/src/domain/models/CraftFlag.ts#L60), [`CraftFlagsResponseCodec.ts:74–77`](../../packages/core/src/infrastructure/api/services/craftFlags/CraftFlagsResponseCodec.ts#L74).
+
+`craftFlagHostWhy('complicated')` returns `Choreography the reader has to stop and assemble.` The shared fence returns `forbidden` because it contains `has to`; a withheld model why is therefore replaced with text that the same fence would withhold. This wording is plainly descriptive, not an instruction to the writer, so the displayed note is not harmful and this is not a blocker. A small rephrasing of the shared definition/prompt, or an explicit documented distinction for host-owned fallback text, plus a table-driven fallback test would remove the inconsistency without weakening model-note screening.
+
+## Architecture and behavioral review
+
+- **One category owner:** the canonical category list, kinds/definitions, `CRAFT_FLAG_LEAVES_SPEECH`, `ROOT_FIELDS`, prompt map and manifest all include gesture. The existing normalizer captures known ids once in canonical order; existing category preferences are not rewritten. The shared prompt's selective-flag exception is appropriate for thin beats and does not change cliché/register policy.
+- **Response boundary:** only gesture's four kinds are accepted; sibling kinds are malformed rather than guessed. A gesture reply's `register`, model-supplied beat counts and `replacement` are ignored and counted. Quotes retain their original ceiling; malformed fields, why/suggestion screening and host fallback remain fail-closed. Host counts cannot be spoofed by reply fields.
+- **Request isolation:** all six completion orders produce the same three annotations and summed usage, with no intermediate publication. A rejected, malformed or failed request for any one category leaves usable siblings intact. Three rejected replies yield three captures but one recovery presentation. Cancellation publishes no partial annotations. All three requests retain the model priced before approval, even if the engine's current model changes.
+- **Lifetime and placement:** closing during gesture-prompt preparation dispatches no category. Markdown/plaintext, whole-file, selected and over-ceiling selection-only runs preserve scope and offsets. Counts still describe the whole live document when a long document's selection alone was sent. Newly inserted speech or protected syntax suppresses the flag/count; a touched finding is stale; a closed document shows nothing. Selected runs preserve only still-current earlier flags outside their original selection. Every controlled run performs zero writes and releases its watch/ownership.
+- **Counts:** all ten beat families are closed lexical patterns, not inferred lemmas or model totals. A gesture naming multiple beats gets each once in quote order, without a second phrase line; singleton counts remain silent. Other categories and gesture flags with no listed beat retain phrase counting. Repeated cached requests for 10,000 nods require exactly 10,001 regex executions, not a scan per flag. Supplementary-Unicode and protected-range controls preserve forward progress and exclusions.
+- **Layering:** core gains no VS Code import, applier access, dependency or recovery protocol. The Workshop guard's additions are four exact collision tokens rather than a broad gesture exemption. No new oversized feature module is introduced; pre-existing architecture-test size is not new production debt.
+
+## Independent verification
+
+Read the relevant `AGENTS.md`/`.ai/central-agent-setup.md` instructions, Draft Edit ADR and Slice 3c decisions, changed production/tests, adjacent run/codec/placement contracts and earlier review dispositions. No repository `.agents/skills` directory or dedicated review template is present; this follows the existing `docs/pr-reviews` format.
+
+The isolated cloud worktree matches the exact implementation head/tree. Retained dependency files were reused after matching lockfile SHA-256 `65f6ddd8094762e35196e095271b73ee4876237664b2ddc5034b12e6969074ac`; workspace aliases resolve this checkout. Checks use **Node 18.20.8 / npm 10.8.2**.
+
+| Check | Independent result |
+| --- | --- |
+| `npm run typecheck` | Pass: core, webview and adapter |
+| `npm run lint` | Pass: 0 errors / 1,133 existing warnings |
+| `npm run build`, including `verify:bundle` | Pass; three existing webpack size/performance warnings |
+| Full typed repository Jest (`--runInBand`) | Pass: **576 suites / 8,117 tests / 59 snapshots**, 574.767 s, exit 0 |
+| `git diff --check` | Pass |
+| Exact implementation-head push CI | [Success, 40496928359](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40496928359); every verify step passed |
+| Exact implementation-head PR CI | [Success, 40497000923](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40497000923); every verify step passed |
+
+Additional independent scratch probes, separate from repository test counts:
+
+- **60** production frame/codec/use-case cases covering all four kinds, both languages, scope/selection, live edits, protected/speech exclusions, ignored model fields, fallback behavior and three worked-example frames. The example yields four anchored flags, exactly two nod-count messages and no dropped/withheld entries. These probes also reproduce N-02 rather than treating the fallback as fence-clean.
+- **18** three-category service/use-case scenarios covering all completion orders, consented model, partial failures, recovery presentation, cancellation and held-prompt lifetime.
+- Independent count/message probes reproducing N-01, checking protected overlapping aliases, supplementary-Unicode progress and the 10,000-nod/500-request cache bound.
+
+These are controlled-host/source checks, not native VS Code or live-model acceptance. Evidence/logs remain outside the repository at `../pr179-review-evidence/`. Only this report is published: no source/test/dependency changes, prior-report rewrites, formal GitHub reviews/comments, connected-Mac access, merges or provider calls by the reviewer.
+
+## Integration and remaining acceptance
+
+**No blocking implementation finding on `d50bb1b2`.** Check the exact report-head CI after publication; subsequent functional changes require delta re-review. N-01 and N-02 are optional cleanup, not merge holds.
+
+The ADR explicitly enables all three categories provisionally; the recorded fixture run still decides shipped defaults. Native confirmation/Problems UI and live seeded-fixture hit/false-positive results remain unverified. The worked example proves framing, anchoring, speech exclusion and counts, not whether a live model reliably distinguishes deliberate figures, thin beats or complicated choreography. No paid calls were made or authorized by this review.
+
+PR #172's narrowly accepted native Refactor Preview lifetime race remains unchanged and not fixed. Craft Flags has no preview/write path, and that acceptance does not waive pre-call ownership or model-consent checks.
