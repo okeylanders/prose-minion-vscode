@@ -1,6 +1,6 @@
 # PR Review — Draft Edit Slice 3c, part 4: continuity
 
-**Latest disposition — second re-review of `20358619`: F-01 remains open (indentation before protected syntax); F-02, F-03, N-01 and N-02 resolved. See the second re-review appendix.**
+**Latest disposition — final re-review of `722724f1` (author-response head `aba2c006`): No remaining blocking findings. F-01, F-02, F-03, N-01 and N-02 resolved. Full Node 18 verification passes; native/live acceptance remains separate.**
 
 **Disposition: Changes requested — three P2 continuity-boundary findings. Two nonblocking P3 hardening notes.**
 
@@ -350,3 +350,37 @@ The ADR's F-01 note, the slice doc, AGENTS.md's continuity bullet and the memory
 ### Verification
 
 Node 18.20.8 / npm 10.8.2 on `722724f1`: typecheck passes; Jest 580 suites / 8,223 tests / 59 snapshots, up 24 tests; lint 0 errors / 1,133 warnings; build, with `verify:bundle`, passes; `git diff --check` passes. Typecheck, lint and the 133 affected suites (2,080 tests) ran before the push, the full Jest and build just after it. I committed the fix locally before taking your report commit, then rebased it, unpushed, onto `e5279344`; its source tree is the one those checks ran on. No provider calls were made.
+
+## Final re-review — `722724f1`
+
+**Disposition: No remaining blocking findings. F-01, F-02, F-03, N-01 and N-02 are resolved. Native VS Code/live-provider acceptance remains separate.**
+
+The final delta separates each syntax line's physical start from its first non-space/tab character. Protected eligibility uses the latter; the section offset keeps the former. This closes the indentation bypass without moving section addresses, discarding genuine inline-code/comment titles, or losing the ordered-region work bound.
+
+### Resolution verification
+
+- **F-01 closed:** protected candidates are excluded before signal/heading-level selection. Every line that establishes setext syntax is checked, including the underline and protected text before it. Spaces/tabs cannot make protected syntax eligible. Original fake-heading, protected-underline, protected-text-only variation and all 24 formerly failing indentation cases now send the real break and drop the cross-scene pair. Genuine ATX/setext headings with inline code/comments after ordinary title text remain recognized.
+- **F-02 closed:** settled live sections are re-read against current protection and applied to the moved pair, without re-anchoring. Added/replaced scene breaks, headings and chapter lines suppress the pair; safe edits, protected fake markers and breaks outside it retain it. Selection controls pass.
+- **F-03 closed:** the same binary-search predicate checks the complete pair through the later quote's end during gesture placement and settlement. A boundary inside either quote excludes it; broad quotes entirely inside one section remain valid. The gesture gate remains independently effective when later text changes the winning section signal.
+- **N-01 closed:** the enum map rejects inherited object names as malformed while retaining `earlier`, `later`, `neither`, null and absent behavior.
+- **N-02 closed:** region cursors preserve linear work and category/no-pair short circuits. The 500 / 1,000 / 2,000-heading detector probes remain at 1,499 / 2,999 / 5,999 protected-boundary reads; complete preparation with two protected spans per heading remains at 6,987 / 13,987 / 27,987. Additional multiline-setext counted controls scale 640 → 2,560 reads for 4× input.
+
+Independent scratch checks on the final production source include **11,430** boundary/matrix/oracle checks, **100,000** section-span oracle cases, **10,000** selection/clipping/masking cases, **10,000** comparisons against the unchanged raw Lightbox detector, and the **39** four-category orchestration scenarios. These are separate from repository test totals and are controlled-host/source checks, not live editorial or native UI acceptance.
+
+### Final aggregate verification
+
+Node **18.20.8**, npm **10.8.2**, exact implementation `722724f1255db500441ae460e9735bd1420e46d3` (tree `f3631a549554290c8cf933e7ac340e889e15490b`):
+
+| Check | Result |
+| --- | --- |
+| Full typed Jest (`--runInBand`) | Pass: **580 suites / 8,223 tests / 59 snapshots**, **610.289 s**, exit 0 |
+| Typecheck | Pass: core, webview and adapter |
+| Lint | Pass: 0 errors / 1,133 warnings |
+| Production build and `verify:bundle` | Pass; three existing webpack size/performance warnings |
+| `git diff --check` | Pass |
+
+The previous independent full run on `20358619` also finished successfully: **580 suites / 8,199 tests / 59 snapshots**, **631.58 s**. Its report head `e5279344` passed [PR CI 40522395812](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40522395812) and [push CI 40522386369](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40522386369), every verify step successful.
+
+The current author-response head `aba2c0064f1be34cd67772e6696d01cab8959a3e` changes only the preserved response and test inventory; production source, tests and dependencies are byte-identical to the tested implementation. Its [PR CI 40525904362](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40525904362) and [push CI 40525897662](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40525897662) both completed successfully, with every verify step passing.
+
+All previous findings, re-review notes and author responses above are retained as history. Evidence for this pass is in `../pr180-indent-review-evidence/`. Only this report is published; no reviewer source fixes, test/dependency commits, formal GitHub review/comment, merges or provider calls. The exact report-head CI will be checked after publication. **Implementation review is clear; native Problems/hover navigation and the writer's live seeded-fixture acceptance remain unrun, not implied by these tests.**
