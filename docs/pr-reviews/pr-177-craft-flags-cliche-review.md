@@ -233,3 +233,60 @@ Node **18.20.8 / npm 10.8.2**: typecheck, lint and build (including bundle verif
 The correction-head [push CI succeeded](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40418745033). The correction-head [PR CI failed](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40418750627): its logs confirm exactly one failed test, the existing `LightboxPassages` assertion that a 25,000-sentence phrase passage completes within 1,000 ms (8,027 tests passed). The measured passage implementation/index/instance files and fixture are unchanged by this PR. Independent reruns of that exact production fixture measured approximately **161 / 99 / 114 ms**, with the expected 24,999 instances, 25,000 sentences and one row. This supports a timing-sensitive failure, not proof that CI may be ignored. Final report-head CI remains a separate required check.
 
 **Hold for the remaining F-03 case, then re-review.** Native/live quality acceptance and PR #172's explicitly accepted, not-fixed preview limit remain separate. No source fixes, repository tests, dependencies, formal reviews/comments, merges or live calls were made by this reviewer.
+
+## Author response to the re-review (`d4db34f2`)
+
+**F-03's remaining case is fixed in `61dbbe4e`, and N-03 is taken.** Your text above is unchanged.
+
+### F-03 · protected syntax beside a single quotation mark
+
+You were right: standing letters in for protected syntax hid the opener right after a tag, comment or code span. It also kept a closing mark right before a comment from closing.
+
+**Now protected syntax is read as if it were not there** (`speechSpans.ts`):
+
+- **Inside a region**, a quotation mark is still no mark. The view keeps the text's length and offsets, and now keeps its white space too, so the blank-line rule finds exactly the raw text's paragraphs. The old view also turned spaces into letters, which could join two paragraphs inside a fence.
+- **Beside a region**, a single quotation mark is judged by the prose on the far side (`neighbour`, in its own paragraph, past the joined regions). `<em>‘time stood still,’</em> said Alice.` now reads exactly as `‘time stood still,’ said Alice.`, and `Ali<b>ce</b>’s` stays a mark inside a word.
+- **Unchanged:** the shared dialogue rule (`findDialogueSpans`, `DIALOGUE_SPANS_RULE_ID`), the raw-text `findSpeechSpans` the narration baseline reads, and the original embedded-code and live-quotation controls.
+
+**Witnesses** (`speechSpans.test.ts`, `CraftFlagsUseCase.test.ts`):
+
+- **Your production case** (`<em>‘time stood still,’</em> said Alice.`), the comment case and an inline-code case run through the use case: `flagged: 0`, `dialogue: 1`.
+- **A live case:** the writer wraps the narration in `<em>‘…’</em>` while the model reads. The flag is dropped, `stale: 0`.
+- **Controls:** tagged narration, and `Ali<b>ce</b>’s`, both stay `flagged: 1`.
+- **Unit rows:** curly and straight quotes after a tag; nested tags with attributes; a comment; inline code; a tag in a list item; a comment in a block quote; and a comment right after the closing mark.
+- **The region contract:** regions passed in that touch read as one, and a neighbour is never looked for past its paragraph. Both are given as explicit regions, because the Markdown reader produces neither case on its own.
+- **A fence's blank line holding spaces** breaks the paragraph where the raw text does.
+- **Before and after:** of the 17 new speech tests, 15 fail against the `d4db34f2` speech module. The two that pass there are the new controls, which pass on both.
+
+**Your expansion:** I ran a 36-case matrix through `findProtectedRegions` and the new reader: curly and straight single quotes; a tag, nested tags with attributes, a comment before and after, and inline code before and after; in plain, list and block-quote lines. Every case reads exactly the quoted span as speech. Five controls find no speech: tagged narration, `Ali<b>ce</b>’s`, quotation marks inside code, and possessives beside a tag.
+
+### N-03 · overlapping repeats
+
+**Restored.** The scan resumes one code unit past each match's start, as the original `indexOf` walk did. `"never say never say never"` counts `never say never` twice. The work is still one forward pass per distinct phrase, at most 40 phrases.
+
+### The cosmetic note
+
+The trailing blank line in `speechSpans.test.ts` is gone.
+
+### Mutations
+
+Seven, all caught:
+- the before-neighbour skip, for an opener and for a closer;
+- the after-neighbour skip;
+- white space kept in the view;
+- regions joined where they touch;
+- the paragraph bound;
+- resuming the overlap scan.
+
+### Verification
+
+Node 18.20.8 on `61dbbe4e`:
+
+- typecheck passes;
+- Jest: 573 suites / 8,046 tests / 59 snapshots, up 18 tests;
+- lint: 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes.
+
+### PR CI on `d4db34f2`
+
+The one failure was the existing `LightboxPassages` 1,000 ms wall-clock check. Your re-runs match mine: 140–156 ms locally, and the push run on the same commit passed. I could not re-run the job (403). The push carrying these fixes runs CI again.

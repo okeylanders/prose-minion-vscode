@@ -88,6 +88,22 @@ note
 - Inventory after the fixes: 573 suites / 8,028 tests / 59 snapshots. 18
   mutations: 16 fail tests; the 2 that survive are redundant guards.
 
+## PR #177 re-review (Astra, `d4db34f2`): F-01 and F-02 resolved; F-03's last case fixed in `61dbbe4e`
+
+- **F-03, still open at re-review:** the protected-aware view stood letters
+  in for protected syntax, so a single opener right after a tag, comment or
+  code span read as an apostrophe. Now a protected region is read as if
+  absent: marks inside it are none, a single mark beside it is judged by the
+  prose past it within its paragraph, and the view keeps white space so its
+  paragraphs are the raw text's. 36 cases (two quote styles, six placements,
+  three containers) read the speech exactly; controls find none.
+- **N-03 (P3), taken:** overlapping repeats count again.
+- **PR CI on `d4db34f2`:** the existing `LightboxPassages` 1,000 ms
+  wall-clock check failed once (140–156 ms locally; the push run on the same
+  commit passed). Re-running from the session is refused (403).
+- Inventory: 573 suites / 8,046 tests / 59 snapshots. Seven mutations, all
+  caught.
+
 ## Follow-ups
 
 - The writer's fixture run for cliché: hits and false positives in the

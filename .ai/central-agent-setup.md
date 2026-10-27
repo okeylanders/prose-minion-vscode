@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review fixes (F-01, F-02, F-03, N-01, N-02) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
-- 573 suites / 8,028 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review and re-review fixes (F-01, F-02, F-03, N-01, N-02, N-03) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
+- 573 suites / 8,046 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1709,13 +1709,17 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     `findSpeechSpansOutsideProtected` (`utils/draftEdit/speechSpans.ts`): the
     shared double-quote rule plus single-quoted speech, joined, read with
     protected syntax set aside, in the gesture's text and again in the
-    settled live text (PR #177 F-03). The narration baseline reads
-    `findSpeechSpans` on the raw text, as before.
+    settled live text (PR #177 F-03). Set aside means read as if absent: a
+    mark inside protected syntax is no mark, and a single mark beside it is
+    judged by the prose past it, never by the markup or a stand-in letter
+    (the re-review). The narration baseline reads `findSpeechSpans` on the
+    raw text, as before.
   - **Repeats are counted by host code** (`phraseRepeats`) in the live text
     once the run settles, and only when there is a flag: one scan per
     distinct phrase, at most `PHRASE_REPEATS.phrases` (PR #177 N-01, N-02).
-    Case, apostrophes, dashes and space are folded, at word boundaries.
-    Inflected forms count apart: the stated limit.
+    Case, apostrophes, dashes and space are folded, at word boundaries;
+    overlapping occurrences count (N-03). Inflected forms count apart: the
+    stated limit.
 
 ### Editor Menus and Command Titles
 

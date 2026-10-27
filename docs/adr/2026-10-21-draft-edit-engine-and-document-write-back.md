@@ -1143,13 +1143,18 @@ command is the opt-in. When a second category joins,
   gesture is released however the command ends. An ordinary edit while the
   price is read is followed, as an edit while the model reads is.
 - **F-03: speech is read with protected syntax set aside**
-  (`findSpeechSpansOutsideProtected`): every character of a protected region
-  but a line break reads as a letter, so a quotation mark in inline code
-  neither opens nor closes speech, and offsets stay the text's own. It is
-  read in the gesture's text before overlaps are weighed, and again in the
-  settled live text (`outsideSpeech`), so words put in quotation marks during
-  the run are left alone and counted as `dialogue`. The shared dialogue rule
-  and the narration baseline are unchanged.
+  (`findSpeechSpansOutsideProtected`), as if the protected region were not
+  there. A quotation mark inside one neither opens nor closes speech: the
+  shared rules read a view in which each of its characters but white space
+  is a letter, so offsets, and the paragraphs the blank-line rule finds, stay
+  the text's own. A single quotation mark beside one is judged by the prose
+  on its far side, never by the view's letters or the markup's characters,
+  so `<em>‘Late,’</em> said Alice` reads as `‘Late,’ said Alice` does (the
+  re-review: letters alone hid an opener right after a tag, comment or code
+  span). It is read in the gesture's text before overlaps are weighed, and
+  again in the settled live text (`outsideSpeech`), so words put in
+  quotation marks during the run are left alone and counted as `dialogue`.
+  The shared dialogue rule and the narration baseline are unchanged.
 - **N-01: repeats are counted in the live text,** after the run settles.
 - **N-02: repeats are counted only when there is a flag,** one regular
   expression scan of the text per distinct phrase, at most
@@ -1157,6 +1162,9 @@ command is the opt-in. When a second category joins,
   count. Measured on Node 18: a 250,000-word manuscript with a 36-character
   selection reached the model stub in about 0.1 s (2.86 s before), and 40
   phrases over 1.2 million characters were counted in 87 ms.
+- **N-03 (re-review): occurrences that overlap count,** as they did before
+  the scan changed: "never say never" stands twice in "never say never say
+  never".
 
 ## Out of scope (follow-ups)
 
