@@ -82,3 +82,16 @@ The new module is `application/services/draftEdit/craftFlagsSections.ts`.
 Mutations: 14, all caught. One survived at first: the live recheck hid
 the placement check. A case where a heading added after the pair makes the
 live text read no break now holds the placement check on its own.
+
+## Re-review (PR #180, Astra, 2026-10-27)
+
+F-02, F-03, N-01 and N-02 resolved. F-01 stayed open for one case. Prose
+over a fenced block's `---` in the same paragraph read as a setext heading,
+its underline protected, and hid the real break. The detector's `ignored`
+predicate is now asked with every line a marker's syntax spans (a setext
+heading's text lines and its underline); Craft Flags leaves out a marker
+any of whose lines starts inside protected text. Controls: backtick, tilde
+and HTML-comment wrappers, a protected-text-only variation, CRLF, a genuine
+setext title with code, and through the use case. Four new mutations, all
+caught: one survived at first (the underline alone checked) until a
+protected-first-line case pinned it.

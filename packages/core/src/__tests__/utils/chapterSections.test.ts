@@ -70,6 +70,48 @@ describe('chapterSectionStarts', () => {
       .toEqual([text.indexOf('## The Pool'), text.indexOf('## A Caucus')]);
   });
 
+  describe('a setext heading whose underline is a protected block\'s line (PR #180 re-review)', () => {
+    const caption = (wrapper: string, newline = '\n') =>
+      ['Opening words.', `A caption${newline}${wrapper}`, 'Alice had pink eyes.', '* * *', 'Alice had blue eyes.'].join(`${newline}${newline}`);
+
+    it.each([
+      ['a backtick fence', '```\n---\n```'],
+      ['a tilde fence', '~~~\n---\n~~~'],
+      ['an HTML comment', '<!--\n---\n-->']
+    ])('never lets prose over %s\'s underline hide the break', (_name, wrapper) => {
+      const text = caption(wrapper);
+      // Read raw, as the Lightbox reads a chapter, the caption is a heading.
+      expect(chapterSectionStarts(text)).toEqual([text.indexOf('A caption')]);
+      expect(chapterSectionStarts(text, findProtectedRegions(text, 'markdown'))).toEqual([text.indexOf('* * *')]);
+    });
+
+    it('reads the same break when only the protected line changes, and with CRLF line ends', () => {
+      const plain = caption('```\nnot an underline\n```');
+      expect(chapterSectionStarts(plain, findProtectedRegions(plain, 'markdown'))).toEqual([plain.indexOf('* * *')]);
+      const crlf = caption('```\r\n---\r\n```', '\r\n');
+      expect(chapterSectionStarts(crlf, findProtectedRegions(crlf, 'markdown'))).toEqual([crlf.indexOf('* * *')]);
+    });
+
+    it('keeps a genuine setext heading whose title holds code', () => {
+      const text = [BANK, 'The `hidden` hall\n=================', HOLE].join('\n\n');
+      expect(chapterSectionStarts(text, findProtectedRegions(text, 'markdown'))).toEqual([text.indexOf('The `hidden`')]);
+    });
+
+    it('leaves out a setext heading whose paragraph opens with protected text, the paragraph model\'s stated limit', () => {
+      const text = [BANK, '<!-- a note -->\nThe Pool of Tears\n=================', HOLE, '* * *', HALL].join('\n\n');
+      expect(chapterSectionStarts(text, findProtectedRegions(text, 'markdown'))).toEqual([text.indexOf('* * *')]);
+    });
+
+    it('asks about every line a setext heading\'s syntax spans, and one line for any other marker', () => {
+      const asked: Array<[number, number, number]> = [];
+      detectChapterSections([BANK, 'Down the\nRabbit-Hole\n===', '* * *', '## The Pool of Tears'], (paragraph, first, last) => {
+        asked.push([paragraph, first, last]);
+        return false;
+      });
+      expect(asked).toEqual([[2, 0, 2], [3, 0, 0], [4, 0, 0]]);
+    });
+  });
+
   it('gives the line of a marker that follows front matter\'s closing line in its paragraph, which is outside the front matter', () => {
     const text = `---\ntitle: Alice\n\nauthor: Carroll\n---\n# Down the Rabbit-Hole\n${BANK}\n\n# The Pool of Tears\n\n${HOLE}`;
     const frontMatter = { start: 0, end: text.indexOf('---', 3) + 3 };

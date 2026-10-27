@@ -35,10 +35,13 @@
  * dividing the chapter, there are no sections, and the lane says so.
  *
  * **Markers that are not markers** (Draft Edit, PR #180 F-01). A caller may
- * name markers to leave out (`ignored`): Craft Flags leaves out a marker that
- * starts inside protected text, a heading in a fenced code block. A marker
- * left out marks nothing and fires nothing, and the signal and heading level
- * are chosen from the rest, so protected text never decides which of the
+ * name markers to leave out (`ignored`), asked with every line a marker's
+ * syntax spans: its one line, or a setext heading's text lines and its
+ * underline. Craft Flags leaves out a marker any of whose lines starts inside
+ * protected text: a heading in a fenced code block, or prose over an
+ * underline that is a fenced block's line (the re-review). A marker left out
+ * marks nothing and fires nothing, and the signal and heading level are
+ * chosen from the rest, so protected text never decides which of the
  * chapter's own markers divide it. Paragraph numbers do not change. The
  * Lightbox names none, and reads every marker as before.
  *
@@ -57,7 +60,10 @@
  * before it) cannot split that paragraph: the paragraph model is the
  * board's unit, so a heading or break line under prose without a blank line
  * marks the paragraph it opens only when it is that paragraph's first line
- * (a setext heading always is), or follows front matter's closing line.
+ * (a setext heading always is), or follows front matter's closing line. So
+ * where a caller leaves out markers in protected text, a setext heading
+ * directly under a comment or a code block, in the same paragraph, is left
+ * out with it.
  * Other manuscript breaks (`⁂`, a centered `o`, blank-line runs) are not
  * detected, and neither are "Part", "Book", "Prologue" or "Epilogue" lines.
  * Setext underlines shorter than three characters, which CommonMark
@@ -100,13 +106,14 @@ interface Marker {
 /**
  * The chapter's sections from its paragraphs (index 0 is ¶1), and where each
  * signal fired. `ignored`, when given, is asked of each paragraph that would
- * mark a section, with the paragraph's number and the index of the line its
- * marker starts on, in paragraph order; a marker it answers true for is left
- * out (F-01).
+ * mark a section, in paragraph order, with the paragraph's number and the
+ * indexes of the first and last lines its marker's syntax spans (the same
+ * line but for a setext heading, whose last is its underline); a marker it
+ * answers true for is left out (F-01).
  */
 export function detectChapterSections(
   paragraphs: readonly string[],
-  ignored?: (paragraph: number, line: number) => boolean
+  ignored?: (paragraph: number, firstLine: number, lastLine: number) => boolean
 ): ChapterSectionsMeasure {
   const headings: Marker[] = [];
   const breaks: Marker[] = [];
@@ -125,11 +132,12 @@ export function detectChapterSections(
     const heading = headingOf(lines);
     const isBreak = !heading && (THEMATIC_BREAK.test(lines[0]) || LONE_MARK.test(lines[0]));
     const isChapter = !heading && !isBreak && lines[0].length <= LABEL_CHARACTERS && CHAPTER_LINE.test(lines[0]);
-    if ((!heading && !isBreak && !isChapter) || ignored?.(paragraph, first ?? 0)) {
+    const from = first ?? 0;
+    if ((!heading && !isBreak && !isChapter) || ignored?.(paragraph, from, from + (heading?.lines ?? 1) - 1)) {
       return;
     }
     if (heading) {
-      headings.push({ paragraph, ...heading });
+      headings.push({ paragraph, label: heading.label, level: heading.level });
     } else if (isBreak) {
       breaks.push({ paragraph, label: '' });
     } else {
@@ -163,20 +171,27 @@ export function detectChapterSections(
   return { signal: 'none', sections: [], fired };
 }
 
-/** A paragraph's opening heading: ATX on its first line, or setext text directly over an underline. */
-function headingOf(lines: readonly string[]): { label: string; level: number } | undefined {
+/**
+ * A paragraph's opening heading: ATX on its first line, or setext text
+ * directly over an underline; `lines` is how many lines its syntax spans.
+ */
+function headingOf(lines: readonly string[]): { label: string; level: number; lines: number } | undefined {
   if (LONE_MARK.test(lines[0])) {
     return undefined;
   }
   const atx = ATX.exec(lines[0]);
   if (atx && atx[2].trim().length > 0) {
-    return { label: label(atx[2]), level: atx[1].length };
+    return { label: label(atx[2]), level: atx[1].length, lines: 1 };
   }
   const underline = lines.findIndex((line, index) => index > 0 && SETEXT_UNDERLINE.test(line));
   if (underline > 0) {
     const text = lines.slice(0, underline);
     if (text.every((line) => line.trim().length > 0 && !THEMATIC_BREAK.test(line) && !ATX.test(line))) {
-      return { label: label(text.map((line) => line.trim()).join(' ')), level: lines[underline].trim().startsWith('=') ? 1 : 2 };
+      return {
+        label: label(text.map((line) => line.trim()).join(' ')),
+        level: lines[underline].trim().startsWith('=') ? 1 : 2,
+        lines: underline + 1
+      };
     }
   }
   return undefined;
@@ -231,32 +246,39 @@ function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: s
  * Where each section after the first begins in `text`, in order: the offset
  * of the line its marker starts on (its paragraph's first, or, after front
  * matter's closing line in the same paragraph, the next); empty when nothing
- * divides the chapter. A marker that starts inside one of `ignored`
- * (protected regions: code, comments, front matter), which must be sorted
- * and never overlap, is left out before the signal is chosen (F-01), so a
- * heading written inside code neither divides the chapter nor hides a break
- * that does. Linear in the text and in `ignored` (PR #180 N-02).
+ * divides the chapter. A marker any line of whose syntax starts inside one of
+ * `ignored` (protected regions: code, comments, front matter), which must be
+ * sorted and never overlap, is left out before the signal is chosen (F-01):
+ * a heading written inside code, or prose over an underline that is a fenced
+ * block's line, neither divides the chapter nor hides a break that does. A
+ * heading whose title holds code past its first character keeps its place.
+ * Linear in the text and in `ignored` (PR #180 N-02).
  */
 export function chapterSectionStarts(text: string, ignored: readonly TextRange[] = []): number[] {
   const paragraphs = splitBlankLineParagraphs(text);
   const inside = insideAscending(ignored);
   const markerStarts = new Map<number, number>();
-  const measure = detectChapterSections(paragraphs.map((paragraph) => paragraph.text), (paragraph, line) => {
-    const start = lineStart(paragraphs[paragraph - 1], line);
-    markerStarts.set(paragraph, start);
-    return inside(start);
+  const measure = detectChapterSections(paragraphs.map((paragraph) => paragraph.text), (paragraph, firstLine, lastLine) => {
+    const starts = lineStarts(paragraphs[paragraph - 1], firstLine, lastLine);
+    markerStarts.set(paragraph, starts[0]);
+    // In order, so the walk over `ignored` only moves forward.
+    return starts.some(inside);
   });
   return measure.sections.flatMap((section) =>
     (section.from > 1 ? [markerStarts.get(section.from) ?? paragraphs[section.from - 1].start] : []));
 }
 
-/** Where line `line` of a blank-line paragraph starts in the text it was read from. */
-function lineStart(paragraph: BlankLineParagraph, line: number): number {
+/** Where lines `firstLine` to `lastLine` of a blank-line paragraph start in the text it was read from, in order. */
+function lineStarts(paragraph: BlankLineParagraph, firstLine: number, lastLine: number): number[] {
+  const starts: number[] = [];
   let offset = 0;
-  for (let index = 0; index < line; index++) {
+  for (let line = 0; line <= lastLine; line++) {
+    if (line >= firstLine) {
+      starts.push(paragraph.start + offset);
+    }
     offset = paragraph.text.indexOf('\n', offset) + 1;
   }
-  return paragraph.start + offset;
+  return starts;
 }
 
 /**

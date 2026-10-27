@@ -154,6 +154,16 @@ describe('A continuity pair and the chapter\'s sections (PR #180)', () => {
   });
 
   it.each([
+    ['a fenced block\'s line', '---'],
+    ['a fenced block\'s plain text', 'not an underline']
+  ])('reads the scene break whatever %s under prose says, and leaves the pair across it alone (F-01 re-review)', async (_name, fenced) => {
+    const text = ['Opening words.', `A caption\n\`\`\`\n${fenced}\n\`\`\``, PINK, '* * *', BLUE].join('\n\n');
+    const { runOnce, requests } = setup(text, [read(pair('blue eyes', 'pink eyes'))]);
+    expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+    expect(requests[0].breaks).toEqual(['* * *']);
+  });
+
+  it.each([
     ['a scene break', '* * *'],
     ['a heading', '## New scene'],
     ['a chapter line', 'Chapter Two']
