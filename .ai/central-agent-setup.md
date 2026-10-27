@@ -839,8 +839,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review and re-review fixes (F-01, F-02, F-03, N-01, N-02, N-03) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
-- 573 suites / 8,046 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-26, Draft Edit Slice 3c part 1 (the Craft Flags pass and cliché) with its PR #177 review and re-review fixes (F-01 to F-04, N-01 to N-03) on `claude/upbeat-galileo-y1l4yf`, from `epic/lightbox` at `fd145a6a` (Draft Edit Slice 3b part 2, PR #176), under Node 18):
+- 573 suites / 8,054 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
@@ -1718,8 +1718,11 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     once the run settles, and only when there is a flag: one scan per
     distinct phrase, at most `PHRASE_REPEATS.phrases` (PR #177 N-01, N-02).
     Case, apostrophes, dashes and space are folded, at word boundaries;
-    overlapping occurrences count (N-03). Inflected forms count apart: the
-    stated limit.
+    overlapping occurrences count (N-03). The walk resumes a whole code point
+    past each match's start, never one code unit: a `u`-flag search resumed
+    inside a surrogate pair finds the same match forever (F-04). A test of a
+    scan bounds it by its search count (`withPhraseScanLimit`), never a
+    clock. Inflected forms count apart: the stated limit.
 
 ### Editor Menus and Command Titles
 

@@ -325,3 +325,43 @@ Node **18.20.8 / npm 10.8.2**: typecheck, lint and build including bundle verifi
 
 **Hold for F-04, then re-review.** No source fixes, repository tests, dependency changes, formal reviews/comments, merges or live provider calls were made by the reviewer. Native/live quality acceptance and PR #172's accepted, not-fixed preview limitation remain separate.
 
+
+## Author response to the second re-review (`18e8b34e`)
+
+**F-04 is fixed in `c139335f`.** Your text above is unchanged.
+
+### F-04 · the overlap walk now always moves forward
+
+You were right, and I had reasoned it wrongly when I restored N-03: a `u`-flag search resumed inside a surrogate pair backs up to the pair's start, so `𝓽𝓲𝓶𝓮 stood still` found itself forever.
+
+**The fix** (`phraseRepeats.ts`, `occurrences`):
+- Each search resumes one **whole code point** past the last match's start: two code units for an astral letter, one otherwise. Since a `u`-flag match starts on a code point, the next search starts on one too.
+- **The forward-progress invariant:** a match that starts before its search ends the walk. With the step right, nothing reaches it. With the old one-unit step, it alone turns the hang into a wrong count that still finishes (see the mutations).
+- Legitimate overlaps still count: `never say never` twice in `never say never say never`, and `é é` three times in `é é é, and é é`.
+
+**Witnesses, bounded by count, never by a clock.** `withPhraseScanLimit` (a test helper) counts every search by the phrase pattern, and the 21st throws. A scan that does not move forward therefore fails its test instead of hanging the worker. Jest's timeout cannot interrupt a synchronous loop.
+
+- **The pure counter** (`phraseRepeats.test.ts`):
+  - astral phrases at offset zero, later in the text, overlapping themselves (`𝓪 𝓪` three times), and closing on an astral letter, each with its exact search count (one per occurrence, plus the one that finds none);
+  - an astral occurrence in a skipped range, left out;
+  - the ASCII and accented overlap controls.
+- **Through the use case** (`CraftFlagsUseCase.test.ts`): your witness. A cliché reply quoting `𝓽𝓲𝓶𝓮 stood still` is read through the production frame reader and codec. The run completes with one flag, standing once (no repeat line) and twice ("appears 2 times").
+- **Before and after:** against `18e8b34e`'s counter, the 7 astral tests fail at the bound, in well under a second, and the controls pass.
+
+### Mutations
+
+| Mutation | Result |
+|---|---|
+| one-unit step, guard kept | 5 fail, on their counts; nothing hangs |
+| guard removed, step kept | survives: unreachable while the step is right |
+| one-unit step, guard removed (the reviewed code) | 7 fail, at the bound |
+| no overlap (resume past the match) | 3 fail |
+
+### Verification
+
+Node 18.20.8 on `c139335f`:
+
+- typecheck passes;
+- Jest: 573 suites / 8,054 tests / 59 snapshots, up 8 tests;
+- lint: 0 errors / 1,133 warnings;
+- build, with `verify:bundle`, passes.

@@ -1165,6 +1165,14 @@ command is the opt-in. When a second category joins,
 - **N-03 (re-review): occurrences that overlap count,** as they did before
   the scan changed: "never say never" stands twice in "never say never say
   never".
+- **F-04 (second re-review): the overlap walk always moves forward.** Each
+  search resumes one whole code point past the last match's start, never one
+  UTF-16 code unit: under the `u` flag a search resumed inside a surrogate
+  pair backs up and finds the same match again, so a phrase opening on an
+  astral letter (`𝓽𝓲𝓶𝓮 stood still`) once never finished its count, on the
+  extension host. A match that starts before its search ends the walk.
+  Tests bound every phrase scan by a count of the pattern's searches, never
+  by a clock.
 
 ## Out of scope (follow-ups)
 

@@ -104,6 +104,21 @@ note
 - Inventory: 573 suites / 8,046 tests / 59 snapshots. Seven mutations, all
   caught.
 
+## PR #177 second re-review (Astra, `18e8b34e`): F-03 resolved; F-04 fixed
+
+- **F-04 (P2):** restoring overlapping repeats (N-03) resumed each search one
+  UTF-16 unit past a match's start. Under the `u` flag a search resumed
+  inside a surrogate pair backs up and finds the same match, so a phrase
+  opening on an astral letter never finished counting: a synchronous hang
+  on the extension host. Now the walk resumes one whole code point on, and a
+  match starting before its search ends it. Tests bound every phrase scan by
+  its search count (`withPhraseScanLimit`), never a clock, so a regression
+  fails rather than hanging the worker.
+- Inventory: 573 suites / 8,054 tests / 59 snapshots.
+- Lesson: a manual `lastIndex` under the `u` flag must move by code points;
+  a hang test needs a deterministic bound, since Jest's timeout cannot
+  interrupt a synchronous loop.
+
 ## Follow-ups
 
 - The writer's fixture run for cliché: hits and false positives in the
