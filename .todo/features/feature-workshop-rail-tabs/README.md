@@ -11,6 +11,10 @@
 > [Thread Bookmarks](../feature-workshop-thread-bookmarks/README.md), and
 > [Model Slices](../feature-workshop-model-slices/README.md).
 
+**Planning render**: [Workshop Rail Planning canvas](https://claude.ai/artifact/UBUrNmVPeZkeT5MEXf4T6M)
+(private to Okey). It shows today's rail, the proposed two tabs with working tab and
+Bookmark toggles, the reader sheet, and the time and model slices.
+
 ## Problem
 
 The Workshop rail (`<aside className="pm-ws-rail">` in `WorkshopApp.tsx`)
