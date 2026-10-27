@@ -8,8 +8,8 @@
  * count a chapter's nods reliably:
  * - A closed list, each beat's forms written out, matched at word boundaries
  *   with case folded. Not the tagger's lemmas: a closed list's forms are
- *   exact, and the tagger costs about 0.3 s per 25,000 words on the extension
- *   host.
+ *   exact, and the tagger would add 0.1 to 0.3 s per 25,000 words on the
+ *   extension host.
  * - Counted in narration: an occurrence touching a skipped range (speech,
  *   protected regions) is not counted, by the walk phrase counts use
  *   (`matchesOutside`).

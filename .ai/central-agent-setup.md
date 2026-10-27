@@ -1684,7 +1684,8 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   - **The `craft` model scope** (`proseMinion.craftModel`) follows the
     assistant model until picked, as the Lightbox's does.
   - **The note.** It is the `why`, then "One way it could go: " and the
-    `suggestion`, then the host's repeat line. Every note is held to
+    `suggestion`, then the host's repeat line (a gesture flag's beat counts
+    in its place). Every note is held to
     `craftFlagPhrasing`, a fence of word lists with its limits stated: a
     why that breaks it becomes the host's line for its kind, and a
     suggestion is withheld.
@@ -1713,6 +1714,19 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     are `REGISTER_SHIFT_KINDS`, defined in the domain and held verbatim in
     its prompt. A root field belongs to one category (`ROOT_FIELDS`): a
     cliché reply's `register` is ignored and counted.
+  - **Gesture strain: the model judges, host code counts** (Slice 3c part 3,
+    the writer's choice). The model flags every kind (`GESTURE_STRAIN_KINDS`),
+    `thin` only where the chapter leans on a beat or it alone carries a turn.
+    Host code counts each stock beat a gesture flag names: `STOCK_BEATS`
+    (`utils/craftFlags/stockBeats.ts`), a closed list with every form written
+    out, counted in the live narration by `phraseRepeats`' walk
+    (`matchesOutside`), at most one scan per beat. That count stands in for
+    the phrase line ("Nods appear 4 times in this document."). There is no
+    density threshold and no tagger. A gesture in a dialogue beat is
+    narration; words in quotation marks are speech. The Workshop's feature
+    guard reads `GESTURE_*` and `Gesture[A-Z]` names as the Gesture
+    Playground's, so each Craft Flags name of that shape is listed in
+    `WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS` (`boundaries.test.ts`).
   - **Which categories run** is `proseMinion.craftFlags.categories`, read at
     the gesture and normalized by `craftFlagCategoriesOf` (known ids, once
     each, canonical order). None on refuses the run before anything is

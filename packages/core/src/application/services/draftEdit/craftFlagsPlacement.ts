@@ -6,9 +6,9 @@
  * mapped back to the document. It is dropped, and counted, when it does not
  * anchor once, touches a protected placeholder, touches speech in a category
  * that leaves speech alone (every category does), or overlaps an earlier flag
- * of its category. A selection run that read the whole
- * chapter keeps only the flags inside its selection. A register shift keeps
- * its reply's register line, shown in its message.
+ * of its category. A selection run that read the whole chapter keeps only the
+ * flags inside its selection. A register shift keeps its reply's register
+ * line, shown in its message.
  *
  * Speech is read with protected syntax set aside
  * (`findSpeechSpansOutsideProtected`), in the gesture's text before overlaps
