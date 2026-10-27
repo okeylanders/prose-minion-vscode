@@ -249,3 +249,39 @@ Node 18.20.8 / npm 10.8.2 on `6fe526fc`, whose source is byte for byte `5945c846
 - `git diff --check` passes.
 
 All ran before the push. `spellingConsistency.ts` is 244 lines. No provider calls were made. The ADR's "As built (part 3)" note, the slice doc and the memory bank record F-04.
+
+## Final independent re-review — 2026-10-27 21:44 UTC
+
+Reviewed F-04 correction `5945c846` and author-response head `55847bd07a923d3b28acda56b9ac376bb61bf45a` (tree `1fff563db54e526ab514328d0b8416cf5eaf118b`). All earlier report text and both author responses are preserved.
+
+### F-04 resolved
+
+The containing word's acceptance is now cached by its original source start, with both true and false answers retained, scoped to one detector invocation. Parts still receive their own acceptance check; accepted parent occurrences still count. The name classification is also computed once per source-word object, removing the older repeated whole-word casing/preceding-space work identified during the fix. An empty accepted set returns before word parsing in the shared helper; its observable answers are unchanged.
+
+Independent deterministic controls cover **32 combinations**: 100, 800, 6,400 and 25,600 parts; lowercase/capitalized first parts; empty, unrelated, whole-compound and component-only word lists. All keep word-scanner input at **≤ 4 × document length** and uppercase input at **≤ 2 × document length**, with the expected flags, accepted-parent suppression and independently flagged standalone occurrence.
+
+The original 25,600-part witness now performs **one scan of 128,012 UTF-16 units**, instead of 3,277,004,812 units of scanner input. This closes the demonstrated repeated-parent-parsing regression. These are detector work bounds, not a claim that the entire pre-existing Markdown/narration/use-case pipeline has been performance-certified.
+
+Earlier correctness checks still pass on this final source:
+
+- **444 spelling controls:** every table inflection both ways, Unicode offsets, and accepted compound variants.
+- **33 production use-case/individual-application scenarios:** intended component changed, surrounding text retained, accepted compounds protected, standalone components still independently actionable.
+- **40 quotation use-case controls:** all original formatted/plain balanced cases remain clean.
+- **48 emphasized genuine-slip controls:** missing/reversed marks still produce their expected diagnostics.
+- A second independent read-only delta check found no new issue in cross-entry cache reuse, separate occurrences, changed acceptance between invocations, or whole-word versus part acceptance.
+
+### Final verification
+
+| Check | Result on `55847bd0` |
+| --- | --- |
+| Full typed Jest, Node 18.20.8 | **589 suites / 8,339 tests / 59 snapshots passed**, 544.546 s |
+| Typecheck | Core, webview and adapter passed |
+| Lint | 0 errors / 1,133 existing warnings |
+| Production build + `verify:bundle` | Passed; three existing webpack size/performance warnings |
+| Diff hygiene | `git diff --check` passed; review introduced no tracked source/test changes |
+| Exact-head push CI | [40586745397: success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40586745397), every verify step passed |
+| Exact-head PR CI | [40586755100: success](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40586755100), every verify step passed |
+
+The isolated worktree used the same verified dependency lockfile, Node 18.20.8 and npm 10.8.2 as earlier review passes. Final scratch evidence is in `../pr182-final-review-evidence/`. No paid/live inference or native VS Code acceptance was performed.
+
+**Disposition: F-01–F-04 resolved; no remaining blocking findings.** Native/live editorial acceptance and the separately accepted Refactor Preview lifetime limit remain distinct from these host-side checks. The exact report-only commit created by this appendix will be verified remotely and its CI followed separately. Merging/releasing remains outside the reviewer's authorization.
