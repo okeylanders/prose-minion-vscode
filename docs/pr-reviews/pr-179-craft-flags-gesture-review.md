@@ -1,5 +1,7 @@
 # PR Review — Draft Edit Slice 3c, part 3: gesture strain
 
+**Latest disposition — re-review of `4ab1e0cf`: No blocking findings; N-01 and N-02 resolved. Native/live acceptance remains separate.**
+
 **Disposition: No blocking findings. Two optional P3 cleanup notes. Native VS Code and live-provider fixture acceptance remain separate and unrun.**
 
 **Author:** okeylanders · **PR:** [#179](https://github.com/okeylanders/prose-minion-vscode/pull/179) · **Reviewer:** Astra · **Reviewed:** 2026-10-27
@@ -112,3 +114,27 @@ Node 18.20.8 on `8a91b197`:
 - Jest: 576 suites / 8,120 tests / 59 snapshots, up 3 tests;
 - lint: 0 errors / 1,133 warnings;
 - build, with `verify:bundle`, passes.
+
+## Independent re-review — 2026-10-27
+
+**N-01 and N-02 resolved; no blocking findings.** Reviewed correction head `4ab1e0cf1a07a7a63f196893c31b1c310b9d88b3` (fix `8a91b197`), tree `f3822c0baf4fa9232fac84c56cc3f505e76d4187`. The twelve-file delta from report `cb360ee8` is limited to the count policy/form correction, the fallback definition and accompanying tests/documentation. The original review and the author's response above are preserved.
+
+**N-01:** `eye-rolled` now joins the listed compound forms, and the two-form sentence produces `Eye rolls appear 2 times in this document.` A single `eye roll of her eyes` produces one beat and no recurrence line. Stock beats explicitly request `once`; ordinary phrase counting retains default `each`, including `never say never` twice in `never say never say never`. The walk advances by at least one whole code point in both modes, including empty matches, so the correction does not reintroduce PR #177's surrogate-pair progress defect. Protected-range and repeated-cache controls remain sound.
+
+**N-02:** the new domain/prompt definition, `choreography the reader stops to assemble`, passes the unchanged phrasing fence. The added table-driven test covers every kind in every category rather than special-casing this one fallback. Model why/suggestion screening has not been weakened.
+
+Fresh Node 18.20.8 / npm 10.8.2 verification on the exact correction tree:
+
+| Check | Result |
+| --- | --- |
+| Full typed Jest | Pass: **576 suites / 8,120 tests / 59 snapshots**, 555.621 s, exit 0 |
+| Typecheck | Pass: core, webview and adapter |
+| Lint | Pass: 0 errors / 1,133 existing warnings |
+| Build and `verify:bundle` | Pass; three existing webpack size/performance warnings |
+| Diff hygiene | `git diff --check` passes |
+| Exact correction-head push CI | [Success, 40502160475](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40502160475); every verify step passed |
+| Exact correction-head PR CI | [Success, 40502166454](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40502166454); every verify step passed |
+
+The **60** independent gesture frame/codec/use-case probes and **18** three-category service/use-case probes pass again, now requiring the complicated fallback to be fence-clean. Independent count/message tests also recheck the reported cases, protected full/shared/union ranges and adjacent distinct matches. Eight empty-global-Unicode cases terminate in 20 executions across both modes; 10,000 overlapping eye-roll aliases requested 500 times produce 10,000 beats in 10,001 executions, as do 10,000 nods. Evidence is outside the repository at `../pr179-rereview-evidence/`.
+
+The prior report-only head `cb360ee8` finished both [push CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40499754841) and [PR CI](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40499763592) successfully, every verify step checked. This appendix changes only the review report; check its exact-head CI separately after publication. Native UI and live editorial fixture/ship-default acceptance remain unrun. PR #172's narrowly accepted preview limitation remains unchanged.
