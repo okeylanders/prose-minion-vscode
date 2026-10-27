@@ -131,10 +131,11 @@ Continuity, built on `claude/upbeat-galileo-y1l4yf` from `epic/lightbox` at
   `utils/blankLineParagraphs.ts`, with neutral types, unchanged; the
   Lightbox keeps its paragraph rule id. The lines that open each section
   are sent with continuity's request (`breaks`). A marker any line of
-  whose syntax starts inside protected text (a heading in a code block, or
-  prose over a fenced block's `---`) is left out before the signal is
-  chosen, so it never hides a real break (F-01 and its re-review); the
-  Lightbox leaves out none.
+  whose syntax starts inside protected text, past its indentation (a
+  heading in a code block, prose over a fenced block's `---`, or over an
+  indented comment), is left out before the signal is chosen, so it never
+  hides a real break (F-01 and its re-reviews); the Lightbox leaves out
+  none.
   Sections are read only when continuity runs, in work linear in the text
   (N-02). A guard keeps Draft Edit off the Lightbox's infrastructure.
 - **The port:** `DocumentAnnotation.related`. The earlier side is linked

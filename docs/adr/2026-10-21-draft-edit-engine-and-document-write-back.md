@@ -1274,7 +1274,10 @@ spoken one. These rows decide how it is built.
   starts inside protected text is left out. A heading whose title holds code
   past its first character keeps its place. A setext heading directly under
   a comment or code block in the same paragraph is left out with it, under
-  the paragraph model's stated limit.
+  the paragraph model's stated limit. **The second re-review:** a line was
+  read at its raw start, so an indented comment (`  <!-- a note -->`) read
+  as its unprotected indentation. Each line is now read where its syntax
+  starts, past spaces and tabs; a section still starts at its marker's line.
 - **F-02: a section the writer adds during the run divides a pair too.**
   After the settle, once protected text and speech are read again, the live
   text's sections are read (`withinOneSection`, only when a pair is left).

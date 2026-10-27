@@ -1743,8 +1743,9 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
     `spansSectionStart`; PR #180 F-03), checked on the gesture's sections at
     placement and on the live text's after the settle (`withinOneSection`,
     F-02). Sections come from `chapterSectionStarts`, which leaves out a
-    marker any line of whose syntax (a setext underline included) starts
-    inside protected text before choosing the signal (F-01), and are
+    marker any line of whose syntax (a setext underline included), read
+    past its indentation, starts inside protected text before choosing the
+    signal (F-01), and are
     read only when continuity runs, walking protected regions once (N-02).
     The lines that open each section are sent with continuity's request
     (`breaks`), masked. The flag

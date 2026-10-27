@@ -92,6 +92,22 @@ describe('chapterSectionStarts', () => {
       expect(chapterSectionStarts(crlf, findProtectedRegions(crlf, 'markdown'))).toEqual([crlf.indexOf('* * *')]);
     });
 
+    it.each(['', ' ', '  ', '   ', '\t', '    '].flatMap((indent) => [[indent, '\n'], [indent, '\r\n']]))(
+      'reads an indented protected line by its text, not its indentation (indent %j, line end %j; the second re-review)',
+      (indent, newline) => {
+        const text = caption(`${indent}<!-- a note -->${newline}---`, newline);
+        expect(chapterSectionStarts(text)).toEqual([text.indexOf('A caption')]);
+        expect(chapterSectionStarts(text, findProtectedRegions(text, 'markdown'))).toEqual([text.indexOf('* * *')]);
+      }
+    );
+
+    it('keeps genuine headings with a comment or code after their title\'s first words', () => {
+      const atx = [BANK, '## The Pool of Tears <!-- a note -->', HOLE].join('\n\n');
+      expect(chapterSectionStarts(atx, findProtectedRegions(atx, 'markdown'))).toEqual([atx.indexOf('## The Pool')]);
+      const setext = [BANK, 'The Pool of Tears <!-- a note -->\n=================', HOLE].join('\n\n');
+      expect(chapterSectionStarts(setext, findProtectedRegions(setext, 'markdown'))).toEqual([setext.indexOf('The Pool')]);
+    });
+
     it('keeps a genuine setext heading whose title holds code', () => {
       const text = [BANK, 'The `hidden` hall\n=================', HOLE].join('\n\n');
       expect(chapterSectionStarts(text, findProtectedRegions(text, 'markdown'))).toEqual([text.indexOf('The `hidden`')]);
@@ -116,6 +132,12 @@ describe('chapterSectionStarts', () => {
     const text = `---\ntitle: Alice\n\nauthor: Carroll\n---\n# Down the Rabbit-Hole\n${BANK}\n\n# The Pool of Tears\n\n${HOLE}`;
     const frontMatter = { start: 0, end: text.indexOf('---', 3) + 3 };
     expect(chapterSectionStarts(text, [frontMatter])).toEqual([text.indexOf('# Down'), text.indexOf('# The Pool')]);
+  });
+
+  it('starts an indented marker\'s section at its line, though its syntax is read past the indentation', () => {
+    const text = `---\ntitle: Alice\n\nauthor: Carroll\n---\n  # Down the Rabbit-Hole\n${BANK}\n\n# The Pool of Tears\n\n${HOLE}`;
+    const frontMatter = { start: 0, end: text.indexOf('---', 3) + 3 };
+    expect(chapterSectionStarts(text, [frontMatter])).toEqual([text.indexOf('  # Down'), text.indexOf('# The Pool')]);
   });
 
   it('leaves the detector as it was when nothing is ignored: paragraph numbers, signal and level unchanged', () => {

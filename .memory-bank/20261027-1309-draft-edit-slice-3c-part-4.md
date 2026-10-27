@@ -95,3 +95,14 @@ and HTML-comment wrappers, a protected-text-only variation, CRLF, a genuine
 setext title with code, and through the use case. Four new mutations, all
 caught: one survived at first (the underline alone checked) until a
 protected-first-line case pinned it.
+
+## Second re-review (PR #180, Astra, 2026-10-27)
+
+F-01 had one more case. Each syntax line was read at its raw start, so an
+indented protected line (`  <!-- a note -->` between a caption and `---`)
+read as its unprotected indentation, and the invented heading won again.
+`chapterSectionStarts` now reads each line where its syntax starts, past
+spaces and tabs, and still starts the section at the marker's line. Controls
+for no indent, one to four spaces and a tab, LF and CRLF, at the detector
+and through the use case; genuine headings with a comment after their
+title's first words keep their place. Six mutations, all caught.

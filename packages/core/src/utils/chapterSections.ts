@@ -251,7 +251,9 @@ function sectionsFrom(markers: readonly Marker[], count: number, openingLabel: s
  * sorted and never overlap, is left out before the signal is chosen (F-01):
  * a heading written inside code, or prose over an underline that is a fenced
  * block's line, neither divides the chapter nor hides a break that does. A
- * heading whose title holds code past its first character keeps its place.
+ * line's syntax starts past its indentation, so an indented comment is as
+ * protected as one at the margin. A heading whose title holds code past its
+ * first character keeps its place.
  * Linear in the text and in `ignored` (PR #180 N-02).
  */
 export function chapterSectionStarts(text: string, ignored: readonly TextRange[] = []): number[] {
@@ -259,26 +261,36 @@ export function chapterSectionStarts(text: string, ignored: readonly TextRange[]
   const inside = insideAscending(ignored);
   const markerStarts = new Map<number, number>();
   const measure = detectChapterSections(paragraphs.map((paragraph) => paragraph.text), (paragraph, firstLine, lastLine) => {
-    const starts = lineStarts(paragraphs[paragraph - 1], firstLine, lastLine);
-    markerStarts.set(paragraph, starts[0]);
+    const lines = syntaxLines(paragraphs[paragraph - 1], firstLine, lastLine);
+    markerStarts.set(paragraph, lines[0].start);
     // In order, so the walk over `ignored` only moves forward.
-    return starts.some(inside);
+    return lines.some((line) => inside(line.syntax));
   });
   return measure.sections.flatMap((section) =>
     (section.from > 1 ? [markerStarts.get(section.from) ?? paragraphs[section.from - 1].start] : []));
 }
 
-/** Where lines `firstLine` to `lastLine` of a blank-line paragraph start in the text it was read from, in order. */
-function lineStarts(paragraph: BlankLineParagraph, firstLine: number, lastLine: number): number[] {
-  const starts: number[] = [];
+/**
+ * Lines `firstLine` to `lastLine` of a blank-line paragraph, in order, each
+ * with where it starts in the text it was read from and where its syntax
+ * starts: past its indentation, so an indented line whose text is protected
+ * is read as protected (the second re-review). A line of only space has its
+ * syntax at its end.
+ */
+function syntaxLines(paragraph: BlankLineParagraph, firstLine: number, lastLine: number): { start: number; syntax: number }[] {
+  const lines: { start: number; syntax: number }[] = [];
   let offset = 0;
   for (let line = 0; line <= lastLine; line++) {
     if (line >= firstLine) {
-      starts.push(paragraph.start + offset);
+      let syntax = offset;
+      while (paragraph.text[syntax] === ' ' || paragraph.text[syntax] === '\t') {
+        syntax++;
+      }
+      lines.push({ start: paragraph.start + offset, syntax: paragraph.start + syntax });
     }
     offset = paragraph.text.indexOf('\n', offset) + 1;
   }
-  return starts;
+  return lines;
 }
 
 /**

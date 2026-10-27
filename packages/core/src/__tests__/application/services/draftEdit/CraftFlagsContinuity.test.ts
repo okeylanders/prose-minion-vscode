@@ -163,6 +163,16 @@ describe('A continuity pair and the chapter\'s sections (PR #180)', () => {
     expect(requests[0].breaks).toEqual(['* * *']);
   });
 
+  it.each(['', ' ', '  ', '   ', '\t'].flatMap((indent) => [[indent, '\n'], [indent, '\r\n']]))(
+    'reads the scene break past a caption over an indented comment (indent %j, line end %j; F-01 second re-review)',
+    async (indent, newline) => {
+      const text = ['Opening words.', `A caption${newline}${indent}<!-- a note -->${newline}---`, PINK, '* * *', BLUE].join(`${newline}${newline}`);
+      const { runOnce, requests } = setup(text, [read(pair('blue eyes', 'pink eyes'))]);
+      expect(await runOnce()).toMatchObject({ kind: 'completed', flagged: 0, dropped: { acrossBreak: 1 } });
+      expect(requests[0].breaks).toEqual(['* * *']);
+    }
+  );
+
   it.each([
     ['a scene break', '* * *'],
     ['a heading', '## New scene'],
