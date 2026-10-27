@@ -140,3 +140,11 @@ Evidence/logs remain outside the repository in `../pr180-review-evidence/`. Only
 **Resolve F-01–F-03 before integration.** N-01/N-02 are nonblocking. Corrections need delta review and exact final-head CI verification; this report is not a formal GitHub review submission.
 
 Native VS Code Problems/hover navigation and live-provider seeded-fixture hit/false-positive acceptance remain unrun. The ADR enables all four categories provisionally; the fixture run still decides shipped defaults. Passing mocked/controlled tests does not establish editorial quality. No paid calls were made.
+
+## Verification completion — 2026-10-27 13:38 UTC
+
+The full independent typed Jest run on implementation `08ef8057` completed successfully: **579 suites / 8,164 tests / 59 snapshots**, **707.986 s**, exit 0. Together with the previously completed typecheck, lint and production build, all local aggregate checks pass. The report-only commit changes no source, test or dependency bytes.
+
+Report commit `7c4aab172f75d24ce394efecc0ae81c09e4d0c49` was verified remotely as exactly this new report path, with parent `08ef805766bce5e575b9862cb930f3c6d1d07d57`, matching the submitted bytes. Its [push CI 40512885485](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40512885485) and [PR CI 40512895562](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40512895562) both completed successfully; every verify step passed.
+
+**Disposition unchanged: F-01–F-03 remain open and require correction.** Green regression tests do not cover the reproduced failures above. Native/live acceptance remains separate. The exact head created by this verification appendix will be checked independently after publication.
