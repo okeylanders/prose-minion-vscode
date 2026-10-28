@@ -2,6 +2,31 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.12.0] - 2026-10-28
+
+### Added
+
+- **Lightbox** opens a chapter or selection as an interactive board. Explore measured prose, paragraph connections, word patterns, rhythm, and story structure before making an AI request. Optional AI lenses read the chapter for voice, motifs, characters, subtext, craft, plot, and more; the board shows estimated costs before a run.
+- Choose individual Lightbox lenses or calls, finish an incomplete run, or re-analyze. Earlier readings stay visible until a usable replacement arrives. Inspect the passages behind counted items, build a Lexical Gravity lens, or bring a reading to the Workshop.
+- Lightbox boards save automatically in a single-folder workspace. Browse, name, reopen, or delete saved boards; a reopened snapshot keeps its original text and readings and can be refreshed against current text. In other workspace arrangements boards are available for the session only.
+- **Draft Edit** adds editor commands for **Proofread and Flag**, **Proofread and Fix**, and **Craft Flags**. Proofread identifies spelling, punctuation, consistency, and narration issues; Fix offers eligible corrections through VS Code's Refactor Preview by default, as one undoable edit. It does not save the file for you. Judgment calls remain flags.
+- Craft Flags offers notes on cliché, shifts in register, repeated gestures, and continuity, with configurable categories. Proofread supports spelling conventions and a personal word list; both passes have separate model and reasoning settings. The confirmation for Craft Flags shows its planned requests and estimated cost.
+- Six opt-in OpenRouter choices join the model pickers: GPT-6.1 Terra and Terra Pro, Kimi K3.1 Pro, MiniMax M3.1 Flash, DeepSeek V4.1 Flash 1017, and Mercury 3. Existing model selections and defaults are unchanged; these additions have not been qualified for prose quality.
+
+### Changed
+
+- Lightbox and Craft Flags follow the Workshop model until you choose a model for them. Proofread has its own model setting and default. Changing a Lightbox or Craft Flags model does not change the Workshop model.
+- Lightbox brings selected readings into the Workshop as staged material; you decide whether to use them.
+
+### Removed
+
+- Removed DeepSeek R1, L3.3 Euryale 70B, and Trinity Large Thinking from the curated choices after they were unavailable in the October 27 OpenRouter catalog check. Saved settings are not rewritten.
+
+### Upgrade notes
+
+- AI readings and Draft Edit make model requests and may incur provider charges. Review estimates and proposed edits; model output is not a substitute for editorial judgment.
+- Lightbox and Draft Edit have extensive automated and integration review coverage. Native VS Code acceptance and live-provider quality checks remain separate release checks.
+
 ## [2.11.0] - 2026-10-16
 
 ### Added

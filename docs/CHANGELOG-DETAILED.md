@@ -5,6 +5,37 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-10-28 — Lightbox and Draft Edit
+
+### Overview
+
+[PR #183](https://github.com/okeylanders/prose-minion-vscode/pull/183) integrates the Lightbox board, saved boards, and Draft Edit into `main`, along with the October 27 OpenRouter catalog refresh. This additive release also introduces new settings and editor commands. Existing model selections are not migrated or rewritten. The Lightbox and Draft Edit epics contain future slices that are not part of this release, including board comparison and Workshop apply-to-draft.
+
+### Lightbox
+
+- Open a chapter, workspace file, or editor selection in a full-tab board. Deterministic measurements, the paragraph ribbon, counted terms and passages are available without an AI call. Optional model-backed lenses cover voice, motifs, characters, lexical gravity, color, subtext, craft, story, and an Opinion grounded in the board's readings. The host checks source quotations before accepting supported claims.
+- Runs can cover the board, remaining calls, a call, or a lens. Estimates, model fit, progress, cancellation and call-level failure notes accompany the controls. Earlier lens readings remain on screen until usable replacements land; their model, run and time are recorded when available. Rejected or truncated model responses have recovery and partial-result paths rather than silently becoming accepted readings.
+- A single-folder workspace saves boards in `prose-minion/boards/`, one file per board, with source text, measurements and readings. Names, browser operations, restore and changed-source notices operate on saved snapshots. No folder or a multi-root workspace uses session-only storage. File claims, revision checks and shutdown draining protect saves across windows and extension deactivation.
+- Selected readings can be staged for the Workshop; lexical fields can also seed Lexical Gravity. These are host-mediated handoffs, with the writer choosing whether to use the staged material. Lightbox's model setting follows the Workshop until explicitly selected and does not change it.
+- See the [Lightbox ADR](adr/2026-10-19-lightbox-inspiration-board.md), [epic](../.todo/epics/epic-lightbox-2026-10-19/README.md), and [integration review](pr-reviews/pr-183-lightbox-integration-review.md).
+
+### Draft Edit
+
+- Editor context-menu commands run Proofread and Flag, Proofread and Fix, or Craft Flags on a Markdown or plain-text document or selection. Proofread covers mechanical errors and consistency, including spelling conventions, a writer's word list, names, quotation marks, and narration. Craft Flags offers cliché, register, gesture and continuity categories; each selected category is a separate request. The planned requests and estimated cost are presented before Craft Flags runs.
+- Diagnostics and quick fixes are placed through the VS Code adapter. Fix uses Refactor Preview by default and applies accepted edits as one undoable change without saving the file. Tense and agreement remain flags. Anchoring, protected Markdown regions, structure and link checks, live-document reconciliation, and document-lifetime guards constrain proposed changes; unplaceable or unsafe edits are not silently applied.
+- Proofread has its own model default; Craft Flags follows the Workshop model until set. Each pass has an independent reasoning setting. The host refuses reasoning off when the live catalog says the chosen model always reasons; an unknown catalog answer is left to the provider. See the [Draft Edit ADR](adr/2026-10-21-draft-edit-engine-and-document-write-back.md) and [epic](../.todo/epics/epic-draft-edit-2026-10-25/README.md).
+
+### OpenRouter catalog
+
+- The [October 27 catalog audit](../.todo/epics/epic-lightbox-2026-10-19/model-audit-2026-10-27.md) adds six opt-in choices to the shared curated and Category Search lists: GPT-6.1 Terra, GPT-6.1 Terra Pro, Kimi K3.1 Pro, MiniMax M3.1 Flash, DeepSeek V4.1 Flash 1017, and Mercury 3. The manifest's Category Search enum is synchronized. Three unavailable IDs were removed: `deepseek/deepseek-r1`, `sao10k/l3.3-euryale-70b`, and `arcee-ai/trinity-large-thinking`.
+- The audit checked catalog records and endpoints; it did not run paid inference or establish prose quality. Defaults, saved selections, and native cache policy remain unchanged. Prices and provider availability may change.
+
+### Review and acceptance limits
+
+- The aggregate review's reference-link protection, Proofread confirmation lifetime and Lightbox shutdown findings were corrected and independently re-reviewed. Its final Node 18 verification reports 591 suites, 8,394 tests and 59 snapshots passing; this is integration evidence, not a claim about the release package. The [review](pr-reviews/pr-183-lightbox-integration-review.md) retains the full correction ledger.
+- The narrow documented native Refactor Preview pending-document-lifetime race remains an accepted interface tradeoff. The integration review also records that a Lightbox model change during a run can affect deferred calls. These limits are not claimed fixed.
+- Native VS Code interactive acceptance and live-provider quality checks remain separate from automated testing. Compare saved boards, Workshop Proofread, and applying Workshop recommendations to a draft are future work, not shipped features.
+
 ## [2.11.0] - 2026-10-16 — Dictionary lookup history
 
 ### Overview
