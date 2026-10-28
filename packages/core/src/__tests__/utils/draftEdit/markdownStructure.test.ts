@@ -84,6 +84,32 @@ describe('editsChangingStructure', () => {
     });
   });
 
+  describe('where a link or image goes (PR #183 F-01)', () => {
+    const DEFINITIONS = '\n\n[teh]: https://example.invalid/first\n[the]: https://example.invalid/second\n';
+
+    it.each([
+      ['a shortcut reference', 'Alice reads [teh].'],
+      ['a collapsed reference', 'Alice reads [teh][].'],
+      ['a full reference\'s label', 'Alice reads [chapter][teh].'],
+      ['a reference image', 'Alice sees ![a picture][teh].']
+    ])('refuses a fix that sends %s to another definition', (_name, prose) => {
+      // Still a link either way: only where it goes moves.
+      const text = `${prose}${DEFINITIONS}`;
+      expect(refused(text, [edit(text, 'teh', 'the')])).toEqual([0]);
+    });
+
+    it('refuses a fix that makes a link\'s title another definition\'s', () => {
+      const text = 'Alice reads [teh].\n\n[teh]: https://example.invalid/same "One"\n[the]: https://example.invalid/same "Two"\n';
+      expect(refused(text, [edit(text, 'teh', 'the')])).toEqual([0]);
+    });
+
+    it('controls: keeps fixes to visible text that leave every target where it was', () => {
+      const text = `Alice reads [chpater][teh], ![a pictur][teh], [teh book](chapter.md) and [Teh].${DEFINITIONS}`;
+      const edits = [edit(text, 'chpater', 'chapter'), edit(text, 'pictur', 'picture'), edit(text, 'teh book', 'the book'), edit(text, 'Teh', 'teh')];
+      expect(refused(text, edits)).toEqual([]);
+    });
+  });
+
   it('refuses a fix that ticks a task', () => {
     const text = '- [ ] Alice ran.\n';
     expect(refused(text, [edit(text, '[ ]', '[x]')])).toEqual([0]);

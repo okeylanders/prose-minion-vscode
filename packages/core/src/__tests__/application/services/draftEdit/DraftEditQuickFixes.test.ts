@@ -8,7 +8,7 @@ import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditAppl
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments, applyAll, writerTypes, type HostBehavior } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, applyAll, writerTypes, type HostBehavior, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister on the bank, '
   + 'and once or twice she peeped into the book her sister is reading.';
@@ -26,7 +26,7 @@ async function flagged(findings: ProofreadFinding[] = [BEGINING, VREY, IS_READIN
   };
   const useCase = new DraftEditUseCase(pass, document, annotations, new DraftEditApplier(document), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const target = () => ({ uri: document.uri, version: document.version, text: document.text, languageId: 'markdown', relativePath: 'chapter-01.md' });
-  await useCase.run(target(), { kind: 'proofread', output: 'flag' });
+  await proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' });
   const idOf = (text: string) => annotations.shown.find((annotation) => document.text.slice(annotation.start, annotation.end) === text)!.id;
   const hold = (result: Promise<ProofreadRunResult>) => {
     pending = result;
@@ -112,7 +112,7 @@ describe('DraftEditUseCase.applyShown: the quick fixes', () => {
     const id = idOf('vrey');
     let release: (result: ProofreadRunResult) => void = () => undefined;
     hold(new Promise((resolve) => { release = resolve; }));
-    const run = useCase.run(target(), { kind: 'proofread', output: 'flag' });
+    const run = proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' });
 
     expect(await useCase.applyShown(snapshot(), { issueIds: [id] }, 'direct')).toEqual({ kind: 'busy' });
     release({ kind: 'completed', chunks: [{ kind: 'read', findings: [], malformed: 0 }] });

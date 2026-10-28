@@ -9,7 +9,7 @@ import * as narrationBaseline from '@/utils/proofread/narrationBaseline';
 import { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
 import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services/draftEdit/DraftEditUseCase';
 import type { ProofreadRunRequest } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 import { ALICE_CATERPILLAR_SINGLE_QUOTED, ALICE_THIRD_PAST } from '@/__tests__/utils/proofread/narrationFixtures';
 
 const CHAPTER = `${ALICE_THIRD_PAST}\n\n${ALICE_CATERPILLAR_SINGLE_QUOTED}`;
@@ -36,7 +36,7 @@ describe('The narration baseline in a run (Slice 3b)', () => {
     const { useCase, requests, target } = proofreader();
     const speech = { start: CHAPTER.indexOf("'Who are you?'"), end: CHAPTER.length };
 
-    await expect(useCase.run(target(speech), { kind: 'proofread', output: 'flag' })).resolves.toMatchObject({ kind: 'completed' });
+    await expect(proofreadNow(useCase, target(speech), { kind: 'proofread', output: 'flag' })).resolves.toMatchObject({ kind: 'completed' });
 
     expect(requests).toHaveLength(1);
     expect(requests[0].chunks.join('')).not.toContain('Alice was beginning');
@@ -45,7 +45,7 @@ describe('The narration baseline in a run (Slice 3b)', () => {
 
   it('sends no narration when the document\'s is not clear', async () => {
     const { useCase, requests, target } = proofreader(ALICE_CATERPILLAR_SINGLE_QUOTED);
-    await useCase.run(target(), { kind: 'proofread', output: 'flag' });
+    await proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' });
 
     expect(requests[0]).not.toHaveProperty('narration');
   });
@@ -56,7 +56,7 @@ describe('The narration baseline in a run (Slice 3b)', () => {
     });
     const { useCase, requests, log, target } = proofreader();
 
-    await expect(useCase.run(target(), { kind: 'proofread', output: 'flag' })).resolves.toMatchObject({ kind: 'completed' });
+    await expect(proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' })).resolves.toMatchObject({ kind: 'completed' });
 
     expect(requests[0]).not.toHaveProperty('narration');
     expect(log.appendLine).toHaveBeenCalledWith('[DraftEdit] Proofread chapter-01.md: no narration baseline (Cannot find module \'wink-pos-tagger\')');

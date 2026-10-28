@@ -30,6 +30,12 @@ import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor'
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 import { reviewHarness, type FakeDocument } from '@app/__tests__/platform/vscode/refactorPreviewHost';
 
+/** A Proofread gesture begun and run at once, as one with nothing to confirm runs (PR #183 F-02). */
+function proofreadNow(useCase: DraftEditUseCase, ...[target, pass]: Parameters<DraftEditUseCase['begin']>): ReturnType<DraftEditUseCase['run']> {
+  const begun = useCase.begin(target, pass);
+  return begun.kind === 'gesture' ? useCase.run(begun.gesture) : Promise.resolve(begun);
+}
+
 type Finding = { anchor: { quote: string }; category: 'spelling' | 'tense'; replacement: string; explanation: string };
 
 const { host, commands, openDocument, writerApplies, changeLanguage, asked, reset } = reviewHarness(vscode);
@@ -64,9 +70,9 @@ function proofreader(findings: Finding[] = FINDINGS) {
   const snapshot = (document: FakeDocument) => ({ uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: document.languageId });
   return {
     fix: (document: FakeDocument): Promise<DraftEditOutcome> =>
-      useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'fix', review: 'preview' }),
+      proofreadNow(useCase, { ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'fix', review: 'preview' }),
     flag: (document: FakeDocument): Promise<DraftEditOutcome> =>
-      useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' }),
+      proofreadNow(useCase, { ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' }),
     fixAll: (document: FakeDocument): Promise<DraftEditQuickFixOutcome> => useCase.applyShown(snapshot(document), 'all-fixes', 'preview')
   };
 }

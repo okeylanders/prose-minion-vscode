@@ -19,6 +19,10 @@
  *   a value outside the list, names none. So is the word list
  *   (`proseMinion.proofread.wordList`, Slice 3b), normalized; an empty one
  *   names none.
+ * - The gesture is taken at once (`begin`), before anything is awaited: its
+ *   document is watched from that read through the confirmation, so one that
+ *   closes, reopens or changes language while the writer decides sends
+ *   nothing (PR #183 F-02). It is released however the command ends.
  * - A whole-file run over the confirmation threshold asks first, naming the
  *   word count and the number of model calls. Cancel sends nothing. A
  *   selection never asks.
@@ -46,13 +50,14 @@ import {
   proofreadWordList,
   reasoningLevelOf,
   type DocumentSnapshot,
+  type DraftEditBegin,
+  type DraftEditGesture,
   type DraftEditOutcome,
   type ProofreadPass,
   type DraftEditQuickFixOutcome,
   type DraftEditQuickFixRequest,
   type DraftEditReview,
   type DraftEditRunHooks,
-  type DraftEditRunPlan,
   type DraftEditTarget,
   type ProofreadSettings
 } from '@prose-minion/core';
@@ -108,8 +113,9 @@ export interface ProofreadCommandHost {
 
 /** The parts of `DraftEditUseCase` the commands use. */
 export interface ProofreadRunner {
-  plan(target: DraftEditTarget): DraftEditRunPlan;
-  run(target: DraftEditTarget, pass: ProofreadPass, signal?: AbortSignal, hooks?: DraftEditRunHooks): Promise<DraftEditOutcome>;
+  begin(target: DraftEditTarget, pass: ProofreadPass): DraftEditBegin;
+  run(gesture: DraftEditGesture, signal?: AbortSignal, hooks?: DraftEditRunHooks): Promise<DraftEditOutcome>;
+  release(gesture: DraftEditGesture): void;
   applyShown(document: DocumentSnapshot, request: DraftEditQuickFixRequest, review: DraftEditReview): Promise<DraftEditQuickFixOutcome>;
   dismiss(uri: string, issueId: string): void;
   clear(uri?: string): void;
@@ -186,24 +192,34 @@ async function proofreadActiveEditor(host: ProofreadCommandHost, runner: Proofre
     ...(editor.selection ? { range: editor.selection } : {})
   };
 
-  const plan = runner.plan(target);
-  if (plan.needsConfirmation) {
-    const words = plan.words.toLocaleString('en-US');
-    const proceed = await host.confirm(
-      `Proofread all ${words} words of ${editor.label}? That is ${plan.chunks} requests to your Proofread model.`,
-      PROOFREAD
-    );
-    if (!proceed) {
-      return { kind: 'declined' };
-    }
+  // Taken before anything is awaited: the gesture's document is watched from this read on (PR #183 F-02).
+  const begun = runner.begin(target, pass);
+  if (begun.kind !== 'gesture') {
+    present(host, begun, editor.label);
+    return { kind: 'ran', outcome: begun };
   }
+  const { gesture, plan } = begun;
+  try {
+    if (plan.needsConfirmation) {
+      const words = plan.words.toLocaleString('en-US');
+      const proceed = await host.confirm(
+        `Proofread all ${words} words of ${editor.label}? That is ${plan.chunks} requests to your Proofread model.`,
+        PROOFREAD
+      );
+      if (!proceed) {
+        return { kind: 'declined' };
+      }
+    }
 
-  const outcome = await host.withProgress(
-    `Proofreading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
-    (signal, report) => runner.run(target, pass, signal, { onReview: () => report(REVIEW_HINT) })
-  );
-  present(host, outcome, editor.label);
-  return { kind: 'ran', outcome };
+    const outcome = await host.withProgress(
+      `Proofreading ${editor.label}${editor.selection ? ' (selection)' : ''}…`,
+      (signal, report) => runner.run(gesture, signal, { onReview: () => report(REVIEW_HINT) })
+    );
+    present(host, outcome, editor.label);
+    return { kind: 'ran', outcome };
+  } finally {
+    runner.release(gesture);
+  }
 }
 
 function reviewOf(host: ProofreadCommandHost): DraftEditReview {

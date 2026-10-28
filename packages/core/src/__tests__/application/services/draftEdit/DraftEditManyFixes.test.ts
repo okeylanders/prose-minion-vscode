@@ -14,7 +14,8 @@ import {
   FakeAnnotations,
   FakeDocuments,
   VS_CODE_MERGE_THRESHOLD,
-  applyLikeVsCode
+  applyLikeVsCode,
+  proofreadNow
 } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 /** `count` misspelled tokens (`w7x` for `w7y`), with a tense issue in their middle. */
@@ -50,7 +51,7 @@ describe('Proofread and Fix with many fixes, either side of VS Code\'s merge thr
     'counts all %i fixes applied, and keeps the untouched tense flag on its text',
     async (count) => {
       const { document, annotations, useCase, target } = setup(count);
-      const outcome = completed(await useCase.run(target(), { kind: 'proofread', output: 'fix', review: 'preview' }));
+      const outcome = completed(await proofreadNow(useCase, target(), { kind: 'proofread', output: 'fix', review: 'preview' }));
 
       expect(outcome.fix).toMatchObject({ answer: 'submitted', applied: count, notApplied: 0, unknown: 0 });
       expect(outcome).toMatchObject({ flagged: 1, judgmentCalls: 1, dropped: expect.objectContaining({ stale: 0 }) });
@@ -65,7 +66,7 @@ describe('Proofread and Fix with many fixes, either side of VS Code\'s merge thr
     // Untick every fifth fix; still more than the threshold ticked, so VS Code merges them.
     expect(count - unticked).toBeGreaterThanOrEqual(VS_CODE_MERGE_THRESHOLD);
     const { annotations, useCase, target } = setup(count, (newText) => Number(/\d+/u.exec(newText)![0]) % 5 !== 0);
-    const outcome = completed(await useCase.run(target(), { kind: 'proofread', output: 'fix', review: 'preview' }));
+    const outcome = completed(await proofreadNow(useCase, target(), { kind: 'proofread', output: 'fix', review: 'preview' }));
 
     expect(outcome.fix).toMatchObject({ applied: count - unticked, notApplied: unticked, unknown: 0 });
     expect(annotations.flaggedText().filter((text) => /^w\d+x$/u.test(text))).toHaveLength(unticked);
@@ -77,7 +78,7 @@ describe('Fix all with many shown fixes (the quick fix)', () => {
   it('applies them all through a merged change and shows the untouched flag again where it stands', async () => {
     const count = VS_CODE_MERGE_THRESHOLD + 1;
     const { document, annotations, useCase, target } = setup(count);
-    await useCase.run(target(), { kind: 'proofread', output: 'flag' });
+    await proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' });
     expect(annotations.shown).toHaveLength(count + 1);
 
     const outcome = await useCase.applyShown(document.snapshot(), 'all-fixes', 'direct');

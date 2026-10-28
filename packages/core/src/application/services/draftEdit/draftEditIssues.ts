@@ -50,6 +50,18 @@ export function moveIssues<T extends PlacedText>(
     .filter((issue) => placesOf(issue).every((place) => liveText.slice(place.start, place.end) === place.original));
 }
 
+/** Issues moved through `events`, as `moveIssues` moves them; those an edit touched are counted as stale. */
+export function followIssues<T extends PlacedText>(
+  issues: readonly T[],
+  events: ReadonlyArray<readonly DocumentTextChange[]>,
+  liveText: string,
+  dropped: DraftEditDrops
+): T[] {
+  const moved = moveIssues(issues, events, liveText);
+  dropped.stale += issues.length - moved.length;
+  return moved;
+}
+
 /** Issues outside the live text's protected regions (found here unless the caller already has them), on every side; the rest are counted as protected. */
 export function outsideProtected<T extends PlacedText>(
   issues: readonly T[],

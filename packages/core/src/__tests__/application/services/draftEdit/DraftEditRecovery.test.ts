@@ -28,6 +28,7 @@ import { ProofreadService } from '@services/proofread/ProofreadService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { createFakeWorkspace } from '@/__tests__/mocks/platform';
 import { ALICE_OPENING_SEEDED, ALICE_RABBIT_SEEDED } from '@/__tests__/utils/draftEdit/proofreadFixtures';
+import { proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const URI = 'file:///workspace/chapter-01.txt';
 
@@ -80,7 +81,8 @@ async function summaryWith(writable: readonly boolean[]) {
   };
   const annotations = { show: () => true, remove: jest.fn(), clear: jest.fn(), current: () => undefined };
   const useCase = new DraftEditUseCase(service, documents, annotations, new DraftEditApplier(documents), log);
-  const outcome = await useCase.run(
+  const outcome = await proofreadNow(
+    useCase,
     { uri: URI, version: 1, text: TEXT, languageId: 'plaintext', relativePath: 'chapter-01.txt' },
     { kind: 'proofread', output: 'flag' }
   );

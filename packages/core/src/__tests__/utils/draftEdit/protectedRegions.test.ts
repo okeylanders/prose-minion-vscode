@@ -244,6 +244,47 @@ describe('findProtectedRegions: inline constructs stay inside their block (PR #1
   });
 });
 
+describe('findProtectedRegions: reference labels (PR #183 F-01)', () => {
+  const masked = (text: string) => maskProtectedRegions(text, findProtectedRegions(text, 'markdown')).text;
+  const P = PROTECTED_PLACEHOLDER;
+
+  it('protects a full reference\'s label, link or image, keeping its visible text as prose', () => {
+    expect(masked('Alice reads [chapter][teh].')).toBe(`Alice reads [chapter]${P}.`);
+    expect(masked('Alice sees ![a pictur][teh].')).toBe(`Alice sees ![a pictur]${P}.`);
+    expect(masked('> In a quote, [chapter][teh].')).toBe(`> In a quote, [chapter]${P}.`);
+    expect(masked('| Note |\n| --- |\n| See [chapter][teh]. |\n')).toBe(`| Note |\n| --- |\n| See [chapter]${P}. |\n`);
+  });
+
+  it('keeps a collapsed or shortcut reference\'s label as prose: it is the visible text', () => {
+    expect(masked('Alice reads [teh][].')).toBe(`Alice reads [teh]${P}.`);
+    expect(masked('Alice reads [teh].')).toBe('Alice reads [teh].');
+  });
+
+  it('protects a label holding escaped brackets, or running onto the next line', () => {
+    expect(masked('See [chapter][teh\\]one] now.')).toBe(`See [chapter]${P} now.`);
+    expect(masked('See [chapter][teh\none] now.')).toBe(`See [chapter]${P} now.`);
+  });
+
+  it('protects every label of a chain, and a code span inside one still binds tighter', () => {
+    expect(masked('[a][b][c] after')).toBe(`[a]${P} after`);
+    expect(masked('[a][x`y] z` after')).toBe(`[a]${P} after`);
+  });
+
+  it('controls: an escaped bracket, another `[`, or a blank line makes no label', () => {
+    for (const prose of ['[a]\\[teh] b', '[a][teh [c] d] e', '[a][teh\n\nd] e', 'Alice [and] [the] Rabbit']) {
+      expect(masked(prose)).toBe(prose);
+    }
+  });
+
+  it('reads unclosed or chained labels in work that grows with the text', () => {
+    const started = Date.now();
+    expect(masked(`${'][x'.repeat(20000)}]`)).toBe(`]${P}`);
+    expect(masked(`[a][${'x'.repeat(200000)}`)).toBe(`[a][${'x'.repeat(200000)}`);
+    // Generous: linear work takes a few milliseconds; a rescan per opener takes seconds.
+    expect(Date.now() - started).toBeLessThan(1500);
+  });
+});
+
 describe('readDocumentRegions: headings, wherever Markdown puts them (Slice 3b; PR #176 F-02)', () => {
   const headingsText = (text: string, languageId = 'markdown') =>
     readDocumentRegions(text, languageId).headings.map((range) => text.slice(range.start, range.end));

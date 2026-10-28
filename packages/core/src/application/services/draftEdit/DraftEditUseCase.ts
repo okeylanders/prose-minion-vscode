@@ -2,15 +2,24 @@
  * DraftEditUseCase — one Draft Edit run, from a gesture's target to flags on
  * the document, or fixes in it (ADR 2026-10-21 D1, D2, D4, D6, D7).
  *
- * A run:
- * 1. masks the target's protected regions (found over the whole document,
- *    so a selection inside a fenced block is still protected), and chunks
- *    it on paragraph boundaries;
- * 2. starts watching the open document at the version the gesture read,
- *    before anything is awaited;
- * 3. hands the chunks to the pass (the only step that calls a model), with
- *    what host code read of the whole document beside them: its narration,
- *    and the writer's listed words each chunk holds (Slice 3b);
+ * A run is a held gesture (PR #183 F-02, as Craft Flags' is since PR #177
+ * F-02): `begin` takes it synchronously, at the writer's gesture, before
+ * anything is awaited, and says what it would read, for the host's long-file
+ * confirmation; `run` sends it, once; `release` ends it unsent. Each is
+ * idempotent at its end: a gesture runs once, and is released however it
+ * ends.
+ * 1. `begin` masks the target's protected regions (found over the whole
+ *    document, so a selection inside a fenced block is still protected), and
+ *    chunks it on paragraph boundaries;
+ * 2. it starts watching the open document at the version the gesture read,
+ *    so a confirmation's await is inside the watched lifetime: a document
+ *    that closes, reopens or changes language while the writer decides sends
+ *    nothing (`changed`), since a URI and a version do not name a lifetime;
+ * 3. `run` hands the chunks to the pass (the only step that calls a model),
+ *    with what host code read of the whole document beside them: its
+ *    narration, and the writer's listed words each chunk holds (Slice 3b).
+ *    The pass asks the watch in the turn each chunk starts, so a lifetime
+ *    that ends mid-run starts no more;
  * 4. places each finding by its quote in its own chunk; drops a spelling or
  *    wrong-word finding on a listed word; refuses one that touches a
  *    placeholder; applies the Proofread guard; keeps the earlier of two
@@ -22,9 +31,10 @@
  *    protected regions are found again, and an issue now inside one is
  *    dropped. A document that closed shows nothing, even if it opened again
  *    (F-04);
- * 6. Fix only (Slice 2): hands the fixes to `DraftEditApplier`, the one door
- *    to the document, and moves the rest through what it changed. A fix the
- *    writer left unticked, discarded or the editor refused is flagged instead;
+ * 6. Fix only (Slice 2; `applyRunFixes`): hands the fixes to
+ *    `DraftEditApplier`, the one door to the document, and moves the rest
+ *    through what it changed. A fix the writer left unticked, discarded or
+ *    the editor refused is flagged instead;
  * 7. shows what is left as annotations, replacing the document's earlier ones,
  *    and keeps them for the session so a quick fix can name one by id. A
  *    selection run replaces only the flags it read again: those wholly
@@ -55,18 +65,19 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { chunkParagraphs } from '@/utils/draftEdit/chunkParagraphs';
 import { findProtectedRegions, maskProtectedRegions } from '@/utils/draftEdit/protectedRegions';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
-import type { DraftEditApplier, DraftEditApplyResult } from '@/application/services/draftEdit/DraftEditApplier';
+import type { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
+import { applyRunFixes, fixReport, type DraftEditLeftovers } from '@/application/services/draftEdit/draftEditRunFixes';
 import { placeFindings, type Prepared } from '@/application/services/draftEdit/draftEditPlacement';
 import { readWholeDocument } from '@/application/services/draftEdit/draftEditHostRead';
 import {
   byPlace,
+  followIssues,
   hasReplacement,
   moveIssues,
   noDrops,
   outsideProtected,
   toAnnotation,
-  toEdit,
-  type DraftEditDrops
+  toEdit
 } from '@/application/services/draftEdit/draftEditIssues';
 
 /** The Proofread pass as this use case needs it: chunks in, chunk-relative findings out. */
@@ -82,6 +93,16 @@ export interface DraftEditRunPlan {
   /** A whole-file run over `PROMPT_BUDGETS.proofread.confirmWholeFileWords`; a selection never needs it. */
   readonly needsConfirmation: boolean;
 }
+
+/** The writer's gesture, held from its first read until it runs or is released (PR #183 F-02). Opaque to the host. */
+export interface DraftEditGesture {
+  readonly uri: string;
+}
+
+/** A gesture taken, with what it would read, or why there is none: a run already held, nothing to read, or a document already moved on. */
+export type DraftEditBegin =
+  | { readonly kind: 'gesture'; readonly gesture: DraftEditGesture; readonly plan: DraftEditRunPlan }
+  | Extract<DraftEditOutcome, { kind: 'busy' | 'empty' | 'changed' }>;
 
 /** What a host hears while a run works. */
 export interface DraftEditRunHooks {
@@ -103,13 +124,19 @@ export type DraftEditQuickFixOutcome =
   | ({ readonly kind: 'done'; readonly refused: number } & DraftEditFixReport);
 
 
-/** What a run shows, at which version; a Fix run's report of its fixes beside it. */
-type Leftovers =
-  | { readonly kind: 'closed' }
-  | { readonly kind: 'show'; readonly version: number; readonly issues: ProofreadIssue[]; readonly report?: DraftEditFixReport };
+interface Held {
+  readonly target: DraftEditTarget;
+  readonly pass: ProofreadPass;
+  readonly prepared: Prepared;
+  readonly watch: DocumentWatch;
+  /** A selection run's earlier flags outside its selection, chosen at the gesture. */
+  readonly keep: ReadonlySet<string>;
+  ran: boolean;
+}
 
 export class DraftEditUseCase {
   private readonly inFlight = new Set<string>();
+  private readonly held = new Map<DraftEditGesture, Held>();
   /** Each document's shown issues, by id, for the session only (D6): a quick fix's handle back to them. */
   private readonly shownIssues = new Map<string, Map<string, ProofreadIssue>>();
   private sequence = 0;
@@ -122,18 +149,8 @@ export class DraftEditUseCase {
     private readonly log: LogSink
   ) {}
 
-  plan(target: DraftEditTarget): DraftEditRunPlan {
-    const prepared = this.prepare(target);
-    const wholeFile = target.range === undefined;
-    return {
-      words: prepared.words,
-      chunks: prepared.chunks.length,
-      wholeFile,
-      needsConfirmation: wholeFile && prepared.words > PROMPT_BUDGETS.proofread.confirmWholeFileWords
-    };
-  }
-
-  async run(target: DraftEditTarget, pass: ProofreadPass, signal?: AbortSignal, hooks: DraftEditRunHooks = {}): Promise<DraftEditOutcome> {
+  /** Take the gesture: synchronously, before anything is awaited, so any confirmation is inside its watched lifetime. */
+  begin(target: DraftEditTarget, pass: ProofreadPass): DraftEditBegin {
     if (this.inFlight.has(target.uri)) {
       return { kind: 'busy' };
     }
@@ -145,14 +162,59 @@ export class DraftEditUseCase {
     if (!watch) {
       return { kind: 'changed' };
     }
-    const keep = this.flagsOutside(target);
+    const gesture: DraftEditGesture = { uri: target.uri };
     this.inFlight.add(target.uri);
-    try {
-      return await this.proofread(target, pass, prepared, watch, keep, signal, hooks);
-    } finally {
-      watch.dispose();
-      this.inFlight.delete(target.uri);
+    this.held.set(gesture, { target, pass, prepared, watch, keep: this.flagsOutside(target), ran: false });
+    const wholeFile = target.range === undefined;
+    return {
+      kind: 'gesture',
+      gesture,
+      plan: {
+        words: prepared.words,
+        chunks: prepared.chunks.length,
+        wholeFile,
+        needsConfirmation: wholeFile && prepared.words > PROMPT_BUDGETS.proofread.confirmWholeFileWords
+      }
+    };
+  }
+
+  /** End a gesture unsent: declined, failed or cancelled before it ran. Nothing happens to one already ended. */
+  release(gesture: DraftEditGesture): void {
+    const held = this.held.get(gesture);
+    if (held && !held.ran) {
+      this.finish(gesture, held);
     }
+  }
+
+  /** Send a held gesture, once; it ends however the run does. A lifetime that ended since `begin` sends nothing. */
+  async run(gesture: DraftEditGesture, signal?: AbortSignal, hooks: DraftEditRunHooks = {}): Promise<DraftEditOutcome> {
+    const held = this.open(gesture);
+    held.ran = true;
+    try {
+      if (held.watch.ended()) {
+        this.log.appendLine(`[DraftEdit] Proofread ${runLabel(held.target)}: the document closed or changed language before anything was sent; nothing sent`);
+        return { kind: 'changed' };
+      }
+      return await this.proofread(held.target, held.pass, held.prepared, held.watch, held.keep, signal, hooks);
+    } finally {
+      this.finish(gesture, held);
+    }
+  }
+
+  /** A gesture still held and not yet sent; anything else is a host's mistake, never a second run. */
+  private open(gesture: DraftEditGesture): Held {
+    const held = this.held.get(gesture);
+    if (!held || held.ran) {
+      throw new Error('This Proofread gesture has already run or been released');
+    }
+    return held;
+  }
+
+  private finish(gesture: DraftEditGesture, held: Held): void {
+    held.ran = true;
+    held.watch.dispose();
+    this.held.delete(gesture);
+    this.inFlight.delete(gesture.uri);
   }
 
   /**
@@ -311,6 +373,7 @@ export class DraftEditUseCase {
       ...(pass.wordList ? { wordList: pass.wordList } : {}),
       ...(pass.reasoning ? { reasoning: pass.reasoning } : {}),
       ...(host.narration ? { narration: host.narration } : {}),
+      stillCurrent: () => !watch.ended(),
       ...(signal ? { signal } : {})
     });
     if (result.kind === 'unconfigured') {
@@ -338,11 +401,11 @@ export class DraftEditUseCase {
       return closed();
     }
     const live = settled.snapshot;
-    const current = outsideProtected(this.followed(placed, settled.edits, live.text, dropped), live.text, live.languageId, dropped);
+    const current = outsideProtected(followIssues(placed, settled.edits, live.text, dropped), live.text, live.languageId, dropped);
 
     // Fix: nothing is awaited between settling and asking the applier, so its first watch begins at `live.version`.
-    const leftovers: Leftovers = pass.output === 'fix'
-      ? await this.fix(pass, live, current, dropped, hooks)
+    const leftovers: DraftEditLeftovers = pass.output === 'fix'
+      ? await applyRunFixes(this.applier, pass, live, current, dropped, (fixes) => hooks.onReview?.(fixes))
       : { kind: 'show', version: live.version, issues: current };
     if (leftovers.kind === 'closed') {
       return closed();
@@ -381,95 +444,9 @@ export class DraftEditUseCase {
       ...(result.usage ? { usage: result.usage } : {})
     };
   }
-
-  /**
-   * The fixes made through the applier, and what is left to flag: the
-   * judgment calls and downgraded fixes moved through what it changed, and
-   * the fixes still standing as they were (unticked, discarded, refused).
-   */
-  private async fix(
-    pass: Extract<ProofreadPass, { output: 'fix' }>,
-    live: DocumentSnapshot,
-    current: readonly ProofreadIssue[],
-    dropped: DraftEditDrops,
-    hooks: DraftEditRunHooks
-  ): Promise<Leftovers> {
-    const fixes = current.filter((issue) => issue.disposition === 'fix').filter(hasReplacement);
-    if (fixes.length === 0) {
-      return { kind: 'show', version: live.version, issues: [...current], report: { review: pass.review, answer: 'none', applied: 0, notApplied: 0, unknown: 0 } };
-    }
-    if (pass.review === 'preview') {
-      hooks.onReview?.(fixes.length);
-    }
-    const result = await this.applier.apply({
-      document: live,
-      edits: fixes.map((issue) => toEdit(issue)),
-      review: pass.review,
-      policy: DRAFT_EDIT_PASS_POLICIES[pass.kind]
-    });
-    if (!result.settled) {
-      return { kind: 'closed' };
-    }
-
-    const after = result.settled.snapshot;
-    const fixIds = new Set(fixes.map((issue) => issue.id));
-    const byId = new Map(fixes.map((issue) => [issue.id, issue]));
-    const others = current.filter((issue) => !fixIds.has(issue.id));
-    const standing: ProofreadIssue[] = [];
-    for (const refusal of result.refused) {
-      if (refusal.reason === 'changed') {
-        dropped.stale += 1;
-      } else if (refusal.reason === 'protected') {
-        dropped.protected += 1;
-      } else {
-        // Refused for its own shape (Markdown, a line break, an overlap): still true where it was, so flagged,
-        // and no longer offered as Proofread's own fix, so Fix all never tries it again.
-        const issue = byId.get(refusal.id)!;
-        standing.push(refusal.reason === 'overlapping'
-          ? issue
-          : { ...issue, disposition: 'flag', downgradeReason: refusal.reason === 'markup' ? 'markup-change' : 'non-mechanical-edit' });
-      }
-    }
-    const moved = this.followed([...others, ...standing], result.settled.edits, after.text, dropped);
-    const unticked = result.notApplied.map(({ id, start, end }) => ({ ...byId.get(id)!, start, end }));
-    return {
-      kind: 'show',
-      version: after.version,
-      issues: outsideProtected([...moved, ...unticked], after.text, after.languageId, dropped).sort(byPlace),
-      report: fixReport(pass.review, result)
-    };
-  }
-
-  /** Issues moved through `events`; those an edit touched are counted as stale. */
-  private followed(
-    issues: readonly ProofreadIssue[],
-    events: ReadonlyArray<readonly DocumentTextChange[]>,
-    liveText: string,
-    dropped: DraftEditDrops
-  ): ProofreadIssue[] {
-    const moved = moveIssues(issues, events, liveText);
-    dropped.stale += issues.length - moved.length;
-    return moved;
-  }
-
 }
 
 /** Names a run in logs and recovery files: a path, never the text. */
 function runLabel(target: DraftEditTarget): string {
   return `${target.relativePath ?? 'untitled document'}${target.range ? ' (selection)' : ''}`;
-}
-
-function fixReport(review: DraftEditReview, result: DraftEditApplyResult): DraftEditFixReport {
-  const answer: DraftEditFixReport['answer'] =
-    result.outcome === 'submitted' || result.outcome === 'declined' || result.outcome === 'stale' || result.outcome === 'failed'
-      ? result.outcome
-      : 'none';
-  return {
-    review,
-    answer,
-    applied: result.applied.length,
-    notApplied: result.notApplied.length,
-    unknown: result.unknown.length,
-    ...(result.failure !== undefined ? { failure: result.failure } : {})
-  };
 }

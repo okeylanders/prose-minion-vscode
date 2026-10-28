@@ -16,7 +16,7 @@ import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services
 import type { ProofreadPass } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunRequest, ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const OPENING = 'Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.';
 const DINAH = 'Then, thought Alice, Dinah will miss me very much to-night, and Alice hoped they would remember Dinah at tea-time.';
@@ -61,7 +61,7 @@ describe('The word list in a run (Slice 3b, part 2)', () => {
       finding('beginning', 'spelling', 'begining')
     ));
 
-    const outcome = await useCase.run(target(), { ...FLAG, wordList: ['Dinah', 'Alcie'] });
+    const outcome = await proofreadNow(useCase, target(), { ...FLAG, wordList: ['Dinah', 'Alcie'] });
 
     expect(requests[0].wordList).toEqual(['Dinah', 'Alcie']);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, dropped: { accepted: 2, unanchored: 1 } });
@@ -70,7 +70,7 @@ describe('The word list in a run (Slice 3b, part 2)', () => {
 
   it('sends no list when the pass names none', async () => {
     const { useCase, requests, target } = proofreader();
-    await useCase.run(target(), FLAG);
+    await proofreadNow(useCase, target(), FLAG);
 
     expect(requests[0]).not.toHaveProperty('wordList');
   });
@@ -80,7 +80,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
   it('flags each use of the variant, warning-level, with the common name as a Replace with that is never preferred', async () => {
     const { annotations, useCase, target, document } = proofreader();
 
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, judgmentCalls: 1 });
     expect(annotations.shown).toEqual([expect.objectContaining({
@@ -97,7 +97,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
     const { useCase, replies, target, flags } = proofreader();
     replies.push(read(finding('Alcie', 'spelling', 'Alice'), finding('so Alcie', 'missing-word', 'so Alice')));
 
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, dropped: { overlapping: 2 } });
     expect(flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }]);
@@ -105,24 +105,24 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
 
   it('never flags a name the writer lists', async () => {
     const { useCase, target, flags } = proofreader();
-    await useCase.run(target(), { ...FLAG, wordList: ['Alcie'] });
+    await proofreadNow(useCase, target(), { ...FLAG, wordList: ['Alcie'] });
 
     expect(flags()).toEqual([]);
   });
 
   it('reads the whole document in a selection run, and shows only the variants inside the selection', async () => {
     const inside = proofreader();
-    await inside.useCase.run(inside.target(FALLING), FLAG);
+    await proofreadNow(inside.useCase, inside.target(FALLING), FLAG);
     expect(inside.flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }]);
 
     const outside = proofreader();
-    await outside.useCase.run(outside.target(DINAH), FLAG);
+    await proofreadNow(outside.useCase, outside.target(DINAH), FLAG);
     expect(outside.flags()).toEqual([]);
   });
 
   it('is never made by Fix, or by Fix all: it stays a flag', async () => {
     const { useCase, target, flags, document } = proofreader();
-    const outcome = await useCase.run(target(), { kind: 'proofread', output: 'fix', review: 'direct' });
+    const outcome = await proofreadNow(useCase, target(), { kind: 'proofread', output: 'fix', review: 'direct' });
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'none', applied: 0 } });
     await expect(useCase.applyShown(document.snapshot(), 'all-fixes', 'direct')).resolves.toEqual({ kind: 'nothing' });
@@ -135,7 +135,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
     const { useCase, replies, target, flags, log } = proofreader();
     replies.push(read(finding('beginning', 'spelling', 'begining')));
 
-    await expect(useCase.run(target(), FLAG)).resolves.toMatchObject({ kind: 'completed', flagged: 1 });
+    await expect(proofreadNow(useCase, target(), FLAG)).resolves.toMatchObject({ kind: 'completed', flagged: 1 });
 
     expect(flags()).toEqual([{ text: 'beginning', code: 'proofread.spelling' }]);
     expect(log.appendLine).toHaveBeenCalledWith('[DraftEdit] Proofread chapter-01.md: no name check (4200 capitalized words are too many to compare)');
@@ -151,14 +151,14 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
       ['in a list item', '- # The Rise']
     ])('a heading\'s title case is no evidence of a name: %s', async (_kind, heading) => {
       const { useCase, target, flags } = proofreader(`${ROSE}\n\n${heading}\n\n${ROSE}`);
-      await useCase.run(target(), FLAG);
+      await proofreadNow(useCase, target(), FLAG);
 
       expect(flags()).toEqual([]);
     });
 
     it('control: the same word mid-sentence in prose is read as a name', async () => {
       const { useCase, target, flags } = proofreader(`${ROSE}\n\nWe read, again, The Rise.`);
-      await useCase.run(target(), FLAG);
+      await proofreadNow(useCase, target(), FLAG);
 
       expect(flags()).toEqual([{ text: 'Rise', code: 'proofread.name' }]);
     });
@@ -171,11 +171,11 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
       const twice = 'Then, after a while, Alice looked about her. So, at last, Alice sat down.';
       const variant = 'And then Alcie slept.';
       const withHeading = proofreader(`${heading}\n\n${twice} ${variant}`);
-      await withHeading.useCase.run(withHeading.target(), FLAG);
+      await proofreadNow(withHeading.useCase, withHeading.target(), FLAG);
       expect(withHeading.flags()).toEqual([]);
 
       const inProse = proofreader(`${twice} Later, Alice woke. ${variant}`);
-      await inProse.useCase.run(inProse.target(), FLAG);
+      await proofreadNow(inProse.useCase, inProse.target(), FLAG);
       expect(inProse.flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }]);
     });
   });
@@ -184,7 +184,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
     const { useCase, replies, target, flags } = proofreader('Alice sat. We saw Alice. We liked Alice. We told Alcie come after teh ceremony.');
     replies.push(read(finding('Alcie come after teh', 'missing-word', 'Alcie to come after teh'), finding('teh', 'spelling', 'the')));
 
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(flags()).toEqual([{ text: 'Alcie', code: 'proofread.name' }, { text: 'teh', code: 'proofread.spelling' }]);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 2, dropped: { overlapping: 1 } });
@@ -192,7 +192,7 @@ describe('Name consistency in a run (Slice 3b, part 2)', () => {
 
   it('lands through its own Replace with', async () => {
     const { annotations, useCase, target, document } = proofreader();
-    await useCase.run(target(), FLAG);
+    await proofreadNow(useCase, target(), FLAG);
 
     const outcome = await useCase.applyShown(document.snapshot(), { issueIds: [annotations.shown[0].id] }, 'direct');
 

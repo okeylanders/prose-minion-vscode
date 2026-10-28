@@ -567,7 +567,7 @@ describe('app-shell provider assembly', () => {
     }
   });
 
-  it('quiesces the Workshop handler before the final deactivation flush', () => {
+  it('quiesces each tab\'s handler before deactivation waits for what it owes', () => {
     const providerSource = fs.readFileSync(
       path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
       'utf8'
@@ -585,8 +585,16 @@ describe('app-shell provider assembly', () => {
       extensionSource.indexOf('export async function deactivate()'),
       extensionSource.indexOf('\n}', extensionSource.indexOf('export async function deactivate()'))
     );
-    expect(deactivate.indexOf('workshopPanelProvider?.dispose()'))
-      .toBeLessThan(deactivate.indexOf('await workshopSessionPersistenceCoordinator?.flush()'));
+    // Every part goes to `shutDownExtension`, whose order its own test drives over the real handlers and store (PR #183 F-03).
+    for (const part of [
+      'workshopPanel: workshopPanelProvider',
+      'lightboxPanel: lightboxPanelProvider',
+      'workshopSessions: workshopSessionPersistenceCoordinator',
+      'lightboxBoards: lightboxBoardLibrary'
+    ]) {
+      expect(deactivate).toContain(part);
+    }
+    expect(deactivate).toContain('await shutDownExtension(parts)');
 
     // The Lightbox mirrors the Workshop's order: handler before panel.
     const lightboxSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');

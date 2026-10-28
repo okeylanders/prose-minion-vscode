@@ -14,6 +14,10 @@
  *   refuse every later chunk too, so it stops the run the same way, with
  *   the provider's host-owned message.
  *
+ * The caller's `stillCurrent` is asked in the turn each chunk starts: once the
+ * gesture's document closed, reopened or changed language, no more chunks are
+ * sent (PR #183 F-02).
+ *
  * Every chunk goes to the model the run read at its start (PR #181 F-01): a
  * model chosen mid-run takes the next run. At reasoning `off`, that model is
  * checked against the catalog first, and one that always reasons is refused
@@ -72,6 +76,8 @@ export interface ProofreadRunRequest {
   readonly wordList?: readonly string[];
   /** How much the model may think per chunk (2026-10-27); absent, the pass's default. */
   readonly reasoning?: ReasoningLevel;
+  /** Whether the gesture's document lifetime still holds, asked as each chunk starts; false sends that chunk and every later one as unsent (PR #183 F-02). */
+  readonly stillCurrent?: () => boolean;
   readonly signal?: AbortSignal;
 }
 
@@ -132,10 +138,19 @@ export class ProofreadService {
     const usages: Array<TokenUsage | undefined> = [];
     const answered: ExecutionResult[] = [];
     let interrupted: ProofreadInterruption | undefined;
+    let ended = false;
     const limit = pLimit(PROMPT_BUDGETS.proofread.concurrency);
 
     const results = await Promise.all(request.chunks.map((chunk, index) => limit(async (): Promise<ProofreadChunkResult> => {
       if (interrupted || request.signal?.aborted) {
+        return { kind: 'unsent' };
+      }
+      // The call below starts in this same turn, so this answers for it.
+      if (ended || (request.stillCurrent && !request.stillCurrent())) {
+        if (!ended) {
+          this.log.appendLine(`[Proofread] ${request.label}: the document closed or changed language; chunk ${index + 1} and later not sent`);
+        }
+        ended = true;
         return { kind: 'unsent' };
       }
       let result: ExecutionResult;

@@ -1,9 +1,13 @@
 /**
  * Markdown's inline protected regions (ADR 2026-10-21 D4; PR #171 F-02):
- * code spans; link and image destinations; autolinks, URI and email; raw
- * HTML (tags with their attributes, comments, processing instructions,
- * declarations, CDATA); and GFM's bare URLs, `www.` links and email
- * addresses.
+ * code spans; link and image destinations; a full reference's label
+ * (`[text][label]`, PR #183 F-01); autolinks, URI and email; raw HTML (tags
+ * with their attributes, comments, processing instructions, declarations,
+ * CDATA); and GFM's bare URLs, `www.` links and email addresses.
+ *
+ * A collapsed or shortcut reference (`[label][]`, `[label]`) shows its label
+ * as its text, so the label stays prose; `markdownStructure` refuses a fix
+ * that moves where it goes.
  *
  * It reads one inline scope at a time (`markdownBlockRegions`): one leaf
  * block or table cell, container prefixes stripped, so nothing pairs across
@@ -21,6 +25,9 @@
  *   break. Past `MAX_LINK_PAREN_DEPTH` nested parentheses it is not read,
  *   and the rest of the scope is protected instead.
  * - A tag's attribute values may hold `>` when quoted.
+ * - A label is `]` then `[` through the next unescaped `]`, never across a
+ *   blank line or another `[`. The scan reads on inside it, so a code span
+ *   there still binds tighter, and `[a][b][c]` protects both labels.
  * GFM's bare links pair with nothing, so they have their own pass.
  *
  * Where it is unsure it protects more, never less: text read as protected is
@@ -110,6 +117,15 @@ class InlineScan {
           index = destination;
           continue;
         }
+      } else if (char === ']' && s[index + 1] === '[') {
+        // A full reference's label names its definition, not prose: `[chapter][teh]` (PR #183 F-01).
+        const label = linkLabelEnd(s, index + 1);
+        if (label !== undefined) {
+          this.regions.push({ start: index + 1, end: label });
+        }
+        // Read on inside it: a code span or tag there binds tighter, and its `]` may open the next label.
+        index += 1;
+        continue;
       }
       if (end !== undefined) {
         this.regions.push({ start: index, end });
@@ -279,6 +295,31 @@ function skipLinkSpacing(s: string, index: number): number | undefined {
     at += 1;
   }
   return at >= s.length || s[at] === '\n' || s[at] === '\r' ? undefined : at;
+}
+
+/**
+ * The end of a link label, `[` at `open` through its `]`; undefined when it
+ * is not one: an unescaped `[` or a blank line comes first. No length bound:
+ * `marked` reads a longer label than CommonMark's 999 characters, and the scan
+ * stops at the next bracket, so no two labels' scans overlap.
+ */
+function linkLabelEnd(s: string, open: number): number | undefined {
+  let at = open + 1;
+  while (at < s.length) {
+    const char = s[at];
+    if (char === '\\' && ASCII_PUNCTUATION.test(s[at + 1] ?? '')) {
+      at += 2;
+      continue;
+    }
+    if (char === ']') {
+      return at + 1;
+    }
+    if (char === '[' || (char === '\n' && skipLinkSpacing(s, at) === undefined)) {
+      return undefined;
+    }
+    at += 1;
+  }
+  return undefined;
 }
 
 /** The end of a link destination and optional title, `(` at `open` through its `)`; undefined when it is not one. */

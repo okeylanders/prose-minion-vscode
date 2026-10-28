@@ -20,7 +20,16 @@ jest.mock('@prose-minion/core', () => ({
   proofreadWordList: jest.requireActual('@/utils/proofread/proofreadWordList').proofreadWordList
 }));
 
-import type { DraftEditOutcome, ProofreadPass, DraftEditQuickFixOutcome, DraftEditRunPlan, DraftEditTarget } from '@prose-minion/core';
+import type {
+  DraftEditBegin,
+  DraftEditGesture,
+  DraftEditOutcome,
+  DraftEditQuickFixOutcome,
+  DraftEditRunHooks,
+  DraftEditRunPlan,
+  DraftEditTarget,
+  ProofreadPass
+} from '@prose-minion/core';
 import {
   OPEN_SETTINGS_COMMAND,
   REVIEW_HINT,
@@ -54,6 +63,8 @@ const editor = (overrides: Partial<ProofreadEditorSnapshot> = {}): ProofreadEdit
 function setup(options: {
   active?: ProofreadEditorSnapshot;
   plan?: Partial<DraftEditRunPlan>;
+  /** Why no gesture could be taken; absent, one is. */
+  refused?: Exclude<DraftEditBegin, { kind: 'gesture' }>;
   confirm?: boolean;
   outcome?: DraftEditOutcome;
   choice?: string;
@@ -71,7 +82,10 @@ function setup(options: {
     spellingConvention: jest.fn(() => options.spelling),
     wordList: jest.fn(() => options.wordList),
     proofreadReasoning: jest.fn(() => options.reasoning),
-    confirm: jest.fn(async () => options.confirm ?? false),
+    confirm: jest.fn(async () => {
+      calls.push('confirm');
+      return options.confirm ?? false;
+    }),
     withProgress: jest.fn(async <T>(title: string, task: (signal: AbortSignal, report: (message: string) => void) => Promise<T>) => {
       calls.push(`progress:${title}`);
       return task(new AbortController().signal, (message) => calls.push(`report:${message}`));
@@ -80,15 +94,26 @@ function setup(options: {
     showWarning: jest.fn(async () => options.choice),
     executeCommand: jest.fn()
   } satisfies ProofreadCommandHost;
+  const gesture: DraftEditGesture = { uri: 'file:///workspace/chapter-01.md' };
+  let begun: ProofreadPass | undefined;
   const runner = {
-    plan: jest.fn((target: DraftEditTarget): DraftEditRunPlan => ({
-      words: 14, chunks: 1, wholeFile: target.range === undefined, needsConfirmation: false, ...options.plan
-    })),
-    run: jest.fn(async (_target: DraftEditTarget, pass: ProofreadPass, _signal?: AbortSignal, hooks?: { onReview?(fixes: number): void }) => {
-      if (pass.output === 'fix') {
+    begin: jest.fn((target: DraftEditTarget, pass: ProofreadPass): DraftEditBegin => {
+      calls.push('begin');
+      begun = pass;
+      return options.refused ?? {
+        kind: 'gesture',
+        gesture,
+        plan: { words: 14, chunks: 1, wholeFile: target.range === undefined, needsConfirmation: false, ...options.plan }
+      };
+    }),
+    run: jest.fn(async (_gesture: DraftEditGesture, _signal?: AbortSignal, hooks?: DraftEditRunHooks) => {
+      if (begun?.output === 'fix') {
         hooks?.onReview?.(2);
       }
       return options.outcome ?? COMPLETED;
+    }),
+    release: jest.fn(() => {
+      calls.push('release');
     }),
     applyShown: jest.fn(async (): Promise<DraftEditQuickFixOutcome> => options.quickFix ?? {
       kind: 'done', refused: 0, review: 'direct', answer: 'submitted', applied: 1, notApplied: 0, unknown: 0
@@ -96,7 +121,7 @@ function setup(options: {
     dismiss: jest.fn(),
     clear: jest.fn()
   } satisfies ProofreadRunner;
-  return { host, runner, calls };
+  return { host, runner, calls, gesture };
 }
 
 /** Let the notification's `.then` run. */
@@ -117,16 +142,15 @@ describe('proofreadAndFlag', () => {
   });
 
   it.each(['markdown', 'plaintext'])('proofreads a whole %s document captured at the gesture, flagging only', async (languageId) => {
-    const { host, runner, calls } = setup({ active: editor({ languageId }) });
+    const { host, runner, calls, gesture } = setup({ active: editor({ languageId }) });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runner.begin).toHaveBeenCalledWith(
       { uri: 'file:///workspace/chapter-01.md', version: 4, text: TEXT, languageId, relativePath: 'chapter-01.md' },
-      { kind: 'proofread', output: 'flag', reasoning: 'light' },
-      expect.any(AbortSignal),
-      expect.any(Object)
+      { kind: 'proofread', output: 'flag', reasoning: 'light' }
     );
-    expect(calls).toEqual(['progress:Proofreading chapter-01.md…']);
+    expect(runner.run).toHaveBeenCalledWith(gesture, expect.any(AbortSignal), expect.any(Object));
+    expect(calls).toEqual(['begin', 'progress:Proofreading chapter-01.md…', 'release']);
     expect(host.confirm).not.toHaveBeenCalled();
   });
 
@@ -134,8 +158,8 @@ describe('proofreadAndFlag', () => {
     const { host, runner, calls } = setup({ active: editor({ selection: { start: 6, end: 9 } }) });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0]).toEqual([expect.objectContaining({ range: { start: 6, end: 9 } }), expect.anything(), expect.anything(), expect.anything()]);
-    expect(calls).toEqual(['progress:Proofreading chapter-01.md (selection)…']);
+    expect(runner.begin.mock.calls[0]).toEqual([expect.objectContaining({ range: { start: 6, end: 9 } }), expect.anything()]);
+    expect(calls).toEqual(['begin', 'progress:Proofreading chapter-01.md (selection)…', 'release']);
   });
 
   it('asks before a long whole-file run, naming words and calls, and sends nothing when declined', async () => {
@@ -147,12 +171,43 @@ describe('proofreadAndFlag', () => {
       'Proofread'
     );
     expect(runner.run).not.toHaveBeenCalled();
+    expect(runner.release).toHaveBeenCalledTimes(1);
   });
 
   it('runs a long whole-file run once confirmed', async () => {
     const { host, runner } = setup({ active: editor(), plan: { needsConfirmation: true }, confirm: true });
     await expect(proofreadAndFlag(host, runner)).resolves.toEqual({ kind: 'ran', outcome: COMPLETED });
     expect(runner.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the gesture before the confirmation is awaited, and releases it however the command ends (PR #183 F-02)', async () => {
+    const declined = setup({ active: editor(), plan: { needsConfirmation: true } });
+    await proofreadAndFlag(declined.host, declined.runner);
+    expect(declined.calls).toEqual(['begin', 'confirm', 'release']);
+
+    const confirmed = setup({ active: editor(), plan: { needsConfirmation: true }, confirm: true });
+    await proofreadAndFix(confirmed.host, confirmed.runner);
+    expect(confirmed.calls).toEqual(['begin', 'confirm', 'progress:Proofreading chapter-01.md…', `report:${REVIEW_HINT}`, 'release']);
+
+    const failing = setup({ active: editor(), plan: { needsConfirmation: true }, confirm: true });
+    failing.runner.run.mockRejectedValueOnce(new Error('provider down'));
+    await expect(proofreadAndFlag(failing.host, failing.runner)).rejects.toThrow('provider down');
+    expect(failing.runner.release).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [{ kind: 'changed' } as const, 'showWarning', 'chapter-01.md changed before Proofread could start, so nothing was sent. Run it again.'],
+    [{ kind: 'busy' } as const, 'showInformation', 'Proofread is already running on chapter-01.md.'],
+    [{ kind: 'empty' } as const, 'showInformation', 'Nothing to proofread in chapter-01.md.']
+  ])('says why no gesture could be taken (%p), asking and sending nothing', async (refused, method, message) => {
+    const { host, runner } = setup({ active: editor(), plan: { needsConfirmation: true }, refused });
+    await expect(proofreadAndFlag(host, runner)).resolves.toEqual({ kind: 'ran', outcome: refused });
+
+    expect(host[method as 'showWarning' | 'showInformation']).toHaveBeenCalledWith(message);
+    expect(host.confirm).not.toHaveBeenCalled();
+    expect(host.withProgress).not.toHaveBeenCalled();
+    expect(runner.run).not.toHaveBeenCalled();
+    expect(runner.release).not.toHaveBeenCalled();
   });
 
   it('offers Show Problems when flags were shown', async () => {
@@ -223,20 +278,19 @@ describe('proofreadAndFix (Slice 2)', () => {
     const { host, runner, calls } = setup({ active: editor() });
     await proofreadAndFix(host, runner);
 
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runner.begin).toHaveBeenCalledWith(
       expect.objectContaining({ uri: 'file:///workspace/chapter-01.md', version: 4 }),
-      { kind: 'proofread', output: 'fix', review: 'preview', reasoning: 'light' },
-      expect.any(AbortSignal),
-      expect.objectContaining({ onReview: expect.any(Function) })
+      { kind: 'proofread', output: 'fix', review: 'preview', reasoning: 'light' }
     );
-    expect(calls).toEqual(['progress:Proofreading chapter-01.md…', `report:${REVIEW_HINT}`]);
+    expect(runner.run).toHaveBeenCalledWith(expect.anything(), expect.any(AbortSignal), expect.objectContaining({ onReview: expect.any(Function) }));
+    expect(calls).toEqual(['begin', 'progress:Proofreading chapter-01.md…', `report:${REVIEW_HINT}`, 'release']);
   });
 
   it('applies directly when the writer chose to', async () => {
     const { host, runner } = setup({ active: editor(), fixReview: 'apply' });
     await proofreadAndFix(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'fix', review: 'direct', reasoning: 'light' });
+    expect(runner.begin.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'fix', review: 'direct', reasoning: 'light' });
   });
 
   it('refuses a language it does not read, as Flag does', async () => {
@@ -252,7 +306,7 @@ describe('the spelling convention (Slice 3)', () => {
     await proofreadAndFlag(host, runner);
     await proofreadAndFix(host, runner);
 
-    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+    expect(runner.begin.mock.calls.map((call) => call[1])).toEqual([
       { kind: 'proofread', output: 'flag', spelling, reasoning: 'light' },
       { kind: 'proofread', output: 'fix', review: 'preview', spelling, reasoning: 'light' }
     ]);
@@ -262,7 +316,7 @@ describe('the spelling convention (Slice 3)', () => {
     const { host, runner } = setup({ active: editor(), spelling });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
+    expect(runner.begin.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
   });
 });
 
@@ -273,7 +327,7 @@ describe('the word list (Slice 3b)', () => {
     await proofreadAndFix(host, runner);
 
     const wordList = ['Dinah', 'Mad', 'Hatter'];
-    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+    expect(runner.begin.mock.calls.map((call) => call[1])).toEqual([
       { kind: 'proofread', output: 'flag', spelling: 'british', wordList, reasoning: 'light' },
       { kind: 'proofread', output: 'fix', review: 'preview', spelling: 'british', wordList, reasoning: 'light' }
     ]);
@@ -284,7 +338,7 @@ describe('the word list (Slice 3b)', () => {
     const { host, runner } = setup({ active: editor(), wordList });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
+    expect(runner.begin.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
   });
 });
 
@@ -294,7 +348,7 @@ describe('the reasoning level (2026-10-27)', () => {
     await proofreadAndFlag(host, runner);
     await proofreadAndFix(host, runner);
 
-    expect(runner.run.mock.calls.map((call) => call[1])).toEqual([
+    expect(runner.begin.mock.calls.map((call) => call[1])).toEqual([
       { kind: 'proofread', output: 'flag', reasoning },
       { kind: 'proofread', output: 'fix', review: 'preview', reasoning }
     ]);
@@ -305,7 +359,7 @@ describe('the reasoning level (2026-10-27)', () => {
     const { host, runner } = setup({ active: editor(), reasoning });
     await proofreadAndFlag(host, runner);
 
-    expect(runner.run.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
+    expect(runner.begin.mock.calls[0][1]).toEqual({ kind: 'proofread', output: 'flag', reasoning: 'light' });
   });
 });
 

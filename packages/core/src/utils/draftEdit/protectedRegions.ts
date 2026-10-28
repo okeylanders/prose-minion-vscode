@@ -1,8 +1,9 @@
 /**
  * Protected regions — the parts of a Markdown document no pass may change
  * (ADR 2026-10-21 D4): front matter, fenced and inline code, link and image
- * destinations, autolinks and bare URLs and email addresses, reference
- * definitions, HTML comments, and HTML tags with their attributes.
+ * destinations, a full reference's label (PR #183 F-01), autolinks and bare
+ * URLs and email addresses, reference definitions, HTML comments, and HTML
+ * tags with their attributes.
  *
  * `markdownBlockRegions` reads the block structure: the protected blocks
  * (front matter, and fences, definitions and raw `<script>`/`<style>` blocks

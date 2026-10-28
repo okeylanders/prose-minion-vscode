@@ -26,6 +26,12 @@ import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor'
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 import { reviewHarness, type FakeDocument } from '@app/__tests__/platform/vscode/refactorPreviewHost';
 
+/** A Proofread gesture begun and run at once, as one with nothing to confirm runs (PR #183 F-02). */
+function proofreadNow(useCase: DraftEditUseCase, ...[target, pass]: Parameters<DraftEditUseCase['begin']>): ReturnType<DraftEditUseCase['run']> {
+  const begun = useCase.begin(target, pass);
+  return begun.kind === 'gesture' ? useCase.run(begun.gesture) : Promise.resolve(begun);
+}
+
 type Finding = { anchor: { quote: string }; category: 'spelling' | 'tense'; replacement: string; explanation: string };
 type Reply = { kind: 'completed'; chunks: Array<{ kind: 'read'; findings: Finding[]; malformed: number }> };
 
@@ -65,14 +71,14 @@ describe('A selection run through the production adapters (Slice 3)', () => {
       uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: 'markdown', relativePath: 'chapter.md',
       ...(range ? { range } : {})
     });
-    await useCase.run(target(), { kind: 'proofread', output: 'flag' });
+    await proofreadNow(useCase, target(), { kind: 'proofread', output: 'flag' });
     expect(flaggedText(document)).toEqual(['begining', 'vrey', 'is reading']);
 
     let answer!: (reply: Reply) => void;
     replies.push(new Promise<Reply>((settle) => {
       answer = settle;
     }));
-    const run = useCase.run(target({ start: TEXT.indexOf('who is reading'), end: TEXT.length }), { kind: 'proofread', output: 'flag' });
+    const run = proofreadNow(useCase, target({ start: TEXT.indexOf('who is reading'), end: TEXT.length }), { kind: 'proofread', output: 'flag' });
     write(document, { files: [], replacements: [{ range: { start: { offset: 0 }, end: { offset: 0 } }, newText: 'Poor ' }] });
     answer(read([]));
 

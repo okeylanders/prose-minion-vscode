@@ -55,6 +55,12 @@
  *   file another window holds (busy), or whose folder could not be read,
  *   keeps it, and a board left mid-rewrite is put back by the store's read
  *   and restored (PR #164 F-02 and its re-review).
+ * - **Owed writes drain at shutdown (PR #183 F-03).** Every write it starts
+ *   (a save after a run, a measured board's first save, a rename, a spark's
+ *   mark, a delete) is owed until it settles. `drain` waits for all of them,
+ *   and for any started while it waits. The composition root awaits it at
+ *   deactivation, once the Lightbox tab is disposed: its handler stops the
+ *   runs it started, and each that landed readings queues its save then.
  *
  * Logs carry file ids, counts and reasons; never the writer's text or a
  * board's name.
@@ -140,12 +146,14 @@ export class LightboxBoardLibrary {
   private readonly unsubscribe: () => void;
   private restoring?: Promise<void>;
   private observations = 0;
+  /** Writes started and not yet settled (PR #183 F-03). */
+  private readonly owed = new Set<Promise<unknown>>();
 
   constructor(private readonly ports: LightboxBoardLibraryPorts, private readonly options: LightboxBoardLibraryOptions = {}) {
     this.shelfListeners = new ListenerSet<[]>(`${LOG} Shelf listener`, ports.outputChannel);
     const announce = () => this.shelfListeners.emit();
     this.edits = new LightboxBoardEdits({ ...ports, announce });
-    this.saves = new LightboxBoardSaves({ ...ports, announce, timeZone: options.timeZone });
+    this.saves = new LightboxBoardSaves({ ...ports, announce, owe: (write) => this.owe(write), timeZone: options.timeZone });
     // Every adoption is the board on screen: the pointer follows it, and the rail hears it.
     this.unsubscribe = ports.service.addOutcomeListener((change) => {
       if (change.kind === 'board') {
@@ -160,6 +168,16 @@ export class LightboxBoardLibrary {
     this.unsubscribe();
   }
 
+  /**
+   * Settle every write this library owes, and any started while it waits
+   * (PR #183 F-03). Never rejects: a write that fails has said so already.
+   */
+  async drain(): Promise<void> {
+    while (this.owed.size > 0) {
+      await Promise.allSettled([...this.owed]);
+    }
+  }
+
   /** Hear each adoption and each committed save, so a rail shows it. Returns the unsubscribe closure the caller must own. */
   addShelfListener(listener: () => void): () => void {
     return this.shelfListeners.add(listener);
@@ -167,7 +185,7 @@ export class LightboxBoardLibrary {
 
   /** A run on `boardId` ended having landed readings: save the board as it stands now, in its own file (decision 46). */
   saveAfterRun(boardId: string): Promise<void> {
-    return this.saves.saveAfterRun(boardId);
+    return this.owe(this.saves.saveAfterRun(boardId));
   }
 
   /**
@@ -218,16 +236,20 @@ export class LightboxBoardLibrary {
 
   /** Name a board, rename it, or unname it (Slice 5A.1; `LightboxBoardEdits`). */
   rename(request: LightboxBoardRename): Promise<LightboxBoardAction> {
-    return this.edits.rename(request);
+    return this.owe(this.edits.rename(request));
   }
 
   /** A spark on `boardId` was set aside or brought back: its file takes that spark's mark in place (Slice 5A.1; `LightboxBoardEdits`). */
   keepSpark(boardId: string, tileId: string): Promise<void> {
-    return this.edits.keepSpark(boardId, tileId);
+    return this.owe(this.edits.keepSpark(boardId, tileId));
   }
 
   /** Delete a saved board's file; the board on screen, if it came from it, stays as it is. */
-  async remove(fileId: string): Promise<LightboxBoardAction> {
+  remove(fileId: string): Promise<LightboxBoardAction> {
+    return this.owe(this.deleteFile(fileId));
+  }
+
+  private async deleteFile(fileId: string): Promise<LightboxBoardAction> {
     const result = await this.ports.store.delete(fileId);
     switch (result.kind) {
       case 'deleted':
@@ -361,6 +383,16 @@ export class LightboxBoardLibrary {
         (read.dropped > 0 ? `; ${read.dropped} unreadable parts were left out` : '')
     );
     return {};
+  }
+
+  /** Hold `write` as owed until it settles, and hand it back. */
+  private owe<T>(write: Promise<T>): Promise<T> {
+    this.owed.add(write);
+    const settled = () => {
+      this.owed.delete(write);
+    };
+    write.then(settled, settled);
+    return write;
   }
 
   private reading(board: LightboxBoard | undefined): boolean {

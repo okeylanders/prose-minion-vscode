@@ -21,7 +21,8 @@ import {
   decline,
   firstThen,
   writerTypes,
-  type HostBehavior
+  type HostBehavior,
+  proofreadNow
 } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister on the bank, '
@@ -45,7 +46,8 @@ function setup(host?: HostBehavior, result: ProofreadRunResult | Promise<Proofre
   const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
   const useCase = new DraftEditUseCase(pass, document, annotations, new DraftEditApplier(document), log);
   const onReview = jest.fn();
-  const run = (fix: ProofreadPass = PREVIEW) => useCase.run(
+  const run = (fix: ProofreadPass = PREVIEW) => proofreadNow(
+    useCase,
     { uri: document.uri, version: document.version, text: document.text, languageId: 'markdown', relativePath: 'chapter-01.md' },
     fix,
     undefined,
@@ -192,7 +194,7 @@ describe('DraftEditUseCase: a direct fix the writer fences as it goes out (PR #1
     const annotations = new FakeAnnotations(document);
     const pass: ProofreadPassPort = { proofread: jest.fn(async (): Promise<ProofreadRunResult> => read(teh)) };
     const useCase = new DraftEditUseCase(pass, document, annotations, new DraftEditApplier(document), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
-    const outcome = completed(await useCase.run({ uri: document.uri, version: 3, text: sentence, languageId: 'markdown', relativePath: 'a.md' }, DIRECT));
+    const outcome = completed(await proofreadNow(useCase, { uri: document.uri, version: 3, text: sentence, languageId: 'markdown', relativePath: 'a.md' }, DIRECT));
 
     expect(document.text).toBe('```text\nAlice saw teh rabbit.\n```');
     expect(document.applyCalls).toHaveLength(1);
@@ -210,7 +212,7 @@ describe('DraftEditUseCase: fixes that would change the Markdown structure (PR #
     const proofread: ProofreadPassPort = { proofread: jest.fn(async (): Promise<ProofreadRunResult> => read(...findings)) };
     const useCase = new DraftEditUseCase(proofread, document, annotations, new DraftEditApplier(document), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
     const target = () => ({ uri: document.uri, version: document.version, text: document.text, languageId: 'markdown', relativePath: 'a.md' });
-    return { document, annotations, useCase, outcome: useCase.run(target(), pass) };
+    return { document, annotations, useCase, outcome: proofreadNow(useCase, target(), pass) };
   }
 
   it('flags a spacing fix that would make a tag of prose, and never writes it', async () => {
@@ -274,6 +276,45 @@ describe('DraftEditUseCase: fixes that would change the Markdown structure (PR #
 
       expect(await outcome).toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 1 } });
       expect(document.text).toBe('| *Note* |\n| --- |\n| Alice saw the rabbit. |\n');
+    });
+  });
+
+  describe('where a reference link goes (PR #183 F-01)', () => {
+    const DEFINITIONS = '\n\n[teh]: https://example.invalid/first\n[the]: https://example.invalid/second\n';
+    const teh: ProofreadFinding = { anchor: { quote: 'teh' }, category: 'spelling', replacement: 'the', explanation: 'A typo.' };
+
+    it.each([
+      ['a full reference\'s label', 'Alice reads [chapter][teh].'],
+      ['a reference image\'s label', 'Alice sees ![a picture][teh].']
+    ])('never sends or writes %s: masked, its quote anchors nowhere', async (_name, prose) => {
+      const text = `${prose}${DEFINITIONS}`;
+      const { document, annotations, outcome } = run(text, [teh], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', flagged: 0, dropped: { unanchored: 1, protected: 0 }, fix: { answer: 'none', applied: 0 } });
+      expect(document.text).toBe(text);
+      expect(annotations.flaggedText()).toEqual([]);
+    });
+
+    it.each([
+      ['a shortcut reference', 'Alice reads [teh].'],
+      ['a collapsed reference', 'Alice reads [teh][].']
+    ])('flags a fix to %s that would send it to another definition, and never writes it', async (_name, prose) => {
+      const text = `${prose}${DEFINITIONS}`;
+      const { document, annotations, outcome } = run(text, [teh], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', flagged: 1, fix: { answer: 'none', applied: 0 } });
+      expect(document.text).toBe(text);
+      expect(annotations.flaggedText()).toEqual(['teh']);
+    });
+
+    it('control: applies fixes to visible text that leave every target where it was', async () => {
+      const chpater: ProofreadFinding = { anchor: { quote: 'chpater' }, category: 'spelling', replacement: 'chapter', explanation: 'A typo.' };
+      const book: ProofreadFinding = { anchor: { quote: 'teh book' }, category: 'spelling', replacement: 'the book', explanation: 'A typo.' };
+      const text = `Alice reads [chpater][teh] and [teh book](chapter.md).${DEFINITIONS}`;
+      const { document, outcome } = run(text, [chpater, book], DIRECT);
+
+      expect(await outcome).toMatchObject({ kind: 'completed', fix: { answer: 'submitted', applied: 2 } });
+      expect(document.text).toBe(`Alice reads [chapter][teh] and [the book](chapter.md).${DEFINITIONS}`);
     });
   });
 

@@ -38,7 +38,7 @@ import { describeDraftEditOutcome } from '@/application/services/draftEdit/draft
 import { describeCraftFlagsOutcome } from '@/application/services/draftEdit/craftFlagsSummary';
 import { CRAFT_FLAG_CATEGORIES } from '@/domain/models/CraftFlag';
 import type { ReasoningLevel } from '@/domain/models/ReasoningLevel';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const ALWAYS = 'test/always-reasons';
 const CAN_STOP = 'test/can-stop';
@@ -143,7 +143,7 @@ describe('Reasoning off on a model that always reasons (PR #181 F-01)', () => {
   });
 
   const proofreadAt = (host: Awaited<ReturnType<typeof createHost>>, reasoning: ReasoningLevel) =>
-    host.proofread.run(host.target, { kind: 'proofread', output: 'flag', reasoning });
+    proofreadNow(host.proofread, host.target, { kind: 'proofread', output: 'flag', reasoning });
 
   describe('Proofread', () => {
     it('refuses off on the always-reasoning model, sending nothing, and says what to change', async () => {

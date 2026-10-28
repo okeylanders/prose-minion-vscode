@@ -76,6 +76,12 @@ import { DraftEditApplier, DraftEditUseCase, type DraftEditOutcome } from '@pros
 import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor';
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 
+/** A Proofread gesture begun and run at once, as one with nothing to confirm runs (PR #183 F-02). */
+function proofreadNow(useCase: DraftEditUseCase, ...[target, pass]: Parameters<DraftEditUseCase['begin']>): ReturnType<DraftEditUseCase['run']> {
+  const begun = useCase.begin(target, pass);
+  return begun.kind === 'gesture' ? useCase.run(begun.gesture) : Promise.resolve(begun);
+}
+
 interface MockHost {
   changes: { fire(event: unknown): void };
   diagnostics: Map<string, Array<{ range: { start: { offset: number }; end: { offset: number } } }>>;
@@ -145,7 +151,8 @@ function proofreadAndFix(document: FakeDocument, review: 'preview' | 'direct'): 
   const documentEditor = new VsCodeDocumentEditor({ appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
   const annotator = new VsCodeIssueAnnotator({ dismiss: 'dismiss', clear: 'clear', replace: 'replace', fixAll: 'fixAll' });
   const useCase = new DraftEditUseCase(pass, documentEditor, annotator, new DraftEditApplier(documentEditor), { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() });
-  const run = useCase.run(
+  const run = proofreadNow(
+    useCase,
     { uri: URI, version: document.version, text: document.getText(), languageId: 'markdown', relativePath: 'chapter-01.md' },
     { kind: 'proofread', output: 'fix', review }
   );

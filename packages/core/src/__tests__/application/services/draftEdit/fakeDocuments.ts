@@ -6,6 +6,8 @@
  * amendment; these behaviors mirror it.
  */
 import type { DocumentAnnotation, IssueAnnotator, ShownAnnotations } from '@/platform/IssueAnnotator';
+import type { DraftEditRunHooks, DraftEditUseCase } from '@/application/services/draftEdit/DraftEditUseCase';
+import type { DraftEditOutcome, DraftEditTarget, ProofreadPass } from '@/domain/models/DraftEdit';
 import { shiftRanges } from '@/utils/draftEdit/shiftRanges';
 import type {
   DocumentApplyOutcome,
@@ -234,4 +236,19 @@ export function applyLikeVsCode(ticked: (edit: DocumentTextEdit) => boolean = ()
 export function firstThen(first: HostBehavior, then: HostBehavior): HostBehavior {
   let calls = 0;
   return (edits, review, document) => (calls++ === 0 ? first : then)(edits, review, document);
+}
+
+/**
+ * A Proofread gesture begun and run at once, as one with nothing to confirm
+ * runs (PR #183 F-02): its outcome, or why it never began.
+ */
+export function proofreadNow(
+  useCase: Pick<DraftEditUseCase, 'begin' | 'run'>,
+  target: DraftEditTarget,
+  pass: ProofreadPass,
+  signal?: AbortSignal,
+  hooks?: DraftEditRunHooks
+): Promise<DraftEditOutcome> {
+  const begun = useCase.begin(target, pass);
+  return begun.kind === 'gesture' ? useCase.run(begun.gesture, signal, hooks) : Promise.resolve(begun);
 }

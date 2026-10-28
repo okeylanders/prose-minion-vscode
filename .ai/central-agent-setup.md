@@ -19,6 +19,7 @@ prose-minion-vscode/
 └── apps/vscode-extension/  # The VS Code ADAPTER + composition root
     └── src/
         ├── extension.ts                      # Composition root: builds services + Platform, injects inward
+        ├── application/extensionShutdown.ts  # What deactivation stops, then waits for (PR #183 F-03)
         ├── application/providers/             # ProseToolsViewProvider (webview shell)
         └── platform/vscode/                   # VS Code implementations of the Platform ports
 ```
@@ -1503,6 +1504,16 @@ records, when it saves, or how a saved one comes back:
   save a board with a group `running` or a lens `pending`: the codec
   refuses it. The store's save status clears on any commit before the
   commit is announced (N-01).
+- **Owed writes drain before deactivation resolves (PR #183 F-03).**
+  Every write `LightboxBoardLibrary` starts is owed until it settles;
+  `drain` waits for them all, and for any started while it waits. A new
+  kind of write joins the owed set (`owe`), never a bare `void`.
+  `deactivate` hands its parts to `shutDownExtension`
+  (`apps/vscode-extension/src/application/extensionShutdown.ts`): tabs are
+  disposed first, so their runs stop and queue their saves, then the drain
+  and the Workshop's flush are awaited in the promise `deactivate`
+  returns. Never move a wait into a subscription's `dispose`: VS Code does
+  not await it.
 - **A mutation's outcome is shown where it outlives its sheet (PR #167
   F-02, F-03).** The name sheet is opened for a board and its adoption,
   and closes when either changes. A rename of the board on screen carries
@@ -1582,7 +1593,11 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   the Markdown structure: counting markup characters is not enough
   (`< Rabbit >` → `<Rabbit>` is a tag), so each touched block's shape is
   compared before and after with `marked`, the batch together, every table
-  cell's inline shape included (`editsChangingStructure`, PR #172 F-03). An
+  cell's inline shape included (`editsChangingStructure`, PR #172 F-03), and
+  every link and image going where it went: its resolved destination and
+  title, so `[teh]` → `[the]` cannot reach another definition (PR #183
+  F-01). A collapsed or shortcut reference's label is its visible text and
+  stays fixable under that check. An
   anchor never ends inside a
   normalized expansion (`Wait.` is not `Wait…`). Tense, agreement, person, and
   wrong, missing and extra words are only ever flagged
@@ -1604,12 +1619,19 @@ when touching Proofread, Craft Flags, or anything that reads, flags, or
   public API ties a preview to the request that opened it (a pending
   request may wait to replace another's preview, and a preview's copy of
   the file arrives late or never).
+- **A gesture is held, Proofread's too** (PR #183 F-02). `begin` takes it
+  synchronously at the gesture, watch included, and returns the plan a
+  long-file confirmation reads; `run(gesture)` sends it once; `release`
+  ends it unsent, however the command ends. Never await anything between
+  reading the editor and `begin`, and never take a watch after a
+  confirmation: a URI and a version do not name a lifetime. A pass is
+  asked `stillCurrent` in the turn each call starts.
 - **A Clear is for good** (PR #172 F-05). A quick fix that lands after a
   Clear shows nothing again: it re-shows untouched flags only while the
   issues it captured still hold the document's flags.
 - **Protected regions.** Front matter, fenced and inline code, link targets,
-  URLs, reference definitions, HTML comments, and tags are never sent or
-  edited, read as whole constructs wherever Markdown's containers put them
+  a full reference's label (`[text][label]`, PR #183 F-01), URLs, reference
+  definitions, HTML comments, and tags are never sent or edited, read as whole constructs wherever Markdown's containers put them
   (`markdownBlockRegions` over `marked`'s block lexer; PR #171 F-02). Inline
   constructs are read one scope at a time, the parser's own leaf blocks and
   table cells with container prefixes stripped, never across raw source

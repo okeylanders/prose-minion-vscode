@@ -11,7 +11,7 @@ import { DraftEditUseCase, type ProofreadPassPort } from '@/application/services
 import type { ProofreadPass, TextRange } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const FIRST = 'Alice was begining to get vrey tired of sitting by her sister on the bank.';
 const SECOND = 'Once or twice she peeped into the book her sister is reading, but it had no pictures or conversashions in it.';
@@ -53,7 +53,7 @@ function proofreader() {
   /** A whole-file Flag run's flags on the seeded errors. */
   const flagEverything = async () => {
     replies.push(read(BEGINING, VREY, IS_READING, CONVERSASHIONS));
-    await useCase.run(target(), FLAG);
+    await proofreadNow(useCase, target(), FLAG);
     expect(flags()).toEqual(['begining', 'vrey', 'is reading', 'conversashions']);
   };
   return { document, annotations, useCase, replies, target, flags, idOf, flagEverything };
@@ -67,7 +67,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     const reread = proofread.idOf('is reading');
 
     proofread.replies.push(read(IS_READING, CONVERSASHIONS));
-    const outcome = await proofread.useCase.run(proofread.target(SECOND), FLAG);
+    const outcome = await proofreadNow(proofread.useCase, proofread.target(SECOND), FLAG);
 
     expect(proofread.flags()).toEqual(['begining', 'vrey', 'is reading', 'conversashions']);
     expect([proofread.idOf('begining'), proofread.idOf('vrey')]).toEqual(kept);
@@ -79,7 +79,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     const proofread = proofreader();
     await proofread.flagEverything();
 
-    const outcome = await proofread.useCase.run(proofread.target({ start: TEXT.indexOf('vrey') + 2, end: TEXT.length }), FLAG);
+    const outcome = await proofreadNow(proofread.useCase, proofread.target({ start: TEXT.indexOf('vrey') + 2, end: TEXT.length }), FLAG);
 
     expect(proofread.flags()).toEqual(['begining']);
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 0, kept: 1 });
@@ -91,7 +91,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     const reply = deferred<ProofreadRunResult>();
     proofread.replies.push(reply.promise);
 
-    const run = proofread.useCase.run(proofread.target(SECOND), FLAG);
+    const run = proofreadNow(proofread.useCase, proofread.target(SECOND), FLAG);
     proofread.document.edit([{ offset: 0, length: 0, text: 'Poor ' }]);
     reply.resolve(read(CONVERSASHIONS));
     await run;
@@ -113,7 +113,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     const reply = deferred<ProofreadRunResult>();
     proofread.replies.push(reply.promise);
 
-    const run = proofread.useCase.run(proofread.target(SECOND), FLAG);
+    const run = proofreadNow(proofread.useCase, proofread.target(SECOND), FLAG);
     act(proofread);
     reply.resolve(read(CONVERSASHIONS));
     const outcome = await run;
@@ -127,7 +127,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     await proofread.flagEverything();
 
     proofread.replies.push(read(CONVERSASHIONS));
-    const outcome = await proofread.useCase.run(proofread.target(), FLAG);
+    const outcome = await proofreadNow(proofread.useCase, proofread.target(), FLAG);
 
     expect(proofread.flags()).toEqual(['conversashions']);
     expect(outcome).not.toHaveProperty('kept');
@@ -138,7 +138,7 @@ describe('A selection run replaces only its own flags (Slice 3)', () => {
     await proofread.flagEverything();
 
     proofread.replies.push(read(BEGINING, VREY));
-    const outcome = await proofread.useCase.run(proofread.target(FIRST), { kind: 'proofread', output: 'fix', review: 'direct' });
+    const outcome = await proofreadNow(proofread.useCase, proofread.target(FIRST), { kind: 'proofread', output: 'fix', review: 'direct' });
 
     expect(proofread.document.text.startsWith('Alice was beginning to get very tired')).toBe(true);
     expect(proofread.flags()).toEqual(['is reading', 'conversashions']);

@@ -22,7 +22,7 @@ import { describeDraftEditOutcome } from '@/application/services/draftEdit/draft
 import type { ProofreadPass } from '@/domain/models/DraftEdit';
 import type { ProofreadFinding } from '@/domain/models/ProofreadIssue';
 import type { ProofreadRunResult } from '@services/proofread/ProofreadService';
-import { FakeAnnotations, FakeDocuments } from '@/__tests__/application/services/draftEdit/fakeDocuments';
+import { FakeAnnotations, FakeDocuments, proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const GREY = 'The grey cat sat on the grey wall, and the grey dawn came up over the hill.';
 const SPEECH = '“Who are you? said the Caterpillar, and Alice answered in a gray voice.';
@@ -54,7 +54,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
   it('flags an unclosed quotation with no Replace with, and a less used spelling with the other, both warnings', async () => {
     const { annotations, useCase, target, document } = proofreader();
 
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 2, judgmentCalls: 2 });
     expect(annotations.shown).toEqual([
@@ -83,7 +83,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
     const { useCase, replies, target, flags } = proofreader();
     replies.push(read(finding('gray', 'spelling', 'grey'), finding('“Who are', 'punctuation', 'Who are')));
 
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 2, dropped: { overlapping: 2 } });
     expect(flags()).toEqual([{ text: '“', code: 'proofread.quotation' }, { text: 'gray', code: 'proofread.consistency' }]);
@@ -91,7 +91,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
 
   it('lets the run\'s spelling convention decide, naming it', async () => {
     const { annotations, useCase, target, flags } = proofreader();
-    await useCase.run(target(), { ...FLAG, spelling: 'american' });
+    await proofreadNow(useCase, target(), { ...FLAG, spelling: 'american' });
 
     expect(flags()).toEqual([
       { text: 'grey', code: 'proofread.consistency' },
@@ -104,17 +104,17 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
 
   it('reads the whole document in a selection run, and shows only what lies inside the selection', async () => {
     const speech = proofreader();
-    await speech.useCase.run(speech.target(SPEECH), FLAG);
+    await proofreadNow(speech.useCase, speech.target(SPEECH), FLAG);
     expect(speech.flags()).toEqual([{ text: '“', code: 'proofread.quotation' }, { text: 'gray', code: 'proofread.consistency' }]);
 
     const reply = proofreader();
-    await reply.useCase.run(reply.target(REPLY), FLAG);
+    await proofreadNow(reply.useCase, reply.target(REPLY), FLAG);
     expect(reply.flags()).toEqual([]);
   });
 
   it('is never made by Fix, or by Fix all: both stay flags', async () => {
     const { useCase, target, flags, document } = proofreader();
-    const outcome = await useCase.run(target(), { kind: 'proofread', output: 'fix', review: 'direct' });
+    const outcome = await proofreadNow(useCase, target(), { kind: 'proofread', output: 'fix', review: 'direct' });
 
     expect(outcome).toMatchObject({ kind: 'completed', flagged: 2, fix: { answer: 'none', applied: 0 } });
     await expect(useCase.applyShown(document.snapshot(), 'all-fixes', 'direct')).resolves.toEqual({ kind: 'nothing' });
@@ -124,7 +124,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
 
   it('never flags a spelling the writer lists', async () => {
     const { useCase, target, flags } = proofreader();
-    await useCase.run(target(), { ...FLAG, wordList: ['gray'] });
+    await proofreadNow(useCase, target(), { ...FLAG, wordList: ['gray'] });
 
     expect(flags()).toEqual([{ text: '“', code: 'proofread.quotation' }]);
   });
@@ -132,7 +132,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
   it('writes a hyphenated word\'s part where it stands, when its Replace with is chosen (PR #182 F-01)', async () => {
     const text = 'Aİ-gray paint. The grey sky. The grey sea.';
     const { document, useCase, target, flags, annotations } = proofreader(text);
-    await useCase.run(target(), FLAG);
+    await proofreadNow(useCase, target(), FLAG);
     expect(flags()).toEqual([{ text: 'gray', code: 'proofread.consistency' }]);
 
     const outcome = await useCase.applyShown(document.snapshot(), { issueIds: [annotations.shown[0].id] }, 'direct');
@@ -144,7 +144,7 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
   it('never offers to change a listed compound, and its Replace with on the part standing alone leaves the compound (PR #182 F-02)', async () => {
     const text = 'Alice wore a grey-green cloak, and the grey dawn came. A gray sky, a gray sea, a gray hill.';
     const { document, useCase, target, flags, annotations } = proofreader(text);
-    await useCase.run(target(), { ...FLAG, wordList: ['grey-green'] });
+    await proofreadNow(useCase, target(), { ...FLAG, wordList: ['grey-green'] });
     expect(annotations.shown.map((annotation) => annotation.start)).toEqual([text.indexOf('grey dawn')]);
     expect(flags()).toEqual([{ text: 'grey', code: 'proofread.consistency' }]);
 
@@ -156,11 +156,11 @@ describe('Quotation marks and consistency in a run (Slice 3b, part 3)', () => {
   it('reads emphasized speech that opens with an ellipsis or a dash as balanced, and still flags one left open (PR #182 F-03)', async () => {
     const balanced = 'Alice said, *“...and then?”* The Hatter said, **"—No!"** The Dormouse said, _“…Treacle.”_';
     const clean = proofreader(balanced);
-    await clean.useCase.run(clean.target(), FLAG);
+    await proofreadNow(clean.useCase, clean.target(), FLAG);
     expect(clean.flags()).toEqual([]);
 
     const open = proofreader('Alice said, *“...and then?* The Hatter said nothing.');
-    await open.useCase.run(open.target(), FLAG);
+    await proofreadNow(open.useCase, open.target(), FLAG);
     expect(open.flags()).toEqual([{ text: '“', code: 'proofread.quotation' }]);
   });
 });

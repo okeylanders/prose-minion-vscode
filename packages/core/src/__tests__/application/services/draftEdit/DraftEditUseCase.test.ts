@@ -17,6 +17,7 @@ import {
   ALICE_OPENING_SEEDED,
   ALICE_RABBIT_SEEDED
 } from '@/__tests__/utils/draftEdit/proofreadFixtures';
+import { proofreadNow } from '@/__tests__/application/services/draftEdit/fakeDocuments';
 
 const URI = 'file:///workspace/chapter-01.txt';
 const TEXT = `${ALICE_OPENING_SEEDED}\n\n${ALICE_RABBIT_SEEDED}`;
@@ -57,13 +58,17 @@ type Live = { readonly version?: number; readonly text: string; readonly languag
 function setup(options: {
   result?: ProofreadRunResult | Promise<ProofreadRunResult>;
   live?: Live;
-  /** False: the document is not open at the gesture's version when the run starts. */
+  /** False: the document is not open at the gesture's version when the gesture is taken. */
   watchable?: boolean;
+  /** Whether the watched lifetime is over; by default, once the pass is called and `live` is closed (it closed while the model worked). */
+  ended?: () => boolean;
   shows?: boolean;
 } = {}) {
   const requests: ProofreadRunRequest[] = [];
+  let sent = false;
   const pass: ProofreadPassPort = {
     proofread: jest.fn(async (request: ProofreadRunRequest) => {
+      sent = true;
       requests.push(request);
       return options.result ?? read();
     })
@@ -85,7 +90,7 @@ function setup(options: {
         return undefined;
       }
       return {
-        ended: () => (options.live ?? { text: TEXT }) === 'closed',
+        ended: options.ended ?? (() => sent && (options.live ?? { text: TEXT }) === 'closed'),
         settle: () => {
           const live = options.live ?? { text: TEXT };
           return live === 'closed'
@@ -113,22 +118,22 @@ const NONE = { unanchored: 0, protected: 0, overlapping: 0, stale: 0, malformed:
 describe('DraftEditUseCase.run: placing and showing flags', () => {
   it('sends the pass\'s spelling convention with the chunks (Slice 3)', async () => {
     const { useCase, requests } = setup();
-    await useCase.run(target(), { ...FLAG, spelling: 'british' });
+    await proofreadNow(useCase, target(), { ...FLAG, spelling: 'british' });
 
-    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', spelling: 'british' }]);
+    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', spelling: 'british', stillCurrent: expect.any(Function) }]);
   });
 
   it('sends the pass\'s reasoning level with the chunks, and none when the pass names none (2026-10-27)', async () => {
     const { useCase, requests } = setup();
-    await useCase.run(target(), { ...FLAG, reasoning: 'off' });
-    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', reasoning: 'off' }]);
+    await proofreadNow(useCase, target(), { ...FLAG, reasoning: 'off' });
+    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', reasoning: 'off', stillCurrent: expect.any(Function) }]);
   });
 
   it('places each finding by its quote and shows it as an annotation on the live version', async () => {
     const { useCase, requests, shown } = setup({ result: read(WEATHER, RUNS, THE_THE) });
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
-    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt' }]);
+    expect(requests).toEqual([{ chunks: [TEXT], label: 'chapter-01.txt', stillCurrent: expect.any(Function) }]);
     expect(shown).toHaveLength(1);
     expect(shown[0]).toMatchObject({ uri: URI, version: 1 });
     expect(shown[0].annotations.map((annotation) => ({
@@ -155,9 +160,9 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
   it('proofreads a selection, and places its flags in document offsets', async () => {
     const start = TEXT.indexOf(ALICE_RABBIT_SEEDED);
     const { useCase, requests, shown } = setup({ result: read(THE_THE) });
-    await useCase.run(target({ range: { start, end: TEXT.length } }), FLAG);
+    await proofreadNow(useCase, target({ range: { start, end: TEXT.length } }), FLAG);
 
-    expect(requests[0]).toEqual({ chunks: [ALICE_RABBIT_SEEDED], label: 'chapter-01.txt (selection)' });
+    expect(requests[0]).toEqual({ chunks: [ALICE_RABBIT_SEEDED], label: 'chapter-01.txt (selection)', stillCurrent: expect.any(Function) });
     const [annotation] = shown[0].annotations;
     expect(annotation.start).toBe(TEXT.indexOf('the the'));
   });
@@ -166,7 +171,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     const live = { text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' };
     const teh: ProofreadFinding = { anchor: { quote: 'teh', before: 'for', after: 'rest.' }, category: 'spelling', replacement: 'the', explanation: 'Typo.' };
     const { useCase, requests, shown } = setup({ result: read(teh), live });
-    await useCase.run(target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' }), FLAG);
+    await proofreadNow(useCase, target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' }), FLAG);
 
     const sent = requests[0].chunks.join('\n');
     expect(sent).toContain(PROTECTED_PLACEHOLDER);
@@ -183,7 +188,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     // Unique in the masked text, and straddling the link destination's placeholder.
     const intoLink: ProofreadFinding = { anchor: { quote: `text]${PROTECTED_PLACEHOLDER} for` }, category: 'spacing', replacement: 'x', explanation: 'x' };
     const { useCase } = setup({ result: read(intoLink), live });
-    const outcome = await useCase.run(target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' }), FLAG);
+    const outcome = await proofreadNow(useCase, target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown' }), FLAG);
 
     expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, protected: 1 } });
   });
@@ -191,7 +196,8 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
   it('protects a selection made inside a fenced block, so there is nothing to proofread', async () => {
     const start = ALICE_MARKDOWN_CHAPTER.indexOf('teh rabbit-hole');
     const { useCase, pass } = setup();
-    const outcome = await useCase.run(
+    const outcome = await proofreadNow(
+      useCase,
       target({ text: ALICE_MARKDOWN_CHAPTER, languageId: 'markdown', range: { start, end: start + 15 } }),
       FLAG
     );
@@ -205,7 +211,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     const ambiguous: ProofreadFinding = { anchor: { quote: 'the' }, category: 'spelling', replacement: 'teh', explanation: 'x' };
     const overlapping: ProofreadFinding = { anchor: { quote: 'the way', before: 'so very much out of the' }, category: 'spelling', replacement: 'the path', explanation: 'x' };
     const { useCase, shown } = setup({ result: read(THE_THE, cheshire, ambiguous, overlapping) });
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(shown[0].annotations.map((annotation) => TEXT.slice(annotation.start, annotation.end))).toEqual(['the the']);
     expect(outcome).toMatchObject({ flagged: 1, dropped: { ...NONE, unanchored: 2, overlapping: 1 } });
@@ -215,7 +221,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     const noOp: ProofreadFinding = { ...WEATHER, replacement: 'weather' };
     const rewrite: ProofreadFinding = { ...THE_THE, category: 'spelling', replacement: 'the very far' };
     const { useCase, shown } = setup({ result: read(noOp, rewrite) });
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(shown[0].annotations).toEqual([expect.objectContaining({ code: 'proofread.spelling', severity: 'info' })]);
     expect(outcome).toMatchObject({ flagged: 1, dropped: NONE });
@@ -230,7 +236,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     ];
     const edited = `${prefix}${TEXT.replace('weather', 'whether')}`;
     const { useCase, shown } = setup({ result: read(WEATHER, RUNS), live: { version: 3, text: edited, edits } });
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(shown[0].version).toBe(3);
     expect(shown[0].annotations.map((annotation) => edited.slice(annotation.start, annotation.end))).toEqual(['runs']);
@@ -243,7 +249,7 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
       result: { kind: 'completed', chunks: [{ kind: 'read', findings: [WEATHER, RUNS], malformed: 0 }, { kind: 'rejected', saved: false }], usage: USAGE },
       live: 'closed'
     });
-    const outcome = await useCase.run(target(), FLAG);
+    const outcome = await proofreadNow(useCase, target(), FLAG);
 
     expect(annotations.show).not.toHaveBeenCalled();
     expect(outcome).toEqual({ kind: 'closed', rejectedChunks: { saved: 0, unsaved: 1 }, usage: USAGE });
@@ -252,39 +258,39 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
 
   it('sends nothing when the document is no longer open at the gesture\'s version', async () => {
     const { useCase, pass, annotations } = setup({ watchable: false });
-    expect(await useCase.run(target(), FLAG)).toEqual({ kind: 'changed' });
+    expect(await proofreadNow(useCase, target(), FLAG)).toEqual({ kind: 'changed' });
     expect(pass.proofread).not.toHaveBeenCalled();
     expect(annotations.show).not.toHaveBeenCalled();
   });
 
   it('counts everything stale when the host refuses the version', async () => {
     const { useCase } = setup({ result: read(WEATHER), shows: false });
-    expect(await useCase.run(target(), FLAG)).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 1 } });
+    expect(await proofreadNow(useCase, target(), FLAG)).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 1 } });
   });
 
   it('replaces the document\'s earlier flags even when it finds nothing', async () => {
     const { useCase, shown } = setup({ result: read() });
-    await useCase.run(target(), FLAG);
+    await proofreadNow(useCase, target(), FLAG);
     expect(shown).toEqual([{ uri: URI, version: 1, annotations: [] }]);
   });
 
   it('reports malformed issues, rejected and unsent chunks, and the interruption', async () => {
     const malformed = setup({ result: { kind: 'completed', chunks: [{ kind: 'read', findings: [], malformed: 2 }] } });
-    expect(await malformed.useCase.run(target(), FLAG)).toMatchObject({ dropped: { ...NONE, malformed: 2 } });
+    expect(await proofreadNow(malformed.useCase, target(), FLAG)).toMatchObject({ dropped: { ...NONE, malformed: 2 } });
 
     const rejected = setup({ result: { kind: 'completed', chunks: [{ kind: 'rejected', saved: true }, { kind: 'rejected', saved: false }, { kind: 'rejected', saved: true }] } });
-    expect(await rejected.useCase.run(target(), FLAG)).toMatchObject({ rejectedChunks: { saved: 2, unsaved: 1 }, chunks: { total: 3, completed: 3 } });
+    expect(await proofreadNow(rejected.useCase, target(), FLAG)).toMatchObject({ rejectedChunks: { saved: 2, unsaved: 1 }, chunks: { total: 3, completed: 3 } });
 
     const interrupted = { cause: 'key-changed' as const, message: 'The API key changed.' };
     const unsent = setup({ result: { kind: 'completed', chunks: [{ kind: 'unsent' }], interrupted } });
-    expect(await unsent.useCase.run(target(), FLAG)).toMatchObject({ chunks: { total: 1, completed: 0 }, interrupted });
+    expect(await proofreadNow(unsent.useCase, target(), FLAG)).toMatchObject({ chunks: { total: 1, completed: 0 }, interrupted });
   });
 
   it('maps an unconfigured or cancelled pass, and an empty target', async () => {
-    expect(await setup({ result: { kind: 'unconfigured' } }).useCase.run(target(), FLAG)).toEqual({ kind: 'unconfigured' });
-    expect(await setup({ result: { kind: 'cancelled', usage: USAGE } }).useCase.run(target(), FLAG)).toEqual({ kind: 'cancelled', usage: USAGE });
+    expect(await proofreadNow(setup({ result: { kind: 'unconfigured' } }).useCase, target(), FLAG)).toEqual({ kind: 'unconfigured' });
+    expect(await proofreadNow(setup({ result: { kind: 'cancelled', usage: USAGE } }).useCase, target(), FLAG)).toEqual({ kind: 'cancelled', usage: USAGE });
     const blank = setup();
-    expect(await blank.useCase.run(target({ text: '  \n\n ' }), FLAG)).toEqual({ kind: 'empty' });
+    expect(await proofreadNow(blank.useCase, target({ text: '  \n\n ' }), FLAG)).toEqual({ kind: 'empty' });
     expect(blank.pass.proofread).not.toHaveBeenCalled();
   });
 
@@ -292,15 +298,15 @@ describe('DraftEditUseCase.run: placing and showing flags', () => {
     let finish: (result: ProofreadRunResult) => void = () => undefined;
     const pending = new Promise<ProofreadRunResult>((resolve) => { finish = resolve; });
     const { useCase } = setup({ result: pending });
-    const first = useCase.run(target(), FLAG);
+    const first = proofreadNow(useCase, target(), FLAG);
 
-    expect(await useCase.run(target(), FLAG)).toEqual({ kind: 'busy' });
+    expect(await proofreadNow(useCase, target(), FLAG)).toEqual({ kind: 'busy' });
     // Another document runs alongside; it shares the held pass result, so it settles with the first.
-    const other = useCase.run(target({ uri: 'file:///workspace/other.txt' }), FLAG);
+    const other = proofreadNow(useCase, target({ uri: 'file:///workspace/other.txt' }), FLAG);
     finish(read());
     await expect(first).resolves.toMatchObject({ kind: 'completed' });
     await expect(other).resolves.toMatchObject({ kind: 'completed' });
-    expect(await useCase.run(target(), FLAG)).toMatchObject({ kind: 'completed' });
+    expect(await proofreadNow(useCase, target(), FLAG)).toMatchObject({ kind: 'completed' });
   });
 });
 
@@ -335,7 +341,7 @@ describe('DraftEditUseCase.run: protected Markdown never reaches the payload or 
   it.each(CONSTRUCTS)('a whole-document run: %s', async (_name, construct) => {
     const text = `${construct}\n\n${PROSE}`;
     const { useCase, requests, shown } = setup({ result: read(TEH), live: { text, languageId: 'markdown' } });
-    const outcome = await useCase.run(target({ text, languageId: 'markdown' }), FLAG);
+    const outcome = await proofreadNow(useCase, target({ text, languageId: 'markdown' }), FLAG);
 
     expect(requests[0].chunks.join('\n')).not.toContain('teh');
     expect(shown[0].annotations).toEqual([]);
@@ -346,7 +352,7 @@ describe('DraftEditUseCase.run: protected Markdown never reaches the payload or 
     const text = `${construct}\n\n${PROSE}`;
     const start = text.indexOf('teh');
     const { useCase, pass, annotations } = setup({ result: read(TEH) });
-    const outcome = await useCase.run(target({ text, languageId: 'markdown', range: { start, end: start + 3 } }), FLAG);
+    const outcome = await proofreadNow(useCase, target({ text, languageId: 'markdown', range: { start, end: start + 3 } }), FLAG);
 
     expect(outcome).toEqual({ kind: 'empty' });
     expect(pass.proofread).not.toHaveBeenCalled();
@@ -364,7 +370,7 @@ describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live t
   it('control: a harmless prefix moves the flag with its text', async () => {
     const live = { version: 2, text: `One day, ${ONCE}`, languageId: 'markdown', edits: [[{ offset: 0, length: 0, text: 'One day, ' }]] };
     const { useCase, shown } = setup({ result: read(ONLY_TEH), live });
-    const outcome = await useCase.run(mdTarget(ONCE), FLAG);
+    const outcome = await proofreadNow(useCase, mdTarget(ONCE), FLAG);
 
     expect(shown[0].annotations.map((annotation) => [annotation.start, annotation.end])).toEqual([[19, 22]]);
     expect(outcome).toMatchObject({ flagged: 1, dropped: NONE });
@@ -374,7 +380,7 @@ describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live t
     const at = TWICE.indexOf('teh');
     const live = { version: 2, text: TWICE.replace('teh', 'the'), languageId: 'markdown', edits: [[{ offset: at, length: 3, text: 'the' }]] };
     const { useCase, shown } = setup({ result: read(FIRST_TEH), live });
-    const outcome = await useCase.run(mdTarget(TWICE), FLAG);
+    const outcome = await proofreadNow(useCase, mdTarget(TWICE), FLAG);
 
     expect(shown[0].annotations).toEqual([]);
     expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, stale: 1 } });
@@ -389,7 +395,7 @@ describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live t
       edits: [[{ offset: 0, length: 0, text: '```text\n' }], [{ offset: '```text\n'.length + ONCE.length, length: 0, text: '\n```' }]]
     };
     const { useCase, shown } = setup({ result: read(ONLY_TEH), live });
-    const outcome = await useCase.run(mdTarget(ONCE), FLAG);
+    const outcome = await proofreadNow(useCase, mdTarget(ONCE), FLAG);
 
     expect(shown[0].annotations).toEqual([]);
     expect(outcome).toMatchObject({ flagged: 0, dropped: { ...NONE, protected: 1 } });
@@ -399,7 +405,7 @@ describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live t
     const text = `${ONCE}\n\n\`\`\`text\nteh\n\`\`\``;
     const live = { version: 2, text: text.replace('teh', 'the'), languageId: 'markdown', edits: [[{ offset: text.indexOf('teh'), length: 3, text: 'the' }]] };
     const { useCase, shown, requests } = setup({ result: read(ONLY_TEH), live });
-    const outcome = await useCase.run(mdTarget(text), FLAG);
+    const outcome = await proofreadNow(useCase, mdTarget(text), FLAG);
 
     expect(requests[0].chunks.join('\n')).not.toContain('\nteh\n');
     expect(shown[0].annotations).toEqual([]);
@@ -407,16 +413,78 @@ describe('DraftEditUseCase.run: a finding keeps its own occurrence in the live t
   });
 });
 
-describe('DraftEditUseCase.plan', () => {
+describe('DraftEditUseCase.begin: the plan', () => {
+  /** The plan a gesture would read, released at once. */
+  const planOf = (useCase: DraftEditUseCase, at: DraftEditTarget) => {
+    const begun = useCase.begin(at, FLAG);
+    if (begun.kind !== 'gesture') {
+      throw new Error(`expected a gesture, got ${begun.kind}`);
+    }
+    useCase.release(begun.gesture);
+    return begun.plan;
+  };
+
   it('asks for confirmation only for a whole file over the threshold', () => {
     const { useCase } = setup();
     const long = 'Alice fell. '.repeat(Math.ceil(PROMPT_BUDGETS.proofread.confirmWholeFileWords / 2) + 1);
-    const whole = useCase.plan(target({ text: long }));
+    const whole = planOf(useCase, target({ text: long }));
     expect(whole.words).toBeGreaterThan(PROMPT_BUDGETS.proofread.confirmWholeFileWords);
     expect(whole).toMatchObject({ wholeFile: true, needsConfirmation: true, chunks: 1 });
-    expect(useCase.plan(target({ text: long, range: { start: 0, end: long.length } })))
+    expect(planOf(useCase, target({ text: long, range: { start: 0, end: long.length } })))
       .toMatchObject({ wholeFile: false, needsConfirmation: false });
-    expect(useCase.plan(target())).toMatchObject({ wholeFile: true, needsConfirmation: false, chunks: 1 });
+    expect(planOf(useCase, target())).toMatchObject({ wholeFile: true, needsConfirmation: false, chunks: 1 });
+  });
+});
+
+describe('DraftEditUseCase: a held gesture (PR #183 F-02)', () => {
+  it('watches the document from the gesture\'s read, before anything is awaited, and holds it until released', async () => {
+    const { useCase, documents, disposed, pass } = setup();
+    const begun = useCase.begin(target(), FLAG);
+
+    expect(begun.kind).toBe('gesture');
+    expect(documents.watch).toHaveBeenCalledWith(URI, 1);
+    expect(useCase.begin(target(), FLAG)).toEqual({ kind: 'busy' });
+    if (begun.kind === 'gesture') {
+      useCase.release(begun.gesture);
+      useCase.release(begun.gesture);
+      await expect(useCase.run(begun.gesture)).rejects.toThrow('already run or been released');
+    }
+    expect(disposed).toHaveBeenCalledTimes(1);
+    expect(pass.proofread).not.toHaveBeenCalled();
+    expect(useCase.begin(target(), FLAG).kind).toBe('gesture');
+  });
+
+  it('sends nothing for a lifetime that ended after the gesture (a close, a reopen or a language change), and lets the next begin', async () => {
+    let ended = false;
+    const { useCase, pass, shown, disposed, annotations } = setup({ ended: () => ended });
+    const begun = useCase.begin(target(), FLAG);
+    ended = true;
+
+    expect(begun.kind).toBe('gesture');
+    if (begun.kind === 'gesture') {
+      expect(await useCase.run(begun.gesture)).toEqual({ kind: 'changed' });
+      await expect(useCase.run(begun.gesture)).rejects.toThrow('already run or been released');
+    }
+    expect(pass.proofread).not.toHaveBeenCalled();
+    expect(shown).toEqual([]);
+    expect(annotations.remove).not.toHaveBeenCalled();
+    expect(disposed).toHaveBeenCalledTimes(1);
+    expect(useCase.begin(target(), FLAG).kind).toBe('gesture');
+  });
+
+  it('runs once, and asks the pass to check the lifetime as each chunk starts', async () => {
+    let ended = false;
+    const { useCase, requests } = setup({ ended: () => ended });
+    const begun = useCase.begin(target(), FLAG);
+    if (begun.kind !== 'gesture') {
+      throw new Error('expected a gesture');
+    }
+    expect(await useCase.run(begun.gesture)).toMatchObject({ kind: 'completed' });
+
+    expect(requests[0].stillCurrent?.()).toBe(true);
+    ended = true;
+    expect(requests[0].stillCurrent?.()).toBe(false);
+    await expect(useCase.run(begun.gesture)).rejects.toThrow('already run or been released');
   });
 });
 

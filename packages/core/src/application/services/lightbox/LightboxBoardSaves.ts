@@ -53,6 +53,8 @@ export interface LightboxBoardSavePorts {
   outputChannel: LogSink;
   /** The rail hears a committed save, or a failed one (the library's shelf push). */
   announce: () => void;
+  /** Holds a save no caller awaits as owed, so the library's drain waits for it (PR #183 F-03). */
+  owe: (write: Promise<void>) => void;
   /** The zone a default name's time is told in; the host's own when absent (tests pin one). */
   timeZone?: string;
 }
@@ -85,7 +87,7 @@ export class LightboxBoardSaves {
     if (savable.savedFileId) {
       this.pointAt(board, savable.savedFileId);
     } else if (savable.origin.kind === 'built') {
-      void this.save(savable, true);
+      this.ports.owe(this.save(savable, true));
     }
   }
 

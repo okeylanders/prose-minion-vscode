@@ -10,7 +10,10 @@
  * after the edits, its inline content with the document's own link
  * definitions, and the two must have the same shape: the same token types,
  * nested the same way, with the same heading depths, list kinds and table
- * sizes. Text content is not compared; that is what a fix changes.
+ * sizes, and every link and image going where it went, by its resolved
+ * destination and title (PR #183 F-01: `[teh]` → `[the]` is still a link, to
+ * another definition). Text content is not compared; that is what a fix
+ * changes.
  *
  * - The edits are tried together first (two can make structure neither makes
  *   alone). When a block's shape moves, its edits are taken in order, each
@@ -159,6 +162,14 @@ function describeToken(token: Token): string {
       const table = token as Tokens.Table;
       const cells = (row: readonly Tokens.TableCell[]) => row.map((cell) => `cell(${describe(cell.tokens)})`).join('|');
       return `table[${table.align.map((align) => align ?? 'none').join('|')}](${cells(table.header)})[${table.rows.map(cells).join('/')}]`;
+    }
+    case 'link':
+    case 'image': {
+      // Where it goes is not prose: a fix to a reference's label can resolve it to another definition (PR #183 F-01).
+      const link = token as Tokens.Link | Tokens.Image;
+      const target = JSON.stringify([link.href, link.title ?? null]);
+      const nested = Array.isArray(link.tokens) ? `(${describe(link.tokens)})` : '';
+      return `${token.type}${target}${nested}`;
     }
     case 'text': {
       const text = token as Tokens.Text;

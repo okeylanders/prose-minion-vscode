@@ -220,6 +220,8 @@ export { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application
 export { CRAFT_FLAG_CATEGORIES, craftFlagCategoriesOf, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
 export {
   DraftEditUseCase,
+  type DraftEditBegin,
+  type DraftEditGesture,
   type DraftEditQuickFixOutcome,
   type DraftEditQuickFixRequest,
   type DraftEditRunHooks,

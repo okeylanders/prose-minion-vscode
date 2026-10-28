@@ -282,7 +282,8 @@ annotations in its own way, or not at all, without any change to core.
 2. **Protected regions.** Drop any edit that touches any of these:
    - front matter;
    - fenced code or inline code;
-   - link and image targets, autolinks, or reference definitions;
+   - link and image targets, a full reference's label (`[text][label]`;
+     amended 2026-10-28, PR #183 F-01), autolinks, or reference definitions;
    - HTML comments or tags.
 
    Constructs are read whole, wherever Markdown's containers put them: block
@@ -1431,6 +1432,17 @@ apart from the reply's own ceiling, named rather than counted, Proofread
 | Craft Flags' estimate | **Typical thinking counted.** Each call's output is priced at its typical reply plus half its level's budget, still "≈ $…", never a cap. The fixture run revisits both numbers. Proofread prices nothing, as before. |
 | Scope | **These two passes.** Every other model scope sends no reasoning setting and keeps its model's default. A level belongs to the request, never the model: Craft Flags following the assistant model shares only the model id, so its level never reaches the Workshop. Another scope can take a setting of its own later, with the same levels. |
 | To confirm | The names `reasoning.max_tokens`, `effort: 'none'` (where a model supports it) and `completion_tokens_details.reasoning_tokens` are OpenRouter's, as the PR #181 review confirmed from its reasoning documentation on 2026-10-27 (the build container cannot reach it). The writer's acceptance pass runs one Proofread chunk at `off` and one at `light` on the default model and reads both sidecars or log lines, before the release. |
+
+## Amendment 2026-10-28: PR #183 review (integration)
+
+The aggregate review of `epic/lightbox` into `main` found two Draft Edit
+defects that slipped between guards each slice had made separately. Each
+changes a decision above:
+
+| Finding | Decision |
+|---|---|
+| F-01: a spelling fix to a reference link's label sent it to another definition | D4 step 2, D6: **a full reference's label is protected** (`[text][label]`: the second bracket, read as CommonMark reads a label, never across a blank line or another `[`; the scan reads on inside it, so a code span there still binds tighter and `[a][b][c]` protects both labels). A collapsed or shortcut reference (`[label][]`, `[label]`) shows its label as its text, so it stays prose, and **the structure check compares where every link and image goes**: its resolved destination and title, read with the document's own definitions, before and after (`markdownStructure.ts`). `[teh]` → `[the]` with both defined is refused, and flagged; a case-only change that resolves to the same definition, and any fix to a link's or image's visible text, still lands. Both checks run at placement and again on the live text in the applier, so a quick fix is held to them too. |
+| F-02: a long-file Proofread took its watch after the confirmation | D3, D5: **Proofread's gesture is held, as Craft Flags' is** (PR #177 F-02). `DraftEditUseCase.begin` takes it synchronously at the gesture (the busy check, the masked chunks, the watch at the gesture's version, a selection's kept flags) and returns the plan the confirmation reads; `run(gesture)` sends it once; `release` ends it unsent, and the command releases it however it ends. A lifetime that ended while the writer decided (a close and reopen at the same URI, version and language, or a language change) sends nothing (`changed`), so a direct Fix never writes into it. The pass is also asked in the turn each chunk starts (`ProofreadRunRequest.stillCurrent`), so a lifetime that ends mid-run starts no more chunks; the settle still reports it closed. An edit the writer makes while the confirmation is open is followed, as one made while the model works is; before, it refused the run. The accepted #172 limit is untouched: it begins only once a review is submitted. |
 
 ## Out of scope (follow-ups)
 

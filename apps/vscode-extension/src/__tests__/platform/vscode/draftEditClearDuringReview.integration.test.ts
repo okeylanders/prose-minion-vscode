@@ -25,6 +25,12 @@ import { VsCodeDocumentEditor } from '@app/platform/vscode/VsCodeDocumentEditor'
 import { VsCodeIssueAnnotator } from '@app/platform/vscode/VsCodeIssueAnnotator';
 import { reviewHarness, type FakeDocument } from '@app/__tests__/platform/vscode/refactorPreviewHost';
 
+/** A Proofread gesture begun and run at once, as one with nothing to confirm runs (PR #183 F-02). */
+function proofreadNow(useCase: DraftEditUseCase, ...[target, pass]: Parameters<DraftEditUseCase['begin']>): ReturnType<DraftEditUseCase['run']> {
+  const begun = useCase.begin(target, pass);
+  return begun.kind === 'gesture' ? useCase.run(begun.gesture) : Promise.resolve(begun);
+}
+
 const { host, openDocument, writerApplies, asked, reset } = reviewHarness(vscode);
 const TEXT = 'Alice was begining to get vrey tired of sitting by her sister, who is reading.';
 const OTHER = 'file:///workspace/chapter-02.md';
@@ -56,7 +62,7 @@ async function twoFlaggedChapters() {
   });
   const snapshot = (document: FakeDocument) => ({ uri: document.uri.toString(), version: document.version, text: document.getText(), languageId: 'markdown' });
   for (const document of [first, second]) {
-    await useCase.run({ ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' });
+    await proofreadNow(useCase, { ...snapshot(document), relativePath: 'chapter.md' }, { kind: 'proofread', output: 'flag' });
   }
   const flags = (document: FakeDocument) =>
     (host.diagnostics.get(document.uri.toString()) as Array<{ range: { start: { offset: number }; end: { offset: number } } }> | undefined ?? [])

@@ -275,6 +275,34 @@ describe('ProofreadService', () => {
     });
   });
 
+  it('sends no chunk once the gesture\'s lifetime ended while the prompts loaded (PR #183 F-02)', async () => {
+    let current = true;
+    const { service, runInitial, promptLoader, log } = createService([{ content: replyOf() }, { content: replyOf() }]);
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      current = false;
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+    const result = await service.proofread({ chunks, label: 'chapter-01.md', stillCurrent: () => current });
+
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: 'completed', chunks: [{ kind: 'unsent' }, { kind: 'unsent' }] });
+    expect(log.appendLine).toHaveBeenCalledWith('[Proofread] chapter-01.md: the document closed or changed language; chunk 1 and later not sent');
+  });
+
+  it('starts no later chunk once the lifetime ends mid-run, keeping what finished (PR #183 F-02)', async () => {
+    let current = true;
+    const { service, runInitial } = createService([{ content: replyOf(WEATHER_ISSUE) }, { content: replyOf() }, { content: replyOf() }]);
+    runInitial.mockImplementationOnce(async () => {
+      current = false;
+      return { content: replyOf(WEATHER_ISSUE), usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE } as never;
+    });
+    const result = await service.proofread({ chunks: [...chunks, ALICE_RABBIT_SEEDED], label: 'chapter-01.md', stillCurrent: () => current });
+
+    expect(runInitial).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ kind: 'completed', chunks: [{ kind: 'read' }, { kind: 'unsent' }, { kind: 'unsent' }] });
+    expect(result).not.toHaveProperty('interrupted');
+  });
+
   it('reports cancelled, with the usage already spent, once the signal is aborted', async () => {
     const controller = new AbortController();
     const { service, runInitial } = createService([{ content: replyOf(WEATHER_ISSUE) }, { content: replyOf() }]);

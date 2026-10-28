@@ -90,6 +90,7 @@ import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 import { VsCodeDocumentEditor } from './platform/vscode/VsCodeDocumentEditor';
 import { CRAFT_FLAGS, VsCodeIssueAnnotator } from './platform/vscode/VsCodeIssueAnnotator';
 import { OpenFileInLightboxHost, openFileInLightbox } from './application/commands/openFileInLightbox';
+import { shutDownExtension, type ExtensionShutdownParts } from './application/extensionShutdown';
 import {
   PROOFREAD_CLEAR_COMMAND,
   PROOFREAD_DISMISS_COMMAND,
@@ -120,6 +121,7 @@ let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
 let lightboxPanelProvider: LightboxPanelProvider | undefined;
 let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
+let lightboxBoardLibrary: LightboxBoardLibrary | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
@@ -447,7 +449,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel,
     { memory: context.workspaceState }
   );
-  const lightboxBoardLibrary = new LightboxBoardLibrary({
+  lightboxBoardLibrary = new LightboxBoardLibrary({
     service: lightboxService,
     store: lightboxBoardStore,
     runs: lightboxReadingRunner,
@@ -455,7 +457,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workspace: platform.workspace,
     outputChannel
   });
-  context.subscriptions.push({ dispose: () => lightboxBoardLibrary.dispose() });
+  const boardLibrary = lightboxBoardLibrary;
+  context.subscriptions.push({ dispose: () => boardLibrary.dispose() });
 
   // Draft Edit (ADR 2026-10-21): the Proofread pass on the manager-owned
   // `proofread` scope, the applier (the one door to the writer's document),
@@ -833,17 +836,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export async function deactivate(): Promise<void> {
-  // Quiesce the panel-owned Workshop handler first. Its dispose path
-  // aborts/abandons any in-flight run, so the coordinator's active-run guard
-  // cannot defer an earlier committed dirty revision past process shutdown.
-  workshopPanelProvider?.dispose();
+  // Producers stop first, then what they owe is awaited (`shutDownExtension`; PR #183 F-03).
+  const parts: ExtensionShutdownParts = {
+    workshopPanel: workshopPanelProvider,
+    lightboxPanel: lightboxPanelProvider,
+    workshopSessions: workshopSessionPersistenceCoordinator,
+    lightboxBoards: lightboxBoardLibrary
+  };
   workshopPanelProvider = undefined;
-  // The Lightbox writes nothing (D12); its panel is also a context
-  // subscription, and disposing twice is a no-op.
-  lightboxPanelProvider?.dispose();
   lightboxPanelProvider = undefined;
-  await workshopSessionPersistenceCoordinator?.flush();
   workshopSessionPersistenceCoordinator = undefined;
+  lightboxBoardLibrary = undefined;
+  await shutDownExtension(parts);
   console.log('Prose Minion extension is now deactivated');
 }
 
