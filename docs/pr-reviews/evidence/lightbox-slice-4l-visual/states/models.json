@@ -1,0 +1,4378 @@
+{
+  "models": {
+    "placeholder/workshop-model": "Workshop placeholder",
+    "placeholder/lightbox-model": "Lightbox placeholder",
+    "placeholder/other-model": "Other placeholder"
+  },
+  "workshopRoom": {
+    "type": "workshop_session_state",
+    "source": "extension.workshop",
+    "timestamp": 1,
+    "payload": {
+      "session": {
+        "scope": "open",
+        "participantSubjectReady": true,
+        "excerptVersion": 0,
+        "replacementCount": 0,
+        "roomRevision": 1,
+        "contextRevision": 0,
+        "contextAttachments": [],
+        "pendingMessageAttachments": [],
+        "widgetConfigs": [],
+        "standingDirectives": [],
+        "todos": [],
+        "turnRewindability": {},
+        "turns": [
+          {
+            "id": "turn-1",
+            "role": "user",
+            "kind": "message",
+            "participant": "writer",
+            "artifact": "persona_message",
+            "content": "What does the rabbit hole open with?",
+            "timestamp": 1792853940000,
+            "excerptVersion": 0
+          },
+          {
+            "id": "turn-2",
+            "role": "assistant",
+            "kind": "message",
+            "participant": "host",
+            "artifact": "persona_message",
+            "personaId": "jill",
+            "content": "With a girl beside her sister on the bank, and a book with no pictures in it.",
+            "timestamp": 1792854000000,
+            "excerptVersion": 0
+          }
+        ],
+        "totalTurns": 2,
+        "truncatedTurns": 0,
+        "roomHasMemory": true,
+        "participants": {
+          "host": {
+            "personaId": "jill",
+            "hasConversation": true
+          },
+          "toolSidecars": [],
+          "personaGuests": [],
+          "chatTarget": {
+            "kind": "host"
+          }
+        },
+        "conversationBehavior": {
+          "interactionMode": "balanced",
+          "expressionLevel": "full",
+          "relationalDepth": "attuned",
+          "carryCuesThroughSession": true,
+          "proactiveAssistance": true
+        },
+        "contextBudget": {
+          "label": "Host",
+          "snapshot": {
+            "estimatedCacheExpiresAt": 1792854240000,
+            "cacheRequestModelId": "placeholder/workshop-model",
+            "modelId": "placeholder/workshop-model",
+            "contextTokens": 12000,
+            "promptTokens": 12000,
+            "completionTokens": 400,
+            "peakPromptTokensThisTurn": 12000,
+            "requestedMaxOutputTokens": 4000,
+            "callsThisTurn": 1,
+            "turnProcessedTokens": 12400,
+            "contextCompression": "not-applied",
+            "measuredAt": 1792854000000
+          },
+          "sources": []
+        }
+      },
+      "writerProfile": {
+        "enabled": false,
+        "preferredAddress": "",
+        "bio": ""
+      },
+      "webResearch": {
+        "enabled": false
+      },
+      "persistence": {
+        "available": true,
+        "degradedConversationKeys": []
+      }
+    }
+  },
+  "mount": {
+    "sidebar": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "lightbox": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "workshop": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "board": [
+      {
+        "type": "lightbox_board",
+        "source": "extension.lightbox",
+        "payload": {
+          "board": {
+            "boardVersion": 1,
+            "boardId": "board-alice",
+            "rules": {
+              "paragraphs": "blank-line-2026-10-19",
+              "sentences": "closing-marks-speech-tags-2026-10-21",
+              "dialogue": "double-quotes-2026-10-19",
+              "beingVerbs": "contractions-next-word-2026-10-21",
+              "opinionBasis": "item-data-2026-10-22"
+            },
+            "source": {
+              "kind": "file",
+              "displayPath": "Drafts/alice-1.md",
+              "contentHash": "388547536878290eff7b813121d652d5a6c1fa6cafaf7ca06d5c1c6e097856af",
+              "wordCount": 508,
+              "paragraphCount": 8,
+              "capturedAt": 1792877402207,
+              "preview": "# Chapter I: Down the Rabbit-Hole\n\nAlice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, “and what is the use of a book,” thought Alice “without pictures or conversation?”\n\nSo she was…"
+            },
+            "paragraphs": [
+              {
+                "index": 1,
+                "start": 0,
+                "end": 33,
+                "words": 6,
+                "sentences": 1,
+                "avgWordsPerSentence": 6,
+                "dialogueWords": 0,
+                "dialogueShare": 0,
+                "sentenceWords": [
+                  6
+                ]
+              },
+              {
+                "index": 2,
+                "start": 35,
+                "end": 336,
+                "words": 57,
+                "sentences": 1,
+                "avgWordsPerSentence": 57,
+                "dialogueWords": 12,
+                "dialogueShare": 0.211,
+                "sentenceWords": [
+                  57
+                ]
+              },
+              {
+                "index": 3,
+                "start": 338,
+                "end": 627,
+                "words": 55,
+                "sentences": 1,
+                "avgWordsPerSentence": 55,
+                "dialogueWords": 0,
+                "dialogueShare": 0,
+                "sentenceWords": [
+                  55
+                ]
+              },
+              {
+                "index": 4,
+                "start": 629,
+                "end": 1362,
+                "words": 141,
+                "sentences": 4,
+                "avgWordsPerSentence": 35.3,
+                "dialogueWords": 8,
+                "dialogueShare": 0.057,
+                "sentenceWords": [
+                  29,
+                  2,
+                  4,
+                  106
+                ]
+              },
+              {
+                "index": 5,
+                "start": 1364,
+                "end": 1473,
+                "words": 21,
+                "sentences": 1,
+                "avgWordsPerSentence": 21,
+                "dialogueWords": 0,
+                "dialogueShare": 0,
+                "sentenceWords": [
+                  21
+                ]
+              },
+              {
+                "index": 6,
+                "start": 1475,
+                "end": 1694,
+                "words": 39,
+                "sentences": 1,
+                "avgWordsPerSentence": 39,
+                "dialogueWords": 0,
+                "dialogueShare": 0,
+                "sentenceWords": [
+                  39
+                ]
+              },
+              {
+                "index": 7,
+                "start": 1696,
+                "end": 2400,
+                "words": 140,
+                "sentences": 3,
+                "avgWordsPerSentence": 46.7,
+                "dialogueWords": 2,
+                "dialogueShare": 0.014,
+                "sentenceWords": [
+                  34,
+                  52,
+                  54
+                ]
+              },
+              {
+                "index": 8,
+                "start": 2402,
+                "end": 2661,
+                "words": 49,
+                "sentences": 4,
+                "avgWordsPerSentence": 12.3,
+                "dialogueWords": 40,
+                "dialogueShare": 0.816,
+                "sentenceWords": [
+                  19,
+                  8,
+                  17,
+                  5
+                ]
+              }
+            ],
+            "ribbon": [
+              {
+                "from": 1,
+                "to": 1,
+                "avgWordsPerSentence": 6,
+                "dialogueShare": 0
+              },
+              {
+                "from": 2,
+                "to": 2,
+                "avgWordsPerSentence": 57,
+                "dialogueShare": 0.211
+              },
+              {
+                "from": 3,
+                "to": 3,
+                "avgWordsPerSentence": 55,
+                "dialogueShare": 0
+              },
+              {
+                "from": 4,
+                "to": 4,
+                "avgWordsPerSentence": 35.3,
+                "dialogueShare": 0.057
+              },
+              {
+                "from": 5,
+                "to": 5,
+                "avgWordsPerSentence": 21,
+                "dialogueShare": 0
+              },
+              {
+                "from": 6,
+                "to": 6,
+                "avgWordsPerSentence": 39,
+                "dialogueShare": 0
+              },
+              {
+                "from": 7,
+                "to": 7,
+                "avgWordsPerSentence": 46.7,
+                "dialogueShare": 0.014
+              },
+              {
+                "from": 8,
+                "to": 8,
+                "avgWordsPerSentence": 12.3,
+                "dialogueShare": 0.816
+              }
+            ],
+            "measured": {
+              "headline": {
+                "wordCount": 508,
+                "sentenceCount": 15,
+                "paragraphCount": 8,
+                "averageWordsPerSentence": 33.9,
+                "averageSentencesPerParagraph": 1.9,
+                "dialoguePercentage": 12.2,
+                "lexicalDensity": 51.9,
+                "readabilityScore": 32.3,
+                "readabilityGrade": 13.6,
+                "pacing": "Very slow (very long sentences)",
+                "readingTimeMinutes": 2.1,
+                "uniqueWordCount": 219,
+                "hapaxCount": 139,
+                "hapaxPercent": 27.4,
+                "vocabularyDiversity": 43.2
+              },
+              "topWords": [
+                {
+                  "term": "her",
+                  "count": 10,
+                  "percentage": 2,
+                  "paragraphs": [
+                    2,
+                    3,
+                    4,
+                    7
+                  ]
+                },
+                {
+                  "term": "down",
+                  "count": 9,
+                  "percentage": 1.8,
+                  "paragraphs": [
+                    1,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "term": "alice",
+                  "count": 7,
+                  "percentage": 1.4,
+                  "paragraphs": [
+                    2,
+                    4,
+                    5,
+                    6,
+                    8
+                  ]
+                },
+                {
+                  "term": "had",
+                  "count": 5,
+                  "percentage": 1,
+                  "paragraphs": [
+                    2,
+                    4,
+                    6,
+                    7
+                  ]
+                },
+                {
+                  "term": "well",
+                  "count": 5,
+                  "percentage": 1,
+                  "paragraphs": [
+                    3,
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "term": "out",
+                  "count": 5,
+                  "percentage": 1,
+                  "paragraphs": [
+                    4,
+                    5,
+                    7
+                  ]
+                },
+                {
+                  "term": "rabbit",
+                  "count": 4,
+                  "percentage": 0.8,
+                  "paragraphs": [
+                    3,
+                    4
+                  ]
+                },
+                {
+                  "term": "think",
+                  "count": 4,
+                  "percentage": 0.8,
+                  "paragraphs": [
+                    4,
+                    6,
+                    8
+                  ]
+                },
+                {
+                  "term": "rabbit-hole",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    1,
+                    4,
+                    6
+                  ]
+                },
+                {
+                  "term": "nothing",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    2,
+                    4,
+                    8
+                  ]
+                },
+                {
+                  "term": "pictures",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    2,
+                    7
+                  ]
+                },
+                {
+                  "term": "thought",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    2,
+                    4,
+                    8
+                  ]
+                },
+                {
+                  "term": "suddenly",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    3,
+                    6
+                  ]
+                },
+                {
+                  "term": "time",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    4,
+                    7
+                  ]
+                },
+                {
+                  "term": "after",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    4,
+                    5,
+                    8
+                  ]
+                },
+                {
+                  "term": "went",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    5,
+                    6,
+                    7
+                  ]
+                },
+                {
+                  "term": "about",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "term": "herself",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    6,
+                    8
+                  ]
+                },
+                {
+                  "term": "fell",
+                  "count": 3,
+                  "percentage": 0.6,
+                  "paragraphs": [
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "term": "get",
+                  "count": 2,
+                  "percentage": 0.4,
+                  "paragraphs": [
+                    2,
+                    5
+                  ]
+                },
+                {
+                  "term": "sister",
+                  "count": 2,
+                  "percentage": 0.4,
+                  "paragraphs": [
+                    2
+                  ]
+                },
+                {
+                  "term": "into",
+                  "count": 2,
+                  "percentage": 0.4,
+                  "paragraphs": [
+                    2,
+                    7
+                  ]
+                },
+                {
+                  "term": "book",
+                  "count": 2,
+                  "percentage": 0.4,
+                  "paragraphs": [
+                    2
+                  ]
+                },
+                {
+                  "term": "considering",
+                  "count": 2,
+                  "percentage": 0.4,
+                  "paragraphs": [
+                    3,
+                    5
+                  ]
+                }
+              ],
+              "partsOfSpeech": {
+                "available": true,
+                "nouns": [
+                  {
+                    "term": "rabbit",
+                    "count": 7,
+                    "percentage": 1.4,
+                    "paragraphs": [
+                      1,
+                      3,
+                      4,
+                      6
+                    ]
+                  },
+                  {
+                    "term": "alice",
+                    "count": 7,
+                    "percentage": 1.4,
+                    "paragraphs": [
+                      2,
+                      4,
+                      5,
+                      6,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "hole",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      1,
+                      4,
+                      6
+                    ]
+                  },
+                  {
+                    "term": "nothing",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      2,
+                      4,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "book",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      2,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "pictures",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      2,
+                      7
+                    ]
+                  }
+                ],
+                "verbs": [
+                  {
+                    "term": "was",
+                    "count": 13,
+                    "percentage": 2.6,
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      5,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "had",
+                    "count": 5,
+                    "percentage": 1,
+                    "paragraphs": [
+                      2,
+                      4,
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "think",
+                    "count": 4,
+                    "percentage": 0.8,
+                    "paragraphs": [
+                      4,
+                      6,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "thought",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      2,
+                      4,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "went",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      5,
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "fell",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      7,
+                      8
+                    ]
+                  }
+                ],
+                "adjectives": [
+                  {
+                    "term": "dear",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      4
+                    ]
+                  },
+                  {
+                    "term": "deep",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "own",
+                    "count": 1,
+                    "percentage": 0.2,
+                    "paragraphs": [
+                      3
+                    ]
+                  },
+                  {
+                    "term": "hot",
+                    "count": 1,
+                    "percentage": 0.2,
+                    "paragraphs": [
+                      3
+                    ]
+                  },
+                  {
+                    "term": "stupid",
+                    "count": 1,
+                    "percentage": 0.2,
+                    "paragraphs": [
+                      3
+                    ]
+                  },
+                  {
+                    "term": "worth",
+                    "count": 1,
+                    "percentage": 0.2,
+                    "paragraphs": [
+                      3
+                    ]
+                  }
+                ],
+                "adverbs": [
+                  {
+                    "term": "very",
+                    "count": 8,
+                    "percentage": 1.6,
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      6,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "well",
+                    "count": 5,
+                    "percentage": 1,
+                    "paragraphs": [
+                      3,
+                      6,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "term": "so",
+                    "count": 4,
+                    "percentage": 0.8,
+                    "paragraphs": [
+                      4,
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "down",
+                    "count": 4,
+                    "percentage": 0.8,
+                    "paragraphs": [
+                      5,
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "suddenly",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      3,
+                      6
+                    ]
+                  },
+                  {
+                    "term": "then",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      4,
+                      6,
+                      7
+                    ]
+                  }
+                ]
+              },
+              "phrases": {
+                "bigrams": [
+                  {
+                    "term": "she had",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      2,
+                      4,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "out of",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      4
+                    ]
+                  },
+                  {
+                    "term": "to her",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      4,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "down a",
+                    "count": 3,
+                    "percentage": 0.6,
+                    "paragraphs": [
+                      4,
+                      6,
+                      7
+                    ]
+                  },
+                  {
+                    "term": "the rabbit-hole",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      1,
+                      6
+                    ]
+                  },
+                  {
+                    "term": "to get",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      2,
+                      5
+                    ]
+                  },
+                  {
+                    "term": "by her",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      2,
+                      3
+                    ]
+                  },
+                  {
+                    "term": "her sister",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      2
+                    ]
+                  }
+                ],
+                "trigrams": [
+                  {
+                    "term": "one of the",
+                    "count": 2,
+                    "percentage": 0.4,
+                    "paragraphs": [
+                      7
+                    ]
+                  }
+                ]
+              },
+              "styleFlags": [
+                {
+                  "type": "Weak Verbs",
+                  "count": 28,
+                  "examples": [
+                    "was",
+                    "get",
+                    "do",
+                    "had",
+                    "is"
+                  ],
+                  "id": "weak-verbs",
+                  "paragraphs": [
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "type": "Filler Words",
+                  "count": 11,
+                  "examples": [
+                    "very",
+                    "quite",
+                    "actually",
+                    "just"
+                  ],
+                  "id": "filler-words",
+                  "paragraphs": [
+                    2,
+                    3,
+                    4,
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "type": "Adverbs (-ly words)",
+                  "count": 7,
+                  "examples": [
+                    "suddenly",
+                    "actually",
+                    "fortunately",
+                    "slowly",
+                    "likely"
+                  ],
+                  "id": "adverbs",
+                  "paragraphs": [
+                    3,
+                    4,
+                    6,
+                    7,
+                    8
+                  ]
+                },
+                {
+                  "type": "Repetitive Words",
+                  "count": 5,
+                  "examples": [
+                    "alice (7x)",
+                    "rabbit (4x)",
+                    "think (4x)",
+                    "rabbit-hole (3x)",
+                    "nothing (3x)"
+                  ],
+                  "paragraphs": []
+                },
+                {
+                  "type": "Passive Voice",
+                  "count": 2,
+                  "examples": [
+                    "were filled",
+                    "was labelled"
+                  ],
+                  "id": "passive-voice",
+                  "paragraphs": [
+                    7
+                  ]
+                }
+              ],
+              "hapax": [
+                {
+                  "term": "chapter",
+                  "written": "Chapter",
+                  "paragraph": 1
+                },
+                {
+                  "term": "beginning",
+                  "written": "beginning",
+                  "paragraph": 2
+                },
+                {
+                  "term": "tired",
+                  "written": "tired",
+                  "paragraph": 2
+                },
+                {
+                  "term": "sitting",
+                  "written": "sitting",
+                  "paragraph": 2
+                },
+                {
+                  "term": "bank",
+                  "written": "bank",
+                  "paragraph": 2
+                },
+                {
+                  "term": "having",
+                  "written": "having",
+                  "paragraph": 2
+                },
+                {
+                  "term": "do",
+                  "written": "do",
+                  "paragraph": 2
+                },
+                {
+                  "term": "twice",
+                  "written": "twice",
+                  "paragraph": 2
+                },
+                {
+                  "term": "peeped",
+                  "written": "peeped",
+                  "paragraph": 2
+                },
+                {
+                  "term": "reading",
+                  "written": "reading",
+                  "paragraph": 2
+                },
+                {
+                  "term": "no",
+                  "written": "no",
+                  "paragraph": 2
+                },
+                {
+                  "term": "conversations",
+                  "written": "conversations",
+                  "paragraph": 2
+                },
+                {
+                  "term": "is",
+                  "written": "is",
+                  "paragraph": 2
+                },
+                {
+                  "term": "use",
+                  "written": "use",
+                  "paragraph": 2
+                },
+                {
+                  "term": "without",
+                  "written": "without",
+                  "paragraph": 2
+                },
+                {
+                  "term": "conversation",
+                  "written": "conversation",
+                  "paragraph": 2
+                },
+                {
+                  "term": "own",
+                  "written": "own",
+                  "paragraph": 3
+                },
+                {
+                  "term": "could",
+                  "written": "could",
+                  "paragraph": 3
+                },
+                {
+                  "term": "hot",
+                  "written": "hot",
+                  "paragraph": 3
+                },
+                {
+                  "term": "day",
+                  "written": "day",
+                  "paragraph": 3
+                },
+                {
+                  "term": "made",
+                  "written": "made",
+                  "paragraph": 3
+                },
+                {
+                  "term": "feel",
+                  "written": "feel",
+                  "paragraph": 3
+                },
+                {
+                  "term": "sleepy",
+                  "written": "sleepy",
+                  "paragraph": 3
+                },
+                {
+                  "term": "stupid",
+                  "written": "stupid",
+                  "paragraph": 3
+                },
+                {
+                  "term": "whether",
+                  "written": "whether",
+                  "paragraph": 3
+                },
+                {
+                  "term": "pleasure",
+                  "written": "pleasure",
+                  "paragraph": 3
+                },
+                {
+                  "term": "making",
+                  "written": "making",
+                  "paragraph": 3
+                },
+                {
+                  "term": "daisychain",
+                  "written": "daisy-chain",
+                  "paragraph": 3
+                },
+                {
+                  "term": "would",
+                  "written": "would",
+                  "paragraph": 3
+                },
+                {
+                  "term": "worth",
+                  "written": "worth",
+                  "paragraph": 3
+                },
+                {
+                  "term": "trouble",
+                  "written": "trouble",
+                  "paragraph": 3
+                },
+                {
+                  "term": "getting",
+                  "written": "getting",
+                  "paragraph": 3
+                },
+                {
+                  "term": "up",
+                  "written": "up",
+                  "paragraph": 3
+                },
+                {
+                  "term": "picking",
+                  "written": "picking",
+                  "paragraph": 3
+                },
+                {
+                  "term": "daisies",
+                  "written": "daisies",
+                  "paragraph": 3
+                },
+                {
+                  "term": "white",
+                  "written": "White",
+                  "paragraph": 3
+                },
+                {
+                  "term": "pink",
+                  "written": "pink",
+                  "paragraph": 3
+                },
+                {
+                  "term": "eyes",
+                  "written": "eyes",
+                  "paragraph": 3
+                },
+                {
+                  "term": "close",
+                  "written": "close",
+                  "paragraph": 3
+                },
+                {
+                  "term": "remarkable",
+                  "written": "remarkable",
+                  "paragraph": 4
+                },
+                {
+                  "term": "nor",
+                  "written": "nor",
+                  "paragraph": 4
+                },
+                {
+                  "term": "much",
+                  "written": "much",
+                  "paragraph": 4
+                },
+                {
+                  "term": "hear",
+                  "written": "hear",
+                  "paragraph": 4
+                },
+                {
+                  "term": "itself",
+                  "written": "itself",
+                  "paragraph": 4
+                },
+                {
+                  "term": "late",
+                  "written": "late",
+                  "paragraph": 4
+                },
+                {
+                  "term": "over",
+                  "written": "over",
+                  "paragraph": 4
+                },
+                {
+                  "term": "afterwards",
+                  "written": "afterwards",
+                  "paragraph": 4
+                },
+                {
+                  "term": "occurred",
+                  "written": "occurred",
+                  "paragraph": 4
+                },
+                {
+                  "term": "ought",
+                  "written": "ought",
+                  "paragraph": 4
+                },
+                {
+                  "term": "have",
+                  "written": "have",
+                  "paragraph": 4
+                },
+                {
+                  "term": "wondered",
+                  "written": "wondered",
+                  "paragraph": 4
+                },
+                {
+                  "term": "seemed",
+                  "written": "seemed",
+                  "paragraph": 4
+                },
+                {
+                  "term": "quite",
+                  "written": "quite",
+                  "paragraph": 4
+                },
+                {
+                  "term": "natural",
+                  "written": "natural",
+                  "paragraph": 4
+                },
+                {
+                  "term": "actually",
+                  "written": "actually",
+                  "paragraph": 4
+                },
+                {
+                  "term": "its",
+                  "written": "ITS",
+                  "paragraph": 4
+                },
+                {
+                  "term": "hurried",
+                  "written": "hurried",
+                  "paragraph": 4
+                },
+                {
+                  "term": "started",
+                  "written": "started",
+                  "paragraph": 4
+                },
+                {
+                  "term": "feet",
+                  "written": "feet",
+                  "paragraph": 4
+                },
+                {
+                  "term": "flashed",
+                  "written": "flashed",
+                  "paragraph": 4
+                },
+                {
+                  "term": "seen",
+                  "written": "seen",
+                  "paragraph": 4
+                },
+                {
+                  "term": "take",
+                  "written": "take",
+                  "paragraph": 4
+                },
+                {
+                  "term": "burning",
+                  "written": "burning",
+                  "paragraph": 4
+                },
+                {
+                  "term": "curiosity",
+                  "written": "curiosity",
+                  "paragraph": 4
+                },
+                {
+                  "term": "field",
+                  "written": "field",
+                  "paragraph": 4
+                },
+                {
+                  "term": "fortunately",
+                  "written": "fortunately",
+                  "paragraph": 4
+                },
+                {
+                  "term": "just",
+                  "written": "just",
+                  "paragraph": 4
+                },
+                {
+                  "term": "pop",
+                  "written": "pop",
+                  "paragraph": 4
+                },
+                {
+                  "term": "large",
+                  "written": "large",
+                  "paragraph": 4
+                },
+                {
+                  "term": "under",
+                  "written": "under",
+                  "paragraph": 4
+                },
+                {
+                  "term": "hedge",
+                  "written": "hedge",
+                  "paragraph": 4
+                },
+                {
+                  "term": "another",
+                  "written": "another",
+                  "paragraph": 5
+                },
+                {
+                  "term": "world",
+                  "written": "world",
+                  "paragraph": 5
+                },
+                {
+                  "term": "again",
+                  "written": "again",
+                  "paragraph": 5
+                },
+                {
+                  "term": "straight",
+                  "written": "straight",
+                  "paragraph": 6
+                },
+                {
+                  "term": "tunnel",
+                  "written": "tunnel",
+                  "paragraph": 6
+                },
+                {
+                  "term": "some",
+                  "written": "some",
+                  "paragraph": 6
+                },
+                {
+                  "term": "dipped",
+                  "written": "dipped",
+                  "paragraph": 6
+                },
+                {
+                  "term": "stopping",
+                  "written": "stopping",
+                  "paragraph": 6
+                },
+                {
+                  "term": "found",
+                  "written": "found",
+                  "paragraph": 6
+                },
+                {
+                  "term": "falling",
+                  "written": "falling",
+                  "paragraph": 6
+                },
+                {
+                  "term": "slowly",
+                  "written": "slowly",
+                  "paragraph": 7
+                },
+                {
+                  "term": "plenty",
+                  "written": "plenty",
+                  "paragraph": 7
+                },
+                {
+                  "term": "wonder",
+                  "written": "wonder",
+                  "paragraph": 7
+                },
+                {
+                  "term": "going",
+                  "written": "going",
+                  "paragraph": 7
+                },
+                {
+                  "term": "happen",
+                  "written": "happen",
+                  "paragraph": 7
+                },
+                {
+                  "term": "next",
+                  "written": "next",
+                  "paragraph": 7
+                },
+                {
+                  "term": "first",
+                  "written": "First",
+                  "paragraph": 7
+                },
+                {
+                  "term": "tried",
+                  "written": "tried",
+                  "paragraph": 7
+                },
+                {
+                  "term": "make",
+                  "written": "make",
+                  "paragraph": 7
+                },
+                {
+                  "term": "coming",
+                  "written": "coming",
+                  "paragraph": 7
+                },
+                {
+                  "term": "too",
+                  "written": "too",
+                  "paragraph": 7
+                },
+                {
+                  "term": "dark",
+                  "written": "dark",
+                  "paragraph": 7
+                },
+                {
+                  "term": "sides",
+                  "written": "sides",
+                  "paragraph": 7
+                },
+                {
+                  "term": "noticed",
+                  "written": "noticed",
+                  "paragraph": 7
+                },
+                {
+                  "term": "they",
+                  "written": "they",
+                  "paragraph": 7
+                },
+                {
+                  "term": "were",
+                  "written": "were",
+                  "paragraph": 7
+                },
+                {
+                  "term": "filled",
+                  "written": "filled",
+                  "paragraph": 7
+                },
+                {
+                  "term": "bookshelves",
+                  "written": "book-shelves",
+                  "paragraph": 7
+                },
+                {
+                  "term": "here",
+                  "written": "here",
+                  "paragraph": 7
+                },
+                {
+                  "term": "saw",
+                  "written": "saw",
+                  "paragraph": 7
+                },
+                {
+                  "term": "maps",
+                  "written": "maps",
+                  "paragraph": 7
+                },
+                {
+                  "term": "hung",
+                  "written": "hung",
+                  "paragraph": 7
+                },
+                {
+                  "term": "upon",
+                  "written": "upon",
+                  "paragraph": 7
+                },
+                {
+                  "term": "pegs",
+                  "written": "pegs",
+                  "paragraph": 7
+                },
+                {
+                  "term": "from",
+                  "written": "from",
+                  "paragraph": 7
+                },
+                {
+                  "term": "shelves",
+                  "written": "shelves",
+                  "paragraph": 7
+                },
+                {
+                  "term": "passed",
+                  "written": "passed",
+                  "paragraph": 7
+                },
+                {
+                  "term": "labelled",
+                  "written": "labelled",
+                  "paragraph": 7
+                },
+                {
+                  "term": "orange",
+                  "written": "ORANGE",
+                  "paragraph": 7
+                },
+                {
+                  "term": "marmalade",
+                  "written": "MARMALADE",
+                  "paragraph": 7
+                },
+                {
+                  "term": "great",
+                  "written": "great",
+                  "paragraph": 7
+                },
+                {
+                  "term": "disappointment",
+                  "written": "disappointment",
+                  "paragraph": 7
+                },
+                {
+                  "term": "empty",
+                  "written": "empty",
+                  "paragraph": 7
+                },
+                {
+                  "term": "drop",
+                  "written": "drop",
+                  "paragraph": 7
+                },
+                {
+                  "term": "fear",
+                  "written": "fear",
+                  "paragraph": 7
+                },
+                {
+                  "term": "killing",
+                  "written": "killing",
+                  "paragraph": 7
+                },
+                {
+                  "term": "somebody",
+                  "written": "somebody",
+                  "paragraph": 7
+                },
+                {
+                  "term": "managed",
+                  "written": "managed",
+                  "paragraph": 7
+                },
+                {
+                  "term": "put",
+                  "written": "put",
+                  "paragraph": 7
+                },
+                {
+                  "term": "past",
+                  "written": "past",
+                  "paragraph": 7
+                },
+                {
+                  "term": "such",
+                  "written": "such",
+                  "paragraph": 8
+                },
+                {
+                  "term": "fall",
+                  "written": "fall",
+                  "paragraph": 8
+                },
+                {
+                  "term": "tumbling",
+                  "written": "tumbling",
+                  "paragraph": 8
+                },
+                {
+                  "term": "stairs",
+                  "written": "stairs",
+                  "paragraph": 8
+                },
+                {
+                  "term": "brave",
+                  "written": "brave",
+                  "paragraph": 8
+                },
+                {
+                  "term": "theyll",
+                  "written": "they’ll",
+                  "paragraph": 8
+                },
+                {
+                  "term": "me",
+                  "written": "me",
+                  "paragraph": 8
+                },
+                {
+                  "term": "home",
+                  "written": "home",
+                  "paragraph": 8
+                },
+                {
+                  "term": "why",
+                  "written": "Why",
+                  "paragraph": 8
+                },
+                {
+                  "term": "wouldnt",
+                  "written": "wouldn’t",
+                  "paragraph": 8
+                },
+                {
+                  "term": "even",
+                  "written": "even",
+                  "paragraph": 8
+                },
+                {
+                  "term": "if",
+                  "written": "if",
+                  "paragraph": 8
+                },
+                {
+                  "term": "off",
+                  "written": "off",
+                  "paragraph": 8
+                },
+                {
+                  "term": "top",
+                  "written": "top",
+                  "paragraph": 8
+                },
+                {
+                  "term": "house",
+                  "written": "house",
+                  "paragraph": 8
+                },
+                {
+                  "term": "which",
+                  "written": "Which",
+                  "paragraph": 8
+                },
+                {
+                  "term": "likely",
+                  "written": "likely",
+                  "paragraph": 8
+                },
+                {
+                  "term": "true",
+                  "written": "true",
+                  "paragraph": 8
+                }
+              ],
+              "sentences": {
+                "longest": {
+                  "words": 106,
+                  "paragraph": 4
+                },
+                "veryShort": 3,
+                "underWords": 6
+              },
+              "numbers": {
+                "rows": [
+                  {
+                    "stat": "sentence-length",
+                    "label": "Sentence length",
+                    "unit": "words per sentence",
+                    "value": 33.9,
+                    "instances": 0,
+                    "instanceLabel": "sentences",
+                    "paragraphs": []
+                  },
+                  {
+                    "stat": "dialogue",
+                    "label": "Dialogue",
+                    "unit": "% of words",
+                    "value": 12.204724409448819,
+                    "instances": 6,
+                    "instanceLabel": "spans of dialogue",
+                    "paragraphs": [
+                      2,
+                      4,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "stat": "passive-voice",
+                    "label": "Passive voice",
+                    "unit": "per 1,000 words",
+                    "value": 3.937007874015748,
+                    "instances": 2,
+                    "instanceLabel": "passive constructions",
+                    "paragraphs": [
+                      7
+                    ],
+                    "top": [
+                      {
+                        "term": "was labelled",
+                        "count": 1
+                      },
+                      {
+                        "term": "were filled",
+                        "count": 1
+                      }
+                    ]
+                  },
+                  {
+                    "stat": "being-verbs",
+                    "label": "Being verbs",
+                    "unit": "per 1,000 words",
+                    "value": 33.46456692913386,
+                    "instances": 17,
+                    "instanceLabel": "being verbs",
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      5,
+                      7,
+                      8
+                    ],
+                    "top": [
+                      {
+                        "term": "was",
+                        "count": 13
+                      },
+                      {
+                        "term": "be",
+                        "count": 2
+                      },
+                      {
+                        "term": "is",
+                        "count": 1
+                      }
+                    ]
+                  },
+                  {
+                    "stat": "adverbs",
+                    "label": "Adverbs (-ly)",
+                    "unit": "per 1,000 words",
+                    "value": 13.779527559055119,
+                    "instances": 7,
+                    "instanceLabel": "-ly words",
+                    "paragraphs": [
+                      3,
+                      4,
+                      6,
+                      7,
+                      8
+                    ],
+                    "top": [
+                      {
+                        "term": "suddenly",
+                        "count": 3
+                      },
+                      {
+                        "term": "actually",
+                        "count": 1
+                      },
+                      {
+                        "term": "fortunately",
+                        "count": 1
+                      }
+                    ]
+                  },
+                  {
+                    "stat": "intensifiers",
+                    "label": "Intensifiers and fillers",
+                    "unit": "per 1,000 words",
+                    "value": 21.653543307086615,
+                    "instances": 11,
+                    "instanceLabel": "intensifiers and fillers",
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      6,
+                      7,
+                      8
+                    ],
+                    "top": [
+                      {
+                        "term": "very",
+                        "count": 8
+                      },
+                      {
+                        "term": "actually",
+                        "count": 1
+                      },
+                      {
+                        "term": "just",
+                        "count": 1
+                      }
+                    ]
+                  }
+                ],
+                "baseline": {
+                  "kind": "absent",
+                  "note": "An average of your own is not measured here."
+                }
+              },
+              "sections": {
+                "signal": "none",
+                "sections": [],
+                "fired": {
+                  "headings": [
+                    1
+                  ],
+                  "scene-breaks": [],
+                  "chapter-lines": []
+                }
+              },
+              "steering": {
+                "figures": [
+                  {
+                    "stat": "being-verbs",
+                    "total": 17,
+                    "rate": 33.46456692913386,
+                    "narration": 15,
+                    "dialogue": 2,
+                    "constructions": [
+                      {
+                        "construction": "adjective",
+                        "count": 4,
+                        "paragraphs": [
+                          3,
+                          4,
+                          7,
+                          8
+                        ]
+                      },
+                      {
+                        "construction": "progressive",
+                        "count": 5,
+                        "paragraphs": [
+                          2,
+                          3,
+                          7
+                        ]
+                      },
+                      {
+                        "construction": "passive",
+                        "count": 1,
+                        "paragraphs": [
+                          7
+                        ]
+                      },
+                      {
+                        "construction": "expletive",
+                        "count": 4,
+                        "paragraphs": [
+                          4,
+                          7
+                        ]
+                      },
+                      {
+                        "construction": "other",
+                        "count": 3,
+                        "paragraphs": [
+                          2,
+                          4,
+                          5
+                        ]
+                      }
+                    ],
+                    "inShortRuns": 0,
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      5,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "stat": "adverbs",
+                    "total": 7,
+                    "rate": 13.779527559055119,
+                    "narration": 7,
+                    "dialogue": 0,
+                    "constructions": [
+                      {
+                        "construction": "with-verb",
+                        "count": 4,
+                        "paragraphs": [
+                          4,
+                          6,
+                          7
+                        ]
+                      },
+                      {
+                        "construction": "dialogue-tag",
+                        "count": 0,
+                        "paragraphs": []
+                      },
+                      {
+                        "construction": "before-adjective",
+                        "count": 1,
+                        "paragraphs": [
+                          8
+                        ]
+                      },
+                      {
+                        "construction": "before-adverb",
+                        "count": 0,
+                        "paragraphs": []
+                      },
+                      {
+                        "construction": "other",
+                        "count": 2,
+                        "paragraphs": [
+                          3,
+                          6
+                        ]
+                      }
+                    ],
+                    "weakVerbs": 1,
+                    "inShortRuns": 0,
+                    "paragraphs": [
+                      3,
+                      4,
+                      6,
+                      7,
+                      8
+                    ]
+                  },
+                  {
+                    "stat": "intensifiers",
+                    "total": 11,
+                    "rate": 21.653543307086615,
+                    "narration": 11,
+                    "dialogue": 0,
+                    "constructions": [
+                      {
+                        "construction": "generic",
+                        "count": 4,
+                        "paragraphs": [
+                          2,
+                          4,
+                          6,
+                          7
+                        ]
+                      },
+                      {
+                        "construction": "before-modifier",
+                        "count": 4,
+                        "paragraphs": [
+                          4,
+                          7,
+                          8
+                        ]
+                      },
+                      {
+                        "construction": "other",
+                        "count": 3,
+                        "paragraphs": [
+                          3,
+                          4
+                        ]
+                      }
+                    ],
+                    "inShortRuns": 0,
+                    "paragraphs": [
+                      2,
+                      3,
+                      4,
+                      6,
+                      7,
+                      8
+                    ]
+                  }
+                ],
+                "shortRun": {
+                  "sentences": 3,
+                  "maxWords": 8
+                },
+                "tagged": true
+              }
+            },
+            "readings": [
+              {
+                "group": "A",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "B",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "C",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "D",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "E",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "G",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              },
+              {
+                "group": "F",
+                "status": "not-run",
+                "lenses": [],
+                "tiles": [],
+                "withheldBlocks": [],
+                "withheldClaims": [],
+                "frictions": [],
+                "quoteChecks": []
+              }
+            ]
+          },
+          "refusal": null
+        },
+        "timestamp": 1
+      }
+    ],
+    "estimate": {
+      "estimate": {
+        "boardId": "board-alice",
+        "key": "[\"board-alice\",\"388547536878290eff7b813121d652d5a6c1fa6cafaf7ca06d5c1c6e097856af\",[\"headline\",\"motif\",\"tension\",\"gravity\",\"palette\",\"characters\",\"voice\",\"subtext\",\"genre\",\"lineage\",\"spark\",\"stock\",\"rhythm\",\"numbers\",\"template\",\"pressure\",\"artifacts\",\"summary\",\"steering\",\"opinion\"],0,\"placeholder/workshop-model\",100000,0.000003,0.000015,\"[]\"]",
+        "model": "placeholder/workshop-model",
+        "contextLength": 100000,
+        "groups": [
+          {
+            "group": "A",
+            "lenses": [
+              "headline",
+              "motif",
+              "tension",
+              "gravity",
+              "palette"
+            ],
+            "inputTokens": 1023,
+            "expectedOutputTokens": 3656,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.057909
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "characters",
+              "voice",
+              "subtext"
+            ],
+            "inputTokens": 909,
+            "expectedOutputTokens": 2100,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.034227
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "genre",
+              "lineage",
+              "spark"
+            ],
+            "inputTokens": 909,
+            "expectedOutputTokens": 2380,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.038427
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "stock",
+              "rhythm",
+              "numbers"
+            ],
+            "inputTokens": 994,
+            "expectedOutputTokens": 3414,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.054192
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "pressure",
+              "artifacts",
+              "summary"
+            ],
+            "inputTokens": 984,
+            "expectedOutputTokens": 4440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.069552
+          },
+          {
+            "group": "G",
+            "lenses": [
+              "steering"
+            ],
+            "inputTokens": 1155,
+            "expectedOutputTokens": 1640,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.028065
+          },
+          {
+            "group": "F",
+            "lenses": [
+              "opinion"
+            ],
+            "inputTokens": 9125,
+            "expectedOutputTokens": 1440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.048975000000000005,
+            "inputBound": "digest"
+          }
+        ],
+        "rereads": [
+          {
+            "group": "A",
+            "lenses": [
+              "headline"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 220,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.00597
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "motif"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 940,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01677
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "tension"
+            ],
+            "inputTokens": 912,
+            "expectedOutputTokens": 316,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.007476
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "gravity"
+            ],
+            "inputTokens": 893,
+            "expectedOutputTokens": 1540,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.025779
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "palette"
+            ],
+            "inputTokens": 960,
+            "expectedOutputTokens": 800,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01488
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "characters"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 1040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.018273
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "voice"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 460,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.00957
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "subtext"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 680,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.012870000000000001
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "genre"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 860,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.015573
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "lineage"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 940,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01677
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "spark"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 660,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.012570000000000001
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "stock"
+            ],
+            "inputTokens": 895,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033285
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "rhythm"
+            ],
+            "inputTokens": 923,
+            "expectedOutputTokens": 764,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.014229
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "numbers"
+            ],
+            "inputTokens": 936,
+            "expectedOutputTokens": 690,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.013158
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "summary"
+            ],
+            "inputTokens": 965,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033495000000000004
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "pressure"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 1140,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01977
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "artifacts"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 1340,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.022773
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "summary"
+            ],
+            "inputTokens": 965,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033495000000000004
+          },
+          {
+            "group": "G",
+            "lenses": [
+              "steering"
+            ],
+            "inputTokens": 1155,
+            "expectedOutputTokens": 1640,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.028065
+          },
+          {
+            "group": "F",
+            "lenses": [
+              "opinion"
+            ],
+            "inputTokens": 9125,
+            "expectedOutputTokens": 1440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.048975000000000005,
+            "inputBound": "digest"
+          }
+        ],
+        "fit": "fits",
+        "costUsd": 0.33134699999999995,
+        "bookSized": false,
+        "sourceWords": 508,
+        "contextWords": 0
+      }
+    }
+  },
+  "picks": {
+    "lightbox:placeholder/lightbox-model": {
+      "posted": {
+        "scope": "lightbox",
+        "modelId": "placeholder/lightbox-model"
+      },
+      "lightbox": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/workshop-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "sidebar": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/workshop-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "workshop": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/workshop-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "estimate": {
+        "estimate": {
+          "boardId": "board-alice",
+          "key": "[\"board-alice\",\"388547536878290eff7b813121d652d5a6c1fa6cafaf7ca06d5c1c6e097856af\",[\"headline\",\"motif\",\"tension\",\"gravity\",\"palette\",\"characters\",\"voice\",\"subtext\",\"genre\",\"lineage\",\"spark\",\"stock\",\"rhythm\",\"numbers\",\"template\",\"pressure\",\"artifacts\",\"summary\",\"steering\",\"opinion\"],0,\"placeholder/lightbox-model\",100000,8e-7,0.000004,\"[]\"]",
+          "model": "placeholder/lightbox-model",
+          "contextLength": 100000,
+          "groups": [
+            {
+              "group": "A",
+              "lenses": [
+                "headline",
+                "motif",
+                "tension",
+                "gravity",
+                "palette"
+              ],
+              "inputTokens": 1023,
+              "expectedOutputTokens": 3656,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0154424
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "characters",
+                "voice",
+                "subtext"
+              ],
+              "inputTokens": 909,
+              "expectedOutputTokens": 2100,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0091272
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "genre",
+                "lineage",
+                "spark"
+              ],
+              "inputTokens": 909,
+              "expectedOutputTokens": 2380,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0102472
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "stock",
+                "rhythm",
+                "numbers"
+              ],
+              "inputTokens": 994,
+              "expectedOutputTokens": 3414,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.014451199999999999
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "pressure",
+                "artifacts",
+                "summary"
+              ],
+              "inputTokens": 984,
+              "expectedOutputTokens": 4440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.018547199999999996
+            },
+            {
+              "group": "G",
+              "lenses": [
+                "steering"
+              ],
+              "inputTokens": 1155,
+              "expectedOutputTokens": 1640,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.007483999999999999
+            },
+            {
+              "group": "F",
+              "lenses": [
+                "opinion"
+              ],
+              "inputTokens": 9125,
+              "expectedOutputTokens": 1440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.013059999999999999,
+              "inputBound": "digest"
+            }
+          ],
+          "rereads": [
+            {
+              "group": "A",
+              "lenses": [
+                "headline"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 220,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0015919999999999999
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "motif"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 940,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.004472
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "tension"
+              ],
+              "inputTokens": 912,
+              "expectedOutputTokens": 316,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0019936
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "gravity"
+              ],
+              "inputTokens": 893,
+              "expectedOutputTokens": 1540,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.006874399999999999
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "palette"
+              ],
+              "inputTokens": 960,
+              "expectedOutputTokens": 800,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.003967999999999999
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "characters"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 1040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0048728
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "voice"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 460,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0025519999999999996
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "subtext"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 680,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0034319999999999997
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "genre"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 860,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0041528
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "lineage"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 940,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.004472
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "spark"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 660,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.003352
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "stock"
+              ],
+              "inputTokens": 895,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008875999999999998
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "rhythm"
+              ],
+              "inputTokens": 923,
+              "expectedOutputTokens": 764,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0037944
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "numbers"
+              ],
+              "inputTokens": 936,
+              "expectedOutputTokens": 690,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0035088
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "summary"
+              ],
+              "inputTokens": 965,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008931999999999999
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "pressure"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 1140,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.005272
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "artifacts"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 1340,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0060728
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "summary"
+              ],
+              "inputTokens": 965,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008931999999999999
+            },
+            {
+              "group": "G",
+              "lenses": [
+                "steering"
+              ],
+              "inputTokens": 1155,
+              "expectedOutputTokens": 1640,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.007483999999999999
+            },
+            {
+              "group": "F",
+              "lenses": [
+                "opinion"
+              ],
+              "inputTokens": 9125,
+              "expectedOutputTokens": 1440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.013059999999999999,
+              "inputBound": "digest"
+            }
+          ],
+          "fit": "fits",
+          "costUsd": 0.0883592,
+          "bookSized": false,
+          "sourceWords": 508,
+          "contextWords": 0
+        }
+      },
+      "settings": {
+        "assistantModel": "placeholder/workshop-model",
+        "lightboxModel": "placeholder/lightbox-model"
+      },
+      "engines": {
+        "assistant": "placeholder/workshop-model",
+        "lightbox": "placeholder/lightbox-model"
+      }
+    },
+    "assistant:placeholder/lightbox-model": {
+      "posted": {
+        "scope": "assistant",
+        "modelId": "placeholder/lightbox-model"
+      },
+      "lightbox": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/lightbox-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [
+              "lightbox"
+            ],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "sidebar": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/lightbox-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [
+              "lightbox"
+            ],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "workshop": [
+        {
+          "type": "model_data",
+          "source": "extension.handler",
+          "payload": {
+            "options": [
+              {
+                "id": "placeholder/workshop-model",
+                "label": "Workshop placeholder",
+                "description": "Workshop placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000003",
+                  "completion": "0.000015"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/lightbox-model",
+                "label": "Lightbox placeholder",
+                "description": "Lightbox placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.0000008",
+                  "completion": "0.000004"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              },
+              {
+                "id": "placeholder/other-model",
+                "label": "Other placeholder",
+                "description": "Other placeholder (stub)",
+                "family": "Placeholder",
+                "provider": "placeholder",
+                "contextLength": 100000,
+                "parameterCount": {
+                  "label": "params undisclosed",
+                  "confidence": "undisclosed"
+                },
+                "pricing": {
+                  "prompt": "0.000001",
+                  "completion": "0.000002"
+                },
+                "pricingAvailable": true,
+                "liveDataAvailable": true
+              }
+            ],
+            "selections": {
+              "assistant": "placeholder/lightbox-model",
+              "dictionary": "placeholder/other-model",
+              "context": "placeholder/other-model",
+              "category": "placeholder/other-model",
+              "widget": "placeholder/other-model",
+              "lightbox": "placeholder/lightbox-model"
+            },
+            "following": [
+              "lightbox"
+            ],
+            "ui": {
+              "showTokenWidget": true
+            }
+          },
+          "timestamp": 1
+        }
+      ],
+      "estimate": {
+        "estimate": {
+          "boardId": "board-alice",
+          "key": "[\"board-alice\",\"388547536878290eff7b813121d652d5a6c1fa6cafaf7ca06d5c1c6e097856af\",[\"headline\",\"motif\",\"tension\",\"gravity\",\"palette\",\"characters\",\"voice\",\"subtext\",\"genre\",\"lineage\",\"spark\",\"stock\",\"rhythm\",\"numbers\",\"template\",\"pressure\",\"artifacts\",\"summary\",\"steering\",\"opinion\"],0,\"placeholder/lightbox-model\",100000,8e-7,0.000004,\"[]\"]",
+          "model": "placeholder/lightbox-model",
+          "contextLength": 100000,
+          "groups": [
+            {
+              "group": "A",
+              "lenses": [
+                "headline",
+                "motif",
+                "tension",
+                "gravity",
+                "palette"
+              ],
+              "inputTokens": 1023,
+              "expectedOutputTokens": 3656,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0154424
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "characters",
+                "voice",
+                "subtext"
+              ],
+              "inputTokens": 909,
+              "expectedOutputTokens": 2100,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0091272
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "genre",
+                "lineage",
+                "spark"
+              ],
+              "inputTokens": 909,
+              "expectedOutputTokens": 2380,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0102472
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "stock",
+                "rhythm",
+                "numbers"
+              ],
+              "inputTokens": 994,
+              "expectedOutputTokens": 3414,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.014451199999999999
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "pressure",
+                "artifacts",
+                "summary"
+              ],
+              "inputTokens": 984,
+              "expectedOutputTokens": 4440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.018547199999999996
+            },
+            {
+              "group": "G",
+              "lenses": [
+                "steering"
+              ],
+              "inputTokens": 1155,
+              "expectedOutputTokens": 1640,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.007483999999999999
+            },
+            {
+              "group": "F",
+              "lenses": [
+                "opinion"
+              ],
+              "inputTokens": 9125,
+              "expectedOutputTokens": 1440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.013059999999999999,
+              "inputBound": "digest"
+            }
+          ],
+          "rereads": [
+            {
+              "group": "A",
+              "lenses": [
+                "headline"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 220,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0015919999999999999
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "motif"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 940,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.004472
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "tension"
+              ],
+              "inputTokens": 912,
+              "expectedOutputTokens": 316,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0019936
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "gravity"
+              ],
+              "inputTokens": 893,
+              "expectedOutputTokens": 1540,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.006874399999999999
+            },
+            {
+              "group": "A",
+              "lenses": [
+                "palette"
+              ],
+              "inputTokens": 960,
+              "expectedOutputTokens": 800,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.003967999999999999
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "characters"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 1040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0048728
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "voice"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 460,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0025519999999999996
+            },
+            {
+              "group": "B",
+              "lenses": [
+                "subtext"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 680,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0034319999999999997
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "genre"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 860,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0041528
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "lineage"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 940,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.004472
+            },
+            {
+              "group": "C",
+              "lenses": [
+                "spark"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 660,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.003352
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "stock"
+              ],
+              "inputTokens": 895,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008875999999999998
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "rhythm"
+              ],
+              "inputTokens": 923,
+              "expectedOutputTokens": 764,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0037944
+            },
+            {
+              "group": "D",
+              "lenses": [
+                "numbers"
+              ],
+              "inputTokens": 936,
+              "expectedOutputTokens": 690,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0035088
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "summary"
+              ],
+              "inputTokens": 965,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008931999999999999
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "pressure"
+              ],
+              "inputTokens": 890,
+              "expectedOutputTokens": 1140,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.005272
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "artifacts"
+              ],
+              "inputTokens": 891,
+              "expectedOutputTokens": 1340,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.0060728
+            },
+            {
+              "group": "E",
+              "lenses": [
+                "template",
+                "summary"
+              ],
+              "inputTokens": 965,
+              "expectedOutputTokens": 2040,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.008931999999999999
+            },
+            {
+              "group": "G",
+              "lenses": [
+                "steering"
+              ],
+              "inputTokens": 1155,
+              "expectedOutputTokens": 1640,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.007483999999999999
+            },
+            {
+              "group": "F",
+              "lenses": [
+                "opinion"
+              ],
+              "inputTokens": 9125,
+              "expectedOutputTokens": 1440,
+              "reservedOutputTokens": 12000,
+              "fit": "fits",
+              "costUsd": 0.013059999999999999,
+              "inputBound": "digest"
+            }
+          ],
+          "fit": "fits",
+          "costUsd": 0.0883592,
+          "bookSized": false,
+          "sourceWords": 508,
+          "contextWords": 0
+        }
+      },
+      "settings": {
+        "assistantModel": "placeholder/lightbox-model",
+        "lightboxModel": null
+      },
+      "engines": {
+        "assistant": "placeholder/lightbox-model",
+        "lightbox": "placeholder/lightbox-model"
+      }
+    }
+  },
+  "followAgain": {
+    "posted": {
+      "scope": "lightbox",
+      "modelId": null
+    },
+    "lightbox": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "sidebar": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "workshop": [
+      {
+        "type": "model_data",
+        "source": "extension.handler",
+        "payload": {
+          "options": [
+            {
+              "id": "placeholder/workshop-model",
+              "label": "Workshop placeholder",
+              "description": "Workshop placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000003",
+                "completion": "0.000015"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/lightbox-model",
+              "label": "Lightbox placeholder",
+              "description": "Lightbox placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.0000008",
+                "completion": "0.000004"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            },
+            {
+              "id": "placeholder/other-model",
+              "label": "Other placeholder",
+              "description": "Other placeholder (stub)",
+              "family": "Placeholder",
+              "provider": "placeholder",
+              "contextLength": 100000,
+              "parameterCount": {
+                "label": "params undisclosed",
+                "confidence": "undisclosed"
+              },
+              "pricing": {
+                "prompt": "0.000001",
+                "completion": "0.000002"
+              },
+              "pricingAvailable": true,
+              "liveDataAvailable": true
+            }
+          ],
+          "selections": {
+            "assistant": "placeholder/workshop-model",
+            "dictionary": "placeholder/other-model",
+            "context": "placeholder/other-model",
+            "category": "placeholder/other-model",
+            "widget": "placeholder/other-model",
+            "lightbox": "placeholder/workshop-model"
+          },
+          "following": [
+            "lightbox"
+          ],
+          "ui": {
+            "showTokenWidget": true
+          }
+        },
+        "timestamp": 1
+      }
+    ],
+    "estimate": {
+      "estimate": {
+        "boardId": "board-alice",
+        "key": "[\"board-alice\",\"388547536878290eff7b813121d652d5a6c1fa6cafaf7ca06d5c1c6e097856af\",[\"headline\",\"motif\",\"tension\",\"gravity\",\"palette\",\"characters\",\"voice\",\"subtext\",\"genre\",\"lineage\",\"spark\",\"stock\",\"rhythm\",\"numbers\",\"template\",\"pressure\",\"artifacts\",\"summary\",\"steering\",\"opinion\"],0,\"placeholder/workshop-model\",100000,0.000003,0.000015,\"[]\"]",
+        "model": "placeholder/workshop-model",
+        "contextLength": 100000,
+        "groups": [
+          {
+            "group": "A",
+            "lenses": [
+              "headline",
+              "motif",
+              "tension",
+              "gravity",
+              "palette"
+            ],
+            "inputTokens": 1023,
+            "expectedOutputTokens": 3656,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.057909
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "characters",
+              "voice",
+              "subtext"
+            ],
+            "inputTokens": 909,
+            "expectedOutputTokens": 2100,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.034227
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "genre",
+              "lineage",
+              "spark"
+            ],
+            "inputTokens": 909,
+            "expectedOutputTokens": 2380,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.038427
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "stock",
+              "rhythm",
+              "numbers"
+            ],
+            "inputTokens": 994,
+            "expectedOutputTokens": 3414,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.054192
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "pressure",
+              "artifacts",
+              "summary"
+            ],
+            "inputTokens": 984,
+            "expectedOutputTokens": 4440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.069552
+          },
+          {
+            "group": "G",
+            "lenses": [
+              "steering"
+            ],
+            "inputTokens": 1155,
+            "expectedOutputTokens": 1640,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.028065
+          },
+          {
+            "group": "F",
+            "lenses": [
+              "opinion"
+            ],
+            "inputTokens": 9125,
+            "expectedOutputTokens": 1440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.048975000000000005,
+            "inputBound": "digest"
+          }
+        ],
+        "rereads": [
+          {
+            "group": "A",
+            "lenses": [
+              "headline"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 220,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.00597
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "motif"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 940,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01677
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "tension"
+            ],
+            "inputTokens": 912,
+            "expectedOutputTokens": 316,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.007476
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "gravity"
+            ],
+            "inputTokens": 893,
+            "expectedOutputTokens": 1540,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.025779
+          },
+          {
+            "group": "A",
+            "lenses": [
+              "palette"
+            ],
+            "inputTokens": 960,
+            "expectedOutputTokens": 800,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01488
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "characters"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 1040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.018273
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "voice"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 460,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.00957
+          },
+          {
+            "group": "B",
+            "lenses": [
+              "subtext"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 680,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.012870000000000001
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "genre"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 860,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.015573
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "lineage"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 940,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01677
+          },
+          {
+            "group": "C",
+            "lenses": [
+              "spark"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 660,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.012570000000000001
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "stock"
+            ],
+            "inputTokens": 895,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033285
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "rhythm"
+            ],
+            "inputTokens": 923,
+            "expectedOutputTokens": 764,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.014229
+          },
+          {
+            "group": "D",
+            "lenses": [
+              "numbers"
+            ],
+            "inputTokens": 936,
+            "expectedOutputTokens": 690,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.013158
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "summary"
+            ],
+            "inputTokens": 965,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033495000000000004
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "pressure"
+            ],
+            "inputTokens": 890,
+            "expectedOutputTokens": 1140,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.01977
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "artifacts"
+            ],
+            "inputTokens": 891,
+            "expectedOutputTokens": 1340,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.022773
+          },
+          {
+            "group": "E",
+            "lenses": [
+              "template",
+              "summary"
+            ],
+            "inputTokens": 965,
+            "expectedOutputTokens": 2040,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.033495000000000004
+          },
+          {
+            "group": "G",
+            "lenses": [
+              "steering"
+            ],
+            "inputTokens": 1155,
+            "expectedOutputTokens": 1640,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.028065
+          },
+          {
+            "group": "F",
+            "lenses": [
+              "opinion"
+            ],
+            "inputTokens": 9125,
+            "expectedOutputTokens": 1440,
+            "reservedOutputTokens": 12000,
+            "fit": "fits",
+            "costUsd": 0.048975000000000005,
+            "inputBound": "digest"
+          }
+        ],
+        "fit": "fits",
+        "costUsd": 0.33134699999999995,
+        "bookSized": false,
+        "sourceWords": 508,
+        "contextWords": 0
+      }
+    },
+    "settings": {
+      "assistantModel": "placeholder/workshop-model",
+      "lightboxModel": null
+    },
+    "engines": {
+      "assistant": "placeholder/workshop-model",
+      "lightbox": "placeholder/workshop-model"
+    }
+  }
+}

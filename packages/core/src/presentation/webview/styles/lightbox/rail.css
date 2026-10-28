@@ -1,0 +1,254 @@
+/* ============================================================
+   Prose Minion — the Lightbox rail: the source card, the context list and
+   the lens toggles (ADR 2026-10-19 D6, D9, D10). The cards themselves are the frame's
+   .pm-ws-block (styles/fulltab/shell.css); this sheet styles their contents.
+   ============================================================ */
+
+[data-pm-surface="lightbox"] .pm-lb-stat-chip {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--pm-lb-measured-hi);
+  border: 1px solid var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+  border-radius: 5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-meta {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+/* The lens card's cost note can run to two lines ("· the Opinion up to its digest bound", Slice 4D): keep it off the eyebrow. */
+[data-pm-surface="lightbox"] .pm-lb-lenses .pm-ws-block-head {
+  gap: 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-lenses .pm-ws-block-head .pm-lb-meta {
+  text-align: right;
+}
+[data-pm-surface="lightbox"] .pm-lb-source-path {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 11px 0 9px;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  color: var(--pm-muted);
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-source-path svg {
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-source-path span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-source-preview {
+  margin: 0;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  padding: 12px 13px;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--pm-text-2);
+  white-space: pre-wrap;
+  max-height: 178px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-source-meta {
+  margin: 8px 0 0;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-source-empty {
+  margin: 11px 0 0;
+  padding: 12px 13px;
+  border: 1px dashed var(--pm-border);
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--pm-dim);
+}
+[data-pm-surface="lightbox"] .pm-lb-source-empty b {
+  color: var(--pm-text-2);
+  font-weight: 600;
+}
+[data-pm-surface="lightbox"] .pm-lb-button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+}
+[data-pm-surface="lightbox"] .pm-lb-button.is-grow {
+  flex: 1;
+}
+/* The source's two actions ("Re-read file", "Choose from project…") wrap
+   onto two lines when the rail is too narrow for both, instead of running
+   past its edge: each grows from its own width, not from zero. */
+[data-pm-surface="lightbox"] .pm-lb-source .pm-lb-button-row {
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-source .pm-lb-button.is-grow {
+  flex: 1 1 auto;
+}
+[data-pm-surface="lightbox"] .pm-lb-caption {
+  font-size: 11.5px;
+  color: var(--pm-muted);
+  line-height: 1.55;
+  margin: 10px 0 0;
+}
+
+/* ---------- Lenses ---------- */
+[data-pm-surface="lightbox"] .pm-lb-lenses .pm-ws-block-head {
+  margin-bottom: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row:hover {
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row input {
+  accent-color: var(--pm-accent);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row.is-fixed {
+  cursor: default;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row.is-fixed:hover {
+  background: transparent;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-lock {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: var(--pm-accent);
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-name {
+  flex: 1;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-group {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-row.is-off .pm-lb-lens-name {
+  color: var(--pm-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--pm-faint);
+}
+
+/* ---------- The rail's context list ---------- */
+[data-pm-surface="lightbox"] .pm-lb-context-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-context-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-context-item svg {
+  flex: none;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-context-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-context-words {
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-context-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  display: grid;
+  place-items: center;
+  color: var(--pm-muted);
+  cursor: pointer;
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-context-remove:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-context-notice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-amber);
+}
+
+/* ---------- Each call's header in the Lenses panel, with its Run (Slice 4I, epic decision 45) ---------- */
+/* A lens row holds its visually hidden call name. */
+[data-pm-surface="lightbox"] .pm-lb-lens-call .pm-lb-lens-row {
+  position: relative;
+}
+[data-pm-surface="lightbox"] .pm-lb-lens-call + .pm-lb-lens-call,
+[data-pm-surface="lightbox"] .pm-lb-lens-row.is-fixed + .pm-lb-lens-call {
+  border-top: 1px solid var(--pm-border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-height: 30px;
+  padding: 2px 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-name {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-head .pm-lb-call {
+  align-items: flex-start;
+}

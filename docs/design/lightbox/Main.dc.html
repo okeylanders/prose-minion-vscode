@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lightbox · chapter 6.12</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#15110d}
+a{color:#ee7d49}a:hover{color:#f3ece1}
+.lb{--surface:#221a13;--surface-2:#2b2017;--surface-3:#36281b;--inset:#1b150f;--border:#3a2c1f;--border-2:#4d3a28;--border-soft:#2e231a;--text:#f3ece1;--text-2:#c9bbab;--muted:#a4937f;--faint:#5c5044;--accent:#e0673a;--accent-hi:#ee7d49;--accent-lo:#c8552c;--accent-soft:rgba(224,103,58,.14);--read:#9db8f2;--read-soft:rgba(157,184,242,.10);--read-line:rgba(157,184,242,.42);--green:#6fc98a;--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;--display:"Space Grotesk",-apple-system,"Segoe UI",sans-serif;--serif:"Newsreader",Georgia,serif;position:relative;min-height:100vh;background:#15110d;background-image:linear-gradient(180deg,#211910 0%,#15110d 280px);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:14px}
+.lb *{box-sizing:border-box}
+.lb button{font-family:inherit;color:inherit}
+.lb :focus-visible{outline:2px solid var(--read);outline-offset:2px}
+.rs{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.serif{font-family:var(--serif);font-style:italic;font-weight:400}
+
+/* header (mirrors the Workshop tab) */
+.wk-header{position:relative;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px 20px;padding:20px 26px 22px}
+.wk-header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#e8763f 0%,#d2592f 48%,rgba(210,89,47,0) 100%)}
+.wk-brand{display:flex;gap:14px;align-items:center;min-width:0}
+.wk-logo{width:52px;height:52px;border-radius:12px;background:#fff;display:grid;place-items:center;flex:none;box-shadow:0 2px 12px rgba(0,0,0,.4);overflow:hidden}
+.wk-logo img{width:44px;height:44px;object-fit:contain}
+.wk-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 5px}
+.wk-title{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0}
+.wk-sub{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 0}
+.wk-sub .v{color:var(--accent-hi)}
+.wk-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.wk-hbtn{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 13px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer}
+.wk-hbtn:hover{border-color:var(--border-2);color:var(--text)}
+.wk-hbtn svg{color:var(--muted);flex:none}
+.wk-hbtn.tray{background:var(--read-soft);border-color:var(--read-line);color:var(--text)}
+.wk-hbtn.tray svg{color:var(--read)}
+.wk-hbtn .go{color:var(--read);font-weight:500}
+.wk-bal{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);white-space:nowrap}
+.wk-bal .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px rgba(111,201,138,.55)}
+.wk-bal b{color:var(--text);font-weight:700}
+
+/* body */
+.lb-body{display:flex;flex-wrap:wrap;align-items:flex-start}
+.lb-rail{flex:0 0 296px;align-self:stretch;background:var(--surface);border-right:1px solid var(--border-soft);padding:16px;display:flex;flex-direction:column;gap:12px}
+.lb-main{flex:999 1 560px;min-width:0;padding:24px 28px 56px}
+.lb-insp{flex:1 0 340px;align-self:flex-start;position:sticky;top:0;padding:24px 22px 24px 0}
+@media (max-width: 900px){.lb-rail{flex-basis:100%;border-right:0;border-bottom:1px solid var(--border-soft)}.lb-main{padding:20px 16px 32px}.lb-insp{position:static;flex-basis:100%;padding:0 16px 32px}}
+
+/* rail sections (mirrors the Workshop rail) */
+.wk-sec{display:flex;flex-direction:column;border:1px solid var(--border-soft);background:var(--inset);border-radius:10px;padding:12px}
+.wk-sechead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;min-height:22px}
+.pm-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;align-items:center;gap:7px}
+.wk-secmeta{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.stat-chip{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--accent-hi);border:1px solid rgba(224,103,58,.4);background:var(--accent-soft);border-radius:5px;padding:3px 8px;white-space:nowrap}
+.wk-exhead{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:9px}
+.wk-expreview{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:13px;font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--text-2);white-space:pre-wrap;max-height:178px;overflow:hidden;margin:0}
+.sbtnrow{display:flex;gap:8px;margin-top:11px}
+.sbtn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:500;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;min-height:34px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.sbtn:hover{border-color:var(--border-2);color:var(--text)}
+.sbtn svg{color:var(--muted);flex:none}
+.sbtn.grow{flex:1}
+.sbtn.ghost{background:transparent}
+.sbtn.on{background:var(--read-soft);border-color:var(--read-line);color:var(--text)}
+.wk-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.pill{display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:5px 11px 5px 10px;font-size:12px;color:var(--text-2)}
+.pill svg{color:#5aa2f0;flex:none}
+.pill .ps{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.meter-row{display:flex;align-items:center;gap:10px}
+.meter-track{flex:1;height:5px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.meter-fill{height:100%;width:21%;border-radius:999px;background:var(--accent)}
+.meter-nums{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.cap{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 0 0}
+.ln-row{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 6px;border-radius:7px;font-size:13px;color:var(--text-2);cursor:pointer}
+.ln-row:hover{background:var(--surface-2);color:var(--text)}
+.ln-row input{accent-color:#e0673a;width:15px;height:15px;margin:0;flex:none;cursor:pointer}
+.ln-name{flex:1}
+.ln-grp{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ln-fixed{cursor:default}
+.ln-fixed:hover{background:transparent;color:var(--text-2)}
+.ln-lock{width:15px;height:15px;border-radius:4px;background:var(--accent);flex:none;display:grid;place-items:center;color:#1b150f}
+.ln-off .ln-name{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+.bd-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:7px;font-size:12.5px;color:var(--text-2)}
+.bd-row b{color:var(--text);font-weight:600}
+.bd-row .bd-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+.bd-row .grow{flex:1;min-width:0}
+.bd-cur{background:var(--surface-2);border:1px solid var(--border)}
+.bd-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.bd-dot.old{background:transparent;border:1.5px solid var(--muted)}
+
+/* main header */
+.mn-eb{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.mn-eb i{width:7px;height:7px;border-radius:50%;background:var(--accent);display:block}
+.mn-hrow{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.mn-h{font-family:var(--display);font-weight:600;font-size:40px;line-height:1.08;letter-spacing:-.025em;margin:0;color:var(--text);max-width:820px}
+.hd-btn{border-radius:10px;padding:2px 6px;margin:-2px -6px;border:1px dashed transparent}
+.hd-btn:hover,.hd-btn.is-hot{border-color:var(--read-line)}
+.hd-btn.is-sel{border-color:var(--read)}
+.mn-sub{font-size:15px;line-height:1.6;color:var(--text-2);margin:12px 0 0;max-width:720px}
+.mn-sub b{color:var(--text);font-weight:600}
+.mn-sub .rd{color:var(--read);font-weight:600}
+
+/* toolbar */
+.tb{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin:22px 0 14px;padding:10px 12px;border:1px solid var(--border-soft);background:var(--inset);border-radius:12px}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px}
+.seg-b{min-height:32px;padding:0 13px;border-radius:7px;border:0;background:transparent;font-size:12.5px;font-weight:600;color:var(--text-2);cursor:pointer}
+.seg-b:hover{color:var(--text)}
+.seg-b.is-on{background:var(--surface-3);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+.tb-legend{display:flex;flex-wrap:wrap;gap:8px 16px;flex:1;min-width:240px}
+.lg{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.lg-m{width:22px;height:12px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent)}
+.lg-r{width:22px;height:12px;border-radius:3px;background:var(--read-soft);border:1px dashed var(--read)}
+.tb-run{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tb-note{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.btn-pri{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 15px;border-radius:9px;border:0;cursor:pointer;background:linear-gradient(180deg,#ee7d49,#c8552c);color:#fff;font-size:12.5px;font-weight:700;white-space:nowrap}
+.btn-pri:hover{filter:brightness(1.08)}
+.btn-pri.is-on{background:var(--read-soft);border:1px solid var(--read);color:var(--text)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--read-line);border-top-color:var(--read);animation:lbspin .8s linear infinite;display:block}
+@keyframes lbspin{to{transform:rotate(360deg)}}
+.cmp{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 14px;padding:11px 14px;border:1px dashed var(--read-line);border-radius:11px;background:var(--read-soft);font-size:13px;color:var(--text-2)}
+.cmp svg{color:var(--read);flex:none}
+.cmp .serif{font-size:15px;color:var(--text);flex:1;min-width:220px}
+
+/* ribbon */
+.rb{position:sticky;top:0;z-index:5;background:rgba(21,17,13,.95);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:12px;padding:12px 14px 10px;margin-bottom:16px;box-shadow:0 10px 24px rgba(0,0,0,.28)}
+.rb-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:10px;flex-wrap:wrap}
+.rb-eb{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-hi)}
+.rb-focus{font-family:var(--mono);font-size:11.5px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb-focus.f-m{color:var(--accent-hi)}
+.rb-focus.f-r{color:var(--read)}
+.rb-wrap{display:flex;gap:10px}
+.rb-labels{flex:0 0 74px;display:flex;flex-direction:column;gap:5px}
+.rb-lab{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-radius:5px}
+.rb-lab i{width:8px;height:8px;border-radius:2px;flex:none;display:block}
+.rb-lab .im{background:var(--accent)}
+.rb-lab .ir{border:1px dashed var(--read)}
+.rb-lab.btn:hover,.rb-lab.btn.is-hot{color:var(--text)}
+.rb-lab.btn.is-sel{color:var(--read)}
+.h34{height:34px}.h12{height:12px}.h10{height:10px}
+.rb-cols{flex:1;min-width:0;display:grid;grid-template-columns:repeat(48,minmax(0,1fr));gap:2px}
+.rb-col{appearance:none;background:none;border:0;padding:0;margin:0;cursor:pointer;display:flex;flex-direction:column;gap:5px;transition:opacity .15s;border-radius:3px;min-width:0}
+.rb-col.is-dim{opacity:.26}
+.rb-col:hover .rb-fc{box-shadow:0 0 0 1px var(--border-2)}
+.rb-col.is-sel .rb-idx{color:var(--text)}
+.rb-rh{height:34px;display:flex;align-items:flex-end}
+.rb-rh i{display:block;width:100%;background:var(--accent);border-radius:2px 2px 0 0}
+.rb-dl{height:12px;border-radius:2px;background:var(--surface-2);position:relative;overflow:hidden;display:block}
+.rb-dl i{position:absolute;inset:0;background:var(--accent-hi);display:block}
+.rb-tn{height:34px;display:flex;align-items:flex-end;position:relative}
+.rb-tn i{display:block;width:100%;border:1px dashed var(--read);border-bottom:0;border-radius:2px 2px 0 0;background:rgba(157,184,242,.16)}
+.rb-tn.is-empty{border-bottom:1px dashed var(--faint)}
+.rb-tn b{position:absolute;left:-1px;right:-1px;height:2px;background:var(--text-2);opacity:.75;display:block}
+.rb-fc{height:10px;border-radius:2px;background:var(--surface-2);display:block}
+.rb-fc.lit-m{background:var(--accent)}
+.rb-fc.lit-r{background:var(--read)}
+.rb-idx{height:12px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;display:block;line-height:12px}
+
+/* stats */
+.st-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:12px}
+@media (max-width: 1100px){.st-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.st{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px}
+.st-v{font-family:var(--display);font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.st-v.acc{color:var(--accent-hi)}
+.st-l{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px;line-height:1.4}
+.st-d{display:inline-block;font-family:var(--mono);font-size:10px;color:var(--text-2);border:1px solid var(--border-2);border-radius:5px;padding:2px 6px;margin-top:9px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{font-family:var(--mono);font-size:11px;color:var(--text-2);border:1px solid var(--border);background:var(--surface);border-radius:7px;padding:6px 10px}
+.chip b{color:var(--text);font-weight:500}
+
+/* tiles */
+.lb-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.span3{grid-column:span 3}.span6{grid-column:span 6}
+@media (max-width: 1100px){.span3{grid-column:span 6}}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px 18px 16px;min-width:0}
+.tile.is-read{border-style:dashed;border-color:var(--read-line)}
+.tile.is-hybrid{border-color:var(--border-2)}
+.th{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.eb{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-hi);margin:0}
+.eb.rd{color:var(--read)}
+.eb.hy{color:var(--text-2)}
+.reg{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;white-space:nowrap}
+.reg-m{color:var(--accent-hi);background:var(--accent-soft);border:1px solid rgba(224,103,58,.42)}
+.reg-r{color:var(--read);border:1px dashed var(--read-line);background:var(--read-soft)}
+.reg-h{color:var(--text-2);border:1px solid var(--border-2)}
+.foot{font-size:12px;color:var(--muted);line-height:1.55;margin:14px 0 0}
+.foot b{color:var(--text-2);font-weight:600}
+.foot .lnk{background:none;border:0;padding:0;color:var(--read);font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.sk{display:flex;flex-direction:column;gap:9px;padding:6px 0 2px}
+.sk-l{display:block;height:10px;border-radius:5px;background:var(--surface-2)}
+.sk-l.w95{width:95%}.sk-l.w80{width:80%}.sk-l.w60{width:60%}
+.sk.is-live .sk-l{background:linear-gradient(90deg,var(--surface-2) 0%,var(--surface-3) 40%,var(--surface-2) 80%);background-size:300% 100%;animation:lbshim 1.4s ease-in-out infinite}
+@keyframes lbshim{0%{background-position:100% 0}100%{background-position:0 0}}
+.sk-note{font-family:var(--mono);font-size:11px;color:var(--muted);margin:6px 0 0}
+
+/* word cloud */
+.cloud{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.cw{font-family:var(--display);font-weight:600;letter-spacing:-.02em;line-height:1.1;border-radius:6px;padding:0 3px;border-bottom:2px solid transparent}
+.cw sup{font-family:var(--mono);font-size:10px;font-weight:400;color:var(--muted);margin-left:2px;letter-spacing:0}
+.cw-a{color:var(--accent-hi)}.cw-t{color:var(--text)}.cw-m{color:#b9a891}
+.cw:hover,.cw.is-hot{background:var(--accent-soft)}
+.cw.is-sel{border-bottom-color:var(--accent)}
+
+/* palette */
+.cl{display:flex;flex-direction:column;gap:7px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-soft);background:var(--inset);margin-bottom:8px}
+.cl:hover,.cl.is-hot{border-color:var(--read-line)}
+.cl.is-sel{border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.cl-name{font-size:17px;color:var(--text)}
+.cl-ws{display:flex;flex-wrap:wrap;gap:6px}
+.cl-w{font-family:var(--mono);font-size:11.5px;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 7px}
+.cl-w b{color:var(--accent-hi);font-weight:500;margin-left:5px}
+.sw-lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:14px 0 9px}
+.sw-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sw{display:flex;flex-direction:column;gap:6px;padding:6px;border-radius:9px;border:1px solid transparent}
+.sw:hover,.sw.is-hot{border-color:var(--read-line)}
+.sw.is-sel{border-color:var(--read)}
+.sw-chip{display:block;height:46px;border-radius:7px;border:1px solid rgba(255,255,255,.12)}
+.sw-n{font-size:12px;color:var(--text);font-weight:600}
+.sw-c{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+/* motifs */
+.mo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.mo-grid{grid-template-columns:minmax(0,1fr)}}
+.mo{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset);transition:border-color .15s,background .15s}
+.mo:hover,.mo.is-hot{border-color:var(--read);background:#1f1913}
+.mo.is-sel{border-style:solid;border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.mo-t{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.015em;color:var(--text)}
+.mo-c{font-size:16px;line-height:1.4;color:var(--text-2);margin:0}
+.mstrip{display:grid;grid-template-columns:repeat(48,minmax(0,1fr));gap:1px;height:8px}
+.mstrip i{display:block;background:var(--surface-3);border-radius:1px}
+.mstrip i.on{background:var(--read)}
+.mo-sup{font-family:var(--mono);font-size:11px;color:var(--accent-hi)}
+.mo-ev{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+/* characters */
+.ch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.ch-grid{grid-template-columns:minmax(0,1fr)}}
+.ch{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset)}
+.ch:hover,.ch.is-hot{border-color:var(--read);background:#1f1913}
+.ch.is-sel{border-style:solid;border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.ch-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ch-n{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text)}
+.ch-cnt{font-family:var(--mono);font-size:10.5px;color:var(--accent-hi)}
+.ch-arch{font-size:22px;line-height:1.15;color:var(--read)}
+.ch-en{font-size:13px;color:var(--text-2)}
+.ch-kv{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--text-2);line-height:1.45}
+.ch-kv b{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-right:6px}
+
+/* lineage */
+.li{display:flex;flex-direction:column;gap:8px;width:100%;padding:12px 13px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset);margin-bottom:10px}
+.li:hover,.li.is-hot{border-color:var(--read)}
+.li.is-sel{border-style:solid;border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.li-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.li-t{font-family:var(--display);font-size:17px;font-weight:600;color:var(--text)}
+.li-src{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.stance{display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.45;color:var(--text-2)}
+.stc{flex:none;width:66px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:2px 0;border-radius:4px}
+.stc-matches{color:var(--text-2);border:1px solid var(--border-2)}
+.stc-departs{color:var(--muted);border:1px dashed var(--border-2)}
+.stc-subverts{color:#15110d;background:var(--read);font-weight:600}
+
+/* genre */
+.gn-note{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.gn{display:flex;flex-direction:column;gap:6px;width:100%;padding:9px 10px;border-radius:9px;border:1px solid transparent;margin-bottom:4px}
+.gn:hover,.gn.is-hot{border-color:var(--read-line);background:var(--inset)}
+.gn.is-sel{border-color:var(--read);background:var(--inset)}
+.gn-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--text)}
+.gn-v{font-family:var(--mono);font-size:11px;color:var(--read)}
+.gn-track{display:block;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.gn-fill{display:block;height:100%;border-radius:4px;background:repeating-linear-gradient(135deg,rgba(157,184,242,.75) 0 4px,rgba(157,184,242,.28) 4px 8px)}
+.gn-miss{font-size:12px;color:var(--muted);line-height:1.45}
+.promise{margin-top:12px;padding:12px 13px;border-radius:10px;border:1px solid var(--border-soft);background:var(--inset)}
+.promise .pl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.promise .pt{font-size:16px;line-height:1.4;color:var(--text);margin:0}
+
+/* voice */
+.vo{display:flex;flex-direction:column;width:100%;border-radius:10px;border:1px solid transparent;padding:4px 6px;margin:-4px -6px}
+.vo:hover,.vo.is-hot{border-color:var(--read-line)}
+.vo.is-sel{border-color:var(--read)}
+.vo-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:13px;line-height:1.45}
+.vo-row:last-child{border-bottom:0}
+.vo-k{flex:0 0 122px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.vo-v{flex:1;color:var(--text-2)}
+.vo-m{display:inline-block;font-family:var(--mono);font-size:10.5px;color:var(--accent-hi);border:1px solid rgba(224,103,58,.42);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-right:7px}
+
+/* subtext */
+.sx{display:flex;flex-direction:column;gap:6px;width:100%;padding:12px 13px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset);margin-bottom:10px}
+.sx:hover,.sx.is-hot{border-color:var(--read)}
+.sx.is-sel{border-style:solid;border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.sx-who{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.sx-said{font-family:var(--mono);font-size:13px;color:var(--text)}
+.sx-arrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--read)}
+.sx-meant{font-size:18px;line-height:1.3;color:var(--text)}
+
+/* pos */
+.pos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.pos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pos-c{background:var(--inset);border:1px solid var(--border-soft);border-radius:10px;padding:12px 13px}
+.pos-h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-hi);margin:0 0 9px}
+.pos-r{font-family:var(--mono);font-size:12px;color:var(--text-2);line-height:1.9}
+.pos-r span{color:var(--muted);margin-left:7px}
+.ng-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center}
+.ng-lab{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ng{font-family:var(--mono);font-size:11.5px;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;min-height:32px;padding:0 10px}
+.ng:hover,.ng.is-hot{border-color:var(--accent)}
+.ng.is-sel{border-color:var(--accent);background:var(--accent-soft)}
+
+/* spark lane */
+.spk{margin-top:16px;border:1px dashed var(--border-2);border-radius:14px;padding:18px;background:transparent}
+.spk-note{font-size:12.5px;color:var(--muted)}
+.spk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width: 1100px){.spk-grid{grid-template-columns:minmax(0,1fr)}}
+.spk-card{display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding:14px;border-radius:11px;background:var(--surface);border:1px solid var(--border)}
+.spk-card.is-hot{border-color:var(--read-line)}
+.spk-card.is-sel{border-color:var(--read)}
+.spk-body{display:flex;flex-direction:column;gap:8px}
+.spk-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--read)}
+.spk-q{font-size:17px;line-height:1.4;color:var(--text)}
+.spk-act{display:flex;gap:8px;flex-wrap:wrap}
+
+/* lexical gravity */
+.gv{display:grid;grid-template-columns:280px minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width: 1100px){.gv{grid-template-columns:minmax(0,1fr)}}
+.orb{position:relative;width:280px;height:280px;margin:0 auto}
+.orb-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:1px dashed var(--border-2)}
+.orb-ring.r1{width:100px;height:100px;border-color:var(--read-line)}
+.orb-ring.r2{width:180px;height:180px}
+.orb-ring.r3{width:256px;height:256px;border-color:var(--faint)}
+.orb-lab{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:0 5px;line-height:12px}
+.orb-lab.l1{top:84px}.orb-lab.l2{top:44px}.orb-lab.l3{top:6px}
+.orb-core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--surface-3);border:1px solid var(--border-2);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--text-2)}
+.orb-b{position:absolute;width:44px;height:44px;display:grid;place-items:center;border-radius:50%}
+.orb-dot{display:block;border-radius:50%;background:var(--read);box-shadow:0 0 0 4px rgba(157,184,242,.12);transition:box-shadow .15s}
+.orb-b.faint .orb-dot{background:transparent;border:1.5px dashed var(--read)}
+.orb-b:hover .orb-dot,.orb-b.is-hot .orb-dot{box-shadow:0 0 0 7px rgba(157,184,242,.24)}
+.orb-b.is-sel .orb-dot{box-shadow:0 0 0 2px #221a13,0 0 0 4px var(--read)}
+.orb-name{position:absolute;top:40px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11.5px;font-weight:600;color:var(--text);background:rgba(34,26,19,.9);padding:1px 5px;border-radius:4px}
+.gv-list{display:flex;flex-direction:column;gap:10px;min-width:0}
+.gvf{display:flex;flex-direction:column;gap:7px;width:100%;padding:12px 13px;border:1px dashed var(--read-line);border-radius:11px;background:var(--inset)}
+.gvf:hover,.gvf.is-hot{border-color:var(--read)}
+.gvf.is-sel{border-style:solid;border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.gvf.faint{opacity:.75}
+.gvf-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.gvf-t{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text)}
+.gvf-pull{font-family:var(--mono);font-size:11px;color:var(--read)}
+.gvf-m{font-size:16px;line-height:1.35;color:var(--text-2)}
+.gvf-row{display:flex;align-items:center;gap:12px}
+.gvf-hits{font-family:var(--mono);font-size:11px;color:var(--accent-hi);white-space:nowrap}
+.deg{flex:1;display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;min-width:60px}
+.deg span{display:block;flex-basis:0}
+.dg1{background:rgba(157,184,242,.3)}.dg2{background:rgba(157,184,242,.62)}.dg3{background:var(--read)}
+.deg-key{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.deg-key i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-left:8px}
+.gvf-drift{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.gc{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;width:100%;margin-top:16px;padding:11px 13px;border-radius:11px;border:1px solid var(--read-line);background:var(--read-soft)}
+.gc:hover,.gc.is-hot{border-color:var(--read)}
+.gc.is-sel{border-color:var(--read);box-shadow:inset 0 0 0 1px var(--read)}
+.gc-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--read)}
+.gc-q{font-size:17px;color:var(--text)}
+.gc-n{font-size:12.5px;color:var(--text-2)}
+.gv-sound{background:none;border:0;padding:0;font:inherit;color:var(--muted);text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.gv-sound:hover,.gv-sound.is-hot{color:var(--text-2)}
+.gv-sound.is-sel{color:var(--read)}
+.stc-deg1{color:var(--read);border:1px dashed var(--read-line)}
+.stc-deg2{color:var(--read);border:1px solid var(--read-line)}
+.stc-deg3{color:#15110d;background:var(--read);font-weight:600}
+
+/* inspector */
+.in-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 48px);overflow:auto}
+.in-toast{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text);background:var(--surface-2);border:1px solid var(--border-2);border-radius:9px;padding:9px 11px}
+.in-toast svg{color:var(--green);flex:none}
+.in-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.in-where{font-family:var(--mono);font-size:10.5px;color:var(--muted);flex:1}
+.in-x{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.in-x:hover{color:var(--text)}
+.in-title{font-family:var(--display);font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin:0}
+.in-claim{font-size:14px;line-height:1.6;color:var(--text-2);margin:0}
+.in-claim.serif{font-size:18px;line-height:1.45;color:var(--text)}
+.in-regnote{font-size:12px;color:var(--muted);line-height:1.5;margin:-6px 0 0}
+.in-lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.in-paras{display:flex;flex-wrap:wrap;gap:6px}
+.pchip{font-family:var(--mono);font-size:11px;color:var(--text-2);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;min-height:28px;padding:0 8px;cursor:pointer}
+.pchip:hover{color:var(--text);border-color:var(--border-2)}
+.ev{display:flex;flex-direction:column;gap:5px;padding:10px 11px;border-radius:9px;background:var(--inset);border:1px solid var(--border-soft);margin-bottom:7px}
+.ev-top{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ev-ok{display:flex;align-items:center;gap:5px;color:var(--green)}
+.ev-s{font-family:var(--mono);font-size:12.5px;color:var(--text);line-height:1.5}
+.wh{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:9px;border:1px dashed var(--border-2);font-size:12px;color:var(--muted);line-height:1.45}
+.wh b{font-family:var(--mono);font-size:10.5px;font-weight:500;color:var(--text-2)}
+.sup{display:flex;flex-wrap:wrap;gap:6px}
+.sup span{font-family:var(--mono);font-size:11px;color:var(--accent-hi);border:1px solid rgba(224,103,58,.42);background:var(--accent-soft);border-radius:5px;padding:3px 7px}
+.fr{padding:11px 12px;border-radius:9px;border-left:0;background:var(--inset);border:1px solid var(--border-soft)}
+.fr p{margin:0;font-size:13px;line-height:1.55;color:var(--text-2)}
+.tchips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{font-size:12px;border-radius:7px;min-height:30px;padding:0 9px;cursor:pointer;background:var(--surface-2)}
+.tchip-m{border:1px solid rgba(224,103,58,.42);color:var(--text)}
+.tchip-r{border:1px dashed var(--read-line);color:var(--text)}
+.tchip-h{border:1px solid var(--border-2);color:var(--text)}
+.tchip.is-hot{background:var(--surface-3)}
+.in-actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px;border-top:1px solid var(--border-soft);padding-top:14px}
+.in-guide h3{font-family:var(--display);font-size:20px;font-weight:600;margin:0 0 8px;letter-spacing:-.015em}
+.in-guide p{font-size:13px;line-height:1.6;color:var(--text-2);margin:0 0 12px}
+.gd{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--text-2);line-height:1.5;margin-bottom:10px}
+.gd i{flex:none;margin-top:4px;width:22px;height:12px;border-radius:3px;display:block}
+.gd .gm{background:var(--accent-soft);border:1px solid var(--accent)}
+.gd .gr{background:var(--read-soft);border:1px dashed var(--read)}
+.gd .gh{border:1px solid var(--border-2)}
+</style>
+</helmet>
+<div class="lb">
+
+<header class="wk-header">
+  <div class="wk-brand">
+    <div class="wk-logo"><img src="/_blob/644735c707428b0a2d5b146c13917774" alt="Prose Minion"></div>
+    <div>
+      <p class="wk-eyebrow">Prose Minion · Inspiration &amp; Mood Board</p>
+      <h1 class="wk-title">Lightbox</h1>
+      <p class="wk-sub"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>Drafts/chapter-6.12.md · <span class="v">v4</span> · 3,087 words</p>
+    </div>
+  </div>
+  <div class="wk-actions">
+    <sc-if value="{{hasPinned}}" hint-placeholder-val="{{ false }}">
+      <button class="wk-hbtn tray" type="button" onClick="{{openWorkshop}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"></path><path d="M9 3h6l-1 7 4 3v2H6v-2l4-3z"></path></svg><span>{{pinnedLabel}}</span><span class="go">Open Workshop →</span></button>
+    </sc-if>
+    <button class="wk-hbtn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5z"></path><path d="m3 13 9 5 9-5"></path></svg><span>Board · draft 4</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <button class="wk-hbtn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"></path></svg><span>[assistant model]</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <div class="wk-bal"><i class="dot"></i>OpenRouter <b>connected</b></div>
+  </div>
+</header>
+
+<div class="lb-body">
+
+  <aside class="lb-rail" aria-label="Board rail">
+    <section class="wk-sec">
+      <div class="wk-sechead"><p class="pm-eyebrow">Excerpt</p><span class="stat-chip">v4 · 3,087 words</span></div>
+      <div class="wk-exhead"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>Drafts/chapter-6.12.md</div>
+      <p class="wk-expreview">The basement was colder than the rest of the house, the way a held breath is colder than an open mouth.
+
+Jasper didn’t close his eyes. Across the floor, Micah’s mattress creaked once and went still.</p>
+      <div class="sbtnrow">
+        <button class="sbtn grow" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>Re-read file</button>
+        <button class="sbtn grow" type="button">Choose file</button>
+      </div>
+    </section>
+
+    <section class="wk-sec">
+      <div class="wk-sechead"><p class="pm-eyebrow">Context</p><span class="wk-secmeta">3 files</span></div>
+      <div class="wk-pills">
+        <span class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>characters.md <span class="ps">2.1k</span></span>
+        <span class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>series-bible.md <span class="ps">5.8k</span></span>
+        <span class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path></svg>chapter-6.11.md <span class="ps">4.0k</span></span>
+      </div>
+      <div class="meter-row"><div class="meter-track"><div class="meter-fill"></div></div><span class="meter-nums">11.9k tokens</span></div>
+      <p class="cap">Context informs readings (who Nate is, what the voice is). It never becomes evidence: only the excerpt can be quoted.</p>
+    </section>
+
+    <section class="wk-sec">
+      <div class="wk-sechead"><p class="pm-eyebrow">Lenses</p><span class="wk-secmeta">{{callsLabel}}</span></div>
+      <div class="ln-row ln-fixed"><span class="ln-lock"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg></span><span class="ln-name">Measure</span><span class="ln-grp">free · always</span></div>
+      <sc-for list="{{lenses}}" as="l" hint-placeholder-count="8">
+        <label class="{{l.cls}}"><input type="checkbox" checked="{{l.on}}" onChange="{{l.toggle}}"><span class="ln-name">{{l.name}}</span><span class="ln-grp">{{l.grp}}</span></label>
+      </sc-for>
+      <p class="cap">Readings run as three grouped calls, so one failure can’t sink the board.</p>
+    </section>
+
+    <section class="wk-sec">
+      <div class="wk-sechead"><p class="pm-eyebrow">Boards</p><span class="wk-secmeta">prose-minion/boards/</span></div>
+      <div class="bd-row bd-cur"><i class="bd-dot"></i><div class="grow"><b>Draft 4</b> · open<div class="bd-meta">today · 14 readings</div></div></div>
+      <div class="bd-row"><i class="bd-dot old"></i><div class="grow"><b>Draft 3</b><div class="bd-meta">Oct 11 · 12 readings</div></div><button class="{{compareCls}}" type="button" aria-pressed="{{compareOn}}" onClick="{{toggleCompare}}">{{compareLabel}}</button></div>
+    </section>
+  </aside>
+
+  <main class="lb-main">
+    <p class="mn-eb"><i></i>Chapter 6.12 · Young Adult · 5.5×8.5 trim</p>
+    <sc-if value="{{headlineRead}}" hint-placeholder-val="{{ true }}">
+      <div class="mn-hrow">
+        <h2 class="mn-h"><button class="{{hd.cls}}" type="button" onMouseEnter="{{hd.enter}}" onMouseLeave="{{hd.leave}}" onFocus="{{hd.enter}}" onBlur="{{hd.leave}}" onClick="{{hd.pick}}">A basement, a voice, and three boys who can’t sleep.</button></h2>
+        <span class="reg reg-r">a reading</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{headlineFresh}}" hint-placeholder-val="{{ false }}">
+      <h2 class="mn-h">One chapter, held up to the light.</h2>
+    </sc-if>
+    <p class="mn-sub"><b>Solid tiles are counted</b> by code and cost nothing. <span class="rd">Dashed tiles are read</span> by the model. Each reading cites a quote and a ¶ address, checked against the text, and names where it strains.</p>
+
+    <div class="tb">
+      <div class="seg" role="group" aria-label="Show tiles">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
+          <button class="{{f.cls}}" type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <div class="tb-legend">
+        <span class="lg"><i class="lg-m"></i>Measured · counted by code</span>
+        <span class="lg"><i class="lg-r"></i>Read · a reading, not a measurement</span>
+      </div>
+      <div class="tb-run">
+        <sc-if value="{{runIdle}}" hint-placeholder-val="{{ false }}">
+          <span class="tb-note">{{runNote}}</span>
+          <button class="btn-pri" type="button" onClick="{{runNow}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>{{runLabel}}</button>
+        </sc-if>
+        <sc-if value="{{runStreaming}}" hint-placeholder-val="{{ false }}">
+          <span class="spin" aria-hidden="true"></span>
+          <span class="tb-note" role="status">{{streamNote}}</span>
+          <button class="sbtn" type="button" onClick="{{cancelNow}}">Stop</button>
+        </sc-if>
+        <sc-if value="{{runDone}}" hint-placeholder-val="{{ true }}">
+          <span class="tb-note">{{doneNote}}</span>
+          <button class="sbtn" type="button" onClick="{{runNow}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>Re-read</button>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{compareOn}}" hint-placeholder-val="{{ false }}">
+      <div class="cmp">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v18M16 3v18M3 8h5M16 16h5"></path></svg>
+        <span>Comparing with <b>draft 3</b> (Oct 11). Pale ticks on the tension lane are draft 3.</span>
+        <span class="serif">The peak moved from ¶30 to ¶36, and the exhale at ¶40 is new.</span>
+        <span class="reg reg-r">read</span>
+      </div>
+    </sc-if>
+
+    <div class="rb" aria-label="The chapter, paragraph by paragraph">
+      <div class="rb-top">
+        <span class="rb-eb">The chapter · 48 ¶</span>
+        <span class="{{ribbonFocusCls}}">{{ribbonFocus}}</span>
+      </div>
+      <div class="rb-wrap">
+        <div class="rb-labels">
+          <button class="{{laneRhythm.cls}}" type="button" onMouseEnter="{{laneRhythm.enter}}" onMouseLeave="{{laneRhythm.leave}}" onFocus="{{laneRhythm.enter}}" onBlur="{{laneRhythm.leave}}" onClick="{{laneRhythm.pick}}"><i class="im"></i>Rhythm</button>
+          <button class="{{laneDialogue.cls}}" type="button" onMouseEnter="{{laneDialogue.enter}}" onMouseLeave="{{laneDialogue.leave}}" onFocus="{{laneDialogue.enter}}" onBlur="{{laneDialogue.leave}}" onClick="{{laneDialogue.pick}}"><i class="im"></i>Dialogue</button>
+          <button class="{{laneTension.cls}}" type="button" onMouseEnter="{{laneTension.enter}}" onMouseLeave="{{laneTension.leave}}" onFocus="{{laneTension.enter}}" onBlur="{{laneTension.leave}}" onClick="{{laneTension.pick}}"><i class="ir"></i>Tension</button>
+          <span class="rb-lab h10">Focus</span>
+          <span class="rb-lab h12">¶</span>
+        </div>
+        <div class="rb-cols">
+          <sc-for list="{{cols}}" as="c" hint-placeholder-count="48">
+            <button class="{{c.cls}}" type="button" aria-label="{{c.aria}}" onMouseEnter="{{c.enter}}" onMouseLeave="{{c.leave}}" onFocus="{{c.enter}}" onBlur="{{c.leave}}" onClick="{{c.pick}}">
+              <span class="rb-rh"><i style="height: {{c.rh}}px"></i></span>
+              <span class="rb-dl"><i style="opacity: {{c.dl}}"></i></span>
+              <span class="{{c.tnCls}}"><i style="height: {{c.tn}}px"></i><sc-if value="{{c.ghost}}" hint-placeholder-val="{{ false }}"><b style="bottom: {{c.tn2}}px"></b></sc-if></span>
+              <span class="{{c.fc}}"></span>
+              <span class="rb-idx">{{c.idx}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{show.stats}}" hint-placeholder-val="{{ true }}">
+      <div class="st-row">
+        <sc-for list="{{stats}}" as="s" hint-placeholder-count="6">
+          <div class="st">
+            <div class="{{s.vcls}}">{{s.v}}</div>
+            <div class="st-l">{{s.l}}</div>
+            <sc-if value="{{s.showD}}" hint-placeholder-val="{{ false }}"><span class="st-d">{{s.d}} vs draft 3</span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div class="chips">
+        <span class="chip"><b>1,183</b> unique</span>
+        <span class="chip"><b>645</b> hapax · 20.6%</span>
+        <span class="chip"><b>37.7%</b> diversity</span>
+        <span class="chip"><b>69.4%</b> lexical density</span>
+        <span class="chip">Dialogue <b>19.1%</b> vs YA 40–55% ▼</span>
+      </div>
+    </sc-if>
+
+    <div class="lb-grid">
+
+      <sc-if value="{{show.cloud}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3">
+          <div class="th"><p class="eb">Top words · sized by count</p><span class="reg reg-m">measured</span></div>
+          <div class="cloud">
+            <sc-for list="{{words}}" as="w" hint-placeholder-count="19">
+              <button class="{{w.cls}}" type="button" style="font-size: {{w.size}}px" onMouseEnter="{{w.enter}}" onMouseLeave="{{w.leave}}" onFocus="{{w.enter}}" onBlur="{{w.leave}}" onClick="{{w.pick}}">{{w.w}}<sup>{{w.c}}</sup></button>
+            </sc-for>
+          </div>
+          <p class="foot">Hover a word to light its paragraphs. Click to pin it.</p>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.palette}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3 is-hybrid">
+          <div class="th"><p class="eb hy">Palette</p><span class="reg reg-h">counted · grouped by a reading</span></div>
+          <sc-if value="{{rd.palette}}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{clusters}}" as="k" hint-placeholder-count="3">
+              <button class="{{k.cls}}" type="button" onMouseEnter="{{k.enter}}" onMouseLeave="{{k.leave}}" onFocus="{{k.enter}}" onBlur="{{k.leave}}" onClick="{{k.pick}}">
+                <span class="cl-name serif">{{k.title}}</span>
+                <span class="cl-ws"><sc-for list="{{k.words}}" as="kw" hint-placeholder-count="4"><span class="cl-w">{{kw.w}}<b>{{kw.c}}</b></span></sc-for></span>
+              </button>
+            </sc-for>
+            <p class="sw-lab">Colors the text names</p>
+            <div class="sw-row">
+              <sc-for list="{{swatches}}" as="sw" hint-placeholder-count="4">
+                <button class="{{sw.cls}}" type="button" onMouseEnter="{{sw.enter}}" onMouseLeave="{{sw.leave}}" onFocus="{{sw.enter}}" onBlur="{{sw.leave}}" onClick="{{sw.pick}}">
+                  <span class="sw-chip" style="background: {{sw.hex}}"></span>
+                  <span class="sw-n">{{sw.title}}</span>
+                  <span class="sw-c">{{sw.count}}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{nr.palette}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.gravity}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span6 is-read">
+          <div class="th"><p class="eb rd">Lexical gravity · borrowed fields the prose leans on</p><span class="reg reg-h">read · hits counted</span></div>
+          <sc-if value="{{rd.gravity}}" hint-placeholder-val="{{ true }}">
+            <div class="gv">
+              <div class="orb">
+                <span class="orb-ring r1"></span>
+                <span class="orb-ring r2"></span>
+                <span class="orb-ring r3"></span>
+                <span class="orb-lab l1">strong</span>
+                <span class="orb-lab l2">moderate</span>
+                <span class="orb-lab l3">gravity line</span>
+                <span class="orb-core">6.12</span>
+                <sc-for list="{{gvBodies}}" as="ob" hint-placeholder-count="3">
+                  <button class="{{ob.cls}}" type="button" aria-label="{{ob.aria}}" style="left: {{ob.x}}px; top: {{ob.y}}px" onMouseEnter="{{ob.enter}}" onMouseLeave="{{ob.leave}}" onFocus="{{ob.enter}}" onBlur="{{ob.leave}}" onClick="{{ob.pick}}"><span class="orb-dot" style="width: {{ob.d}}px; height: {{ob.d}}px"></span><span class="orb-name">{{ob.title}}</span></button>
+                </sc-for>
+              </div>
+              <div class="gv-list">
+                <sc-for list="{{gvFields}}" as="gf" hint-placeholder-count="3">
+                  <button class="{{gf.cls}}" type="button" onMouseEnter="{{gf.enter}}" onMouseLeave="{{gf.leave}}" onFocus="{{gf.enter}}" onBlur="{{gf.leave}}" onClick="{{gf.pick}}">
+                    <span class="gvf-top"><span class="gvf-t">{{gf.title}}</span><span class="gvf-pull">pull {{gf.pull}} · claim</span></span>
+                    <span class="gvf-m serif">{{gf.metaphor}}</span>
+                    <span class="gn-track"><span class="gn-fill" style="width: {{gf.w}}%"></span></span>
+                    <span class="gvf-row"><span class="gvf-hits">{{gf.hits}}</span><span class="deg" role="img" aria-label="{{gf.degAria}}"><span class="dg1" style="flex-grow: {{gf.d1}}"></span><span class="dg2" style="flex-grow: {{gf.d2}}"></span><span class="dg3" style="flex-grow: {{gf.d3}}"></span></span></span>
+                    <span class="mstrip" aria-hidden="true"><sc-for list="{{gf.strip}}" as="t" hint-placeholder-count="48"><i class="{{t.c}}"></i></sc-for></span>
+                    <span class="gvf-drift">{{gf.drift}}</span>
+                  </button>
+                </sc-for>
+                <span class="deg-key">By degree<i class="dg1"></i>1° latent<i class="dg2"></i>2° felt<i class="dg3"></i>3° overt</span>
+              </div>
+            </div>
+            <button class="{{gvCollision.cls}}" type="button" onMouseEnter="{{gvCollision.enter}}" onMouseLeave="{{gvCollision.leave}}" onFocus="{{gvCollision.enter}}" onBlur="{{gvCollision.leave}}" onClick="{{gvCollision.pick}}">
+              <span class="gc-t">Collision · ¶36</span>
+              <span class="gc-q serif">“the hymn of it pulled him under”</span>
+              <span class="gc-n">Liturgy and deep water share a sentence.</span>
+            </button>
+            <p class="foot"><button class="{{gvSound.cls}}" type="button" onMouseEnter="{{gvSound.enter}}" onMouseLeave="{{gvSound.leave}}" onFocus="{{gvSound.enter}}" onBlur="{{gvSound.leave}}" onClick="{{gvSound.pick}}">Set aside as literal: <b>Sound</b>, 38 hits. The voice is a real sound in the scene, so nothing is borrowed.</button></p>
+            <p class="foot">Pin a field, then <b>Build as a lens</b> to carry it into Lexical Gravity: strengthen it, steer it, or name it so you can hold it off.</p>
+          </sc-if>
+          <sc-if value="{{nr.gravity}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.motif}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span6 is-read">
+          <div class="th"><p class="eb rd">Motifs · where they recur</p><span class="reg reg-r">read</span></div>
+          <sc-if value="{{rd.motif}}" hint-placeholder-val="{{ true }}">
+            <div class="mo-grid">
+              <sc-for list="{{motifs}}" as="m" hint-placeholder-count="3">
+                <button class="{{m.cls}}" type="button" onMouseEnter="{{m.enter}}" onMouseLeave="{{m.leave}}" onFocus="{{m.enter}}" onBlur="{{m.leave}}" onClick="{{m.pick}}">
+                  <span class="mo-t">{{m.title}}</span>
+                  <span class="mo-c serif">{{m.short}}</span>
+                  <span class="mstrip" aria-hidden="true"><sc-for list="{{m.strip}}" as="t" hint-placeholder-count="48"><i class="{{t.c}}"></i></sc-for></span>
+                  <span class="mo-sup">{{m.supportTop}}</span>
+                  <span class="mo-ev">{{m.evNote}}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{nr.motif}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.chars}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span6 is-read">
+          <div class="th"><p class="eb rd">Characters · the vibes they give</p><span class="reg reg-r">read</span></div>
+          <sc-if value="{{rd.chars}}" hint-placeholder-val="{{ true }}">
+            <div class="ch-grid">
+              <sc-for list="{{chars}}" as="h" hint-placeholder-count="3">
+                <button class="{{h.cls}}" type="button" onMouseEnter="{{h.enter}}" onMouseLeave="{{h.leave}}" onFocus="{{h.enter}}" onBlur="{{h.leave}}" onClick="{{h.pick}}">
+                  <span class="ch-top"><span class="ch-n">{{h.title}}</span><span class="ch-cnt">{{h.count}}</span></span>
+                  <span class="ch-arch serif">{{h.arch}}</span>
+                  <span class="ch-en">{{h.energy}}</span>
+                  <span class="ch-kv"><span><b>Wants</b>{{h.wants}}</span><span><b>Hides</b>{{h.hides}}</span></span>
+                  <span class="mstrip" aria-hidden="true"><sc-for list="{{h.strip}}" as="t" hint-placeholder-count="48"><i class="{{t.c}}"></i></sc-for></span>
+                </button>
+              </sc-for>
+            </div>
+            <p class="foot"><b>Orbit:</b> Jasper and Micah carry the dialogue. Nate is mostly spoken to.</p>
+          </sc-if>
+          <sc-if value="{{nr.chars}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.lineage}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3 is-read">
+          <div class="th"><p class="eb rd">Lineage · adjacent stories</p><span class="reg reg-r">read</span></div>
+          <sc-if value="{{rd.lineage}}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{lineage}}" as="li" hint-placeholder-count="3">
+              <button class="{{li.cls}}" type="button" onMouseEnter="{{li.enter}}" onMouseLeave="{{li.leave}}" onFocus="{{li.enter}}" onBlur="{{li.leave}}" onClick="{{li.pick}}">
+                <span class="li-top"><span class="li-t">{{li.title}}</span><span class="li-src">{{li.src}}</span></span>
+                <sc-for list="{{li.stance}}" as="x" hint-placeholder-count="2"><span class="stance"><span class="{{x.cls}}">{{x.k}}</span><span>{{x.t}}</span></span></sc-for>
+              </button>
+            </sc-for>
+            <p class="foot"><b>Checked and set aside:</b> Hansel and Gretel. Two children, not three, and no captor.</p>
+          </sc-if>
+          <sc-if value="{{nr.lineage}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.genre}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3 is-read">
+          <div class="th"><p class="eb rd">Genre neighborhood</p><span class="gn-note">affinity is a claim, not a score</span></div>
+          <sc-if value="{{rd.genre}}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{genres}}" as="g" hint-placeholder-count="4">
+              <button class="{{g.cls}}" type="button" onMouseEnter="{{g.enter}}" onMouseLeave="{{g.leave}}" onFocus="{{g.enter}}" onBlur="{{g.leave}}" onClick="{{g.pick}}">
+                <span class="gn-top"><span>{{g.title}}</span><span class="gn-v">{{g.aff}}</span></span>
+                <span class="gn-track"><span class="gn-fill" style="width: {{g.w}}%"></span></span>
+                <sc-if value="{{g.hasMiss}}" hint-placeholder-val="{{ false }}"><span class="gn-miss">{{g.miss}}</span></sc-if>
+              </button>
+            </sc-for>
+            <div class="promise">
+              <p class="pl">Reader promise so far</p>
+              <p class="pt serif">Something will be explained, or someone will be healed. The chapter hasn’t said which.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{nr.genre}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.voice}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3 is-hybrid">
+          <div class="th"><p class="eb hy">Voice</p><span class="reg reg-h">counted · read</span></div>
+          <sc-if value="{{rd.voice}}" hint-placeholder-val="{{ true }}">
+            <button class="{{vo.cls}}" type="button" onMouseEnter="{{vo.enter}}" onMouseLeave="{{vo.leave}}" onFocus="{{vo.enter}}" onBlur="{{vo.leave}}" onClick="{{vo.pick}}">
+              <sc-for list="{{voiceRows}}" as="vr" hint-placeholder-count="6">
+                <span class="vo-row"><span class="vo-k">{{vr.k}}</span><span class="vo-v"><sc-if value="{{vr.hasM}}" hint-placeholder-val="{{ false }}"><span class="vo-m">{{vr.m}}</span></sc-if>{{vr.v}}</span></span>
+              </sc-for>
+            </button>
+          </sc-if>
+          <sc-if value="{{nr.voice}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.subtext}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span3 is-read">
+          <div class="th"><p class="eb rd">Subtext · said and meant</p><span class="reg reg-r">read</span></div>
+          <sc-if value="{{rd.subtext}}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{subtext}}" as="q" hint-placeholder-count="2">
+              <button class="{{q.cls}}" type="button" onMouseEnter="{{q.enter}}" onMouseLeave="{{q.leave}}" onFocus="{{q.enter}}" onBlur="{{q.leave}}" onClick="{{q.pick}}">
+                <span class="sx-who">{{q.who}}</span>
+                <span class="sx-said">{{q.said}}</span>
+                <span class="sx-arrow">reads as</span>
+                <span class="sx-meant serif">{{q.meant}}</span>
+              </button>
+            </sc-for>
+            <p class="foot">The most projective lens on the board. Check it against what you meant.</p>
+          </sc-if>
+          <sc-if value="{{nr.subtext}}" hint-placeholder-val="{{ false }}">
+            <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{show.pos}}" hint-placeholder-val="{{ true }}">
+        <section class="tile span6">
+          <div class="th"><p class="eb">Parts of speech · repetition</p><span class="reg reg-m">measured</span></div>
+          <div class="pos">
+            <div class="pos-c"><p class="pos-h">Top verbs</p><div class="pos-r">sleeping<span>5</span></div><div class="pos-r">seemed<span>5</span></div><div class="pos-r">stood<span>5</span></div><div class="pos-r">remained<span>5</span></div></div>
+            <div class="pos-c"><p class="pos-h">Top adjectives</p><div class="pos-r">impossible<span>7</span></div><div class="pos-r">white<span>6</span></div><div class="pos-r">wrong<span>4</span></div><div class="pos-r">perfect<span>4</span></div></div>
+            <div class="pos-c"><p class="pos-h">Top nouns</p><div class="pos-r">jasper<span>18</span></div><div class="pos-r">basement<span>16</span></div><div class="pos-r">micah<span>16</span></div><div class="pos-r">voice<span>12</span></div></div>
+            <div class="pos-c"><p class="pos-h">Top adverbs</p><div class="pos-r">again<span>6</span></div><div class="pos-r">always<span>5</span></div><div class="pos-r">truly<span>4</span></div><div class="pos-r">slowly<span>3</span></div></div>
+          </div>
+          <div class="ng-row">
+            <span class="ng-lab">Repeated phrases</span>
+            <sc-for list="{{ngrams}}" as="n" hint-placeholder-count="2">
+              <button class="{{n.cls}}" type="button" onMouseEnter="{{n.enter}}" onMouseLeave="{{n.leave}}" onFocus="{{n.enter}}" onBlur="{{n.leave}}" onClick="{{n.pick}}">{{n.label}}</button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{show.spark}}" hint-placeholder-val="{{ true }}">
+      <section class="spk" aria-label="Spark lane">
+        <div class="th">
+          <p class="eb rd"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"></path></svg>Spark · open doors</p>
+          <span class="spk-note">Offers, not fixes. Nothing here grades the chapter.</span>
+        </div>
+        <sc-if value="{{rd.spark}}" hint-placeholder-val="{{ true }}">
+          <div class="spk-grid">
+            <sc-for list="{{sparks}}" as="p" hint-placeholder-count="3">
+              <div class="{{p.cardCls}}">
+                <button class="rs spk-body" type="button" onMouseEnter="{{p.enter}}" onMouseLeave="{{p.leave}}" onFocus="{{p.enter}}" onBlur="{{p.leave}}" onClick="{{p.pick}}">
+                  <span class="spk-t">{{p.title}}</span>
+                  <span class="spk-q serif">{{p.text}}</span>
+                </button>
+                <div class="spk-act">
+                  <button class="{{p.bringCls}}" type="button" onClick="{{p.bring}}">{{p.bringLabel}}</button>
+                  <button class="sbtn ghost" type="button" onClick="{{p.dismiss}}">Not for me</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{hasDismissed}}" hint-placeholder-val="{{ false }}">
+            <p class="foot">{{dismissedNote}} <button class="lnk" type="button" onClick="{{undoDismiss}}">Undo</button></p>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{nr.spark}}" hint-placeholder-val="{{ false }}">
+          <div class="{{skelCls}}"><span class="sk-l w95"></span><span class="sk-l w80"></span><span class="sk-l w60"></span><p class="sk-note">{{skelNote}}</p></div>
+        </sc-if>
+      </section>
+    </sc-if>
+  </main>
+
+  <aside class="lb-insp" aria-label="Inspector">
+    <div class="in-card">
+      <sc-if value="{{toastOn}}" hint-placeholder-val="{{ false }}">
+        <div class="in-toast" role="status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>{{toast}}</div>
+      </sc-if>
+
+      <sc-if value="{{inspNone}}" hint-placeholder-val="{{ false }}">
+        <div class="in-guide">
+          <p class="in-lab">Inspector</p>
+          <h3>Nothing pinned yet.</h3>
+          <p>Hover anything on the board to light the paragraphs it touches. Click it to pin it here with its evidence.</p>
+          <div class="gd"><i class="gm"></i><span><b>Measured.</b> Counted by code. No model was asked.</span></div>
+          <div class="gd"><i class="gr"></i><span><b>Read.</b> The model’s interpretation. Quotes are checked against the text; a claim whose quote isn’t found is withheld, by name.</span></div>
+          <div class="gd"><i class="gh"></i><span><b>Counted · read.</b> Words counted by code, then grouped or named by a reading.</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{inspHas}}" hint-placeholder-val="{{ true }}">
+        <div class="in-head">
+          <span class="{{insp.regCls}}">{{insp.regLabel}}</span>
+          <span class="in-where">{{insp.where}}</span>
+          <button class="in-x" type="button" aria-label="Clear inspector" onClick="{{clearSel}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+        </div>
+        <div>
+          <h3 class="in-title">{{insp.title}}</h3>
+        </div>
+        <p class="{{insp.claimCls}}">{{insp.claim}}</p>
+        <p class="in-regnote">{{insp.regNote}}</p>
+
+        <div>
+          <p class="in-lab">Where it lives · {{insp.paraCount}}</p>
+          <div class="in-paras">
+            <sc-for list="{{insp.paras}}" as="pp" hint-placeholder-count="4"><button class="pchip" type="button" onClick="{{pp.reveal}}">{{pp.label}}</button></sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{insp.hasEvidence}}" hint-placeholder-val="{{ true }}">
+          <div>
+            <p class="in-lab">Evidence · checked against the text</p>
+            <sc-for list="{{insp.evidence}}" as="e" hint-placeholder-count="2">
+              <div class="ev">
+                <span class="ev-top"><span>¶{{e.p}}{{e.degLabel}}</span><span class="ev-ok"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7"></path></svg>found verbatim</span></span>
+                <q class="ev-s">{{e.s}}</q>
+              </div>
+            </sc-for>
+            <sc-for list="{{insp.withheld}}" as="wh" hint-placeholder-count="0">
+              <div class="wh"><b>Withheld · ¶{{wh.p}}</b><span>{{wh.why}}</span></div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{insp.hasStance}}" hint-placeholder-val="{{ false }}">
+          <div>
+            <p class="in-lab">{{insp.stanceLabel}}</p>
+            <sc-for list="{{insp.stance}}" as="x" hint-placeholder-count="2"><div class="stance" style="margin-bottom: 7px"><span class="{{x.cls}}">{{x.k}}</span><span>{{x.t}}</span></div></sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{insp.hasSupport}}" hint-placeholder-val="{{ true }}">
+          <div>
+            <p class="in-lab">Counted by code</p>
+            <div class="sup"><sc-for list="{{insp.support}}" as="su" hint-placeholder-count="2"><span>{{su.t}}</span></sc-for></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{insp.hasFriction}}" hint-placeholder-val="{{ true }}">
+          <div>
+            <p class="in-lab">Where this reading strains</p>
+            <div class="fr"><p>{{insp.friction}}</p></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{insp.hasTouching}}" hint-placeholder-val="{{ false }}">
+          <div>
+            <p class="in-lab">Also in this paragraph</p>
+            <div class="tchips">
+              <sc-for list="{{insp.touching}}" as="tc" hint-placeholder-count="4"><button class="{{tc.cls}}" type="button" onMouseEnter="{{tc.enter}}" onMouseLeave="{{tc.leave}}" onFocus="{{tc.enter}}" onBlur="{{tc.leave}}" onClick="{{tc.pick}}">{{tc.label}}</button></sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <div class="in-actions">
+          <button class="{{insp.bringCls}}" type="button" onClick="{{insp.bring}}">{{insp.bringLabel}}</button>
+          <button class="sbtn" type="button" onClick="{{insp.reveal}}">{{insp.revealLabel}}</button>
+          <sc-if value="{{insp.hasDeeper}}" hint-placeholder-val="{{ true }}"><button class="sbtn" type="button" onClick="{{insp.deep}}">{{insp.deeper}} →</button></sc-if>
+          <sc-if value="{{insp.canReread}}" hint-placeholder-val="{{ true }}"><button class="sbtn ghost" type="button" onClick="{{insp.reread}}">Re-read this tile</button></sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </aside>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"phase":{"editor":"enum","options":["complete","streaming","fresh"],"default":"complete","section":"State"},"$preview":{"width":1440,"height":3450}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.D = this.buildData();
+    this.timers = [];
+    this.toastT = null;
+    this.state = { hover: null, selected: 'motif.beside', filter: 'all', phaseOverride: null, arrived: 0, lensOff: {}, compare: false, pinned: {}, dismissed: {}, toast: null };
+  }
+
+  componentDidUpdate(prev) {
+    if (prev.phase !== this.props.phase && this.state.phaseOverride) {
+      this.clearTimers();
+      this.setState({ phaseOverride: null, arrived: 0 });
+    }
+  }
+
+  componentWillUnmount() {
+    this.clearTimers();
+    clearTimeout(this.toastT);
+  }
+
+  clearTimers() {
+    this.timers.forEach((t) => clearTimeout(t));
+    this.timers = [];
+  }
+
+  say(msg) {
+    clearTimeout(this.toastT);
+    this.setState({ toast: msg });
+    this.toastT = setTimeout(() => this.setState({ toast: null }), 2800);
+  }
+
+  run(fromArrived) {
+    this.clearTimers();
+    const start = fromArrived >= 3 ? 0 : fromArrived;
+    this.setState({ phaseOverride: 'streaming', arrived: start });
+    let step = 0;
+    for (let g = start + 1; g <= 3; g++) {
+      step += 1;
+      const group = g;
+      this.timers.push(setTimeout(() => {
+        this.setState(group === 3 ? { phaseOverride: 'complete', arrived: 3 } : { arrived: group });
+      }, step * 950));
+    }
+  }
+
+  stop(currentArrived) {
+    this.clearTimers();
+    this.setState({ phaseOverride: 'stopped', arrived: currentArrived });
+    this.say('Stopped. Readings already back stay on the board.');
+  }
+
+  togglePin(it) {
+    const p = Object.assign({}, this.state.pinned);
+    if (p[it.id]) {
+      delete p[it.id];
+      this.say('Removed “' + it.title + '” from the Workshop tray');
+    } else {
+      p[it.id] = it.title;
+      this.say('Bound for Workshop: “' + it.title + '”');
+    }
+    this.setState({ pinned: p });
+  }
+
+  buildData() {
+    const N = 48;
+    const lerp = (pts, i) => {
+      for (let k = 0; k < pts.length - 1; k++) {
+        const a = pts[k];
+        const b = pts[k + 1];
+        if (i >= a[0] && i <= b[0]) return a[1] + (b[1] - a[1]) * (i - a[0]) / ((b[0] - a[0]) || 1);
+      }
+      return pts[pts.length - 1][1];
+    };
+    const tPts = [[1, 0.15], [7, 0.28], [8, 0.52], [13, 0.42], [19, 0.55], [22, 0.6], [23, 0.8], [28, 0.5], [33, 0.7], [36, 0.97], [38, 0.62], [40, 0.16], [42, 0.34], [44, 0.66], [47, 0.54], [48, 0.34]];
+    const t2Pts = [[1, 0.2], [8, 0.36], [18, 0.66], [23, 0.6], [30, 0.86], [36, 0.7], [40, 0.52], [44, 0.48], [48, 0.4]];
+    const dlg = { 2: 0.6, 6: 0.35, 9: 0.5, 10: 0.7, 13: 0.4, 16: 0.85, 20: 0.55, 25: 0.65, 27: 0.3, 28: 0.5, 32: 0.6, 34: 0.8, 37: 0.45, 39: 0.35, 43: 0.5, 48: 0.4 };
+    const paras = [];
+    for (let i = 1; i <= N; i++) {
+      let r = 9.2 + 3.1 * Math.sin(i * 0.83) + 1.5 * Math.sin(i * 2.1 + 0.4);
+      if (i === 23 || i === 36) r = 21.5;
+      else if (i === 24 || i === 37) r = 14.8;
+      else if (i === 40) r = 5.4;
+      paras.push({ n: i, rhythm: Math.max(3.6, Math.round(r * 10) / 10), dlg: dlg[i] || 0, ten: lerp(tPts, i), ten2: lerp(t2Pts, i) });
+    }
+    const spread = (seed, k) => {
+      let x = seed;
+      const seen = {};
+      let n = 0;
+      let guard = 0;
+      while (n < k && guard < 500) {
+        guard += 1;
+        x = (x * 9301 + 49297) % 233280;
+        const p = 1 + Math.floor(x / 233280 * N);
+        if (!seen[p]) { seen[p] = true; n += 1; }
+      }
+      return Object.keys(seen).map(Number).sort((a, b) => a - b);
+    };
+    const union = function () {
+      const seen = {};
+      for (let a = 0; a < arguments.length; a++) arguments[a].forEach((p) => { seen[p] = true; });
+      return Object.keys(seen).map(Number).sort((a, b) => a - b);
+    };
+
+    const P = {
+      basement: [3, 4, 5, 11, 12, 13, 19, 26, 31, 38, 44],
+      stairs: [3, 11, 19, 26, 31, 44, 47],
+      mattress: [5, 13, 20, 38],
+      darkness: [4, 9, 12, 23, 24, 33, 36, 41],
+      light: [6, 18, 27, 30, 39, 43, 47],
+      voice: [7, 8, 9, 15, 22, 23, 24, 33, 35, 36, 41, 46],
+      presence: [14, 15, 21, 22, 23, 29, 33, 35, 36, 46, 47],
+      beside: [14, 21, 29, 35, 40, 46, 47],
+      grief: [2, 17, 30, 42, 45],
+      raven: [17, 30, 42, 45],
+      jasper: [1, 2, 3, 5, 8, 10, 12, 14, 16, 19, 22, 29, 33, 34, 40, 47],
+      micah: [2, 4, 6, 9, 13, 16, 20, 23, 30, 34, 39, 46],
+      nate: [1, 5, 8, 11, 16, 18, 25, 28, 32, 37, 43, 48],
+      nathaniel: [22, 23, 24, 35, 36, 41],
+      words: spread(11, 9),
+      impossible: spread(31, 6),
+    };
+
+    const I = {};
+    const order = [];
+    const add = (o) => { I[o.id] = o; order.push(o.id); return o; };
+
+    const words = [
+      ['basement', 15, 'a', P.basement], ['through', 13, 'm', spread(7, 10)], ['voice', 12, 'a', P.voice],
+      ['nate’s', 12, 't', P.nate], ['micah', 12, 't', P.micah], ['words', 11, 'm', P.words],
+      ['presence', 11, 'a', P.presence], ['jasper', 10, 't', P.jasper], ['something', 9, 'm', spread(23, 8)],
+      ['nathaniel', 9, 't', P.nathaniel], ['darkness', 8, 'a', P.darkness], ['light', 8, 't', P.light],
+      ['beside', 8, 'm', P.beside], ['impossible', 7, 't', P.impossible], ['stairs', 7, 'm', P.stairs],
+      ['hands', 7, 't', spread(41, 6)], ['mattress', 6, 'm', P.mattress], ['grief', 5, 'm', P.grief], ['raven', 5, 't', P.raven],
+    ].map((row) => {
+      add({ id: 'w.' + row[0], reg: 'm', lens: 'Measure', kind: 'Word', title: row[0], claim: 'Appears ' + row[1] + ' times across ' + row[3].length + ' paragraphs. Counted by code; nothing here is a reading.', paras: row[3], support: [row[0] + ' ×' + row[1]], deeper: 'Look up in Dictionary' });
+      return { w: row[0], c: row[1], tone: row[2] };
+    });
+
+    const ngrams = [
+      add({ id: 'ng.wb', reg: 'm', lens: 'Measure', kind: 'Bigram', title: 'walked beside', label: '“walked beside” ×4', claim: 'Appears 4 times, always in narration. Counted by code.', paras: [14, 21, 29, 47], support: ['walked beside ×4'] }),
+      add({ id: 'ng.pwb', reg: 'm', lens: 'Measure', kind: 'Trigram', title: 'presence walked beside', label: '“presence walked beside” ×3', claim: 'Appears 3 times, word for word. Counted by code.', paras: [14, 29, 47], support: ['presence walked beside ×3'] }),
+    ];
+
+    add({ id: 'lane.rhythm', reg: 'm', lens: 'Measure', kind: 'Lane', title: 'Sentence rhythm', claim: 'Average words per sentence in each paragraph. The chapter runs short at 9.2 and spikes to 21.5 at ¶23 and ¶36.', paras: [23, 36], support: ['avg 9.2 words / sentence', 'pacing: fast'] });
+    add({ id: 'lane.dialogue', reg: 'm', lens: 'Measure', kind: 'Lane', title: 'Dialogue share', claim: 'Share of each paragraph inside quotation marks. 16 of 48 paragraphs carry dialogue; 19.1% overall, against a YA range of 40–55%.', paras: Object.keys(dlg).map(Number), support: ['19.1% dialogue', 'YA range 40–55%'] });
+    add({ id: 'lane.tension', reg: 'r', lensId: 'motif', lens: 'Mood', kind: 'Arc', title: 'Tension arc', claim: 'Tension climbs in two steps, at ¶8 and ¶23, and peaks at ¶36 when the voice says the full name. ¶40 is the only exhale.', paras: [8, 23, 36, 40], friction: 'The model scores tension paragraph by paragraph. Read the curve as a sketch, not a measurement.' });
+
+    add({ id: 'hd.read', reg: 'r', lensId: 'motif', lens: 'Board', kind: 'Summary', title: 'A basement, a voice, and three boys who can’t sleep.', claim: 'The one-sentence reading of the chapter. Every noun in it is backed by a count on this board.', paras: union(P.basement, P.voice), support: ['basement ×15', 'voice ×12', 'sleeping ×5'], friction: 'A summary sentence is the easiest place for a reading to flatter the chapter. If it sounds better than the draft, distrust it.' });
+
+    const clusters = [
+      add({ id: 'cl.under', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Diction cluster', title: 'Under the house', claim: 'The chapter’s physical vocabulary sits almost entirely below the floor: steps, bedding, the dark.', paras: union(P.basement, P.stairs, P.mattress, P.darkness), support: ['basement ×15', 'darkness ×8', 'stairs ×7', 'mattress ×6'], friction: 'Clusters are the model’s grouping of counted words. Another grouping could be just as defensible.', deeper: 'Topic Relationship Explorer', words: [['basement', 15], ['darkness', 8], ['stairs', 7], ['mattress', 6]] }),
+      add({ id: 'cl.spoken', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Diction cluster', title: 'What gets said', claim: 'Abstract nouns stand where a body would be: a voice, words, a presence, something.', paras: union(P.voice, P.presence, P.words), support: ['voice ×12', 'words ×11', 'presence ×11', 'something ×9'], friction: 'Clusters are the model’s grouping of counted words. Another grouping could be just as defensible.', deeper: 'Topic Relationship Explorer', words: [['voice', 12], ['words', 11], ['presence', 11], ['something', 9]] }),
+      add({ id: 'cl.lost', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Diction cluster', title: 'What’s missing', claim: 'Grief is named only five times. “Impossible” and “wrong” carry the rest of it.', paras: union(P.grief, P.raven, P.impossible), support: ['impossible ×7', 'grief ×5', 'raven ×5', 'wrong ×4'], friction: 'Clusters are the model’s grouping of counted words. Another grouping could be just as defensible.', deeper: 'Topic Relationship Explorer', words: [['impossible', 7], ['grief', 5], ['raven', 5], ['wrong', 4]] }),
+    ];
+
+    const swatches = [
+      add({ id: 'sw.white', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Color', title: 'White', hex: '#EEE7DA', count: 'white ×6', claim: '“White” appears 6 times, mostly on fabric. The reading takes it as cold rather than clean.', paras: spread(53, 5), support: ['white ×6'], friction: 'The word is counted; the temperature is a reading.' }),
+      add({ id: 'sw.dark', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Color', title: 'Basement dark', hex: '#120E0B', count: 'darkness ×8', claim: 'Carried by “darkness” ×8. The darkest paragraphs sit around the voice.', paras: P.darkness, support: ['darkness ×8', 'shares 5 ¶ with voice'] }),
+      add({ id: 'sw.lamp', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Color', title: 'Lamplight', hex: '#E3B05A', count: 'light ×8', claim: '“Light” ×8, almost always from one source: a lamp, a doorway, a phone.', paras: P.light, support: ['light ×8'] }),
+      add({ id: 'sw.raven', reg: 'h', lensId: 'palette', lens: 'Palette', kind: 'Color', title: 'Raven', hex: '#273041', count: 'raven ×5', claim: 'The chapter’s only animal color, and it arrives with grief every time.', paras: P.raven, support: ['raven ×5', 'grief in the same ¶: 4 of 4'] }),
+    ];
+
+    const motifs = [
+      add({ id: 'motif.descent', reg: 'r', lensId: 'motif', lens: 'Theme & motif', kind: 'Motif', title: 'Descent', short: 'Everything that matters happens below the floor.', claim: 'The chapter keeps going down. Every scene that matters happens below the floor, and the stairs are the border crossing.', evidence: [{ p: 3, s: 'down the basement stairs' }, { p: 19, s: 'the last step was farther down than it should have been' }, { p: 44, s: 'He went down anyway.' }], paras: [3, 4, 11, 12, 19, 26, 31, 44], support: ['basement ×15', 'stairs ×7'], friction: '¶40 is the one scene above ground, and the calmest in the chapter. That may be a rest, or the reading may be forcing a pattern.', deeper: 'Topic Relationship Explorer' }),
+      add({ id: 'motif.voice', reg: 'r', lensId: 'motif', lens: 'Theme & motif', kind: 'Motif', title: 'A voice with no mouth', short: 'Heard, answered, argued about. Never described.', claim: 'The voice is reported, never described. People hear it, answer it and argue about it, and no sentence ever gives it a body.', evidence: [{ p: 8, s: 'the voice said his name the way his mother used to' }, { p: 23, s: 'It wasn’t loud. It was close.' }], withheld: [{ p: 36, why: 'The quoted span wasn’t found verbatim; the model paraphrased it. The claim is held back until it can quote.' }], paras: P.voice, support: ['voice ×12', 'words ×11'], friction: '“Words” ×11 may be doing other work. Some of it is the boys’ own talk, not the voice’s.', deeper: 'Topic Relationship Explorer' }),
+      add({ id: 'motif.beside', reg: 'r', lensId: 'motif', lens: 'Theme & motif', kind: 'Motif', title: 'Walking beside', short: 'Three times, the same words. A phrase becomes a rule.', claim: 'The presence never leads and never follows. It walks beside, three times in the same words, which turns a phrase into a rule.', evidence: [{ p: 14, s: 'the presence walked beside him' }, { p: 29, s: 'and the presence walked beside them both' }, { p: 47, s: 'the presence walked beside him up the stairs' }], paras: [14, 29, 47], support: ['presence walked beside ×3 · trigram', 'walked beside ×4 · bigram', 'beside ×8'], friction: 'The repetition reads as liturgy. A reader who misses the pattern may take it for an echo you forgot to fix.', deeper: 'Topic Relationship Explorer' }),
+    ];
+
+    const gvDeeper = 'Build as a lens in Lexical Gravity';
+    const gravity = [
+      add({ id: 'gv.liturgy', reg: 'h', lensId: 'gravity', lens: 'Lexical gravity', kind: 'Borrowed field', title: 'Liturgy', metaphor: 'The night as a vigil.', pull: 0.62, ring: 50, angle: 35, hits: 31, terms: 14, deg: [22, 7, 2], drift: 'Enters at ¶14 and never leaves.', paras: [14, 15, 22, 23, 29, 33, 35, 36, 41, 46, 47],
+        claim: 'The chapter talks about the voice in church words without ever saying church. “Presence”, “remained”, “kept watch”, “answered”: the vocabulary of a vigil. The repeated “walked beside” has the cadence of a response.',
+        evidence: [{ p: 14, s: 'the presence walked beside him', deg: '1°' }, { p: 29, s: 'they kept watch the way you keep a vigil', deg: '2°' }, { p: 36, s: 'quiet as a church between hymns', deg: '3°' }],
+        stanceLabel: 'By degree', stance: [{ k: '1° latent', c: 'deg1', t: 'presence, remained, kept, called · ×22' }, { k: '2° felt', c: 'deg2', t: 'vigil, keeping watch, answered · ×7' }, { k: '3° overt', c: 'deg3', t: 'church, hymns · ×2' }],
+        support: ['14 field terms', '31 hits'], friction: '“Presence” is also just the word for something you can’t see. Part of this pull may be a reading of one noun rather than the prose.', deeper: gvDeeper, deeperToast: 'Opens Lexical Gravity in the Workshop with “Liturgy” and its 14 terms seeded as a lens' }),
+      add({ id: 'gv.water', reg: 'h', lensId: 'gravity', lens: 'Lexical gravity', kind: 'Borrowed field', title: 'Deep water', metaphor: 'The basement as the deep end.', pull: 0.41, ring: 90, angle: 200, hits: 17, terms: 9, deg: [11, 5, 1], drift: 'Strongest early; thins out after ¶31.', paras: [4, 9, 12, 19, 24, 26, 31],
+        claim: 'Going down the stairs is written as going under. The dark rises, pressure builds in Jasper’s ears, and his thoughts come up for air.',
+        evidence: [{ p: 4, s: 'the dark rose to meet him', deg: '1°' }, { p: 24, s: 'his thoughts came up for air', deg: '2°' }, { p: 12, s: 'pressure in his ears like the deep end of a pool', deg: '3°' }],
+        stanceLabel: 'By degree', stance: [{ k: '1° latent', c: 'deg1', t: 'rose, sank, surface, under · ×11' }, { k: '2° felt', c: 'deg2', t: 'pressure, came up for air · ×5' }, { k: '3° overt', c: 'deg3', t: 'the deep end of a pool · ×1' }],
+        support: ['9 field terms', '17 hits'], friction: 'Some of this is just how English talks about depth. “Sank” in ¶9 may be ordinary furniture, not the field.', deeper: gvDeeper, deeperToast: 'Opens Lexical Gravity in the Workshop with “Deep water” and its 9 terms seeded as a lens' }),
+      add({ id: 'gv.clock', reg: 'h', lensId: 'gravity', lens: 'Lexical gravity', kind: 'Borrowed field', title: 'Clockwork', metaphor: 'Below the gravity line.', pull: 0.07, ring: 128, angle: -58, hits: 2, terms: 2, deg: [2, 0, 0], faint: true, drift: 'Two stray terms. Furniture, not a field.', paras: [27, 39],
+        claim: 'Two stray terms, “clicked into place” and “wound tight”. Too few to pull. Drawn so you can see what the board decided not to call gravity.',
+        evidence: [{ p: 27, s: 'something clicked into place', deg: '1°' }],
+        stanceLabel: 'By degree', stance: [{ k: '1° latent', c: 'deg1', t: 'clicked, wound · ×2' }],
+        support: ['2 field terms', '2 hits'] }),
+    ];
+    add({ id: 'gv.collision', reg: 'r', lensId: 'gravity', lens: 'Lexical gravity', kind: 'Collision', title: 'Liturgy meets deep water', claim: 'At ¶36 both fields share a sentence. That can be the chapter’s strongest image or a mixed metaphor; the board can’t tell which you meant.', evidence: [{ p: 36, s: 'the hymn of it pulled him under' }], paras: [36], support: ['liturgy + deep water in one sentence'], friction: 'Collisions aren’t errors. They’re flagged because they’re where a reader notices the metaphor at work.' });
+    add({ id: 'gv.sound', reg: 'r', lensId: 'gravity', lens: 'Lexical gravity', kind: 'Set aside', title: 'Sound (literal)', claim: 'Voice, hum, echo, quiet: 38 hits, but the voice is a real sound in this scene. A field only counts as gravity when the prose borrows it.', paras: P.voice, support: ['38 hits', 'literal in context'], friction: 'If the voice turns out not to be real, this verdict flips, and Sound becomes the strongest field on the board.' });
+
+    const charFriction = 'Archetypes flatten. Use them as a first impression, not a casting note.';
+    const chars = [
+      add({ id: 'ch.jasper', reg: 'r', lensId: 'chars', lens: 'Characters', kind: 'Vibe', title: 'Jasper', count: 'jasper ×18', arch: 'The Watchman', energy: 'Awake on purpose.', wants: 'to hear it first', hides: 'that he’s heard it before', claim: 'Jasper is the chapter’s attention. He watches, counts and keeps still, and he never asks a question out loud.', evidence: [{ p: 3, s: 'Jasper didn’t close his eyes.' }], paras: P.jasper, support: ['jasper ×18 · noun', 'questions in his dialogue: 0'], friction: charFriction }),
+      add({ id: 'ch.micah', reg: 'r', lensId: 'chars', lens: 'Characters', kind: 'Vibe', title: 'Micah', count: 'micah ×16', arch: 'The Believer', energy: 'Says yes before he’s sure.', wants: 'the voice to be kind', hides: 'how much he needs it to be', claim: 'Micah asks most of the chapter’s questions and answers half of them himself.', evidence: [{ p: 16, s: 'You heard that, right?' }], paras: P.micah, support: ['micah ×16 · noun'], friction: charFriction }),
+      add({ id: 'ch.nate', reg: 'r', lensId: 'chars', lens: 'Characters', kind: 'Vibe', title: 'Nate', count: 'nate’s ×12 · nathaniel ×9', arch: 'The Named', energy: 'Only ever spoken to.', wants: 'to sleep through it', hides: 'that he answered', claim: 'He is “Nate” to the boys and “Nathaniel” only when the voice is in the room. The name is doing the characterization.', evidence: [{ p: 22, s: 'Nathaniel.' }], paras: union(P.nate, P.nathaniel), support: ['nathaniel in 6 ¶', 'voice present in all 6'], friction: charFriction }),
+    ];
+
+    const lineage = [
+      add({ id: 'li.samuel', reg: 'r', lensId: 'lineage', lens: 'Lineage', kind: 'Adjacent story', title: 'Samuel in the temple', src: '1 Samuel 3', claim: 'The closest structural rhyme: a sleeper, a name, and a call that repeats in the night.', stance: [{ k: 'matches', t: 'A boy asleep, and a voice that calls him by name.' }, { k: 'departs', t: 'Three listeners, not one.' }, { k: 'subverts', t: 'No elder tells them how to answer.' }], paras: [8, 22, 23, 36], friction: 'The biblical frame brings a theology the chapter may not want. Borrow the shape, not the answer.', deeper: 'Topic Relationship Explorer' }),
+      add({ id: 'li.orpheus', reg: 'r', lensId: 'lineage', lens: 'Lineage', kind: 'Adjacent story', title: 'Orpheus', src: 'Greek myth', claim: 'The descent fits. The famous rule is quietly refused.', stance: [{ k: 'matches', t: 'A descent for someone who is lost.' }, { k: 'subverts', t: 'Nobody walks ahead, so nobody can look back. The presence walks beside.' }], paras: [3, 14, 19, 29, 44, 47], friction: 'Orpheus is the default reading for any descent. It may be the model’s reflex rather than the chapter’s.', deeper: 'Topic Relationship Explorer' }),
+      add({ id: 'li.raven', reg: 'r', lensId: 'lineage', lens: 'Lineage', kind: 'Adjacent story', title: 'The Raven', src: 'Poe, 1845', claim: 'Five ravens bring Poe’s grief-room with them, whether or not you meant to invite it.', stance: [{ k: 'matches', t: 'Grief, a visitor at night, a bird that won’t leave.' }, { k: 'departs', t: 'This raven never speaks. The voice does the speaking.' }], paras: P.raven, friction: 'Five ravens may just be a bird. Decide whether you want the allusion.', deeper: 'Topic Relationship Explorer' }),
+    ];
+
+    const genreFriction = 'Genre pushes toward a reveal. This chapter is strongest while the voice stays unnamed.';
+    const genres = [
+      add({ id: 'ge.ya', reg: 'r', lensId: 'genre', lens: 'Genre', kind: 'Neighbor', title: 'Contemporary YA, supernatural thread', aff: 0.74, claim: 'Three teenage leads, a real house, and one unexplained presence handled with restraint.', evidence: [{ p: 16, s: 'You heard that, right?' }], paras: [1, 8, 16, 23, 34], friction: genreFriction, deeper: 'Genre Relationship Explorer' }),
+      add({ id: 'ge.grief', reg: 'r', lensId: 'genre', lens: 'Genre', kind: 'Neighbor', title: 'Grief narrative', aff: 0.68, claim: 'Loss is the weather of the chapter even where it is never named.', paras: P.grief, friction: genreFriction, deeper: 'Genre Relationship Explorer' }),
+      add({ id: 'ge.quiet', reg: 'r', lensId: 'genre', lens: 'Genre', kind: 'Neighbor', title: 'Quiet horror', aff: 0.39, claim: 'The dread is there, but nothing threatens anyone. Horror’s promise is half kept.', paras: P.darkness, friction: genreFriction, deeper: 'Genre Relationship Explorer' }),
+      add({ id: 'ge.portal', reg: 'r', lensId: 'genre', lens: 'Genre', kind: 'Neighbor', title: 'Portal fantasy', aff: 0.12, miss: 'A near miss: the furniture matches (a basement, a threshold), but nothing opens.', claim: 'Drawn on purpose. A low affinity teaches as much as a high one.', paras: [3, 19], friction: genreFriction, deeper: 'Genre Relationship Explorer' }),
+    ];
+
+    add({ id: 'vo.voice', reg: 'h', lensId: 'voice', lens: 'Voice', kind: 'Narration', title: 'Narrative voice', claim: 'Close third on Jasper, plain and interior. The distance closes to almost-first-person at ¶23 and ¶36, the same two places the sentences run long.', evidence: [{ p: 23, s: 'and he knew it the way you know a stair in the dark' }], paras: [23, 24, 36, 37], support: ['avg 9.2 words / sentence', '¶23 and ¶36: 21.5'], friction: 'Comparisons describe a neighborhood, not a target.' });
+    const voiceRows = [
+      { k: 'POV', v: 'Close third · Jasper' },
+      { k: 'Tense', v: 'Past' },
+      { k: 'Distance', v: 'Close; tightens at ¶23 and ¶36' },
+      { k: 'Register', v: 'Plain, interior, few adverbs' },
+      { k: 'Sentence music', m: '9.2 avg', v: 'Short declaratives, one long run at each peak' },
+      { k: 'Reads adjacent to', v: 'Patrick Ness, A Monster Calls · Jason Reynolds, Long Way Down' },
+    ];
+
+    const sxFriction = 'Subtext is the most projective lens on the board. Check it against what you meant.';
+    const subtext = [
+      add({ id: 'sx.16', reg: 'r', lensId: 'subtext', lens: 'Subtext', kind: 'Said / meant', title: 'Micah, ¶16', who: '¶16 · Micah', said: '“You heard that, right?”', meant: 'Tell me I’m not the only one.', claim: 'Reads as: tell me I’m not the only one.', evidence: [{ p: 16, s: 'You heard that, right?' }], paras: [16], friction: sxFriction }),
+      add({ id: 'sx.34', reg: 'r', lensId: 'subtext', lens: 'Subtext', kind: 'Said / meant', title: 'Jasper, ¶34', who: '¶34 · Jasper', said: '“Go back to sleep.”', meant: 'Don’t make me say what it said.', claim: 'Reads as: don’t make me say what it said.', evidence: [{ p: 34, s: 'Go back to sleep.' }], paras: [34], friction: sxFriction }),
+    ];
+
+    const sparks = [
+      add({ id: 'sp.light', reg: 'r', lensId: 'spark', lens: 'Spark', kind: 'Open door', title: 'Light comes down', text: 'Light has as many words as darkness, 8 and 8, but it only appears when someone is leaving the basement. What happens if light comes down the stairs?', claim: 'Light has as many words as darkness, 8 and 8, but it only appears when someone is leaving the basement. What happens if light comes down the stairs?', paras: P.light, support: ['light ×8', 'darkness ×8'] }),
+      add({ id: 'sp.third', reg: 'r', lensId: 'spark', lens: 'Spark', kind: 'Open door', title: 'The third call', text: 'Samuel was called three times before he answered. Your boys have been called twice.', claim: 'Samuel was called three times before he answered. Your boys have been called twice.', paras: [8, 23] }),
+      add({ id: 'sp.mattress', reg: 'r', lensId: 'spark', lens: 'Spark', kind: 'Open door', title: 'The mattress', text: 'The mattress is the only furniture in the chapter. What does it know?', claim: 'The mattress is the only furniture in the chapter. What does it know?', paras: P.mattress, support: ['mattress ×6'] }),
+    ];
+
+    const stats = [
+      { v: '3,087', l: 'words', d: '+412' },
+      { v: '9.2', l: 'avg words / sentence', d: '−1.4' },
+      { v: '19.1%', l: 'dialogue', d: '+3.2 pts' },
+      { v: '81.5', l: 'readability', d: '+4.1' },
+      { v: '13m', l: 'reading time', d: '+2m' },
+      { v: 'Fast', l: 'pacing · short sentences', d: 'was Steady', accent: true },
+    ];
+
+    const lenses = [
+      { id: 'palette', name: 'Palette' }, { id: 'gravity', name: 'Lexical gravity' }, { id: 'motif', name: 'Theme & motif' },
+      { id: 'chars', name: 'Characters' }, { id: 'subtext', name: 'Subtext' }, { id: 'voice', name: 'Voice' },
+      { id: 'genre', name: 'Genre' }, { id: 'lineage', name: 'Lineage' }, { id: 'spark', name: 'Spark' },
+    ];
+
+    return { N, paras, words, ngrams, clusters, swatches, gravity, motifs, chars, lineage, genres, voiceRows, subtext, sparks, stats, lenses, I, order };
+  }
+
+  paraItem(n, avail, tensionOn) {
+    const p = this.D.paras[n - 1];
+    if (!p) return null;
+    const touching = this.D.order.map((k) => this.D.I[k]).filter((x) => x.kind !== 'Lane' && x.id !== 'hd.read' && x.paras.indexOf(n) >= 0 && avail(x));
+    const claim = p.rhythm + ' words per sentence · ' + Math.round(p.dlg * 100) + '% dialogue.' + (tensionOn ? ' Tension, as read: ' + Math.round(p.ten * 100) + ' of 100.' : '');
+    return { id: 'para.' + n, reg: 'm', lens: 'Chapter', kind: 'Paragraph', title: '¶' + n, claim, paras: [n], touching, support: ['rhythm ' + p.rhythm, 'dialogue ' + Math.round(p.dlg * 100) + '%'] };
+  }
+
+  renderVals() {
+    const D = this.D;
+    const s = this.state;
+    const propPhase = this.props.phase || 'complete';
+    const phase = s.phaseOverride || propPhase;
+    const arrived = s.phaseOverride ? s.arrived : (propPhase === 'complete' ? 3 : (propPhase === 'streaming' ? 1 : 0));
+    const streaming = phase === 'streaming';
+    const groupOf = { palette: 'A', gravity: 'A', motif: 'A', chars: 'B', subtext: 'B', voice: 'B', genre: 'C', lineage: 'C', spark: 'C' };
+    const ready = { A: arrived >= 1, B: arrived >= 2, C: arrived >= 3 };
+    const lensOn = (id) => !s.lensOff[id];
+    const avail = (it) => !!it && (it.reg === 'm' || !it.lensId || (lensOn(it.lensId) && ready[groupOf[it.lensId]]));
+    const tensionOn = lensOn('motif') && ready.A;
+
+    const getItem = (id) => {
+      if (!id) return null;
+      if (id.indexOf('para.') === 0) return this.paraItem(Number(id.slice(5)), avail, tensionOn);
+      return D.I[id] || null;
+    };
+    const hoverIt = getItem(s.hover);
+    const selIt = getItem(s.selected);
+    const selOk = avail(selIt);
+    const focusIt = avail(hoverIt) ? hoverIt : (selOk ? selIt : null);
+    const fset = {};
+    if (focusIt) focusIt.paras.forEach((p) => { fset[p] = true; });
+    const freg = focusIt ? focusIt.reg : 'm';
+
+    const bind = (id, base) => {
+      const on = selOk && s.selected === id;
+      const hot = !!focusIt && focusIt.id === id && s.hover === id;
+      return {
+        cls: base + (on ? ' is-sel' : '') + (hot ? ' is-hot' : ''),
+        enter: () => { if (this.state.hover !== id) this.setState({ hover: id }); },
+        leave: () => { if (this.state.hover === id) this.setState({ hover: null }); },
+        pick: () => this.setState({ selected: id, hover: null }),
+      };
+    };
+    const strip = (paras) => D.paras.map((p) => ({ c: paras.indexOf(p.n) >= 0 ? 'on' : '' }));
+
+    const cols = D.paras.map((p) => {
+      const b = bind('para.' + p.n, 'rb-col');
+      const lit = !!fset[p.n];
+      const dim = !!focusIt && !lit;
+      return Object.assign(b, {
+        cls: b.cls + (dim ? ' is-dim' : ''),
+        fc: 'rb-fc' + (lit ? (freg === 'm' ? ' lit-m' : ' lit-r') : ''),
+        rh: Math.round(p.rhythm / 22 * 34),
+        dl: p.dlg ? (0.3 + p.dlg * 0.7).toFixed(2) : '0',
+        tnCls: 'rb-tn' + (tensionOn ? '' : ' is-empty'),
+        tn: tensionOn ? Math.max(3, Math.round(p.ten * 34)) : 0,
+        tn2: Math.round(p.ten2 * 34),
+        ghost: s.compare && tensionOn,
+        idx: (p.n === 1 || p.n % 6 === 0) ? String(p.n) : '',
+        aria: 'Paragraph ' + p.n,
+      });
+    });
+
+    const ribbonFocus = focusIt
+      ? focusIt.title + '  ·  ' + focusIt.paras.map((p) => '¶' + p).join(' ')
+      : 'Hover anything on the board to light the paragraphs it touches.';
+    const ribbonFocusCls = 'rb-focus' + (focusIt ? (freg === 'm' ? ' f-m' : ' f-r') : '');
+
+    const words = D.words.map((w) => Object.assign(bind('w.' + w.w, 'rs cw cw-' + w.tone), { w: w.w, c: w.c, size: Math.round(14 + (w.c - 5) * 1.7) }));
+    const ngrams = D.ngrams.map((n) => Object.assign(bind(n.id, 'ng'), { label: n.label }));
+    const clusters = D.clusters.map((k) => Object.assign(bind(k.id, 'rs cl'), { title: k.title, words: k.words.map((x) => ({ w: x[0], c: x[1] })) }));
+    const swatches = D.swatches.map((w) => Object.assign(bind(w.id, 'rs sw'), { title: w.title, hex: w.hex, count: w.count }));
+    const motifs = D.motifs.map((m) => {
+      const ev = (m.evidence || []).length;
+      const wh = (m.withheld || []).length;
+      return Object.assign(bind(m.id, 'rs mo'), { title: m.title, short: m.short, strip: strip(m.paras), supportTop: m.support[0], evNote: ev + ' quote' + (ev === 1 ? '' : 's') + ' checked' + (wh ? ' · ' + wh + ' withheld' : '') });
+    });
+    const chars = D.chars.map((c) => Object.assign(bind(c.id, 'rs ch'), { title: c.title, count: c.count, arch: c.arch, energy: c.energy, wants: c.wants, hides: c.hides, strip: strip(c.paras) }));
+    const stanceRows = (list) => list.map((x) => ({ k: x.k, t: x.t, cls: 'stc stc-' + (x.c || x.k) }));
+    const lineage = D.lineage.map((l) => Object.assign(bind(l.id, 'rs li'), { title: l.title, src: l.src, stance: stanceRows(l.stance) }));
+    const genres = D.genres.map((g) => Object.assign(bind(g.id, 'rs gn'), { title: g.title, aff: g.aff.toFixed(2), w: Math.round(g.aff * 100), miss: g.miss || '', hasMiss: !!g.miss }));
+    const vo = bind('vo.voice', 'rs vo');
+    const voiceRows = D.voiceRows.map((r) => ({ k: r.k, v: r.v, m: r.m || '', hasM: !!r.m }));
+    const subtext = D.subtext.map((q) => Object.assign(bind(q.id, 'rs sx'), { who: q.who, said: q.said, meant: q.meant }));
+    const gvBodies = D.gravity.map((g) => {
+      const rad = g.angle * Math.PI / 180;
+      return Object.assign(bind(g.id, 'rs orb-b' + (g.faint ? ' faint' : '')), {
+        title: g.title,
+        aria: g.title + ', pull ' + g.pull.toFixed(2),
+        x: Math.round(140 + g.ring * Math.cos(rad) - 22),
+        y: Math.round(140 + g.ring * Math.sin(rad) - 22),
+        d: Math.round(10 + g.hits * 0.6),
+      });
+    });
+    const gvFields = D.gravity.map((g) => Object.assign(bind(g.id, 'rs gvf' + (g.faint ? ' faint' : '')), {
+      title: g.title, metaphor: g.metaphor, pull: g.pull.toFixed(2), w: Math.round(g.pull * 100),
+      hits: g.terms + ' terms · ' + g.hits + ' hits', d1: g.deg[0], d2: g.deg[1], d3: g.deg[2],
+      degAria: 'By degree: ' + g.deg[0] + ' latent, ' + g.deg[1] + ' felt, ' + g.deg[2] + ' overt',
+      strip: strip(g.paras), drift: g.drift,
+    }));
+    const gvCollision = bind('gv.collision', 'rs gc');
+    const gvSound = bind('gv.sound', 'gv-sound');
+    const visibleSparks = D.sparks.filter((p) => !s.dismissed[p.id]);
+    const sparks = visibleSparks.map((p) => {
+      const b = bind(p.id, '');
+      const pinned = !!s.pinned[p.id];
+      return Object.assign(b, {
+        cardCls: 'spk-card' + b.cls,
+        title: p.title,
+        text: p.text,
+        bringCls: pinned ? 'sbtn on' : 'sbtn',
+        bringLabel: pinned ? 'Bound for Workshop' : 'Bring as a question',
+        bring: () => this.togglePin(p),
+        dismiss: () => {
+          const d = Object.assign({}, this.state.dismissed);
+          d[p.id] = true;
+          this.setState({ dismissed: d, selected: this.state.selected === p.id ? null : this.state.selected });
+        },
+      });
+    });
+    const dismissedCount = D.sparks.length - visibleSparks.length;
+
+    const stats = D.stats.map((x) => ({ v: x.v, l: x.l, d: x.d, showD: s.compare, vcls: 'st-v' + (x.accent ? ' acc' : '') }));
+
+    const groupsOn = ['A', 'B', 'C'].filter((g) => D.lenses.some((l) => groupOf[l.id] === g && lensOn(l.id)));
+    const calls = groupsOn.length;
+    const callsLabel = calls ? (calls + ' call' + (calls > 1 ? 's' : '') + ' · est. $' + (calls * 0.013).toFixed(2)) : 'measure only · free';
+    const lenses = D.lenses.map((l) => ({
+      name: l.name,
+      on: lensOn(l.id),
+      cls: 'ln-row' + (lensOn(l.id) ? '' : ' ln-off'),
+      grp: 'call ' + groupOf[l.id],
+      toggle: () => {
+        const o = Object.assign({}, this.state.lensOff);
+        if (o[l.id]) delete o[l.id]; else o[l.id] = true;
+        this.setState({ lensOff: o });
+      },
+    }));
+
+    let nEv = 0;
+    let nWh = 0;
+    D.order.forEach((k) => {
+      const x = D.I[k];
+      if (x.reg !== 'm' && avail(x)) { nEv += (x.evidence || []).length; nWh += (x.withheld || []).length; }
+    });
+
+    const showM = s.filter !== 'read';
+    const showR = s.filter !== 'measured';
+    const show = {
+      stats: showM, cloud: showM, pos: showM,
+      palette: lensOn('palette'), gravity: lensOn('gravity'), voice: lensOn('voice'),
+      motif: showR && lensOn('motif'), chars: showR && lensOn('chars'), lineage: showR && lensOn('lineage'),
+      genre: showR && lensOn('genre'), subtext: showR && lensOn('subtext'), spark: showR && lensOn('spark'),
+    };
+    const rd = {};
+    const nr = {};
+    Object.keys(groupOf).forEach((k) => { rd[k] = ready[groupOf[k]]; nr[k] = !ready[groupOf[k]]; });
+
+    const filters = [['all', 'All'], ['measured', 'Measured'], ['read', 'Read']].map((f) => ({
+      label: f[1], pressed: s.filter === f[0], cls: 'seg-b' + (s.filter === f[0] ? ' is-on' : ''),
+      pick: () => this.setState({ filter: f[0] }),
+    }));
+
+    const doneAll = arrived >= 3;
+    const pinnedCount = Object.keys(s.pinned).length;
+
+    const regName = { m: 'Measured', r: 'Read', h: 'Counted · read' };
+    const regCls = { m: 'reg reg-m', r: 'reg reg-r', h: 'reg reg-h' };
+    const regNote = {
+      m: 'Counted by code. No model was asked.',
+      r: 'A reading, not a measurement. Quotes are checked against the text; a claim whose quote isn’t found is withheld.',
+      h: 'Words counted by code, then grouped or named by a reading.',
+    };
+    const it = selOk ? selIt : null;
+    let insp = {};
+    if (it) {
+      const pinned = !!s.pinned[it.id];
+      insp = {
+        regLabel: regName[it.reg], regCls: regCls[it.reg], regNote: regNote[it.reg],
+        where: it.lens + ' · ' + it.kind,
+        title: it.title,
+        claim: it.claim,
+        claimCls: it.reg === 'r' ? 'in-claim serif' : 'in-claim',
+        paraCount: it.paras.length + (it.paras.length === 1 ? ' paragraph' : ' paragraphs'),
+        paras: it.paras.map((p) => ({ label: '¶' + p, reveal: () => this.say('Revealed ¶' + p + ' in chapter-6.12.md') })),
+        evidence: (it.evidence || []).map((e) => ({ p: e.p, s: e.s, degLabel: e.deg ? ' · ' + e.deg : '' })),
+        withheld: it.withheld || [],
+        hasEvidence: !!((it.evidence && it.evidence.length) || (it.withheld && it.withheld.length)),
+        stance: stanceRows(it.stance || []),
+        stanceLabel: it.stanceLabel || 'Matches · departs · subverts',
+        hasStance: !!(it.stance && it.stance.length),
+        support: (it.support || []).map((t) => ({ t })),
+        hasSupport: !!(it.support && it.support.length),
+        friction: it.friction || '',
+        hasFriction: !!it.friction,
+        touching: (it.touching || []).map((t) => Object.assign(bind(t.id, 'tchip tchip-' + t.reg), { label: t.title })),
+        hasTouching: !!(it.touching && it.touching.length),
+        hasDeeper: !!it.deeper,
+        deeper: it.deeper || '',
+        deep: () => this.say(it.deeperToast || ('Opens ' + it.deeper + ' with “' + it.title + '” filled in')),
+        canReread: it.reg !== 'm',
+        reread: () => this.say('Re-reading “' + it.title + '” only · 1 call'),
+        reveal: () => this.say('Revealed ¶' + it.paras[0] + ' in chapter-6.12.md'),
+        revealLabel: 'Reveal ¶' + it.paras[0],
+        bringCls: pinned ? 'btn-pri is-on' : 'btn-pri',
+        bringLabel: pinned ? 'Bound for Workshop' : (it.lensId === 'spark' ? 'Bring as a question' : 'Bring to Workshop'),
+        bring: () => this.togglePin(it),
+      };
+    }
+
+    return {
+      hasPinned: pinnedCount > 0,
+      pinnedLabel: pinnedCount + (pinnedCount === 1 ? ' tile' : ' tiles') + ' bound for Workshop',
+      openWorkshop: () => this.say('Opens the Workshop with ' + pinnedCount + (pinnedCount === 1 ? ' tile' : ' tiles') + ' staged above the composer'),
+      callsLabel,
+      lenses,
+      compareOn: s.compare,
+      compareCls: s.compare ? 'sbtn on' : 'sbtn',
+      compareLabel: s.compare ? 'Comparing' : 'Compare',
+      toggleCompare: () => this.setState({ compare: !this.state.compare }),
+      headlineRead: avail(D.I['hd.read']),
+      headlineFresh: !avail(D.I['hd.read']),
+      hd: bind('hd.read', 'rs hd-btn'),
+      filters,
+      runIdle: !streaming && !doneAll,
+      runStreaming: streaming,
+      runDone: !streaming && doneAll,
+      runNote: callsLabel,
+      runLabel: arrived > 0 ? 'Read the rest' : 'Read the chapter',
+      runNow: () => this.run(arrived),
+      cancelNow: () => this.stop(arrived),
+      streamNote: 'Reading… ' + arrived + ' of 3 lens groups back',
+      doneNote: nEv + ' quotes checked · ' + nWh + ' withheld · ' + calls + (calls === 1 ? ' call' : ' calls'),
+      ribbonFocus,
+      ribbonFocusCls,
+      laneRhythm: bind('lane.rhythm', 'rs rb-lab btn h34'),
+      laneDialogue: bind('lane.dialogue', 'rs rb-lab btn h12'),
+      laneTension: bind('lane.tension', 'rs rb-lab btn h34'),
+      cols,
+      show, rd, nr,
+      skelCls: 'sk' + (streaming ? ' is-live' : ''),
+      skelNote: streaming ? 'Reading…' : 'Not read yet. Runs with the next press.',
+      stats,
+      words, ngrams, clusters, swatches, motifs, chars, lineage, genres, vo, voiceRows, subtext, sparks,
+      gvBodies, gvFields, gvCollision, gvSound,
+      hasDismissed: dismissedCount > 0,
+      dismissedNote: dismissedCount + ' set aside.',
+      undoDismiss: () => this.setState({ dismissed: {} }),
+      toastOn: !!s.toast,
+      toast: s.toast || '',
+      inspNone: !it,
+      inspHas: !!it,
+      insp,
+      clearSel: () => this.setState({ selected: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

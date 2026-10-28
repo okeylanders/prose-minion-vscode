@@ -1,4 +1,10 @@
-/** Focused IPC adapter for Lexical Gravity's catalog, preview, build, and save workflow. */
+/**
+ * Focused IPC adapter for Lexical Gravity's catalog, preview, build, and save
+ * workflow, and for a Build lens subject handed over from another tab (the
+ * Lightbox's "Build as a lens", ADR 2026-10-19 D11): the seed is checked and
+ * its subject composed here, then the webview opens Build lens prefilled.
+ * Opening it builds, saves and installs nothing.
+ */
 
 import * as path from 'path';
 import { MessageRouter } from '@handlers/MessageRouter';
@@ -14,12 +20,18 @@ import {
 import {
   validateLexicalGravityDraft
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  composeLexicalGravityBuildSubject,
+  validateLexicalGravityBuildSeed
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityBuildSeed';
 import { LogSink } from '@/platform';
 import {
   MessageType,
   WorkshopBuildLexicalGravityLensMessage,
   WorkshopLexicalGravityLensCandidate,
+  WorkshopLexicalGravityBuildSeedMessage,
   WorkshopLexicalGravityLensCandidatesMessage,
+  WorkshopOpenLexicalGravityBuildMessage,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopLexicalGravityLensesSavedMessage,
   WorkshopLexicalGravityPreviewResultMessage,
@@ -42,6 +54,9 @@ export type WorkshopLexicalGravityRepositoryPort = Pick<
   | 'saveManyForQuery'
   | 'replaceIncompatibleForQuery'
 >;
+
+/** The longest delivery id the panel provider mints, with room to spare. */
+const MAX_DELIVERY_ID = 80;
 
 export class WorkshopLexicalGravityHandler {
   private previewRun?: AbortController;
@@ -76,6 +91,13 @@ export class WorkshopLexicalGravityHandler {
     router.register(
       MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS,
       this.handleBuild.bind(this)
+    );
+    // Direct, not behind the session-operation gate: opening the sheet
+    // changes no session state (the build itself is direct too; only saving
+    // a lens is a mutation).
+    router.register(
+      MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+      this.handleOpenBuild.bind(this)
     );
     registerMutation(
       MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES,
@@ -205,6 +227,38 @@ export class WorkshopLexicalGravityHandler {
     } finally {
       if (this.buildRun === controller) {this.buildRun = undefined;}
     }
+  }
+
+  /**
+   * Open Build lens with a subject from another tab. The seed is checked and
+   * the subject composed here; the webview only prefills the sheet. Nothing
+   * is built until the writer presses Build. The seed keeps the panel
+   * provider's delivery id, which the webview's answer names (PR #150 F-03).
+   */
+  async handleOpenBuild(message: WorkshopOpenLexicalGravityBuildMessage): Promise<void> {
+    let seed: ReturnType<typeof validateLexicalGravityBuildSeed>;
+    const deliveryId = message.payload?.deliveryId;
+    try {
+      if (typeof deliveryId !== 'string' || deliveryId.length === 0 || deliveryId.length > MAX_DELIVERY_ID) {
+        throw new Error('seed delivery id must be a string of at most 80 characters');
+      }
+      seed = validateLexicalGravityBuildSeed(message.payload?.seed);
+    } catch (error) {
+      // Shape errors name fields and bounds, never the seed's text.
+      this.errorMessage(error);
+      return;
+    }
+    const subject = composeLexicalGravityBuildSubject(seed);
+    this.outputChannel.appendLine(
+      `[WorkshopLexicalGravityHandler] Build lens opened from the ${seed.origin} with ${seed.terms.length} counted terms; ` +
+        `the subject carries ${subject === seed.field ? 'the field name only' : 'the field name and terms'}`
+    );
+    await this.postMessage({
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+      source: 'extension.workshop.lexical-gravity',
+      timestamp: Date.now(),
+      payload: { seedId: deliveryId, seed, subject }
+    } satisfies WorkshopLexicalGravityBuildSeedMessage);
   }
 
   async handleSave(message: WorkshopSaveLexicalGravityLensesMessage): Promise<void> {

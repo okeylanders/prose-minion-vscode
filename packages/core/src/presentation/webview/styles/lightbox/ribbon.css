@@ -1,0 +1,244 @@
+/* ============================================================
+   Prose Minion — the Lightbox paragraph ribbon (ADR 2026-10-19 D4): one
+   column per paragraph (or per range of paragraphs), with the rhythm,
+   dialogue, tension and focus lanes. Sticky at the top of the board.
+   Hover and focus change only paint here (color, opacity, a shadow), never
+   a size, so nothing under the pointer moves (Slice 4M).
+   ============================================================ */
+
+/* ---------- Ribbon ---------- */
+/* Sticky offsets count the scroller's padding: at full width the board
+   scrolls inside .pm-lb-scroll (24px top padding, board.css), so the ribbon
+   sits that far up to meet the scroller's edge. At 1240px and below the
+   whole tab scrolls and has no padding there. */
+[data-pm-surface="lightbox"] .pm-lb-ribbon {
+  position: sticky;
+  top: -24px;
+  z-index: 5;
+  background: rgba(21, 17, 13, 0.95);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--pm-border);
+  border-radius: 12px;
+  padding: 12px 14px 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+@media (max-width: 1240px) {
+  [data-pm-surface="lightbox"] .pm-lb-ribbon {
+    top: 0;
+  }
+}
+/* The eyebrow, then the focus line on a row of its own (Slice 4M). Before,
+   the two shared a wrapping row: a focus line too long to sit beside the
+   eyebrow wrapped onto a second row, the ribbon grew, the board moved out
+   from under the pointer, and the line shrank back, over and over. */
+[data-pm-surface="lightbox"] .pm-lb-ribbon-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-eyebrow {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pm-lb-measured-hi);
+}
+/* Exactly one line tall in every state, idle, hovered, pinned or empty, at
+   any width or zoom: its height is fixed, so no glyph's fallback font can
+   grow it. The text clips with an ellipsis; the tail, the paragraph count,
+   never shrinks, so clipping never hides how much of the text an item
+   touches. Hover changes only what it says. */
+[data-pm-surface="lightbox"] .pm-lb-ribbon-focus {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  height: 16px;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-focus-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-focus-tail {
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-focus.is-measured {
+  color: var(--pm-lb-measured-hi);
+}
+/* One grid for every lane, the paragraph lanes and the story lanes alike
+   (PR #156 F-03): one label track, as wide as the widest label with its stale
+   badge, and one track of paragraph columns, so a column index is the same
+   horizontal place in both parts. Every label block and every track is a
+   direct child, placed by column; no subgrid, which Chromium 114 (VS Code
+   1.82, the declared floor) does not have (F-04). */
+[data-pm-surface="lightbox"] .pm-lb-ribbon-grid {
+  display: grid;
+  grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);
+  column-gap: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-labels {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-label.is-static {
+  cursor: default;
+}
+[data-pm-surface="lightbox"] button.pm-lb-lane-label:hover,
+[data-pm-surface="lightbox"] .pm-lb-lane-label.is-hot {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-label.is-sel {
+  color: var(--pm-lb-measured-hi);
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-key {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-key.is-measured {
+  background: var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-key.is-read {
+  border: 1px dashed var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-h34 { height: 34px; }
+[data-pm-surface="lightbox"] .pm-lb-h12 { height: 12px; }
+[data-pm-surface="lightbox"] .pm-lb-h10 { height: 10px; }
+[data-pm-surface="lightbox"] .pm-lb-ribbon-cols {
+  grid-column: 2;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-col {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+[data-pm-surface="lightbox"] .pm-lb-col.is-dim {
+  opacity: 0.26;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-rhythm {
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-rhythm i {
+  display: block;
+  width: 100%;
+  background: var(--pm-lb-measured);
+  border-radius: 2px 2px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-dialogue {
+  height: 12px;
+  border-radius: 2px;
+  background: var(--pm-surface-2);
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-dialogue i {
+  position: absolute;
+  inset: 0;
+  background: var(--pm-lb-measured-hi);
+  display: block;
+}
+/* Tension is a reading: an empty dashed lane until Slice 2B fills it. */
+[data-pm-surface="lightbox"] .pm-lb-col-tension {
+  height: 34px;
+  display: block;
+  border-bottom: 1px dashed var(--pm-faint);
+}
+[data-pm-surface="lightbox"] .pm-lb-col-focus {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--pm-surface-2);
+  display: block;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-focus.is-lit {
+  background: var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-col:hover .pm-lb-col-focus {
+  box-shadow: 0 0 0 1px var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-col.is-sel .pm-lb-col-index {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-col-index {
+  height: 12px;
+  font-family: var(--pm-mono);
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--pm-muted);
+  text-align: center;
+  display: block;
+  overflow: visible;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-note {
+  margin: 6px 0 0 84px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-faint);
+}
+
+/* The tension line under the ribbon, with call A's Analyze beside it (Slice 4I). */
+[data-pm-surface="lightbox"] .pm-lb-tension-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 6px 0 0 84px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-row > .pm-lb-ribbon-note {
+  margin: 0;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-row > .pm-lb-tension-note {
+  width: auto;
+  margin-left: -6px;
+}

@@ -7,6 +7,7 @@
 
 import {
   CONTEXT_SOURCE_KINDS,
+  WORKSHOP_LIGHTBOX_TILE_LIMITS,
   isHttpUrl,
   isWorkshopInteractionMode,
   isWorkshopPersonaExpressionLevel,
@@ -23,15 +24,19 @@ import {
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
   isLiveWorkshopWidgetId,
-  isWorkshopWidgetId,
-  workshopWidgetIdFromArtifactKind
+  isWorkshopWidgetId
 } from '@shared/constants/workshopWidgets';
+import {
+  WORKSHOP_THREAD_ARTIFACT_KIND_EXPECTED,
+  isWorkshopThreadArtifactKind
+} from '@shared/constants/workshopThreadArtifactKinds';
 import {
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionLimits';
 import {
   arrayOf,
   booleanAt,
+  boundedStringAt,
   enumAt,
   exactKeys,
   exactObject,
@@ -232,10 +237,10 @@ function assertThreadArtifact(value: unknown, path: string): void {
     artifact.kind !== undefined
     && (
       typeof artifact.kind !== 'string'
-      || workshopWidgetIdFromArtifactKind(artifact.kind) === undefined
+      || !isWorkshopThreadArtifactKind(artifact.kind)
     )
   ) {
-    shapeError(`${path}.kind`, 'widget:<registry id>');
+    shapeError(`${path}.kind`, WORKSHOP_THREAD_ARTIFACT_KIND_EXPECTED);
   }
   if (artifact.truncation !== undefined) {
     const truncation = exactObject(
@@ -328,7 +333,7 @@ function assertMessageAttachment(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words', 'content'],
-    ['relativePath', 'configuredResource', 'truncation', 'sourceUri']
+    ['relativePath', 'configuredResource', 'truncation', 'sourceUri', 'lightboxTile']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -339,6 +344,23 @@ function assertMessageAttachment(value: unknown, path: string): void {
   assertOptionalConfiguredResource(attachment.configuredResource, `${path}.configuredResource`);
   if (attachment.truncation !== undefined) {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
+  }
+  assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
+}
+
+/** A Lightbox tile staged or sent as a message attachment (Lightbox Slice 4): display-safe ids and labels only. */
+function assertOptionalLightboxTileMeta(value: unknown, path: string): void {
+  if (value === undefined) {
+    return;
+  }
+  const limits = WORKSHOP_LIGHTBOX_TILE_LIMITS;
+  const meta = exactObject(value, path, ['boardId', 'tileId', 'kindLabel', 'quotes', 'sourceLabel']);
+  boundedStringAt(meta.boardId, `${path}.boardId`, limits.idCharacters, false);
+  boundedStringAt(meta.tileId, `${path}.tileId`, limits.idCharacters, false);
+  boundedStringAt(meta.kindLabel, `${path}.kindLabel`, limits.labelCharacters, false);
+  boundedStringAt(meta.sourceLabel, `${path}.sourceLabel`, limits.sourceLabelCharacters);
+  if (!Number.isSafeInteger(meta.quotes) || (meta.quotes as number) < 1 || (meta.quotes as number) > limits.quotes) {
+    shapeError(`${path}.quotes`, `a whole number from 1 to ${limits.quotes}`);
   }
 }
 
@@ -758,7 +780,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
     value,
     path,
     ['id', 'label', 'words'],
-    ['relativePath', 'configuredResource', 'truncation']
+    ['relativePath', 'configuredResource', 'truncation', 'lightboxTile']
   );
   stringAt(attachment.id, `${path}.id`);
   stringAt(attachment.label, `${path}.label`);
@@ -768,6 +790,7 @@ function assertMessageAttachmentSnapshot(value: unknown, path: string): void {
   if (attachment.truncation !== undefined) {
     assertKeptWordTruncation(attachment.truncation, `${path}.truncation`);
   }
+  assertOptionalLightboxTileMeta(attachment.lightboxTile, `${path}.lightboxTile`);
 }
 
 function assertTokenUsage(value: unknown, path: string): void {

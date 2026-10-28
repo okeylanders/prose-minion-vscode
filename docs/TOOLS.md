@@ -4,7 +4,7 @@
 
 ## Overview
 
-Prose Minion includes **9 integrated prose tools** organized in clean architecture — 5 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
+Prose Minion includes **11 integrated prose tools** organized in clean architecture — 7 AI-powered (require OpenRouter API key) and 4 deterministic (work offline, no API key).
 
 ### AI-Powered Tools (require OpenRouter API key)
 
@@ -15,15 +15,17 @@ Prose Minion includes **9 integrated prose tools** organized in clean architectu
 | 3 | **Context Assistant** | Context | `tools/assist/contextAssistant.ts` |
 | 4 | **Dictionary Utility** | Dictionary | `tools/utility/dictionaryUtility.ts` |
 | 5 | **Category Search** | Category Search | `infrastructure/api/services/search/CategorySearchService.ts` |
+| 6 | **Proofread** | Proofread | `infrastructure/api/services/proofread/ProofreadService.ts` |
+| 7 | **Craft Flags** | Craft Flags | `infrastructure/api/services/craftFlags/CraftFlagsService.ts` |
 
 ### Measurement Tools (no API key required)
 
 | # | Tool | Location |
 |---|------|----------|
-| 6 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
-| 7 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
-| 8 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
-| 9 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
+| 8 | **Prose Statistics** | `tools/measure/passageProseStats/index.ts` |
+| 9 | **Style Flags** | `tools/measure/styleFlags/index.ts` |
+| 10 | **Word Frequency** | `tools/measure/wordFrequency/index.ts` |
+| 11 | **Word Search** | `infrastructure/api/services/search/WordSearchService.ts` |
 
 ---
 
@@ -92,11 +94,160 @@ Semantic word discovery by meaning, not exact match. Uses the Category Search mo
 - Full word search integration (occurrence counts, clusters, chapter locations)
 - Markdown export
 
+### 6. Proofread
+
+Finds mechanical errors in an open Markdown or plain-text file: spelling,
+homophones and other wrong words, punctuation, capitalization, spacing,
+agreement, tense, missing and stray words, and a first-person "I" slipping
+into third-person narration. Right-
+click in the editor and choose **Prose Minion ▸ Proofread and Flag** or
+**Proofread and Fix**; the Command Palette names them **Prose Minion: Proofread
+and Flag** and **Prose Minion: Proofread and Fix**. A selection narrows the run;
+with nothing selected the whole file is proofread. Uses the Proofread model
+scope (`proseMinion.proofreadModel`, a fast, inexpensive model by default).
+
+- **Proofread and Flag never changes the text.** Each issue is a diagnostic: a
+  squiggle, an entry in the Problems panel, and a suggested correction in its
+  message. Surface errors Fix may correct show as information. Everything only
+  ever flagged shows as a warning: tense, agreement, person, wrong, missing
+  and stray words, and name variants. The summary counts those as needing
+  your judgment.
+- **Knows the book's narration.** Proofread measures the whole file's narrative
+  tense and person (past or present, first or third), from the sentences no
+  one speaks, and judges each passage against them. A short selection, or a
+  page of dialogue, is not judged by its own few verbs.
+- **Leaves markup alone.** Front matter, code, link targets, URLs, HTML comments,
+  and tags are never sent or flagged. Indented paragraphs are proofread.
+- **Follows your edits.** Flags move with their text as you type, and a flag
+  whose text you change disappears. Each flag offers **Dismiss**;
+  **Prose Minion: Clear Proofread Flags** removes them all. Closing the file
+  clears its flags, and they are not restored after a reload.
+- **Proofreads section by section.** A selection run replaces only the flags
+  inside the selection; flags elsewhere in the file stay, and the summary
+  counts them.
+- **Fixes the safe ones.** **Proofread and Fix** applies the spelling,
+  homophone, punctuation, capitalization, and spacing fixes as one change you
+  can undo, and flags the rest. By default the fixes open in Refactor Preview,
+  unticked: tick the file to take them all, or tick them one by one, then
+  Apply. The judgment calls are only ever flagged. A flag's lightbulb offers
+  **Replace with '…'** and **Fix all Proofread issues in this file**
+  (`proseMinion.proofread.fixReview`).
+- **Holds your spelling convention.** Set
+  `proseMinion.proofread.spellingConvention` to American, British, Canadian, or
+  Australian English, or leave it at `auto` to flag only a spelling that breaks
+  the text's own pattern.
+- **Accepts your names and invented words.** List them in
+  `proseMinion.proofread.wordList`, in workspace settings for a list per
+  project. A listed word is never flagged as a spelling or wrong word, in any
+  case or with a possessive.
+- **Thinks as much as you set.** `proseMinion.proofread.reasoning` (`light`
+  by default) gives a thinking model its budget on top of the reply's own
+  room, so thinking does not cut a reply short; `off` asks it not to think.
+  A model that always thinks cannot be asked for `off`: Proofread sends
+  nothing and says which setting to change. A reply that thinking still cut
+  off is set aside, and the Output panel says how much went to thinking.
+- **Catches a misspelled name.** Proofread reads the whole file for names
+  (capitalized words used mid-sentence) and flags a rare spelling beside a
+  common one: *Alcie*, once, beside *Alice*, three times or more. Its
+  **Replace with** offers the common spelling, never as Proofread's own fix.
+  A name used only at the start of sentences is not read as a name; a listed
+  word is never flagged.
+- **Catches a quotation mark left open.** Proofread reads every paragraph's
+  double quotation marks. It flags one still open where the paragraph ends
+  or the next quotation opens, a closing mark with nothing open, and a curly
+  mark turned the wrong way. Speech running over paragraphs, each opening
+  with a quotation mark, is not flagged. These are flags only: where the
+  missing mark belongs is yours to say.
+- **Catches a word spelled two ways.** When one file writes *grey* and
+  *gray*, *toward* and *towards*, *OK* and *okay*, or *colour* and *color*,
+  Proofread flags the spelling used less, with a **Replace with** the other.
+  With a spelling convention set, the convention's spelling wins. A
+  capitalized word mid-sentence is read as a name and left alone (*Mr Gray*),
+  and a listed word is never flagged.
+- **Asks before long runs.** A whole file over 15,000 words asks first. The run
+  can be cancelled from its progress notification, and its summary reports what
+  was flagged and what it cost.
+
+See [ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md).
+
+### 7. Craft Flags
+
+**Location**: `packages/core/src/infrastructure/api/services/craftFlags/CraftFlagsService.ts`
+(the run: `application/services/draftEdit/CraftFlagsUseCase.ts`)
+
+Leaves the notes a line editor leaves in a fiction draft: each a flag on a
+few words, with a short note on what they are doing and one way they could
+go. Right-click in the editor and choose **Prose Minion ▸ Craft Flags**; the
+Command Palette names it **Prose Minion: Craft Flags**. It reads the whole
+chapter. Uses the Craft Flags model scope (`proseMinion.craftModel`), which
+follows the Workshop's model until you pick one.
+
+- **Never changes the text.** Each flag is an information diagnostic under
+  the source **Prose Minion Craft**, apart from Proofread's, with its note as
+  the message: why the words stand out, then "One way it could go: …". It
+  offers only *Dismiss this Craft flag* and *Clear all Craft flags in this
+  file*: no quick fix. **Prose Minion: Clear Craft Flags** removes them all.
+  A Craft Flags run never replaces Proofread's flags.
+- **Clichés, first.** A phrase worn smooth by use, or a familiar phrase asked
+  to carry a turn. Idioms and stock phrases are familiar, not faults, and
+  are never flagged: the same four kinds the Lightbox's familiar phrasing
+  names. A cliché in dialogue is the character's voice, and is left alone.
+  A phrase the chapter leans on says so: "This phrase appears 3 times in
+  this document."
+- **Register shifts.** Narration that leaves the register the chapter
+  keeps: a word from outside the period the narration sets (`period`), slang
+  in formal narration (`slang`), legal or corporate wording where the
+  narration keeps none (`jargon`), or a sudden ornate passage in plain prose
+  (`ornate`). The call first names the register the chapter's narration
+  keeps, and each flag says so: "The chapter's narration: a wry, formal
+  English, plain and unhurried." Dialogue is left alone, and so is a
+  character's own marked thought. A word is flagged for its date only when
+  the narration sets a period.
+- **Gesture strain.** A gesture a reader stumbles on: one the body cannot
+  make as written (`impossible`; "her eyes dropped" and other accepted
+  figures are left alone), choreography the reader stops to assemble
+  (`complicated`), a stock beat that carries nothing (`thin`), or one that
+  names its own body part (`redundant`: "nodded his head"). A thin beat is
+  flagged only where the chapter leans on it or it alone carries a turn.
+  Prose Minion counts each stock beat a flag names (nod, shrug, sigh,
+  smile, grin, frown, wink, smirk, a shake of the head, a roll of the eyes),
+  every form together, and says so: "Nods appear 7 times in this
+  document." A gesture in a dialogue beat is narration, and is read; words
+  inside quotation marks are left alone.
+- **Continuity.** Two places in the chapter that cannot both be true: a
+  body, a thing, a place or position, the time, or who is there, stated one
+  way and later another, with nothing between to explain it. The flag sits
+  on the later place, and the earlier one is linked under it in the
+  Problems panel and the hover. The note sets the two facts side by side
+  and says which version the rest of the chapter keeps, when it keeps one,
+  never which is right, so it offers no rewording. Facts on either side of
+  a scene break, a heading or a chapter line are never paired, even one
+  you add while the run is in flight (one inside a code block does not
+  count), and neither is anything a character says: people misremember. An
+  edit to either place withdraws the flag.
+- **Choose what it looks for.** `proseMinion.craftFlags.categories` turns
+  each category on or off. All four are on by default, and each is a
+  request of its own, priced in the confirmation. How much a thinking model
+  may think for each is `proseMinion.craftFlags.reasoning` (`standard` by
+  default), counted in the price. At `off`, a model that always thinks is
+  refused before the confirmation, and nothing is sent.
+- **Options, never orders.** A note that tells you what to do, grades the
+  writing, quotes, or states a count is not shown as written: a why becomes
+  a plain description of the phrase's kind, and a suggestion is left out.
+- **Asks first, with a price.** Every run names the words it reads, the
+  model, and an estimated price ("≈ $0.06"), never a cap. A chapter over
+  25,000 words is refused whole; select a part and that part is read alone.
+  Under that, a selection reads the whole chapter for context and flags only
+  the selection.
+
+Continuity across chapters, which needs a story bible, is not in this
+slice.
+
 ---
 
 ## Measurement Tools (No API Key Required)
 
-### 6. Prose Statistics
+### 8. Prose Statistics
 
 **Location**: `packages/core/src/tools/measure/passageProseStats/index.ts`
 
@@ -117,7 +268,7 @@ Comprehensive prose metrics:
 - Publishing format with trim size and page estimate
 - Optional chapter breakdown tables on save/copy
 
-### 7. Style Flags
+### 9. Style Flags
 
 **Location**: `packages/core/src/tools/measure/styleFlags/index.ts`
 
@@ -135,7 +286,7 @@ Identifies style patterns that need attention:
 
 Output: count per category + example sentences.
 
-### 8. Word Frequency
+### 10. Word Frequency
 
 **Location**: `packages/core/src/tools/measure/wordFrequency/index.ts`
 
@@ -150,7 +301,7 @@ Comprehensive word usage analysis:
 
 Configurable via `proseMinion.wordFrequency.*` settings. POS tagging uses `wink-pos-tagger` bundled with the extension.
 
-### 9. Word Search
+### 11. Word Search
 
 Advanced word pattern matching with context windows and cluster detection.
 
@@ -201,7 +352,7 @@ Loaded by `packages/core/src/tools/shared/guides.ts` when `proseMinion.includeCr
   composite workflows may use their own documented allowance; Gesture
   Dictionary generation uses 14,000 so the readable scan and menu can complete.
   Responses hitting a provider cap show a truncation notice.
-- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`. See the in-app **Model Browser** for the full curated list.
+- Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`, `proofreadModel`, `craftModel`. See the in-app **Model Browser** for the full curated list.
 - Curated model IDs are defined in `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts` and verified against the live OpenRouter API.
 
 ---

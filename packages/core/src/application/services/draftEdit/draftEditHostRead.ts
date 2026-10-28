@@ -1,0 +1,131 @@
+/**
+ * What host code reads of the whole document for a Proofread run, before
+ * any model is asked (ADR 2026-10-21, Amendment 2026-10-26: Slice 3b):
+ *
+ * - the narration baseline, sent beside each chunk (part 1);
+ * - the keys of the writer's accepted words, the backstop that drops a
+ *   `spelling` or `wrong-word` finding on one (part 2);
+ * - host issues: the name variants (part 2), and the quotation marks a
+ *   paragraph leaves unpaired and the words the document spells two ways
+ *   (part 3). A selection run reads the whole document but keeps only those
+ *   inside its selection.
+ *
+ * Everything is read from the gesture's snapshot, as the model's findings
+ * are, so both follow the writer's edits the same way. Logs name the run,
+ * never the text.
+ */
+
+import type { LogSink } from '@/platform';
+import type { DraftEditTarget, ProofreadPass, TextRange } from '@/domain/models/DraftEdit';
+import type { ProofreadHostCategory } from '@/domain/models/ProofreadIssue';
+import { readDocumentRegions } from '@/utils/draftEdit/protectedRegions';
+import { findNameVariants, type NameVariant } from '@/utils/proofread/nameConsistency';
+import { measureNarrationBaseline, type NarrationBaseline } from '@/utils/proofread/narrationBaseline';
+import { proofreadWordListKeys } from '@/utils/proofread/proofreadWordList';
+import { findQuotationSlips, type QuotationSlip, type QuotationSlipKind } from '@/utils/proofread/quotationMarks';
+import { findInconsistentSpellings, type InconsistentSpelling } from '@/utils/proofread/spellingConsistency';
+
+/** An issue host code found, placed in the gesture's snapshot; placement gives it an id. */
+export interface DraftEditHostFinding {
+  readonly category: ProofreadHostCategory;
+  readonly start: number;
+  readonly end: number;
+  readonly original: string;
+  readonly replacement?: string;
+  readonly explanation: string;
+}
+
+export interface DraftEditHostRead {
+  /** The whole document's narration; absent when nothing is clear, or the tagger could not load. */
+  readonly narration?: NarrationBaseline;
+  /** The writer's accepted words, as compared (`proofreadWordKey`). */
+  readonly accepted: ReadonlySet<string>;
+  /** Host issues inside the run's region, in order. */
+  readonly findings: readonly DraftEditHostFinding[];
+}
+
+export function readWholeDocument(target: DraftEditTarget, pass: ProofreadPass, log: LogSink, label: string): DraftEditHostRead {
+  const regions = readDocumentRegions(target.text, target.languageId);
+  const accepted = proofreadWordListKeys(pass.wordList ?? []);
+  const region = target.range ?? { start: 0, end: target.text.length };
+  const names = findNameVariants(target.text, [...regions.protected, ...regions.headings], accepted);
+  if (names.kind === 'stopped') {
+    log.appendLine(`[DraftEdit] Proofread ${label}: no name check (${names.names} capitalized words are too many to compare)`);
+  }
+  const findings = [
+    ...(names.kind === 'checked' ? names.variants : []).map(nameFinding),
+    ...findQuotationSlips(target.text, regions.protected).map(quotationFinding),
+    ...findInconsistentSpellings(target.text, regions.protected, accepted, pass.spelling).map(consistencyFinding)
+  ]
+    .filter((finding) => finding.start >= region.start && finding.end <= region.end)
+    .sort((a, b) => a.start - b.start);
+  const narration = narrationOf(target.text, regions.protected, log, label);
+  return { ...(narration ? { narration } : {}), accepted, findings };
+}
+
+function nameFinding(variant: NameVariant): DraftEditHostFinding {
+  const uses = variant.variantUses === 1 ? 'once' : 'twice';
+  return {
+    category: 'name',
+    start: variant.start,
+    end: variant.end,
+    original: variant.variant,
+    replacement: variant.name,
+    explanation: `“${variant.variant}” appears ${uses} in this document, and “${variant.name}” ${variant.nameUses} times.`
+      + ` If “${variant.variant}” is another name, add it to the Proofread word list.`
+  };
+}
+
+/** A slip is flagged with no replacement: where the missing mark belongs is the writer's to say. */
+function quotationFinding(slip: QuotationSlip): DraftEditHostFinding {
+  return { category: 'quotation', start: slip.start, end: slip.end, original: slip.mark, explanation: quotationExplanation(slip.kind) };
+}
+
+function quotationExplanation(kind: QuotationSlipKind): string {
+  switch (kind) {
+    case 'unclosed':
+      return 'This quotation mark opens a quotation that is still open where its paragraph ends.'
+        + ' If the speech goes on, the next paragraph opens with a quotation mark; otherwise a closing mark is missing.';
+    case 'unclosed-before-next':
+      return 'This quotation mark opens a quotation that is still open where the next one opens: a closing mark is missing.';
+    case 'unopened':
+      return 'This closing quotation mark has no opening mark before it in its paragraph.';
+    case 'closing-mark-opens':
+      return 'This closing quotation mark (”) stands where a quotation opens; an opening mark (“) may be meant.';
+    case 'opening-mark-closes':
+      return 'This opening quotation mark (“) stands where a quotation closes; a closing mark (”) may be meant.';
+    default: {
+      const unknown: never = kind;
+      return unknown;
+    }
+  }
+}
+
+const CONVENTION_NAMES = { american: 'American', british: 'British', canadian: 'Canadian', australian: 'Australian' } as const;
+
+function consistencyFinding(use: InconsistentSpelling): DraftEditHostFinding {
+  return {
+    category: 'consistency',
+    start: use.start,
+    end: use.end,
+    original: use.original,
+    replacement: use.replacement,
+    explanation: `This document spells this word “${use.spelling}” ${times(use.uses)} and “${use.otherSpelling}” ${times(use.otherUses)}.`
+      + (use.convention ? ` ${CONVENTION_NAMES[use.convention]} spelling uses “${use.otherSpelling}”.` : '')
+  };
+}
+
+function times(count: number): string {
+  return count === 1 ? 'once' : count === 2 ? 'twice' : `${count.toLocaleString('en-US')} times`;
+}
+
+/** A hint beside every chunk. A tagger that fails to load sends none, and the run goes on. */
+function narrationOf(text: string, protectedRegions: readonly TextRange[], log: LogSink, label: string): NarrationBaseline | undefined {
+  try {
+    const narration = measureNarrationBaseline(text, protectedRegions);
+    return narration.tense || narration.person ? narration : undefined;
+  } catch (error) {
+    log.appendLine(`[DraftEdit] Proofread ${label}: no narration baseline (${error instanceof Error ? error.message : String(error)})`);
+    return undefined;
+  }
+}

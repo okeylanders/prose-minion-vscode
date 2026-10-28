@@ -6,7 +6,8 @@
  * This is the most critical service in the refactor. It handles the complex lifecycle
  * of AI resources including:
  * - API key retrieval (SecretStorage with settings fallback)
- * - Model scope resolution (assistant, dictionary, context)
+ * - Model scope resolution (`ModelScopeSelections`: each scope's own setting,
+ *   and the Lightbox's, which follows the assistant model until it has one)
  * - OpenRouterClient creation per scope
  * - AgentRunEngine lifecycle management
  * - StatusCallback propagation
@@ -19,12 +20,13 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
-import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { AgentRunEngine, StatusCallback, TokenUsageCallback } from './AgentRunEngine';
 import { ConversationManager } from './ConversationManager';
 import { ModelScope } from '@shared/types';
 import { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
 import { ResourceLoaderService } from './ResourceLoaderService';
+import { resolveModelScopeSelections } from './ModelScopeSelections';
+import { apiKeyFingerprint } from './apiKeyFingerprint';
 import { GuideCapability } from './capabilities/GuideCapability';
 import { ContextFileCapability } from './capabilities/ContextFileCapability';
 import {
@@ -45,33 +47,18 @@ export interface AIResourceBundle {
   engine: AgentRunEngine;
 }
 
-/**
- * Configuration for AI resource initialization
- */
-export interface ModelConfiguration {
-  assistantModel?: string;
-  dictionaryModel?: string;
-  contextModel?: string;
-  categoryModel?: string;
-  widgetModel?: string;
-  fallbackModel?: string;
-}
-
-/**
- * Quality-first default for the `widget` scope. Conversation Widgets are
- * occasional, bounded creative workflows, so output usefulness matters more
- * than minimizing the small per-run cost.
- */
-export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-sonnet-5';
-
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
   /** Assistant conversations and their engine survive provider/key outages. */
   private assistantEngine?: AgentRunEngine;
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private generation = 0;
+  /** Rebuilds started, in order: only the newest builds, since it read the key last (PR #169 F-01). */
+  private rebuilds = 0;
   private initialized = false;
   private initialization?: Promise<void>;
+  /** The fingerprint of the key the current resources were built with, never the key (PR #171 F-01). */
+  private adoptedKey?: string;
   private statusCallback?: StatusCallback;
   private readonly tokenUsageListeners: ListenerSet<[TokenUsage]>;
   private readonly tokenUsageResetListeners: ListenerSet<[]>;
@@ -113,9 +100,6 @@ export class AIResourceManager {
    * 3. Resolves model selections per scope with fallbacks
    * 4. Creates AIResourceBundle for each scope
    * 5. Propagates status callbacks
-   *
-   * @param apiKey - Optional API key override (if not provided, retrieves from storage)
-   * @param modelConfig - Optional model configuration override
    */
   async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
@@ -126,9 +110,14 @@ export class AIResourceManager {
   }
 
   /** Rebuild only for an explicit configuration change. */
-  async refreshConfiguration(): Promise<void> {
-    this.initialization = this.startRebuild();
+  async refreshConfiguration(observed?: { apiKey: string | undefined }): Promise<void> {
+    this.initialization = this.startRebuild(observed);
     await this.initialization;
+  }
+
+  /** Which key the current resources were built with, as `apiKeyFingerprint`; undefined before a build or after one failed. */
+  adoptedKeyFingerprint(): string | undefined {
+    return this.adoptedKey;
   }
 
   /**
@@ -184,9 +173,13 @@ export class AIResourceManager {
    * A failed build must not poison the singleton: clear the cached promise
    * on rejection so the next call retries instead of re-awaiting the corpse.
    */
-  private startRebuild(): Promise<void> {
-    return this.rebuildResources().catch(error => {
-      this.initialization = undefined;
+  private startRebuild(observed?: { apiKey: string | undefined }): Promise<void> {
+    const rebuild = ++this.rebuilds;
+    return this.rebuildResources(rebuild, observed).catch(error => {
+      if (rebuild === this.rebuilds) {
+        this.initialization = undefined;
+        this.adoptedKey = undefined;
+      }
       this.outputChannel?.appendLine(
         `[AIResourceManager] Resource build failed; will retry on next use: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -194,26 +187,30 @@ export class AIResourceManager {
     });
   }
 
-  private async rebuildResources(
-    apiKey?: string,
-    modelConfig?: ModelConfiguration
-  ): Promise<void> {
+  /** `observed`: a key the caller read already (its refresh owner, which orders reads), built with exactly as given. */
+  private async rebuildResources(rebuild: number, observed?: { apiKey: string | undefined }): Promise<void> {
     // Get API key from SecretStorage (fallback to settings for backward compatibility)
-    if (!apiKey) {
-      apiKey = await this.secretsService.getApiKey();
-
-      // Fallback to settings if not in SecretStorage (backward compatibility)
-      if (!apiKey) {
-        apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
-      }
+    let apiKey = observed ? observed.apiKey : await this.secretsService.getApiKey();
+    if (!observed && !apiKey) {
+      apiKey = this.settings.get<string>('proseMinion', 'openRouterApiKey');
     }
+    // Trimmed, as `apiKeyFingerprint` reads it: the key sent is the key compared (the second re-review).
+    apiKey = apiKey?.trim() || undefined;
+    // Every webview refreshes on a key change, so rebuilds overlap. One that a
+    // newer rebuild overtook while it read the key builds nothing: its key may
+    // be the old one, and its transports would replace the newer ones. It
+    // settles with the newest instead.
+    if (rebuild !== this.rebuilds) {
+      return this.initialization;
+    }
+    this.adoptedKey = apiKeyFingerprint(apiKey);
 
     // Non-conversational scopes remain disposable. The assistant engine owns
     // retained conversations, so only its provider attachment is replaced.
     this.disposeDisposableResources();
     this.generation += 1;
 
-    const selections = this.resolveModelSelections(modelConfig);
+    const selections = this.resolveModelSelections();
     const assistantModel = selections.assistant;
     const assistantEngine = this.getOrCreateAssistantEngine(assistantModel);
     assistantEngine.setModel(assistantModel);
@@ -240,6 +237,13 @@ export class AIResourceManager {
     const contextModel = selections.context;
     const categoryModel = selections.category;
     const widgetModel = selections.widget;
+    // The Lightbox's own engine and client (Slice 4L), never the assistant's:
+    // its model follows the assistant model until the writer picks one.
+    const lightboxModel = selections.lightbox;
+    // Proofread's own engine (ADR 2026-10-21 D6): an own scope, built only here.
+    const proofreadModel = selections.proofread;
+    // Craft Flags' own engine (ADR 2026-10-21, Slice 3c): it follows the assistant model until picked, as the Lightbox's does.
+    const craftModel = selections.craft;
 
     // Create AI resources for each scope
     assistantEngine.attachProvider(
@@ -255,13 +259,19 @@ export class AIResourceManager {
     const contextResources = this.createResourceBundle(apiKey!, 'context', contextModel);
     const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
     const widgetResources = this.createResourceBundle(apiKey!, 'widget', widgetModel);
+    const lightboxResources = this.createResourceBundle(apiKey!, 'lightbox', lightboxModel);
+    const proofreadResources = this.createResourceBundle(apiKey!, 'proofread', proofreadModel);
+    const craftResources = this.createResourceBundle(apiKey!, 'craft', craftModel);
 
     this.aiResources = {
       assistant: assistantResources,
       dictionary: dictionaryResources,
       context: contextResources,
       category: categoryResources,
-      widget: widgetResources
+      widget: widgetResources,
+      lightbox: lightboxResources,
+      proofread: proofreadResources,
+      craft: craftResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -273,36 +283,22 @@ export class AIResourceManager {
       dictionary: dictionaryModel,
       context: contextModel,
       category: categoryModel,
-      widget: widgetModel
+      widget: widgetModel,
+      lightbox: lightboxModel,
+      proofread: proofreadModel,
+      craft: craftModel
     };
     this.initialized = true;
   }
 
-  private resolveModelSelections(modelConfig?: ModelConfiguration): Record<ModelScope, string> {
-    const fallbackModel = modelConfig?.fallbackModel ?? 'anthropic/claude-sonnet-5';
-    return {
-      assistant: modelConfig?.assistantModel
-        ?? this.settings.get<string>('proseMinion', 'assistantModel')
-        ?? fallbackModel,
-      dictionary: modelConfig?.dictionaryModel
-        ?? this.settings.get<string>('proseMinion', 'dictionaryModel')
-        ?? fallbackModel,
-      context: modelConfig?.contextModel
-        ?? this.settings.get<string>('proseMinion', 'contextModel')
-        ?? fallbackModel,
-      category: modelConfig?.categoryModel
-        ?? this.settings.get<string>('proseMinion', 'categoryModel')
-        ?? DEFAULT_CATEGORY_MODEL,
-      widget: modelConfig?.widgetModel
-        ?? this.settings.get<string>('proseMinion', 'widgetModel')
-        ?? DEFAULT_WIDGET_MODEL
-    };
+  private resolveModelSelections(): Record<ModelScope, string> {
+    return resolveModelScopeSelections(this.settings);
   }
 
   /**
    * Get the manager-owned agent-run engine for a specific model scope.
    *
-   * @param scope - The model scope ('assistant', 'dictionary', 'context')
+   * @param scope - The model scope ('assistant', 'dictionary', 'context', 'category', 'widget', 'lightbox', 'proofread', 'craft')
    * @returns AgentRunEngine if available, undefined otherwise
    */
   getEngine(scope: ModelScope): AgentRunEngine | undefined {
@@ -426,6 +422,7 @@ export class AIResourceManager {
     this.resolvedModels = {};
     this.initialized = false;
     this.initialization = undefined;
+    this.adoptedKey = undefined;
     this.statusCallback = undefined;
     this.tokenUsageListeners.clear();
     this.tokenUsageResetListeners.clear();
@@ -492,6 +489,11 @@ export class AIResourceManager {
   private disposeDisposableResources(): void {
     for (const [scope, resource] of Object.entries(this.aiResources)) {
       if (scope !== 'assistant') {
+        // A retired engine may still be held by a run in progress (a Lightbox
+        // run keeps its engine for every call, the Opinion last): it starts no
+        // new provider call after its key is removed or replaced, failing it as
+        // missing credentials. A request already sent settles (PR #169 F-01).
+        resource?.engine.detachProvider();
         resource?.engine.dispose();
       }
     }

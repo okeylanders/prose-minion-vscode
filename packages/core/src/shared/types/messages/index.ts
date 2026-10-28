@@ -28,7 +28,12 @@ export * from './sources';
 export * from './ui';
 export * from './results';
 export * from './streaming';
+export * from './configuredResources';
+// Rejected-response recovery contracts, shared beyond the Workshop (widgets, the Lightbox, Proofread)
+export * from './recovery';
 export * from './workshop';
+// The Lightbox domain, behind its own barrel (Slice 5A.1)
+export * from './lightboxBarrel';
 
 // Union types for message routing
 import {
@@ -107,6 +112,7 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  OpenLightboxMessage,
   OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
   StartupNoticeDataMessage,
@@ -210,6 +216,16 @@ import {
   WorkshopLexicalGravityLensCandidatesMessage,
   WorkshopSaveLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesSavedMessage,
+  WorkshopOpenLexicalGravityBuildMessage,
+  WorkshopLexicalGravityBuildSeedMessage,
+  WorkshopSeedClaimMessage,
+  WorkshopSeedClaimResultMessage,
+  WorkshopSeedAnswerMessage,
+  WorkshopSeedReceiverMessage,
+  WorkshopStageLightboxTileMessage,
+  WorkshopLightboxTileOfferedMessage,
+  WorkshopAcceptLightboxTileMessage,
+  WorkshopLightboxTileStagedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -218,6 +234,7 @@ import {
   WorkshopRemoveStandingWidgetMessage,
   WorkshopWidgetActionResultMessage
 } from './workshop';
+import { LightboxExtensionToWebviewMessage, LightboxWebviewToExtensionMessage } from './lightboxBarrel';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -256,6 +273,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | OpenLightboxMessage
   | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
   | RequestDictionaryHistoryMessage
@@ -321,10 +339,17 @@ export type WebviewToExtensionMessage =
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
   | WorkshopSaveLexicalGravityLensesMessage
+  | WorkshopOpenLexicalGravityBuildMessage
+  | WorkshopSeedClaimMessage
+  | WorkshopSeedAnswerMessage
+  | WorkshopSeedReceiverMessage
+  | WorkshopStageLightboxTileMessage
+  | WorkshopAcceptLightboxTileMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
-  | WorkshopRemoveStandingWidgetMessage;
+  | WorkshopRemoveStandingWidgetMessage
+  | LightboxWebviewToExtensionMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -380,6 +405,11 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage
   | WorkshopLexicalGravityLensesSavedMessage
+  | WorkshopLexicalGravityBuildSeedMessage
+  | WorkshopSeedClaimResultMessage
+  | WorkshopLightboxTileOfferedMessage
+  | WorkshopLightboxTileStagedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
-  | WorkshopWidgetActionResultMessage;
+  | WorkshopWidgetActionResultMessage
+  | LightboxExtensionToWebviewMessage;

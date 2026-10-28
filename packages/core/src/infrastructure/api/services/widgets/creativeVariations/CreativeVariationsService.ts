@@ -18,7 +18,7 @@ import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import { PromptLoader } from '@/tools/shared/prompts';
 import type { LogSink } from '@/platform';
 import {
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice,
   type RejectedModelResponseRecovery,
   type RejectedModelResponseRecoveryPresenter
@@ -216,7 +216,7 @@ export class CreativeVariationsService {
     this.outputChannel?.appendLine(
       `[CreativeVariationsService] Rejected response: ${rejection}`
     );
-    const receipt = await persistRejectedWidgetResponse(
+    const receipt = await persistRejectedModelResponse(
       this.rejectedResponseRecovery,
       this.rejectedResponseRecoveryPresenter,
       {

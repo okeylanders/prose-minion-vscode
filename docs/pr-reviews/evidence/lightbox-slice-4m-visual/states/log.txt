@@ -1,0 +1,15 @@
+[LightboxHandler] Board built for Drafts/alice-long.md: 20320 words, 320 paragraphs
+[LightboxBoardStore] Saved drafts-alice-long-md-c29bde1c/2026-10-22T14-05-09-123Z.board.json (424000 bytes).
+[LightboxReadingRunner] Run run-1-token started: groups A, B, C, D, E, G, F
+[LightboxReadingRunner] Group B call failed: unexpected (Error)
+[LightboxReadingRunner] Group A read (headline, motif, tension, gravity, palette): 15 tiles, 1 blocks withheld, 0 claims withheld, 23 quotes checked (0 withheld)
+[LightboxReadingRunner] Group C read (genre, lineage, spark): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 9 tiles, 1 blocks withheld, 2 claims withheld, 28 quotes checked (0 withheld)
+[LightboxReadingRunner] Group E read (template, pressure, artifacts, summary): 15 tiles, 0 blocks withheld, 2 claims withheld, 29 quotes checked (0 withheld)
+[LightboxReadingRunner] Group G read (steering): 10 tiles, 0 blocks withheld, 0 claims withheld, 13 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-token group F digest: 84 items, 56 readings, 0 left out, about 6,663 tokens, key eae57d4ebf3b
+[LightboxReadingRunner] Group F read (opinion) against a digest of 84 items: 2 observations drawn, 0 withheld; 3 views drawn, 0 withheld
+[LightboxReadingHandler] Group F landed on digest eae57d4ebf3b, the board it read: current
+[LightboxReadingRunner] Run run-1-token finished: A ok, B failed, C ok, D ok, E ok, G ok, F ok
+[LightboxReadingHandler] Run run-1-token finished: 7 groups, 7200 tokens, $0.0600
+[LightboxBoardStore] Rewrote drafts-alice-long-md-c29bde1c/2026-10-22T14-05-09-123Z.board.json in place.

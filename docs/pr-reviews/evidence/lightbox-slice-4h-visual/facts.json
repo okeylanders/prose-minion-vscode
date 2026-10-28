@@ -1,0 +1,266 @@
+{
+  "overrun-motifs@1440": {
+    "found": true,
+    "width": 744,
+    "count": 6,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3947,
+    "shownWhole": 12,
+    "clippedAtCeiling": [
+      "Pictures and conversations"
+    ]
+  },
+  "overrun-pinned@1440": {
+    "found": true,
+    "width": 307,
+    "count": null,
+    "quotes": 6,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 2988,
+    "shownWhole": 8
+  },
+  "overrun-template@1440": {
+    "found": true,
+    "width": 744,
+    "count": null,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3153,
+    "shownWhole": 11
+  },
+  "overrun-sparks@1440": {
+    "found": true,
+    "width": 744,
+    "count": 5,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 1486,
+    "shownWhole": 10
+  },
+  "salvaged-summary@1440": {
+    "found": true,
+    "width": 744,
+    "count": null,
+    "quotes": 0,
+    "withheld": [
+      "Withheld The reply reached the output ceiling before this block finished. Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/2026-10-22T14-06-30-000Z-lightbox-readings-c467a53b-ffa2-479d-b220-f0bea27306cc.response.txt."
+    ],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs.",
+      "The movements were withheld: Summary & movements says why.",
+      "No engagement on the board: it was withheld, or there are no movements to sit on."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 509,
+    "shownWhole": 1,
+    "elsewhereCharacters": 1554
+  },
+  "overrun-motifs@1000": {
+    "found": true,
+    "width": 680,
+    "count": 6,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3947,
+    "shownWhole": 12,
+    "clippedAtCeiling": [
+      "Pictures and conversations"
+    ]
+  },
+  "overrun-pinned@1000": {
+    "found": true,
+    "width": 247,
+    "count": null,
+    "quotes": 6,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 2988,
+    "shownWhole": 8
+  },
+  "overrun-template@1000": {
+    "found": true,
+    "width": 680,
+    "count": null,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3153,
+    "shownWhole": 11
+  },
+  "overrun-sparks@1000": {
+    "found": true,
+    "width": 680,
+    "count": 5,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 1486,
+    "shownWhole": 10
+  },
+  "salvaged-summary@1000": {
+    "found": true,
+    "width": 680,
+    "count": null,
+    "quotes": 0,
+    "withheld": [
+      "Withheld The reply reached the output ceiling before this block finished. Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/2026-10-22T14-06-30-000Z-lightbox-readings-c467a53b-ffa2-479d-b220-f0bea27306cc.response.txt."
+    ],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs.",
+      "The movements were withheld: Summary & movements says why.",
+      "No engagement on the board: it was withheld, or there are no movements to sit on."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 509,
+    "shownWhole": 1,
+    "elsewhereCharacters": 1554
+  },
+  "overrun-motifs@500": {
+    "found": true,
+    "width": 468,
+    "count": 6,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3947,
+    "shownWhole": 12,
+    "clippedAtCeiling": [
+      "Pictures and conversations"
+    ]
+  },
+  "overrun-pinned@500": {
+    "found": true,
+    "width": 468,
+    "count": null,
+    "quotes": 6,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 2988,
+    "shownWhole": 8
+  },
+  "overrun-template@500": {
+    "found": true,
+    "width": 468,
+    "count": null,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 3153,
+    "shownWhole": 11
+  },
+  "overrun-sparks@500": {
+    "found": true,
+    "width": 468,
+    "count": 5,
+    "quotes": 0,
+    "withheld": [],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 1486,
+    "shownWhole": 10
+  },
+  "salvaged-summary@500": {
+    "found": true,
+    "width": 468,
+    "count": null,
+    "quotes": 0,
+    "withheld": [
+      "Withheld The reply reached the output ceiling before this block finished. Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/2026-10-22T14-06-30-000Z-lightbox-readings-c467a53b-ffa2-479d-b220-f0bea27306cc.response.txt."
+    ],
+    "plotNotes": [
+      "Found one heading (¶1), which does not divide the chapter into two or more sections, so the ribbon stays in paragraphs.",
+      "The movements were withheld: Summary & movements says why.",
+      "No engagement on the board: it was withheld, or there are no movements to sit on."
+    ],
+    "cut": [],
+    "escaped": [],
+    "horizontalOverflow": false,
+    "clippedButtons": [],
+    "textCharacters": 509,
+    "shownWhole": 1,
+    "elsewhereCharacters": 1554
+  }
+}

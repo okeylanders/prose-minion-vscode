@@ -59,6 +59,31 @@ describe('projectWorkshopTranscript', () => {
     expect(JSON.stringify(withWidget)).not.toContain('ta-2');
   });
 
+  it('exports a sent Lightbox tile as its pill label, never its claim, points or quotes (Lightbox Slice 4)', () => {
+    const turn = writerTurn('u-9', {
+      content: 'What do you make of this?',
+      messageAttachments: [{
+        id: 'ta-9',
+        label: 'Lightbox Motif: The empty jar',
+        words: 64,
+        relativePath: 'Drafts/alice-chapter-1.md',
+        lightboxTile: {
+          boardId: 'board-1',
+          tileId: 'tile-a-motif-1',
+          kindLabel: 'Motif',
+          quotes: 2,
+          sourceLabel: 'Drafts/alice-chapter-1.md'
+        }
+      }]
+    });
+    const entry = projectWorkshopTranscriptTurn(turn);
+
+    expect(entry).toMatchObject({ kind: 'writer', attachmentLabels: ['Lightbox Motif: The empty jar'] });
+    // Ids, counts and paths are the pill's, not the reader's; the body never reaches the turn at all.
+    expect(JSON.stringify(entry)).not.toMatch(/tile-a-motif-1|board-1|alice-chapter-1/);
+    expect(JSON.stringify(project([turn]))).not.toMatch(/tile-a-motif-1|board-1/);
+  });
+
   it('collapses persona-requested capability artifacts to a one-line request', () => {
     const transcript = project();
     const capability = transcript.entries.find((entry) => entry.turnId === 'cap-1');

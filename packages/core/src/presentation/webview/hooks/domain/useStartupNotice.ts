@@ -33,7 +33,11 @@ export type UseStartupNoticeReturn = StartupNoticeState & StartupNoticeActions &
   persistedState: StartupNoticePersistence;
 };
 
-export function useStartupNotice(): UseStartupNoticeReturn {
+/**
+ * @param source The envelope source of the tab asking (e.g. `webview.workshop`),
+ *   so each full-tab surface's notice traffic is traceable as its own.
+ */
+export function useStartupNotice(source: `webview.${string}`): UseStartupNoticeReturn {
   const vscode = useVSCodeApi();
 
   const [noticeOpen, setNoticeOpen] = React.useState(false);
@@ -43,11 +47,11 @@ export function useStartupNotice(): UseStartupNoticeReturn {
   const requestStartupNotice = React.useCallback(() => {
     vscode.postMessage({
       type: MessageType.REQUEST_STARTUP_NOTICE,
-      source: 'webview.workshop',
+      source,
       payload: {},
       timestamp: Date.now()
     });
-  }, [vscode]);
+  }, [source, vscode]);
 
   const handleStartupNoticeData = React.useCallback((message: StartupNoticeDataMessage) => {
     noticeVersionRef.current = message.payload.noticeVersion;
@@ -60,13 +64,13 @@ export function useStartupNotice(): UseStartupNoticeReturn {
       if (dontShowAgain && noticeVersionRef.current !== null) {
         vscode.postMessage({
           type: MessageType.DISMISS_STARTUP_NOTICE,
-          source: 'webview.workshop',
+          source,
           payload: { noticeVersion: noticeVersionRef.current },
           timestamp: Date.now()
         });
       }
     },
-    [vscode]
+    [source, vscode]
   );
 
   return {

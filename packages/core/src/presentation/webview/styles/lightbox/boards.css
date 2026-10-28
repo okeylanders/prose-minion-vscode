@@ -1,0 +1,150 @@
+/* ============================================================
+   Prose Minion — the Lightbox's saved boards (Slice 5A; ADR 2026-10-19
+   D12 addendum; Slice 5A.2).
+   From Slice 5A.2 the boards live in the header's Boards menu, the browser
+   and the name sheet, which are the full tabs' shared saved-item surfaces:
+   their rules are the frame's (styles/fulltab/savedItems.css). Here are only
+   the Lightbox's own parts: a row's glyph, chapter and model line, the
+   outcome strip under the header (PR #167 F-03), the name sheet's width and
+   refusal, and the note above a board opened from a file
+   (decision 34; the rail it was copied from is gone). Every feature here
+   holds on the Chromium 114 floor.
+   ============================================================ */
+
+/* ---------- The saved-board browser's rows ---------- */
+[data-pm-surface="lightbox"] .pm-lb-board-glyph {
+  color: var(--pm-accent-hi);
+}
+/* The Workshop's glyph pins its last icon (a persona's focus) to the corner;
+   a board's glyph has one icon, centred. */
+[data-pm-surface="lightbox"] .pm-lb-board-glyph svg:last-child {
+  position: static;
+}
+[data-pm-surface="lightbox"] .pm-lb-board-chapter {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--pm-text-2);
+  text-overflow: ellipsis;
+}
+/* A board's line wraps between its parts where the Workshop's cuts, so a
+   narrow browser still names the chapter rather than its first letter. */
+[data-pm-surface="lightbox"] .pm-lb-board-browser .pm-ws-session-row-meta {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-board-models {
+  color: var(--pm-dim);
+  font-size: 11px;
+}
+
+/* ---------- The Boards menu at narrow widths ----------
+   At 520 px and under the frame's header wraps its actions to the left, so
+   a menu anchored to its trigger's right edge runs off the window's left
+   edge (and, with the Workshop tray before it, could run off the right).
+   Here it hangs from the actions block instead, at the gutter. */
+@media (max-width: 520px) {
+  [data-pm-surface="lightbox"] .pm-ws-header-actions {
+    position: relative;
+  }
+  [data-pm-surface="lightbox"] .pm-ws-sessions-menu-wrap {
+    position: static;
+  }
+  [data-pm-surface="lightbox"] .pm-ws-sessions-menu {
+    left: 0;
+    right: auto;
+  }
+}
+
+/* ---------- What an open, delete or rename left to say (PR #167 F-03) ----------
+   A strip under the header, in the frame's banner shape (the provider-paused
+   banner's), so it outlives the name sheet or the browser that asked. */
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome > svg {
+  flex: none;
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome > span {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome strong {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-amber) 13%, var(--pm-surface-2));
+  color: var(--pm-text);
+  font: 600 11px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button:hover,
+[data-pm-surface="lightbox"] .pm-lb-boards-outcome button:focus-visible {
+  border-color: var(--pm-amber);
+  outline: 0;
+  background: color-mix(in srgb, var(--pm-amber) 20%, var(--pm-surface-2));
+}
+
+/* ---------- Rename board… ---------- */
+[data-pm-surface="lightbox"] .pm-lb-board-name-modal {
+  width: min(640px, 100%);
+}
+[data-pm-surface="lightbox"] .pm-lb-board-name-fault {
+  margin: 8px 2px 0;
+  color: var(--pm-red, #d66);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* ---------- A board opened from a file: the note above it ---------- */
+[data-pm-surface="lightbox"] .pm-lb-snapshot {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 10px 0 0;
+  padding: 10px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot.is-warn {
+  border-color: color-mix(in srgb, var(--pm-amber) 50%, var(--pm-border));
+  background: color-mix(in srgb, var(--pm-amber) 8%, var(--pm-surface));
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot.is-warn > svg {
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body {
+  flex: 1;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body p {
+  margin: 0 0 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-snapshot-body .pm-lb-button {
+  margin-top: 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-board-notice {
+  margin: 0 0 14px;
+}

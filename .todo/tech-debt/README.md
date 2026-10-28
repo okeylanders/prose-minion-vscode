@@ -82,6 +82,34 @@ elsewhere.
 | Medium | [Show vs. Tell live-provider quality pass](2026-10-09-show-vs-tell-live-provider-quality-pass.md) | Open |
 | Low | [Persona pronoun metadata](2026-10-09-persona-pronoun-metadata.md) | Open — writer decision |
 | Medium | [Thread artifacts replay on every later turn](2026-10-11-workshop-thread-artifact-history-replay.md) | Identified |
+| Low | [Transcript export mirror misstates the cascade order](2026-10-19-transcript-export-mirror-cascade-order.md) | Identified |
+| Low | [Shared full-tab frame classes keep the Workshop prefix](2026-10-19-fulltab-frame-class-prefix.md) | Identified |
+| Medium | [A missing relative path silently measures the active editor's file](2026-10-19-text-source-active-editor-fallback.md) | Identified |
+| Low | [Part-of-speech lists count contraction fragments](2026-10-19-pos-tagger-token-fragments.md) | Identified |
+| Medium | [Lightbox readings have not met a live provider](2026-10-19-lightbox-live-provider-pass.md) | Deferred (Lightbox Slice 6) |
+| Low | [A Lightbox reading in flight when the chapter changes is dropped](2026-10-19-lightbox-forward-in-flight-readings.md) | Identified |
+| Low | [The engine logs a provider's error type verbatim after an interrupted stream](2026-10-19-agent-run-engine-provider-error-log.md) | Identified |
+| Medium | [A long unbroken run of word characters stalls word frequency for minutes](2026-10-19-pos-tagger-long-token-backtracking.md) | Identified |
+| Low | [Lightbox run accounting on its exceptional paths](2026-10-19-lightbox-exceptional-path-accounting.md) | Identified |
+| Low | [Dialogue % ignores single-quoted dialogue](2026-10-19-dialogue-single-quote-convention.md) (also withholds Lightbox subtext pairs in single-quoted text) | Identified |
+| Low | [The Workshop does not reflow at narrow widths](2026-10-19-workshop-narrow-width-reflow.md) | Identified |
+| Low | [A seed offer the Workshop refuses only times out](2026-10-19-workshop-refused-seed-offer-times-out.md) | Identified |
+| Low | [A carried said line does not follow speech that moved past narration](2026-10-20-lightbox-carried-said-line-moved-speech.md) | Identified |
+| Low | [The shared project picker still leans on Workshop-named seams](2026-10-20-shared-picker-workshop-named-seams.md) (the modal shell's folder, the catalog service's name) | Identified |
+| Low | [The configured catalog lists only one of two same-named files across workspace folders](2026-10-20-context-catalog-cross-root-collapse.md) (older than PR #154; found in its F-02 review) | Identified |
+| Low | [The Opinion's digest leaves readings out in board order](2026-10-21-lightbox-opinion-digest-board-order-cut.md) (Lightbox Slice 4D; a board over the bound loses group E first) | Identified |
+| Low | [The word-pattern figures miss a form wrapped in underscore emphasis](2026-10-21-lightbox-word-patterns-miss-underscore-emphasis.md) (Lightbox Slice 4F; `_was_` counts nowhere, consistently) | Identified |
+| Low | [Craft steering's construction breakdown is a next-word heuristic](2026-10-21-lightbox-steering-construction-heuristics.md) (Lightbox Slice 4F) | Identified |
+| Medium | [Several Lightbox modules sit just under the 500-line limit](2026-10-21-lightbox-modules-near-size-limit.md) (Lightbox Slice 4F, with 4E merged; reviewed after 5A.1, which split the barrel and the store's rewrites out) | Identified |
+| Low | [A reopened board's passages are found by today's rules](2026-10-22-lightbox-reopened-passages-use-todays-rules.md) (Lightbox Slice 5A; matters once a rule id changes) | Identified |
+| Low | [A steering example of one short form cannot anchor, and its reason misleads](2026-10-21-lightbox-steering-short-example-forms.md) (PR #160 review) | Identified |
+| Low | [Craft steering's counts do not open the inspector's sentence well](2026-10-21-lightbox-steering-sentence-well.md) (a follow-up from merging Slice 4E into 4F) | Identified |
+| Low | [A lone straight quote counts as a word in the vocabulary figures](2026-10-21-prose-stats-punctuation-only-words.md) (PR #161 N-01; inherited; the sentences well now shows such a word outside any sentence) | Identified |
+| Low | [The numbers lens's sentence and dialogue filters recompute per candidate span](2026-10-21-lightbox-numbers-filters-per-span.md) (found fixing PR #162 F-01; older than it; not on craft steering's path) | Identified |
+| Low | [Equal-millisecond board claims can recover older metadata after a failed rollback](2026-10-23-lightbox-board-claims-equal-millisecond.md) (PR #164 N-03, nonblocking) | Identified |
+| Low | [Offer to repair and read a Lightbox reply already in the recovery folder](2026-10-23-lightbox-repair-from-recovery.md) (Lightbox Slice 4H) | Identified |
+| Medium | [Workshop widgets should read their JSON through the shared model-JSON parser](2026-10-23-widget-model-json-repair-adoption.md) (Lightbox Slice 4H; four call sites) | Identified |
+| Low | [Offer the misnested-member repair to the Workshop widgets](2026-10-24-widget-misnested-member-repair.md) (Lightbox Slice 4K; after each adopts the shared parser) | Identified |
 
 ## Review Guidance
 
@@ -93,6 +121,22 @@ elsewhere.
   focused concern and narrow the parent document.
 
 ## Recently resolved
+
+- [One home for the Lightbox reading codec's field decoders](../archive/tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md): `LightboxReadingFields.ts` is the only home; the reading, plot and craft codecs lost their private copies (Lightbox Slice 4H, 2026-10-23).
+
+- [A maximal group D response](../archive/tech-debt/2026-10-20-lightbox-group-d-response-ceiling.md), and [a maximal group E response](../archive/tech-debt/2026-10-20-lightbox-group-e-response-ceiling.md), can exceed the per-group response cap: superseded. The response's length is an ask, a reply cut off at the 12,000-token output ceiling keeps its finished blocks, and measuring typical output stays with Slice 6 (Lightbox Slice 4H, epic decisions 38 and 40, 2026-10-23).
+
+- [A spark set aside is saved only with the board's next save](../archive/tech-debt/2026-10-22-lightbox-spark-set-aside-saves-later.md): a set-aside, and its Undo, now rewrite the file that holds the board in place, with no new file (epic decision 35; Lightbox Slice 5A.1, 2026-10-22).
+
+- [The Boards rail drops focus after a confirmed delete](../archive/tech-debt/2026-10-22-lightbox-boards-rail-focus-after-delete.md): focus moves to the next row's Delete, or the head's Name or Rename, once the row goes; a restore whose file is gone forgets the reload pointer (Lightbox Slice 5A.1, 2026-10-22).
+
+- [The Opinion's citation basis hashes the digest's wording](../archive/tech-debt/2026-10-21-lightbox-opinion-basis-is-rendered-text.md): a citation's basis now hashes the cited item's canonical data, and every board records the basis rule's id (epic decision 25; Lightbox Slice 5A, 2026-10-22).
+
+- [A closing quotation mark after a sentence's end counts as a sentence](../archive/tech-debt/2026-10-21-prose-sentences-closing-quote.md): a sentence now keeps the closing marks written directly after its end, and a lower-case speech tag continues its speech's sentence ([ADR 2026-10-21](../../docs/adr/2026-10-21-sentence-closing-marks.md); `epic/lightbox-sentence-rule`, 2026-10-21).
+
+- [Webview CSS uses features above the declared Chromium 102 floor](../archive/tech-debt/2026-10-21-webview-css-above-chromium-102.md): the writer raised the floor to VS Code 1.82 (Chromium 114); scrollbar styling and `text-wrap: pretty` stay as graceful exceptions ([ADR 2026-10-21](../../docs/adr/2026-10-21-vscode-engine-floor.md), 2026-10-21).
+
+- [Lightbox readings vanish when the chapter changes](../archive/tech-debt/2026-10-19-lightbox-stale-readings.md): readings carry onto the changed chapter, stale and re-checked (Lightbox Slice 3, 2026-10-19).
 
 - [Rewind and Branch main smoke](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md): all checks confirmed by Okey on 2026-10-02.
 

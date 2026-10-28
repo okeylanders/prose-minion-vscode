@@ -4,8 +4,8 @@ import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
-  RECOVERABLE_WIDGET_RESPONSE_CONTRACTS,
-  type RecoverableWidgetToolName,
+  RECOVERABLE_RESPONSE_CONTRACTS,
+  type RecoverableToolName,
   type RejectedModelResponseContract,
   type TokenUsage
 } from '@messages';
@@ -22,7 +22,7 @@ const OPEN_ACTION = 'Open Recovery File';
 const REVEAL_ACTION = 'Reveal in Finder';
 
 export interface RejectedModelResponse {
-  toolName: RecoverableWidgetToolName;
+  toolName: RecoverableToolName;
   requestSummary: string;
   rawResponse: string;
   rejection: string;
@@ -30,6 +30,8 @@ export interface RejectedModelResponse {
   providerResponseId?: string;
   finishReason?: string;
   usage?: TokenUsage;
+  /** The request's own contract, when narrower than the tool's default (`RECOVERABLE_RESPONSE_CONTRACTS`). */
+  contract?: RejectedModelResponseContract;
 }
 
 export interface RejectedModelResponseRecoveryReceipt {
@@ -37,7 +39,7 @@ export interface RejectedModelResponseRecoveryReceipt {
   filePath: string;
   /** Versioned diagnostic sidecar for support and future repair workflows. */
   metadataPath?: string;
-  toolName: RecoverableWidgetToolName;
+  toolName: RecoverableToolName;
   storageScope: 'project' | 'extension';
 }
 
@@ -49,19 +51,21 @@ export interface RejectedModelResponseRecoveryPresenter {
   present(receipt: RejectedModelResponseRecoveryReceipt): Promise<void>;
 }
 
-export interface RejectedWidgetResponseInput {
-  toolName: RecoverableWidgetToolName;
+export interface RejectedModelResponseInput {
+  toolName: RecoverableToolName;
   requestSummary: string;
   rawResponse: string;
   rejection: string;
   result: Pick<ExecutionResult, 'modelId' | 'providerResponseId' | 'finishReason' | 'usage'>;
+  /** The request's own contract, when narrower than the tool's default. */
+  contract?: RejectedModelResponseContract;
 }
 
 interface RejectedModelResponseEnvelopeV1 {
   version: typeof RECOVERY_VERSION;
   kind: 'rejected-model-response';
   recordedAt: string;
-  toolName: RecoverableWidgetToolName;
+  toolName: RecoverableToolName;
   requestSummary: string;
   rejection: string;
   modelId?: string;
@@ -152,7 +156,7 @@ export class RejectedModelResponseRecoveryStore implements RejectedModelResponse
       responseFile: path.basename(filePath),
       responseContentType: 'text/plain',
       responseCharacters: response.rawResponse.length,
-      contract: RECOVERABLE_WIDGET_RESPONSE_CONTRACTS[response.toolName]
+      contract: response.contract ?? RECOVERABLE_RESPONSE_CONTRACTS[response.toolName]
     };
 
     await this.writeAtomically(filePath, this.encoder.encode(response.rawResponse), response);
@@ -320,10 +324,10 @@ export class RejectedModelResponseRecoveryShellPresenter implements RejectedMode
 }
 
 /** Shared widget seam: persistence is reusable; presentation remains opt-in. */
-export async function persistRejectedWidgetResponse(
+export async function persistRejectedModelResponse(
   recovery: RejectedModelResponseRecovery,
   presenter: RejectedModelResponseRecoveryPresenter,
-  input: RejectedWidgetResponseInput
+  input: RejectedModelResponseInput
 ): Promise<RejectedModelResponseRecoveryReceipt | undefined> {
   const receipt = await recovery.capture({
     toolName: input.toolName,
@@ -333,7 +337,8 @@ export async function persistRejectedWidgetResponse(
     modelId: input.result.modelId,
     providerResponseId: input.result.providerResponseId,
     finishReason: input.result.finishReason,
-    usage: input.result.usage
+    usage: input.result.usage,
+    ...(input.contract ? { contract: input.contract } : {})
   });
   if (receipt) {
     void presenter.present(receipt);

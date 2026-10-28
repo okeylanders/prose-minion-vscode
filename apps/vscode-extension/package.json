@@ -18,7 +18,7 @@
   },
   "icon": "assets/prose-minion-book.png",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Other",
@@ -96,12 +96,22 @@
   "activationEvents": [
     "onView:prose-minion.toolsView",
     "onWebviewPanel:prose-minion.workshop",
+    "onWebviewPanel:prose-minion.lightbox",
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
     "onCommand:prose-minion.showOutputChannel",
+    "onCommand:prose-minion.openSettingsOverlay",
     "onCommand:prose-minion.openWorkshop",
-    "onCommand:prose-minion.workshopSelection"
+    "onCommand:prose-minion.workshopSelection",
+    "onCommand:prose-minion.openLightbox",
+    "onCommand:prose-minion.lightboxSelection",
+    "onCommand:prose-minion.openFileInLightbox",
+    "onCommand:prose-minion.proofreadFlag",
+    "onCommand:prose-minion.proofreadFix",
+    "onCommand:prose-minion.clearProofreadFlags",
+    "onCommand:prose-minion.craftFlags",
+    "onCommand:prose-minion.clearCraftFlags"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -126,47 +136,145 @@
     "commands": [
       {
         "command": "prose-minion.assistantSelection",
-        "title": "Prose Minion: Assistant"
+        "title": "Assistant",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.wordLookupSelection",
-        "title": "Prose Minion: Word Lookup"
+        "title": "Word Lookup",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.openSettingsOverlay",
-        "title": "Prose Minion: Settings",
+        "title": "Settings",
+        "category": "Prose Minion",
         "icon": "$(gear)"
       },
       {
         "command": "prose-minion.showOutputChannel",
-        "title": "Prose Minion: Show Debug Output",
+        "title": "Show Debug Output",
+        "category": "Prose Minion",
         "icon": "$(bug)"
       },
       {
         "command": "prose-minion.openWorkshop",
-        "title": "Prose Minion: Open Workshop"
+        "title": "Open Workshop",
+        "category": "Prose Minion"
       },
       {
         "command": "prose-minion.workshopSelection",
-        "title": "Prose Minion: Send Selection to Workshop"
+        "title": "Send Selection to Workshop",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.openLightbox",
+        "title": "Open Lightbox",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.lightboxSelection",
+        "title": "Open Selection in Lightbox",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.openFileInLightbox",
+        "title": "Open File in Lightbox",
+        "category": "Prose Minion",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "prose-minion.proofreadFlag",
+        "title": "Proofread and Flag",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.proofreadFix",
+        "title": "Proofread and Fix",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.clearProofreadFlags",
+        "title": "Clear Proofread Flags",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.craftFlags",
+        "title": "Craft Flags",
+        "category": "Prose Minion"
+      },
+      {
+        "command": "prose-minion.clearCraftFlags",
+        "title": "Clear Craft Flags",
+        "category": "Prose Minion"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "prose-minion.editorContext",
+        "label": "Prose Minion"
       }
     ],
     "menus": {
+      "explorer/context": [
+        {
+          "when": "!explorerResourceIsFolder && resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
+          "group": "prose-minion@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceScheme == file && (resourceLangId == markdown || resourceLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
+        {
+          "submenu": "prose-minion.editorContext",
+          "group": "prose-minion"
+        }
+      ],
+      "prose-minion.editorContext": [
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.wordLookupSelection",
+          "group": "1_analyze@1"
+        },
         {
           "when": "editorHasSelection",
           "command": "prose-minion.assistantSelection",
-          "group": "prose-minion@1"
+          "group": "1_analyze@2"
         },
         {
           "when": "editorHasSelection",
           "command": "prose-minion.workshopSelection",
-          "group": "prose-minion@2"
+          "group": "2_open@1"
         },
         {
           "when": "editorHasSelection",
-          "command": "prose-minion.wordLookupSelection",
-          "group": "prose-minion"
+          "command": "prose-minion.lightboxSelection",
+          "group": "2_open@2"
+        },
+        {
+          "when": "!editorHasSelection && resourceScheme == file && (editorLangId == markdown || editorLangId == plaintext)",
+          "command": "prose-minion.openFileInLightbox",
+          "group": "2_open@2"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.proofreadFlag",
+          "group": "3_proofread@1"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.proofreadFix",
+          "group": "3_proofread@2"
+        },
+        {
+          "when": "editorLangId == markdown || editorLangId == plaintext",
+          "command": "prose-minion.craftFlags",
+          "group": "4_craft@1"
         }
       ],
       "view/title": [
@@ -209,6 +317,104 @@
           "description": "AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID.",
           "order": 5
         },
+        "proseMinion.lightboxModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI model for the Lightbox's analyses. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here, or in the Lightbox's model picker, gives the Lightbox its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
+          "order": 5.1
+        },
+        "proseMinion.proofreadModel": {
+          "type": "string",
+          "default": "anthropic/claude-haiku-5.5",
+          "markdownDescription": "AI model for Proofread (the editor's right-click **Prose Minion: Proofread** commands). Proofreading wants precise, repeatable corrections across many small calls, so the default is a fast, inexpensive model. Enter any OpenRouter model ID.",
+          "order": 5.2
+        },
+        "proseMinion.craftModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "AI model for Craft Flags (the editor's right-click **Prose Minion: Craft Flags** command), which reads a whole chapter and flags line notes such as clichés and shifts of register. Leave empty to use the same model as the Workshop (`#proseMinion.assistantModel#`), following it when it changes. Choosing a model here gives Craft Flags its own, and never changes the Workshop's. Enter any OpenRouter model ID.",
+          "order": 5.6
+        },
+        "proseMinion.craftFlags.categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["cliche", "register", "gesture", "continuity"],
+            "enumDescriptions": [
+              "Cliché: a phrase worn smooth by use, standing in for something the scene could name exactly.",
+              "Register shift: narration that leaves the register the chapter keeps, such as slang in formal narration or a modern word in a period one.",
+              "Gesture strain: a gesture a reader stumbles on: one the body cannot make, choreography to assemble, a stock beat the chapter leans on, or one that names its own body part.",
+              "Continuity: two places in the chapter that cannot both be true, such as eyes that change colour or a seated character still standing, never across a scene break."
+            ]
+          },
+          "uniqueItems": true,
+          "default": ["cliche", "register", "gesture", "continuity"],
+          "markdownDescription": "Which line notes **Prose Minion: Craft Flags** looks for. Each one is a request of its own, priced in the confirmation before anything is sent. Words inside quotation marks are always left alone; a gesture in a dialogue beat is narration, and is read.",
+          "order": 5.7
+        },
+        "proseMinion.craftFlags.reasoning": {
+          "type": "string",
+          "enum": ["off", "light", "standard", "deep"],
+          "enumDescriptions": [
+            "No thinking: the model answers at once. Refused, with nothing sent, on a model that always thinks.",
+            "A little thinking: a budget of about 1,000 tokens.",
+            "Some thinking: a budget of about 4,000 tokens.",
+            "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+          ],
+          "default": "standard",
+          "markdownDescription": "How much a thinking model may think before it reads the chapter for each **Prose Minion: Craft Flags** category. The budget comes on top of the reply's own room, and the confirmation's price counts typical thinking. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Craft Flags then sends nothing and says so, and you choose a level or another model. Models that do not think ignore this.",
+          "order": 5.75
+        },
+        "proseMinion.proofread.fixReview": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "apply"
+          ],
+          "enumDescriptions": [
+            "Open Refactor Preview with each fix as a change to tick; nothing changes until you tick and Apply.",
+            "Apply the safe fixes at once, as one change you can undo."
+          ],
+          "default": "preview",
+          "markdownDescription": "How **Prose Minion: Proofread and Fix**, and the *Fix all* quick fix, bring their fixes to the file. Either way the fixes are one undoable change and the file is never saved for you, and tense and agreement issues are only ever flagged. A single *Replace with* quick fix always applies at once.",
+          "order": 5.3
+        },
+        "proseMinion.proofread.spellingConvention": {
+          "type": "string",
+          "enum": ["auto", "american", "british", "canadian", "australian"],
+          "enumDescriptions": [
+            "No convention chosen: a spelling correct in American, British, Canadian or Australian English is never flagged, unless the text mixes them.",
+            "American English spelling.",
+            "British English spelling.",
+            "Canadian English spelling.",
+            "Australian English spelling."
+          ],
+          "default": "auto",
+          "markdownDescription": "The spelling **Prose Minion: Proofread** holds your text to. With a convention named, a word spelled to another one (*colour* or *color*) is flagged, and **Proofread and Fix** corrects it when the change is small. With `auto`, only a spelling that breaks the text's own pattern is flagged. Proper names keep their own spelling. When a file writes a word both ways (*grey* and *gray*), the convention's spelling is the one kept; with `auto`, the more used.",
+          "order": 5.4
+        },
+        "proseMinion.proofread.wordList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Names and invented words **Prose Minion: Proofread** accepts as spelled: never flagged as a spelling or wrong word, in any case or with a possessive (*Dinah's*), and never flagged as a variant of another name or as a word spelled two ways. An entry of several words counts word by word. Set it in your workspace settings to keep a list per project.",
+          "order": 5.5
+        },
+        "proseMinion.proofread.reasoning": {
+          "type": "string",
+          "enum": ["off", "light", "standard", "deep"],
+          "enumDescriptions": [
+            "No thinking: the model answers at once. Refused, with nothing sent, on a model that always thinks.",
+            "A little thinking: a budget of about 1,000 tokens.",
+            "Some thinking: a budget of about 4,000 tokens.",
+            "Much thinking: a budget of about 12,000 tokens; slower and costlier."
+          ],
+          "default": "light",
+          "markdownDescription": "How much a thinking model may think before it proofreads each passage. The budget comes on top of the reply's own room, so thinking never cuts a reply short on a model that honors it. Models differ: some take only a rough level. A model the OpenRouter catalog marks as always thinking cannot be asked for `off`: Proofread then sends nothing and says so, and you choose a level or another model. If a reply is still cut off, the Output panel says how much went to thinking. Models that do not think ignore this.",
+          "order": 5.55
+        },
         "proseMinion.categoryModel": {
           "type": "string",
           "default": "openai/gpt-oss-120b:nitro",
@@ -234,12 +440,15 @@
             "openai/gpt-6-luna-pro",
             "openai/gpt-6-sol",
             "openai/gpt-6-sol-pro",
+            "openai/gpt-6.1-terra",
+            "openai/gpt-6.1-terra-pro",
             "openai/gpt-6.1-sol",
             "openai/gpt-6.1-sol-pro",
             "openai/gpt-6-astra",
             "openai/gpt-6-astra-pro",
             "openai/gpt-oss-120b:nitro",
             "inception/mercury-2.5",
+            "inception/mercury-3",
             "upstage/solar-mini4",
             "google/gemini-3.1-pro-preview",
             "google/gemini-3-flash-preview",
@@ -254,6 +463,9 @@
             "deepseek/deepseek-v4-flash",
             "deepseek/deepseek-v4-flash-0731",
             "deepseek/deepseek-v4.1-flash",
+            "deepseek/deepseek-v4.1-flash-1017",
+            "moonshotai/kimi-k3.1-pro",
+            "minimax/minimax-m3.1-flash",
             "stepfun/step-3.7-flash",
             "stepfun/step-5-preview",
             "qwen/qwen3.6-flash",

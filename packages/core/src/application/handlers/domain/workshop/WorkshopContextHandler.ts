@@ -12,6 +12,7 @@ import type {
 import {
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
+import { searchConfiguredResourceContent } from '@/application/services/ConfiguredResourceContentSearch';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
@@ -33,8 +34,8 @@ import {
   WorkshopAddContextTextMessage,
   WorkshopAttachMessageFileMessage,
   WorkshopAttachMessageResourcesMessage,
-  WorkshopConfiguredResourceRef,
-  WorkshopContextCatalogEntry,
+  ConfiguredResourceEntry,
+  ConfiguredResourceRef,
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopOpenContextAttachmentFileMessage,
@@ -487,7 +488,7 @@ export class WorkshopContextHandler {
   ): Promise<void> {
     try {
       const catalog = await this.contextIntakeService.openCatalog();
-      const entries: WorkshopContextCatalogEntry[] = catalog.entries().map((resource) => ({
+      const entries: ConfiguredResourceEntry[] = catalog.entries().map((resource) => ({
         group: resource.group,
         path: resource.path,
         label: resource.label,
@@ -509,55 +510,20 @@ export class WorkshopContextHandler {
   async handleSearchContextResources(
     message: WorkshopSearchContextResourcesMessage
   ): Promise<void> {
-    const rawQuery = typeof message.payload?.query === 'string' ? message.payload.query.trim() : '';
-    if (rawQuery.length === 0) {
+    const rawQuery = typeof message.payload?.query === 'string' ? message.payload.query : '';
+    if (rawQuery.trim().length === 0) {
       return;
     }
-    const query = rawQuery
-      .slice(0, PROMPT_BUDGETS.workshopResource.queryCharacters)
-      .toLowerCase();
-    const budgets = PROMPT_BUDGETS.workshopResource;
     try {
       const catalog = await this.contextIntakeService.openCatalog();
-      const candidates = catalog.entries();
-      const scannable = candidates.slice(0, budgets.searchFiles);
-      let bounded = candidates.length > scannable.length;
-      let bytesScanned = 0;
-      const matches: WorkshopConfiguredResourceRef[] = [];
-      for (const candidate of scannable) {
-        if (bytesScanned >= budgets.searchTotalBytes) {
-          bounded = true;
-          break;
-        }
-        if (
-          candidate.sizeBytes >
-          Math.min(budgets.searchFileBytes, budgets.searchTotalBytes - bytesScanned)
-        ) {
-          bounded = true;
-          continue;
-        }
-        const loaded = await catalog.load(
-          { group: candidate.group, path: candidate.path },
-          {
-            maxBytes: Math.min(
-              budgets.searchFileBytes,
-              budgets.searchTotalBytes - bytesScanned
-            ),
-            maxWords: Number.MAX_SAFE_INTEGER
-          }
-        );
-        if (loaded.kind !== 'loaded') {
-          continue;
-        }
-        bytesScanned += candidate.sizeBytes;
-        if (loaded.resource.text.toLowerCase().includes(query)) {
-          matches.push({ group: candidate.group, path: candidate.path });
-        }
+      const payload = await searchConfiguredResourceContent(catalog, catalog.entries(), rawQuery);
+      if (!payload) {
+        return;
       }
       const results: WorkshopContextSearchResultsMessage = {
         type: MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS,
         source: 'extension.workshop',
-        payload: { query: rawQuery, matches, bounded },
+        payload,
         timestamp: Date.now()
       };
       void this.postMessage(results);
@@ -974,7 +940,7 @@ export class WorkshopContextHandler {
     };
   }
 
-  private validConfiguredResources(items: unknown): WorkshopConfiguredResourceRef[] {
+  private validConfiguredResources(items: unknown): ConfiguredResourceRef[] {
     return Array.isArray(items)
       ? items.flatMap((item) => {
           const candidate = item as { group?: unknown; path?: unknown };

@@ -10,7 +10,25 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft';
+
+/**
+ * A scope with no model of its own until the writer picks one (Lightbox
+ * Slice 4L; Craft Flags, Draft Edit Slice 3c). Unset, it runs on the model
+ * of the scope it follows, and moves when that one does; picked, its model
+ * is its own.
+ */
+export type FollowingModelScope = 'lightbox' | 'craft';
+
+/** What each following scope follows: the assistant model (the Workshop's). */
+export const MODEL_SCOPE_FOLLOWS: Readonly<Record<FollowingModelScope, Exclude<ModelScope, FollowingModelScope>>> = {
+  lightbox: 'assistant',
+  craft: 'assistant'
+};
+
+export function isFollowingModelScope(scope: unknown): scope is FollowingModelScope {
+  return typeof scope === 'string' && Object.prototype.hasOwnProperty.call(MODEL_SCOPE_FOLLOWS, scope);
+}
 
 export type ModelParameterConfidence =
   | 'published'
@@ -74,10 +92,13 @@ export interface DeleteApiKeyMessage extends MessageEnvelope<Record<string, neve
 // Model Selection Messages
 // ============================================================================
 
-export interface SetModelSelectionPayload {
-  scope: ModelScope;
-  modelId: string;
-}
+/**
+ * Pick a scope's model, or (Slice 4L) give a following scope's own model up,
+ * so it follows again: `modelId: null`, which no other scope accepts.
+ */
+export type SetModelSelectionPayload =
+  | { scope: ModelScope; modelId: string }
+  | { scope: FollowingModelScope; modelId: null };
 
 export interface SetModelSelectionMessage extends MessageEnvelope<SetModelSelectionPayload> {
   type: MessageType.SET_MODEL_SELECTION;
@@ -86,7 +107,14 @@ export interface SetModelSelectionMessage extends MessageEnvelope<SetModelSelect
 export interface ModelDataPayload {
   options: ModelOption[];
   categoryOptions?: ModelOption[];
+  /** The model each scope runs on; a following scope with none of its own holds the model it follows. */
   selections: Partial<Record<ModelScope, string>>;
+  /**
+   * The following scopes with no model of their own right now (Slice 4L).
+   * The host always sends it; a message without it leaves what the webview
+   * knew unchanged.
+   */
+  following?: FollowingModelScope[];
   ui?: {
     showTokenWidget?: boolean;
   };

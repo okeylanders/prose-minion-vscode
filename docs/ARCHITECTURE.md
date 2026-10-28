@@ -39,6 +39,8 @@ Core defines host-agnostic ports in `packages/core/src/platform/`. The VS Code a
 | `Workspace` | Workspace folder + glob discovery |
 | `ShellService` | Subprocess execution (future MCP) |
 | `EditorContext` | Active editor selection + source metadata |
+| `DocumentEditor` | A watch on one lifetime of an open document (its edits and live buffer, or closed), and one reviewed or direct change to it (Draft Edit) |
+| `IssueAnnotator` | Draft Edit's flags on a document, without changing it, and where they sit now for a quick fix (diagnostics and code actions in VS Code) |
 
 All ports are composed into a single `Platform` bundle at the composition root.
 
@@ -63,13 +65,14 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 11 flat domains + Workshop feature family
+│       └── domain/                     # 12 flat domains (incl. LightboxHandler, with LightboxReadingHandler beside it) + Workshop feature family
 │           └── workshop/               # Room owner, 5 shared slices, 3 widget owners
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
 │   ├── api/           # OpenRouter: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService; readings (prompts, codec incl. gravity/palette, quote verifier, term and field counts, runner, estimate, stale carry-over, handoff checks)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/       # React webview UI
 │   └── webview/       # Components + domain hooks
@@ -148,12 +151,13 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
+| `useLightbox` | `LightboxHandler`, `LightboxReadingHandler` | Lightbox counted board, readings and the Build-as-a-lens handoff (ADR 2026-10-19) |
 | `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
 | `useWorkshopWidgetHost` | `WorkshopWidgetHostHandler` | Config lookup and the family-generic one-shot commit route |
 | `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation and correlation |
 | `useCreativeVariations` | `WorkshopCreativeVariationsHandler` | Creative generation and correlation; the authoring controller owns writer choices |
-| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
+| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows, and Build lens opened from a Lightbox seed |
 | `useShowVsTell` | `WorkshopShowVsTellHandler` | Show vs. Tell generation and correlation; the authoring controller (`controllers/showVsTell/`) owns writer choices |
 | `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
@@ -274,8 +278,11 @@ Workshop is internally sliced under `application/handlers/domain/workshop/`.
 `WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
 the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
 and registers the context, excerpt/scope, session, todo, standing-directive,
-widget-host, Gesture Playground, Creative Variations, Lexical Gravity, and Show
-vs. Tell route owners behind the shared session-operation mutation gate.
+widget-host, Gesture Playground, Creative Variations, Lexical Gravity, Show
+vs. Tell and Lightbox-tile route owners behind the shared session-operation
+mutation gate. A seed handed over from another tab (a Build lens subject, a
+Lightbox tile) reaches its owner only through the panel provider's
+claim-before-open delivery (ADR 2026-10-19 D11).
 `WorkshopWidgetHostHandler` owns the single family commit route, while
 `WorkshopOneShotWidgetCommitCoordinator` owns retry-config, turn/artifact
 acceptance, and linkage mechanics; named feature compilers retain feature
@@ -301,9 +308,13 @@ workshop/
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
-├── recovery.ts              # Rejected response repair-contract registry
+├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
+├── lightboxTiles.ts         # A Lightbox tile staged above the composer: item, bounds, offer/accept/staged
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
+
+The rejected-model-response recovery registry is not Workshop-owned: it lives at
+`shared/types/messages/recovery.ts` because the Lightbox captures through it too.
 
 Application and presentation consumers import these contracts through
 `@messages`. Generic modules may name a feature only at reviewed composition,
@@ -444,6 +455,47 @@ host and webview independence tests.
 
 ---
 
+### 11. Draft Edit
+
+Draft Edit turns intent into anchored, reviewable edits on the writer's own
+document ([ADR 2026-10-21](adr/2026-10-21-draft-edit-engine-and-document-write-back.md)).
+Proofread is its first pass: it flags (Slice 1) or fixes (Slice 2).
+
+- **Passes are policies.** `DRAFT_EDIT_PASS_POLICIES` is an exhaustive
+  `Record` over `DraftEditPass['kind']`. A new pass adds a union member, a
+  row, and a producer, never a branch in the code that places edits.
+- **Quotes, not offsets.** Only a pass calls a model, and a model returns
+  quotes with context. `utils/draftEdit/` masks protected Markdown regions
+  (block structure from `marked`'s block lexer, container-aware; inline
+  constructs read one leaf block or table cell at a time, in CommonMark
+  precedence), chunks on paragraph
+  boundaries, and anchors each quote deterministically, failing closed on
+  ambiguity. The Proofread guard (`utils/proofread/`) decides fix vs. flag
+  by category and edit size.
+- **One run, one door.** `DraftEditUseCase` and `DraftEditApplier` alone
+  reach the `DocumentEditor` and `IssueAnnotator` ports, and only the
+  applier writes (`applyEdits`); boundary tests enforce both. A run watches
+  its open document from the version it read: each flag follows its own
+  occurrence through the writer's edits, the live text's protected regions
+  are found again, and a document that closed shows nothing, so a flag is
+  never drawn on moved, protected, or reopened text.
+- **Writes are read back.** The applier makes one change (one undo step,
+  through Refactor Preview by default), never saves, and reads what landed
+  by following each edit's range through the document's changes, never from
+  the host's answer. A fix that did not land is flagged where its text
+  stands. The quick fixes (*Replace with*, *Fix all*) are commands into core
+  that ask the annotator where their flag sits, then go through the applier.
+- **Its own model scope.** `proofread` is an own scope in
+  `ModelScopeSelections` with an inexpensive default. `ProofreadService` calls
+  it at temperature 0, reads replies with the shared `parseModelJson`, and
+  stops starting chunks when the API key changes mid-run.
+  `AIResourceRefresh`, built at the composition root, owns the shared
+  manager's key and model subscriptions, so the command sees every change
+  with no webview open, and one key change is one rebuild.
+- **Host commands.** `apps/vscode-extension/src/application/commands/proofreadCommands.ts`
+  holds the editor commands behind a host port, so their rules are tested
+  without a VS Code mock.
+
 ## Settings Architecture
 
 All settings use the **Domain Hooks pattern** (6 specialized hooks) with bidirectional sync between VS Code Settings, the backend `ConfigurationHandler`, and the webview. An echo-prevention system in `ConfigurationHandler` stops infinite loops.
@@ -493,5 +545,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 - [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
 - [Workshop Personas Recall Saved Session Transcripts (2026-10-05)](adr/2026-10-05-workshop-session-transcript-recall.md)
+- [Draft Edit Engine and Document Write-Back (2026-10-21)](adr/2026-10-21-draft-edit-engine-and-document-write-back.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.

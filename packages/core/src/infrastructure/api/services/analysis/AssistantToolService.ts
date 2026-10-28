@@ -42,7 +42,7 @@ import {
 } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES, resolveWorkshopParticipantPolicy } from '@orchestration/AgentRunPolicies';
 import type {
-  WorkshopConfiguredResourceRef,
+  ConfiguredResourceRef,
   WorkshopConversationBehavior,
   WorkshopExcerpt,
   WorkshopPersonaId,
@@ -96,7 +96,7 @@ export interface AnalysisStreamingOptions {
    * the bounded composite source+neighbors+guides catalog for the run.
    * Meaningful only with retainConversation; sidebar runs never set it.
    */
-  workshopSource?: WorkshopConfiguredResourceRef;
+  workshopSource?: ConfiguredResourceRef;
   /** Opt-in, per-turn server-side web search for Workshop persona conversations. */
   webResearch?: boolean;
 }

@@ -47,6 +47,10 @@ export interface WordFrequencyOptions {
   enableLemmas: boolean;
   lengthHistogramMaxChars: number;
   minCharacterLength: number;
+  /** Top bigrams and trigrams to return; the tool's default is 20. Not a setting. */
+  ngramLimit?: number;
+  /** Add `pos.occurrences`, the tagged words the POS counts came from; off by default. Not a setting. */
+  includePosOccurrences?: boolean;
 }
 
 export class ToolOptionsProvider {

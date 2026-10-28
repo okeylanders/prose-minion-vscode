@@ -1,0 +1,117 @@
+hover-word@1440: the focusLine's box changed on hover: {"x":620.81,"y":125.8,"width":436.19,"height":17.25} → {"x":641.58,"y":125.8,"width":415.42,"height":17.25}
+hover-word@1440: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@1440: the focusLine's box changed on hover: {"x":620.81,"y":570.95,"width":436.19,"height":17.25} → {"x":876.98,"y":570.95,"width":180.02,"height":17.25}
+hover-column@1440: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@1440: the ribbon's box changed on hover: {"x":328,"y":557.95,"width":744,"height":284.25} → {"x":328,"y":557.95,"width":744,"height":306}
+hover-dialogue-lane@1440: the top's box changed on hover: {"x":343,"y":570.95,"width":714,"height":17.25} → {"x":343,"y":570.95,"width":714,"height":39}
+hover-dialogue-lane@1440: the focusLine's box changed on hover: {"x":620.81,"y":570.95,"width":436.19,"height":17.25} → {"x":343,"y":592.7,"width":519.28,"height":17.25}
+hover-dialogue-lane@1440: the target's box changed on hover: {"x":343,"y":637.2,"width":78.8,"height":12} → {"x":343,"y":658.95,"width":78.8,"height":12}
+hover-dialogue-lane@1440: the focus line changed 2 times while the pointer held still: ["Hover anything on the board to light the paragraphs it touches.","Dialogue share · ¶2 ¶4 ¶7 ¶8 ¶10 ¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146","Sentence rhythm · ¶2 ¶3 ¶10 ¶11 ¶18 ¶19 ¶26 ¶27 ¶34 ¶35 ¶42 ¶43 ¶50 ¶51 +66"]
+hover-dialogue-lane@1440: the ribbon's height changed 1 times while the pointer held still: [284.25,306]
+hover-dialogue-lane@1440: the item is no longer hovered: the board moved out from under the pointer
+hover-dialogue-lane@1440: the focus line does not end with the item's paragraph count: " ¶19 ¶26 ¶27 ¶34 ¶35 ¶42 ¶43 ¶50 ¶51 +66"
+hover-sections-lane@1440: the focus line changed 33 times while the pointer held still: ["Hover anything on the board to light the paragraphs it touches.","Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26","Hover anything on the board to light the paragraphs it touches.","Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"]
+hover-sections-lane@1440: the ribbon's height changed 33 times while the pointer held still: [284.25,306,284.25,306,284.25,306,284.25,306]
+hover-sections-lane@1440: the item is no longer hovered: the board moved out from under the pointer
+hover-sections-lane@1440: the focus line did not name the hovered item
+hover-sections-lane@1440: the focus line does not end with the item's paragraph count: "oard to light the paragraphs it touches."
+hover-section@1440: the ribbon's box changed on hover: {"x":328,"y":557.95,"width":744,"height":284.25} → {"x":328,"y":557.95,"width":744,"height":306}
+hover-section@1440: the top's box changed on hover: {"x":343,"y":570.95,"width":714,"height":17.25} → {"x":343,"y":570.95,"width":714,"height":39}
+hover-section@1440: the focusLine's box changed on hover: {"x":620.81,"y":570.95,"width":436.19,"height":17.25} → {"x":343,"y":592.7,"width":505.42,"height":17.25}
+hover-section@1440: the target's box changed on hover: {"x":745.39,"y":754.2,"width":17.59,"height":14} → {"x":745.39,"y":775.95,"width":17.59,"height":14}
+hover-section@1440: the focus line changed 34 times while the pointer held still: ["Hover anything on the board to light the paragraphs it touches.","Chapter I: Down the Rabbit-Hole · ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168","¶157–¶160 · ¶157 ¶158 ¶159 ¶160","Chapter I: Down the Rabbit-Hole · ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"]
+hover-section@1440: the ribbon's height changed 34 times while the pointer held still: [284.25,306,284.25,306,284.25,306,284.25,306]
+hover-section@1440: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@1440: the focusLine's box changed on hover: {"x":620.81,"y":125.8,"width":436.19,"height":17.25} → {"x":600.03,"y":125.8,"width":456.97,"height":17.25}
+hover-motif@1440: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@1440: 378 of 426 controls change the layout on hover, e.g. [{"control":"A bored girl follows a hurried white rabbit down a hole and ","count":3712,"first":["div.pm-lb-ribbon 1312,2232,2976,1137 → 1312,2232,2976,1224","div.pm-lb-ribbon-top 1372,2284,2856,69 → 1372,2284,2856,156","span.pm-lb-ribbon-eyebrow 1372,2288,953,63 → 1372,2284,953,63","span.pm-lb-ribbon-focus.is-read 2483,2284,1745,69 → 1372,2371,2856,69"]},{"control":"Rhythm","count":3712,"first":["div.pm-lb-ribbon 1312,2196,2976,1137 → 1312,2196,2976,1224","div.pm-lb-ribbon-top 1372,2248,2856,69 → 1372,2248,2856,156","span.pm-lb-ribbon-eyebrow 1372,2252,953,63 → 1372,2248,953,63","span.pm-lb-ribbon-focus 2483,2248,1745,69 → 1372,2335,2077,69"]}]
+runline@1440: no Re-analyze all beside Finish
+runline-nokey@1440: a press is enabled without a key
+runline-nokey@1440: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]
+hover-word@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":701.58,"y":13,"width":415.42,"height":17.25}
+hover-word@1440-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":936.98,"y":13,"width":180.02,"height":17.25}
+hover-column@1440-zoom125: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":611.58,"y":13,"width":505.42,"height":17.25}
+hover-dialogue-lane@1440-zoom125: the focus line does not end with the item's paragraph count: "¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146"
+hover-sections-lane@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":639.27,"y":13,"width":477.73,"height":17.25}
+hover-sections-lane@1440-zoom125: the focus line does not end with the item's paragraph count: "¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"
+hover-section@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":611.58,"y":13,"width":505.42,"height":17.25}
+hover-section@1440-zoom125: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@1440-zoom125: the focusLine's box changed on hover: {"x":680.81,"y":13,"width":436.19,"height":17.25} → {"x":660.03,"y":13,"width":456.97,"height":17.25}
+hover-motif@1440-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@1440-zoom125: 381 of 426 controls change the layout on hover, e.g. [{"control":"A bored girl follows a hurried white rabbit down a hole and ","count":3716,"first":["div.pm-ws-split.pm-ws-split-with-aside 0,517,4608,43708 → 0,517,4608,43793","section.pm-ws-main 1120,517,3488,43708 → 1120,517,3488,43793","div.pm-lb-scroll 1120,517,3488,43708 → 1120,517,3488,43793","div.pm-lb-ribbon 1200,2154,3328,1139 → 1200,2154,3328,1224"]},{"control":"Rhythm","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 2723,1582,1745,69 → 2391,1582,2077,69"]}]
+runline@1440-zoom125: no Re-analyze all beside Finish
+runline-nokey@1440-zoom125: a press is enabled without a key
+runline-nokey@1440-zoom125: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]
+hover-word@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":415.42,"height":17.25}
+hover-word@1000: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@1000: the ribbon's box changed on hover: {"x":300,"y":0,"width":680,"height":306} → {"x":300,"y":0,"width":680,"height":284.25}
+hover-column@1000: the top's box changed on hover: {"x":315,"y":13,"width":650,"height":39} → {"x":315,"y":13,"width":650,"height":17.25}
+hover-column@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":784.98,"y":13,"width":180.02,"height":17.25}
+hover-column@1000: the target's box changed on hover: {"x":685.39,"y":62,"width":3.86,"height":139} → {"x":685.39,"y":40.25,"width":3.86,"height":139}
+hover-column@1000: the ribbon's height changed 1 times while the pointer held still: [306,284.25]
+hover-column@1000: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":505.42,"height":17.25}
+hover-dialogue-lane@1000: the focus line does not end with the item's paragraph count: "¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146"
+hover-sections-lane@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":477.73,"height":17.25}
+hover-sections-lane@1000: the focus line does not end with the item's paragraph count: "¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"
+hover-section@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":505.42,"height":17.25}
+hover-section@1000: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@1000: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":456.97,"height":17.25}
+hover-motif@1000: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@1000: 380 of 426 controls change the layout on hover, e.g. [{"control":"A bored girl follows a hurried white rabbit down a hole and ","count":1,"first":["span.pm-lb-ribbon-focus.is-read 1260,2602,1745,69 → 1260,2602,2600,69"]},{"control":"Rhythm","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 1260,2022,1745,69 → 1260,2022,2077,69"]}]
+runline@1000: no Re-analyze all beside Finish
+runline-nokey@1000: a press is enabled without a key
+runline-nokey@1000: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]
+hover-word@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":415.42,"height":17.25}
+hover-word@1000-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@1000-zoom125: the ribbon's box changed on hover: {"x":300,"y":0,"width":480,"height":306} → {"x":300,"y":0,"width":480,"height":284.75}
+hover-column@1000-zoom125: the top's box changed on hover: {"x":315,"y":13,"width":450,"height":39} → {"x":315,"y":13,"width":450,"height":17.75}
+hover-column@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":584.98,"y":13,"width":180.02,"height":17.25}
+hover-column@1000-zoom125: the target's box changed on hover: {"x":585.39,"y":62,"width":1.78,"height":139} → {"x":585.39,"y":40.75,"width":1.78,"height":139}
+hover-column@1000-zoom125: the ribbon's height changed 1 times while the pointer held still: [306,284.75]
+hover-column@1000-zoom125: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":450,"height":17.25}
+hover-dialogue-lane@1000-zoom125: the focus line does not end with the item's paragraph count: "¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146"
+hover-sections-lane@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":450,"height":17.25}
+hover-sections-lane@1000-zoom125: the focus line does not end with the item's paragraph count: "¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"
+hover-section@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":450,"height":17.25}
+hover-section@1000-zoom125: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@1000-zoom125: the focusLine's box changed on hover: {"x":315,"y":34.75,"width":436.19,"height":17.25} → {"x":315,"y":34.75,"width":450,"height":17.25}
+hover-motif@1000-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@1000-zoom125: 381 of 426 controls change the layout on hover, e.g. [{"control":"A bored girl follows a hurried white rabbit down a hole and ","count":1,"first":["span.pm-lb-ribbon-focus.is-read 1260,3083,1745,69 → 1260,3083,1800,69"]},{"control":"Rhythm","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 1260,1583,1745,69 → 1260,1583,1800,69"]}]
+runline@1000-zoom125: no Re-analyze all beside Finish
+runline-nokey@1000-zoom125: a press is enabled without a key
+runline-nokey@1000-zoom125: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]
+hover-word@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":31,"y":34.75,"width":415.42,"height":17.25}
+hover-word@500: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@500: the ribbon's box changed on hover: {"x":16,"y":0,"width":468,"height":306} → {"x":16,"y":0,"width":468,"height":284.25}
+hover-column@500: the top's box changed on hover: {"x":31,"y":13,"width":438,"height":39} → {"x":31,"y":13,"width":438,"height":17.25}
+hover-column@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":288.98,"y":13,"width":180.02,"height":17.25}
+hover-column@500: the target's box changed on hover: {"x":295.39,"y":62,"width":1.66,"height":139} → {"x":295.39,"y":40.25,"width":1.66,"height":139}
+hover-column@500: the ribbon's height changed 1 times while the pointer held still: [306,284.25]
+hover-column@500: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":31,"y":34.75,"width":438,"height":17.25}
+hover-dialogue-lane@500: the focus line does not end with the item's paragraph count: "¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146"
+hover-sections-lane@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":31,"y":34.75,"width":438,"height":17.25}
+hover-sections-lane@500: the focus line does not end with the item's paragraph count: "¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"
+hover-section@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":31,"y":34.75,"width":438,"height":17.25}
+hover-section@500: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@500: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":436.19,"height":17.25} → {"x":31,"y":34.75,"width":438,"height":17.25}
+hover-motif@500: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@500: 381 of 426 controls change the layout on hover, e.g. [{"control":"A bored girl follows a hurried white rabbit down a hole and ","count":1,"first":["span.pm-lb-ribbon-focus.is-read 124,4595,1745,69 → 124,4595,1752,69"]},{"control":"Rhythm","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 124,2623,1745,69 → 124,2623,1752,69"]}]
+runline@500: no Re-analyze all beside Finish
+runline-nokey@500: a press is enabled without a key
+runline-nokey@500: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]
+hover-word@500-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+hover-column@500-zoom125: the focusLine's box changed on hover: {"x":31,"y":34.75,"width":338,"height":17.25} → {"x":31,"y":34.75,"width":180.02,"height":17.25}
+hover-column@500-zoom125: the focus line does not end with the item's paragraph count: "¶161–¶163 · ¶161 ¶162 ¶163"
+hover-dialogue-lane@500-zoom125: the focus line does not end with the item's paragraph count: "¶12 ¶15 ¶16 ¶18 ¶20 ¶23 ¶24 ¶26 ¶28 +146"
+hover-sections-lane@500-zoom125: the focus line does not end with the item's paragraph count: "¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 +26"
+hover-section@500-zoom125: the focus line does not end with the item's paragraph count: " ¶161 ¶162 ¶163 ¶164 ¶165 ¶166 ¶167 ¶168"
+hover-motif@500-zoom125: the focus line does not end with the item's paragraph count: "7 ¶8 ¶9 ¶12 ¶13 ¶14 ¶15 ¶16 ¶17 ¶20 +226"
+audit@500-zoom125: 226 of 403 controls change the layout on hover, e.g. [{"control":"Paragraphs 1 to 3","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 124,1851,1352,69 → 124,1851,443,69"]},{"control":"Paragraphs 4 to 6","count":1,"first":["span.pm-lb-ribbon-focus.is-measured 124,1851,1352,69 → 124,1851,443,69"]}]
+runline@500-zoom125: no Re-analyze all beside Finish
+runline-nokey@500-zoom125: a press is enabled without a key
+runline-nokey@500-zoom125: a press is not described by the key's reason: ["Add an OpenRouter API key in Settings to run AI analyses.",null]

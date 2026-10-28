@@ -1,4 +1,5 @@
 import { MessageHandler } from '@/application/handlers/MessageHandler';
+import { ConfigurationHandler } from '@/application/handlers/domain/ConfigurationHandler';
 import { CoreServices } from '@/application/handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -22,8 +23,10 @@ import {
   SecretStore
 } from '@/platform';
 import {
+  createFakeDocumentEditor,
   createFakeEditorContext,
   createFakeFileSystem,
+  createFakeIssueAnnotator,
   createFakeGlobalState,
   createFakeSettings,
   createFakeShellService,
@@ -50,6 +53,8 @@ interface TestAssembly {
   disposeDictionaryStatusListener: jest.Mock;
   dictionaryHistoryOnDidChange: jest.Mock;
   disposeDictionaryHistoryListener: jest.Mock;
+  lightboxAddOutcomeListener: jest.Mock;
+  disposeLightboxOutcomeListener: jest.Mock;
   /** Fan a token-usage event out to every LIVE registration (real Set). */
   emitTokenUsage: (usage: TokenUsageTotals) => void;
   tokenUsageListenerCount: () => number;
@@ -82,7 +87,10 @@ function createTestAssembly(): TestAssembly {
     fileSystem: createFakeFileSystem(),
     workspace: createFakeWorkspace(),
     shell: createFakeShellService(),
-    editor: createFakeEditorContext()
+    editor: createFakeEditorContext(),
+    documents: createFakeDocumentEditor(),
+    annotations: createFakeIssueAnnotator(),
+    craftAnnotations: createFakeIssueAnnotator()
   };
 
   const scheduleRefresh = jest.fn();
@@ -100,6 +108,8 @@ function createTestAssembly(): TestAssembly {
   const disposeDictionaryStatusListener = jest.fn();
   const disposeDictionaryHistoryListener = jest.fn();
   const dictionaryHistoryOnDidChange = jest.fn(() => disposeDictionaryHistoryListener);
+  const disposeLightboxOutcomeListener = jest.fn();
+  const lightboxAddOutcomeListener = jest.fn(() => disposeLightboxOutcomeListener);
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
@@ -146,6 +156,9 @@ function createTestAssembly(): TestAssembly {
       }),
       refreshModelSelections: jest.fn().mockResolvedValue(undefined),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
+    },
+    aiResourceRefresh: {
+      refreshKey: jest.fn().mockResolvedValue(undefined)
     },
     secretsService: {
       getApiKey: jest.fn().mockResolvedValue(undefined),
@@ -215,7 +228,17 @@ function createTestAssembly(): TestAssembly {
       }),
       resetSession: jest.fn().mockResolvedValue(undefined)
     },
-    workshopTranscriptExportService: { export: jest.fn() }
+    workshopTranscriptExportService: { export: jest.fn() },
+    lightboxService: {
+      currentBoard: jest.fn().mockReturnValue(undefined),
+      currentRereadTarget: jest.fn().mockReturnValue(undefined),
+      buildBoard: jest.fn(),
+      beginSourceRequest: jest.fn(() => ({ sequence: 1 })),
+      refuseSource: jest.fn(),
+      addOutcomeListener: lightboxAddOutcomeListener,
+      currentOutcome: jest.fn().mockReturnValue({ board: null, refusal: null }),
+      dismissRefusal: jest.fn()
+    }
   } as unknown as CoreServices;
 
   return {
@@ -234,6 +257,8 @@ function createTestAssembly(): TestAssembly {
     disposeDictionaryStatusListener,
     dictionaryHistoryOnDidChange,
     disposeDictionaryHistoryListener,
+    lightboxAddOutcomeListener,
+    disposeLightboxOutcomeListener,
     emitTokenUsage: (usage) => {
       for (const listener of [...tokenUsageListeners]) {
         listener(usage);
@@ -277,6 +302,66 @@ describe('MessageHandler assembly', () => {
       })
     );
     expect(assembly.categoryAddStatusListener).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('routes Lightbox messages (13th domain) to the shared board service', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.LIGHTBOX_REQUEST_BOARD,
+      source: 'webview.lightbox',
+      payload: {},
+      timestamp: Date.now()
+    });
+
+    expect(assembly.services.lightboxService.currentOutcome).toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: 'extension.lightbox',
+      payload: { board: null, refusal: null }
+    }));
+  });
+
+  it('subscribes a handler to Lightbox outcomes only once its webview asks, and releases it on dispose', async () => {
+    const assembly = createTestAssembly();
+    const sidebar = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const lightbox = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    expect(assembly.lightboxAddOutcomeListener).not.toHaveBeenCalled();
+
+    const request = {
+      type: MessageType.LIGHTBOX_REQUEST_BOARD,
+      source: 'webview.lightbox',
+      payload: {},
+      timestamp: Date.now()
+    } as const;
+    await lightbox.handleMessage(request);
+    await lightbox.handleMessage(request);
+    expect(assembly.lightboxAddOutcomeListener).toHaveBeenCalledTimes(1);
+
+    sidebar.dispose();
+    expect(assembly.disposeLightboxOutcomeListener).not.toHaveBeenCalled();
+    lightbox.dispose();
+    expect(assembly.disposeLightboxOutcomeListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('boards a host-seeded Lightbox source under the ticket the host took, minting none (PR #152 F-01)', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const { lightboxService } = assembly.services;
+    (lightboxService.buildBoard as jest.Mock).mockResolvedValueOnce({ kind: 'superseded' });
+    const ticket = { sequence: 7 };
+
+    await handler.seedLightboxSource({ text: 'A synthetic line by the gate.', relativePath: 'Drafts/gate.md' }, ticket);
+
+    expect(lightboxService.beginSourceRequest).not.toHaveBeenCalled();
+    expect(lightboxService.buildBoard).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'selection', displayPath: 'Drafts/gate.md' }),
+      ticket
+    );
+    expect(assembly.lightboxAddOutcomeListener).toHaveBeenCalledTimes(1);
   });
 
   it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {
@@ -512,7 +597,9 @@ describe('MessageHandler assembly', () => {
     // work settle before asserting the services were refreshed.
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    // The manager is rebuilt through the extension-lifetime owner, never directly (PR #171 F-01).
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.contextAssistantService.refreshConfiguration).toHaveBeenCalledTimes(1);
@@ -526,7 +613,11 @@ describe('MessageHandler assembly', () => {
     'proseMinion.dictionaryModel',
     'proseMinion.contextModel',
     'proseMinion.categoryModel',
-    'proseMinion.widgetModel'
+    'proseMinion.widgetModel',
+    // Lightbox Slice 4L: the Lightbox's own model, watched like the other five.
+    'proseMinion.lightboxModel',
+    // Draft Edit Slice 1: Proofread's own model (ADR 2026-10-21 D6).
+    'proseMinion.proofreadModel'
   ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
@@ -545,6 +636,26 @@ describe('MessageHandler assembly', () => {
     expect(assembly.log.appendLine).toHaveBeenCalledWith(
       '[MessageHandler] Model selections hot-swapped; retained conversations preserved'
     );
+  });
+
+  it('sends MODEL_DATA when the Lightbox model changes in VS Code settings, and not for its own write (Slice 4L)', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const sendModelData = jest.spyOn(ConfigurationHandler.prototype, 'sendModelData').mockResolvedValue(undefined);
+    const lightboxKey = (section: string) => section === 'proseMinion.lightboxModel';
+
+    // A Settings UI edit: no webview wrote it, so this webview hears the new model.
+    handler.handleConfigurationChange(lightboxKey);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    expect(sendModelData).toHaveBeenCalledTimes(1);
+
+    // This webview's own pick: its handler answers it, so the watcher stays quiet.
+    jest.spyOn(ConfigurationHandler.prototype, 'shouldBroadcastConfigChange').mockReturnValue(false);
+    handler.handleConfigurationChange(lightboxKey);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    expect(sendModelData).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceManager.refreshModelSelections).toHaveBeenCalledTimes(2);
+    jest.restoreAllMocks();
   });
 
   it.each([
@@ -597,7 +708,7 @@ describe('MessageHandler assembly', () => {
     onSecretChange();
     await flushQueuedWork();
 
-    expect(assembly.services.aiResourceManager.refreshConfiguration).toHaveBeenCalledTimes(1);
+    expect(assembly.services.aiResourceRefresh.refreshKey).toHaveBeenCalledTimes(1);
     expect(assembly.services.assistantToolService.refreshConfiguration).toHaveBeenCalledTimes(1);
     expect(assembly.services.dictionaryService.refreshConfiguration).not.toHaveBeenCalled();
     expect(assembly.services.contextAssistantService.refreshConfiguration).not.toHaveBeenCalled();

@@ -104,6 +104,8 @@ interface TurnResult {
   readonly visibleContent?: string;
   readonly finishReason?: string;
   readonly usage?: TokenUsage;
+  /** Completion tokens the provider reported as reasoning; absent when unreported. */
+  readonly reasoningTokens?: number;
   readonly observation?: InferenceRequestObservation;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
@@ -410,7 +412,7 @@ export class AgentRunEngine {
       }
       artifacts.push(...(capability.handleInvalidRequest?.(rejection) ?? []));
       if (correctionTurns >= policy.maxCorrectionTurns) {
-        const fallback = 'The assistant could not produce a usable final response after its capability request was rejected. Please try again.';
+        const fallback = 'The assistant could not complete its tool request. Please try again; if the problem continues, try another model.';
         this.outputChannel?.appendLine(
           `[AgentRunEngine] ${policy.id} exhausted ${policy.maxCorrectionTurns} correction turn(s).`
         );
@@ -575,6 +577,7 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        ...(last.reasoningTokens !== undefined ? { reasoningTokens: last.reasoningTokens } : {}),
         providerResponseId: last.providerResponseId,
         modelId: latestObservation?.modelId,
         citations: runCitations,
@@ -738,7 +741,7 @@ export class AgentRunEngine {
     retained: boolean,
     options: AgentRunOptions
   ): Promise<CapabilityFulfillment> {
-    const contextLength = OpenRouterModels.getCachedContextLength(provider.getModel?.() ?? this.model);
+    const contextLength = OpenRouterModels.getCachedContextLength(options.model ?? provider.getModel?.() ?? this.model);
     if (contextLength === undefined) {
       return capability.fulfill(request);
     }
@@ -759,7 +762,7 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
-    const model = provider.getModel?.() ?? this.model;
+    const model = options.model ?? provider.getModel?.() ?? this.model;
     const contextLength = OpenRouterModels.getCachedContextLength(model);
     if (contextLength !== undefined) {
       this.contextPreflightUnavailableModel = undefined;
@@ -782,6 +785,7 @@ export class AgentRunEngine {
       signal: options.signal,
       tools: options.tools,
       reasoning: options.reasoning,
+      ...(options.model ? { model: options.model } : {}),
       ...(conversationId ? {
         conversationId,
         claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))
@@ -798,6 +802,7 @@ export class AgentRunEngine {
           providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
+          ...(response.reasoningTokens !== undefined ? { reasoningTokens: response.reasoningTokens } : {}),
           observation: response.observation,
           citations: response.citations,
           cancelled: this.isAborted(options.signal),
@@ -814,6 +819,7 @@ export class AgentRunEngine {
 
     let content = '';
     let usage: TokenUsage | undefined;
+    let reasoningTokens: number | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
     let providerResponseId: string | undefined;
@@ -827,6 +833,7 @@ export class AgentRunEngine {
         if (chunk.done) {
           providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
+          reasoningTokens = chunk.reasoningTokens ?? reasoningTokens;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
           citations = chunk.citations ?? citations;
@@ -904,6 +911,7 @@ export class AgentRunEngine {
       visibleContent: visibilityGuard?.content,
       finishReason,
       usage,
+      ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
       observation,
       citations,
       cancelled,
@@ -1008,9 +1016,12 @@ export class AgentRunEngine {
     const field = 'field' in inspection && typeof inspection.field === 'string'
       ? ` field=${inspection.field}`
       : '';
+    const markers = 'callMarkerCount' in inspection && typeof inspection.callMarkerCount === 'number'
+      ? ` callMarkers=${inspection.callMarkerCount}`
+      : '';
     this.outputChannel?.appendLine(
       `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}:` +
-      `${operation}${field} reason=${inspection.reason}.`
+      `${operation}${field} reason=${inspection.reason}${markers}.`
     );
     // The full dump may quote the writer's manuscript, and Output channels
     // get pasted into public bug reports — so it is opt-in, not always-on.

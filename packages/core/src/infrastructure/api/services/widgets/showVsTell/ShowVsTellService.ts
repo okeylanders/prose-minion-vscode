@@ -20,7 +20,7 @@ import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import { PromptLoader } from '@/tools/shared/prompts';
 import type { LogSink } from '@/platform';
 import {
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice,
   type RejectedModelResponseRecovery,
   type RejectedModelResponseRecoveryPresenter
@@ -213,7 +213,7 @@ export class ShowVsTellService {
     nextStep?: string
   ): Promise<never> {
     this.outputChannel?.appendLine(`[ShowVsTellService] Rejected response: ${rejection}`);
-    const receipt = await persistRejectedWidgetResponse(
+    const receipt = await persistRejectedModelResponse(
       this.rejectedResponseRecovery,
       this.rejectedResponseRecoveryPresenter,
       {

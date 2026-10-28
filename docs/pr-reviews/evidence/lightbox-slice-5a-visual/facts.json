@@ -1,0 +1,1019 @@
+{
+  "rail@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ex3u5n15-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "opened@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOn screen"
+    ],
+    "current": [
+      2
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:05 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-v6ue8lq0-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-v6ue8lq0-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "changed@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7epzjb7g-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-7epzjb7g-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "read-current@1440": {
+    "subtitle": "Drafts/alice-1.md · 519 words",
+    "status": "4 saved",
+    "rows": [
+      "Oct 22, 2026, 2:08 PM8 lenses read · 8 stale · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7hqlz64i-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-7hqlz64i-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_refresh_source {}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7hqlz64i-3\",\"boardId\":\"board-2\"}"
+    ],
+    "savedStates": 14,
+    "savedStateNamesAFile": false
+  },
+  "delete-confirm@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyDelete this file?DeleteKeep"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
+    "focused": "Keep",
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-jzon28s9-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "session-only@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "rows": [],
+    "current": [],
+    "snapshot": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
+    "notice": null,
+    "caption": null,
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-v3nlny91-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-vwm0326n-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-2ip2ps61-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@1440": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-3yscefew-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "rail@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-8i5okqtm-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "opened@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOn screen"
+    ],
+    "current": [
+      2
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:05 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-l8n8dcsa-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-l8n8dcsa-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "changed@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-08d2q9md-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-08d2q9md-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "read-current@1000": {
+    "subtitle": "Drafts/alice-1.md · 519 words",
+    "status": "4 saved",
+    "rows": [
+      "Oct 22, 2026, 2:08 PM8 lenses read · 8 stale · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-eub64asg-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-eub64asg-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_refresh_source {}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-eub64asg-3\",\"boardId\":\"board-2\"}"
+    ],
+    "savedStates": 14,
+    "savedStateNamesAFile": false
+  },
+  "delete-confirm@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyDelete this file?DeleteKeep"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
+    "focused": "Keep",
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-a5bg6dbk-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "session-only@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "rows": [],
+    "current": [],
+    "snapshot": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
+    "notice": null,
+    "caption": null,
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-r3nizdol-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-bw85dqrb-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-gyoatsut-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@1000": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-t1myo4vo-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "rail@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-3tv9wfn2-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "opened@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOn screen"
+    ],
+    "current": [
+      2
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:05 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-xtavlzub-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-xtavlzub-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-05-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "changed@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      1
+    ],
+    "snapshot": {
+      "tone": "is-warn",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file has changed since. This board shows the text as it was saved, and holds back Bring until you read the current text."
+      ],
+      "readCurrentText": true
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-hpornhm3-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-hpornhm3-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}"
+    ],
+    "savedStates": 10,
+    "savedStateNamesAFile": false
+  },
+  "read-current@500": {
+    "subtitle": "Drafts/alice-1.md · 519 words",
+    "status": "4 saved",
+    "rows": [
+      "Oct 22, 2026, 2:08 PM8 lenses read · 8 stale · ≈ $0.02On screen",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 7,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": null,
+      "bringNote": null
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-odjdz8y8-1\",\"boardId\":null}",
+      "lightbox_open_board {\"requestId\":\"lbx-brd-odjdz8y8-2\",\"fileId\":\"drafts-alice-1-md-9b099095/2026-10-22T14-06-09-123Z.board.json\"}",
+      "lightbox_refresh_source {}",
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-odjdz8y8-3\",\"boardId\":\"board-2\"}"
+    ],
+    "savedStates": 14,
+    "savedStateNamesAFile": false
+  },
+  "delete-confirm@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "3 saved",
+    "rows": [
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:06 PM8 lenses read · ≈ $0.02Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyDelete this file?DeleteKeep"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": "Delete the board saved Oct 22, 2026, 2:05 PM?",
+    "focused": "Keep",
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-1fjhxumz-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "session-only@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "this session",
+    "rows": [],
+    "current": [],
+    "snapshot": null,
+    "note": "Boards are kept for this session only: no folder is open. Open one folder to save them.",
+    "page": null,
+    "notice": null,
+    "caption": null,
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-8ff9vtra-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "earlier-rule@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "2 saved",
+    "rows": [
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07On screen",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": {
+      "tone": "is-quiet",
+      "text": [
+        "Opened from the board saved Oct 22, 2026, 2:06 PM.",
+        "The file still holds the text it was read from."
+      ],
+      "readCurrentText": false
+    },
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 1,
+    "opinion": {
+      "staleNote": "Stale Saved under an earlier citation rule; read the Opinion again to bring it current.",
+      "bringDisabled": true,
+      "bringNote": "Saved under an earlier citation rule; read the Opinion again to bring it current."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-cnqnnne9-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": "Showing the newest 20 of 23.",
+    "page": {
+      "note": "Showing the newest 20 of 23.",
+      "more": "Show 3 older"
+    },
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-7y1wd77q-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  },
+  "history-older@500": {
+    "subtitle": "Drafts/alice-1.md · 508 words",
+    "status": "23 saved",
+    "rows": [
+      "Oct 22, 2026, 2:27 PMEvery lens read · ≈ $1.54On screen",
+      "Oct 22, 2026, 2:26 PMEvery lens read · ≈ $1.47Open",
+      "Oct 22, 2026, 2:25 PMEvery lens read · ≈ $1.40Open",
+      "Oct 22, 2026, 2:24 PMEvery lens read · ≈ $1.33Open",
+      "Oct 22, 2026, 2:23 PMEvery lens read · ≈ $1.26Open",
+      "Oct 22, 2026, 2:22 PMEvery lens read · ≈ $1.19Open",
+      "Oct 22, 2026, 2:21 PMEvery lens read · ≈ $1.12Open",
+      "Oct 22, 2026, 2:20 PMEvery lens read · ≈ $1.05Open",
+      "Oct 22, 2026, 2:19 PMEvery lens read · ≈ $0.98Open",
+      "Oct 22, 2026, 2:18 PMEvery lens read · ≈ $0.91Open",
+      "Oct 22, 2026, 2:17 PMEvery lens read · ≈ $0.84Open",
+      "Oct 22, 2026, 2:16 PMEvery lens read · ≈ $0.77Open",
+      "Oct 22, 2026, 2:15 PMEvery lens read · ≈ $0.70Open",
+      "Oct 22, 2026, 2:14 PMEvery lens read · ≈ $0.63Open",
+      "Oct 22, 2026, 2:13 PMEvery lens read · ≈ $0.56Open",
+      "Oct 22, 2026, 2:12 PMEvery lens read · ≈ $0.49Open",
+      "Oct 22, 2026, 2:11 PMEvery lens read · ≈ $0.42Open",
+      "Oct 22, 2026, 2:10 PMEvery lens read · ≈ $0.35Open",
+      "Oct 22, 2026, 2:09 PMEvery lens read · ≈ $0.28Open",
+      "Oct 22, 2026, 2:08 PMEvery lens read · ≈ $0.21Open",
+      "Oct 22, 2026, 2:07 PMEvery lens read · ≈ $0.14Open",
+      "Oct 22, 2026, 2:06 PMEvery lens read · ≈ $0.07Open",
+      "Oct 22, 2026, 2:05 PMMeasured onlyOpen"
+    ],
+    "current": [
+      0
+    ],
+    "snapshot": null,
+    "note": null,
+    "page": null,
+    "notice": null,
+    "caption": "Saved in prose-minion/boards, one file per save. Nothing is deleted unless you delete it.",
+    "confirm": null,
+    "focused": null,
+    "staleNotes": 0,
+    "opinion": {
+      "staleNote": null,
+      "bringDisabled": true,
+      "bringNote": "Its observations cite no quote, and a Workshop tile carries at least one."
+    },
+    "horizontalOverflow": false,
+    "posted": [
+      "lightbox_request_boards {\"requestId\":\"lbx-brd-ruhcul1q-1\",\"boardId\":null}"
+    ],
+    "savedStates": 8,
+    "savedStateNamesAFile": false
+  }
+}

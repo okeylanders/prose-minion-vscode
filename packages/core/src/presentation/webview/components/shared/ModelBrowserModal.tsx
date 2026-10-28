@@ -1,10 +1,23 @@
 import * as React from 'react';
 import { ModelOption, ModelParameterConfidence, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
+import { useOverlayDismiss } from '@hooks/useOverlayDismiss';
 
 type ModelBrowserPivot = 'provider' | 'family' | 'release-date';
 
 const RELEASE_DATE_UNAVAILABLE = 'Release date unavailable';
+
+/**
+ * A following scope's first card (Lightbox Slice 4L): no model of its own,
+ * the model of the scope it follows instead. Checked while it follows.
+ */
+export interface ModelBrowserFollow {
+  /** The choice with the followed model's name: "Same as Workshop (the Workshop's model)". */
+  label: string;
+  description: string;
+  following: boolean;
+  onFollow: () => void;
+}
 
 interface ModelBrowserModalProps {
   open: boolean;
@@ -14,6 +27,7 @@ interface ModelBrowserModalProps {
   label: string;
   onClose: () => void;
   onSelect: (scope: ModelScope, modelId: string) => void;
+  follow?: ModelBrowserFollow;
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -166,19 +180,16 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
   label,
   onClose,
   onSelect,
+  follow,
 }) => {
   const [query, setQuery] = React.useState('');
   const [pivot, setPivot] = React.useState<ModelBrowserPivot>('provider');
   const [activeGroup, setActiveGroup] = React.useState('All');
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  /* The shared overlay stack (PR #150 F-07): Escape closes this browser only
+     when it is on top, a handed-over seed sees it as open, and focus returns
+     to whatever opened it, in the sidebar, the Workshop header or a sheet. */
+  const closeButtonRef = useOverlayDismiss({ open, onClose });
 
   React.useEffect(() => {
     setActiveGroup('All');
@@ -215,6 +226,11 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
     onClose();
   };
 
+  const chooseFollow = () => {
+    follow?.onFollow();
+    onClose();
+  };
+
   return (
     <div className="tm-backdrop" role="dialog" aria-modal="true" aria-label={`${label} browser`} onClick={onClose}>
       <div className="tm mb" onClick={(event) => event.stopPropagation()}>
@@ -224,7 +240,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
             <div className="tm-title">Choose a Model</div>
             <div className="tm-subtitle">Live OpenRouter pricing and context, with curated parameter disclosures.</div>
           </div>
-          <button type="button" className="btn ghost tm-close" onClick={onClose} aria-label="Close">
+          <button ref={closeButtonRef} type="button" className="btn ghost tm-close" onClick={onClose} aria-label="Close">
             <Icon name="x" size={16} />
           </button>
         </div>
@@ -290,6 +306,25 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
         </div>
 
         <div className="mb-list">
+          {follow && (
+            <div className="mb-grid mb-follow">
+              <button
+                type="button"
+                className={`tm-card mb-card ${follow.following ? 'selected' : ''}`}
+                onClick={chooseFollow}
+              >
+                {follow.following && (
+                  <span className="mb-selected" aria-hidden="true">
+                    <Icon name="check" size={13} />
+                  </span>
+                )}
+                <span className="mb-card-head">
+                  <span className="tm-n">{follow.label}</span>
+                </span>
+                <span className="tm-d mb-desc">{follow.description}</span>
+              </button>
+            </div>
+          )}
           {visibleGroups.length === 0 && (
             <div className="mb-empty">No models match that search.</div>
           )}

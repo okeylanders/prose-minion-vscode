@@ -104,7 +104,7 @@ export {
 export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
-  persistRejectedWidgetResponse,
+  persistRejectedModelResponse,
   recoveryLocationNotice
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 export type {
@@ -112,12 +112,21 @@ export type {
   RejectedModelResponseRecoveryPresenter,
   RejectedModelResponseRecoveryReceipt
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
-export type { RecoverableWidgetToolName } from '@messages';
+export type { RecoverableToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+// Seed delivery: a handoff opens only on the panel's grant (PR #150 F-03)
+export {
+  WORKSHOP_SEED_TIMEOUT_MS,
+  WorkshopSeedDelivery
+} from '@/application/services/workshop/WorkshopSeedDelivery';
+export type {
+  WorkshopSeedDeliveryOptions,
+  WorkshopSeedDeliveryPorts
+} from '@/application/services/workshop/WorkshopSeedDelivery';
 export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 export { CreativeVariationsService } from '@services/widgets/creativeVariations/CreativeVariationsService';
 export { ShowVsTellService } from '@services/widgets/showVsTell/ShowVsTellService';
@@ -170,6 +179,7 @@ export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageServ
 // --- Infrastructure: AI resource orchestration ---
 export { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 export { AIResourceManager } from '@orchestration/AIResourceManager';
+export { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 
 // --- Infrastructure: services (measurement / analysis / dictionary / search / resources / shared) ---
 export { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -184,7 +194,55 @@ export { StandardsService } from '@services/resources/StandardsService';
 export { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 export { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 export { ContextResourceResolver } from '@/infrastructure/context/ContextResourceResolver';
+export { LightboxService, type LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxService';
+export { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
+export { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+export { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
+export { LightboxBoardStore, type LightboxBoardMemory } from '@/infrastructure/storage/LightboxBoardStore';
+export { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 export {
   AccountBalanceService,
   OpenRouterAccountClient
 } from '@/infrastructure/account';
+
+// --- Draft Edit (ADR 2026-10-21): the Proofread and Craft Flags passes, their runs, and the adapter's helpers ---
+export { ProofreadService } from '@services/proofread/ProofreadService';
+export { CraftFlagsService, liveCatalogPrices } from '@services/craftFlags/CraftFlagsService';
+export { liveCatalogReasoning } from '@services/draftEdit/DraftEditReasoningSupport';
+export {
+  CraftFlagsUseCase,
+  type CraftFlagsApproval,
+  type CraftFlagsBegin,
+  type CraftFlagsGesture,
+  type CraftFlagsRunPlan
+} from '@/application/services/draftEdit/CraftFlagsUseCase';
+export { describeCraftFlagsOutcome, describeCraftFlagsPlan } from '@/application/services/draftEdit/craftFlagsSummary';
+export { CRAFT_FLAG_CATEGORIES, craftFlagCategoriesOf, type CraftFlagsOutcome, type CraftFlagsPass } from '@/domain/models/CraftFlag';
+export {
+  DraftEditUseCase,
+  type DraftEditBegin,
+  type DraftEditGesture,
+  type DraftEditQuickFixOutcome,
+  type DraftEditQuickFixRequest,
+  type DraftEditRunHooks,
+  type DraftEditRunPlan
+} from '@/application/services/draftEdit/DraftEditUseCase';
+export { DraftEditApplier } from '@/application/services/draftEdit/DraftEditApplier';
+export { describeDraftEditOutcome, describeQuickFixOutcome, type DraftEditSummary } from '@/application/services/draftEdit/draftEditSummary';
+export {
+  DRAFT_EDIT_LANGUAGE_IDS,
+  DRAFT_EDIT_PASS_POLICIES,
+  PROOFREAD_SPELLING_CONVENTIONS,
+  isProofreadSpellingConvention,
+  type DraftEditFixReport,
+  type DraftEditOutcome,
+  type DraftEditPass,
+  type DraftEditReview,
+  type DraftEditTarget,
+  type ProofreadPass,
+  type ProofreadSettings,
+  type ProofreadSpellingConvention
+} from '@/domain/models/DraftEdit';
+export { proofreadWordList } from '@/utils/proofread/proofreadWordList';
+export { REASONING_LEVELS, reasoningLevelOf, type ReasoningLevel } from '@/domain/models/ReasoningLevel';
+export { shiftRanges, type TextChange } from '@/utils/draftEdit/shiftRanges';

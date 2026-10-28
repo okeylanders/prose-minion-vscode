@@ -3,6 +3,8 @@
  * Analyzes prose statistics: word count, sentences, pacing, etc.
  */
 
+import { countDialogueWords } from '@/utils/dialogueSpans';
+
 export interface ProseStatsInput {
   text: string;
 }
@@ -33,6 +35,117 @@ export interface ProseStatsOutput {
   typeTokenRatio?: number; // percent 0–100
   vocabularyDiversity?: number; // percent 0–100 (same as TTR, but more intuitive name)
   readabilityGrade?: number;
+}
+
+/**
+ * Sentences as the prose-stats tool counts them: runs of text between
+ * sentence-ending punctuation. Exported so the Lightbox's per-paragraph
+ * sentence counts (ADR 2026-10-19 D4) use the same rule.
+ */
+export function countProseSentences(text: string): number {
+  return proseSentenceSpans(text).length;
+}
+
+/**
+ * Whether a stretch of text holds anything but space and the marks that
+ * close a quotation or a bracket. One that does not is no sentence.
+ */
+function holdsSentence(stretch: string): boolean {
+  return /[^\s”’"')\]]/.test(stretch);
+}
+
+/**
+ * Whether `text` goes on at `at` with space, then a lower-case letter, and no
+ * paragraph break (the blank-line rule) in the space: a speech tag.
+ */
+function continuesIntoTag(text: string, at: number, speechTag: RegExp): boolean {
+  speechTag.lastIndex = at;
+  const space = speechTag.exec(text);
+  return space !== null && !/\n\s*\n/.test(space[0]);
+}
+
+/**
+ * The same sentences as spans of `text`. The Lightbox checks that two
+ * borrowed fields share one of these (PR #150 F-04).
+ *
+ * The rule (ADR 2026-10-21, sentence closing marks):
+ * - A sentence ends at a run of `.`, `!` or `?` (an ellipsis written `...`
+ *   is such a run; `…` is not, and does not end one).
+ * - It keeps the closing marks written directly after that run, with no
+ *   space between: `”`, `’`, `"`, `'`, `)` and `]`, in any order, so
+ *   `“Oh dear!”`, `‘Stop.’`, `(See below.)` and `“He said ‘No!’”` each end
+ *   with their marks. Enders and marks may interleave: `“Did you say
+ *   "What a pity!"?”` ends once, at its `”`.
+ * - An apostrophe is kept only inside that unbroken run, where it follows
+ *   the ender or another closing mark. An elision's apostrophe follows a
+ *   letter (`goin’`) or opens a word after a space (`’Twas`), so it never
+ *   moves.
+ * - A stretch with nothing in it but space and closing marks is no
+ *   sentence. A closing mark after a space (`Oh! ” she said`) is not kept,
+ *   and opens the next sentence as it always did.
+ * - **Speech tags.** A sentence continues across ender, closing quotation
+ *   mark, space and a lower-case letter, as standard punctuation reads it:
+ *   `“Wait!” she cried.`, `“Who are you?” said the Caterpillar.` and
+ *   `“I was thinking...” she trailed off.` are each one sentence.
+ *   - A quotation mark (`”`, `’`, `"` or `'`) must come directly after an
+ *     ender of the run. A bare `!` or `?` before lower-case text (`Wait! she
+ *     cried`) ends a sentence, and so does a bracket (`(See below.) then`).
+ *   - The space may break a line but not a paragraph: a blank line ends
+ *     the sentence.
+ *   - A capitalised tag cannot be told from a new sentence without a
+ *     parser, so `“Wait!” Alice said.` is two sentences, as
+ *     `“Wait.” She turned.` is.
+ * - Nothing else is decided here: `Mr.` ends a sentence.
+ *
+ * The rule's id is `PROSE_SENTENCE_RULE_ID`.
+ */
+/**
+ * The id of the sentence rule above (closing marks and speech tags, ADR
+ * 2026-10-21). A saved Lightbox board records which rule measured its
+ * sentence figures (ADR 2026-10-19 D12 addendum). A change to what the rule
+ * returns is a new rule, so it gets a new id: `measurementRuleIds.test.ts`
+ * pins this one to its output and fails when the output moves and the id
+ * does not.
+ */
+export const PROSE_SENTENCE_RULE_ID = 'closing-marks-speech-tags-2026-10-21';
+
+export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
+  const spans: Array<{ start: number; end: number }> = [];
+  // Fresh literals per call, so no global or sticky regex's lastIndex is shared.
+  // An end is an ender and every ender and closing mark written straight after it: `!"?”` is one.
+  const enders = /[.!?][.!?”’"')\]]*/g;
+  const speechTag = /\s+(?=\p{Ll})/uy;
+  let start = 0;
+  for (let match = enders.exec(text); match; match = enders.exec(text)) {
+    const end = match.index + match[0].length;
+    if (/[.!?][”’"']/.test(match[0]) && continuesIntoTag(text, end, speechTag)) {
+      continue;
+    }
+    if (holdsSentence(text.slice(start, match.index))) {
+      spans.push({ start, end });
+    }
+    start = end;
+  }
+  if (holdsSentence(text.slice(start))) {
+    spans.push({ start, end: text.length });
+  }
+  return spans;
+}
+
+/**
+ * The words the tool's vocabulary figures count (unique words, hapax,
+ * lexical density, type-token ratio): whitespace-separated, lower-cased,
+ * each kept to its letters a–z and apostrophes, with nothing trimmed, so a
+ * hyphenated word is one word and "rabbit-hole" counts as "rabbithole".
+ * Exported so the Lightbox's hapax list (Slice 4E) counts exactly what the
+ * stats row's "hapax" counts.
+ */
+export function proseStatsWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-z']/g, ''))
+    .filter(Boolean);
 }
 
 export class PassageProseStats {
@@ -92,9 +205,7 @@ export class PassageProseStats {
   }
 
   private countSentences(text: string): number {
-    // Split on sentence-ending punctuation
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    return sentences.length;
+    return countProseSentences(text);
   }
 
   private countParagraphs(text: string): number {
@@ -104,25 +215,14 @@ export class PassageProseStats {
   }
 
   private calculateDialoguePercentage(text: string): number {
-    // Count words inside quotation marks
-    const dialogueMatches = text.match(/"[^"]*"/g);
-    if (!dialogueMatches) {
-      return 0;
-    }
-
-    const dialogueText = dialogueMatches.join(' ');
-    const dialogueWords = this.countWords(dialogueText);
+    // Words inside quoted dialogue. Lightbox's per-paragraph dialogue share
+    // uses the same matcher (ADR 2026-10-19, D4), so the two cannot disagree.
     const totalWords = this.countWords(text);
-
-    return totalWords > 0 ? (dialogueWords / totalWords) * 100 : 0;
+    return totalWords > 0 ? (countDialogueWords(text) / totalWords) * 100 : 0;
   }
 
   private tokenizeWords(text: string): string[] {
-    return text
-      .toLowerCase()
-      .split(/\s+/)
-      .map(w => w.replace(/[^a-z']/g, ''))
-      .filter(Boolean);
+    return proseStatsWords(text);
   }
 
   private countUniqueWords(text: string): number {

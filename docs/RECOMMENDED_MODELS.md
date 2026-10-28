@@ -4,6 +4,15 @@ Prose Minion connects to OpenRouter to provide access to the world's best AI mod
 
 Here is a guide to the models we recommend for creative writing, analysis, and editing.
 
+**Catalog audit: October 27, 2026.** Added GPT-6.1 Terra / Terra Pro,
+Kimi K3.1 Pro, MiniMax M3.1 Flash, DeepSeek V4.1 Flash 1017, and Mercury 3
+as opt-in choices. Removed three unavailable IDs from the curated pickers:
+`deepseek/deepseek-r1`, `sao10k/l3.3-euryale-70b`, and
+`arcee-ai/trinity-large-thinking`. Existing defaults and saved selections are
+unchanged. Availability and advertised capabilities were checked against
+[OpenRouter's live catalog](https://openrouter.ai/api/v1/models) and serving
+endpoints; the additions' prose quality has not been evaluated in Prose Minion.
+
 ---
 
 ## 🎭 Creative Prose & Storytelling
@@ -140,14 +149,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/aion-labs/aion-3.5
 
-### Sao10K Euryale 70B — Roleplay & Voice
-
-- **Best For:** Capturing unique character voices
-- **Description:** Creative and non-restrictive. Excellent for unconventional formatting and character work
-- **Links:**
-  - OpenRouter: https://openrouter.ai/sao10k/l3.3-euryale-70b
-  - HuggingFace: https://huggingface.co/Sao10K
-
 ### Nous Hermes 4 405B — Mature Themes
 
 - **Best For:** Handling mature themes without moralizing
@@ -186,14 +187,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/google/gemini-2.5-pro
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
-### DeepSeek R1 — Pure Logic
-
-- **Best For:** The open-weight reasoning king
-- **Description:** Excellent for heavy structural analysis, checking plot logic, and pacing verification
-- **Links:**
-  - OpenRouter: https://openrouter.ai/deepseek/deepseek-r1
-  - DeepSeek: https://www.deepseek.com/
-
 ### DeepSeek V4 Pro 0813 — Production Agentic Checkpoint
 
 - **Best For:** Tool-heavy editorial workflows, large-context structural analysis, and production agent runs
@@ -201,6 +194,22 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4-pro-0813
   - DeepSeek: https://www.deepseek.com/
+
+### DeepSeek V4.1 Flash 1017 — Updated Flash Snapshot
+
+- **Best For:** Trying inexpensive long-document critique and utility rewriting
+- **Description:** October 17 snapshot with 1,048,576-token context, optional reasoning, text/image input, tools, and structured outputs. The existing V4.1 Flash choice remains available separately
+- **Pricing:** October 27 catalog rates: $0.15/M input and $0.60/M output tokens; scheduled peak rates are $0.30/$1.20, and serving endpoints may differ
+- **Links:**
+  - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4.1-flash-1017
+
+### MiniMax M3.1 Flash — Low-Cost Multimodal Reasoning
+
+- **Best For:** Trying low-cost editorial analysis and Category Search
+- **Description:** 1,048,576-token context with text/image/video input, mandatory reasoning, tools, and structured outputs. Reasoning cannot be turned off
+- **Pricing:** October 27 catalog rates: $0.15/M input and $0.60/M output tokens; serving endpoints and discounts may differ
+- **Links:**
+  - OpenRouter: https://openrouter.ai/minimax/minimax-m3.1-flash
 
 ### DeepSeek V4 Flash 0731 — Fast Long-Context Value
 
@@ -326,6 +335,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/moonshotai/kimi-k3
   - Moonshot AI: https://www.moonshot.cn/
 
+### Kimi K3.1 Pro — Long-Context Multimodal Analysis
+
+- **Best For:** Trying manuscript-scale analysis and complex editorial planning
+- **Description:** Successor to Kimi K3 with 1,048,576-token context, text/image/video input, optional reasoning, tools, and structured outputs. The catalog does not advertise temperature control
+- **Pricing:** October 27 catalog rates: $2/M input and $10/M output tokens; serving endpoints may differ
+- **Links:**
+  - OpenRouter: https://openrouter.ai/moonshotai/kimi-k3.1-pro
+
 ### Sakana Fugu Ultra — Model Orchestration
 
 - **Best For:** Complex multi-step work that benefits from multiple models' strengths
@@ -433,7 +450,20 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/openai/gpt-6.1-sol-pro
 
-OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains available and the always-latest Terra alias still resolves to it.
+### OpenAI GPT-6.1 Terra — Mid-Tier Editorial Work
+
+- **Best For:** Trying everyday editorial conversations, analysis, and Category Search below Sol's price
+- **Description:** 1,050,000-token context, up to 128,000 output tokens, text/image/file input, optional reasoning, tools, and structured outputs. The catalog does not advertise temperature control
+- **Pricing:** October 27 catalog rates: $1/M input and $5/M output tokens; prompts of at least 272,000 tokens use $2/$7.50 rates. Serving endpoints and batch pricing may differ
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6.1-terra
+
+### OpenAI GPT-6.1 Terra Pro — Deeper Terra Reasoning
+
+- **Best For:** Trying harder editorial analysis with Pro reasoning
+- **Description:** The same underlying Terra model served with mandatory Pro reasoning, at the same per-token rates. Pro mode can consume substantially more output tokens; reasoning cannot be turned off
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6.1-terra-pro
 
 ### OpenAI GPT-6 Astra — Frontier Reasoning
 
@@ -512,6 +542,14 @@ OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains ava
 - **Links:**
   - OpenRouter: https://openrouter.ai/inception/mercury-2.5
   - Inception: https://www.inceptionlabs.ai/
+
+### Mercury 3 — Long-Context Diffusion Utility Work
+
+- **Best For:** Trying responsive dictionary alternatives, Category Search, and quick critiques
+- **Description:** 1,000,000-token context, up to 131,072 output tokens, text input/output, optional reasoning, tools, and structured outputs. Mercury 2.5 remains selectable
+- **Pricing:** October 27 catalog rates: $0.10/M input and $0.35/M output tokens; serving endpoints and discounts may differ
+- **Links:**
+  - OpenRouter: https://openrouter.ai/inception/mercury-3
 
 ### Solar Mini 4 — Low-Cost Long Context
 

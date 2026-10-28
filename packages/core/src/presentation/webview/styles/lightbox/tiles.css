@@ -1,0 +1,533 @@
+/* ============================================================
+   Prose Minion — the Lightbox tiles (ADR 2026-10-19 D3, D5): the stat row,
+   the six-column tile grid, the register frames (solid measured, dashed
+   read, neutral counted-read), the counted tiles and the reading
+   placeholders.
+   ============================================================ */
+
+/* ---------- Stats ---------- */
+[data-pm-surface="lightbox"] .pm-lb-stats {
+  margin-bottom: 16px;
+}
+[data-pm-surface="lightbox"] .pm-lb-stat-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1100px) {
+  [data-pm-surface="lightbox"] .pm-lb-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  [data-pm-surface="lightbox"] .pm-lb-stat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+[data-pm-surface="lightbox"] .pm-lb-stat {
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-lb-measured-line);
+  border-radius: 12px;
+  padding: 16px 16px 14px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-stat-value {
+  font-family: var(--pm-lb-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--pm-text);
+  font-variant-numeric: tabular-nums;
+}
+[data-pm-surface="lightbox"] .pm-lb-stat-value.is-accent {
+  color: var(--pm-lb-measured-hi);
+}
+[data-pm-surface="lightbox"] .pm-lb-stat-label {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  margin-top: 10px;
+  line-height: 1.4;
+}
+[data-pm-surface="lightbox"] .pm-lb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-chips-label {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  margin-right: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-chip {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-chip b {
+  color: var(--pm-text);
+  font-weight: 500;
+}
+[data-pm-surface="lightbox"] .pm-lb-std-below,
+[data-pm-surface="lightbox"] .pm-lb-std-above {
+  border-color: color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+}
+[data-pm-surface="lightbox"] .pm-lb-std-within {
+  border-color: color-mix(in srgb, var(--pm-green) 40%, var(--pm-border));
+}
+
+/* ---------- Tile grid ---------- */
+[data-pm-surface="lightbox"] .pm-lb-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+[data-pm-surface="lightbox"] .pm-lb-span3 { grid-column: span 3; }
+[data-pm-surface="lightbox"] .pm-lb-span6 { grid-column: span 6; }
+@media (max-width: 1100px) {
+  [data-pm-surface="lightbox"] .pm-lb-span3 { grid-column: span 6; }
+}
+[data-pm-surface="lightbox"] .pm-lb-tile {
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border);
+  border-radius: 13px;
+  padding: 18px 18px 16px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile.pm-lb-reg-read {
+  border-style: dashed;
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-tile.pm-lb-reg-counted-read {
+  border-color: var(--pm-lb-counted-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-eyebrow {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pm-lb-measured-hi);
+  margin: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-read .pm-lb-tile-eyebrow {
+  color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-counted-read .pm-lb-tile-eyebrow {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-badge {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  color: var(--pm-lb-measured-hi);
+  background: var(--pm-lb-measured-soft);
+  border: 1px solid var(--pm-lb-measured-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-read .pm-lb-badge,
+[data-pm-surface="lightbox"] .pm-lb-badge.pm-lb-reg-read {
+  color: var(--pm-lb-read);
+  background: var(--pm-lb-read-soft);
+  border: 1px dashed var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-counted-read .pm-lb-badge,
+[data-pm-surface="lightbox"] .pm-lb-badge.pm-lb-reg-counted-read {
+  color: var(--pm-text-2);
+  background: transparent;
+  border: 1px solid var(--pm-lb-counted-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-foot,
+[data-pm-surface="lightbox"] .pm-lb-empty-note {
+  font-size: 12px;
+  color: var(--pm-muted);
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-empty-note {
+  margin: 4px 0;
+}
+
+/* ---------- Top words ---------- */
+[data-pm-surface="lightbox"] .pm-lb-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+[data-pm-surface="lightbox"] .pm-lb-cloud-word {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin: 0;
+  padding: 0 3px;
+  border-radius: 6px;
+  font-family: var(--pm-lb-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-cloud-word sup {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--pm-muted);
+  margin-left: 2px;
+  letter-spacing: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-cloud-word.is-top { color: var(--pm-lb-measured-hi); }
+[data-pm-surface="lightbox"] .pm-lb-cloud-word.is-mid { color: var(--pm-text); }
+[data-pm-surface="lightbox"] .pm-lb-cloud-word.is-low { color: #b9a891; }
+[data-pm-surface="lightbox"] .pm-lb-cloud-word:hover,
+[data-pm-surface="lightbox"] .pm-lb-cloud-word.is-hot {
+  background: var(--pm-lb-measured-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-cloud-word.is-sel {
+  border-bottom-color: var(--pm-lb-measured);
+}
+
+/* ---------- Parts of speech and repetition ---------- */
+[data-pm-surface="lightbox"] .pm-lb-pos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-col {
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 10px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-head {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-lb-measured-hi);
+  margin: 0 0 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-row {
+  appearance: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  margin: 0;
+  padding: 1px 4px;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--pm-text-2);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-row span {
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-row:hover,
+[data-pm-surface="lightbox"] .pm-lb-pos-row.is-hot {
+  background: var(--pm-lb-measured-soft);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-pos-row.is-sel {
+  box-shadow: inset 0 0 0 1px var(--pm-lb-measured);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-phrases,
+[data-pm-surface="lightbox"] .pm-lb-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  align-items: center;
+}
+[data-pm-surface="lightbox"] .pm-lb-phrases-label {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-phrase {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-text);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 7px;
+  min-height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-phrase:hover,
+[data-pm-surface="lightbox"] .pm-lb-phrase.is-hot {
+  border-color: var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-phrase.is-sel {
+  border-color: var(--pm-lb-measured);
+  background: var(--pm-lb-measured-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-flag {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+[data-pm-surface="lightbox"] .pm-lb-flag b {
+  color: var(--pm-text);
+  font-weight: 500;
+}
+
+/* ---------- Reading placeholders ---------- */
+[data-pm-surface="lightbox"] .pm-lb-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 6px 0 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--pm-surface-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-skeleton-line.is-95 { width: 95%; }
+[data-pm-surface="lightbox"] .pm-lb-skeleton-line.is-80 { width: 80%; }
+[data-pm-surface="lightbox"] .pm-lb-skeleton-line.is-60 { width: 60%; }
+[data-pm-surface="lightbox"] .pm-lb-skeleton-note {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+  margin: 12px 0 0;
+}
+
+/* ---------- Top words with the hapax list under the cloud (Slice 4E) ---------- */
+/* The panel is a column: the cloud, then the words used once filling the room
+   the row gives it beside Parts of speech. */
+[data-pm-surface="lightbox"] .pm-lb-tile.pm-lb-top-words {
+  display: flex;
+  flex-direction: column;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 8px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+}
+/* The well is placed out of flow, so its words never make the panel taller
+   than its row; side by side it fills the spare height, stacked it keeps
+   a minimum of its own. */
+[data-pm-surface="lightbox"] .pm-lb-hapax-box {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 176px;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-well {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 2px 4px;
+  padding: 8px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  margin: 0;
+  padding: 1px 5px;
+  font-family: var(--pm-lb-serif);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word:hover,
+[data-pm-surface="lightbox"] .pm-lb-hapax-word.is-hot {
+  background: var(--pm-lb-measured-soft);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-word.is-sel {
+  box-shadow: inset 0 0 0 1px var(--pm-lb-measured);
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-more {
+  appearance: none;
+  margin: 4px 0 0;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px dashed var(--pm-border-2);
+  background: none;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-hapax-more:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-lb-measured-line);
+}
+
+/* A style flag that counts instances is a board item (Slice 4E). */
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item {
+  appearance: none;
+  background: none;
+  margin: 0;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item:hover,
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item.is-hot {
+  border-color: var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-flag.is-item.is-sel {
+  border-color: var(--pm-lb-measured);
+  background: var(--pm-lb-measured-soft);
+}
+
+/* ---------- A call's own run (Slice 4I, epic decisions 43–45): a widget's Analyze, a call's Run ----------
+   In a reading's header it stands in for the bare "read" badge; a counted-read tile keeps a "counted"
+   chip beside it. It is never disabled outright: aria-disabled keeps it focusable, so its reason reads. */
+[data-pm-surface="lightbox"] .pm-lb-call {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+  /* Holds its visually hidden reason, which would otherwise stretch the page from wherever it sits. */
+  position: relative;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  row-gap: 1px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  border: 1px dashed var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+  color: var(--pm-lb-read);
+  font: 600 11.5px var(--pm-sans);
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button:not([aria-disabled="true"]):hover {
+  border-style: solid;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button:focus-visible {
+  outline: 2px solid var(--pm-lb-read);
+  outline-offset: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button[aria-disabled="true"] {
+  cursor: default;
+  color: var(--pm-dim);
+  background: transparent;
+  border-color: var(--pm-border);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button.is-live {
+  color: var(--pm-lb-read);
+  border-style: solid;
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-call-button svg {
+  flex: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-cost {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--pm-muted);
+}
+/* A call showing its own reason (the Opinion with nothing to weigh, a call too large): the chips and the button stay
+   together at the right of the head, and the reason takes a line of its own under it, the head's full width. */
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) {
+  justify-content: flex-start;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) > .pm-lb-tile-eyebrow {
+  margin-right: auto;
+}
+[data-pm-surface="lightbox"] .pm-lb-tile-head:has(.pm-lb-call.is-blocked) .pm-lb-tile-badges,
+[data-pm-surface="lightbox"] .pm-lb-call.is-blocked {
+  display: contents;
+}
+[data-pm-surface="lightbox"] .pm-lb-call.is-blocked > .pm-lb-call-reason {
+  flex-basis: 100%;
+  max-width: none;
+}
+[data-pm-surface="lightbox"] .pm-lb-call-reason {
+  max-width: 44ch;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--pm-amber);
+}
+/* Read by a screen reader, never drawn. Its container is positioned, so it never stretches the page. */
+[data-pm-surface="lightbox"] .pm-lb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-spin.is-small {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}

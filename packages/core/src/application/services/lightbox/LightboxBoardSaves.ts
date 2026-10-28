@@ -1,0 +1,205 @@
+/**
+ * LightboxBoardSaves — when a Lightbox board is saved, and where (ADR
+ * 2026-10-19 D12 addendum; Slice 5A, epic decision 27; Slice 5A.2, epic
+ * decision 46). Built by `LightboxBoardLibrary` over the same service and
+ * store, and reached only through it. Split from the library in Slice 5A.2.
+ *
+ * - **One file per board (decision 46, amending decision 27).** A board's
+ *   first save writes its file; every later save of the same board (more
+ *   readings, a re-read lens, a stopped run) rewrites that file in place,
+ *   through the store's claim. "Read the current text" builds a new board,
+ *   so it gets a new file: that is where a version ends.
+ * - **Only a file this window knows.** The board records the revision of
+ *   its file it last read or wrote. A save rewrites the file only while it
+ *   still holds those bytes; a file another window changed since, one gone,
+ *   one held by another window, one with a part left out, or a rewrite that
+ *   failed, leaves the file as it is and saves the board to a new file, in
+ *   the same turn of the store's queue. No reading is lost and nothing
+ *   unreadable is written over.
+ * - **The name (decision 46).** A board the writer has not named takes its
+ *   default name ("Chapter 6 - 10/23/2026 9:08 AM") when its first file is
+ *   written. A save in place writes the board's name; a board with none
+ *   keeps the name its file shows.
+ * - **The board a save is owed (PR #167 F-01).** A save waits its turn in
+ *   the store's queue, and another run may start meanwhile, clear a group
+ *   (decision 42), and be stopped with nothing back. At its turn the save
+ *   writes the readings its own run settled, as captured when that run
+ *   ended, under the file, revision and name the board has now, with the
+ *   writer's spark marks (`owedBoard`). A reading that landed is never
+ *   dropped for a later run that landed nothing, whichever side of the
+ *   queue's turn the Stop falls; a reading in flight is never written; a
+ *   later run that lands saves itself.
+ * - **The board on screen (PR #163 F-01).** Every adoption moves the reload
+ *   pointer at once: to the file that already holds the board, writing
+ *   nothing, or, for a board no file holds yet, to the file its save
+ *   commits, or the newest one holding its text (a measured board saves
+ *   once per text, `onlyIfNewText`).
+ *
+ * Logs carry file ids and outcomes, never the writer's text or a name.
+ */
+
+import type { LightboxBoard, LightboxReadingGroup, LightboxReadingTile } from '@messages';
+import type { LogSink } from '@/platform';
+import { lightboxDefaultBoardName } from '@shared/constants/lightboxBoardName';
+import type { LightboxSavableBoard, LightboxService } from '@/infrastructure/lightbox/LightboxService';
+import { lightboxBoardFileOf, type LightboxBoardFile } from '@/infrastructure/storage/LightboxBoardCodec';
+import type { LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
+
+const LOG = '[LightboxBoardLibrary]';
+
+export interface LightboxBoardSavePorts {
+  service: Pick<LightboxService, 'adoptionOf' | 'currentBoard' | 'markSaved' | 'savable'>;
+  store: Pick<LightboxBoardStore, 'rememberOnScreen' | 'save'>;
+  outputChannel: LogSink;
+  /** The rail hears a committed save, or a failed one (the library's shelf push). */
+  announce: () => void;
+  /** Holds a save no caller awaits as owed, so the library's drain waits for it (PR #183 F-03). */
+  owe: (write: Promise<void>) => void;
+  /** The zone a default name's time is told in; the host's own when absent (tests pin one). */
+  timeZone?: string;
+}
+
+export class LightboxBoardSaves {
+  constructor(private readonly ports: LightboxBoardSavePorts) {}
+
+  /** A run on `boardId` ended having landed readings: save the board as it stands, in its own file. */
+  async saveAfterRun(boardId: string): Promise<void> {
+    const savable = this.ports.service.savable(boardId);
+    if (!savable) {
+      this.ports.outputChannel.appendLine(`${LOG} Nothing saved after a run: its board is gone`);
+      return;
+    }
+    await this.save(savable, false);
+  }
+
+  /**
+   * A board adopted is on screen (PR #163 F-01). A file already holds it:
+   * the reload pointer moves there, and nothing is written. A board measured
+   * from text no saved board of its source holds saves itself, once; the
+   * pointer follows that save, or the newest file holding its text.
+   * Synchronous, from the adoption itself, so it is the newest choice's.
+   */
+  onScreen(board: LightboxBoard): void {
+    const savable = this.ports.service.savable(board.boardId);
+    if (!savable) {
+      return;
+    }
+    if (savable.savedFileId) {
+      this.pointAt(board, savable.savedFileId);
+    } else if (savable.origin.kind === 'built') {
+      this.ports.owe(this.save(savable, true));
+    }
+  }
+
+  private async save(captured: LightboxSavableBoard, onlyIfNewText: boolean): Promise<void> {
+    const { service, store, outputChannel, timeZone } = this.ports;
+    const { boardId } = captured.board;
+    // The adoption this save is owed to (PR #163 F-02): a snapshot opened since keeps the id, not the board.
+    const adoption = service.adoptionOf(boardId);
+    const ours = () => service.adoptionOf(boardId) === adoption;
+    const atTurn = () => owedBoard(captured, ours() ? service.savable(boardId) : undefined);
+    let result: Awaited<ReturnType<LightboxBoardSavePorts['store']['save']>>;
+    try {
+      result = await store.save(() => {
+        const { board, text, name } = atTurn();
+        return { board, text, ...(name !== undefined ? { name } : {}) };
+      }, {
+        onlyIfNewText,
+        // The file that holds the board, found at this save's turn, at the revision this window knows (decision 46).
+        inPlace: {
+          holding: () => {
+            const { savedFileId, savedRevision } = atTurn();
+            return savedFileId ? { fileId: savedFileId, boardId, revision: savedRevision ?? '' } : undefined;
+          },
+          update: (file, savedAt) => savedInPlace(file, atTurn(), savedAt, timeZone)
+        },
+        defaultName: (savedAt) => lightboxDefaultBoardName(captured.board.source, savedAt, timeZone),
+        onCommitted: (fileId, committed) => {
+          // A board replaced since by a snapshot of the same id does not take this file as its own.
+          if (ours()) {
+            service.markSaved(boardId, fileId, committed);
+            this.pointAt(captured.board, fileId);
+          }
+          this.ports.announce();
+        }
+      });
+    } catch (error) {
+      outputChannel.appendLine(`${LOG} A board could not be saved: ${error instanceof Error ? error.message : String(error)}`);
+      this.ports.announce();
+      return;
+    }
+    if (result.kind === 'held') {
+      // A saved board already holds this text: a reload reopens that one while this board is on screen.
+      this.pointAt(captured.board, result.fileId);
+    } else if (result.kind === 'failed') {
+      this.ports.announce();
+    }
+  }
+
+  pointAt(board: LightboxBoard, fileId: string): void {
+    if (this.ports.service.currentBoard()?.boardId === board.boardId) {
+      this.ports.store.rememberOnScreen(fileId);
+    }
+  }
+}
+
+/**
+ * What a save owed `captured` writes at its turn (PR #167 F-01, and its
+ * re-review): the readings and rules its run settled, exactly as captured,
+ * never a later state of them. A later run may have cleared a group since
+ * (decision 42) and been stopped with nothing back, or may be reading still;
+ * either way this save owes what its own run landed, and a later run that
+ * lands gets its own save. From `now`, the same adoption as it stands at the
+ * save's turn, it takes only what the writer holds apart from readings: the
+ * file and revision the board holds (a save or rewrite queued before this one
+ * moved them), its name, and the set-aside mark of each spark both boards
+ * hold. With no `now` (the board is gone, or replaced by a snapshot of the
+ * same id), the captured board as it was.
+ */
+export function owedBoard(captured: LightboxSavableBoard, now: LightboxSavableBoard | undefined): LightboxSavableBoard {
+  if (!now) {
+    return captured;
+  }
+  const { name: _name, savedFileId: _file, savedRevision: _revision, ...owed } = captured;
+  return {
+    ...owed,
+    board: { ...captured.board, readings: withSparkMarks(captured.board.readings, now.board.readings) },
+    ...(now.savedFileId !== undefined ? { savedFileId: now.savedFileId } : {}),
+    ...(now.savedRevision !== undefined ? { savedRevision: now.savedRevision } : {}),
+    ...(now.name !== undefined ? { name: now.name } : {})
+  };
+}
+
+/**
+ * `owed`, each spark that `now` also holds carrying `now`'s set-aside mark
+ * (the writer's, not the run's: Slice 5A.1). A spark `now` no longer holds
+ * keeps the mark it was captured with.
+ */
+function withSparkMarks(owed: LightboxReadingGroup[], now: readonly LightboxReadingGroup[]): LightboxReadingGroup[] {
+  const marks = new Map<string, number | undefined>();
+  for (const tile of now.flatMap((group) => group.tiles)) {
+    if (tile.kind === 'spark') {
+      marks.set(tile.id, tile.dismissedOrder);
+    }
+  }
+  const remarked = (tile: LightboxReadingTile): LightboxReadingTile => {
+    if (tile.kind !== 'spark' || !marks.has(tile.id) || marks.get(tile.id) === tile.dismissedOrder) {
+      return tile;
+    }
+    const { dismissedOrder: _captured, ...spark } = tile;
+    const order = marks.get(tile.id);
+    return order === undefined ? spark : { ...spark, dismissedOrder: order };
+  };
+  return owed.map((group) => (group.tiles.some((tile) => remarked(tile) !== tile) ? { ...group, tiles: group.tiles.map(remarked) } : group));
+}
+
+/**
+ * The file a save in place writes (Slice 5A.2): the board as it stands, its
+ * text, the save's time, and its name; a board with no name keeps the name
+ * its file shows (the file's own, or the default its source and its time
+ * give), so a save never changes the name a writer sees.
+ */
+export function savedInPlace(file: LightboxBoardFile, board: LightboxSavableBoard, savedAt: Date, timeZone?: string): LightboxBoardFile {
+  const shown = file.board.name ?? lightboxDefaultBoardName(file.board.sources[0], Date.parse(file.savedAt), timeZone);
+  return lightboxBoardFileOf({ board: board.board, text: board.text, savedAt, name: board.name ?? shown });
+}

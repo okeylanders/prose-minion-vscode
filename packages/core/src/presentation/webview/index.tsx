@@ -2,30 +2,54 @@
  * Webview entry point
  * Bootstraps the React application
  *
- * One bundle, two roots (ADR 2026-07-03): the host stamps
- * `data-pm-surface="workshop"` on #root for the Workshop editor tab; the
- * sidebar stays unstamped. We branch on that flag here — no second build
- * pipeline, just a second React root.
+ * One bundle, several roots (ADR 2026-07-03; Lightbox ADR 2026-10-19 D1): the
+ * host stamps `data-pm-surface` on #root for each editor tab (`workshop`,
+ * `lightbox`); the sidebar stays unstamped. The root is chosen from an
+ * exhaustive surface map — no second build pipeline, and no surface that can
+ * silently fall through to the sidebar.
  */
 
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
+// The shared full-tab frame loads FIRST. style-loader inserts sheets in module
+// evaluation order, and each tab's own sheets (imported by its root below)
+// must follow the frame, so a tab rule of equal specificity still wins, as it
+// did when these rules sat at the top of the Workshop's shell.css. The order
+// is pinned by workshopStyles.test.ts.
+import './styles/fulltab/tokens.css';
+import './styles/fulltab/shell.css';
+import './styles/fulltab/modal.css';
+// The saved-item menu, name sheet and browser the Workshop and the Lightbox share (Lightbox Slice 5A.2).
+import './styles/fulltab/savedItems.css';
+import './styles/fulltab/savedBrowser.css';
 import { App } from './App';
 import { WorkshopApp } from './WorkshopApp';
-import { MessageType, PM_SURFACE_ATTR, SURFACE_WORKSHOP } from '@shared/types';
+import { LightboxApp } from './LightboxApp';
+import {
+  MessageType,
+  PM_SURFACE_ATTR,
+  WebviewSurface,
+  resolveWebviewSurface
+} from '@shared/types';
 import { getVSCodeApi } from './hooks/useVSCodeApi';
 import { AppMessagePort } from './ports/AppMessagePort';
 import './index.css';
+
+const SURFACE_ROOTS: Record<WebviewSurface, React.ComponentType> = {
+  sidebar: App,
+  workshop: WorkshopApp,
+  lightbox: LightboxApp
+};
 
 try {
   const root = document.getElementById('root');
   if (!root) {
     throw new Error('Root element not found');
   }
-  const surface = root.getAttribute(PM_SURFACE_ATTR);
+  const surface = resolveWebviewSurface(root.getAttribute(PM_SURFACE_ATTR));
   createRoot(root).render(
     <React.StrictMode>
-      {surface === SURFACE_WORKSHOP ? <WorkshopApp /> : <App />}
+      {React.createElement(SURFACE_ROOTS[surface])}
     </React.StrictMode>
   );
 } catch (e: any) {

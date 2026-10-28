@@ -476,8 +476,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
     rejection: Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>
   ): string {
     const field = rejection.field ? ` Field: ${rejection.field}.` : '';
+    const multipleCalls = rejection.callMarkerCount !== undefined
+      ? `Your response contained ${rejection.callMarkerCount} tool-call opening tags. ` +
+        'None of those requests ran. Send exactly one bare XML tool call with no other calls or prose, ' +
+        'then wait for its result before requesting another.'
+      : undefined;
     return [
       `Your Workshop capability request was rejected (${rejection.reason}).${field}`,
+      ...(multipleCalls ? [multipleCalls] : []),
       'Do not claim that the capability ran. Either send one corrected bare XML call using the documented closed schema, or answer honestly without it.'
     ].join(' ');
   }

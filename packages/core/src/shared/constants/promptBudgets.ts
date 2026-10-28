@@ -100,6 +100,143 @@ export interface PromptBudgets {
   readonly guides: Readonly<{ words: number }>;
   readonly sourceDocument: Readonly<{ words: number }>;
   /**
+   * Lightbox (ADR 2026-10-19 D4, D7, D8). `sourceWords` is the hard ceiling: a
+   * longer source is refused, with its count, before anything is measured.
+   * `chapterWords` is the soft "book-sized" threshold the Read button's cost
+   * line names. `ribbonColumns` is the most columns the paragraph ribbon
+   * draws; above it each column covers a contiguous range of paragraphs, and
+   * the tension arc is read per column (open question 3, Slice 2B).
+   *
+   * The rest bound one reading group's call (Slice 2B): its output ceiling
+   * (the engine's `maxTokens`, which the fit check reserves and the provider
+   * enforces), the whole response the prompt asks for, and the per-field and
+   * per-block numbers the prompt bundle states. Slice 3 adds gravity's
+   * borrowed fields, their terms, collisions and literal set-asides, and the
+   * palette's clusters, cluster words, swatches and swatch words.
+   *
+   * **Asks, not gates (Slice 4H, epic decisions 37–40).** Every character
+   * and item number below that a prompt states is what the prompt *asks*
+   * for. The codec no longer withholds a field, an item or a block for
+   * running past one: a longer note, or more quotes or beats than asked, is
+   * shown. What still withholds is a real fault (a missing or mistyped
+   * field, a value outside its vocabulary, fewer items than a stated
+   * minimum, a quote the verifier cannot find, a structural rule such as
+   * movements tiling the chapter). One safety ceiling, `safetyMultiple`
+   * times a field's ask (never stated in a prompt), clips a runaway field
+   * with an ellipsis, counted and logged; it never withholds.
+   */
+  readonly lightbox: Readonly<{
+    sourceWords: number;
+    chapterWords: number;
+    ribbonColumns: number;
+    groupOutputTokens: number;
+    groupResponseCharacters: number;
+    quoteCharacters: number;
+    claimCharacters: number;
+    frictionCharacters: number;
+    /** Titles, names, genres, archetypes and counted terms. */
+    labelCharacters: number;
+    /** One-line fields: the headline sentence, gists, traits, notes, the reader promise. */
+    noteCharacters: number;
+    quotesPerClaim: number;
+    termsPerClaim: number;
+    motifs: number;
+    characters: number;
+    genreNeighbors: number;
+    tensionPeaks: number;
+    gravityFields: number;
+    /** Terms one borrowed field may name, each with its degree. */
+    gravityTerms: number;
+    gravityCollisions: number;
+    /** The literal set-asides a gravity block must name (at least one). */
+    gravityLiterals: number;
+    paletteClusters: number;
+    clusterWords: number;
+    swatches: number;
+    swatchWords: number;
+    /** Adjacent stories one lineage block may draw (Slice 4). */
+    lineageStories: number;
+    /** Stances one story may carry: matches, departs, subverts, each at most once. */
+    lineageStances: number;
+    /** Stories a lineage block may list as checked and set aside. */
+    lineageSetAsides: number;
+    subtextPairs: number;
+    /** Quotes a said/meant pair may add beside its said line, from the narration around it. */
+    subtextContextQuotes: number;
+    sparks: number;
+    /** One spark's question. */
+    sparkCharacters: number;
+    /** Beats one stock block may classify into the cognitive-economy tiers (Slice 4B). */
+    stockBeats: number;
+    signaturePhrases: number;
+    familiarPhrases: number;
+    airLocks: number;
+    echoes: number;
+    /** Adjacent-sentence samples one rhythm block may give. */
+    handoffs: number;
+    /** Usage readings one numbers block may give: at most one per measured figure. */
+    numberReadings: number;
+    /** Beats one template block may mark as aligning, subverting or departing (Slice 4C). */
+    templateBeats: number;
+    /** Threads one pressure block may draw. */
+    pressureThreads: number;
+    /** Escalation quotes one thread may give between its plant and its resolution. */
+    threadEscalations: number;
+    /** Objects one artifacts block may name. */
+    artifacts: number;
+    /** Quoted states one object's arc may give. */
+    artifactSteps: number;
+    /** Movements one summary block may draw; they tile the chapter. */
+    movements: number;
+    /** Quotes a synopsis may give; at least two must be found. */
+    synopsisQuotes: number;
+    /** Sentences a synopsis is asked to run to (the prose-stats sentence rule). */
+    synopsisSentences: number;
+    /**
+     * The Opinion's digest of the board (Slice 4D), in the engine's own
+     * estimated tokens: what group F may read, and what its estimate prices
+     * it at ("up to"), since the digest is built only when the call starts.
+     */
+    opinionDigestTokens: number;
+    /** Found quotes the digest shows for one tile, citable as q0, q1, … */
+    opinionQuotesPerItem: number;
+    /** Paragraph addresses one digest line lists before "and n more". */
+    opinionParagraphsPerLine: number;
+    /** Sections of the Sections lane the digest names; past them it says how many more. */
+    opinionSections: number;
+    /** Observations one Opinion may give (at least two). */
+    opinionObservations: number;
+    /** Board items one observation may cite. */
+    opinionCitesPerObservation: number;
+    opinionObservationCharacters: number;
+    /** A view's headline, body and Why points: asks. Bring clips each to the Workshop tile's title, claim and point at that surface (Slice 4H). */
+    opinionHeadlineCharacters: number;
+    opinionBodyCharacters: number;
+    /** Why points one view may give (at least one), each citing at most `opinionCitesPerObservation` observations. */
+    opinionWhyPoints: number;
+    opinionWhyCharacters: number;
+    /** Instance notes craft steering may give for one figure (Slice 4F). */
+    steeringNotes: number;
+    /** A note's why: one line on how the instance works where it stands. */
+    steeringWhyCharacters: number;
+    /** A note's nudge: the craft move, named, worth a look. An ask; Bring clips it to a Workshop tile's point (Slice 4H). */
+    steeringNudgeCharacters: number;
+    /** A note's one example (epic decision 23): its `before`, a run of the checked quote, in words. */
+    steeringExampleBeforeWords: number;
+    /** Its `after`, one way the move could go, in words: phrase-level, as asked. */
+    steeringExampleAfterWords: number;
+    /** Either side of the example, in characters, as asked. Bring clips the pair, with the arrow between, to one Workshop tile point (Slice 4H). */
+    steeringExampleCharacters: number;
+    /**
+     * The one safety ceiling (Slice 4H): a field runs to at most this many
+     * times its ask before the codec clips it with an ellipsis, and a whole
+     * response to this many times `groupResponseCharacters` before it is
+     * refused. Never stated in a prompt: it protects layout and file sizes
+     * against a runaway field, and nothing else.
+     */
+    safetyMultiple: number;
+  }>;
+  /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
    * excerpt's configured source resource plus at most `neighborItems`
    * same-group neighbors, with one combined evidence word cap across
@@ -251,6 +388,63 @@ export interface PromptBudgets {
     lexicalPreviewOutputTokens: number;
     lexicalDirectiveCharacters: number;
   }>;
+  /**
+   * Proofread (ADR 2026-10-21 D6 and its Thresholds table): starting values,
+   * each in one place, tuned against the writer's manual fixture run.
+   */
+  readonly proofread: Readonly<{
+    /** Words per model call, cut on paragraph boundaries. */
+    chunkWords: number;
+    /** Chunks in flight at once. */
+    concurrency: number;
+    /** Output ceiling per chunk; a reply that reaches it is rejected, never salvaged. */
+    outputTokens: number;
+    /** A whole-file run over this many words asks first; a selection never does. */
+    confirmWholeFileWords: number;
+    /** A reply longer than this is refused before it is read. */
+    responseCharacters: number;
+    /** A quoted span longer than this is malformed: proofreading quotes the shortest span. */
+    quoteCharacters: number;
+    /** Context either side of a quote is clipped to this, nearest the quote kept. */
+    contextCharacters: number;
+    /** An explanation is clipped to this. */
+    explanationCharacters: number;
+  }>;
+  /**
+   * Craft Flags (ADR 2026-10-21, Amendment 2026-10-26: Slice 3c): one call
+   * per category over the whole chapter. Starting values, tuned against the
+   * writer's fixture run.
+   */
+  readonly craftFlags: Readonly<{
+    /** The most a call reads: a whole chapter at or under this; over it, a selection alone. */
+    chapterWords: number;
+    /** Output ceiling per call; a reply that reaches it is rejected, never salvaged. */
+    outputTokens: number;
+    /** The reply the cost estimate prices: a typical chapter's flags, not the ceiling. */
+    typicalOutputTokens: number;
+    /** A reply longer than this is refused before it is read. */
+    responseCharacters: number;
+    /** A quoted phrase longer than this is malformed: a flag quotes the phrase, not its sentence. */
+    quoteCharacters: number;
+    /** Context either side of a quote is clipped to this, nearest the quote kept. */
+    contextCharacters: number;
+    /** A flag's why is clipped to this. */
+    whyCharacters: number;
+    /** A flag's suggestion is clipped to this. */
+    suggestionCharacters: number;
+    /** A register reply's line naming the register the narration keeps is clipped to this. */
+    registerCharacters: number;
+  }>;
+  /**
+   * The thinking budget each reasoning level names, in tokens, sent on top
+   * of a reply's own ceiling (ADR 2026-10-21, reasoning levels). `off` has
+   * none; `light` is the smallest budget Anthropic accepts.
+   */
+  readonly reasoning: Readonly<{
+    light: number;
+    standard: number;
+    deep: number;
+  }>;
 }
 
 const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
@@ -323,6 +517,72 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   contextFiles: { words: 50_000, catalogItems: 100 },
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
+  lightbox: {
+    sourceWords: 50_000,
+    chapterWords: 12_000,
+    ribbonColumns: 96,
+    groupOutputTokens: 12_000,
+    groupResponseCharacters: 48_000,
+    quoteCharacters: 300,
+    claimCharacters: 400,
+    frictionCharacters: 360,
+    labelCharacters: 80,
+    noteCharacters: 160,
+    quotesPerClaim: 3,
+    termsPerClaim: 5,
+    motifs: 4,
+    characters: 6,
+    genreNeighbors: 5,
+    tensionPeaks: 3,
+    gravityFields: 5,
+    gravityTerms: 8,
+    gravityCollisions: 3,
+    gravityLiterals: 4,
+    paletteClusters: 4,
+    clusterWords: 6,
+    swatches: 6,
+    swatchWords: 3,
+    lineageStories: 4,
+    lineageStances: 3,
+    lineageSetAsides: 3,
+    subtextPairs: 4,
+    subtextContextQuotes: 2,
+    sparks: 4,
+    sparkCharacters: 300,
+    stockBeats: 40,
+    signaturePhrases: 4,
+    familiarPhrases: 6,
+    airLocks: 3,
+    echoes: 3,
+    handoffs: 3,
+    numberReadings: 3,
+    templateBeats: 6,
+    pressureThreads: 6,
+    threadEscalations: 3,
+    artifacts: 8,
+    artifactSteps: 5,
+    movements: 8,
+    synopsisQuotes: 3,
+    synopsisSentences: 5,
+    opinionDigestTokens: 9_000,
+    opinionQuotesPerItem: 3,
+    opinionParagraphsPerLine: 12,
+    opinionSections: 24,
+    opinionObservations: 6,
+    opinionCitesPerObservation: 3,
+    opinionObservationCharacters: 260,
+    opinionHeadlineCharacters: 160,
+    opinionBodyCharacters: 400,
+    opinionWhyPoints: 4,
+    opinionWhyCharacters: 160,
+    steeringNotes: 4,
+    steeringWhyCharacters: 200,
+    steeringNudgeCharacters: 160,
+    steeringExampleBeforeWords: 8,
+    steeringExampleAfterWords: 6,
+    steeringExampleCharacters: 72,
+    safetyMultiple: 8
+  },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },
   workshopWidgets: {
@@ -438,5 +698,31 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalPreviewEntailmentCharacters: 500,
     lexicalPreviewOutputTokens: 5_000,
     lexicalDirectiveCharacters: 16_000
+  },
+  proofread: {
+    chunkWords: 1_200,
+    concurrency: 3,
+    outputTokens: 4_000,
+    confirmWholeFileWords: 15_000,
+    responseCharacters: 40_000,
+    quoteCharacters: 300,
+    contextCharacters: 120,
+    explanationCharacters: 300
+  },
+  craftFlags: {
+    chapterWords: 25_000,
+    outputTokens: 8_000,
+    typicalOutputTokens: 1_500,
+    responseCharacters: 80_000,
+    quoteCharacters: 160,
+    contextCharacters: 120,
+    whyCharacters: 300,
+    suggestionCharacters: 200,
+    registerCharacters: 160
+  },
+  reasoning: {
+    light: 1_024,
+    standard: 4_000,
+    deep: 12_000
   }
 };

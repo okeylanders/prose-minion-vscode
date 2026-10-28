@@ -5,6 +5,8 @@ import type {
   DictionaryResultMessage,
   ErrorMessage,
   ExtensionToWebviewMessage,
+  LightboxWorkshopHandoff,
+  LightboxWorkshopHandoffOutcome,
   MetricsResultMessage,
   SearchResultMessage,
   StatusMessage,
@@ -12,6 +14,7 @@ import type {
   WorkshopSessionStateMessage
 } from '@messages';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
+import type { AIResourceRefresh } from '@orchestration/AIResourceRefresh';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type {
@@ -44,6 +47,11 @@ import type { LexicalGravityLensRepository } from '@/infrastructure/storage/Lexi
 import type { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
+import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
+import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import type { LightboxBoardStore } from '@/infrastructure/storage/LightboxBoardStore';
+import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
 import type { PlatformDisposable } from '@/platform';
 
 /**
@@ -70,6 +78,15 @@ export type MessageTransport = (
  */
 export interface WorkshopUiActions {
   openWorkshop?: () => void;
+  /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); the sidebar's OPEN_LIGHTBOX calls it. */
+  openLightbox?: () => void;
+  /**
+   * Carries a Lightbox handoff into the Workshop (ADR 2026-10-19 D11): the
+   * composition root reveals the Workshop and routes it through the Workshop
+   * panel's own MessageHandler. Settles with the Workshop's answer: opened by
+   * a visible Workshop, or why not (PR #150 F-03).
+   */
+  handOffToWorkshop?: (handoff: LightboxWorkshopHandoff) => Promise<LightboxWorkshopHandoffOutcome>;
   openAssistantSettings?: () => void;
 }
 
@@ -103,6 +120,11 @@ export interface CoreServices {
   wordSearchService: WordSearchService;
   standardsService: StandardsService;
   aiResourceManager: AIResourceManager;
+  /**
+   * The manager's extension-lifetime key and model subscriptions (PR #171
+   * F-01): a key change rebuilds it once, however many surfaces ask.
+   */
+  aiResourceRefresh: AIResourceRefresh;
   secretsService: SecretsPort;
   textSourceResolver: TextSourceResolver;
   categorySearchService: CategorySearchService;
@@ -140,4 +162,14 @@ export interface CoreServices {
   lexicalGravityLensRepository: LexicalGravityLensRepository;
   /** Serialized standing-frame replacement and session commit coordinator. */
   workshopStandingDirectiveService: WorkshopStandingDirectiveService;
+  /** Lightbox boards: the counted board per source, kept in memory (ADR 2026-10-19 D5, D12). */
+  lightboxService: LightboxService;
+  /** Lightbox readings: one active run per board on the assistant engine (ADR 2026-10-19 D6, D7). */
+  lightboxReadingRunner: LightboxReadingRunner;
+  /** Lightbox context files: inform readings, never evidence (ADR 2026-10-19 D9). */
+  lightboxContextShelf: LightboxContextShelf;
+  /** Saved Lightbox boards on disk: one queue for the boards folder and the reload pointer (Slice 5A). */
+  lightboxBoardStore: LightboxBoardStore;
+  /** When boards are saved, opened and restored, over the service, the store and the runner (Slice 5A). */
+  lightboxBoardLibrary: LightboxBoardLibrary;
 }

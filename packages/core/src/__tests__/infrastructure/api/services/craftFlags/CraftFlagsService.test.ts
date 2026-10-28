@@ -1,0 +1,347 @@
+/**
+ * CraftFlagsService (ADR 2026-10-21, Amendment 2026-10-26: Slice 3c): one
+ * capability-free call per category over the whole passage, its reply read
+ * on its own, and the price of the same calls before anything is sent. The
+ * engine and the catalog are stand-ins; no provider is reached. Replies are
+ * about public-domain *Alice*.
+ */
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { estimateRequestTokens } from '@orchestration/RequestContextPreflight';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  CRAFT_FLAGS_SHARED_PROMPT,
+  CRAFT_FLAGS_TEMPERATURE,
+  CRAFT_FLAG_PROMPTS,
+  CraftFlagsService,
+  buildCraftFlagsMessage,
+  type CraftFlagsPriceSource
+} from '@services/craftFlags/CraftFlagsService';
+import { CRAFT_FLAGS_CLOSING_SENTINEL, CRAFT_FLAGS_OPENING_SENTINEL } from '@services/craftFlags/CraftFlagsResponseCodec';
+import type { ReasoningCatalog } from '@services/draftEdit/DraftEditReasoningSupport';
+
+const USAGE = { promptTokens: 4000, completionTokens: 600, totalTokens: 4600, costUsd: 0.02 };
+const PASSAGE = 'But when the Rabbit actually took a watch out of its waistcoat-pocket, a chill ran down her spine.';
+const CHILL = { original: 'a chill ran down her spine', before: 'its waistcoat-pocket,', after: '.', kind: 'cliche', why: 'A borrowed shiver.' };
+const replyOf = (...flags: unknown[]) =>
+  `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}`;
+
+type Reply = { content: string; finishReason?: string; usage?: typeof USAGE; cancelled?: boolean; reasoningTokens?: number } | Error;
+
+function createService(replies: Reply[], options: { engine?: boolean; prices?: CraftFlagsPriceSource; model?: string; catalog?: ReasoningCatalog } = {}) {
+  const queue = [...replies];
+  const runInitial = jest.fn(async () => {
+    const next = queue.shift();
+    if (!next) {
+      throw new Error('no reply queued');
+    }
+    if (next instanceof Error) {
+      throw next;
+    }
+    return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, ...next };
+  });
+  const engine = { runInitial, getModel: jest.fn(() => options.model ?? 'placeholder/craft-model') };
+  const manager = {
+    ensureInitialized: jest.fn(async () => undefined),
+    getEngine: jest.fn(() => (options.engine === false ? undefined : engine))
+  };
+  const promptLoader = { loadPrompts: jest.fn(async (files: string[]) => `SYSTEM ${files.join(' + ')}`) };
+  const prices = options.prices ?? { pricing: jest.fn(async () => ({ promptUsdPerToken: 0.000003, completionUsdPerToken: 0.000015 })) };
+  const recovery = { capture: jest.fn(async () => ({ filePath: '/project/prose-minion/recovery/x.txt', toolName: 'craft-flags', storageScope: 'project' })) };
+  const presenter = { present: jest.fn(async () => undefined) };
+  const log = { appendLine: jest.fn() };
+  const catalog = options.catalog ?? { alwaysReasons: jest.fn(async () => undefined) };
+  const service = new CraftFlagsService(manager as never, promptLoader as never, prices, catalog, recovery as never, presenter, log as never);
+  return { service, runInitial, engine, manager, catalog, promptLoader, prices, recovery, presenter, log };
+}
+
+const APPROVED = 'placeholder/approved-model';
+const request = { passage: PASSAGE, categories: ['cliche'] as const, label: 'chapter-01.md', model: APPROVED };
+
+describe('CraftFlagsService.flag', () => {
+  it('reports unconfigured, sending nothing, when there is no craft engine', async () => {
+    const { service, runInitial, manager } = createService([], { engine: false });
+    await expect(service.flag(request)).resolves.toEqual({ kind: 'unconfigured' });
+    expect(manager.getEngine).toHaveBeenCalledWith('craft');
+    expect(runInitial).not.toHaveBeenCalled();
+  });
+
+  it('calls the craft engine once per category: capability-free, at its temperature, the passage as a JSON string', async () => {
+    const { service, runInitial, promptLoader } = createService([{ content: replyOf(CHILL) }]);
+    const result = await service.flag(request);
+
+    const files = [CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.cliche];
+    expect(promptLoader.loadPrompts).toHaveBeenCalledWith(files);
+    expect(runInitial).toHaveBeenCalledTimes(1);
+    const [sent] = runInitial.mock.calls[0] as unknown as [Record<string, any>];
+    expect(sent).toMatchObject({
+      toolName: 'craft-flags',
+      systemMessage: `SYSTEM ${files.join(' + ')}`,
+      policy: AGENT_RUN_POLICIES.craftFlags,
+      // The default level, standard: its budget on top of the reply's own ceiling (2026-10-27).
+      options: {
+        model: APPROVED,
+        temperature: CRAFT_FLAGS_TEMPERATURE,
+        maxTokens: PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.standard,
+        reasoning: { maxTokens: PROMPT_BUDGETS.reasoning.standard }
+      }
+    });
+    expect(sent.userMessage).toBe(buildCraftFlagsMessage('cliche', PASSAGE));
+    expect(JSON.parse(sent.userMessage.slice(sent.userMessage.indexOf('{')))).toEqual({ task: 'craft-flags', category: 'cliche', passage: PASSAGE });
+    expect(result).toEqual({
+      kind: 'completed',
+      calls: [{ kind: 'read', findings: [expect.objectContaining({ category: 'cliche', kind: 'cliche' })], malformed: 0, notesWithheld: 0 }],
+      usage: expect.objectContaining(USAGE)
+    });
+  });
+
+  it('asks each category in a call of its own, with its own prompt, the register call naming its register (Slice 3c part 2)', async () => {
+    const SHIFT = { original: 'actually', before: 'But when the Rabbit', after: 'took a watch', kind: 'slang', why: 'A casual word in a formal narration.' };
+    const LINE = 'A wry, formal English, plain and unhurried.';
+    const { service, runInitial, promptLoader } = createService([
+      { content: replyOf(CHILL) },
+      { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, register: LINE, flags: [SHIFT] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }
+    ]);
+    const result = await service.flag({ ...request, categories: ['cliche', 'register'] });
+
+    expect(promptLoader.loadPrompts.mock.calls).toEqual([
+      [[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.cliche]],
+      [[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.register]]
+    ]);
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string; options: { model: string } }])[0]);
+    expect(sent.map((each) => each.userMessage)).toEqual([buildCraftFlagsMessage('cliche', PASSAGE), buildCraftFlagsMessage('register', PASSAGE)]);
+    expect(sent.map((each) => each.options.model)).toEqual([APPROVED, APPROVED]);
+    expect(result).toMatchObject({
+      kind: 'completed',
+      calls: [
+        { kind: 'read', findings: [{ category: 'cliche', kind: 'cliche' }] },
+        { kind: 'read', findings: [{ category: 'register', kind: 'slang', register: LINE }] }
+      ]
+    });
+  });
+
+  it('asks gesture strain in a call of its own, with its own prompt, at the approved model (Slice 3c part 3)', async () => {
+    const NOD = { original: 'nodded her head', before: 'said Alice. Her sister', after: 'and turned a page.', kind: 'redundant', why: 'The nod already holds the head.' };
+    const { service, runInitial, promptLoader } = createService([
+      { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags: [NOD] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }
+    ]);
+    const result = await service.flag({ ...request, categories: ['gesture'] });
+
+    expect(promptLoader.loadPrompts.mock.calls).toEqual([[[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.gesture]]]);
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string; options: { model: string } }])[0]);
+    expect(sent.map((each) => each.userMessage)).toEqual([buildCraftFlagsMessage('gesture', PASSAGE)]);
+    expect(sent.map((each) => each.options.model)).toEqual([APPROVED]);
+    expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'read', findings: [{ category: 'gesture', kind: 'redundant' }] }] });
+  });
+
+  it('sends continuity\'s request the passage\'s breaks, before the passage, and no other category\'s (Slice 3c part 4)', async () => {
+    const { service, runInitial } = createService([{ content: replyOf(CHILL) }, { content: `${CRAFT_FLAGS_OPENING_SENTINEL}\n${JSON.stringify({ version: 1, flags: [] })}\n${CRAFT_FLAGS_CLOSING_SENTINEL}` }]);
+    await service.flag({ ...request, categories: ['cliche', 'continuity'], breaks: ['* * *'] });
+
+    const sent = runInitial.mock.calls.map((call) => (call as unknown as [{ userMessage: string }])[0].userMessage);
+    expect(sent).toEqual([buildCraftFlagsMessage('cliche', PASSAGE, ['* * *']), buildCraftFlagsMessage('continuity', PASSAGE, ['* * *'])]);
+    expect(sent[0]).not.toContain('breaks');
+    expect(JSON.parse(sent[1].slice(sent[1].indexOf('{')))).toEqual({ task: 'craft-flags', category: 'continuity', breaks: ['* * *'], passage: PASSAGE });
+    expect(Object.keys(JSON.parse(sent[1].slice(sent[1].indexOf('{'))))).toEqual(['task', 'category', 'breaks', 'passage']);
+  });
+
+  it('rejects a register reply with flags and no register line, and saves it for recovery', async () => {
+    const SHIFT = { original: 'actually', kind: 'slang', why: 'A casual word in a formal narration.' };
+    const { service, recovery, log } = createService([{ content: replyOf(SHIFT) }]);
+    const result = await service.flag({ ...request, categories: ['register'] });
+
+    expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'rejected', saved: true }] });
+    expect(recovery.capture).toHaveBeenCalledTimes(1);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('register rejected: A register reply with flags must state the register the narration keeps'));
+  });
+
+  it('sends each call to the approved model, whatever the engine\'s model is by then (PR #177 F-01)', async () => {
+    const { service, runInitial, engine } = createService([{ content: replyOf(CHILL) }], { model: 'placeholder/another-model' });
+    await service.flag(request);
+
+    expect(engine.getModel()).toBe('placeholder/another-model');
+    expect((runInitial.mock.calls[0] as unknown as [{ options: { model: string } }])[0].options.model).toBe(APPROVED);
+  });
+
+  it('sends nothing when the gesture is no longer current once the prompts are ready (PR #177 F-02)', async () => {
+    const { service, runInitial, promptLoader } = createService([{ content: replyOf(CHILL) }]);
+    let current = true;
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      current = false;
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+
+    await expect(service.flag({ ...request, stillCurrent: () => current })).resolves.toEqual({ kind: 'ended' });
+    expect(runInitial).not.toHaveBeenCalled();
+    await expect(service.flag({ ...request, stillCurrent: () => true })).resolves.toMatchObject({ kind: 'completed' });
+  });
+
+  it('rejects a reply that reached the output ceiling, never salvaged, and saves it for recovery', async () => {
+    const { service, recovery, presenter, log } = createService([{ content: replyOf(CHILL).slice(0, 60), finishReason: 'length' }]);
+    const result = await service.flag(request);
+
+    expect(result).toMatchObject({ kind: 'completed', calls: [{ kind: 'rejected', saved: true }] });
+    expect(recovery.capture).toHaveBeenCalledWith(expect.objectContaining({ toolName: 'craft-flags', requestSummary: 'Craft Flags chapter-01.md, cliche' }));
+    expect(presenter.present).toHaveBeenCalledTimes(1);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('output ceiling'));
+  });
+
+  it.each([
+    ['off', PROMPT_BUDGETS.craftFlags.outputTokens, { effort: 'none' }],
+    ['light', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.light, { maxTokens: PROMPT_BUDGETS.reasoning.light }],
+    ['deep', PROMPT_BUDGETS.craftFlags.outputTokens + PROMPT_BUDGETS.reasoning.deep, { maxTokens: PROMPT_BUDGETS.reasoning.deep }]
+  ] as const)('sends the %s level the writer set, its budget on top of the reply\'s ceiling (2026-10-27)', async (reasoning, maxTokens, sent) => {
+    const { service, runInitial } = createService([{ content: replyOf(CHILL) }]);
+    await service.flag({ ...request, reasoning });
+    const [call] = runInitial.mock.calls[0] as unknown as [{ options: Record<string, unknown> }];
+    expect(call.options).toMatchObject({ maxTokens, reasoning: sent });
+  });
+
+  it('says the model spent the ceiling thinking, with Craft Flags\' own setting, when most of its output was reasoning', async () => {
+    const { service, recovery } = createService([
+      { content: replyOf(CHILL).slice(0, 60), finishReason: 'length', usage: { ...USAGE, completionTokens: 12_000 }, reasoningTokens: 11_000 }
+    ]);
+    await service.flag(request);
+    expect(recovery.capture).toHaveBeenCalledWith(expect.objectContaining({
+      rejection: 'the model spent 11,000 of 12,000 output tokens thinking and reached the 12,000-token ceiling; '
+        + 'lower proseMinion.craftFlags.reasoning or choose another model'
+    }));
+  });
+
+  it('rejects a reply whose frame cannot be read, and says what was wrong without its text', async () => {
+    const { service, log } = createService([{ content: 'Here are the clichés: a chill ran down her spine' }]);
+    expect(await service.flag(request)).toMatchObject({ kind: 'completed', calls: [{ kind: 'rejected' }] });
+    const logged = log.appendLine.mock.calls.map(([line]) => line).join('\n');
+    expect(logged).toContain('rejected');
+    expect(logged).not.toContain('a chill ran down her spine');
+  });
+
+  it('says why a call was not sent: a key changed mid-run, or any other provider refusal', async () => {
+    const keyChanged = await createService([new AgentRunUnavailableError('missing-credentials')]).service.flag(request);
+    expect(keyChanged).toMatchObject({
+      kind: 'completed',
+      calls: [{ kind: 'unsent' }],
+      interrupted: { cause: 'key-changed', message: 'The API key changed during the run, so the remaining categories were not sent.' }
+    });
+    const refused = await createService([new Error('402 Payment Required')]).service.flag(request);
+    expect(refused).toMatchObject({ interrupted: { cause: 'provider', message: expect.stringContaining('402 Payment Required') } });
+  });
+
+  it('reports a run cancelled while its call worked, with what it spent', async () => {
+    const controller = new AbortController();
+    const { service, runInitial } = createService([]);
+    runInitial.mockImplementationOnce(async () => {
+      controller.abort();
+      return { usedGuides: [], requestedResources: [], artifacts: [], finishReason: 'stop', usage: USAGE, content: '', cancelled: true };
+    });
+    await expect(service.flag({ ...request, signal: controller.signal }))
+      .resolves.toEqual({ kind: 'cancelled', usage: expect.objectContaining(USAGE) });
+  });
+
+  it('sends nothing for a run cancelled before it began', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { service, runInitial } = createService([]);
+    await expect(service.flag({ ...request, signal: controller.signal })).resolves.toEqual({ kind: 'cancelled' });
+    expect(runInitial).not.toHaveBeenCalled();
+  });
+});
+
+describe('CraftFlagsService.estimate', () => {
+  it('prices the exact messages with the engine\'s estimator, and a typical reply and half the default level\'s thinking per call', async () => {
+    const { service } = createService([]);
+    const estimate = await service.estimate(request);
+    const inputTokens = estimateRequestTokens([
+      { role: 'system', content: `SYSTEM ${[CRAFT_FLAGS_SHARED_PROMPT, ...CRAFT_FLAG_PROMPTS.cliche].join(' + ')}` },
+      { role: 'user', content: buildCraftFlagsMessage('cliche', PASSAGE) }
+    ]);
+    const outputTokens = PROMPT_BUDGETS.craftFlags.typicalOutputTokens + PROMPT_BUDGETS.reasoning.standard / 2;
+
+    expect(estimate).toEqual({
+      model: 'placeholder/craft-model',
+      calls: 1,
+      inputTokens,
+      outputTokens,
+      usd: inputTokens * 0.000003 + outputTokens * 0.000015
+    });
+  });
+
+  it('prices the level the writer set: no thinking at off, half the deep budget at deep', async () => {
+    const { service } = createService([]);
+    const typical = PROMPT_BUDGETS.craftFlags.typicalOutputTokens;
+    await expect(service.estimate({ ...request, reasoning: 'off' })).resolves.toMatchObject({ outputTokens: typical });
+    await expect(service.estimate({ ...request, categories: ['cliche', 'gesture'], reasoning: 'deep' }))
+      .resolves.toMatchObject({ outputTokens: 2 * (typical + PROMPT_BUDGETS.reasoning.deep / 2) });
+  });
+
+  it('names the engine\'s model as it stood before anything was awaited, and prices that model (PR #177 F-01)', async () => {
+    const { service, engine, prices, promptLoader } = createService([]);
+    promptLoader.loadPrompts.mockImplementationOnce(async (files: string[]) => {
+      engine.getModel.mockReturnValue('placeholder/changed-while-pricing');
+      return `SYSTEM ${files.join(' + ')}`;
+    });
+    const estimate = await service.estimate(request);
+
+    expect(estimate.model).toBe('placeholder/craft-model');
+    expect(prices.pricing).toHaveBeenCalledWith('placeholder/craft-model');
+  });
+
+  it('leaves the price out when the catalog has none, or cannot be read, and names no model without an engine', async () => {
+    expect(await createService([], { prices: { pricing: async () => undefined } }).service.estimate(request)).not.toHaveProperty('usd');
+    const failing = createService([], { prices: { pricing: async () => { throw new Error('offline'); } } });
+    expect(await failing.service.estimate(request)).not.toHaveProperty('usd');
+    expect(failing.log.appendLine).toHaveBeenCalledWith(expect.stringContaining('offline'));
+    const unconfigured = await createService([], { engine: false }).service.estimate(request);
+    expect(unconfigured).not.toHaveProperty('model');
+    expect(unconfigured).not.toHaveProperty('usd');
+  });
+});
+
+describe('CraftFlagsService at reasoning off on a model that always reasons (PR #181 F-01)', () => {
+  type SentOptions = { options: { model?: string; reasoning?: unknown } };
+  const sentOptions = (runInitial: jest.Mock) => (runInitial.mock.calls as unknown as Array<[SentOptions]>).map(([call]) => call.options);
+  const ALL = ['cliche', 'register', 'gesture', 'continuity'] as const;
+  const replies = () => ALL.map(() => ({ content: replyOf() }));
+
+  it('asks about the approved model at off, and at no other level', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model === APPROVED) };
+    const { service } = createService([], { catalog, model: 'placeholder/engine-model' });
+
+    await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', reasoning: 'off' })).resolves.toBe(true);
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
+    for (const reasoning of ['light', 'standard', 'deep', undefined] as const) {
+      await expect(service.refusesReasoning({ model: APPROVED, label: 'chapter-01.md', ...(reasoning ? { reasoning } : {}) })).resolves.toBe(false);
+    }
+    expect(catalog.alwaysReasons).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends none of the four calls to an approved model that always reasons', async () => {
+    const catalog = { alwaysReasons: jest.fn(async () => true) };
+    const stillCurrent = jest.fn(() => true);
+    const { service, runInitial, promptLoader } = createService(replies(), { catalog });
+    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off', stillCurrent });
+
+    expect(result).toEqual({ kind: 'reasoning-required', model: APPROVED });
+    expect(runInitial).not.toHaveBeenCalled();
+    expect(promptLoader.loadPrompts).not.toHaveBeenCalled();
+    expect(stillCurrent).not.toHaveBeenCalled();
+  });
+
+  it('sends all four calls at off to an approved model that can stop, though the engine\'s model now always reasons', async () => {
+    const catalog = { alwaysReasons: jest.fn(async (model: string) => model !== APPROVED) };
+    const { service, runInitial } = createService(replies(), { catalog, model: 'placeholder/always-reasons' });
+    const result = await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
+
+    expect(result).toMatchObject({ kind: 'completed', calls: ALL.map(() => ({ kind: 'read' })) });
+    expect(catalog.alwaysReasons.mock.calls).toEqual([[APPROVED]]);
+    expect(sentOptions(runInitial)).toEqual(ALL.map(() => expect.objectContaining({ model: APPROVED, reasoning: { effort: 'none' } })));
+  });
+
+  it('sends off as asked when the catalog cannot say', async () => {
+    const { service, runInitial, log } = createService(replies(), { catalog: { alwaysReasons: async () => undefined } });
+    await service.flag({ ...request, categories: [...ALL], reasoning: 'off' });
+
+    expect(runInitial).toHaveBeenCalledTimes(ALL.length);
+    expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('cannot say whether placeholder/approved-model can stop reasoning'));
+  });
+});

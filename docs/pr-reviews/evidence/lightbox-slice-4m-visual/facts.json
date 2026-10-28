@@ -1,0 +1,3050 @@
+{
+  "hover-word@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 112.8,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 125.8,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 145.55,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 439.45,
+        "y": 587.77,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 112.8,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 125.8,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 145.55,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 439.45,
+        "y": 587.77,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 745.39,
+        "y": 658.7,
+        "width": 4.53,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 745.39,
+        "y": 658.7,
+        "width": 4.53,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 343,
+        "y": 697.7,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 343,
+        "y": 697.7,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 343,
+        "y": 814.7,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 343,
+        "y": 814.7,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 745.39,
+        "y": 814.7,
+        "width": 17.59,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 599.95,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 612.95,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 632.7,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 745.39,
+        "y": 814.7,
+        "width": 17.59,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@1440": {
+    "before": {
+      "ribbon": {
+        "x": 328,
+        "y": 112.8,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 125.8,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 145.55,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 347,
+        "y": 495.27,
+        "width": 227.33,
+        "height": 223.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 328,
+        "y": 112.8,
+        "width": 744,
+        "height": 302.75
+      },
+      "top": {
+        "x": 343,
+        "y": 125.8,
+        "width": 714,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 343,
+        "y": 145.55,
+        "width": 714,
+        "height": 16
+      },
+      "target": {
+        "x": 347,
+        "y": 495.27,
+        "width": 227.33,
+        "height": 223.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@1440": {
+    "controls": 427,
+    "hovered": 427,
+    "skipped": 0,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@1440": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@1440": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "hover-word@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 421.58,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 421.58,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 761.39,
+        "y": 58.75,
+        "width": 5.45,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 761.39,
+        "y": 58.75,
+        "width": 5.45,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 761.39,
+        "y": 214.75,
+        "width": 20.34,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 761.39,
+        "y": 214.75,
+        "width": 20.34,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@1440-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 328.08,
+        "width": 256.66,
+        "height": 223.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 832,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 802,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 802,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 328.08,
+        "width": 256.66,
+        "height": 223.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@1440-zoom125": {
+    "controls": 427,
+    "hovered": 427,
+    "skipped": 0,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@1440-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": true,
+      "roomForBoth": true
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@1440-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": true,
+      "roomForBoth": true
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "hover-word@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 531.33,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 531.33,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 685.39,
+        "y": 58.75,
+        "width": 3.86,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 685.39,
+        "y": 58.75,
+        "width": 3.86,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 685.39,
+        "y": 214.75,
+        "width": 15.59,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 685.39,
+        "y": 214.75,
+        "width": 15.59,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@1000": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 473.03,
+        "width": 642,
+        "height": 154.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 680,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 650,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 650,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 473.03,
+        "width": 642,
+        "height": 154.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@1000": {
+    "controls": 427,
+    "hovered": 427,
+    "skipped": 0,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@1000": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@1000": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 34
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "hover-word@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 421.28,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 411.45,
+        "y": 421.28,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 585.39,
+        "y": 58.75,
+        "width": 1.78,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 585.39,
+        "y": 58.75,
+        "width": 1.78,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 315,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 585.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 585.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@1000-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 362.41,
+        "width": 442,
+        "height": 154.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 300,
+        "y": 0,
+        "width": 480,
+        "height": 302.75
+      },
+      "top": {
+        "x": 315,
+        "y": 13,
+        "width": 450,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 315,
+        "y": 32.75,
+        "width": 450,
+        "height": 16
+      },
+      "target": {
+        "x": 319,
+        "y": 362.41,
+        "width": 442,
+        "height": 154.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@1000-zoom125": {
+    "controls": 427,
+    "hovered": 427,
+    "skipped": 0,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@1000-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 43
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@1000-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 43
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "hover-word@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 127.45,
+        "y": 680.95,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 127.45,
+        "y": 680.95,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 295.39,
+        "y": 58.75,
+        "width": 1.66,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 295.39,
+        "y": 58.75,
+        "width": 1.66,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 295.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 295.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@500": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 35,
+        "y": 622.53,
+        "width": 430,
+        "height": 154.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": false,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 468,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 438,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 438,
+        "height": 16
+      },
+      "target": {
+        "x": 35,
+        "y": 622.53,
+        "width": 430,
+        "height": 154.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@500": {
+    "controls": 427,
+    "hovered": 427,
+    "skipped": 0,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@500": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 43
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@500": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 43
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "hover-word@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 127.45,
+        "y": 541.02,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 127.45,
+        "y": 541.02,
+        "width": 108.92,
+        "height": 37.19
+      },
+      "focusText": "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-column@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 245.39,
+        "y": 58.75,
+        "width": 0.61,
+        "height": 139
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 245.39,
+        "y": 58.75,
+        "width": 0.61,
+        "height": 139
+      },
+      "focusText": "¶161–¶163 · ¶161–¶163 · 3 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "¶161–¶163 · ¶161–¶163 · 3 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-dialogue-lane@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 97.75,
+        "width": 78.8,
+        "height": 12
+      },
+      "focusText": "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Dialogue share · ¶2 ¶4 ¶7–¶8 ¶10 ¶12 ¶15–¶16 ¶18 ¶20 ¶23–¶24 ¶26 ¶28 ¶31–¶32 ¶34 ¶36 ¶39–¶40 ¶42 ¶44 ¶47–¶48 ¶50 ¶52 ¶55–¶56 ¶58 ¶60 ¶63–¶64 ¶66 ¶68 ¶71–¶72 ¶74 ¶76 ¶79–¶80 ¶82 ¶84 ¶87–¶88 ¶90 ¶92 ¶95–¶96 ¶98 ¶100 ¶103–¶104 ¶106 ¶108 ¶111–¶112 ¶114 ¶116 ¶119–¶120 ¶122 ¶124 ¶127–¶128 ¶130 ¶132 ¶135–¶136 ¶138 ¶140 ¶143–¶144 ¶146 ¶148 ¶151–¶152 ¶154 ¶156 ¶159–¶160 … · 160 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-sections-lane@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 31,
+        "y": 214.75,
+        "width": 78.8,
+        "height": 14
+      },
+      "focusText": "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Sections · ¶1 ¶9 ¶17 ¶25 ¶33 ¶41 ¶49 ¶57 ¶65 ¶73 ¶81 ¶89 ¶97 ¶105 ¶113 ¶121 ¶129 ¶137 ¶145 ¶153 ¶161 ¶169 ¶177 ¶185 ¶193 ¶201 ¶209 ¶217 ¶225 ¶233 ¶241 ¶249 ¶257 ¶265 ¶273 ¶281 ¶289 ¶297 ¶305 ¶313 · 40 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-section@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 245.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 245.39,
+        "y": 214.75,
+        "width": 10,
+        "height": 14
+      },
+      "focusText": "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶",
+      "focusClipped": false,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Chapter I: Down the Rabbit-Hole · ¶161–¶168 · 8 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "hover-motif@500-zoom125": {
+    "before": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 35,
+        "y": 472.78,
+        "width": 330,
+        "height": 175.25
+      },
+      "focusText": "Hover anything on the board to light the paragraphs it touches.",
+      "focusClipped": true,
+      "hot": false
+    },
+    "during": {
+      "ribbon": {
+        "x": 16,
+        "y": 0,
+        "width": 368,
+        "height": 302.75
+      },
+      "top": {
+        "x": 31,
+        "y": 13,
+        "width": 338,
+        "height": 35.75
+      },
+      "focusLine": {
+        "x": 31,
+        "y": 32.75,
+        "width": 338,
+        "height": 16
+      },
+      "target": {
+        "x": 35,
+        "y": 472.78,
+        "width": 330,
+        "height": 175.25
+      },
+      "focusText": "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶",
+      "focusClipped": true,
+      "hot": true
+    },
+    "watched": {
+      "changes": 1,
+      "texts": [
+        "Hover anything on the board to light the paragraphs it touches.",
+        "Going down · ¶1 ¶4–¶9 ¶12–¶17 ¶20–¶25 ¶28–¶33 ¶36–¶41 ¶44–¶49 ¶52–¶57 ¶60–¶65 ¶68–¶73 ¶76–¶81 ¶84–¶89 ¶92–¶97 ¶100–¶105 ¶108–¶113 ¶116–¶121 ¶124–¶129 ¶132–¶137 ¶140–¶145 ¶148–¶153 ¶156–¶161 ¶164–¶169 ¶172–¶177 ¶180–¶185 ¶188–¶193 ¶196–¶201 ¶204–¶209 ¶212–¶217 ¶220–¶225 ¶228–¶233 ¶236–¶241 ¶244–¶249 ¶252–¶257 ¶260–¶265 ¶268–¶273 ¶276–¶281 ¶284–¶289 ¶292–¶297 ¶300–¶305 ¶308–¶313 ¶316–¶320 · 240 ¶"
+      ],
+      "heights": [
+        302.75
+      ],
+      "heightChanges": 0
+    }
+  },
+  "audit@500-zoom125": {
+    "controls": 427,
+    "hovered": 404,
+    "skipped": 23,
+    "moved": [],
+    "movedCount": 0
+  },
+  "runline@500-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "1 call · est. $0.12",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": false,
+      "describedBy": null,
+      "description": "",
+      "title": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "inToolbar": true,
+      "height": 55
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [],
+    "escaped": [],
+    "horizontalOverflow": false
+  },
+  "runline-nokey@500-zoom125": {
+    "note": "106 quotes checked · 0 withheld · 7 calls · 1 group failed",
+    "primary": {
+      "text": "Finish1 call · est. $0.12",
+      "cost": "1 call · est. $0.12",
+      "className": "pm-lb-primary pm-lb-run-press",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 36
+    },
+    "secondary": {
+      "text": "Re-analyze all7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "cost": "7 calls · est. $0.88 · the Opinion up to its digest bound",
+      "className": "pm-lb-button pm-lb-run-secondary",
+      "icon": true,
+      "disabled": true,
+      "describedBy": "pm-lb-run-reason",
+      "description": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "title": "Add an OpenRouter API key in Settings to run AI analyses.",
+      "inToolbar": true,
+      "height": 55
+    },
+    "besidePrimary": true,
+    "sideBySide": {
+      "sameRow": false,
+      "roomForBoth": false
+    },
+    "reasons": [
+      {
+        "id": "pm-lb-run-reason",
+        "text": "Add an OpenRouter API key in Settings to run AI analyses."
+      }
+    ],
+    "escaped": [],
+    "horizontalOverflow": false
+  }
+}

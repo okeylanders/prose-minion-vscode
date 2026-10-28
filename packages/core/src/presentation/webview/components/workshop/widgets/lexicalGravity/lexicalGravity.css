@@ -48,6 +48,8 @@
 [data-pm-surface="workshop"] .pm-ws-lg button:disabled { cursor:not-allowed;opacity:.52; }
 [data-pm-surface="workshop"] .pm-ws-lg-build-error { margin-top:7px; }
 [data-pm-surface="workshop"] .pm-ws-lg-note { margin-top:7px;font-size:10.5px;line-height:1.5;color:var(--pm-amber); }
+[data-pm-surface="workshop"] .pm-ws-lg-no-lens { margin:12px 0 0;font-size:11px;line-height:1.55;color:var(--pm-muted);border:1px dashed var(--pm-border-2);border-radius:9px;padding:9px 11px; }
+[data-pm-surface="workshop"] .pm-ws-lg-no-lens b { color:var(--pm-text-2); }
 [data-pm-surface="workshop"] .pm-ws-lg-options { margin-top:8px; }
 [data-pm-surface="workshop"] .pm-ws-lg-cap { font:9.5px var(--pm-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pm-faint);margin-bottom:6px; }
 [data-pm-surface="workshop"] .pm-ws-lg-options > button { position:relative;display:block;width:100%;box-sizing:border-box;text-align:left;background:var(--pm-surface);border:1px dashed rgba(224,103,58,.45);border-radius:9px;padding:9px 11px 9px 38px;cursor:pointer;font-family:var(--pm-sans); }

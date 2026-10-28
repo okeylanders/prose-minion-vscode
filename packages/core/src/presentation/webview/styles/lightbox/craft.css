@@ -1,0 +1,342 @@
+/* ============================================================
+   Prose Minion — the Lightbox's craft readings (ADR 2026-10-19 D7;
+   Slice 4B): stock and signature (the tier bar, signature phrases,
+   familiar phrasing, air-locks, echoes), rhythm and handoffs (measured
+   sentence lengths, read endings, handoff samples), and what stands out in
+   the numbers (measured rows with their band and dot, and how each is
+   used). From the design's draft board (docs/design/lightbox/
+   NewLenses.dc.html): measured parts keep the coral accent, read parts are
+   dashed periwinkle, counted-read parts neutral.
+   ============================================================ */
+
+/* ---------- Parts, headings and register chips ---------- */
+[data-pm-surface="lightbox"] .pm-lb-craft-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-inset {
+  padding: 12px 13px;
+  border: 1px dashed var(--pm-lb-read-line);
+  border-radius: 10px;
+  background: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-chip,
+[data-pm-surface="lightbox"] .pm-lb-craft-chip {
+  font-family: var(--pm-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-chip.is-measured {
+  color: var(--pm-lb-measured-hi);
+  background: var(--pm-lb-measured-soft);
+  border: 1px solid var(--pm-lb-measured-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-chip.is-read,
+[data-pm-surface="lightbox"] .pm-lb-craft-chip {
+  color: var(--pm-lb-read);
+  background: var(--pm-lb-read-soft);
+  border: 1px dashed var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-reg-chip.is-counted-read {
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-border-2);
+}
+
+/* ---------- Rows: every reading item is a pinnable button ---------- */
+[data-pm-surface="lightbox"] .pm-lb-craft-row,
+[data-pm-surface="lightbox"] .pm-lb-tiers,
+[data-pm-surface="lightbox"] .pm-lb-endings,
+[data-pm-surface="lightbox"] .pm-lb-handoff,
+[data-pm-surface="lightbox"] .pm-lb-number-row,
+[data-pm-surface="lightbox"] .pm-lb-number-read {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-row { display: flex; gap: 10px; align-items: flex-start; }
+[data-pm-surface="lightbox"] .pm-lb-craft-row:hover,
+[data-pm-surface="lightbox"] .pm-lb-craft-row.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-tiers:hover,
+[data-pm-surface="lightbox"] .pm-lb-tiers.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-endings:hover,
+[data-pm-surface="lightbox"] .pm-lb-endings.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-handoff:hover,
+[data-pm-surface="lightbox"] .pm-lb-handoff.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-number-read:hover,
+[data-pm-surface="lightbox"] .pm-lb-number-read.is-hot {
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-row:hover,
+[data-pm-surface="lightbox"] .pm-lb-number-row.is-hot { border-color: var(--pm-lb-measured-line); }
+[data-pm-surface="lightbox"] .pm-lb-craft-row.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-tiers.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-endings.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-handoff.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-number-read.is-sel {
+  border-color: var(--pm-lb-read);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-row.is-sel {
+  border-color: var(--pm-lb-measured);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-measured);
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+[data-pm-surface="lightbox"] .pm-lb-craft-title { font-family: var(--pm-lb-display); font-size: 14px; font-weight: 600; color: var(--pm-text); }
+[data-pm-surface="lightbox"] .pm-lb-craft-quote,
+[data-pm-surface="lightbox"] .pm-lb-craft-phrase {
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-text);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-para { margin-right: 6px; color: var(--pm-muted); font-family: var(--pm-mono); font-size: 11px; }
+[data-pm-surface="lightbox"] .pm-lb-craft-count { margin-left: 8px; font-weight: 500; color: var(--pm-lb-measured-hi); }
+[data-pm-surface="lightbox"] .pm-lb-craft-note { font-size: 12.5px; line-height: 1.5; color: var(--pm-text-2); }
+[data-pm-surface="lightbox"] .pm-lb-craft-accuracy { margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--pm-muted); }
+[data-pm-surface="lightbox"] .pm-lb-craft-accuracy b { color: var(--pm-lb-measured-hi); font-weight: 500; }
+
+/* ---------- Tags ---------- */
+[data-pm-surface="lightbox"] .pm-lb-craft-tag {
+  flex: none;
+  min-width: 70px;
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-border-2);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-signature { color: var(--pm-bg, #15110d); background: var(--pm-lb-read); border-color: var(--pm-lb-read); font-weight: 600; }
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-weighted { color: var(--pm-lb-measured-hi); border-color: var(--pm-lb-measured-line); }
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-air-lock,
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-echo,
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-continues,
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-pause,
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-closure,
+[data-pm-surface="lightbox"] .pm-lb-craft-tag.is-deliberate { color: var(--pm-lb-read); border: 1px dashed var(--pm-lb-read-line); }
+
+/* ---------- The tier bar ---------- */
+[data-pm-surface="lightbox"] .pm-lb-tiers { display: flex; flex-direction: column; gap: 8px; }
+[data-pm-surface="lightbox"] .pm-lb-tier-bar {
+  display: flex;
+  height: 16px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-tier-bar i,
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i { display: block; height: 100%; }
+/* Scoped to the bar and its key: a familiar phrase's "weighted" tag shares the class name. */
+[data-pm-surface="lightbox"] .pm-lb-tier-bar i.is-functional,
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i.is-functional { background: #4a3a2b; }
+[data-pm-surface="lightbox"] .pm-lb-tier-bar i.is-decorated,
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i.is-decorated { background: #7a5a3c; }
+[data-pm-surface="lightbox"] .pm-lb-tier-bar i.is-weighted,
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i.is-weighted { background: #b8694a; }
+[data-pm-surface="lightbox"] .pm-lb-tier-bar i.is-signature,
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i.is-signature {
+  background: repeating-linear-gradient(135deg, rgba(157, 184, 242, 0.85) 0 4px, rgba(157, 184, 242, 0.45) 4px 8px);
+}
+[data-pm-surface="lightbox"] .pm-lb-tier-key { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+[data-pm-surface="lightbox"] .pm-lb-tier-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-tier-entry i { width: 10px; height: 10px; border-radius: 2px; }
+[data-pm-surface="lightbox"] .pm-lb-tier-entry b { color: var(--pm-text); font-weight: 500; }
+
+/* ---------- Rhythm: measured lengths, read endings ---------- */
+[data-pm-surface="lightbox"] .pm-lb-rhythm-bars {
+  display: grid;
+  gap: 3px;
+  align-items: end;
+  height: 60px;
+}
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col {
+  appearance: none;
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col i {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 0;
+  display: block;
+  border-radius: 1px 1px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col i.is-longest { border: 1px solid var(--pm-lb-measured-line); border-bottom: 0; }
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col i.is-mean { background: var(--pm-lb-measured); opacity: 0.85; }
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col.is-sel i.is-mean,
+[data-pm-surface="lightbox"] .pm-lb-rhythm-col:hover i.is-mean { opacity: 1; }
+[data-pm-surface="lightbox"] .pm-lb-endings { display: flex; flex-direction: column; gap: 8px; }
+[data-pm-surface="lightbox"] .pm-lb-endings-row { display: grid; gap: 3px; }
+[data-pm-surface="lightbox"] .pm-lb-endings-row i,
+[data-pm-surface="lightbox"] .pm-lb-ending-key,
+[data-pm-surface="lightbox"] .pm-lb-col-ending i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 0 auto;
+  border-radius: 50%;
+}
+[data-pm-surface="lightbox"] .pm-lb-endings-row i.is-lands,
+[data-pm-surface="lightbox"] .pm-lb-ending-key.is-lands,
+[data-pm-surface="lightbox"] .pm-lb-col-ending i.is-lands { background: var(--pm-lb-read); }
+[data-pm-surface="lightbox"] .pm-lb-endings-row i.is-holds,
+[data-pm-surface="lightbox"] .pm-lb-ending-key.is-holds,
+[data-pm-surface="lightbox"] .pm-lb-col-ending i.is-holds {
+  background: linear-gradient(90deg, var(--pm-lb-read) 50%, transparent 50%);
+  border: 1px solid var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-endings-row i.is-opens,
+[data-pm-surface="lightbox"] .pm-lb-ending-key.is-opens,
+[data-pm-surface="lightbox"] .pm-lb-col-ending i.is-opens { border: 1px dashed var(--pm-lb-read); }
+[data-pm-surface="lightbox"] .pm-lb-endings-row i.is-unread { border: 1px dotted var(--pm-faint); }
+[data-pm-surface="lightbox"] .pm-lb-col-ending { display: block; height: 12px; }
+[data-pm-surface="lightbox"] .pm-lb-col-ending i { width: 8px; height: 8px; margin-top: 2px; }
+
+/* ---------- Handoffs ---------- */
+[data-pm-surface="lightbox"] .pm-lb-handoff { display: flex; flex-direction: column; gap: 5px; }
+[data-pm-surface="lightbox"] .pm-lb-handoff-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  color: var(--pm-text);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-handoff-arrow { color: var(--pm-lb-read); text-align: center; }
+[data-pm-surface="lightbox"] .pm-lb-handoff-kv {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-handoff-kv .pm-lb-craft-tag { justify-self: start; }
+[data-pm-surface="lightbox"] .pm-lb-handoff-kv b {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+@media (max-width: 760px) {
+  [data-pm-surface="lightbox"] .pm-lb-handoff-pair { grid-template-columns: minmax(0, 1fr); }
+  [data-pm-surface="lightbox"] .pm-lb-handoff-arrow { text-align: left; }
+  [data-pm-surface="lightbox"] .pm-lb-handoff-kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+
+/* ---------- The numbers ---------- */
+[data-pm-surface="lightbox"] .pm-lb-number { display: flex; flex-direction: column; gap: 4px; }
+[data-pm-surface="lightbox"] .pm-lb-number-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(0, 240px);
+  gap: 6px 14px;
+  align-items: center;
+}
+[data-pm-surface="lightbox"] .pm-lb-number-name { font-size: 13px; color: var(--pm-text); }
+[data-pm-surface="lightbox"] .pm-lb-number-name span { display: block; font-family: var(--pm-mono); font-size: 10.5px; color: var(--pm-muted); }
+[data-pm-surface="lightbox"] .pm-lb-number-bar { position: relative; height: 12px; border-radius: 6px; background: var(--pm-surface-2); }
+[data-pm-surface="lightbox"] .pm-lb-number-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: block;
+  border-radius: 6px;
+  background: rgba(201, 187, 171, 0.16);
+  border: 1px solid var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-writer {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  display: block;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-dot {
+  position: absolute;
+  top: -3px;
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: var(--pm-lb-measured);
+  border: 2px solid var(--pm-bg, #15110d);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-dot.is-within { background: var(--pm-text-2); }
+[data-pm-surface="lightbox"] .pm-lb-number-value { font-family: var(--pm-mono); font-size: 11px; color: var(--pm-muted); text-align: right; }
+[data-pm-surface="lightbox"] .pm-lb-number-row.is-standout .pm-lb-number-value { color: var(--pm-lb-measured-hi); }
+[data-pm-surface="lightbox"] .pm-lb-number-standout {
+  grid-column: 2 / -1;
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-lb-measured-hi);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-read {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-left: 194px;
+  width: auto;
+  border: 1px dashed var(--pm-lb-read-line);
+  background: var(--pm-lb-read-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-number-read .pm-lb-craft-tag { align-self: flex-start; }
+@media (max-width: 1100px) {
+  [data-pm-surface="lightbox"] .pm-lb-number-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  [data-pm-surface="lightbox"] .pm-lb-number-bar { grid-column: 1 / -1; grid-row: 2; }
+  [data-pm-surface="lightbox"] .pm-lb-number-standout { grid-column: 1 / -1; }
+  [data-pm-surface="lightbox"] .pm-lb-number-read { margin-left: 0; }
+}

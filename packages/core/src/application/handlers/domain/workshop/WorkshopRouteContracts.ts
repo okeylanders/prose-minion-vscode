@@ -52,6 +52,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopContextHandler'
   | 'WorkshopExcerptScopeHandler'
   | 'WorkshopLexicalGravityHandler'
+  | 'WorkshopLightboxTileHandler'
   | 'WorkshopRoomHandler'
   | 'WorkshopSessionMessageHandler'
   | 'WorkshopStandingDirectiveHandler'

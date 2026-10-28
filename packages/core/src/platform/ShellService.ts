@@ -57,7 +57,12 @@ export interface ShellService {
    * Open the host's single-file picker. Resolves to the chosen file, or
    * undefined when the user dismisses the dialog (dismissal is not an error).
    * `filters` maps display names to extension lists, mirroring
-   * `vscode.OpenDialogOptions.filters`.
+   * `vscode.OpenDialogOptions.filters`. `openLabel` names the confirm button
+   * (the Workshop's "Pin" when omitted).
    */
-  pickFile(options?: { title?: string; filters?: Record<string, string[]> }): Promise<PickedFile | undefined>;
+  pickFile(options?: {
+    title?: string;
+    filters?: Record<string, string[]>;
+    openLabel?: string;
+  }): Promise<PickedFile | undefined>;
 }

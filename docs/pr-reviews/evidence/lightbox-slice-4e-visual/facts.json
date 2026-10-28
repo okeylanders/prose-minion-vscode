@@ -1,0 +1,2045 @@
+{
+  "paragraph@1440": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Text of ¶11",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": 318,
+      "wellScrolls": true,
+      "firstWords": "Down, down, down. There was nothing else to do, so Alice soon began talking agai"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "word@1440": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "paragraph-lit@1440": {
+    "inspector": {
+      "title": "¶2",
+      "where": "Chapter · Paragraph",
+      "claim": "57 words in 2 sentences · 28.5 words per sentence · 21% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": "Lit: “alice”, 2 instances here.",
+      "back": "← Back to “alice”",
+      "region": "Text of ¶2",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 2,
+      "litInstances": 2,
+      "wellHeight": 206,
+      "wellScrolls": false,
+      "firstWords": "Alice was beginning to get very tired of sitting by her sister on the bank, and "
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 16
+  },
+  "pos@1440": {
+    "inspector": {
+      "title": "was",
+      "where": "Measure · Verb",
+      "claim": "Appears 53 times across 20 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 53 instances in 32 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “was” (verb)",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 32,
+      "marks": 53,
+      "litInstances": 53,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "phrase@1440": {
+    "inspector": {
+      "title": "“she had”",
+      "where": "Measure · Repeated phrase",
+      "claim": "Appears 8 times across 6 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 8 instances in 6 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “she had”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 6,
+      "marks": 8,
+      "litInstances": 8,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 11
+  },
+  "flag@1440": {
+    "inspector": {
+      "title": "Weak Verbs",
+      "where": "Measure · Style flag",
+      "claim": "Appears 119 times across 22 paragraphs. Forms of be, have, do, make and get, as whole words: is, are, was, were, has, have, had, do, does, did, make, makes, made, get, gets, got. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 119 instances in 48 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding Weak Verbs",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 48,
+      "marks": 119,
+      "litInstances": 119,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 130,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 130,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 11
+  },
+  "hapax@1440": {
+    "inspector": {
+      "title": "MARMALADE",
+      "where": "Measure · Used once",
+      "claim": "Used once, in ¶7. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 1 instance in 1 sentence",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “MARMALADE”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 1,
+      "marks": 1,
+      "litInstances": 1,
+      "wellHeight": 193,
+      "wellScrolls": false,
+      "firstWords": "¶7She took down a jar from one of the shelves as she passed; it was labelled “OR"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 409,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 409,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "back-late@1440": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 15
+  },
+  "changed@1440": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [
+        "The text changed since this was shown. Reading it again from the board as it stands…"
+      ],
+      "lit": null,
+      "back": null,
+      "region": null,
+      "role": null,
+      "tabindex": null,
+      "ariaLive": null,
+      "rows": null,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": null,
+      "wellScrolls": null,
+      "firstWords": null
+    },
+    "hapax": {
+      "head": "Used once 341 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 41 more · 41 not shown yet",
+      "region": "Words used once: 341",
+      "wellHeight": 495,
+      "wellScrolls": true,
+      "statsChip": "341 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 930,
+        "height": 826
+      },
+      "partsOfSpeech": {
+        "top": 930,
+        "height": 826
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}",
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 13
+  },
+  "bounded@1440": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 385 times across 347 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 385 instances in 378 sentences",
+      "notes": [
+        "The well lists up to 50 rows: 328 more sentences with 334 instances are not listed."
+      ],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 50,
+      "marks": 51,
+      "litInstances": 51,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 1,284 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "conversations",
+        "daisy-chain",
+        "daisies",
+        "pink",
+        "wondered",
+        "actually"
+      ],
+      "more": "Show 300 more · 984 not shown yet",
+      "region": "Words used once: 1,284",
+      "wellHeight": 584,
+      "wellScrolls": true,
+      "statsChip": "1,284 hapax · 4.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 961,
+        "height": 902
+      },
+      "partsOfSpeech": {
+        "top": 961,
+        "height": 902
+      }
+    },
+    "flags": [
+      "button Weak Verbs 1,181",
+      "button Adverbs (-ly words) 427",
+      "button Filler Words 291",
+      "button Passive Voice 38",
+      "span Repetitive Words 5"
+    ],
+    "runLine": "6 calls · est. $1.01 · the Opinion up to its digest boundBook-sized: 26,448 wordsRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "paragraph@1000": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Text of ¶11",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": 318,
+      "wellScrolls": true,
+      "firstWords": "Down, down, down. There was nothing else to do, so Alice soon began talking agai"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "word@1000": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "paragraph-lit@1000": {
+    "inspector": {
+      "title": "¶2",
+      "where": "Chapter · Paragraph",
+      "claim": "57 words in 2 sentences · 28.5 words per sentence · 21% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": "Lit: “alice”, 2 instances here.",
+      "back": "← Back to “alice”",
+      "region": "Text of ¶2",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 2,
+      "litInstances": 2,
+      "wellHeight": 275,
+      "wellScrolls": false,
+      "firstWords": "Alice was beginning to get very tired of sitting by her sister on the bank, and "
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 15
+  },
+  "pos@1000": {
+    "inspector": {
+      "title": "was",
+      "where": "Measure · Verb",
+      "claim": "Appears 53 times across 20 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 53 instances in 32 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “was” (verb)",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 32,
+      "marks": 53,
+      "litInstances": 53,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "phrase@1000": {
+    "inspector": {
+      "title": "“she had”",
+      "where": "Measure · Repeated phrase",
+      "claim": "Appears 8 times across 6 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 8 instances in 6 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “she had”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 6,
+      "marks": 8,
+      "litInstances": 8,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "flag@1000": {
+    "inspector": {
+      "title": "Weak Verbs",
+      "where": "Measure · Style flag",
+      "claim": "Appears 119 times across 22 paragraphs. Forms of be, have, do, make and get, as whole words: is, are, was, were, has, have, had, do, does, did, make, makes, made, get, gets, got. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 119 instances in 48 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding Weak Verbs",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 48,
+      "marks": 119,
+      "litInstances": 119,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "hapax@1000": {
+    "inspector": {
+      "title": "MARMALADE",
+      "where": "Measure · Used once",
+      "claim": "Used once, in ¶7. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 1 instance in 1 sentence",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “MARMALADE”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 1,
+      "marks": 1,
+      "litInstances": 1,
+      "wellHeight": 279,
+      "wellScrolls": false,
+      "firstWords": "¶7She took down a jar from one of the shelves as she passed; it was labelled “OR"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 296,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": 735,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 12
+  },
+  "back-late@1000": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 15
+  },
+  "changed@1000": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [
+        "The text changed since this was shown. Reading it again from the board as it stands…"
+      ],
+      "lit": null,
+      "back": null,
+      "region": null,
+      "role": null,
+      "tabindex": null,
+      "ariaLive": null,
+      "rows": null,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": null,
+      "wellScrolls": null,
+      "firstWords": null
+    },
+    "hapax": {
+      "head": "Used once 341 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 41 more · 41 not shown yet",
+      "region": "Words used once: 341",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "341 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -623,
+        "height": 423
+      },
+      "partsOfSpeech": {
+        "top": -184,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}",
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 13
+  },
+  "bounded@1000": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 385 times across 347 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 385 instances in 378 sentences",
+      "notes": [
+        "The well lists up to 50 rows: 328 more sentences with 334 instances are not listed."
+      ],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 50,
+      "marks": 51,
+      "litInstances": 51,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 1,284 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "conversations",
+        "daisy-chain",
+        "daisies",
+        "pink",
+        "wondered",
+        "actually"
+      ],
+      "more": "Show 300 more · 984 not shown yet",
+      "region": "Words used once: 1,284",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "1,284 hapax · 4.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -1306,
+        "height": 420
+      },
+      "partsOfSpeech": {
+        "top": -870,
+        "height": 677
+      }
+    },
+    "flags": [
+      "button Weak Verbs 1,181",
+      "button Adverbs (-ly words) 427",
+      "button Filler Words 291",
+      "button Passive Voice 38",
+      "span Repetitive Words 5"
+    ],
+    "runLine": "6 calls · est. $1.01 · the Opinion up to its digest boundBook-sized: 26,448 wordsRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "paragraph@500": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Text of ¶11",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": 318,
+      "wellScrolls": true,
+      "firstWords": "Down, down, down. There was nothing else to do, so Alice soon began talking agai"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4296,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3827,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "word@500": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4321,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3852,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "paragraph-lit@500": {
+    "inspector": {
+      "title": "¶2",
+      "where": "Chapter · Paragraph",
+      "claim": "57 words in 2 sentences · 28.5 words per sentence · 21% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [],
+      "lit": "Lit: “alice”, 2 instances here.",
+      "back": "← Back to “alice”",
+      "region": "Text of ¶2",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 0,
+      "marks": 2,
+      "litInstances": 2,
+      "wellHeight": 136,
+      "wellScrolls": false,
+      "firstWords": "Alice was beginning to get very tired of sitting by her sister on the bank, and "
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4174,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3705,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 13
+  },
+  "pos@500": {
+    "inspector": {
+      "title": "was",
+      "where": "Measure · Verb",
+      "claim": "Appears 53 times across 20 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 53 instances in 32 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “was” (verb)",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 32,
+      "marks": 53,
+      "litInstances": 53,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4321,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3852,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"pos\",\"pos\":\"verbs\",\"word\":\"was\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "phrase@500": {
+    "inspector": {
+      "title": "“she had”",
+      "where": "Measure · Repeated phrase",
+      "claim": "Appears 8 times across 6 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 8 instances in 6 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “she had”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 6,
+      "marks": 8,
+      "litInstances": 8,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4289,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3820,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"phrase\",\"phrase\":\"she had\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "flag@500": {
+    "inspector": {
+      "title": "Weak Verbs",
+      "where": "Measure · Style flag",
+      "claim": "Appears 119 times across 22 paragraphs. Forms of be, have, do, make and get, as whole words: is, are, was, were, has, have, had, do, does, did, make, makes, made, get, gets, got. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 119 instances in 48 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding Weak Verbs",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 48,
+      "marks": 119,
+      "litInstances": 119,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4398,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3929,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"flag\":\"weak-verbs\",\"kind\":\"flag\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  },
+  "hapax@500": {
+    "inspector": {
+      "title": "MARMALADE",
+      "where": "Measure · Used once",
+      "claim": "Used once, in ¶7. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 1 instance in 1 sentence",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “MARMALADE”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 1,
+      "marks": 1,
+      "litInstances": 1,
+      "wellHeight": 128,
+      "wellScrolls": false,
+      "firstWords": "¶7She took down a jar from one of the shelves as she passed; it was labelled “OR"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": 296,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": 765,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"hapax\",\"word\":\"marmalade\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 12
+  },
+  "back-late@500": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 27 times across 19 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 27 instances in 26 sentences",
+      "notes": [],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 26,
+      "marks": 27,
+      "litInstances": 27,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 340 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 40 more · 40 not shown yet",
+      "region": "Words used once: 340",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "340 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4321,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3852,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}",
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [
+      "board-alice-1 {\"from\":2,\"kind\":\"paragraphs\",\"to\":2,\"via\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "released": 1,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 14
+  },
+  "changed@500": {
+    "inspector": {
+      "title": "¶11",
+      "where": "Chapter · Paragraph",
+      "claim": "191 words in 17 sentences · 11.2 words per sentence · 44% dialogue."
+    },
+    "passage": {
+      "label": "The text · as counted",
+      "notes": [
+        "The text changed since this was shown. Reading it again from the board as it stands…"
+      ],
+      "lit": null,
+      "back": null,
+      "region": null,
+      "role": null,
+      "tabindex": null,
+      "ariaLive": null,
+      "rows": null,
+      "marks": 0,
+      "litInstances": 0,
+      "wellHeight": null,
+      "wellScrolls": null,
+      "firstWords": null
+    },
+    "hapax": {
+      "head": "Used once 341 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "Chapter",
+        "beginning",
+        "sitting",
+        "bank",
+        "twice",
+        "peeped"
+      ],
+      "more": "Show 41 more · 41 not shown yet",
+      "region": "Words used once: 341",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "341 hapax · 15.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4012,
+        "height": 453
+      },
+      "partsOfSpeech": {
+        "top": -3543,
+        "height": 788
+      }
+    },
+    "flags": [
+      "button Weak Verbs 119",
+      "button Filler Words 35",
+      "button Adverbs (-ly words) 30",
+      "span Repetitive Words 5",
+      "button Passive Voice 3"
+    ],
+    "runLine": "6 calls · est. $0.44 · the Opinion up to its digest boundRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-1 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}",
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "held": [
+      "board-alice-2 {\"from\":11,\"kind\":\"paragraphs\",\"to\":11}"
+    ],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 13
+  },
+  "bounded@500": {
+    "inspector": {
+      "title": "alice",
+      "where": "Measure · Word",
+      "claim": "Appears 385 times across 347 paragraphs. Counted by code; nothing here is a reading."
+    },
+    "passage": {
+      "label": "Sentences · 385 instances in 378 sentences",
+      "notes": [
+        "The well lists up to 50 rows: 328 more sentences with 334 instances are not listed."
+      ],
+      "lit": null,
+      "back": null,
+      "region": "Sentences holding “alice”",
+      "role": "region",
+      "tabindex": "0",
+      "ariaLive": "off",
+      "rows": 50,
+      "marks": 51,
+      "litInstances": 51,
+      "wellHeight": 378,
+      "wellScrolls": true,
+      "firstWords": "¶2Alice was beginning to get very tired of sitting by her sister on the bank, an"
+    },
+    "hapax": {
+      "head": "Used once 1,284 words, in order of appearance",
+      "words": 300,
+      "firstWords": [
+        "conversations",
+        "daisy-chain",
+        "daisies",
+        "pink",
+        "wondered",
+        "actually"
+      ],
+      "more": "Show 300 more · 984 not shown yet",
+      "region": "Words used once: 1,284",
+      "wellHeight": 174,
+      "wellScrolls": true,
+      "statsChip": "1,284 hapax · 4.9%"
+    },
+    "tiles": {
+      "topWords": {
+        "top": -4474,
+        "height": 465
+      },
+      "partsOfSpeech": {
+        "top": -3993,
+        "height": 753
+      }
+    },
+    "flags": [
+      "button Weak Verbs 1,181",
+      "button Adverbs (-ly words) 427",
+      "button Filler Words 291",
+      "button Passive Voice 38",
+      "span Repetitive Words 5"
+    ],
+    "runLine": "6 calls · est. $1.01 · the Opinion up to its digest boundBook-sized: 26,448 wordsRead the chapter",
+    "horizontalOverflow": false,
+    "requests": [
+      "board-alice-3 {\"kind\":\"instances\",\"term\":{\"kind\":\"word\",\"word\":\"alice\"}}"
+    ],
+    "held": [],
+    "released": 0,
+    "missing": [],
+    "statesWithText": 0,
+    "statesSaved": 10
+  }
+}

@@ -9,7 +9,8 @@ describe('selected cache duration', () => {
   it.each([
     'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna', 'openai/gpt-5.6-sol',
     'openai/gpt-6-sol', 'openai/gpt-6-luna-pro', 'openai/gpt-6-astra',
-    'openai/gpt-6.1-sol', '~openai/gpt-5.6-terra:nitro'
+    'openai/gpt-6.1-sol', '~openai/gpt-5.6-terra:nitro',
+    'openai/gpt-6.1-terra', 'openai/gpt-6.1-terra-pro'
   ])('recognizes %s native 30-minute window without changing its request', model => {
     const messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }];
     expect(getOpenRouterPromptCacheTtlSeconds(model, '1h')).toBe(1800);
@@ -21,6 +22,8 @@ describe('selected cache duration', () => {
 
   it.each(['openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-5.2', 'openai/gpt-4.1',
     'openai/gpt-oss-120b', 'openai/gpt-chat-latest', 'openrouter/auto', 'other/gpt-5.6-terra',
+    'moonshotai/kimi-k3.1-pro', 'minimax/minimax-m3.1-flash',
+    'deepseek/deepseek-v4.1-flash-1017', 'inception/mercury-3',
     'openai/gpt-5.60invalid', 'openai/gpt-60invalid'])('keeps %s lifetime unknown', model => {
     expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
   });
@@ -53,7 +56,7 @@ describe('selected cache duration', () => {
     })).toBe(false);
   });
 
-  it.each(['meta/llama-4-maverick', 'meta/muse-wonder-future', 'other/muse-wonder'])
+  it.each(['meta/llama-4-maverick', 'meta/muse-spark-open', 'meta/muse-wonder-future', 'other/muse-wonder'])
   ('keeps %s outside the Muse estimate policy', model => {
     expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
   });
@@ -120,6 +123,10 @@ describe('OpenRouter prompt cache request policies', () => {
     'qwen/qwen3.8-max-future',
     'deepseek/deepseek-v3.2-exp',
     'deepseek/deepseek-v4-pro',
+    'deepseek/deepseek-v4.1-flash-1017',
+    'moonshotai/kimi-k3.1-pro',
+    'minimax/minimax-m3.1-flash',
+    'inception/mercury-3',
     'google/gemini-3.8-flash',
     'meta/muse-spark-1.3',
     'meta/muse-wonder',

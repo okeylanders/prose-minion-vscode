@@ -1,0 +1,488 @@
+/**
+ * Lightbox readings: lenses, the estimate, runs and context files (ADR
+ * 2026-10-19 D6–D10; Slice 2B). Composed beside `LightboxHandler` in every
+ * MessageHandler, over the same shared services; nothing is constructed
+ * here. `LightboxHandler` owns the board's source; this owns what a press
+ * reads and sends.
+ *
+ * - **Sync.** The webview sends its lens toggles on mount, on a toggle, when
+ *   the board, the Lightbox model, its catalog or the context list changes.
+ *   Each `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
+ *   estimate (fit and cost) echoing its `requestId`, plus the board's run
+ *   while one is active. The estimate is only ever an answer (PR #149 F-03):
+ *   the host never posts one unasked, and an answer overtaken by a newer
+ *   request while its prompt files loaded is dropped, not posted late.
+ * - **Validate before spend.** A press is refused, with nothing sent, when
+ *   its scope is not one the board can run (`LightboxPressScope`: a call is
+ *   named by group, A–G, with at most a lens of its own; Slice 4I), the
+ *   board is not the one on screen, its estimate is no longer current,
+ *   every lens is off, the Opinion alone has nothing current to weigh, the
+ *   board is already being read, a call is too large for the model's
+ *   window, or there is no API key.
+ * - **A press owns what it was priced (PR #149 F-02).** A press names the key
+ *   of the estimate it was shown (`LightboxRunEstimate.key`: the board and
+ *   its text, the lenses on, the context shelf's revision, the Lightbox
+ *   model with its window and prices). Its snapshot is captured, and its
+ *   board reserved under a minted token, before anything is awaited. After
+ *   the prompt files load, it starts only if this tab is still open, its
+ *   reservation still holds, the board is still the adoption it captured
+ *   (a saved snapshot of the same board keeps its id and key: PR #163
+ *   F-02), and the live key is still the one it named: any change in
+ *   between (a context file removed, a lens toggled, a model or price
+ *   changed, another board or snapshot adopted) refuses it with nothing
+ *   sent, and the webview asks for a fresh estimate. What runs is exactly what was
+ *   priced, and nothing runs after its tab closed. The press also names the
+ *   model the writer selected; one naming any model but the one in use is
+ *   refused (PR #149 F-03 re-review).
+ * - **Runs belong to their board.** Group results are written onto the board
+ *   by its id through `LightboxService.updateReadings`, so a hidden tab, a
+ *   reveal or a switch back to the source finds them; a result for a board
+ *   that no longer exists is dropped (`LightboxPressRun`). Group F, the
+ *   Opinion, reads that board's digest when it starts, after the press's
+ *   other groups settle (Slice 4D).
+ * - **Outcomes are published, not posted by the run (PR #148).** The service
+ *   publishes a `readings` change only for the current board, so a stale run
+ *   never publishes over a newer one. This handler subscribes the first time
+ *   its webview sends a reading message (the sidebar and the Workshop never
+ *   do) and posts what it hears: a settled group as `LIGHTBOX_GROUP_RESULT`,
+ *   a run starting or stopping as the board. Progress, refusals and the
+ *   estimate are the run's and the request's own answers.
+ * - **The Spark lane (Slice 4).** "Not for me" and its Undo mark the board's
+ *   own spark (`LightboxSparkLane`), and the board is published like any
+ *   other change to its readings. The file that holds the board takes the
+ *   mark at once, in place (Slice 5A.1, epic decision 35).
+ * - **Context files** come by the system picker or the project picker (by
+ *   catalog key), through `LightboxContextIntake` under the shelf's rules.
+ * - **Saved after a run (Slice 5A, epic decision 27).** A run that ends,
+ *   finished or stopped, with at least one group landed hands its board to
+ *   the composition root's saver, which writes it as it stands.
+ *
+ * Logs name groups, lenses, counts, paths and reasons, never text.
+ */
+
+import { LogSink, ShellService } from '@/platform';
+import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import type { LightboxOutcomeChange, LightboxService } from '@/infrastructure/lightbox/LightboxService';
+import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
+import type { LightboxRunReservation } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
+import { estimateLightboxRun } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import {
+  LIGHTBOX_SPARK_LANE_REFUSALS,
+  parseLightboxSparkDismissal,
+  setLightboxSparkDismissed
+} from '@/infrastructure/lightbox/LightboxSparkLane';
+import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { startLightboxGroups, stopLightboxGroups } from '@/infrastructure/lightbox/LightboxReadingState';
+import { isLightboxLensId } from '@shared/constants/lightbox';
+import {
+  LightboxActiveRun,
+  LightboxAddContextFilesMessage,
+  LightboxAddProjectContextMessage,
+  LightboxCancelRunMessage,
+  LightboxLensId,
+  LightboxReadingGroupId,
+  LightboxRemoveContextFileMessage,
+  LightboxRunMessage,
+  LightboxRunProgress,
+  LightboxSetLensesMessage,
+  LightboxSetSparkDismissedMessage,
+  MessageType
+} from '@messages';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { LightboxContextIntake } from '@handlers/domain/LightboxContextIntake';
+import { LightboxProjectFiles, type LightboxProjectFilePorts } from '@handlers/domain/LightboxProjectFiles';
+import { lightboxOpinionPort, lightboxPressRun } from '@handlers/domain/LightboxPressRun';
+import { lightboxEstimateCalls, lightboxPressCalls, lightboxPressLens, parseLightboxRunScope } from '@handlers/domain/LightboxPressScope';
+import type { LightboxBoardLibrary } from '@/application/services/lightbox/LightboxBoardLibrary';
+
+const SOURCE = 'extension.lightbox';
+const STOPPED = 'Stopped before this group came back.';
+const BOARD_CHANGED = 'The board changed. Read the board on screen.';
+const ESTIMATE_CHANGED = 'The estimate changed since it was shown (the model, its prices, the lenses or the context). ' +
+  'Check the new estimate, then press again.';
+const MODEL_NOT_IN_USE = 'The model this press names is not the Lightbox model in use yet. ' +
+  'Wait for the model change to finish saving, then press again.';
+
+type LightboxContextPicker = Pick<ShellService, 'pickFile'>;
+
+export class LightboxReadingHandler {
+  /** The webview's lens toggles; all on until it says otherwise. */
+  private lensesOff: LightboxLensId[] = [];
+  /** Runs this handler started, so closing the tab stops them. */
+  private readonly ownRuns = new Map<string, LightboxActiveRun>();
+  private unsubscribe?: () => void;
+  private disposed = false;
+  /** The latest estimate request; an older one finishing late is not posted. */
+  private estimateSequence = 0;
+  private readonly contextIntake: LightboxContextIntake;
+
+  constructor(
+    private readonly lightboxService: LightboxService,
+    private readonly runner: LightboxReadingRunner,
+    private readonly contextShelf: LightboxContextShelf,
+    textSourceResolver: TextSourceResolver,
+    shell: LightboxContextPicker,
+    projectFilePorts: LightboxProjectFilePorts,
+    private readonly postMessage: MessageTransport,
+    private readonly outputChannel: LogSink,
+    /** Saves a board once a run on it landed readings (Slice 5A), and a spark's mark at once (5A.1); without it nothing is saved. */
+    private readonly boardSaver?: Pick<LightboxBoardLibrary, 'keepSpark' | 'saveAfterRun'>
+  ) {
+    this.contextIntake = new LightboxContextIntake({
+      lightboxService,
+      shelf: contextShelf,
+      textSourceResolver,
+      shell,
+      projectFiles: new LightboxProjectFiles(projectFilePorts, outputChannel),
+      outputChannel
+    });
+  }
+
+  registerRoutes(router: MessageRouter): void {
+    router.register(MessageType.LIGHTBOX_SET_LENSES, this.handleSetLenses.bind(this));
+    router.register(MessageType.LIGHTBOX_RUN, this.handleRun.bind(this));
+    router.register(MessageType.LIGHTBOX_CANCEL_RUN, this.handleCancelRun.bind(this));
+    router.register(MessageType.LIGHTBOX_ADD_CONTEXT_FILES, this.handleAddContextFiles.bind(this));
+    router.register(MessageType.LIGHTBOX_ADD_PROJECT_CONTEXT, this.handleAddProjectContext.bind(this));
+    router.register(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, this.handleRemoveContextFile.bind(this));
+    router.register(MessageType.LIGHTBOX_SET_SPARK_DISMISSED, this.handleSetSparkDismissed.bind(this));
+  }
+
+  /** Closing the tab stops the runs it started; finished groups stay on their boards. */
+  dispose(): void {
+    this.disposed = true;
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+    for (const run of [...this.ownRuns.values()]) {
+      this.stop(run, 'The Lightbox tab closed before this group came back.');
+    }
+  }
+
+  async handleSetLenses(message: LightboxSetLensesMessage): Promise<void> {
+    this.subscribe();
+    const requested = Array.isArray(message.payload?.lensesOff) ? message.payload.lensesOff : [];
+    this.lensesOff = [...new Set(requested.filter(isLightboxLensId))];
+    this.postContextFiles();
+    const requestId = typeof message.payload?.requestId === 'string' ? message.payload.requestId : undefined;
+    await this.postEstimate(requestId);
+  }
+
+  /** "Not for me", or its Undo, on the board on screen: the host marks the spark and publishes the board. */
+  async handleSetSparkDismissed(message: LightboxSetSparkDismissedMessage): Promise<void> {
+    this.subscribe();
+    const request = parseLightboxSparkDismissal(message.payload);
+    const refuse = (reason: string): void => this.outputChannel.appendLine(`[LightboxReadingHandler] Spark lane refused: ${reason}`);
+    if (!request) {
+      refuse(LIGHTBOX_SPARK_LANE_REFUSALS.unknown);
+      return;
+    }
+    const board = this.lightboxService.currentBoard();
+    if (board?.boardId !== request.boardId) {
+      refuse(LIGHTBOX_SPARK_LANE_REFUSALS.boardChanged);
+      return;
+    }
+    // Read and write with nothing awaited between, so no run can land in the middle.
+    const result = setLightboxSparkDismissed(board.readings, request.tileId, request.dismissed);
+    if (!result.ok) {
+      refuse(result.reason);
+      return;
+    }
+    if (result.changed) {
+      this.lightboxService.updateReadings(request.boardId, () => result.readings);
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Spark ${request.dismissed ? 'set aside' : 'brought back'}`);
+      await this.boardSaver?.keepSpark(request.boardId, request.tileId);
+    }
+  }
+
+  async handleRun(message: LightboxRunMessage): Promise<void> {
+    this.subscribe();
+    const { boardId, estimateKey, model } = message.payload ?? ({} as LightboxRunMessage['payload']);
+    const refuse = (text: string, groups: LightboxReadingGroupId[] = [], reestimate = false): void => {
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Run refused: ${text}`);
+      this.postProgress({
+        boardId, phase: 'refused', groups, groupsBack: 0, outputCharacters: 0, message: text, ...(reestimate ? { reestimate: true } : {})
+      });
+    };
+    // The webview names a scope; the host decides what it reads (`LightboxPressScope`, Slice 4I).
+    const parsed = parseLightboxRunScope(message.payload?.scope);
+    if ('refusal' in parsed) {
+      refuse(parsed.refusal);
+      return;
+    }
+    const { scope } = parsed;
+    // Every press keeps its lenses' readings until new ones land (decision 49); a tile's re-read names its lens.
+    const lens = lightboxPressLens(scope);
+    // The press's snapshot, and its board's reservation, before the first await.
+    const press = this.pressSnapshot(boardId);
+    if (!press) {
+      refuse(BOARD_CHANGED);
+      return;
+    }
+    if (estimateKey !== press.key) {
+      refuse(ESTIMATE_CHANGED, [], true);
+      return;
+    }
+    // A run starts only on the model the writer selected, never on one a pending selection is replacing.
+    if (model !== press.facts.model) {
+      refuse(MODEL_NOT_IN_USE, [], true);
+      return;
+    }
+    const planned = lightboxPressCalls(scope, this.lensesOff, press.board);
+    if ('refusal' in planned) {
+      refuse(planned.refusal);
+      return;
+    }
+    const { calls } = planned;
+    const groups = calls.map((call) => call.group);
+    const held = this.runner.reserve(boardId, groups, { lens });
+    if (!held.reserved) {
+      refuse(held.message, groups);
+      return;
+    }
+    const { reservation } = held;
+    this.ownRuns.set(reservation.run.token, reservation.run);
+
+    let preparedCalls: Awaited<ReturnType<LightboxReadingRunner['prepare']>>;
+    try {
+      preparedCalls = await this.runner.prepare(press.source, calls);
+    } catch {
+      this.releasePress(reservation);
+      refuse('The reading prompts could not be loaded, so nothing was sent.', groups);
+      return;
+    }
+    // Ownership: the tab closed, or the press was stopped, while its prompts loaded.
+    if (this.disposed || !this.runner.holds(reservation)) {
+      this.releasePress(reservation);
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Press ${reservation.run.token} released before it started`);
+      return;
+    }
+    // The snapshot must still be what is current, or the press would send what was not priced.
+    // A board opened or chosen meanwhile is another adoption, even under the same id and key (PR #163 F-02).
+    const live = this.pressSnapshot(boardId);
+    if (!live || live.adoption !== press.adoption || live.key !== press.key) {
+      this.releasePress(reservation);
+      refuse(live && live.adoption === press.adoption ? ESTIMATE_CHANGED : BOARD_CHANGED, groups, true);
+      return;
+    }
+    const fit = estimateLightboxRun({
+      boardId,
+      key: press.key,
+      sourceWords: press.source.sourceWords,
+      contextWords: press.source.contextWords,
+      columnCount: press.source.material.columns.length,
+      groups: preparedCalls,
+      rereads: [],
+      facts: press.facts
+    });
+    if (fit.fit === 'too-large') {
+      this.releasePress(reservation);
+      refuse(fit.reason ?? 'The chapter is too large for the model\'s window.', groups);
+      return;
+    }
+
+    // What the run hears and lands (`LightboxPressRun`); group F reads this board's digest when it starts (Slice 4D).
+    const pressRun = lightboxPressRun({
+      service: this.lightboxService,
+      boardId,
+      groups,
+      lens,
+      press,
+      postProgress: (progress) => this.postProgress(progress),
+      onFinished: (token, landed) => {
+        this.ownRuns.delete(token);
+        this.saveAfterRun(boardId, landed);
+      },
+      outputChannel: this.outputChannel
+    });
+    const start = this.runner.startReserved(reservation, press.source, preparedCalls, pressRun.listener, {
+      opinion: lightboxOpinionPort(this.lightboxService, boardId)
+    });
+    if (!start.started) {
+      this.releasePress(reservation);
+      refuse(start.message, groups);
+      return;
+    }
+    const started = start.run;
+    pressRun.bind(started);
+    this.ownRuns.set(started.token, started);
+    this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls));
+    this.postProgress({ boardId, token: started.token, phase: 'started', groups, groupsBack: 0, outputCharacters: 0, ...lensField(lens) });
+  }
+
+  async handleCancelRun(message: LightboxCancelRunMessage): Promise<void> {
+    this.subscribe();
+    const { boardId, token } = message.payload ?? ({} as LightboxCancelRunMessage['payload']);
+    const run = this.runner.activeRun(boardId);
+    if (!run || run.token !== token) {
+      return;
+    }
+    this.stop(run, STOPPED);
+  }
+
+  /** "Add file" through the system picker (and the project picker's escape hatch). */
+  async handleAddContextFiles(_message: LightboxAddContextFilesMessage): Promise<void> {
+    this.subscribe();
+    const outcome = await this.contextIntake.addPicked();
+    if (outcome) {
+      // The webview asks for a fresh estimate when it sees the list change.
+      this.postContextFiles(outcome.notice);
+    }
+  }
+
+  /** Files chosen in the project picker, by catalog key, in the writer's order. */
+  async handleAddProjectContext(message: LightboxAddProjectContextMessage): Promise<void> {
+    this.subscribe();
+    const outcome = await this.contextIntake.addFromProject(message.payload?.items);
+    this.postContextFiles(outcome.notice);
+  }
+
+  async handleRemoveContextFile(message: LightboxRemoveContextFileMessage): Promise<void> {
+    this.subscribe();
+    if (this.contextShelf.remove(message.payload?.id ?? '')) {
+      this.outputChannel.appendLine('[LightboxReadingHandler] Context file removed');
+    }
+    this.postContextFiles();
+  }
+
+  /** What a press of the board named would own, read now (`LightboxPressSnapshot`). */
+  private pressSnapshot(boardId?: string): LightboxPressSnapshot | undefined {
+    return lightboxPressSnapshot({
+      service: this.lightboxService,
+      shelf: this.contextShelf,
+      modelFacts: () => this.runner.modelFacts(),
+      lensesOff: this.lensesOff
+    }, boardId);
+  }
+
+  /** Forget a press that will not start, and give its board back. */
+  private releasePress(reservation: LightboxRunReservation): void {
+    this.ownRuns.delete(reservation.run.token);
+    this.runner.release(reservation);
+  }
+
+  private stop(run: LightboxActiveRun, message: string): void {
+    this.ownRuns.delete(run.token);
+    // A press still preparing has sent nothing and shows nothing: releasing it is enough.
+    const started = this.runner.activeRun(run.boardId)?.token === run.token;
+    if (!this.runner.cancel(run.boardId, run.token) || !started) {
+      return;
+    }
+    const board = this.lightboxService.updateReadings(run.boardId, (readings) => stopLightboxGroups(readings, run.groups, message));
+    const groupsBack = board?.readings.filter((group) => run.groups.includes(group.group) && group.status !== 'cancelled').length ?? 0;
+    this.postProgress({
+      boardId: run.boardId,
+      token: run.token,
+      phase: 'cancelled',
+      groups: run.groups,
+      groupsBack,
+      outputCharacters: 0,
+      message,
+      ...lensField(run.lens)
+    });
+    this.saveAfterRun(run.boardId, groupsBack);
+  }
+
+  /** A run that landed readings saves its board as it stands (Slice 5A); one that landed none changes nothing. */
+  private saveAfterRun(boardId: string, landed: number): void {
+    if (landed > 0 && this.boardSaver) {
+      void this.boardSaver.saveAfterRun(boardId);
+    }
+  }
+
+  /** Answer an estimate request, unless a newer one arrives while this one is priced. */
+  private async postEstimate(requestId?: string): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    const sequence = ++this.estimateSequence;
+    const answered = requestId ? { requestId } : {};
+    const press = this.pressSnapshot();
+    if (!press) {
+      void this.postMessage({
+        type: MessageType.LIGHTBOX_RUN_ESTIMATE,
+        source: SOURCE,
+        payload: { ...answered, estimate: null },
+        timestamp: Date.now()
+      });
+      return;
+    }
+    const { groups, rereads } = lightboxEstimateCalls(this.lensesOff);
+    try {
+      const estimate = await this.runner.estimate(press.source, groups, rereads, press);
+      if (this.disposed || sequence !== this.estimateSequence) {
+        return;
+      }
+      const activeRun = this.runner.activeRun(press.board.boardId);
+      void this.postMessage({
+        type: MessageType.LIGHTBOX_RUN_ESTIMATE,
+        source: SOURCE,
+        payload: { ...answered, estimate, ...(activeRun ? { activeRun } : {}) },
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Estimate failed: ${detail}`);
+    }
+  }
+
+  private postContextFiles(notice?: string): void {
+    if (this.disposed) {
+      return;
+    }
+    void this.postMessage({
+      type: MessageType.LIGHTBOX_CONTEXT_FILES,
+      source: SOURCE,
+      payload: {
+        files: this.contextShelf.list(),
+        totalWords: this.contextShelf.totalWords(),
+        ceilingWords: PROMPT_BUDGETS.contextFiles.words,
+        ...(notice ? { notice } : {})
+      },
+      timestamp: Date.now()
+    });
+  }
+
+  /** Hear the service's reading outcomes, once, from the first reading message on. */
+  private subscribe(): void {
+    if (this.unsubscribe || this.disposed) {
+      return;
+    }
+    this.unsubscribe = this.lightboxService.addOutcomeListener((change) => this.publish(change));
+  }
+
+  /** Board and refusal changes are LightboxHandler's to post; readings are this handler's. */
+  private publish(change: LightboxOutcomeChange): void {
+    if (change.kind !== 'readings') {
+      return;
+    }
+    if (change.settled) {
+      void this.postMessage({
+        type: MessageType.LIGHTBOX_GROUP_RESULT,
+        source: SOURCE,
+        payload: { boardId: change.board.boardId, token: change.settled.token, group: change.settled.group },
+        timestamp: Date.now()
+      });
+      return;
+    }
+    void this.postMessage({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: SOURCE,
+      payload: { board: change.board, refusal: change.refusal },
+      timestamp: Date.now()
+    });
+  }
+
+  private postProgress(progress: LightboxRunProgress): void {
+    if (this.disposed) {
+      return;
+    }
+    void this.postMessage({ type: MessageType.LIGHTBOX_RUN_PROGRESS, source: SOURCE, payload: progress, timestamp: Date.now() });
+  }
+}
+
+function lensField(lens: LightboxLensId | undefined): { lens?: LightboxLensId } {
+  return lens ? { lens } : {};
+}

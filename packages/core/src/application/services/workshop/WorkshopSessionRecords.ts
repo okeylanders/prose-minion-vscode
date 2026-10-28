@@ -20,7 +20,7 @@ import type {
   WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
   WorkshopContextAttachmentTruncation,
-  WorkshopConfiguredResourceRef,
+  ConfiguredResourceRef,
   WorkshopExcerpt,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -144,7 +144,7 @@ export interface WorkshopContextFileRefreshInput {
   /** Re-authorized source, which may reconnect a moved workspace file. */
   sourceUri: string;
   relativePath: string;
-  configuredResource?: WorkshopConfiguredResourceRef;
+  configuredResource?: ConfiguredResourceRef;
 }
 
 export type WorkshopContextFileRefreshResult =
@@ -290,7 +290,8 @@ export function cloneMessageAttachmentSnapshot(
   return {
     ...snapshot,
     configuredResource: snapshot.configuredResource ? { ...snapshot.configuredResource } : undefined,
-    truncation: snapshot.truncation ? { ...snapshot.truncation } : undefined
+    truncation: snapshot.truncation ? { ...snapshot.truncation } : undefined,
+    lightboxTile: snapshot.lightboxTile ? { ...snapshot.lightboxTile } : undefined
   };
 }
 
@@ -300,7 +301,8 @@ export function cloneMessageAttachmentInput(
   return {
     ...input,
     configuredResource: input.configuredResource ? { ...input.configuredResource } : undefined,
-    truncation: input.truncation ? { ...input.truncation } : undefined
+    truncation: input.truncation ? { ...input.truncation } : undefined,
+    lightboxTile: input.lightboxTile ? { ...input.lightboxTile } : undefined
   };
 }
 
@@ -312,7 +314,9 @@ export function cloneMessageAttachment(
     configuredResource: attachment.configuredResource
       ? { ...attachment.configuredResource }
       : undefined,
-    truncation: attachment.truncation ? { ...attachment.truncation } : undefined
+    truncation: attachment.truncation ? { ...attachment.truncation } : undefined,
+    // A tile's meta is flat: one level of copy keeps the caller's object out of the session.
+    lightboxTile: attachment.lightboxTile ? { ...attachment.lightboxTile } : undefined
   };
 }
 

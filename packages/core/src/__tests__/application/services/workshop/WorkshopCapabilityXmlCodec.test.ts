@@ -192,6 +192,17 @@ describe('WorkshopCapabilityXmlCodec', () => {
     expect(codec.inspect(candidate)).toMatchObject({ kind: 'invalid', reason });
   });
 
+  it('reports repeated call markers without treating a bundle as an executable request', () => {
+    const first = '<prose-minion-tool-call name="transcript.catalog"><match>chapter</match></prose-minion-tool-call>';
+    const second = '<prose-minion-tool-call name="transcript.search"><query>chapter</query></prose-minion-tool-call>';
+    const candidate = `${first} stray text\n${first}\n${second}\n${first}`;
+    expect(codec.inspect(candidate)).toEqual({ kind: 'invalid', reason: 'mixed-content', callMarkerCount: 4 });
+    expect(codec.stripToolCalls(candidate)).toBe('');
+    expect(codec.inspect(`${first} Done.`)).toEqual({ kind: 'invalid', reason: 'mixed-content' });
+    expect(codec.inspect(`<pinned-excerpt>${first}</pinned-excerpt>`))
+      .toEqual({ kind: 'invalid', reason: 'mixed-content' });
+  });
+
   it.each([
     ['narrated preamble', `I should check the configured files first.\n${dictionaryCall()}`],
     ['Markdown fence garnish', `\`\`\`xml\n${dictionaryCall()}\n\`\`\``]

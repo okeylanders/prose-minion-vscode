@@ -19,6 +19,12 @@ export interface OpenRouterModel {
     completion: string;
   };
   context_length: number;
+  /**
+   * The model's reasoning options, as the catalog gives them; read only
+   * through `getCachedAlwaysReasons`. `mandatory: true` marks a model that
+   * always reasons and rejects `effort: 'none'` (PR #181 F-01).
+   */
+  reasoning?: unknown;
 }
 
 export interface OpenRouterModelsResponse {
@@ -172,6 +178,18 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'GPT-6 Sol with Pro reasoning mode for complex and ambiguous category matching'
   },
   {
+    id: 'openai/gpt-6.1-terra',
+    name: 'GPT-6.1 Terra',
+    family: 'GPT-6.1',
+    description: 'Mid-tier 1.05M-context model with optional reasoning for category matching; prose quality in Prose Minion is unverified'
+  },
+  {
+    id: 'openai/gpt-6.1-terra-pro',
+    name: 'GPT-6.1 Terra Pro',
+    family: 'GPT-6.1',
+    description: 'Terra 6.1 with mandatory Pro reasoning for difficult category matching; may use more output tokens at the same token rates'
+  },
+  {
     id: 'openai/gpt-6.1-sol',
     name: 'GPT-6.1 Sol',
     family: 'GPT-6.1',
@@ -206,6 +224,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Mercury 2.5',
     family: 'Inception Mercury',
     description: 'Extremely fast, low-cost diffusion reasoning model with 260K context for responsive dictionary lookups, category matching, and utility analysis'
+  },
+  {
+    id: 'inception/mercury-3',
+    name: 'Mercury 3',
+    family: 'Inception Mercury',
+    description: '1M-context diffusion model with optional reasoning for low-cost category matching; prose quality in Prose Minion is unverified'
   },
   {
     id: 'upstage/solar-mini4',
@@ -290,6 +314,24 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'DeepSeek V4.1 Flash',
     family: 'DeepSeek V4',
     description: '1M-context multimodal Flash model for inexpensive category matching'
+  },
+  {
+    id: 'deepseek/deepseek-v4.1-flash-1017',
+    name: 'DeepSeek V4.1 Flash 1017',
+    family: 'DeepSeek V4',
+    description: 'October 17 Flash snapshot with 1M context and optional reasoning for inexpensive category matching; prose quality in Prose Minion is unverified'
+  },
+  {
+    id: 'moonshotai/kimi-k3.1-pro',
+    name: 'Kimi K3.1 Pro',
+    family: 'Kimi K3',
+    description: '1M-context multimodal model with optional reasoning for complex category matching; prose quality in Prose Minion is unverified'
+  },
+  {
+    id: 'minimax/minimax-m3.1-flash',
+    name: 'MiniMax M3.1 Flash',
+    family: 'MiniMax',
+    description: 'Low-cost 1M-context multimodal model with mandatory reasoning for category matching; prose quality in Prose Minion is unverified'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -582,16 +624,16 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Extremely fast diffusion reasoning model with 260K context and very low token cost. A strong fit for dictionary alternatives, category matching, quick critiques, and other latency-sensitive utility work.'
   },
   {
+    id: 'inception/mercury-3',
+    name: 'Mercury 3',
+    family: 'Inception Mercury',
+    description: '1M-context diffusion model with optional reasoning, tools, and structured outputs. An opt-in choice for responsive dictionary and editorial work; prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'upstage/solar-mini4',
     name: 'Solar Mini 4',
     family: 'Solar',
     description: 'Compact 35B-parameter mixture-of-experts model with 3B active parameters and 524K context. An opt-in low-cost choice for dictionary alternatives, category search, and exploratory prose work.'
-  },
-  {
-    id: 'deepseek/deepseek-r1',
-    name: 'DeepSeek R1',
-    family: 'DeepSeek R1',
-    description: 'Open-weight reasoning king. Excellent for heavy structural analysis, plot logic, and pacing verification at a low cost.'
   },
   {
     id: 'deepseek/deepseek-v3.1-terminus',
@@ -640,6 +682,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'DeepSeek V4.1 Flash',
     family: 'DeepSeek V4',
     description: 'Low-cost 1M-context multimodal model for long-context critique and utility rewriting.'
+  },
+  {
+    id: 'deepseek/deepseek-v4.1-flash-1017',
+    name: 'DeepSeek V4.1 Flash 1017',
+    family: 'DeepSeek V4',
+    description: 'October 17 Flash snapshot with 1M context, optional reasoning, tools, and structured outputs. An opt-in choice for low-cost long-document analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'minimax/minimax-m3.1-flash',
+    name: 'MiniMax M3.1 Flash',
+    family: 'MiniMax',
+    description: 'Low-cost 1M-context multimodal model with mandatory reasoning, tools, and structured outputs. An opt-in choice for editorial analysis; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -918,6 +972,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'GPT-6 Sol served with Pro reasoning mode for difficult structural critique and long-running editorial work.'
   },
   {
+    id: 'openai/gpt-6.1-terra',
+    name: 'GPT-6.1 Terra',
+    family: 'GPT-6.1',
+    description: 'Mid-tier 1.05M-context model with optional reasoning, tools, and structured outputs. An opt-in choice for editorial conversations and analysis; prose quality in Prose Minion is unverified.'
+  },
+  {
+    id: 'openai/gpt-6.1-terra-pro',
+    name: 'GPT-6.1 Terra Pro',
+    family: 'GPT-6.1',
+    description: 'Terra 6.1 served with mandatory Pro reasoning at the same token rates; may use substantially more output tokens. Prose quality in Prose Minion is unverified.'
+  },
+  {
     id: 'openai/gpt-6.1-sol',
     name: 'GPT-6.1 Sol',
     family: 'GPT-6.1',
@@ -1012,6 +1078,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Kimi K3',
     family: 'Kimi K3',
     description: 'Moonshot AI\'s big open-weight reasoner. Punches near the frontier at a lower price and handles very long documents well — a solid mid-cost pick for whole-manuscript analysis.'
+  },
+  {
+    id: 'moonshotai/kimi-k3.1-pro',
+    name: 'Kimi K3.1 Pro',
+    family: 'Kimi K3',
+    description: '1M-context multimodal successor to Kimi K3 with optional reasoning, tools, and structured outputs. An opt-in choice for long-document analysis; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'qwen/qwen3.8-max-0902',
@@ -1128,12 +1200,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Sakana\'s trained conductor. Routes your request across a pool of underlying models and assembles the best answer. Strong on complex multi-step work; slower, with less predictable cost.'
   },
   {
-    id: 'sao10k/l3.3-euryale-70b',
-    name: 'Sao10K Euryale 70B',
-    family: 'Euryale',
-    description: 'Roleplay specialist. Creative, non-restrictive, and great for unique character voices.'
-  },
-  {
     id: 'aion-labs/aion-2.0',
     name: 'Aion 2.0',
     family: 'Aion',
@@ -1174,12 +1240,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'TheDrummer: Skyfall 36B v2',
     family: 'TheDrummer',
     description: 'Larger TheDrummer model. Premium creative-writing tier for distinctive voice and longer-form fiction.'
-  },
-  {
-    id: 'arcee-ai/trinity-large-thinking',
-    name: 'Arcee Trinity Large Thinking',
-    family: 'Arcee',
-    description: 'Arcee\'s top thinking-tier model. Deep multi-step reasoning for complex narrative analysis.'
   }
 ];
 
@@ -1189,16 +1249,51 @@ export class OpenRouterModels {
 
   /** Live catalog evidence only: the offline fallback's 200K value is not a provider limit. */
   static getCachedContextLength(model: string): number | undefined {
+    const live = this.findCachedModel(model);
+    return live && !live.isFallback && Number.isSafeInteger(live.context_length) && live.context_length > 0
+      ? live.context_length : undefined;
+  }
+
+  /**
+   * Live catalog prices, in US dollars per token. Undefined for the offline
+   * fallback (its zero prices are placeholders) and for unparseable prices.
+   */
+  static getCachedPricing(model: string): { promptUsdPerToken: number; completionUsdPerToken: number } | undefined {
+    const live = this.findCachedModel(model);
+    if (!live || live.isFallback) {
+      return undefined;
+    }
+    const prompt = Number(live.pricing?.prompt);
+    const completion = Number(live.pricing?.completion);
+    return Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0
+      ? { promptUsdPerToken: prompt, completionUsdPerToken: completion }
+      : undefined;
+  }
+
+  /**
+   * Whether the live catalog marks `model` as always reasoning
+   * (`reasoning.mandatory`): true or false only as the catalog states it;
+   * undefined for the offline fallback, a model it does not list, or an
+   * entry without a boolean `mandatory` (PR #181 F-01).
+   */
+  static getCachedAlwaysReasons(model: string): boolean | undefined {
+    const live = this.findCachedModel(model);
+    if (!live || live.isFallback || typeof live.reasoning !== 'object' || live.reasoning === null) {
+      return undefined;
+    }
+    const mandatory: unknown = (live.reasoning as { mandatory?: unknown }).mandatory;
+    return typeof mandatory === 'boolean' ? mandatory : undefined;
+  }
+
+  private static findCachedModel(model: string): OpenRouterModel | undefined {
     const requested = model.trim();
     const normalized = requested.replace(/^~/, '');
     // Prefer exact and base alias catalog entries before normalized ids;
     // their context windows can differ from the underlying model.
     const candidates = [requested, requested.split(':')[0], normalized, normalized.split(':')[0]];
-    const live = candidates
+    return candidates
       .map(id => this.cachedModels?.find(candidate => candidate.id === id))
       .find(candidate => candidate !== undefined);
-    return live && !live.isFallback && Number.isSafeInteger(live.context_length) && live.context_length > 0
-      ? live.context_length : undefined;
   }
 
   /**

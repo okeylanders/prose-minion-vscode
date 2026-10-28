@@ -1,16 +1,18 @@
 /** Workshop context, configured-resource, and message-attachment contracts. */
 
 import { MessageEnvelope, MessageType } from '../base';
-import { ContextPathGroup } from '../../context';
-/**
- * Canonical configured-resource key from the context-path resolver, stamped
- * during source resolution so model-requested reads can cite `{ group, path }`
- * instead of reconstructing a path (Sprint 12).
- */
-export interface WorkshopConfiguredResourceRef {
-  group: ContextPathGroup;
-  path: string;
-}
+import type {
+  ConfiguredResourceCatalogPayload,
+  ConfiguredResourceRef,
+  ConfiguredResourceSearchPayload,
+  ConfiguredResourceSearchResults
+} from '../configuredResources';
+import type { WorkshopLightboxTileAttachmentMeta } from './lightboxTiles';
+// The canonical configured-resource key (`ConfiguredResourceRef`) is stamped
+// during source resolution so model-requested reads can cite `{ group, path }`
+// instead of reconstructing a path (Sprint 12). It and the catalog shapes the
+// Context Selector browses are shared with the Lightbox's source picker
+// (`../configuredResources`).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Message attachments — one-shot writer thread-artifacts (Sprint 12 Phase 6B;
@@ -39,8 +41,10 @@ export interface WorkshopMessageAttachmentSnapshot {
   words: number;
   /** Workspace-relative display path (never absolute). */
   relativePath?: string;
-  configuredResource?: WorkshopConfiguredResourceRef;
+  configuredResource?: ConfiguredResourceRef;
   truncation?: WorkshopMessageAttachmentTruncation;
+  /** A Lightbox reading brought here (Slice 4), rather than a file. */
+  lightboxTile?: WorkshopLightboxTileAttachmentMeta;
 }
 
 /**
@@ -82,7 +86,7 @@ export interface WorkshopContextAttachmentSnapshot {
   words: number;
   /** Workspace-relative display path (file kind only; never absolute). */
   relativePath?: string;
-  configuredResource?: WorkshopConfiguredResourceRef;
+  configuredResource?: ConfiguredResourceRef;
   truncation?: WorkshopContextAttachmentTruncation;
   /**
    * Text-kind ONLY: the note's full content, so the pill is inspectable —
@@ -197,28 +201,14 @@ export interface WorkshopOpenContextAttachmentFileMessage
 // resolver paths only; no absolute path ever crosses this contract.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** One configured resource as the modal browses it. */
-export interface WorkshopContextCatalogEntry {
-  group: ContextPathGroup;
-  /** Resolver's display-safe workspace-relative path — the canonical key. */
-  path: string;
-  label: string;
-  /** Byte size from catalog admission; word counts happen at attach time. */
-  sizeBytes: number;
-}
-
 /** Sent on modal open: "give me the configured resource catalog". */
 export interface WorkshopRequestContextCatalogMessage
   extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG;
 }
 
-export interface WorkshopContextCatalogPayload {
-  entries: WorkshopContextCatalogEntry[];
-}
-
 export interface WorkshopContextCatalogMessage
-  extends MessageEnvelope<WorkshopContextCatalogPayload> {
+  extends MessageEnvelope<ConfiguredResourceCatalogPayload> {
   type: MessageType.WORKSHOP_CONTEXT_CATALOG;
 }
 
@@ -227,30 +217,19 @@ export interface WorkshopContextCatalogMessage
  * the webview already holds the catalog). Runs under the same byte/file
  * bounds as the persona capability's resource.search.
  */
-export interface WorkshopSearchContextResourcesPayload {
-  query: string;
-}
-
 export interface WorkshopSearchContextResourcesMessage
-  extends MessageEnvelope<WorkshopSearchContextResourcesPayload> {
+  extends MessageEnvelope<ConfiguredResourceSearchPayload> {
   type: MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES;
 }
 
-export interface WorkshopContextSearchResultsPayload {
-  query: string;
-  matches: WorkshopConfiguredResourceRef[];
-  /** True when a file/byte bound stopped the scan early. */
-  bounded: boolean;
-}
-
 export interface WorkshopContextSearchResultsMessage
-  extends MessageEnvelope<WorkshopContextSearchResultsPayload> {
+  extends MessageEnvelope<ConfiguredResourceSearchResults> {
   type: MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS;
 }
 
 /** Attach selected configured resources, in the writer's selection order. */
 export interface WorkshopAddContextResourcesPayload {
-  items: WorkshopConfiguredResourceRef[];
+  items: ConfiguredResourceRef[];
 }
 
 /**
@@ -273,7 +252,7 @@ export interface WorkshopAddContextResourcesMessage
  * message (Phase 6B): one-shot thread-artifacts, NOT standing context.
  */
 export interface WorkshopAttachMessageResourcesPayload {
-  items: WorkshopConfiguredResourceRef[];
+  items: ConfiguredResourceRef[];
 }
 
 export interface WorkshopAttachMessageResourcesMessage

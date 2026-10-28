@@ -7,6 +7,13 @@ export class MemoryFileSystem implements FileSystem {
   readonly readFileCalls: string[] = [];
   readDirectoryCalls = 0;
   failRenameToPath?: string;
+  /**
+   * Opt in to listing the folders that hold files, as `FileType.Directory`
+   * entries, as a real file system does (Lightbox Slice 5A.2: the boards
+   * browser reads every chapter's folder). Off by default, so suites that
+   * read a directory's files keep the listing they were written against.
+   */
+  listsFolders = false;
 
   async readFile(filePath: string): Promise<Uint8Array> {
     this.readFileCalls.push(filePath);
@@ -51,6 +58,14 @@ export class MemoryFileSystem implements FileSystem {
       .map((filePath) => [path.basename(filePath), FileType.File] as [string, FileType]);
     if (entries.length === 0 && ![...this.files.keys()].some((filePath) => filePath.startsWith(`${directoryPath}${path.sep}`))) {
       throw new Error(`ENOENT: ${directoryPath}`);
+    }
+    if (this.listsFolders) {
+      const folders = new Set([...this.files.keys()]
+        .filter((filePath) => filePath.startsWith(`${directoryPath}${path.sep}`))
+        .map((filePath) => path.relative(directoryPath, filePath).split(path.sep))
+        .filter((parts) => parts.length > 1)
+        .map((parts) => parts[0]));
+      entries.push(...[...folders].map((name) => [name, FileType.Directory] as [string, FileType]));
     }
     return entries;
   }

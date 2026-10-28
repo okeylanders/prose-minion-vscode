@@ -57,6 +57,8 @@ export type WorkshopCapabilityInspection =
       readonly reason: WorkshopCapabilityRejectionReason;
       readonly field?: string;
       readonly operation?: string;
+      /** Opening markers found in a rejected response, not validated calls. */
+      readonly callMarkerCount?: number;
     };
 
 export interface WorkshopResourceGroupAvailability {

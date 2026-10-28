@@ -14,7 +14,6 @@ const UNDISCLOSED_PARAMETER_COUNT: ModelParameterCount = {
  * benchmark behavior.
  */
 export const MODEL_PARAMETER_METADATA: Readonly<Record<string, ModelParameterCount>> = {
-  'deepseek/deepseek-r1': { label: '671B params · 37B active', confidence: 'published' },
   'deepseek/deepseek-v3.1-terminus': { label: '≈685B params', confidence: 'estimated' },
   'deepseek/deepseek-v3.2-exp': { label: '≈685B params', confidence: 'estimated' },
   'deepseek/deepseek-v3.2': { label: '≈685B params', confidence: 'estimated' },
@@ -55,10 +54,8 @@ export const MODEL_PARAMETER_METADATA: Readonly<Record<string, ModelParameterCou
   'xiaomi/mimo-v2.6-flash': { label: '309B params · 15B active', confidence: 'published' },
   'xiaomi/mimo-v2.6-pro': { label: '>1T params', confidence: 'published' },
   'xiaomi/mimo-v2.6-pro-ultraspeed': { label: '1T params', confidence: 'published' },
-  'sao10k/l3.3-euryale-70b': { label: '70B params', confidence: 'published' },
   'thedrummer/cydonia-24b-v4.1': { label: '24B params', confidence: 'published' },
   'thedrummer/skyfall-36b-v2': { label: '36B params', confidence: 'published' },
-  'arcee-ai/trinity-large-thinking': { label: '≈399B params', confidence: 'estimated' },
   'aion-labs/aion-2.0': { label: '≈685B base params', confidence: 'estimated' },
   'sakana/fugu-ultra': { label: 'multi-model system', confidence: 'not-applicable' },
   'aion-labs/aion-3.0-mini': { label: 'multi-model system', confidence: 'not-applicable' },

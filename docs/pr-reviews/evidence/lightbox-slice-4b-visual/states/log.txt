@@ -1,0 +1,9 @@
+[LightboxHandler] Board built for Drafts/alice-chapter-1-opening.md: 508 words, 8 paragraphs
+[LightboxReadingRunner] Run run-1-evidence started: groups D
+[LightboxReadingRunner] Group D read (stock, rhythm, numbers): 16 tiles, 0 blocks withheld, 0 claims withheld, 39 quotes checked (0 withheld)
+[LightboxReadingRunner] Run run-1-evidence finished: D ok
+[LightboxReadingHandler] Run run-1-evidence finished: 1 groups, 0 tokens
+[WorkshopLightboxTileHandler] Tile offered from the Lightbox: 2 quotes, 3 points
+[WorkshopLightboxTileHandler] Tile staged above the composer (ta-1, 46 words)
+[LightboxHandler] The Workshop staged a tile: 2 quotes carried, 2 of 2 quotes found again
+[LightboxHandler] Board built for Drafts/alice-chapter-1-opening.md: 507 words, 8 paragraphs; the text changed, so its readings came along marked stale

@@ -1,0 +1,906 @@
+rerunning-top@1440: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-top@1440: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Palette (palette): a skeleton in place of its earlier reading
+rerunning-top@1440: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-top@1440: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-top@1440: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-top@1440: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Voice (voice): a skeleton in place of its earlier reading
+rerunning-top@1440: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-top@1440: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-top@1440: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-top@1440: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-top@1440: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-top@1440: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-top@1440: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-top@1440: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-top@1440: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-top@1440: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-top@1440: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1440: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Palette (palette): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Voice (voice): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-widgets@1440: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-widgets@1440: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1440: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+failed-kept-top@1440: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-top@1440: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-top@1440: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: Motifs · where they recur (motif): not described by its call's note
+failed-kept-top@1440: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-top@1440: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: Palette (palette): not described by its call's note
+failed-kept-top@1440: Palette (palette): repeats Call A · failed's message
+failed-kept-top@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: Opinion (opinion): not described by its call's note
+failed-kept-top@1440: Opinion (opinion): repeats Call F · failed's message
+failed-kept-top@1440: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: Headline (headline): not described by its call's note
+failed-kept-top@1440: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1440: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+failed-kept-widgets@1440: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-widgets@1440: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-widgets@1440: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: Motifs · where they recur (motif): not described by its call's note
+failed-kept-widgets@1440: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-widgets@1440: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: Palette (palette): not described by its call's note
+failed-kept-widgets@1440: Palette (palette): repeats Call A · failed's message
+failed-kept-widgets@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: Opinion (opinion): not described by its call's note
+failed-kept-widgets@1440: Opinion (opinion): repeats Call F · failed's message
+failed-kept-widgets@1440: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: Headline (headline): not described by its call's note
+failed-kept-widgets@1440: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1440: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+mixed-widgets@1440: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+mixed-widgets@1440: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading The re-analysis did not replace it. The motifs block names no friction; every lens must say where it strains."
+mixed-widgets@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+mixed-widgets@1440: Opinion (opinion): not described by its call's note
+mixed-widgets@1440: Opinion (opinion): repeats Call F · failed's message
+mixed-widgets@1440: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 2 earlier readings are kept
+stopped-top@1440: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-top@1440: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-top@1440: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Motifs · where they recur (motif): not described by its call's note
+stopped-top@1440: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Palette (palette): not described by its call's note
+stopped-top@1440: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Characters · the vibes they give (characters): not described by its call's note
+stopped-top@1440: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-top@1440: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Genre neighborhood (genre): not described by its call's note
+stopped-top@1440: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Voice (voice): not described by its call's note
+stopped-top@1440: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Subtext · said and meant (subtext): not described by its call's note
+stopped-top@1440: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Stock & signature (stock): not described by its call's note
+stopped-top@1440: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-top@1440: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-top@1440: What stands out in the numbers (numbers): not described by its call's note
+stopped-top@1440: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Craft steering (steering): not described by its call's note
+stopped-top@1440: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Summary & movements (summary): not described by its call's note
+stopped-top@1440: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Template & freshness (template): not described by its call's note
+stopped-top@1440: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Pressure (pressure): not described by its call's note
+stopped-top@1440: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Artifacts (artifacts): not described by its call's note
+stopped-top@1440: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Spark lane (spark): not described by its call's note
+stopped-top@1440: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Opinion (opinion): not described by its call's note
+stopped-top@1440: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1440: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: Headline (headline): not described by its call's note
+stopped-top@1440: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1440: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+stopped-widgets@1440: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-widgets@1440: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-widgets@1440: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Motifs · where they recur (motif): not described by its call's note
+stopped-widgets@1440: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Palette (palette): not described by its call's note
+stopped-widgets@1440: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Characters · the vibes they give (characters): not described by its call's note
+stopped-widgets@1440: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-widgets@1440: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Genre neighborhood (genre): not described by its call's note
+stopped-widgets@1440: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Voice (voice): not described by its call's note
+stopped-widgets@1440: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Subtext · said and meant (subtext): not described by its call's note
+stopped-widgets@1440: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Stock & signature (stock): not described by its call's note
+stopped-widgets@1440: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-widgets@1440: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-widgets@1440: What stands out in the numbers (numbers): not described by its call's note
+stopped-widgets@1440: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Craft steering (steering): not described by its call's note
+stopped-widgets@1440: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Summary & movements (summary): not described by its call's note
+stopped-widgets@1440: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Template & freshness (template): not described by its call's note
+stopped-widgets@1440: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Pressure (pressure): not described by its call's note
+stopped-widgets@1440: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Artifacts (artifacts): not described by its call's note
+stopped-widgets@1440: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Spark lane (spark): not described by its call's note
+stopped-widgets@1440: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Opinion (opinion): not described by its call's note
+stopped-widgets@1440: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1440: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: Headline (headline): not described by its call's note
+stopped-widgets@1440: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1440: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+opinion-kept@1440: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept@1440: Opinion (opinion): not described by its call's note
+opinion-kept@1440: Opinion (opinion): repeats Call F · failed's message
+opinion-kept@1440: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+opinion-kept-top@1440: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept-top@1440: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept-top@1440: Opinion (opinion): not described by its call's note
+opinion-kept-top@1440: Opinion (opinion): repeats Call F · failed's message
+opinion-kept-top@1440: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+first-failed-top@1440: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-top@1440: Call A · failed: its message stands 5 times on the board, not once
+first-failed-top@1440: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1440: Motifs · where they recur (motif): not described by its call's note
+first-failed-top@1440: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-top@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-top@1440: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1440: Palette (palette): not described by its call's note
+first-failed-top@1440: Palette (palette): repeats Call A · failed's message
+first-failed-top@1440: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1440: Headline (headline): not described by its call's note
+first-failed-top@1440: Headline (headline): repeats Call A · failed's message
+first-failed-top@1440: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1440: Tension line (tension): repeats Call A · failed's message
+first-failed-widgets@1440: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-widgets@1440: Call A · failed: its message stands 5 times on the board, not once
+first-failed-widgets@1440: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1440: Motifs · where they recur (motif): not described by its call's note
+first-failed-widgets@1440: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-widgets@1440: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-widgets@1440: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1440: Palette (palette): not described by its call's note
+first-failed-widgets@1440: Palette (palette): repeats Call A · failed's message
+first-failed-widgets@1440: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1440: Headline (headline): not described by its call's note
+first-failed-widgets@1440: Headline (headline): repeats Call A · failed's message
+first-failed-widgets@1440: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1440: Tension line (tension): repeats Call A · failed's message
+rerunning-top@1000: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-top@1000: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Palette (palette): a skeleton in place of its earlier reading
+rerunning-top@1000: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-top@1000: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-top@1000: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-top@1000: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Voice (voice): a skeleton in place of its earlier reading
+rerunning-top@1000: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-top@1000: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-top@1000: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-top@1000: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-top@1000: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-top@1000: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-top@1000: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-top@1000: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-top@1000: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-top@1000: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-top@1000: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@1000: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Palette (palette): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Voice (voice): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-widgets@1000: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-widgets@1000: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@1000: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+failed-kept-top@1000: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-top@1000: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-top@1000: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: Motifs · where they recur (motif): not described by its call's note
+failed-kept-top@1000: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-top@1000: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: Palette (palette): not described by its call's note
+failed-kept-top@1000: Palette (palette): repeats Call A · failed's message
+failed-kept-top@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: Opinion (opinion): not described by its call's note
+failed-kept-top@1000: Opinion (opinion): repeats Call F · failed's message
+failed-kept-top@1000: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: Headline (headline): not described by its call's note
+failed-kept-top@1000: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@1000: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+failed-kept-widgets@1000: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-widgets@1000: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-widgets@1000: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: Motifs · where they recur (motif): not described by its call's note
+failed-kept-widgets@1000: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-widgets@1000: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: Palette (palette): not described by its call's note
+failed-kept-widgets@1000: Palette (palette): repeats Call A · failed's message
+failed-kept-widgets@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: Opinion (opinion): not described by its call's note
+failed-kept-widgets@1000: Opinion (opinion): repeats Call F · failed's message
+failed-kept-widgets@1000: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: Headline (headline): not described by its call's note
+failed-kept-widgets@1000: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@1000: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+mixed-widgets@1000: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+mixed-widgets@1000: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading The re-analysis did not replace it. The motifs block names no friction; every lens must say where it strains."
+mixed-widgets@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+mixed-widgets@1000: Opinion (opinion): not described by its call's note
+mixed-widgets@1000: Opinion (opinion): repeats Call F · failed's message
+mixed-widgets@1000: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 2 earlier readings are kept
+stopped-top@1000: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-top@1000: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-top@1000: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Motifs · where they recur (motif): not described by its call's note
+stopped-top@1000: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Palette (palette): not described by its call's note
+stopped-top@1000: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Characters · the vibes they give (characters): not described by its call's note
+stopped-top@1000: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-top@1000: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Genre neighborhood (genre): not described by its call's note
+stopped-top@1000: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Voice (voice): not described by its call's note
+stopped-top@1000: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Subtext · said and meant (subtext): not described by its call's note
+stopped-top@1000: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Stock & signature (stock): not described by its call's note
+stopped-top@1000: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-top@1000: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-top@1000: What stands out in the numbers (numbers): not described by its call's note
+stopped-top@1000: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Craft steering (steering): not described by its call's note
+stopped-top@1000: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Summary & movements (summary): not described by its call's note
+stopped-top@1000: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Template & freshness (template): not described by its call's note
+stopped-top@1000: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Pressure (pressure): not described by its call's note
+stopped-top@1000: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Artifacts (artifacts): not described by its call's note
+stopped-top@1000: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Spark lane (spark): not described by its call's note
+stopped-top@1000: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Opinion (opinion): not described by its call's note
+stopped-top@1000: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@1000: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: Headline (headline): not described by its call's note
+stopped-top@1000: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@1000: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+stopped-widgets@1000: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-widgets@1000: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-widgets@1000: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Motifs · where they recur (motif): not described by its call's note
+stopped-widgets@1000: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Palette (palette): not described by its call's note
+stopped-widgets@1000: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Characters · the vibes they give (characters): not described by its call's note
+stopped-widgets@1000: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-widgets@1000: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Genre neighborhood (genre): not described by its call's note
+stopped-widgets@1000: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Voice (voice): not described by its call's note
+stopped-widgets@1000: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Subtext · said and meant (subtext): not described by its call's note
+stopped-widgets@1000: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Stock & signature (stock): not described by its call's note
+stopped-widgets@1000: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-widgets@1000: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-widgets@1000: What stands out in the numbers (numbers): not described by its call's note
+stopped-widgets@1000: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Craft steering (steering): not described by its call's note
+stopped-widgets@1000: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Summary & movements (summary): not described by its call's note
+stopped-widgets@1000: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Template & freshness (template): not described by its call's note
+stopped-widgets@1000: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Pressure (pressure): not described by its call's note
+stopped-widgets@1000: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Artifacts (artifacts): not described by its call's note
+stopped-widgets@1000: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Spark lane (spark): not described by its call's note
+stopped-widgets@1000: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Opinion (opinion): not described by its call's note
+stopped-widgets@1000: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@1000: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: Headline (headline): not described by its call's note
+stopped-widgets@1000: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@1000: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+opinion-kept@1000: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept@1000: Opinion (opinion): not described by its call's note
+opinion-kept@1000: Opinion (opinion): repeats Call F · failed's message
+opinion-kept@1000: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+opinion-kept-top@1000: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept-top@1000: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept-top@1000: Opinion (opinion): not described by its call's note
+opinion-kept-top@1000: Opinion (opinion): repeats Call F · failed's message
+opinion-kept-top@1000: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+first-failed-top@1000: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-top@1000: Call A · failed: its message stands 5 times on the board, not once
+first-failed-top@1000: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1000: Motifs · where they recur (motif): not described by its call's note
+first-failed-top@1000: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-top@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-top@1000: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1000: Palette (palette): not described by its call's note
+first-failed-top@1000: Palette (palette): repeats Call A · failed's message
+first-failed-top@1000: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1000: Headline (headline): not described by its call's note
+first-failed-top@1000: Headline (headline): repeats Call A · failed's message
+first-failed-top@1000: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@1000: Tension line (tension): repeats Call A · failed's message
+first-failed-widgets@1000: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-widgets@1000: Call A · failed: its message stands 5 times on the board, not once
+first-failed-widgets@1000: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1000: Motifs · where they recur (motif): not described by its call's note
+first-failed-widgets@1000: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-widgets@1000: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-widgets@1000: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1000: Palette (palette): not described by its call's note
+first-failed-widgets@1000: Palette (palette): repeats Call A · failed's message
+first-failed-widgets@1000: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1000: Headline (headline): not described by its call's note
+first-failed-widgets@1000: Headline (headline): repeats Call A · failed's message
+first-failed-widgets@1000: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@1000: Tension line (tension): repeats Call A · failed's message
+rerunning-top@500: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-top@500: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-top@500: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Palette (palette): a skeleton in place of its earlier reading
+rerunning-top@500: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-top@500: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-top@500: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-top@500: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-top@500: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-top@500: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-top@500: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-top@500: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Voice (voice): a skeleton in place of its earlier reading
+rerunning-top@500: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-top@500: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-top@500: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-top@500: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-top@500: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-top@500: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-top@500: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-top@500: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-top@500: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-top@500: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-top@500: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-top@500: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-top@500: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-top@500: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-top@500: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-top@500: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-top@500: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-top@500: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-top@500: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-top@500: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Motifs · where they recur (motif): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Motifs · where they recur (motif): a skeleton in place of its earlier reading
+rerunning-widgets@500: Motifs · where they recur (motif): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): a skeleton in place of its earlier reading
+rerunning-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Palette (palette): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Palette (palette): a skeleton in place of its earlier reading
+rerunning-widgets@500: Palette (palette): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Characters · the vibes they give (characters): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Characters · the vibes they give (characters): a skeleton in place of its earlier reading
+rerunning-widgets@500: Characters · the vibes they give (characters): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Lineage · adjacent stories (lineage): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Lineage · adjacent stories (lineage): a skeleton in place of its earlier reading
+rerunning-widgets@500: Lineage · adjacent stories (lineage): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Genre neighborhood (genre): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Genre neighborhood (genre): a skeleton in place of its earlier reading
+rerunning-widgets@500: Genre neighborhood (genre): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Voice (voice): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Voice (voice): a skeleton in place of its earlier reading
+rerunning-widgets@500: Voice (voice): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Subtext · said and meant (subtext): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Subtext · said and meant (subtext): a skeleton in place of its earlier reading
+rerunning-widgets@500: Subtext · said and meant (subtext): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Stock & signature (stock): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Stock & signature (stock): a skeleton in place of its earlier reading
+rerunning-widgets@500: Stock & signature (stock): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Rhythm & handoffs (rhythm): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Rhythm & handoffs (rhythm): a skeleton in place of its earlier reading
+rerunning-widgets@500: Rhythm & handoffs (rhythm): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Craft steering (steering): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Craft steering (steering): a skeleton in place of its earlier reading
+rerunning-widgets@500: Summary & movements (summary): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Summary & movements (summary): a skeleton in place of its earlier reading
+rerunning-widgets@500: Summary & movements (summary): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Template & freshness (template): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Template & freshness (template): a skeleton in place of its earlier reading
+rerunning-widgets@500: Template & freshness (template): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Pressure (pressure): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Pressure (pressure): a skeleton in place of its earlier reading
+rerunning-widgets@500: Pressure (pressure): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Artifacts (artifacts): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Artifacts (artifacts): a skeleton in place of its earlier reading
+rerunning-widgets@500: Artifacts (artifacts): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Spark lane (spark): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Spark lane (spark): a skeleton in place of its earlier reading
+rerunning-widgets@500: Spark lane (spark): its earlier reading is not drawn while it is read again
+rerunning-widgets@500: Headline (headline): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+rerunning-widgets@500: Tension line (tension): read again, it says [], not "Analyzing… This is the earlier reading until the new one lands."
+failed-kept-top@500: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-top@500: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-top@500: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: Motifs · where they recur (motif): not described by its call's note
+failed-kept-top@500: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-top@500: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: Palette (palette): not described by its call's note
+failed-kept-top@500: Palette (palette): repeats Call A · failed's message
+failed-kept-top@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: Opinion (opinion): not described by its call's note
+failed-kept-top@500: Opinion (opinion): repeats Call F · failed's message
+failed-kept-top@500: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: Headline (headline): not described by its call's note
+failed-kept-top@500: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-top@500: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+failed-kept-widgets@500: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again.","Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+failed-kept-widgets@500: Call A · failed: its message stands 3 times on the board, not once
+failed-kept-widgets@500: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: Motifs · where they recur (motif): not described by its call's note
+failed-kept-widgets@500: Motifs · where they recur (motif): repeats Call A · failed's message
+failed-kept-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+failed-kept-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+failed-kept-widgets@500: Palette (palette): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: Palette (palette): not described by its call's note
+failed-kept-widgets@500: Palette (palette): repeats Call A · failed's message
+failed-kept-widgets@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: Opinion (opinion): not described by its call's note
+failed-kept-widgets@500: Opinion (opinion): repeats Call F · failed's message
+failed-kept-widgets@500: Headline (headline): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: Headline (headline): not described by its call's note
+failed-kept-widgets@500: Tension line (tension): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+failed-kept-widgets@500: the run note says "129 quotes checked · 0 withheld · 7 calls · 2 groups failed", not that 6 earlier readings are kept
+mixed-widgets@500: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+mixed-widgets@500: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading The re-analysis did not replace it. The motifs block names no friction; every lens must say where it strains."
+mixed-widgets@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+mixed-widgets@500: Opinion (opinion): not described by its call's note
+mixed-widgets@500: Opinion (opinion): repeats Call F · failed's message
+mixed-widgets@500: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 2 earlier readings are kept
+stopped-top@500: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-top@500: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-top@500: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Motifs · where they recur (motif): not described by its call's note
+stopped-top@500: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Palette (palette): not described by its call's note
+stopped-top@500: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Characters · the vibes they give (characters): not described by its call's note
+stopped-top@500: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-top@500: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Genre neighborhood (genre): not described by its call's note
+stopped-top@500: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Voice (voice): not described by its call's note
+stopped-top@500: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Subtext · said and meant (subtext): not described by its call's note
+stopped-top@500: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Stock & signature (stock): not described by its call's note
+stopped-top@500: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-top@500: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-top@500: What stands out in the numbers (numbers): not described by its call's note
+stopped-top@500: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Craft steering (steering): not described by its call's note
+stopped-top@500: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Summary & movements (summary): not described by its call's note
+stopped-top@500: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Template & freshness (template): not described by its call's note
+stopped-top@500: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Pressure (pressure): not described by its call's note
+stopped-top@500: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Artifacts (artifacts): not described by its call's note
+stopped-top@500: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Spark lane (spark): not described by its call's note
+stopped-top@500: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Opinion (opinion): not described by its call's note
+stopped-top@500: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-top@500: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: Headline (headline): not described by its call's note
+stopped-top@500: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-top@500: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+stopped-widgets@500: the call notes are [], not ["Calls A, B, C, D, E, G, F · stopped Stopped before this group came back."]
+stopped-widgets@500: Calls A, B, C, D, E, G, F · stopped: its message stands 18 times on the board, not once
+stopped-widgets@500: Motifs · where they recur (motif): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Motifs · where they recur (motif): not described by its call's note
+stopped-widgets@500: Motifs · where they recur (motif): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+stopped-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Palette (palette): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Palette (palette): not described by its call's note
+stopped-widgets@500: Palette (palette): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Characters · the vibes they give (characters): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Characters · the vibes they give (characters): not described by its call's note
+stopped-widgets@500: Characters · the vibes they give (characters): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Lineage · adjacent stories (lineage): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Lineage · adjacent stories (lineage): not described by its call's note
+stopped-widgets@500: Lineage · adjacent stories (lineage): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Genre neighborhood (genre): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Genre neighborhood (genre): not described by its call's note
+stopped-widgets@500: Genre neighborhood (genre): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Voice (voice): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Voice (voice): not described by its call's note
+stopped-widgets@500: Voice (voice): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Subtext · said and meant (subtext): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Subtext · said and meant (subtext): not described by its call's note
+stopped-widgets@500: Subtext · said and meant (subtext): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Stock & signature (stock): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Stock & signature (stock): not described by its call's note
+stopped-widgets@500: Stock & signature (stock): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Rhythm & handoffs (rhythm): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Rhythm & handoffs (rhythm): not described by its call's note
+stopped-widgets@500: Rhythm & handoffs (rhythm): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: What stands out in the numbers (numbers): its short line is [], not "Call D was stopped: see its note by the run line. Analyze to try again."
+stopped-widgets@500: What stands out in the numbers (numbers): not described by its call's note
+stopped-widgets@500: What stands out in the numbers (numbers): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Craft steering (steering): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Craft steering (steering): not described by its call's note
+stopped-widgets@500: Craft steering (steering): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Summary & movements (summary): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Summary & movements (summary): not described by its call's note
+stopped-widgets@500: Summary & movements (summary): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Template & freshness (template): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Template & freshness (template): not described by its call's note
+stopped-widgets@500: Template & freshness (template): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Pressure (pressure): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Pressure (pressure): not described by its call's note
+stopped-widgets@500: Pressure (pressure): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Artifacts (artifacts): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Artifacts (artifacts): not described by its call's note
+stopped-widgets@500: Artifacts (artifacts): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Spark lane (spark): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Spark lane (spark): not described by its call's note
+stopped-widgets@500: Spark lane (spark): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Opinion (opinion): not described by its call's note
+stopped-widgets@500: Opinion (opinion): repeats Calls A, B, C, D, E, G, F · stopped's message
+stopped-widgets@500: Headline (headline): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: Headline (headline): not described by its call's note
+stopped-widgets@500: Tension line (tension): its earlier note is [], not "Earlier reading · this call was stopped: see its note by the run line."
+stopped-widgets@500: the run note says "125 quotes checked · 0 withheld · 0 calls · stopped, finished groups kept", not that 19 earlier readings are kept
+opinion-kept@500: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept@500: Opinion (opinion): not described by its call's note
+opinion-kept@500: Opinion (opinion): repeats Call F · failed's message
+opinion-kept@500: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+opinion-kept-top@500: the call notes are [], not ["Call F · failed The call failed before a reading came back. Press Finish or Analyze to try again."]
+opinion-kept-top@500: Opinion (opinion): its earlier note is [], not "Earlier reading · this call failed: see its note by the run line."
+opinion-kept-top@500: Opinion (opinion): not described by its call's note
+opinion-kept-top@500: Opinion (opinion): repeats Call F · failed's message
+opinion-kept-top@500: the run note says "129 quotes checked · 0 withheld · 7 calls · 1 group failed", not that 1 earlier readings are kept
+first-failed-top@500: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-top@500: Call A · failed: its message stands 5 times on the board, not once
+first-failed-top@500: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@500: Motifs · where they recur (motif): not described by its call's note
+first-failed-top@500: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-top@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-top@500: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@500: Palette (palette): not described by its call's note
+first-failed-top@500: Palette (palette): repeats Call A · failed's message
+first-failed-top@500: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@500: Headline (headline): not described by its call's note
+first-failed-top@500: Headline (headline): repeats Call A · failed's message
+first-failed-top@500: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-top@500: Tension line (tension): repeats Call A · failed's message
+first-failed-widgets@500: the call notes are [], not ["Call A · failed The reading came back unusable (The group A response JSON is invalid). Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox-readings-2026-10-24T09-08-00-000Z.response.txt. Press Finish or Analyze to try again."]
+first-failed-widgets@500: Call A · failed: its message stands 5 times on the board, not once
+first-failed-widgets@500: Motifs · where they recur (motif): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@500: Motifs · where they recur (motif): not described by its call's note
+first-failed-widgets@500: Motifs · where they recur (motif): repeats Call A · failed's message
+first-failed-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): not described by its call's note
+first-failed-widgets@500: Lexical gravity · borrowed fields the prose leans on (gravity): repeats Call A · failed's message
+first-failed-widgets@500: Palette (palette): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@500: Palette (palette): not described by its call's note
+first-failed-widgets@500: Palette (palette): repeats Call A · failed's message
+first-failed-widgets@500: Headline (headline): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@500: Headline (headline): not described by its call's note
+first-failed-widgets@500: Headline (headline): repeats Call A · failed's message
+first-failed-widgets@500: Tension line (tension): its short line is [], not "Call A failed: see its note by the run line. Analyze to try again."
+first-failed-widgets@500: Tension line (tension): repeats Call A · failed's message
