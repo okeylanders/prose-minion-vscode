@@ -168,3 +168,63 @@ Node 18.20.8 on `83b23457`:
 - `git diff --check` passes.
 
 No provider calls were made. Native VS Code acceptance (a long-file confirmation with a language change, deactivation with a save held) was not run. The ADRs (Draft Edit's 2026-10-28 amendment; the Lightbox's D12 addendum), the agent guide and the memory bank record the changes.
+
+## Independent re-review — `28751221` (2026-10-28)
+
+**Reviewed head:** `28751221fb2fe25d98350abebe1979ff38186d36`, including implementation `83b23457b` and the author's response. The correction delta from report commit `6d4cf863b4c1651ed06bfeaa49ac1e96b3b3f44c` changes 41 files (+1,503 / −304). Base remains `d1f25db2a93ee8e6831c22937b728b98b0a2c06e`.
+
+**Current disposition: F-01 and F-02 are resolved; F-03 is partially resolved and remains P2.** This ledger supersedes the original open/closed disposition, not its historical evidence. The original paid partial-run shutdown defect is fixed. A different producer path within the requested shutdown boundary remains unguarded, as detailed below. Green regression gates and exact-head CI do not exercise that sequence.
+
+### Correction ledger
+
+| Finding | Independent result |
+| --- | --- |
+| **F-01 — Markdown reference destinations** | **Resolved.** Full-reference identifiers are protected, and the structural guard compares resolved link/image destinations and titles. Eighteen new production-use-case/applier acceptance and control witnesses pass, including shortcut/collapsed images, target-only selection, a live definition change before an individual Replace, visible-text controls, same-target case-only corrections, and long-offset/performance probes. Mapping only the two corrected utilities to their pre-fix versions yields 12 expected failures and 6 passing controls, without changing the checkout. |
+| **F-02 — Proofread confirmation lifetime** | **Resolved.** A synchronous held gesture owns the watch, plan, pass and busy slot before confirmation; run consumes that gesture and releases it on terminal paths. Reopen-identical and Markdown→TypeScript cases send, flag and write nothing. Fourteen independent checks cover unchanged Flag/Fix, ordinary edits, decline/exception cleanup, competing/duplicate gestures, initialization/prompt-load lifetime endings, and actual three-call concurrency: already-started calls finish, all queued calls are suppressed after closure, and no result is shown. The extracted Fix body is equivalent after only the intended receiver/callback/helper substitutions; `fixReport` matches exactly. |
+| **F-03 — Lightbox shutdown** | **Partially resolved.** The original held partial paid-run save now delays exact production deactivation, commits its landed group, and restores correctly in a fresh host. First saves already owed, rename, Spark, delete, writes added during an active drain, rejection handling and idempotent disposal pass. A source request whose save is produced after the drain becomes empty still escapes, below. |
+
+The intentional F-02 behavior change is verified: an ordinary edit during confirmation now relocates the result through the held watch instead of refusing the whole run. Holding the busy slot through confirmation is also verified. Neither change broadens the separately accepted #172 pending-native-preview lifetime risk.
+
+### Remaining F-03 — quiesce source producers before treating the drain as complete
+
+**Primary location:** `apps/vscode-extension/src/application/extensionShutdown.ts:30–35`. Supporting paths: `packages/core/src/application/handlers/domain/LightboxHandler.ts:362–394`, `packages/core/src/application/services/lightbox/LightboxBoardLibrary.ts:158–180`, and `packages/core/src/application/services/lightbox/LightboxBoardSaves.ts:82–90`.
+
+The new shutdown helper disposes the tabs, starts one Lightbox drain, then awaits Workshop's flush and that drain. The drain correctly waits for the owed set while it is nonempty. However, tab disposal stops model runs, **not pending source reads/builds**. A source request accepted before shutdown may finish after the drain has resolved empty; the service still adopts its board, and the library's outcome listener then starts its first measured-board save.
+
+Independent production-path sequence:
+
+1. Choose a source file and hold the real resolver's file read before measurement/adoption; its source ticket already exists.
+2. Execute the exact extracted production `deactivate` body and production shutdown helper. The real tab is disposed; Lightbox has no write yet, so its drain resolves. Hold Workshop's unrelated flush.
+3. Release the source read. It adopts the measured board and starts its first save; hold the real store's staging write. No saved board file exists.
+4. Release Workshop's flush. **Deactivation resolves while that first save remains pending.** Keeping the host alive and releasing the staging write subsequently commits one board.
+
+A second witness has **no Workshop coordinator at all**: deactivation returns while the accepted source read is held; releasing it afterward still adopts and starts the first save. Thus the defect does not depend on the artificial Workshop delay. Both desired-behavior guards fail. Conversely, if an earlier owed rename keeps the drain active, the same late source save joins it and shutdown waits correctly. This isolates the gap to producer ownership after the drain has finished, not failure of `owe` to track a running save.
+
+**Bounded impact:** an accepted source request's newly measured board can still have its first save abandoned at shutdown. These probes do **not** demonstrate loss of paid readings, and the original paid partial-run case is now safe under the controlled I/O test. Native host termination or actual on-disk loss was not simulated.
+
+**Required correction:** establish a shutdown-specific boundary that invalidates/quiesces all relevant source producers, or awaits already-accepted source work and its resulting saves before returning. Source requests intentionally survive ordinary tab closure and can land in a replacement tab; preserve that behavior. Blanket cancellation on every panel dispose would regress that ownership contract. A second drain alone is not sufficient if a source producer can still enqueue after it resolves.
+
+**Reproduction evidence:** `../pr183-rereview-evidence/persistence/shutdown.review.test.ts:102–117,142–153`; `final-external.{log,json,exit}`. The harness removes only TypeScript annotations from the exact deactivation body, injects real tab/library/service/store objects, and releases all held work after recording the observations. This is not native extension activation. The remaining case is one P2 finding with two timing variants, not two new findings.
+
+### Independent verification of the correction head
+
+The existing clean worktree and unchanged lockfile were reused. All commands ran with Node **18.20.8** and supported npm **10.8.2**; no dependency installation or source/test edits were made. An initial external npm-wrapper packaging mistake ran no repository checks; correcting only that external launcher produced the results below. Jest remained serial and uncached because of limited shared disk space.
+
+| Check | Result at `28751221` |
+| --- | --- |
+| Core, webview and adapter typecheck | Passed |
+| Full typed Jest (`--runInBand --no-cache`) | **591 suites / 8,390 tests / 59 snapshots passed**, zero failed/pending; 689.8 s |
+| Repository lint | Passed: **0 errors / 1,130 warnings** |
+| Production webpack bundles and `verify:bundle` | Passed; the existing three size/performance warnings remain |
+| Correction delta `git diff --check` | Passed |
+| Focused F-01 repository regressions | 7 suites / 176 tests passed; 18 external acceptance/control checks passed |
+| Focused F-02 repository regressions | 13 suites / 235 tests passed; 14 external checks passed |
+| Focused F-03 repository regressions | 5 suites / 50 tests passed; external probes: **12 passed / 2 failed desired guards** for the single remaining issue |
+| Exact-head PR CI | [40719385372](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40719385372): terminal success; all verification steps passed |
+| Exact-head push CI | [40719367315](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40719367315): terminal success; all verification steps passed |
+
+Focused repository counts overlap the full suite and must not be added as unique coverage. One passing persistence probe only characterizes the unawaited `memory.update` reload-pointer promise: it does not establish native pointer loss because VS Code's main-process persistence boundary was not exercised. It is not promoted to a second blocker.
+
+Full logs and lane ledgers are retained under `../pr183-rereview-evidence/`. The worktree is clean after the gates. No implementation changes, provider calls, formal review, comment, merge or additional report publication were performed by this re-review. Native VS Code/Refactor Preview, process shutdown, remote filesystem and live-provider acceptance remain unrun; the original report's separate known limitations still apply.
+
+**Recommendation:** keep F-03 open for the bounded late-source shutdown case; F-01/F-02 need no further correction on this evidence. Re-review the producer-boundary fix independently and verify the final head and CI before closing the remaining finding.
