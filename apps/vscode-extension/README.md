@@ -50,7 +50,15 @@
 
 **Proofread where you write.** Right-click a Markdown or plain-text file and choose **Prose Minion → Proofread and Flag** or **Proofread and Fix**, for the whole file or a selection. Proofread looks for spelling, homophones, punctuation, capitalization, spacing, agreement, and missing or extra words. It also checks the whole document for names spelled two ways, inconsistent spellings, stray quotation marks, and slips in tense or person against your narration. Each finding appears in the editor and the Problems panel, with a quick fix where one is safe. By default, **Proofread and Fix** opens its fixes in VS Code's Refactor Preview, where you tick the ones to apply. They land as one change you can undo, and the file is never saved for you. Tense, agreement, and other judgment calls are only ever flagged. Name a spelling convention and keep a word list of your own names and invented words in Settings.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/draft-edit-proofread.png" alt="Top: the editor's right-click Prose Minion menu with Proofread and Flag and Proofread and Fix, and a Proofread flag under third row desk whose hover says the compound modifier needs a hyphen and suggests third-row desk, with Quick Fix. Bottom: Refactor Preview comparing a chapter before and after two fixes, an em dash for interrupted speech and a period moved inside a quotation mark, with a tick box beside each fix and Apply and Discard below" width="100%"/>
+</p>
+
 **Craft Flags** leaves line notes for clichés, shifts in register, leaned-on gestures, and continuity slips. They are notes, never edits, and a continuity note points to both places. Choose which categories run. Before anything is sent, a confirmation shows the planned requests and their estimated cost.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/draft-edit-craft-flags.png" alt="Top: the Craft Flags confirmation, which says it reads all 1,267 words of the chapter in 4 requests to claude-haiku-5.5 for about a cent, with Run Craft Flags and Cancel. Bottom: a Craft Flags note on a held breath, from the Prose Minion Craft source, which says why it was flagged and then one way it could go" width="100%"/>
+</p>
 
 Proofread has its own model, an inexpensive one by default. Craft Flags and the Lightbox follow your Workshop model until you choose one for them, and choosing never changes the Workshop's. Each Draft Edit pass has its own reasoning setting.
 

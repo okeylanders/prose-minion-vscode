@@ -32,10 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Workshop tour and README artwork
 
-- The startup notice moves to `v9` and leads with one page, "New: Lightbox": how to open a chapter or selection, that measuring asks no model, that Run AI analyses shows its estimate first, that quotes are checked against the chapter, and that Bring to Workshop stages a reading without sending it. v2.10.0's Show vs. Tell and Chromatic Palettes pages follow as primers. The tour is sixteen pages, newest release first.
+- The startup notice moves to `v9` and leads with two pages:
+  - "New: Lightbox": how to open a chapter or selection, that measuring asks no model, that Run AI analyses shows its estimate first, that quotes are checked against the chapter, and that Bring to Workshop stages a reading without sending it.
+  - "New: Proofread and Craft Flags": the right-click menu, flags with quick fixes where safe, fixes ticked in Refactor Preview and applied as one undoable change without saving, judgment calls only flagged, and Craft Flags priced before it sends anything and never editing.
+- v2.10.0's Show vs. Tell and Chromatic Palettes pages follow as primers. The tour is seventeen pages, newest release first.
 - Its two screenshots, `lightbox-run-line` and `lightbox-checked-evidence`, and the README's three Lightbox composites (`lightbox-board.png`, `lightbox-readings.png`, `lightbox-saved-boards.png`) are 2× captures of the real v2.12.0 webview bundle. The board is the opening of *Alice's Adventures in Wonderland* (public domain), built by the production Lightbox host code. Its readings are the prompt bundle's worked examples, shown under Claude Sonnet 5.5 as demo content.
 - The README leads with v2.12.0: Lightbox, Draft Edit, and the catalog changes. Releases before it shrink to one line each under "Earlier releases"; the v2.6.2–v2.2.0 model-catalog entries are left to the changelog. A new Workshop section keeps the Show vs. Tell, Rewind & Branch, export, and recall images; the cache and context images are retired from the README. A "Beyond the sidebar" table adds the Workshop, Lightbox, and Draft Edit, and the Privacy section now names every tool that calls OpenRouter.
-- Draft Edit has no README image yet: its findings, quick fixes, and Refactor Preview are native VS Code UI, which the webview harness cannot render.
+- Draft Edit's art comes from Okey's own VS Code screenshots, because its UI is native VS Code, which the webview harness cannot render. Two README composites: `draft-edit-proofread.png` (the menu, a flag's hover, and Refactor Preview) and `draft-edit-craft-flags.png` (the priced confirmation and a note). Two notice shots: `draft-edit-menu` and `proofread-refactor-preview`.
 
 ### Review and acceptance limits
 

@@ -55,7 +55,9 @@ export const WORKSHOP_NOTICE_SHOTS = [
   'dictionary-palette-switch',
   'dictionary-palette-entry',
   'lightbox-run-line',
-  'lightbox-checked-evidence'
+  'lightbox-checked-evidence',
+  'draft-edit-menu',
+  'proofread-refactor-preview'
 ] as const;
 
 export type WorkshopNoticeShot = (typeof WORKSHOP_NOTICE_SHOTS)[number];

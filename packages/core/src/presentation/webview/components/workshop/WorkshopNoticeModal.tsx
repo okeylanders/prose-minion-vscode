@@ -175,6 +175,59 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
+    title: 'New: Proofread and Craft Flags',
+    tag: 'new',
+    body: (
+      <>
+        Right-click a Markdown or plain-text file and open the <b>Prose Minion</b> menu.{' '}
+        <b>Proofread and Flag</b> marks spelling, punctuation, and consistency slips, and shifts in
+        tense or person, in the editor and the Problems panel, with a quick fix where one is safe.
+        By default, <b>Proofread and Fix</b> opens its fixes in VS Code&rsquo;s Refactor Preview:
+        tick the ones to keep, then <b>Apply</b>. They land as one change you can undo, and the
+        file is never saved for you. <b>Craft Flags</b> leaves line notes on clichés, register,
+        gestures, and continuity, and shows its estimated cost before it sends anything.
+      </>
+    ),
+    note: (
+      <>
+        Tense, agreement, and other judgment calls are only ever flagged, and Craft Flags never
+        edits your text. Proofread has its own model; Craft Flags follows the Workshop&rsquo;s until
+        you choose one.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'draft-edit-menu',
+        alt: 'The editor’s right-click Prose Minion menu: Open File in Lightbox, Proofread and Flag, Proofread and Fix, and Craft Flags',
+        maxWidthPx: 420,
+        ratio: '1106 / 268',
+        callouts: [
+          { label: '1', leftPercent: 72.3, topPercent: 32.8, widthPercent: 27.1, heightPercent: 35.1 },
+          { label: '2', leftPercent: 72.3, topPercent: 76.5, widthPercent: 27.1, heightPercent: 18.7 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'proofread-refactor-preview',
+        alt: 'Refactor Preview with two Proofread fixes, each with a tick box, above Apply and Discard',
+        maxWidthPx: 440,
+        ratio: '1000 / 275',
+        callouts: [
+          { label: '3', leftPercent: 5.8, topPercent: 30.9, widthPercent: 5.4, heightPercent: 30.5 },
+          { label: '4', leftPercent: 3.8, topPercent: 79.6, widthPercent: 8.4, heightPercent: 16 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Proofread and Flag · Fix', detail: 'the whole file, or your selection.' },
+      { label: '2', term: 'Craft Flags', detail: 'line notes, priced before anything is sent.' },
+      { label: '3', term: 'Tick', detail: 'the fixes to keep.' },
+      { label: '4', term: 'Apply', detail: 'one change you can undo; the file is not saved.' }
+    ]
+  },
+  {
     title: 'Show vs. Tell Playground',
     tag: 'primer',
     body: (

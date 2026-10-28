@@ -57,7 +57,9 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "dictionary-palette-switch": "https://webview.test/ext/assets/workshop-notices/dictionary-palette-switch.png",
         "dictionary-palette-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-palette-entry.png",
         "lightbox-run-line": "https://webview.test/ext/assets/workshop-notices/lightbox-run-line.png",
-        "lightbox-checked-evidence": "https://webview.test/ext/assets/workshop-notices/lightbox-checked-evidence.png"
+        "lightbox-checked-evidence": "https://webview.test/ext/assets/workshop-notices/lightbox-checked-evidence.png",
+        "draft-edit-menu": "https://webview.test/ext/assets/workshop-notices/draft-edit-menu.png",
+        "proofread-refactor-preview": "https://webview.test/ext/assets/workshop-notices/proofread-refactor-preview.png"
       }
     };
   </script>

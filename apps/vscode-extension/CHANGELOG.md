@@ -17,7 +17,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Lightbox and Craft Flags follow the Workshop model until you choose a model for them. Proofread has its own model setting and default. Changing a Lightbox or Craft Flags model does not change the Workshop model.
 - Lightbox brings selected readings into the Workshop as staged material; you decide whether to use them.
-- The Workshop's startup tour opens once more and begins with the Lightbox.
+- The Workshop's startup tour opens once more and begins with the Lightbox, then Proofread and Craft Flags.
 
 ### Removed
 
