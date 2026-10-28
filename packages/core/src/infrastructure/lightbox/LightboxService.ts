@@ -28,7 +28,8 @@
  *   adopted, and a refusal published, only under the current ticket; anything
  *   finishing under an older one is `superseded` and dropped. Because the
  *   ticket lives here, one per extension session, a disposed panel's handler
- *   cannot outrank the replacement panel's newer request.
+ *   cannot outrank the replacement panel's newer request. Only shutdown ends
+ *   them (`LightboxSourceRequests`, PR #183 F-03).
  * - **Outcomes are published, not returned to the caller.** Adoption and
  *   refusal notify `addOutcomeListener` subscribers; each Lightbox webview's
  *   handler subscribes and posts what it hears. The code path that started a
@@ -81,6 +82,7 @@ import { checkLightboxSource } from '@/infrastructure/lightbox/LightboxSourceChe
 import type { LightboxWriterBaseline } from '@/infrastructure/lightbox/LightboxWriterBaseline';
 import type { LightboxPassageIndex } from '@/infrastructure/lightbox/LightboxPassageIndex';
 import { lightboxSourceKey } from '@/infrastructure/lightbox/LightboxSourceKey';
+import { LightboxSourceRequests, type LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxSourceRequests';
 import {
   assembleLightboxBoard,
   savedLightboxBoardParts,
@@ -108,14 +110,7 @@ export type LightboxBoardResult =
   | { kind: 'refused'; refusal: LightboxSourceRefusal }
   | { kind: 'superseded' };
 
-/**
- * One source request. Minted by `beginSourceRequest()` when the writer's
- * choice becomes concrete; compared by identity, so it cannot be forged.
- */
-export interface LightboxSourceTicket {
-  /** Ascending per extension session; for logs. */
-  readonly sequence: number;
-}
+export type { LightboxSourceTicket } from '@/infrastructure/lightbox/LightboxSourceRequests';
 
 /** A refusal before the service names it (`LightboxSourceRefusal.id` is host-minted). */
 export type LightboxSourceRefusalDraft = Omit<LightboxSourceRefusal, 'id'>;
@@ -168,9 +163,7 @@ export interface LightboxReadingSourceText {
 
 export class LightboxService {
   private readonly retained: LightboxRetainedBoards;
-  /** The writer's latest source request; only it may adopt or refuse. */
-  private currentTicket?: LightboxSourceTicket;
-  private ticketCount = 0;
+  private readonly sourceRequests = new LightboxSourceRequests();
   /** The refusal of the latest request, until dismissed or replaced by a board. */
   private standingRefusal: LightboxSourceRefusal | null = null;
   private readonly outcomeListeners =
@@ -209,19 +202,22 @@ export class LightboxService {
    * F-01), before awaiting anything: it supersedes every earlier request.
    */
   beginSourceRequest(): LightboxSourceTicket {
-    const ticket: LightboxSourceTicket = { sequence: ++this.ticketCount };
-    this.currentTicket = ticket;
-    return ticket;
+    return this.sourceRequests.begin();
+  }
+
+  /** Shutdown only (PR #183 F-03): no source request, taken so far or after, adopts or refuses; each is `superseded`. */
+  endSourceRequests(): void {
+    this.sourceRequests.end();
   }
 
   /** Whether `ticket` is still the writer's latest source request. */
   isCurrentRequest(ticket: LightboxSourceTicket): boolean {
-    return ticket === this.currentTicket;
+    return this.sourceRequests.isCurrent(ticket);
   }
 
   /** Whether any source request was made this session: a restore on mount yields to every one (Slice 5A). */
   hasSourceRequests(): boolean {
-    return this.ticketCount > 0;
+    return this.sourceRequests.any();
   }
 
   /**

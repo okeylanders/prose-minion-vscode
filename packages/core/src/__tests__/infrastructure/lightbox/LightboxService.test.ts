@@ -326,6 +326,23 @@ describe('LightboxService boards per source (D12)', () => {
     expect(service.currentBoard()?.source.displayPath).toBe('newer.md');
   });
 
+  it('ends every source request at shutdown: one still measuring, and any taken after, adopts and refuses nothing (PR #183 F-03)', async () => {
+    const { service } = createService();
+    await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'before.md'));
+    const changes: string[] = [];
+    service.addOutcomeListener((change) => changes.push(change.kind));
+    const measuring = service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'measuring.md'), service.beginSourceRequest());
+
+    service.endSourceRequests();
+    const after = service.beginSourceRequest();
+    expect(service.isCurrentRequest(after)).toBe(false);
+    expect(await measuring).toEqual({ kind: 'superseded' });
+    expect(await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'after.md'), after)).toEqual({ kind: 'superseded' });
+    expect(service.refuseSource(after, { reason: 'unreadable', message: 'Gone.' })).toEqual({ kind: 'superseded' });
+    expect(changes).toEqual([]);
+    expect(service.currentBoard()?.source.displayPath).toBe('before.md');
+  });
+
   it('keeps a refusal beside the current board until it is dismissed or a board replaces it (PR #148 F-02)', async () => {
     const { service } = createService();
     expect(service.currentOutcome()).toEqual({ board: null, refusal: null });

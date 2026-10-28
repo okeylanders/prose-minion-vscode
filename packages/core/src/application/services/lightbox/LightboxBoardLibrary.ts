@@ -55,12 +55,16 @@
  *   file another window holds (busy), or whose folder could not be read,
  *   keeps it, and a board left mid-rewrite is put back by the store's read
  *   and restored (PR #164 F-02 and its re-review).
- * - **Owed writes drain at shutdown (PR #183 F-03).** Every write it starts
- *   (a save after a run, a measured board's first save, a rename, a spark's
- *   mark, a delete) is owed until it settles. `drain` waits for all of them,
- *   and for any started while it waits. The composition root awaits it at
- *   deactivation, once the Lightbox tab is disposed: its handler stops the
- *   runs it started, and each that landed readings queues its save then.
+ * - **Owed writes drain at shutdown (PR #183 F-03 and its re-review).** Every
+ *   write it starts (a save after a run, a measured board's first save, a
+ *   rename, a spark's mark, a delete) is owed until it settles. `shutDown`
+ *   first ends the service's source requests, so one still reading or
+ *   measuring adopts nothing and starts no first save, then waits for every
+ *   owed write, and for any started while it waits. The composition root
+ *   awaits it at deactivation, once the Lightbox tab is disposed: its
+ *   handler stops the runs it started, and each that landed readings queues
+ *   its save then. Only shutdown ends source requests; a tab's close keeps
+ *   them, so they land in the next tab.
  *
  * Logs carry file ids, counts and reasons; never the writer's text or a
  * board's name.
@@ -106,6 +110,7 @@ export interface LightboxBoardLibraryPorts {
     | 'boardOfFile'
     | 'currentBoard'
     | 'currentSavable'
+    | 'endSourceRequests'
     | 'forgetSaved'
     | 'hasSourceRequests'
     | 'isCurrentRequest'
@@ -169,10 +174,13 @@ export class LightboxBoardLibrary {
   }
 
   /**
-   * Settle every write this library owes, and any started while it waits
-   * (PR #183 F-03). Never rejects: a write that fails has said so already.
+   * Deactivation only (PR #183 F-03 and its re-review): end the service's
+   * source requests, so none still reading or measuring adopts a board and
+   * starts its first save, then settle every write owed, and any started
+   * while it waits. Never rejects: a write that fails has said so already.
    */
-  async drain(): Promise<void> {
+  async shutDown(): Promise<void> {
+    this.ports.service.endSourceRequests();
     while (this.owed.size > 0) {
       await Promise.allSettled([...this.owed]);
     }

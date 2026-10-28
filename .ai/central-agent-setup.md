@@ -1505,15 +1505,20 @@ records, when it saves, or how a saved one comes back:
   refuses it. The store's save status clears on any commit before the
   commit is announced (N-01).
 - **Owed writes drain before deactivation resolves (PR #183 F-03).**
-  Every write `LightboxBoardLibrary` starts is owed until it settles;
-  `drain` waits for them all, and for any started while it waits. A new
+  Every write `LightboxBoardLibrary` starts is owed until it settles. A new
   kind of write joins the owed set (`owe`), never a bare `void`.
   `deactivate` hands its parts to `shutDownExtension`
   (`apps/vscode-extension/src/application/extensionShutdown.ts`): tabs are
-  disposed first, so their runs stop and queue their saves, then the drain
-  and the Workshop's flush are awaited in the promise `deactivate`
-  returns. Never move a wait into a subscription's `dispose`: VS Code does
-  not await it.
+  disposed first, so their runs stop and queue their saves, then the
+  library's `shutDown` and the Workshop's flush are awaited in the promise
+  `deactivate` returns. `shutDown` ends the service's source requests
+  (`LightboxSourceRequests`) before it waits, so a source still being
+  read adopts nothing and starts no save after the wait (the re-review),
+  then waits for every owed write and any started meanwhile. Only
+  deactivation ends source requests: a tab's close keeps them, so they
+  land in the next tab. A new producer of a write must be stopped by tab
+  disposal or by that end. Never move a wait into a subscription's
+  `dispose`: VS Code does not await it.
 - **A mutation's outcome is shown where it outlives its sheet (PR #167
   F-02, F-03).** The name sheet is opened for a board and its adoption,
   and closes when either changes. A rename of the board on screen carries

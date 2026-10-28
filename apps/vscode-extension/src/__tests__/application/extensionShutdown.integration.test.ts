@@ -133,6 +133,69 @@ describe('deactivation and the Lightbox\'s owed saves (PR #183 F-03)', () => {
   });
 });
 
+describe('deactivation and a source still being read (PR #183 F-03 re-review)', () => {
+  /** A tab that has asked for its board, with the chapter on disk and nothing saved yet. */
+  async function opened() {
+    const host = createLightboxBoardsHost();
+    host.writeChapter(CHAPTER_PATH, CHAPTER);
+    const tab = host.openTab();
+    await tab.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    await tab.shelf(null);
+    // The source is chosen, its ticket taken, and its read held before it is measured.
+    const read = host.holdRead(CHAPTER_PATH);
+    const choosing = tab.choose(CHAPTER_PATH);
+    await quiet();
+    return { host, tab, read, choosing };
+  }
+
+  it('adopts nothing and starts no save once deactivation has begun, with no Workshop to wait for', async () => {
+    const { host, tab, read, choosing } = await opened();
+    await shutDownExtension({ ...partsOf(host, tab), workshopSessions: undefined });
+
+    read.release();
+    await choosing;
+    await quiet();
+    expect(host.service.currentBoard()).toBeUndefined();
+    expect(host.savedFiles()).toEqual([]);
+  });
+
+  it('adopts nothing while the Workshop is still flushing, so no save outlives deactivation', async () => {
+    const { host, tab, read, choosing } = await opened();
+    const flushed = deferred<void>();
+    let finished = false;
+    const shutdown = shutDownExtension({ ...partsOf(host, tab), workshopSessions: { flush: () => flushed.promise } }).then(() => {
+      finished = true;
+    });
+
+    read.release();
+    await choosing;
+    await quiet();
+    expect(host.service.currentBoard()).toBeUndefined();
+    expect(finished).toBe(false);
+
+    flushed.resolve();
+    await shutdown;
+    await quiet();
+    expect(host.savedFiles()).toEqual([]);
+  });
+
+  it('control: a tab\'s own close keeps the request, which lands, and saves, in the next tab', async () => {
+    const { host, tab, read, choosing } = await opened();
+    tab.dispose();
+    const next = host.openTab();
+    await next.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+
+    read.release();
+    await choosing;
+    await quiet();
+    const board = host.service.currentBoard();
+    expect(board).toBeDefined();
+    expect(next.boards()[next.boards().length - 1]?.boardId).toBe(board?.boardId);
+    expect(host.savedFiles()).toEqual([OWN]);
+    next.dispose();
+  });
+});
+
 describe('shutDownExtension\'s order', () => {
   it('stops both tabs before it waits, and waits for the Lightbox even when the Workshop\'s flush fails', async () => {
     const calls: string[] = [];
@@ -147,7 +210,7 @@ describe('shutDownExtension\'s order', () => {
         }
       },
       lightboxBoards: {
-        drain: () => {
+        shutDown: () => {
           calls.push('lightbox drain');
           return drained.promise.then(() => {
             calls.push('lightbox drained');

@@ -1044,12 +1044,16 @@ of them. The format is fixed so that 5B needs no change to it.
     `LightboxBoardLibrary.drain` waits for all of them, and for any started
     while it waits. Deactivation (`shutDownExtension`, in the app) disposes
     the Lightbox tab first, so its handler stops the runs it started and
-    each that landed readings queues its save, then awaits the drain beside
-    the Workshop's flush, in the promise `deactivate` returns: VS Code
-    awaits that promise, but disposes the context's subscriptions without
-    awaiting them. A write the host never finishes is still lost when the
-    process ends; the drain only stops the extension from saying it is done
-    first.
+    each that landed readings queues its save, then awaits the library's
+    `shutDown` beside the Workshop's flush, in the promise `deactivate`
+    returns: VS Code awaits that promise, but disposes the context's
+    subscriptions without awaiting them. `shutDown` first ends the
+    service's source requests (`LightboxSourceRequests.end`; the
+    re-review): a source still being read or measured adopts nothing, so it
+    starts no first save after the drain has emptied. Only deactivation
+    ends them; a tab's close keeps a request, which lands in the next tab.
+    A write the host never finishes is still lost when the process ends;
+    the drain only stops the extension from saying it is done first.
   - *A name given for the board on screen names the board it was typed
     for (PR #167 F-02).* The name sheet is opened for a board and its
     adoption, and closes when either changes; the rename carries the

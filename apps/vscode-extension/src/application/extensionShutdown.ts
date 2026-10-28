@@ -8,7 +8,10 @@
  *    guard cannot defer an earlier committed dirty revision past shutdown.
  *    Disposing the Lightbox's panel stops the runs its tab started, and each
  *    that landed readings queues its board's save then (ADR 2026-10-19 D12
- *    addendum).
+ *    addendum). The Lightbox's `shutDown` also ends its source requests at
+ *    once, so a source still being read or measured adopts nothing and
+ *    starts no save after the wait (the re-review). A tab's own close keeps
+ *    them: only deactivation ends them.
  * 2. Then what both owe is awaited, in the promise `deactivate` returns:
  *    VS Code awaits it, but disposes the context's subscriptions without
  *    awaiting them, so an async dispose would not hold the host. The
@@ -21,14 +24,14 @@ export interface ExtensionShutdownParts {
   readonly workshopPanel: { dispose(): void } | undefined;
   readonly lightboxPanel: { dispose(): void } | undefined;
   readonly workshopSessions: { flush(): Promise<void> } | undefined;
-  readonly lightboxBoards: { drain(): Promise<void> } | undefined;
+  readonly lightboxBoards: { shutDown(): Promise<void> } | undefined;
 }
 
 export async function shutDownExtension(parts: ExtensionShutdownParts): Promise<void> {
   parts.workshopPanel?.dispose();
   // Also a context subscription; disposing twice is a no-op.
   parts.lightboxPanel?.dispose();
-  const lightboxDrained = parts.lightboxBoards?.drain();
+  const lightboxDrained = parts.lightboxBoards?.shutDown();
   try {
     await parts.workshopSessions?.flush();
   } finally {

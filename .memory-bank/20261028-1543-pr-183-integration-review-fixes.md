@@ -64,3 +64,16 @@ with the fix reverted. Full Jest counts are in the review's author response.
 
 Native VS Code acceptance (long-file confirmation with a language change,
 deactivation with a held save) and live provider calls were not run.
+
+## Re-review (`28751221`) and its correction
+
+F-01 and F-02 resolved. F-03 partially: a source request already reading
+or measuring when deactivation began could adopt its board after the
+drain emptied, so its first save outlived `deactivate`. The fix ends the
+service's source requests at shutdown only (`LightboxSourceRequests.end`,
+through `LightboxBoardLibrary.shutDown`, which replaced the public
+`drain`); every in-flight request then finishes `superseded`. A tab's own
+close still keeps its request for the next tab (a control test).
+`LightboxService` was at 495 lines against the Lightbox modules' 500-line
+guard, so its tickets moved to `LightboxSourceRequests.ts` (listed in
+`LIGHTBOX_MODULES`); the service is now 491.

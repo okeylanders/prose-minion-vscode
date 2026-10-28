@@ -1051,6 +1051,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxMeasureRules.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
+  // PR #183 F-03: the service's source requests, which only shutdown ends.
+  'infrastructure/lightbox/LightboxSourceRequests.ts',
   // Slice 5A: the service's board assembly and source key, moved out to give it room.
   'infrastructure/lightbox/LightboxBoardAssembly.ts',
   'infrastructure/lightbox/LightboxSourceKey.ts',
