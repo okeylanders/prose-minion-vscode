@@ -840,8 +840,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-28, PR #183's integration review fixes (`83b23457`, F-01–F-03) on `epic/lightbox`, under Node 18):
-- 591 suites / 8,390 tests / 59 snapshots
+**Test Inventory** (measured 2026-10-28, PR #183's integration review fixes (`83b23457`, F-01–F-03) and the re-review's F-03 correction (`e1ba8b67`) on `epic/lightbox`, under Node 18):
+- 591 suites / 8,394 tests / 59 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

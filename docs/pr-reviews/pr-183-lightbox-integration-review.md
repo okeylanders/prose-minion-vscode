@@ -228,3 +228,35 @@ Focused repository counts overlap the full suite and must not be added as unique
 Full logs and lane ledgers are retained under `../pr183-rereview-evidence/`. The worktree is clean after the gates. No implementation changes, provider calls, formal review, comment, merge or additional report publication were performed by this re-review. Native VS Code/Refactor Preview, process shutdown, remote filesystem and live-provider acceptance remain unrun; the original report's separate known limitations still apply.
 
 **Recommendation:** keep F-03 open for the bounded late-source shutdown case; F-01/F-02 need no further correction on this evidence. Re-review the producer-boundary fix independently and verify the final head and CI before closing the remaining finding.
+
+## Author response to the re-review (`e1ba8b67`)
+
+**Taken.** Your re-review above is unchanged. The remaining F-03 case now adopts nothing, and the ordinary tab-close behavior you asked me to preserve has a control.
+
+### Source requests end at shutdown, and only there
+
+- **The boundary is the producer's own.** Every Lightbox source (a choice, a pick, a seed, a re-read, an open, a restore) adopts only under the service's current ticket. `LightboxBoardLibrary.shutDown()` first calls the service's new `endSourceRequests()`, so no ticket taken before or after is current again, and then waits for every owed write, including any started while it waits. A request still reading or measuring when deactivation begins therefore finishes `superseded`. It adopts no board and starts no first save, whichever side of the drain it would have landed on.
+- **Only deactivation ends them.** `shutDownExtension` calls `shutDown()` once the tabs are disposed, and no tab's dispose calls it, so a request that outlives its tab still lands in the replacement tab. `drain` is no longer public, so nothing else can be mistaken for the shutdown wait.
+- **What is given up.** A file the writer chose in the last moment before deactivation is not measured or saved. The source is still on disk, and no paid reading is involved: readings already landed were saved when their run ended, and that is what the drain waits for.
+- **The service stayed under its guard.** `LightboxService.ts` was at 495 lines against the Lightbox modules' 500-line guard, so its tickets moved to `LightboxSourceRequests.ts` (`begin`, `isCurrent`, `any`, `end`), listed in `LIGHTBOX_MODULES`. The service delegates and re-exports `LightboxSourceTicket`, so no importer changed, and it is now 491 lines.
+
+### Your sequence, and its control
+
+In `extensionShutdown.integration.test.ts`, over the real handlers, service, runner, store and library:
+
+- **No Workshop at all.** The source is chosen and its read held; deactivation resolves; the read is released. No board is adopted and nothing is saved.
+- **The Workshop's flush held.** Shutdown stays pending on the flush; the source read is released meanwhile; no board is adopted. Once the flush resolves, shutdown resolves with nothing saved and nothing still going out.
+- **Control: an ordinary tab close.** The same held source, with the tab disposed and a new tab opened, lands in the new tab and saves its file.
+- `LightboxService.test.ts`: a build whose first ticket check passed, then ended mid-measurement, finishes `superseded`; a ticket taken after the end adopts and refuses nothing; no outcome is published; the board on screen stays.
+- **Against the previous head:** with `endSourceRequests` made a no-op, the two shutdown cases fail and the control passes. The earlier F-03 witnesses (the held partial run, renames during the drain, nothing owed, the order) still pass.
+
+### Verification
+
+Node 18.20.8 on `e1ba8b67`:
+- typecheck (core, webview, adapter) passes;
+- Jest 591 suites / 8,394 tests / 59 snapshots;
+- lint 0 errors / 1,130 warnings (unchanged);
+- build, with `verify:bundle`, passes, with the three known webpack size warnings;
+- `git diff --check` passes.
+
+No provider calls were made, and native deactivation was not run. The Lightbox ADR's D12 addendum, the agent guide and the memory bank record the boundary.
