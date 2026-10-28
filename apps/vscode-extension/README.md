@@ -9,7 +9,7 @@
 <h3 align="center">Workshop your prose where you already write it.</h3>
 
 <p align="center">
-  Select an excerpt, attach a context brief built from your own story bible, and run focused craft passes — dialogue, gesture, cliché, continuity, metrics — without leaving VS Code. Bring your own OpenRouter key; Metrics and Word Search need no key at all.
+  Select an excerpt, attach a context brief built from your own story bible, and run focused craft passes — dialogue, gesture, cliché, continuity, metrics — without leaving VS Code. Bring your own OpenRouter key; Metrics, Word Search, and the Lightbox's measurements need no key at all.
 </p>
 
 <p align="center">
@@ -24,184 +24,52 @@
 
 ---
 
-## What's new in v2.11.0 — Dictionary lookup history
+## What's new in v2.12.0 — Lightbox and Draft Edit
 
-**Return to a useful word.** The arrows beside the Dictionary heading step through your recent lookups. The history button opens a list where you can choose an entry, delete one, or clear the list after confirmation. Opening a saved lookup restores its phrase, extra context, Encyclopedia and Palettes switches, source, and full result without generating again or changing your selected model. Move forward past the newest entry to return to your unsaved draft.
+### Lightbox: hold a chapter up to the light
 
-**Keep up to 500 lookups.** In a single-folder workspace, history lives in `prose-minion/history/dictionary.json` and survives a restart. With no folder, multiple workspace folders, or a persistence problem, the popup explains that history lasts only for this session. Dictionary history includes completed lookups from the Dictionary tab, including right-click lookups; Workshop persona lookups are separate.
-
-**Open it again, or look it up again.** When you submit a phrase already in history, Dictionary offers the newest matching result before starting another generation. Choose **Open existing entry** (or **Open latest entry** when there are several) to reuse it, or **Look up again** for a fresh result. Rerunning the historical entry already on display starts directly.
+**See the chapter before you ask anything.** Choose **Open File in Lightbox** from the editor's title bar, the Explorer, or the editor's **Prose Minion** menu, or select a passage and choose **Open Selection in Lightbox**. The chapter opens on a board in its own tab, measured by code: a paragraph ribbon of rhythm and dialogue, the numbers, top words, parts of speech, repeated phrases, style flags, and the words used only once. Hover anything to light the paragraphs it touches, and pin it to see every sentence behind the count. Measuring asks no model and needs no key.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-lookup-history.png" alt="Top left: the Dictionary tab showing lookup 3 of 12, harbourmaster, restored with its From history line, source, and context. Bottom left: the You've looked up harbourmaster before offer, with Open latest entry and Look up again. Right: the Lookup history popup, 12 of 500 lookups newest first, each with its time, mode, options, model, and context, saved in prose-minion/history/dictionary.json" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/lightbox-board.png" alt="A Lightbox board for the opening of Alice's Adventures in Wonderland, measured before any reading: the paragraph ribbon with the word down lit in six paragraphs, the chapter's numbers, the top-words cloud with down pinned, and the inspector listing the nine sentences that hold it. The run line reads 6 calls, est. $0.28, Run AI analyses" width="100%"/>
 </p>
 
-### Also in v2.10.1 — Gemini 4 Argon
-
-**Try Gemini 4 Argon.** Google's new reasoning model joins the model pickers for writing tools, Workshop, Conversation Widgets, and Category Search. OpenRouter lists a 1M-token context window and multimodal input; its prose quality has not been evaluated in Prose Minion. Choose it when you want to try it; your defaults and saved selections stay as they are.
-
-### Also in v2.10.0 — Show vs. Tell, and color for your Dictionary
-
-**Show vs. Tell Playground.** A Workshop widget for one beat. Open it from **Widgets**, paste or select a told beat, and move it along a five-position continuum from **State it** to **Inhabit**. A tradeoff readout shows what each position gains and costs, and no bar is a score. One generation returns four groups of alternatives: told cleanly, shown as evidence, shown from inside, and mixed. Keep the useful ones as prose or as a short direction, then commit them to the thread. You choose what commits, and the widget never edits your manuscript. Your host or a guest can suggest a beat and prefill the sheet; only you generate, keep, and commit.
+**Ask for readings when you want them.** Twenty lenses, in up to seven calls, read the chapter for its headline, motifs, tension, lexical gravity, palette, characters, voice, subtext, genre neighborhood, lineage, sparks, stock and signature phrasing, rhythm and handoffs, the numbers, template and freshness, pressure, artifacts, movements, and craft steering. Last, an **Opinion** weighs the board's own readings. Each call shows an estimated price before you press it. Run them all, finish the calls that haven't run, run a single call, or re-analyze one tile. Every reading cites a quote and a ¶ address that code checks against your chapter, and a claim whose quote isn't found is withheld. Earlier readings stay on the board until a usable replacement lands.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-show-vs-tell.png" alt="Top: the Show vs. Tell continuum with Hinge selected and its seven-row tradeoff readout. Bottom: a kept Shown as evidence variant with its direction, gains, costs, and Commit as: prose variant or direction only" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/lightbox-readings.png" alt="Top: the same board after its readings, with the headline A bored girl follows a hurried white rabbit down a hole and keeps on falling, 129 quotes checked and 0 withheld, the ribbon's tension, movements, pressure, and engagement lanes filled, and the Going down motif pinned in the inspector with three quotes, each found verbatim. Bottom: the Lenses rail with each call's Rerun price beside its lenses, and the Characters and Lineage readings. The readings are demo content" width="100%"/>
 </p>
 
-**Chromatic Palettes.** Dictionary entries can end with named color palettes: a strip of the palette's colors, then each swatch's name, a short definition, and its hex value. Palettes are literal when they show colors the word names or implies, and evocative when they carry its mood. The **Chromatic Palettes** switch beside Topic & Related Lexicon starts on and remembers your choice for standard and Fast lookups. Workshop persona lookups leave palettes out.
+**Keep your boards, and bring readings to the Workshop.** In a single-folder workspace, each board saves itself as one file in `prose-minion/boards/`. Name boards, browse every chapter's, and reopen one exactly as it was read; if the chapter has changed since, **Read the current text** starts a new board. With no folder, or several, boards last for the session. **Bring to Workshop** stages a reading's claim and its checked quotes above the Workshop composer, and **Build as a lens** opens a lexical field in Lexical Gravity. Nothing is sent until you send it.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-chromatic-palettes.png" alt="Left: the Dictionary tab's Topic and Related Lexicon and Chromatic Palettes switches, both on. Right: a Madder Dye Vat palette from a real lookup, with Alizarin Crimson, Madder Lake, Turkey Red, Oxblood, and Rose Madder swatches, each named and defined with its hex value" width="100%"/>
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/lightbox-saved-boards.png" alt="Left: the Lightbox's Boards menu, saved, with Rename board, Board another chapter, Open prior board, the recent boards of the chapter, one named First read, and Browse all boards. Right: a pinned reading's Where this reading strains note, its Bring to Workshop action, which stages its claim and quotes above the Workshop composer, and Re-analyze this tile at 1 call, est. $0.02" width="100%"/>
 </p>
 
-- **Try Muse Wonder or Step 5 Preview** — both join the model pickers for writing tools, Workshop, and Category Search as opt-in choices. OpenRouter lists their IDs, prices, and context limits; their prose quality has not been evaluated in Prose Minion. Defaults and saved selections are unchanged.
-- **A tidier model list** — Qwen3 Coder Plus, Qwen3 Max, Qwen3 Max Thinking, and Qwen3.6 Max Preview leave the curated picker. Qwen3.8 Max (0902) remains.
-- **Steadier Dictionary output** — later sections stay readable when a generated palette is left unclosed, in standard and Fast lookups.
+### Draft Edit: proofread in place
 
-Show vs. Tell and Chromatic Palettes are backed by automated tests. Their interactive and live-provider quality checks are still in progress.
+**Proofread where you write.** Right-click a Markdown or plain-text file and choose **Prose Minion → Proofread and Flag** or **Proofread and Fix**, for the whole file or a selection. Proofread looks for spelling, homophones, punctuation, capitalization, spacing, agreement, and missing or extra words. It also checks the whole document for names spelled two ways, inconsistent spellings, stray quotation marks, and slips in tense or person against your narration. Each finding appears in the editor and the Problems panel, with a quick fix where one is safe. By default, **Proofread and Fix** opens its fixes in VS Code's Refactor Preview, where you tick the ones to apply. They land as one change you can undo, and the file is never saved for you. Tense, agreement, and other judgment calls are only ever flagged. Name a spelling convention and keep a word list of your own names and invented words in Settings.
 
-### Also in v2.9.0 — Workshop transcripts across sessions
+**Craft Flags** leaves line notes for clichés, shifts in register, leaned-on gestures, and continuity slips. They are notes, never edits, and a continuity note points to both places. Choose which categories run. Before anything is sent, a confirmation shows the planned requests and their estimated cost.
 
-**Export a conversation.** Use **Sessions → Export…** to save a Workshop conversation as Markdown for another agent or your notes, JSON for scripts, or styled HTML to share or print to PDF. The export holds your messages and every reply, including older turns the thread no longer shows. Files land in `prose-minion/exports/`, and an earlier export is never replaced.
+Proofread has its own model, an inexpensive one by default. Craft Flags and the Lightbox follow your Workshop model until you choose one for them, and choosing never changes the Workshop's. Each Draft Edit pass has its own reasoning setting.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-export-transcript.png" alt="Left: the Workshop Sessions menu with Export… highlighted. Right: the Export transcript dialog offering Markdown, JSON, and Styled HTML, with the file path under prose-minion/exports" width="100%"/>
-</p>
+### Also in v2.12.0
 
-**Ask about earlier work.** When you ask about a past conversation or an open to-do, your host or a guest can list and search your other named sessions in this workspace, read the turns that matter, and find to-dos. Each look-up appears in the thread as a **Session Recall** card, and the reply names the saved session and turns so you can check the source. Personas are reading saved records, not remembering. The current room, attachment contents, widget payloads, and hidden tool evidence stay out of recall.
+- **Six new models to try** — GPT-6.1 Terra and Terra Pro, Kimi K3.1 Pro, MiniMax M3.1 Flash, DeepSeek V4.1 Flash 1017, and Mercury 3 join the model pickers as opt-in choices. Defaults and saved selections are unchanged; their prose quality has not been evaluated in Prose Minion.
+- **A tidier model list** — DeepSeek R1, L3.3 Euryale 70B, and Trinity Large Thinking leave the curated list after OpenRouter stopped listing them. Saved settings are not rewritten.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-session-recall.png" alt="A writer asks Jill what they decided about a scene in an earlier session. Two Session Recall cards show Jill searching saved sessions for “night market” and reading turns 12-19 of one, and her reply cites that session and turns 14–17" width="100%"/>
-</p>
+Lightbox readings, Proofread, and Craft Flags call your model and may cost money; review estimates and proposed edits before you accept them. Both features are backed by extensive automated tests. Their interactive and live-provider quality checks are still in progress.
 
-- **Guest to-dos no longer block saving** — adding a guest persona's finding to the To-do List keeps autosave and named saves working, and the to-do survives reopening.
-- **Update Git-synced machines together** — sessions that contain recall activity can't be opened by earlier Prose Minion versions. Existing sessions still open in v2.9.0.
+### Earlier releases
 
-Saved-session recall is backed by automated tests. Its full live pass on real saved sessions is still in progress.
-
-### Also in v2.8.0 — Cache-aware Workshop conversations
-
-- **Request reuse for retained conversations** — Workshop enables prompt caching for Claude and supported Alibaba/Qwen routes while preserving other providers' native behavior. Provider-reported cached-token counts show actual reuse.
-- **Choose Claude's cache duration** — General settings offers five minutes (default) or one hour. Cold writes cost more than ordinary input, and one-hour writes cost more than five-minute writes; choose for your working rhythm.
-- **See an estimated cache window** — a clock beside the composer appears after qualifying provider cache activity. It is an estimate, not a promise that the next request will hit cache.
-- **Attach more and resend less** — up to 100K words of standing context and seven attachments per message. Subsequent context edits send only changed material and removals. Known live model windows receive an estimated capacity check; a refused Workshop send restores your draft.
-- **Upgrade Git-synced machines together** — existing sessions open, but sessions saved with the new context-delivery bookkeeping need this version or newer on every machine.
-
-Live Claude/Qwen cache-hit and duration acceptance remain pending.
-
-**Cache-aware conversations.** Pick Claude's cache window in General settings. Once the provider reports cache activity, a clock in the composer estimates how much of the window is left; the **cached** count on each reply is what confirms reuse.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-prompt-caching.png" alt="Left: General settings with Claude Cache Duration set to 1 hour. Right: a Workshop reply showing 118,842 cached tokens, the context bar at 126K of 950K, and the composer clock reading Est. Cache Time Remaining: 30 min" width="100%"/>
-</p>
-
-**More room for context.** Standing context holds up to 100,000 words and rides with every message. Files you attach to a single message (up to seven, 10,000 words each) ride that message only.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-more-context.png" alt="Left: the Workshop context panel with five files totalling 37,342 of 100,000 words. Right: the Attach to message picker with one character file selected and 1 of 7 remaining slots" width="100%"/>
-</p>
-
-### Also in v2.7.0 — Rewind, branch, and explore
-
-- **Try another direction in Workshop** — rewind to a reply, edit an earlier message in its composer or widget, or branch a saved conversation into a new session. Branch keeps the source file intact; your current excerpt and context stay with you.
-- **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
-- **Explore a word's wider world** — the optional Dictionary encyclopedia entry, **Topic & Related Lexicon**, adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
-- **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
-
-**Rewind, edit, and branch.** Under each reply and each message you sent, the thread offers a way back. Rewind to a reply, edit an earlier message and send it again, or branch into a new saved session and leave this one as it is. Rewind asks before it removes anything.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-rewind-branch.png" alt="Top: a Workshop reply with Rewind to here and Branch from here, and a writer message with Edit from here and Branch from here. Bottom: the Rewind to here? dialog, which says two turns will be removed and points to Branch for keeping the conversation" width="100%"/>
-</p>
-
-**Craft Steering** sits under **Craft & Voice** in the sidebar's Writing Tools and in the Workshop's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it listens to how each sentence carries you into the next, and it judges the pauses, repetition, and fragments you meant by their effect instead of smoothing them away.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
-</p>
-
-**Topic & Related Lexicon** turns a dictionary entry outward: the topics a word belongs to, the vocabulary around it, how to use it on the page, and suggested reading. One switch in the Dictionary tab turns it on or off.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
-</p>
-
-### Also in v2.6.2 — GPT-6.1 Sol choices
-
-- **Try GPT-6.1 Sol or Sol Pro** — both join every shared model picker and Category Search. Pro uses a deeper reasoning mode and may consume more output tokens.
-- **Your choices stay yours** — defaults and saved selections are unchanged. OpenRouter lists these models, but their prose quality has not been evaluated in Prose Minion.
-
-### Also in v2.6.1 — More model choices
-
-- **Try Claude Sonnet 5.5** — available in every shared model picker and Category Search, alongside Sonnet 5.
-- **Choose a faster premium route** — GLM 5.3 Prime and Qwen3.8 Max Prime offer higher throughput at higher token prices than their base models.
-- **Try a low-cost long-context model** — Solar Mini 4 joins the pickers for utility work and exploratory prose.
-- **Your choices stay yours** — defaults and saved selections are unchanged. OpenRouter lists these models, but their prose quality has not been evaluated in Prose Minion.
-
-### Also in v2.6.0 — See cache use and keep Dictionary takes
-
-- **See reported cache reuse** — Workshop responses show `N cached` when OpenRouter reports prompt tokens read from cache. An explicit zero is shown; missing cache details leave the indicator hidden. The existing context bar still shows context-window occupancy.
-- **Keep each Dictionary entry** — saving the same word again creates `<word>-2.md`, then `<word>-3.md`, instead of replacing the earlier file. Standard and fast Dictionary saves both use this naming.
-- **Downgrade note** — v2.5.0 may reject Workshop sessions saved with the new cache fields. Reopen those sessions with v2.6.0 or newer.
-
-### Also in v2.5.0 — Explore and choose models
-
-- **Find models by release date** — Model Explorer groups choices by month and year, with the newest models first.
-- **See model size at a glance** — parameter tags distinguish published counts, estimates, undisclosed sizes, and multi-model systems.
-- **Try new writing models** — GPT-6 Luna and Sol variants and Aion 3.5 Mini and Aion 3.5 join the shared model pickers as opt-in choices.
-- **Diagnose dictionary failures** — failed lookups show the provider's error details beneath the readable message and record them in the Prose Minion output channel.
-- **Existing choices stay put** — saved model selections and defaults are unchanged. New models have been checked against OpenRouter's catalog, without paid inference or prose-quality qualification.
-
-### Also in v2.4.0 — More models for your writing
-
-- **More choices in every model picker** — Claude Opus 5.5, Grok 4.7, DeepSeek V4.1 Flash, GPT-6 Astra Pro, GLM 5.3 FlashX, and three MiMo V2.6 models are available as opt-in choices, including in Category Search.
-- **Current OpenRouter routes** — Mercury 2.5 and Qwen3.8 Max use their current IDs. The available Mistral Large 2407 and Hermes 3 models replace unavailable interactive choices; Hermes 4 405B remains selectable.
-- **Your defaults stay put** — existing model defaults are unchanged. New models are available to try, with provider capabilities verified against OpenRouter; prose quality has not been evaluated in this release workflow.
-
-### Also in v2.3.0 — Workshop sessions that follow your work
-
-- **Saved sessions lead after Git sync** — Workshop loads the named session and preserves meaningful unsaved differences in a separate recovery session when needed.
-- **Opening a session leaves its saved file alone** — automatic context rereads stay in memory until you work or explicitly save/refresh. Resume notices begin with your first interaction.
-- **Clearer loading and recovery** — loading stays visible after dismissing the welcome notice, old status messages clear when you switch sessions, and cache-copy failures are reported separately from successful named saves.
-- **Refresh your references** — reread changed context files from the project, with clearer excerpt and context cards. File-backed attachments are read-only; text briefs remain editable.
-- **More room for your writing preferences** — writer-profile biographies now support 20,000 characters.
-- **GPT-6 Astra joins the model pickers** — available in shared selectors and Category Search, with existing defaults unchanged.
-
-**For Git-synced projects:** a named session reverted through Git also replaces its clean local cache, including autosaved turns. Older caches may produce one conservative recovery when you first load them after upgrading.
-
-### Also in v2.2.4 — Muse Spark 1.3
-
-- **Muse Spark 1.3 joins every shared picker** — Meta's latest 1M-context multimodal Muse model is now available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search. Muse 1.1 and 1.2 remain available, and no defaults change.
-
-### Also in v2.2.3 — Safer Workshop sessions + Gemini 3.8 Flash
-
-The conflict-selection behavior described below is superseded by v2.3.0: named sessions now take precedence automatically.
-
-- **No silent cross-machine overwrite** — when a portable named Workshop session disagrees with the machine-local recovery copy, Prose Minion preserves both instead of guessing from timestamps and overwriting one.
-- **You choose the room that wins** — open the named session explicitly from the Workshop session browser to promote it after a sync conflict.
-- **Normal autosave stays seamless** — matching current and named checkpoints remain associated and continue through the existing ordered save path.
-- **Gemini 3.8 Flash joins every shared picker** — Google's new 1M-context Flash model is available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search without changing any defaults.
-
-### Also in v2.2.2 — Portable excerpts and faster models
-
-- **Projects can move without losing their excerpts** — Workshop can securely reconnect a persisted file-backed passage after the project moves to another computer or filesystem location, without weakening workspace, traversal, or symbolic-link protections.
-- **Mercury 2.5 Preview is ready for the quick work** — the exceptionally fast, inexpensive diffusion model is now selectable for Dictionary, Assistant, Context, Workshop, and Category Search.
-- **Claude Fable 5.1 joins the room** — Anthropic's stronger, more concise Fable generation is available alongside Fable 5, so you can choose the editorial voice that fits the work.
-- **The shelves stay tidy** — one unavailable model and three retired dedicated Opus Fast IDs have been removed; existing defaults and saved selections are unchanged.
-
-### Also in v2.2.1 — Fresh model catalog
-
-- **GLM 5.3 Flash is here** — a fast, multimodal 1.31M-context option for responsive critique, large-context analysis, and utility rewrites.
-- **More strong value choices** — GLM 5.3, DeepSeek V4 Flash 0731, and Qwen3.8 Flash join the curated model browser; the three Flash models are also selectable for Category Search.
-- **Less catalog drift** — retired OpenRouter IDs have been removed, so newly saved selections point to models the provider still serves.
-- **Your choices stay yours** — existing saved model selections and the Category Search default are unchanged.
-
-### Also in v2.2.0 — Conversation Widgets
-
-- **Play before you commit** — Workshop ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
-- **Return to the work** — committed widgets leave re-openable transcript chips; one-shot explorations clone into new turns, while standing Lexical Gravity directives remain editable between runs.
-- **Safer sessions** — released pre-widget Workshop files migrate automatically to the new session schema, feature-owned recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
-- **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families have named ownership boundaries backed by architecture tests.
+- **v2.11.0 — Dictionary lookup history.** Step back through up to 500 lookups, reopen one without generating again, and get offered a saved result before you look up a phrase twice. [See the Dictionary](#a-dictionary-that-writes-fiction).
+- **v2.10.1 — Gemini 4 Argon** joins the model pickers.
+- **v2.10.0 — Show vs. Tell and Chromatic Palettes.** A Workshop widget that moves one beat along a five-position continuum, and named color palettes at the end of Dictionary entries.
+- **v2.9.0 — Workshop transcripts across sessions.** Export a conversation as Markdown, JSON, or styled HTML, and let personas read your other saved sessions.
+- **v2.8.0 — Cache-aware Workshop conversations.** Prompt caching for Claude and supported Qwen routes, a cache clock, and room for 100,000 words of standing context.
+- **v2.7.0 — Rewind, branch, and explore.** Rewind, edit, or branch a Workshop conversation; Craft Steering; and the Dictionary's Topic & Related Lexicon.
+- **v2.2.0–v2.6.2** — Conversation Widgets, safer Git-synced sessions, Model Explorer, cache reporting, and regular model-catalog updates.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
@@ -210,8 +78,8 @@ Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vsco
 ## Get started in three steps
 
 1. **Install** from this Marketplace page, then open the Prose Minion panel from the activity bar.
-2. **Try Metrics or Word Search** right away — both run entirely offline, no API key needed.
-3. **Add an OpenRouter key** to unlock the Assistant, Context Search, and Dictionary.
+2. **Try Metrics, Word Search, or a Lightbox board** right away — they measure offline, no API key needed.
+3. **Add an OpenRouter key** to unlock the Assistant, Context Search, Dictionary, Workshop, Lightbox readings, and Draft Edit.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/setup-three-steps.png" alt="Three setup steps: open settings, paste your OpenRouter key, pick models from the live catalog" width="100%"/>
@@ -229,6 +97,14 @@ Want a guided, no-code walkthrough — project folders, glob patterns, every set
 | 🔍 **Search** | Word Search (pattern matching + cluster detection) and Context Search (find words by *meaning* — `[anger]`, `[color red]`, `[movement verbs]`) | Word Search free · Context Search 🔑 |
 | 📊 **Metrics** | Word count, pacing, dialogue %, lexical density, readability, hapax rate, publishing-standard comparisons by genre and trim size, per-chapter breakdowns | ✅ free, offline |
 | 📖 **Dictionary** | Fiction-focused definitions — pronunciation, sense explorer, register, character-voice variants — for any selected word | 🔑 required |
+
+### Beyond the sidebar
+
+| Tool | What it does | OpenRouter API key? |
+|---|---|---|
+| 💬 **Workshop** | A writers' room in an editor tab: persona hosts and guests, your excerpt and story-bible context, the writing tools, and interactive widgets, in one saved conversation | 🔑 required |
+| 🔦 **Lightbox** | A chapter on one board: measured by code, then read through AI lenses whose quotes are checked against your text | Measuring free · readings 🔑 |
+| ✍️ **Draft Edit** | Proofread and Craft Flags from the editor's right-click menu: findings in the Problems panel, and fixes you choose in Refactor Preview | 🔑 required |
 
 Curious what real output looks like on an actual manuscript? → **[Browse the Examples gallery](https://proseminion.app/examples)**
 
@@ -255,6 +131,38 @@ Focused passes, from Dialogue & Beats to Continuity — each one a single, opini
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
 </p>
+
+---
+
+## The Workshop: a writers' room in an editor tab
+
+Choose **Open Workshop**, or select a passage and choose **Send Selection to Workshop**. Pick Jill or a specialist host, invite persona guests, and keep the work in one thread that saves itself to your project. Attach standing context of up to 100,000 words, run the writing tools in the room, and turn findings into a to-do list everyone can see. The Workshop is in beta.
+
+**Explore one idea at a time.** Gesture Playground, Lexical Gravity, Creative Variations, and Show vs. Tell are widgets with a commit point you control. Show vs. Tell moves a told beat along a five-position continuum from **State it** to **Inhabit**, with a readout of what each position gains and costs, then returns alternatives to keep as prose or as a direction. Nothing is inserted into your manuscript.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-show-vs-tell.png" alt="Top: the Show vs. Tell continuum with Hinge selected and its seven-row tradeoff readout. Bottom: a kept Shown as evidence variant with its direction, gains, costs, and Commit as: prose variant or direction only" width="100%"/>
+</p>
+
+**Try another direction.** Rewind to a reply, edit an earlier message and send it again, or branch into a new saved session and leave this one as it is. Rewind asks before it removes anything.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-rewind-branch.png" alt="Top: a Workshop reply with Rewind to here and Branch from here, and a writer message with Edit from here and Branch from here. Bottom: the Rewind to here? dialog, which says two turns will be removed and points to Branch for keeping the conversation" width="100%"/>
+</p>
+
+**Take the conversation with you.** **Sessions → Export…** saves a conversation as Markdown, JSON, or styled HTML in `prose-minion/exports/`. Ask about earlier work, and your host or a guest can search and read your other saved sessions: each look-up shows as a **Session Recall** card, and the reply names the session and turns it used.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-export-transcript.png" alt="Left: the Workshop Sessions menu with Export… highlighted. Right: the Export transcript dialog offering Markdown, JSON, and Styled HTML, with the file path under prose-minion/exports" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-session-recall.png" alt="A writer asks Jill what they decided about a scene in an earlier session. Two Session Recall cards show Jill searching saved sessions for “night market” and reading turns 12-19 of one, and her reply cites that session and turns 14–17" width="100%"/>
+</p>
+
+**Cache-aware.** For Claude and supported Qwen routes, the Workshop caches retained conversations. A clock beside the composer estimates the cache window, and each reply's **cached** count shows real reuse. Choose a five-minute or one-hour Claude cache in General settings; cache writes cost more than ordinary input.
+
+**Git-synced projects:** update Prose Minion on every machine together. Sessions saved by a newer version may not open in an older one.
 
 ---
 
@@ -309,8 +217,9 @@ The Assistant's context features shine with a lightly organized project: one cha
 ## Privacy
 
 - API key stored in your OS keychain via VS Code `SecretStorage` — never written to settings files.
-- Metrics and Word Search run entirely offline; nothing leaves your machine.
-- Only Assistant, Context Search, Context, and Dictionary call OpenRouter, and only with the text you send them.
+- Metrics, Word Search, and the Lightbox's measurements run entirely offline; nothing leaves your machine.
+- The AI tools — the Assistant, Context Search, Dictionary, Workshop, Lightbox readings, Proofread, and Craft Flags — call OpenRouter only when you run them, and only with the text you send them.
+- Workshop sessions, Lightbox boards, and Dictionary history are files in your project's `prose-minion/` folder.
 - There's no Prose Minion server — your writing has nowhere else to go.
 
 ---
@@ -318,7 +227,7 @@ The Assistant's context features shine with a lightly organized project: one cha
 ## Requirements
 
 - VS Code 1.82.0 or higher. Prose Minion's panels are styled with CSS that needs the browser engine VS Code 1.82 ships (Chromium 114), and on older versions they can lose their colors.
-- An [OpenRouter](https://openrouter.ai/) account for AI-powered tools (pay-as-you-go; Metrics and Search need nothing)
+- An [OpenRouter](https://openrouter.ai/) account for AI-powered tools (pay-as-you-go; Metrics, Word Search, and the Lightbox's measurements need nothing)
 
 ---
 

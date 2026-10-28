@@ -124,8 +124,59 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: Show vs. Tell Playground',
+    title: 'New: Lightbox',
     tag: 'new',
+    body: (
+      <>
+        Hold a chapter up to the light. Choose <b>Open File in Lightbox</b> from the editor&rsquo;s
+        title bar or the Explorer, or select a passage and choose <b>Open Selection in Lightbox</b>{' '}
+        from the editor&rsquo;s <b>Prose Minion</b> menu. The chapter opens on a board in its own
+        tab, measured by code with no model and no cost: a paragraph ribbon, the numbers, top
+        words, repeated phrases, and every sentence behind a count. Readings come only when you
+        press <b>Run AI analyses</b>, and its estimated price shows first. Each reading cites a
+        quote that code checks against your chapter, and a claim whose quote isn&rsquo;t found is
+        withheld.
+      </>
+    ),
+    note: (
+      <>
+        Pin a reading and choose <b>Bring to Workshop</b> to stage its claim and checked quotes
+        above this composer. Nothing is sent until you send it.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'lightbox-run-line',
+        alt: 'The top of a Lightbox board: One chapter, held up to the light, the Measured and Read legend, and 6 calls, est. $0.28 beside Run AI analyses',
+        maxWidthPx: 480,
+        ratio: '1520 / 520',
+        callouts: [
+          { label: '1', leftPercent: 29.6, topPercent: 64.2, widthPercent: 65.4, heightPercent: 10.4 },
+          { label: '2', leftPercent: 2, topPercent: 80.4, widthPercent: 39.6, heightPercent: 16.2 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'lightbox-checked-evidence',
+        alt: 'A pinned reading’s evidence, checked against the text: three quotes with their paragraph numbers, each found verbatim',
+        maxWidthPx: 280,
+        ratio: '582 / 544',
+        callouts: [
+          { label: '3', leftPercent: 3.8, topPercent: 10.7, widthPercent: 92.4, heightPercent: 29 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Measured · Read', detail: 'solid tiles are counted by code; dashed tiles are a model’s reading.' },
+      { label: '2', term: 'Run AI analyses', detail: 'reads the chapter with the lenses you turned on; its price shows first.' },
+      { label: '3', term: 'Evidence', detail: 'each quote is checked against your chapter; one not found is withheld.' }
+    ]
+  },
+  {
+    title: 'Show vs. Tell Playground',
+    tag: 'primer',
     body: (
       <>
         A Workshop widget for one beat. Open it from <b>Widgets</b>, paste or select a told beat,
@@ -176,8 +227,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Chromatic Palettes',
-    tag: 'new',
+    title: 'Chromatic Palettes',
+    tag: 'primer',
     body: (
       <>
         Dictionary entries can now end with named color palettes. Each palette has a strip of
