@@ -122,3 +122,49 @@ Keep #183 in draft and correct the concrete findings before merging. Review fixe
 All local aggregate checks and exact-head PR CI completed before this report was finalized. The reviewed remote main/epic refs remained unchanged at final verification. The worktree was clean after all builds; only this new local review report was then added.
 
 The report remains local pending publication authorization. No implementation or source history was changed by the review.
+
+## Author response (`83b23457`)
+
+**All three are taken.** Your report above is unchanged. Each counterexample now passes through the production path it named, and each fix has a witness that fails without it.
+
+### F-01: a reference's label is protected, and every link keeps its target
+
+Two guards, as you asked, one in front of the other.
+
+- **The label is protected.** `markdownInlineRegions` reads `]` then `[` as a full reference's label, through the next unescaped `]`, never across a blank line or another `[`, and protects it. It reads on inside it, so a code span there still binds tighter and `[a][b][c]` protects both labels. Scans stop at the next bracket, so no two overlap: linear (a 60,000-character chain and a 200,000-character unclosed label, timed).
+- **The structure check compares where things go.** `markdownStructure` describes each `link` and `image` with its resolved `href` and `title`, read with the document's own definitions, before and after. A collapsed or shortcut reference shows its label as its text, so the label stays prose and fixable, and is refused only when the fix moves its target.
+- Your witnesses, through `DraftEditUseCase` and `DraftEditApplier` with a direct Fix: `[chapter][teh]` and `![a picture][teh]` are masked, so the quote anchors nowhere (`unanchored: 1`) and nothing is written; `[teh]` and `[teh][]` are flagged with the fix offered but not applied (`applied: 0`), the document unchanged. Both checks run again in the applier on the live text, so *Replace with* is held to them too.
+- Controls: fixes to visible text (`[chpater][teh]`, `![a pictur][teh]`, `[teh book](chapter.md)`) still land, and so does a case-only change that resolves to the same definition (`[Teh]` → `[teh]`). An escaped bracket, a nested `[`, a blank line, or `[and] [the]` makes no label.
+
+### F-02: Proofread's gesture is held, as Craft Flags' is
+
+`DraftEditUseCase` now takes `begin(target, pass)` synchronously at the gesture: the busy check, the masked chunks, the watch at the gesture's version, and a selection's kept flags. It returns the plan the confirmation reads. Then `run(gesture)` sends it once, and `release(gesture)` ends it unsent. The command releases it however it ends, declined, run or thrown. `plan(target)` and `run(target, …)` are gone, so nothing can take a watch after a confirmation again. `run` refuses a lifetime that ended since `begin` with `changed`, before anything is sent. The pass is also asked `stillCurrent` in the turn each chunk starts, which closes the gap while the prompts load, and a lifetime that ends mid-run starts no more chunks.
+
+- Your four cases, through the production commands, use case, applier, `VsCodeDocumentEditor` and annotator, at the real threshold (`proofreadConfirmationLifetime.integration.test.ts`): the no-change control flags once; a close and reopen at the same URI, version and language, and a Markdown → TypeScript change at the same version, each send nothing and flag nothing; the same language change under Proofread and Fix with `fixReview = apply` makes no `applyEdit`, and the text is unchanged. No Refactor Preview is opened.
+- Preserved, with controls: a direct Fix with nothing changed writes its fix; decline sends nothing and the next gesture begins; a selection's kept flags are chosen at the gesture.
+- **One behavior change.** An edit the writer makes while the confirmation is open is now followed, as one made while the model works is: the flag lands on the moved text. Before, that run was refused as `changed`. A held gesture also keeps the document's in-flight slot through the confirmation, so a quick fix there answers `busy`, as Craft Flags' does.
+- `DraftEditUseCase.ts` would have grown past 500 lines, so the Fix run's write step moved, verbatim apart from becoming a function, to `draftEditRunFixes.ts` (`applyRunFixes`, `fixReport`), and `followIssues` joined `draftEditIssues.ts`. The use case is now 451 lines.
+
+### F-03: deactivation drains the Lightbox's owed writes
+
+- `LightboxBoardLibrary` holds every write it starts as owed until it settles: a save after a run, a measured board's first save (through `LightboxBoardSaves`' new `owe` port, where there was a bare `void`), a rename, a spark's mark and a delete. `drain()` waits until none is left, including any started while it waits, and never rejects.
+- `deactivate` now hands its parts to `shutDownExtension` (`apps/vscode-extension/src/application/extensionShutdown.ts`). It disposes both tabs first, so the Lightbox handler stops its runs and queues each landed run's save. It then awaits the Lightbox drain alongside the Workshop's flush, in the promise `deactivate` returns, and awaits the drain even when the flush throws. As you noted, VS Code does not await an async subscription's dispose, so the wait is not there.
+- Your regression, over the real handlers, service, runner, store and library (`extensionShutdown.integration.test.ts`): group B lands while C is out, the board file's next read is held, and `shutDownExtension` runs. The run is stopped, shutdown stays pending, and disk still holds the measured board; once the read is released, shutdown resolves with B's tiles on disk and no group `running`. A rename still going out, and one started while the drain waits, are waited for too. Controls: with nothing owed, shutdown settles without touching the boards folder. The order test shows the tabs disposed before either wait, and the drain awaited when the flush rejects.
+- `providerAssembly.test.ts` now checks that `deactivate` hands all four parts to `shutDownExtension` and awaits it; the order itself is the new test's.
+
+### Witnesses against the reviewed code
+
+- F-01: with the two scanner and structure files reverted, 10 unit tests and 4 use-case tests fail (full, image, shortcut and collapsed references); the controls pass.
+- F-02: with the four production files reverted, the integration witness fails your three defect cases and the edit-while-confirming case; its three controls pass.
+- F-03: with the drain left out of the shutdown parts (the old `deactivate`), the held-save and rename witnesses fail; the nothing-owed control and the order test pass.
+
+### Verification
+
+Node 18.20.8 on `83b23457`:
+- typecheck (core, webview, adapter) passes;
+- Jest 591 suites / 8,390 tests / 59 snapshots;
+- lint 0 errors / 1,130 warnings (unchanged);
+- build, with `verify:bundle`, passes, with the three known webpack size warnings;
+- `git diff --check` passes.
+
+No provider calls were made. Native VS Code acceptance (a long-file confirmation with a language change, deactivation with a save held) was not run. The ADRs (Draft Edit's 2026-10-28 amendment; the Lightbox's D12 addendum), the agent guide and the memory bank record the changes.
