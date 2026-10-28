@@ -95,7 +95,11 @@ export function parseWorkshopCapabilityXmlDocument(
   const segment = source.slice(markerIndex).replace(/\s*```\s*$/, '').trim();
   const openingCalls = segment.match(/<\s*prose-minion-tool-call\b/gi) ?? [];
   if (openingCalls.length !== 1) {
-    return { kind: 'invalid', reason: 'mixed-content' };
+    return {
+      kind: 'invalid',
+      reason: 'mixed-content',
+      ...(openingCalls.length > 1 ? { callMarkerCount: openingCalls.length } : {})
+    };
   }
   const closingTag = '</prose-minion-tool-call>';
   const closingIndex = segment.toLowerCase().lastIndexOf(closingTag);

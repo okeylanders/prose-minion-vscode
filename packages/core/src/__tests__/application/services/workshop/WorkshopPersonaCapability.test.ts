@@ -6,6 +6,9 @@ import type { LogSink } from '@/platform';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
+import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import { ConversationManager } from '@orchestration/ConversationManager';
+import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 
 /** These tests exercise other families; session recall has its own suite. */
 const unusedRecall: WorkshopTranscriptRecallPort = {
@@ -131,6 +134,46 @@ describe('WorkshopPersonaCapability', () => {
       events
     });
   };
+
+  it('corrects a bundle of calls before executing the model’s single retry', async () => {
+    const call = '<prose-minion-tool-call name="dictionary.lookup"><word>liminal</word><context>Threshold scene.</context><purpose>Check tone.</purpose></prose-minion-tool-call>';
+    const bundle = `${call} stray text\n${call}\n${call}\n${call}`;
+    const client = {
+      createChatCompletion: jest.fn()
+        .mockResolvedValueOnce({ content: bundle })
+        .mockResolvedValueOnce({ content: call })
+        .mockResolvedValueOnce({ content: 'A threshold word.' })
+    };
+    const engine = new AgentRunEngine(client as never, new ConversationManager(), undefined, log);
+    try {
+      const result = await engine.runInitial({
+        toolName: 'host', systemMessage: 'System', userMessage: 'Help.',
+        policy: AGENT_RUN_POLICIES.workshopHost, capability: capability()
+      });
+
+      const correction = client.createChatCompletion.mock.calls[1][0].at(-1).content;
+      expect(correction).toContain('4 tool-call opening tags');
+      expect(correction).toContain('None of those requests ran.');
+      expect(correction).toContain('wait for its result before requesting another');
+      expect(dictionary.lookupWordStreaming).toHaveBeenCalledTimes(1);
+      expect(client.createChatCompletion).toHaveBeenCalledTimes(3);
+      expect(result.content).toBe('A threshold word.');
+      expect(log.appendLine).toHaveBeenCalledWith(expect.stringContaining('reason=mixed-content callMarkers=4'));
+    } finally {
+      engine.dispose();
+    }
+  });
+
+  it('does not claim that other mixed content contains multiple calls', () => {
+    const adapter = capability();
+    const response = '<prose-minion-tool-call name="transcript.catalog"></prose-minion-tool-call> Done.';
+    const inspection = adapter.inspectRequest(response);
+    expect(inspection).toEqual({ kind: 'invalid', reason: 'mixed-content' });
+    if (inspection.kind !== 'invalid') {
+      throw new Error('Expected a rejected call');
+    }
+    expect(adapter.invalidRequestInstruction(inspection)).not.toContain('opening tags');
+  });
 
   it('runs persona-supplied excerpt text in an open conversation', async () => {
     const result = await openChatCapability().fulfill({

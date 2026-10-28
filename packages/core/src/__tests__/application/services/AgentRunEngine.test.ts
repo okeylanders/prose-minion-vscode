@@ -942,8 +942,8 @@ describe('AgentRunEngine', () => {
     });
 
     expect(client.createStreamingChatCompletion).toHaveBeenCalledTimes(2);
-    expect(result.content).toContain('could not produce a usable final response');
-    expect(visible.join('')).toContain('could not produce a usable final response');
+    expect(result.content).toBe('The assistant could not complete its tool request. Please try again; if the problem continues, try another model.');
+    expect(visible.join('')).toBe(result.content);
   });
 
   it('preserves partial cancellation but never retains an abandoned exchange', async () => {

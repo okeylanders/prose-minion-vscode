@@ -412,7 +412,7 @@ export class AgentRunEngine {
       }
       artifacts.push(...(capability.handleInvalidRequest?.(rejection) ?? []));
       if (correctionTurns >= policy.maxCorrectionTurns) {
-        const fallback = 'The assistant could not produce a usable final response after its capability request was rejected. Please try again.';
+        const fallback = 'The assistant could not complete its tool request. Please try again; if the problem continues, try another model.';
         this.outputChannel?.appendLine(
           `[AgentRunEngine] ${policy.id} exhausted ${policy.maxCorrectionTurns} correction turn(s).`
         );
@@ -1016,9 +1016,12 @@ export class AgentRunEngine {
     const field = 'field' in inspection && typeof inspection.field === 'string'
       ? ` field=${inspection.field}`
       : '';
+    const markers = 'callMarkerCount' in inspection && typeof inspection.callMarkerCount === 'number'
+      ? ` callMarkers=${inspection.callMarkerCount}`
+      : '';
     this.outputChannel?.appendLine(
       `[AgentRunEngine] Rejected ${capability.catalog} capability request${attribution}:` +
-      `${operation}${field} reason=${inspection.reason}.`
+      `${operation}${field} reason=${inspection.reason}${markers}.`
     );
     // The full dump may quote the writer's manuscript, and Output channels
     // get pasted into public bug reports — so it is opt-in, not always-on.
