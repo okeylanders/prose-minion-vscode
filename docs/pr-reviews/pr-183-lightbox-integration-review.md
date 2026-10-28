@@ -260,3 +260,48 @@ Node 18.20.8 on `e1ba8b67`:
 - `git diff --check` passes.
 
 No provider calls were made, and native deactivation was not run. The Lightbox ADR's D12 addendum, the agent guide and the memory bank record the boundary.
+
+## Final independent correction re-review — `21aa11bb` (2026-10-28)
+
+**Reviewed head:** `21aa11bbc1e63f12df7841876a348517f336f9d5`, including implementation `e1ba8b672` and the author's response; correction delta from `550077ad` is 11 files (+237 / −44). Base remains `d1f25db2a93ee8e6831c22937b728b98b0a2c06e`.
+
+**Current disposition: F-01, F-02 and F-03 are resolved. No new blocking finding was established in the correction delta.** This supersedes the previous open-finding ledger; the historical findings and both author responses above are preserved. F-01/F-02 have no implementation changes in this round and retain their independently verified resolutions. This is a report-only engineering assessment, not a formal GitHub approval or authorization to merge.
+
+### F-03 resolution: a terminal source boundary, then owed writes
+
+`LightboxBoardLibrary.shutDown()` now synchronously calls the service's `endSourceRequests()` before its first await, then waits for its owed writes (`LightboxBoardLibrary.ts:182–186`). `LightboxSourceRequests.end()` clears the current ticket and permanently seals that service instance; a later `begin()` cannot install a current ticket. `buildBoard` checks ownership both before and after asynchronous measurement, saved adoption checks before publishing, and refusals use the same guard. No await separates the final ownership check from adoption and the first-save listener.
+
+The exact production `deactivate`/shutdown path still disposes both panels first, queues saves for landed partial runs, starts the terminal Lightbox shutdown, and awaits it even if Workshop flush fails. Only extension deactivation seals source requests; ordinary tab disposal does not. A native launcher also checks its ticket before reopening or revealing a panel.
+
+**The selected policy is explicit:** source work that has not adopted its board when deactivation starts is cancelled at adoption, not awaited and newly saved. Both prior late-read witnesses now produce no adoption, outcome or write after source release, with Workshop absent or with its flush pending. This does not discard the already-landed paid results in the tested paths: the original held partial-run save still blocks shutdown, commits group B, and restores correctly in a fresh host. Ordinary tab close/reopen still allows accepted source work to land in the replacement tab.
+
+### Independent counterexamples and controls
+
+Two coordinated read-only lanes, plus the aggregate gate, checked the correction rather than relying on the author's pass claims:
+
+- **Persistence: 20 external probes passed.** Covers both original late-read timing variants; a hold inside real measurement after the first ticket check; changed-text reread; saved-board open, restore and outside-board open; the original paid-run wait/restore; first save already owed; rename, Spark and delete; additional writes during the drain; rejection handling; independent service instances sharing workspace files; and retained provenance/carry/import controls.
+- **Host/source lifecycle: 10 external probes passed.** Covers a held native launcher without reopening its disposed tab, requests seeded after the seal, late file-picker success/error, held project-catalog success/error, late read refusal, repeated terminal calls, identity ownership, a fresh independent session, and ordinary close/reopen for native launch and picker.
+- **Negative controls are discriminating.** Making only `endSourceRequests` a no-op causes both prior late-read desired guards to fail; the native-launch guard also fails, while ordinary-close controls still pass and confirm the seal is not called. These are intentional mutation-control failures, not failures at the corrected head. No production file was changed for them.
+- **No ownership expansion:** the seal belongs to the service instance, not the panel or workspace. Shutting down one host does not prevent a second host from restoring, renaming or measuring/saving another source. The extracted ticket module preserves the public type export and the architecture/size boundaries.
+
+Evidence and exact external harnesses are retained in `../pr183-final-rereview-evidence/{persistence,host}/`, including separate lane ledgers and mutation-control logs. Native UI/extension activation is not simulated by these tests: the persistence lane uses the extracted production deactivation body with real handlers/service/library/store, while the host lane uses real launcher/provider/service ownership over native transport doubles.
+
+### Final verification
+
+Node **18.20.8**, npm **10.8.2**, unchanged dependency lockfile, no installs or tracked source/test modifications. One local aggregate attempt was interrupted by an executor-session disconnect before writing a terminal result; its 439 passing-suite lines are retained separately and are **not** counted as a completed gate. A fresh full run completed:
+
+| Check | Result at `21aa11bb` |
+| --- | --- |
+| Core, webview and adapter typecheck | Passed |
+| Full typed Jest (`--runInBand --no-cache`) | **591 suites / 8,394 tests / 59 snapshots passed**, zero failed/pending; 645.298 s |
+| Repository lint | Passed: **0 errors / 1,130 warnings** |
+| Production bundles and `verify:bundle` | Passed; the existing three webpack size/performance warnings remain |
+| Correction delta `git diff --check` | Passed |
+| Focused persistence regressions | 8 suites / 93 tests passed |
+| Focused host/source regressions | 6 suites / 114 tests passed |
+| Exact-head PR CI | [40730098498](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40730098498): terminal success, every verification step passed |
+| Exact-head push CI | [40730078905](https://github.com/okeylanders/prose-minion-vscode/actions/runs/40730078905): terminal success, every verification step passed |
+
+Focused counts overlap the full suite. The worktree remained clean after the checks. Report-only publication is authorized; no implementation fix, paid inference, formal approval, merge, auto-merge or release was performed by this review.
+
+**Integration assessment:** the three concrete aggregate-review findings are closed on this evidence. Native VS Code shutdown/remote-filesystem acceptance, actual Refactor Preview interaction and live-provider/editorial quality remain unrun. The explicitly accepted #172 preview-lifetime tradeoff and the separate previously documented model-drift, usage and persistence limitations in the original report are unchanged, not newly accepted or claimed fixed. This report does not broaden the result into a claim that every host state/memento write is awaited or every possible regression is excluded.
