@@ -175,3 +175,12 @@ The assembler tests raw `result.content.trim()` before `normalizeBlockContent`. 
 Determine inclusion and attribution from the normalized content actually retained, and ensure a header-only result does not acquire a provider stamp. Add regression coverage for a removed-only block, a removed block beside retained output from a different model, and normal retained output. This is distinct from the known host-fallback fix: the provider did return text, but the assembler discarded it before constructing the entry.
 
 **Independent checks so far:** the earlier seven real-client boundary probes now pass; five focused correction suites pass **60 tests**. The late-model probe has one passing `[DONE]` control and two expected failures (EOF and provider-error). Five Dictionary/adoption/codec suites pass **107 tests**; separate scratch probes reproduce F-04. Full local suite and native/live-provider testing have not been rerun in this correction review.
+
+
+### N-02: Reconcile the full-entry ordering rule with D7
+
+[`DictionaryRunModel.ts:33–55`](https://github.com/okeylanders/prose-minion-vscode/blob/edf98ce40c7014cea05520aeb91350cbb8e46c95/packages/core/src/infrastructure/api/services/dictionary/DictionaryRunModel.ts#L33-L55) intentionally takes the requested model from the first **included block in display order** and collects served IDs in that order. The slice doc discloses the first-included-block rule; D7 instead describes the selection at request start and served models across requests in order. Parallel block-prompt loads can resolve out of order, and selection can change while they run.
+
+An independent full-service probe held the first displayed block's prompt, let a later block dispatch on model A, switched the selection to B, then released the first block. Request order was A then B; the entry stamp says requested B and served `[B, A]`. That is consistent with the documented block-order implementation but not a chronological reading of D7. Please decide which meaning should govern a multi-call Dictionary entry, align the ADR and implementation or explicitly amend the decision, and pin the intended order. This is a design reconciliation note rather than another undisclosed implementation finding.
+
+Further independent verification on `edf98ce`: **8 adjacent suites / 253 tests** pass, full typecheck passes, and the whitespace check passes. The report-only commit `7959ac57` changes no production or test source. The two new P2 findings above remain open.
