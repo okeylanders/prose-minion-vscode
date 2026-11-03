@@ -107,6 +107,10 @@ interface TurnResult {
   /** Completion tokens the provider reported as reasoning; absent when unreported. */
   readonly reasoningTokens?: number;
   readonly observation?: InferenceRequestObservation;
+  /** The model the provider's response named; absent when it named none (D7). */
+  readonly servedModelId?: string;
+  /** The engine wrote this turn's content in place of an unusable reply. */
+  readonly hostFallback?: true;
   readonly cancelled: boolean;
   /** Candidate XML tool calls are withheld from visible streaming until validated. */
   readonly exactRequest?: unknown;
@@ -381,6 +385,14 @@ export class AgentRunEngine {
     const requestedModelId = this.requestModel(runOptions, provider);
     const servedModelIds: string[] = [];
 
+    // Only a model the provider named counts as served (Astra F-01): the
+    // observation's modelId falls back to the requested model, and it exists
+    // only when usage was reported.
+    const recordServedModel = (turn: TurnResult): void => {
+      if (turn.servedModelId && !servedModelIds.includes(turn.servedModelId)) {
+        servedModelIds.push(turn.servedModelId);
+      }
+    };
     const recordObservation = (observation?: InferenceRequestObservation): void => {
       if (!observation) {
         // Missing final-call telemetry cannot renew an earlier call's cache.
@@ -388,9 +400,6 @@ export class AgentRunEngine {
           latestObservation = { ...latestObservation, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
         }
         return;
-      }
-      if (observation.modelId && !servedModelIds.includes(observation.modelId)) {
-        servedModelIds.push(observation.modelId);
       }
       latestObservation = observation;
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
@@ -406,6 +415,7 @@ export class AgentRunEngine {
         { role: 'user', content: instruction }
       );
       const next = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
+      recordServedModel(next);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
       runCitations = this.mergeUrlCitations(runCitations, next.citations);
@@ -424,7 +434,7 @@ export class AgentRunEngine {
           `[AgentRunEngine] ${policy.id} exhausted ${policy.maxCorrectionTurns} correction turn(s).`
         );
         runOptions.onToken?.(fallback);
-        return { ...last, content: fallback, visibleContent: fallback, invalidRequest: undefined };
+        return { ...last, content: fallback, visibleContent: fallback, invalidRequest: undefined, hostFallback: true };
       }
       correctionTurns += 1;
       this.outputChannel?.appendLine(
@@ -439,6 +449,7 @@ export class AgentRunEngine {
 
     try {
       let last = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
+      recordServedModel(last);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
       runCitations = this.mergeUrlCitations(runCitations, last.citations);
@@ -527,7 +538,8 @@ export class AgentRunEngine {
             content: fallback,
             visibleContent: fallback,
             exactRequest: undefined,
-            invalidRequest: undefined
+            invalidRequest: undefined,
+            hostFallback: true
           };
         }
       }
@@ -541,6 +553,7 @@ export class AgentRunEngine {
       const cancelled = last.cancelled || this.isAborted(runOptions.signal);
       if (!visibleContent && !cancelled) {
         visibleContent = 'The assistant returned no usable final response. Please try again.';
+        last = { ...last, hostFallback: true };
         runOptions.onToken?.(visibleContent);
         this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
@@ -588,6 +601,9 @@ export class AgentRunEngine {
         providerResponseId: last.providerResponseId,
         modelId: latestObservation?.modelId,
         ...(requestedModelId ? { models: { requestedModelId, servedModelIds: [...servedModelIds] } } : {}),
+        // Who wrote the final reply (Astra F-02): only a provider reply may
+        // carry a model stamp, decided here rather than from its text.
+        replySource: last.hostFallback ? 'host-fallback' : 'provider',
         citations: runCitations,
         cancelled
       };
@@ -817,6 +833,7 @@ export class AgentRunEngine {
           usage: response.usage,
           ...(response.reasoningTokens !== undefined ? { reasoningTokens: response.reasoningTokens } : {}),
           observation: response.observation,
+          ...(response.servedModelId ? { servedModelId: response.servedModelId } : {}),
           citations: response.citations,
           cancelled: this.isAborted(options.signal),
           exactRequest: inspection?.kind === 'request' ? inspection.request : undefined,
@@ -835,6 +852,7 @@ export class AgentRunEngine {
     let reasoningTokens: number | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let servedModelId: string | undefined;
     let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
     let cancelled = false;
@@ -843,6 +861,7 @@ export class AgentRunEngine {
 
     try {
       for await (const chunk of provider.createStreamingChatCompletion(messages, completionOptions)) {
+        servedModelId = chunk.servedModelId ?? servedModelId;
         if (chunk.done) {
           providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
@@ -926,6 +945,7 @@ export class AgentRunEngine {
       usage,
       ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
       observation,
+      ...(servedModelId ? { servedModelId } : {}),
       citations,
       cancelled,
       exactRequest,

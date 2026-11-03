@@ -50,6 +50,9 @@ const observed = (modelId: string): InferenceRequestObservation => ({
   measuredAt: 0
 });
 
+/** A response that named its model, with usage reported. */
+const served = (modelId: string) => ({ servedModelId: modelId, observation: observed(modelId) });
+
 describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
   let model: string;
   let client: { createChatCompletion: jest.Mock; createStreamingChatCompletion: jest.Mock; getModel: () => string; setModel: (id: string) => void };
@@ -70,10 +73,10 @@ describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
 
   it('collects distinct served ids in first-use order across capability rounds', async () => {
     client.createChatCompletion
-      .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observed('vendor/model-a-0601') })
-      .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observed('vendor/fallback') })
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST, ...served('vendor/model-a-0601') })
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST, ...served('vendor/fallback') })
       .mockResolvedValueOnce({ content: GUIDE_REQUEST })
-      .mockResolvedValueOnce({ content: 'Final reply.', observation: observed('vendor/model-a-0601') });
+      .mockResolvedValueOnce({ content: 'Final reply.', ...served('vendor/model-a-0601') });
 
     const result = await engine.runInitial({
       toolName: 'host',
@@ -90,7 +93,7 @@ describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
     });
   });
 
-  it('returns no served ids when no request reported an observation', async () => {
+  it('returns no served ids when no response named a model', async () => {
     client.createChatCompletion.mockResolvedValue({ content: 'Reply.' });
 
     const result = await engine.runInitial({
@@ -105,8 +108,8 @@ describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
 
   it('keeps the requested model a selection change during the run would relabel', async () => {
     client.createChatCompletion
-      .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observed('vendor/model-a') })
-      .mockResolvedValueOnce({ content: 'Final reply.', observation: observed('vendor/model-b') });
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST, ...served('vendor/model-a') })
+      .mockResolvedValueOnce({ content: 'Final reply.', ...served('vendor/model-b') });
 
     const result = await engine.runInitial({
       toolName: 'host',
@@ -125,7 +128,7 @@ describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
   });
 
   it('records the model a continuation requested at its own start', async () => {
-    client.createChatCompletion.mockResolvedValue({ content: 'Reply.', observation: observed('vendor/model-a') });
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply.', ...served('vendor/model-a') });
     const initial = await engine.runInitial({
       toolName: 'host',
       systemMessage: 'System',
@@ -133,7 +136,7 @@ describe('AgentRunEngine model provenance (Workshop Wayfinding D7)', () => {
       policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
     });
     engine.setModel('vendor/model-b');
-    client.createChatCompletion.mockResolvedValue({ content: 'Reply.', observation: observed('vendor/model-b') });
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply.', ...served('vendor/model-b') });
 
     const next = await engine.continueConversation({
       conversationId: initial.conversationId!,

@@ -182,6 +182,12 @@ export class OpenRouterClient {
     /** Completion tokens the provider reported as reasoning; absent when unreported. */
     reasoningTokens?: number;
     observation?: InferenceRequestObservation;
+    /**
+     * The model the provider's response named, absent when it named none.
+     * Never the requested model: `observation.modelId` keeps that fallback
+     * for context telemetry, and a model stamp must not (ADR 2026-11-03 D7).
+     */
+    servedModelId?: string;
     id?: string;
     citations?: UrlCitation[];
   }> {
@@ -214,8 +220,10 @@ export class OpenRouterClient {
 
     const usage = this.toTokenUsage(data.usage);
     const reasoningTokens = toReasoningTokens(data.usage);
+    const servedModelId = reportedModelId(data.model);
     return {
       id: data.id,
+      ...(servedModelId ? { servedModelId } : {}),
       content: this.toAssistantContent(data.choices[0].message.content),
       finishReason: data.choices[0]?.finish_reason,
       usage,
@@ -263,6 +271,8 @@ export class OpenRouterClient {
     reasoningTokens?: number;
     finishReason?: string;
     observation?: InferenceRequestObservation;
+    /** As for `createChatCompletion`: on content and terminal chunks, once a frame named it. */
+    servedModelId?: string;
     citations?: UrlCitation[];
   }> {
     const requestedModel = options?.model ?? this.model;
@@ -296,6 +306,7 @@ export class OpenRouterClient {
       let usage: TokenUsage | undefined;
       let reasoningTokens: number | undefined;
       let responseModel = requestedModel;
+      let servedModelId: string | undefined;
       // Tests and non-browser host adapters may provide a minimal fetch shape
       // without Headers; stream frames still carry the canonical response id.
       let responseId = response.headers?.get('X-Generation-Id') ?? undefined;
@@ -309,6 +320,7 @@ export class OpenRouterClient {
         usage,
         ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
         finishReason,
+        ...(servedModelId ? { servedModelId } : {}),
         observation: usage ? this.toObservation(
           responseModel,
           requestedMaxOutputTokens,
@@ -359,7 +371,11 @@ export class OpenRouterClient {
             }
             if (chunkUsage) usage = chunkUsage;
             reasoningTokens = toReasoningTokens(parsed.usage) ?? reasoningTokens;
-            if (typeof parsed.model === 'string' && parsed.model) responseModel = parsed.model;
+            const chunkModel = reportedModelId(parsed.model);
+            if (chunkModel) {
+              responseModel = chunkModel;
+              servedModelId = chunkModel;
+            }
             if (parsed.openrouter_metadata !== undefined) routerMetadata = parsed.openrouter_metadata;
             const chunkCitations = this.toUrlCitations(
               delta?.annotations ?? parsed.choices?.[0]?.message?.annotations
@@ -367,7 +383,9 @@ export class OpenRouterClient {
             if (chunkCitations?.length) citations = this.mergeUrlCitations(citations, chunkCitations);
 
             if (token) {
-              yield { token, done: false };
+              // The model rides with the content too, so a stream the provider
+              // breaks off after content still says who wrote it (D7).
+              yield { token, done: false, ...(servedModelId ? { servedModelId } : {}) };
             }
 
           } catch (error) {
@@ -601,4 +619,9 @@ export class OpenRouterClient {
       measuredAt: Date.now()
     };
   }
+}
+
+/** A response's `model` only when the provider actually named one. */
+function reportedModelId(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }

@@ -1,7 +1,8 @@
 /**
  * A persona-run analysis is a provider run, so its report turn carries the
- * run's model stamp (ADR 2026-11-03 D7). Capability turns no provider made
- * carry none, and the stamp never reaches the evidence the persona reads.
+ * run's model stamp (ADR 2026-11-03 D7). Capability turns that are not D7
+ * replies carry none, a host-written stand-in carries none (Astra F-02), and
+ * the stamp never reaches the evidence the persona reads.
  */
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -33,7 +34,7 @@ const RUN_MODEL = {
   servedModelIds: ['vendor/served-for-analysis']
 };
 
-describe('persona-run analysis model stamps', () => {
+describe('persona capability model stamps', () => {
   let session: WorkshopSessionService;
   let analyzeWritingTools: jest.Mock<Promise<AnalysisResult>>;
   let dictionary: jest.Mocked<DictionaryService>;
@@ -47,7 +48,8 @@ describe('persona-run analysis model stamps', () => {
       toolName: 'writing_tools_continuity',
       content: 'Verbatim continuity report.',
       timestamp: new Date(0),
-      model: RUN_MODEL
+      model: RUN_MODEL,
+      replySource: 'provider'
     });
     dictionary = {
       lookupWordStreaming: jest.fn().mockResolvedValue({
@@ -101,7 +103,8 @@ describe('persona-run analysis model stamps', () => {
       toolName: 'writing_tools_continuity',
       content: 'Error: provider unavailable',
       timestamp: new Date(0),
-      model: RUN_MODEL
+      model: RUN_MODEL,
+      replySource: 'provider'
     });
 
     await capability().fulfill(ANALYSIS_REQUEST);
@@ -116,6 +119,20 @@ describe('persona-run analysis model stamps', () => {
       toolName: 'writing_tools_continuity',
       content: 'Verbatim continuity report.',
       timestamp: new Date(0)
+    });
+
+    await capability().fulfill(ANALYSIS_REQUEST);
+
+    expect(turnsWithArtifact('tool_report')[0].model).toBeUndefined();
+  });
+
+  it('records no stamp for an analysis whose reply the engine wrote', async () => {
+    analyzeWritingTools.mockResolvedValue({
+      toolName: 'writing_tools_continuity',
+      content: 'The assistant returned no usable final response. Please try again.',
+      timestamp: new Date(0),
+      model: RUN_MODEL,
+      replySource: 'host-fallback'
     });
 
     await capability().fulfill(ANALYSIS_REQUEST);

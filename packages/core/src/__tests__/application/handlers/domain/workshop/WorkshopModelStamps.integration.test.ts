@@ -48,7 +48,8 @@ const engineReply = (content: string, conversationId: string, requestedModelId: 
   usage: { promptTokens: 5, completionTokens: 7, totalTokens: 12 },
   finishReason: 'stop',
   conversationId,
-  models: { requestedModelId, servedModelIds: [`${requestedModelId}-served`] }
+  models: { requestedModelId, servedModelIds: [`${requestedModelId}-served`] },
+  replySource: 'provider' as const
 });
 
 const stampFor = (requestedModelId: string) => ({
@@ -59,7 +60,7 @@ const stampFor = (requestedModelId: string) => ({
 
 describe('Workshop model stamps — every provider-made commit path', () => {
   const build = async () => {
-    const continueOutcome: { kind: 'reply' | 'throw' | 'no-key' } = { kind: 'reply' };
+    const continueOutcome: { kind: 'reply' | 'throw' | 'no-key' | 'host-fallback' } = { kind: 'reply' };
     const engine = {
       runInitial: jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => {
         if (toolName === 'prose-assistant') return engineReply('Tool report.', 'tool-conv', 'vendor/tool-report');
@@ -72,6 +73,13 @@ describe('Workshop model stamps — every provider-made commit path', () => {
           return engineReply(`${API_KEY_NOT_CONFIGURED_HEADING}
 
 Add a key.`, conversationId, 'vendor/never');
+        }
+        if (continueOutcome.kind === 'host-fallback') {
+          // The engine's stand-in for an unusable reply (Astra F-02).
+          return {
+            ...engineReply('The assistant returned no usable final response. Please try again.', conversationId, 'vendor/never'),
+            replySource: 'host-fallback' as const
+          };
         }
         return engineReply(`Reply on ${conversationId}.`, conversationId, `vendor/${conversationId}`);
       }),
@@ -245,6 +253,19 @@ Add a key.`, conversationId, 'vendor/never');
 
     const after = session.getSnapshot().turns.filter((turn) => turn.role === 'assistant');
     expect(after).toEqual(before);
+    expect(JSON.stringify(session.exportCommittedState())).not.toContain('vendor/never');
+  });
+
+  it('commits the engine\'s stand-in for an unusable reply without a stamp (Astra F-02)', async () => {
+    const { session, route, continueOutcome } = await build();
+    await route(MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' });
+
+    continueOutcome.kind = 'host-fallback';
+    await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'And the lantern?' });
+
+    const reply = lastAssistantTurn(session);
+    expect(reply.content).toContain('no usable final response');
+    expect(reply.model).toBeUndefined();
     expect(JSON.stringify(session.exportCommittedState())).not.toContain('vendor/never');
   });
 

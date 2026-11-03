@@ -389,6 +389,7 @@ export class AssistantToolService {
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
           model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -465,6 +466,7 @@ export class AssistantToolService {
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
           model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -538,6 +540,7 @@ export class AssistantToolService {
           finishReason: executionResult.finishReason,
           conversationId: executionResult.conversationId,
           model: assistantRunModel(executionResult),
+          replySource: executionResult.replySource,
           requestedResources: executionResult.requestedResources
         }
       );
@@ -612,6 +615,7 @@ export class AssistantToolService {
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );
@@ -678,6 +682,7 @@ export class AssistantToolService {
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );
@@ -735,6 +740,7 @@ export class AssistantToolService {
         finishReason: executionResult.finishReason,
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
+        replySource: executionResult.replySource,
         citations: executionResult.citations
       }
     );

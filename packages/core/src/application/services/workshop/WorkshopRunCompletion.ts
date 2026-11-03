@@ -308,7 +308,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource
       ? widgetRecommendation.recommendation
       : undefined,
-    workshopTurnModelOf(result.model)
+    workshopTurnModelOf(result)
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

@@ -80,6 +80,13 @@ export interface InferenceRequestObservation {
  * started; `servedModelIds` are the distinct provider-reported models across
  * the run's requests, in first-use order, and empty when none were reported.
  */
+/**
+ * Who wrote a run's final reply: the provider, or the host in its place
+ * when the provider's reply was unusable. Only a provider reply may be
+ * attributed to a model (Workshop Wayfinding D7).
+ */
+export type InferenceReplySource = 'provider' | 'host-fallback';
+
 export interface InferenceRunModels {
   requestedModelId: string;
   servedModelIds: string[];

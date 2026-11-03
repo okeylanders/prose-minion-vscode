@@ -11,7 +11,7 @@
  */
 
 import type { AnalysisRunModel } from '@/domain/models/AnalysisResult';
-import { isModelScope, WorkshopTurnModel } from '@messages';
+import { InferenceReplySource, isModelScope, WorkshopTurnModel } from '@messages';
 import {
   arrayOf,
   exactObject,
@@ -19,13 +19,18 @@ import {
 } from '@/application/services/workshop/persistedValidation';
 
 /**
- * The stamp for a turn a run produced, or undefined when the run carried no
+ * The stamp for a turn a run produced. Undefined when the run carried no
  * models (an unconfigured key, a caught error, a capability that made no
- * provider call). Copied field by field, so the turn never shares arrays
- * with the run result.
+ * provider call), or when its reply is text the host wrote in place of an
+ * unusable provider reply (Astra F-02): only `replySource: 'provider'`
+ * qualifies, and an unknown source does not. Copied field by field, so the
+ * turn never shares arrays with the run result.
  */
-export function workshopTurnModelOf(model: AnalysisRunModel | undefined): WorkshopTurnModel | undefined {
-  if (!model || model.requestedModelId.length === 0) {
+export function workshopTurnModelOf(
+  run: { model?: AnalysisRunModel; replySource?: InferenceReplySource }
+): WorkshopTurnModel | undefined {
+  const model = run.model;
+  if (run.replySource !== 'provider' || !model || model.requestedModelId.length === 0) {
     return undefined;
   }
   return cloneTurnModel(model);

@@ -33,7 +33,7 @@ import {
 } from '@orchestration/AgentRunContracts';
 import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
-import type { AnalysisRunModel } from '@/domain/models/AnalysisResult';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
@@ -42,6 +42,7 @@ import {
   WorkshopExcerpt,
   WorkshopPersonaId,
   WorkshopTurn,
+  WorkshopTurnModel,
   workshopExcerptTitle
 } from '@messages';
 import {
@@ -184,7 +185,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
     // Only a persona-run analysis is a provider run whose turn is stamped
     // (ADR 2026-11-03 D7); the stamp rides beside the result, never in it,
     // so it cannot reach the evidence the persona reads.
-    let model: AnalysisRunModel | undefined;
+    let model: WorkshopTurnModel | undefined;
     try {
       result = await this.dispatch(request, window, (runModel) => { model = runModel; });
     } catch (error) {
@@ -500,7 +501,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async dispatch(
     request: WorkshopCapabilityRequest,
     window: CapabilityContextWindow | undefined,
-    onAnalysisModel: (model: AnalysisRunModel | undefined) => void
+    onAnalysisModel: (model: WorkshopTurnModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
@@ -609,7 +610,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>,
     inputs: WorkshopPersonaAnalysisRunInputs,
-    onModel: (model: AnalysisRunModel | undefined) => void
+    onModel: (model: WorkshopTurnModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     const toolLabel = workshopToolLabel(request.toolId);
     const personaLabel = this.speakerLabel();
@@ -649,7 +650,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.analysisSidePass.discardConversation(analysis.conversationId);
     }
     if (!failed) {
-      onModel(analysis.model);
+      onModel(workshopTurnModelOf(analysis));
       const received = chunkCount > 0
         ? `${chunkCount} ${chunkCount === 1 ? 'chunk' : 'chunks'} received`
         : 'Report received';
@@ -680,7 +681,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
   private recordCompletedTurn(
     request: WorkshopCapabilityRequest,
     result: WorkshopCapabilityResult,
-    model: AnalysisRunModel | undefined
+    model: WorkshopTurnModel | undefined
   ): WorkshopTurn | undefined {
     const details: WorkshopCapabilityArtifactDetails = {
       operation: request.capability,
