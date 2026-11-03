@@ -2,8 +2,8 @@
  * WorkshopApp — the Workshop editor-tab React root (ADR 2026-07-03;
  * Sprint 2 session spine, Sprint 3 multi-turn).
  *
- * Session spine: the left rail's Material tab pins an excerpt (host-side, via
- * WORKSHOP_SET_EXCERPT), the tools modal fires WORKSHOP_RUN_TOOL, and the
+ * Session spine: the left rail pins an excerpt (host-side, via
+ * WORKSHOP_SET_EXCERPT), the tool palette fires WORKSHOP_RUN_TOOL, and the
  * thread streams the run under `domain: 'workshop'` before the completed
  * turn pair lands via WORKSHOP_TURN. All session truth lives in
  * WorkshopSessionService on the host — this component renders snapshots, so
@@ -41,7 +41,8 @@ import {
 import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
-import { WorkshopRail } from './components/workshop/WorkshopRail';
+import { ExcerptPanel } from './components/workshop/ExcerptPanel';
+import { ContextPanel } from './components/workshop/ContextPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -90,8 +91,10 @@ import {
 import {
   WorkshopTextSheet
 } from './components/workshop/WorkshopTextSheet';
+import { WORKSHOP_TOOLS_GATED_REASON } from './components/workshop/WorkshopComposer';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopToast, WorkshopToastState } from './components/workshop/WorkshopToast';
+import { WorkshopTodoList } from './components/workshop/WorkshopTodoList';
 import { WORKSHOP_TOOL_ICONS } from './components/workshop/workshopToolIcons';
 import { WORKSHOP_PERSONA_FOCUS_ICONS } from './components/workshop/workshopPersonaIcons';
 import {
@@ -112,11 +115,7 @@ import {
 import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
 import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
-import { usePersistedState, usePersistence } from './hooks/usePersistence';
-import {
-  useWorkshopRailTabs,
-  WorkshopRailTabsPersistence
-} from './hooks/domain/workshop/controllers/useWorkshopRailTabs';
+import { usePersistence } from './hooks/usePersistence';
 import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
 import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
 import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
@@ -183,9 +182,29 @@ export const WORKSHOP_TOOLS: readonly WorkshopTool[] = WORKSHOP_TOOL_CATALOG.map
 );
 
 /**
- * The empty thread's quick starts, per the approved Direction B welcome
- * (pm-direction-b.js). Every tool stays reachable from the composer's tool
- * button; the rail no longer lists tools (ADR 2026-11-03 D1).
+ * The rail's six tools per the APPROVED Direction B prototype — which
+ * deliberately overrides the catalog order (pm-direction-b.js `railTools`:
+ * dialogue, prose, gestures, choreography, cliche, showtell), NOT a naive
+ * first-six slice of the reference comp (PR #66 review, Bria). The remaining
+ * eight arrive with the Sprint 4 tools modal.
+ */
+const RAIL_TOOL_IDS: readonly WorkshopToolId[] = [
+  'dialogue',
+  'prose',
+  'gestures',
+  'choreography',
+  'cliche',
+  'show-and-tell',
+];
+
+const RAIL_TOOLS: readonly WorkshopTool[] = RAIL_TOOL_IDS.flatMap((id) => {
+  const tool = WORKSHOP_TOOLS.find((entry) => entry.id === id);
+  return tool ? [tool] : [];
+});
+
+/**
+ * Matches the approved Direction B welcome quick starts. Kept named beside the
+ * rail override so prototype provenance is visible at both repeated lists.
  */
 const EMPTY_STATE_TOOL_IDS: readonly WorkshopToolId[] = [
   'dialogue',
@@ -206,14 +225,6 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler, owned by the shared full-tab chrome (Lightbox Slice 1).
   const workshop = useWorkshopRoom();
-  // The rail's tab is this viewer's preference (webview state, never the
-  // session file); the controller re-baselines its badge on each new room.
-  const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
-  const railTabs = useWorkshopRailTabs({
-    todos: workshop.todos,
-    roomKey: workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending',
-    initialTab: persistedRailTab?.workshopRailTab
-  });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
@@ -415,7 +426,6 @@ export const WorkshopApp: React.FC = () => {
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...chrome.persistedState,
-    ...railTabs.persistedState,
   });
 
   // Initial data requests: the session is requested inside useWorkshopRoom,
@@ -471,10 +481,11 @@ export const WorkshopApp: React.FC = () => {
   const roomMutationLocked =
     sessionLoading || workshop.isRunning || workshop.wizardRunning ||
     workshopSessions.sessionActionPending !== undefined;
-  // Sprint 13A §9: the empty thread's quick starts run against the excerpt,
-  // so they need one. The composer's tool button never does: without an
-  // excerpt it asks the host to run the tool. A busy room disables both.
+  // Sprint 13A §9: gating has two independent reasons, and the UI must say
+  // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
+  // Busy room → a temporary `disabled`, exactly as before.
   const hasExcerpt = !!workshop.excerpt;
+  const toolsGatedByExcerpt = !hasExcerpt;
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
@@ -672,6 +683,15 @@ export const WorkshopApp: React.FC = () => {
   const continueWithExcerpt = React.useCallback(
     () => workshop.setSessionScope('excerpt'),
     [workshop.setSessionScope]
+  );
+
+  const announceGate = React.useCallback(
+    (reason: string) => showToast({ message: reason, icon: 'doc' }),
+    [showToast]
+  );
+  const announceToolGate = React.useCallback(
+    () => announceGate(WORKSHOP_TOOLS_GATED_REASON),
+    [announceGate]
   );
 
   // Open-chat starters and rolled-back transient sends use the room hook's
@@ -1020,42 +1040,94 @@ export const WorkshopApp: React.FC = () => {
   );
 
   const railContent = (
-    <WorkshopRail
-      tabs={railTabs}
-      excerpt={{
-        excerpt: workshop.excerpt,
-        shelvedExcerpt: workshop.shelvedExcerpt,
-        scope: workshop.scope,
-        hostLabel: activePersona.label,
-        isRunning: roomMutationLocked,
-        roomHasMemory: workshop.roomHasMemory,
-        onOpenPasteSheet: openPasteSheet,
-        onChooseFile: openExcerptSelector,
-        onRereadFile: workshop.rereadExcerpt,
-        onContinueWithExcerpt: continueWithExcerpt,
-        onRepinExcerpt: workshop.repinExcerpt,
-        onSetAside: startOpenConversation,
-        onStartOpenConversation: startOpenConversation
-      }}
-      context={{
-        attachments: workshop.contextAttachments,
-        pendingDelivery: workshop.contextPending,
-        isRunning: roomMutationLocked,
-        onAddText: openAddTextSheet,
-        onAddFile: openAttachSelector,
-        onRefreshFiles: workshop.refreshContextFiles,
-        onOpenAttachment: openAttachmentSheet,
-        onRemove: workshop.removeContextAttachment,
-        wizardRunning: workshop.wizardRunning,
-        onRunWizard: workshop.runContextWizard,
-        onCancelWizard: workshop.cancelContextWizard
-      }}
-      todos={{
-        todos: workshop.todos,
-        onAction: workshop.todoAction,
-        onShowSource: showTodoSource
-      }}
-    />
+    <>
+      <ExcerptPanel
+        excerpt={workshop.excerpt}
+        shelvedExcerpt={workshop.shelvedExcerpt}
+        scope={workshop.scope}
+        hostLabel={activePersona.label}
+        isRunning={roomMutationLocked}
+        roomHasMemory={workshop.roomHasMemory}
+        onOpenPasteSheet={openPasteSheet}
+        onChooseFile={openExcerptSelector}
+        onRereadFile={workshop.rereadExcerpt}
+        onContinueWithExcerpt={continueWithExcerpt}
+        onRepinExcerpt={workshop.repinExcerpt}
+        onSetAside={startOpenConversation}
+        onStartOpenConversation={startOpenConversation}
+      />
+
+      <ContextPanel
+        attachments={workshop.contextAttachments}
+        pendingDelivery={workshop.contextPending}
+        isRunning={roomMutationLocked}
+        onAddText={openAddTextSheet}
+        onAddFile={openAttachSelector}
+        onRefreshFiles={workshop.refreshContextFiles}
+        onOpenAttachment={openAttachmentSheet}
+        onRemove={workshop.removeContextAttachment}
+        wizardRunning={workshop.wizardRunning}
+        onRunWizard={workshop.runContextWizard}
+        onCancelWizard={workshop.cancelContextWizard}
+      />
+
+      {/* §9: gating only — no tool is redesigned. While no excerpt
+          exists, each row keeps its place and gains a NEEDS EXCERPT
+          badge, `aria-disabled` (focusable, so the reason is reachable),
+          a tooltip, and a toast on activation. */}
+      <div className="pm-ws-block pm-ws-block-grow">
+        <div className="pm-ws-block-head">
+          <div className="pm-ws-eyebrow">Tools</div>
+          {toolsGatedByExcerpt ? (
+            <span className="pm-ws-ctx-count">unavailable</span>
+          ) : null}
+        </div>
+        <div className="pm-ws-tools" role="list">
+          {RAIL_TOOLS.map((tool) => (
+            <button
+              key={tool.id}
+              className={`pm-ws-tool ${
+                workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
+              }${toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''}`}
+              type="button"
+              role="listitem"
+              disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+              aria-disabled={toolsGatedByExcerpt ? true : undefined}
+              onClick={toolsGatedByExcerpt
+                ? announceToolGate
+                : () => workshop.runTool(tool.id)}
+              title={toolsGatedByExcerpt
+                ? WORKSHOP_TOOLS_GATED_REASON
+                : `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`}
+            >
+              <Icon name={tool.icon} size={15} /> {tool.label}
+              {toolsGatedByExcerpt ? (
+                <span className="pm-ws-tool-lock">needs excerpt</span>
+              ) : null}
+            </button>
+          ))}
+          <button
+            className={`pm-ws-tool pm-ws-tool-ghost${
+              toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''
+            }`}
+            type="button"
+            role="listitem"
+            disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+            aria-disabled={toolsGatedByExcerpt ? true : undefined}
+            onClick={toolsGatedByExcerpt ? announceToolGate : openToolsModal}
+            title={toolsGatedByExcerpt ? WORKSHOP_TOOLS_GATED_REASON : 'All writing tools'}
+          >
+            <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
+          </button>
+        </div>
+      </div>
+
+      <WorkshopTodoList
+        todos={workshop.todos}
+        onAction={workshop.todoAction}
+        onShowSource={showTodoSource}
+      />
+    </>
   );
 
   const mainContent = (
@@ -1134,7 +1206,7 @@ export const WorkshopApp: React.FC = () => {
               <Icon name="sparkle" size={22} />
               <p className="pm-ws-thread-empty-title">Ready when you are.</p>
               <p className="pm-ws-thread-empty-sub">
-                Ask {activePersona.label} about the excerpt, or run a tool below. The
+                Ask {activePersona.label} about the excerpt, or run a tool from the left. The
                 excerpt stays pinned while the conversation grows here.
               </p>
               <div className="pm-ws-empty-actions">

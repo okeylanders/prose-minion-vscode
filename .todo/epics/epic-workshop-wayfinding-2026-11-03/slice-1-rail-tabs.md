@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1
 **Design:** `Main.dc.html` and `Today.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Done (`da7f28fa`, `4a25d5cc`)
+**Status:** Next
 
 ## Outcome
 
@@ -124,21 +124,14 @@ presentation controller per `AGENTS.md`: no `useVSCodeApi`, `MessageType`, or
 
 ## Completion Criteria
 
-- [x] The rail renders Material and Notes tabs with correct roles and keyboard
-      behavior. (`WorkshopRail.test.tsx`)
-- [x] The Tools block and its rail-only code and styles are deleted. Every tool
+- [ ] The rail renders Material and Notes tabs with correct roles and keyboard
+      behavior.
+- [ ] The Tools block and its rail-only code and styles are deleted. Every tool
       is still reachable from the composer and the empty states.
-      (`WorkshopApp.railTabs.test.tsx`; the deleted selectors had no other user)
-- [x] Notes badges host-added to-dos while it's hidden. Selecting Notes clears
+- [ ] Notes badges host-added to-dos while it's hidden. Selecting Notes clears
       the badge, and nothing switches tabs on its own.
-      (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`)
-- [x] The last tab survives a reload, and no session field changed.
-      (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`; the diff
-      touches no message, codec, or host file)
-- [x] `WorkshopApp.tsx` is shorter by roughly the rail's size, and
+- [ ] The last tab survives a reload, and no session field changed.
+- [ ] `WorkshopApp.tsx` is shorter by roughly the rail's size, and
       `WorkshopRail.tsx` and the controller are each under 500 lines.
-      (1,743 → 1,671; 158 and 159 lines. The panel props moved with the rail
-      but are still passed from `WorkshopApp`, so the cut is the Tools block plus
-      the JSX nesting.)
-- [x] The epic's per-slice verification passes. Counts are recorded in the
+- [ ] The epic's per-slice verification passes. Counts are recorded in the
       epic's progress notes.
