@@ -48,7 +48,7 @@ the ADR:
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
-| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR) |
+| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR); built in `94d6b86`, `e188ea9` |
 | 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Planned |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
@@ -134,6 +134,56 @@ the ADR:
     nothing.
   - The canvas Okey approved badges whatever lands in a hidden tab, so that is
     the rule now, with no toast.
+- **2026-11-03. Slice 1 (rail tabs).** Landed in `94d6b86` (the
+  `useWorkshopRailTabs` controller) and `e188ea9` (`WorkshopRail`, the
+  `WorkshopApp` rewire, the Tools block and its styles deleted). These are
+  cherry-picks of `da7f28f` and `4a25d5c` on the PR branch.
+  - **Counts.** Before, at `1f8becb8`: 591 suites / 8,398 tests / 59
+    snapshots. After: 594 / 8,422 / 59, all passing. `npm run typecheck`
+    clean. `npm run lint`: 0 errors; warnings 1,130 → 1,133, all three the
+    PascalCase `naming-convention` kind (`WorkshopRail`, the test's
+    `StatefulRail` and `PmLogo` mock). No `from 'vscode'` in core.
+  - **Sizes.** `WorkshopApp.tsx` 1,743 → 1,671 (it was already over 500;
+    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md)).
+    `WorkshopRail.tsx` 158, `useWorkshopRailTabs.ts` 159. `styles/workshop/shell.css`
+    is already 2,600+ lines; the slice doc put the tab rules there, so it grew
+    by 23 net lines (tools rules out, tab rules in).
+  - **Deviations.**
+    - *Restoring the tab.* No sibling Workshop hook restores webview state, and
+      a controller may not call `useVSCodeApi`. `WorkshopApp` reads the stored
+      value with `usePersistedState` and passes it in as `initialTab`; the
+      controller parses it (`parseWorkshopRailTab`).
+    - *When a reload counts as seen.* The doc says "on mount", but the
+      to-dos arrive with the first session snapshot, after mount. The
+      controller takes a `roomKey` (`pending` until the session is ready,
+      then `room:<roomRevision>`) and marks everything seen whenever it
+      changes. That also keeps New, Open, Rewind and Branch from badging the
+      room they bring in.
+    - *Badge eligibility.* Built as open, not stale, and host-sourced
+      (`isHostSourcedTodo`); the review fix drops the host-sourced check, per
+      amended D1. Stale is excluded so the badge is never larger than the
+      tab's open count.
+    - *Accessible names.* Material is "Material, N items"; Notes is "Notes,
+      N open" plus ", N new" (the doc's example omitted the open count).
+    - *Copy.* The empty thread said "run a tool from the left"; it now says
+      "run a tool below".
+    - *No rail entry points yet.* D1's "select the tab first" rule has no
+      caller today (nothing targets a rail panel); `selectTab` is the seam
+      for Slices 2 and 5.
+  - **PR #184 review (Astra, 2026-11-03).** Changes requested on one P2:
+    switching tabs unmounted Notes and lost an unsaved to-do edit. The slice
+    doc had asked for that unmounting. Two P3 accessibility notes came with
+    it. All three are fixed: both panels stay mounted and the inactive one is
+    `hidden`; the list is keyed by room, so a draft never crosses rooms; a
+    draft whose task is gone is dropped; each panel is a tab stop. The ledger
+    is in [the review](../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md).
+  - **Coordinator's answers (2026-11-03).**
+    - *Badge vs. toast:* D1 is amended to the canvas's rule. An inactive tab
+      badges whatever lands in it while hidden, whoever added it, and nothing
+      toasts. `isHostSourcedTodo` goes, and any open, current to-do that
+      arrives while Notes is hidden badges.
+    - *`.pm-ws-block-grow`:* deleted. Nothing uses it, and the Read in block
+      doesn't need to grow.
 - **2026-11-03. Slice 6 (model stamps).** Built on
   `epic/workshop-wayfinding-slice-6-model-stamps`:
   - **Commits.**

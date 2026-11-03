@@ -503,26 +503,6 @@
   width: 100%;
 }
 
-/* ---------- Rail: gated tools (§9) ---------- */
-[data-pm-surface="workshop"] .pm-ws-tool-locked,
-[data-pm-surface="workshop"] .pm-ws-tool-locked:hover {
-  cursor: default;
-  color: var(--pm-dim);
-  background: color-mix(in srgb, var(--pm-surface-2) 40%, transparent);
-  border-color: var(--pm-border-soft);
-}
-[data-pm-surface="workshop"] .pm-ws-tool-locked svg {
-  color: #6a5b4a;
-}
-[data-pm-surface="workshop"] .pm-ws-tool-lock {
-  margin-left: auto;
-  font-family: var(--pm-mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #7d6a55;
-}
-
 /* ---------- Composer: scope-aware affordances (§9/§10) ---------- */
 [data-pm-surface="workshop"] .pm-ws-comp-add-excerpt {
   display: inline-flex;
