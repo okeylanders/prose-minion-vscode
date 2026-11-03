@@ -160,6 +160,9 @@ import {
   WorkshopRequestContextAttachmentMessage,
   WorkshopContextAttachmentContentMessage,
   WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRequestReadInResourceMessage,
+  WorkshopReadInResourceContentMessage,
+  WorkshopOpenReadInResourceMessage,
   WorkshopRequestContextCatalogMessage,
   WorkshopContextCatalogMessage,
   WorkshopSearchContextResourcesMessage,
@@ -301,6 +304,8 @@ export type WebviewToExtensionMessage =
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
   | WorkshopOpenContextAttachmentFileMessage
+  | WorkshopRequestReadInResourceMessage
+  | WorkshopOpenReadInResourceMessage
   | WorkshopRequestContextCatalogMessage
   | WorkshopContextCatalogMessage
   | WorkshopSearchContextResourcesMessage
@@ -395,6 +400,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
+  | WorkshopReadInResourceContentMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopCreativeVariationsGenerationProgressMessage

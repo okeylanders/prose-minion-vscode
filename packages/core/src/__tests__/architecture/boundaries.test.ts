@@ -161,6 +161,8 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: [
       'WORKSHOP_REQUEST_CONTEXT_ATTACHMENT',
       'WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE',
+      'WORKSHOP_REQUEST_READ_IN_RESOURCE',
+      'WORKSHOP_OPEN_READ_IN_RESOURCE',
       'WORKSHOP_REQUEST_CONTEXT_CATALOG',
       'WORKSHOP_SEARCH_CONTEXT_RESOURCES'
     ]
@@ -1711,11 +1713,12 @@ describe('architectural boundaries', () => {
     };
 
     // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
-    expect(expectedOwnerPairs).toHaveLength(59);
+    // Wayfinding Slice 2 added the Read in reader's two reads (direct).
+    expect(expectedOwnerPairs).toHaveLength(61);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(38);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(21);
+      .toHaveLength(23);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
