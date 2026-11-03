@@ -120,30 +120,64 @@
   font-size: 11px;
 }
 
-/* Tool palette */
-[data-pm-surface="workshop"] .pm-ws-tools {
+/* Rail tabs: Material and Notes (ADR 2026-11-03 D1). The strip bleeds to
+   the rail's edges; the active tab joins the rail below it. Small labels use
+   --pm-muted, not --pm-dim, which falls under 4.5:1 on the strip. */
+[data-pm-surface="workshop"] .pm-ws-rail-tabs {
+  display: flex;
+  gap: 2px;
+  margin: -16px -16px 0;
+  padding: 10px 10px 0;
+  background: var(--pm-bg);
+  border-bottom: 1px solid var(--pm-border);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: -1px;
+  padding: 10px 14px 11px;
+  border: 1px solid transparent;
+  border-top: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--pm-muted);
+  font: 500 12.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab:hover {
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: -2px;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab-active,
+[data-pm-surface="workshop"] .pm-ws-rail-tab-active:hover {
+  border-color: var(--pm-border);
+  border-bottom-color: var(--pm-surface);
+  border-top-color: var(--pm-accent);
+  background: var(--pm-surface);
+  color: var(--pm-text);
+  font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab-count {
+  font: 10.5px var(--pm-mono);
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: var(--pm-r-pill);
+  border: 1px solid rgba(238, 125, 73, 0.45);
+  background: rgba(224, 103, 58, 0.18);
+  color: var(--pm-accent-hi);
+  font: 600 10px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-rail-panel {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin-top: 10px;
-}
-[data-pm-surface="workshop"] .pm-ws-tool {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  font-family: var(--pm-sans);
-  color: var(--pm-text-2);
-  background: var(--pm-surface-2);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-r-tile);
-  padding: 10px 12px;
-  text-align: left;
-}
-[data-pm-surface="workshop"] .pm-ws-tool-ghost {
-  color: var(--pm-dim);
-  background: transparent;
-  border-style: dashed;
+  gap: 12px;
 }
 
 /* Writer-owned task list */
@@ -1094,17 +1128,6 @@
   color: var(--pm-text);
 }
 
-/* Tool palette states (enabled era) */
-[data-pm-surface="workshop"] .pm-ws-tool:not(:disabled):hover {
-  background: var(--pm-surface-3);
-  color: var(--pm-text);
-  border-color: var(--pm-border-2);
-}
-[data-pm-surface="workshop"] .pm-ws-tool-active {
-  color: var(--pm-text);
-  border-color: var(--pm-accent-lo);
-  background: var(--pm-accent-soft);
-}
 [data-pm-surface="workshop"] .pm-ws-reset:not(:disabled):hover {
   color: var(--pm-text);
   border-color: var(--pm-border-2);
