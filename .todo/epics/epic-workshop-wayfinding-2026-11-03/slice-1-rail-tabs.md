@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1
 **Design:** `Main.dc.html` and `Today.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Next
+**Status:** Built (`94d6b86`, `e188ea9`, cherry-picked from `da7f28f`, `4a25d5c`); the review fix makes the badge follow amended D1. In review as a PR into the epic.
 
 ## Outcome
 
@@ -12,8 +12,8 @@ The Workshop's rail has two file-style tabs:
 - **Material:** Excerpt, then Context.
 - **Notes:** To-dos.
 
-The Tools block is gone. When the host proposes a to-do while Notes is hidden,
-the Notes tab shows a "N new" badge. Selecting Notes clears it, and no tab ever
+The Tools block is gone. When a to-do lands while Notes is hidden, whoever
+added it, the Notes tab shows a "N new" badge (D1, amended 2026-11-03). Selecting Notes clears it, and no tab ever
 switches itself. The last-selected tab survives a webview reload.
 
 This slice changes no contract: no message, no session field, no host code.
@@ -52,8 +52,11 @@ This slice changes no contract: no message, no session field, no host code.
     - Notes, with a count of open to-dos, plus the badge "N new" when the
       controller reports unseen items.
   - The badge's count goes in the tab's accessible name ("Notes, 2 new").
-  - Keep the inactive panel unmounted, but keep the controller state (and any
-    hook state) above it in `WorkshopApp`, so switching tabs loses nothing.
+  - Keep both panels mounted and hide the inactive one, so switching tabs
+    loses nothing a panel holds, such as an unsaved to-do edit (PR #184 F-01,
+    which corrected this line's first version: "keep the inactive panel
+    unmounted"). Key the to-do list by room, so its draft never crosses
+    rooms.
 - **`WorkshopApp.tsx`.** `railContent` becomes `<WorkshopRail … />`. Delete the
   Tools block, `RAIL_TOOL_IDS`, `RAIL_TOOLS`, `announceToolGate`, and any
   variable left unused, such as `toolsGatedByExcerpt` if only the rail used it.
@@ -72,9 +75,9 @@ presentation controller per `AGENTS.md`: no `useVSCodeApi`, `MessageType`, or
   initial persisted state the way sibling Workshop hooks do. An unknown stored
   value falls back to `material`.
 - **Input:** the current to-do list.
-  - Unseen means open to-dos whose source is the host or a tool, whose id was
-    not present when Notes was last visible, and that arrived while Notes was
-    hidden.
+  - Unseen means open, current to-dos whose id was not present when Notes
+    was last visible, and that arrived while Notes was hidden, whoever added
+    them (D1, amended).
   - On mount, every current id counts as seen, so a reload never badges old
     items.
   - The writer's own edits never badge.
@@ -124,14 +127,21 @@ presentation controller per `AGENTS.md`: no `useVSCodeApi`, `MessageType`, or
 
 ## Completion Criteria
 
-- [ ] The rail renders Material and Notes tabs with correct roles and keyboard
-      behavior.
-- [ ] The Tools block and its rail-only code and styles are deleted. Every tool
+- [x] The rail renders Material and Notes tabs with correct roles and keyboard
+      behavior. (`WorkshopRail.test.tsx`)
+- [x] The Tools block and its rail-only code and styles are deleted. Every tool
       is still reachable from the composer and the empty states.
-- [ ] Notes badges host-added to-dos while it's hidden. Selecting Notes clears
-      the badge, and nothing switches tabs on its own.
-- [ ] The last tab survives a reload, and no session field changed.
-- [ ] `WorkshopApp.tsx` is shorter by roughly the rail's size, and
+      (`WorkshopApp.railTabs.test.tsx`; the deleted selectors had no other user)
+- [x] Notes badges to-dos that land while it's hidden. Selecting Notes
+      clears the badge, and nothing switches tabs on its own.
+      (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`)
+- [x] The last tab survives a reload, and no session field changed.
+      (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`; the diff
+      touches no message, codec, or host file)
+- [x] `WorkshopApp.tsx` is shorter by roughly the rail's size, and
       `WorkshopRail.tsx` and the controller are each under 500 lines.
-- [ ] The epic's per-slice verification passes. Counts are recorded in the
+      (1,743 → 1,671; 158 and 159 lines. The panel props moved with the rail
+      but are still passed from `WorkshopApp`, so the cut is the Tools block plus
+      the JSX nesting.)
+- [x] The epic's per-slice verification passes. Counts are recorded in the
       epic's progress notes.

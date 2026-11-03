@@ -255,9 +255,6 @@
   border-radius: 10px;
   padding: 12px;
 }
-[data-pm-frame="fulltab"] .pm-ws-block-grow {
-  flex: 1;
-}
 [data-pm-frame="fulltab"] .pm-ws-block-head {
   display: flex;
   justify-content: space-between;
