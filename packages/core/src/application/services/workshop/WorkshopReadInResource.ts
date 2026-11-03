@@ -33,17 +33,30 @@ export type WorkshopReadInRefusalReason =
 
 const MIB = 1024 * 1024;
 
-/** Host words for each refusal. None names the file's content. */
-export const WORKSHOP_READ_IN_REFUSALS: Readonly<Record<WorkshopReadInRefusalReason, string>> =
-  Object.freeze({
-    'unknown-group': 'That group is not one of the configured project-resource groups.',
-    'unsafe-path': 'Only a workspace-relative configured path can be read here.',
-    'not-configured': 'That file is not one of the configured project resources in its group.',
-    ambiguous: 'That path matches more than one configured resource when letter case is ignored.',
-    'too-large':
-      `That file is larger than the ${PROMPT_BUDGETS.workshopResource.readSourceBytes / MIB} MiB read ceiling.`,
-    unreadable: 'That file could not be read.'
-  });
+const unhandledRefusal = (reason: never): never => {
+  throw new Error(`Unhandled Read in refusal: ${String(reason)}`);
+};
+
+/** Host words for each refusal. None names the file or its content. */
+export function workshopReadInRefusalMessage(reason: WorkshopReadInRefusalReason): string {
+  switch (reason) {
+    case 'unknown-group':
+      return 'That group is not one of the configured project-resource groups.';
+    case 'unsafe-path':
+      return 'Only a workspace-relative configured path can be read here.';
+    case 'not-configured':
+      return 'That file is not one of the configured project resources in its group.';
+    case 'ambiguous':
+      return 'That path matches more than one configured resource when letter case is ignored.';
+    case 'too-large':
+      return `That file is larger than the ${PROMPT_BUDGETS.workshopResource.readSourceBytes / MIB} MiB read ceiling.`;
+    case 'unreadable':
+      return 'That file could not be read.';
+    default:
+      return unhandledRefusal(reason);
+  }
+}
+
 
 export type WorkshopReadInResolution =
   | { kind: 'resolved'; resource: ContextResourceSummary }

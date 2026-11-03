@@ -137,9 +137,12 @@ export enum MessageType {
   WORKSHOP_REQUEST_CONTEXT_ATTACHMENT = 'workshop_request_context_attachment',
   WORKSHOP_CONTEXT_ATTACHMENT_CONTENT = 'workshop_context_attachment_content',
   WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE = 'workshop_open_context_attachment_file',
+  // Read in reader: a file a persona read, by { group, path } (ADR 2026-11-03 D4)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   WORKSHOP_REQUEST_READ_IN_RESOURCE = 'workshop_request_read_in_resource',
   WORKSHOP_READ_IN_RESOURCE_CONTENT = 'workshop_read_in_resource_content',
   WORKSHOP_OPEN_READ_IN_RESOURCE = 'workshop_open_read_in_resource',
+  /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_CONTEXT_CATALOG = 'workshop_request_context_catalog',
   WORKSHOP_CONTEXT_CATALOG = 'workshop_context_catalog',
   WORKSHOP_SEARCH_CONTEXT_RESOURCES = 'workshop_search_context_resources',

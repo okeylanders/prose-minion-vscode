@@ -17,9 +17,15 @@ import * as path from 'path';
  * no URI scheme, no backslash or NUL, and no empty, `.` or `..` segment.
  */
 export function isSafeConfiguredResourcePath(value: string): boolean {
-  if (!value || value.includes('\\') || value.includes('\0')) return false;
-  if (path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) return false;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return false;
+  if (!value || value.includes('\\') || value.includes('\0')) {
+    return false;
+  }
+  if (path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) {
+    return false;
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    return false;
+  }
   const segments = value.split('/');
   return segments.every(segment => segment.length > 0 && segment !== '.' && segment !== '..');
 }

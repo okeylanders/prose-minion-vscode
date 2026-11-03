@@ -780,3 +780,113 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Read in (ADR 2026-11-03 D2; Wayfinding Slice 2) ----------
+   What the chat target fetched on its own, under Context in the Material tab.
+   Rows that open are buttons; rows that don't are plain items in the same
+   frame. Superseded rows stay, dashed. */
+[data-pm-surface="workshop"] .pm-ws-readin-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-empty {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  text-align: left;
+  font: inherit;
+  color: var(--pm-text-2);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 9px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row-action {
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row-action:hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row-action:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row-stale {
+  background: transparent;
+  border-style: dashed;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--pm-surface-3);
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-icon-resource { color: var(--pm-blue); }
+[data-pm-surface="workshop"] .pm-ws-readin-icon-tool-evidence { color: var(--pm-green); }
+[data-pm-surface="workshop"] .pm-ws-readin-icon-dictionary { color: var(--pm-amber); }
+[data-pm-surface="workshop"] .pm-ws-readin-icon-transcript { color: var(--pm-pink); }
+[data-pm-surface="workshop"] .pm-ws-readin-row-stale .pm-ws-readin-icon { color: var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-readin-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-label {
+  font-size: 12.5px;
+  color: var(--pm-text);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-label-path {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-row-stale .pm-ws-readin-label {
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-stale-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px dashed var(--pm-border-2);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-trail {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--pm-muted);
+}

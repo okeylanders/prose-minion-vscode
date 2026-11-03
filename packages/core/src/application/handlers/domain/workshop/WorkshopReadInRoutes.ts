@@ -12,10 +12,10 @@ import {
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
 import {
-  WORKSHOP_READ_IN_REFUSALS,
   WorkshopReadInResolution,
   readWorkshopReadInResource,
-  resolveWorkshopReadInResource
+  resolveWorkshopReadInResource,
+  workshopReadInRefusalMessage
 } from '@/application/services/workshop/WorkshopReadInResource';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { LogSink, ShellService } from '@/platform';
@@ -54,7 +54,7 @@ export class WorkshopReadInRoutes {
       const read = await readWorkshopReadInResource(catalog, message.payload?.group, message.payload?.path);
       if (read.kind === 'refused') {
         this.outputChannel.appendLine(`${LOG} Read-in content refused (${read.reason})`);
-        payload = { ...ref, error: WORKSHOP_READ_IN_REFUSALS[read.reason], canOpenInEditor: false };
+        payload = { ...ref, error: workshopReadInRefusalMessage(read.reason), canOpenInEditor: false };
       } else {
         this.outputChannel.appendLine(
           `${LOG} Read-in content served (group=${read.resource.group}, ${read.bytes} of ` +
@@ -100,7 +100,7 @@ export class WorkshopReadInRoutes {
     }
     if (resolution.kind === 'refused') {
       this.outputChannel.appendLine(`${LOG} Read-in open refused (${resolution.reason})`);
-      this.reportError(WORKSHOP_READ_IN_REFUSALS[resolution.reason]);
+      this.reportError(workshopReadInRefusalMessage(resolution.reason));
       return;
     }
     const { resource } = resolution;

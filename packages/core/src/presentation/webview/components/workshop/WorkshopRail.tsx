@@ -16,6 +16,7 @@ import { Icon } from '@components/shared/Icon';
 import type { IconName } from '@components/shared/Icon';
 import { ExcerptPanel } from '@components/workshop/ExcerptPanel';
 import { ContextPanel } from '@components/workshop/ContextPanel';
+import { WorkshopReadInPanel } from '@components/workshop/WorkshopReadInPanel';
 import { WorkshopTodoList } from '@components/workshop/WorkshopTodoList';
 import {
   WORKSHOP_RAIL_TABS,
@@ -28,6 +29,8 @@ export interface WorkshopRailProps {
   tabs: WorkshopRailTabsState & WorkshopRailTabsActions;
   excerpt: React.ComponentProps<typeof ExcerptPanel>;
   context: React.ComponentProps<typeof ContextPanel>;
+  /** The chat target's read-in rows (ADR 2026-11-03 D2). */
+  readIn: React.ComponentProps<typeof WorkshopReadInPanel>;
   todos: React.ComponentProps<typeof WorkshopTodoList>;
   /** Identity of the room generation; a change resets panel-local drafts. */
   roomKey: string;
@@ -53,24 +56,32 @@ interface TabSummary {
   badge?: string;
 }
 
+const newBadge = (unseen: number): string | undefined =>
+  unseen > 0 ? `${unseen} new` : undefined;
+
 function summarizeTabs({
   excerpt,
   context,
+  readIn,
   todos,
-  unseenNotesCount
-}: Omit<WorkshopRailProps, 'tabs' | 'roomKey'> & { unseenNotesCount: number }): Record<WorkshopRailTab, TabSummary> {
-  const materialCount = (excerpt.excerpt ? 1 : 0) + context.attachments.length;
+  unseenNotesCount,
+  unseenMaterialCount
+}: Omit<WorkshopRailProps, 'tabs' | 'roomKey'> &
+  Pick<WorkshopRailTabsState, 'unseenNotesCount' | 'unseenMaterialCount'>): Record<WorkshopRailTab, TabSummary> {
+  const materialCount = (excerpt.excerpt ? 1 : 0) + context.attachments.length + readIn.entries.length;
   const openTodos = todos.todos.filter((todo) => todo.status === 'open' && !todo.stale).length;
-  const badge = unseenNotesCount > 0 ? `${unseenNotesCount} new` : undefined;
+  const materialBadge = newBadge(unseenMaterialCount);
+  const notesBadge = newBadge(unseenNotesCount);
   return {
     material: {
       count: materialCount,
-      name: `Material, ${materialCount} ${materialCount === 1 ? 'item' : 'items'}`
+      name: `Material, ${materialCount} ${materialCount === 1 ? 'item' : 'items'}${materialBadge ? `, ${materialBadge}` : ''}`,
+      badge: materialBadge
     },
     notes: {
       count: openTodos,
-      name: `Notes, ${openTodos} open${badge ? `, ${badge}` : ''}`,
-      badge
+      name: `Notes, ${openTodos} open${notesBadge ? `, ${notesBadge}` : ''}`,
+      badge: notesBadge
     }
   };
 }
@@ -93,10 +104,24 @@ function nextTabForKey(key: string, current: WorkshopRailTab): WorkshopRailTab |
   }
 }
 
-export const WorkshopRail: React.FC<WorkshopRailProps> = ({ tabs, excerpt, context, todos, roomKey }) => {
-  const { activeTab, unseenNotesCount, selectTab } = tabs;
+export const WorkshopRail: React.FC<WorkshopRailProps> = ({
+  tabs,
+  excerpt,
+  context,
+  readIn,
+  todos,
+  roomKey
+}) => {
+  const { activeTab, unseenNotesCount, unseenMaterialCount, selectTab } = tabs;
   const tabRefs = React.useRef<Partial<Record<WorkshopRailTab, HTMLButtonElement | null>>>({});
-  const summaries = summarizeTabs({ excerpt, context, todos, unseenNotesCount });
+  const summaries = summarizeTabs({
+    excerpt,
+    context,
+    readIn,
+    todos,
+    unseenNotesCount,
+    unseenMaterialCount
+  });
 
   const moveWithKeyboard = React.useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -155,6 +180,7 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({ tabs, excerpt, conte
       >
         <ExcerptPanel {...excerpt} />
         <ContextPanel {...context} />
+        <WorkshopReadInPanel {...readIn} />
       </div>
       <div
         className="pm-ws-rail-panel"

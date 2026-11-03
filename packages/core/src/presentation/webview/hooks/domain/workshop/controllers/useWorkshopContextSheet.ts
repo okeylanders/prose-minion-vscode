@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import {
+  ConfiguredResourceRef,
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -11,6 +12,8 @@ import type {
   WorkshopAttachmentContentState
 } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { WorkshopVerifiedExcerpt } from '@hooks/domain/useWorkshopExcerptVerify';
+import type { WorkshopReadInContentState } from '@hooks/domain/workshop/useWorkshopReadIn';
+import type { ContextSourceEntry } from '@shared/types';
 
 /** What the sheet is being used for; drives kicker, copy, and affordances. */
 export type WorkshopTextSheetMode =
@@ -18,7 +21,19 @@ export type WorkshopTextSheetMode =
   | { kind: 'context-new' }
   | { kind: 'context-text'; label: string }
   | { kind: 'context-wizard'; label: string }
-  | { kind: 'context-file'; label: string; relativePath?: string };
+  | { kind: 'context-file'; label: string; relativePath?: string }
+  /**
+   * A file a participant read on its own (ADR 2026-11-03 D4): read-only,
+   * the file as it is now, never the participant's copy.
+   */
+  | {
+      kind: 'read-in';
+      label: string;
+      group: ConfiguredResourceRef['group'];
+      path: string;
+      participantLabel: string;
+      deliveredAt: number;
+    };
 
 export interface WorkshopTextSheetState {
   mode: WorkshopTextSheetMode;
@@ -40,11 +55,29 @@ export interface UseWorkshopContextSheetOptions {
   updateContextText: (id: string, text: string) => void;
   openExcerptSelector: () => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
+  /** The Read in reader's transport (`useWorkshopReadIn`). */
+  readInContent: WorkshopReadInContentState | null;
+  requestReadInResource: (ref: ConfiguredResourceRef) => void;
+  openReadInResource: (ref: ConfiguredResourceRef) => void;
+  clearReadInContent: () => void;
+}
+
+/** What the open sheet shows, whichever host round-trip feeds it. */
+export interface WorkshopTextSheetBody {
+  /** Undefined while the host is still answering, or when it refused. */
+  value?: string;
+  loading: boolean;
+  error?: string;
+  /** True when the host stopped the text at its read ceiling. */
+  truncated?: boolean;
+  canOpenInEditor: boolean;
 }
 
 export interface WorkshopContextSheetState {
   textSheet: WorkshopTextSheetState | null;
   sheetAttachment?: WorkshopAttachmentContentState;
+  /** The open sheet's body, loading and error state; undefined with no sheet. */
+  sheetBody?: WorkshopTextSheetBody;
   verifiedDisplay?: { text: string; note: string };
 }
 
@@ -52,6 +85,8 @@ export interface WorkshopContextSheetActions {
   openPasteSheet: () => void;
   openAddTextSheet: () => void;
   openAttachmentSheet: (attachment: WorkshopContextAttachmentSnapshot) => void;
+  /** Opens a read-in row in the reader; a row with no configured file opens nothing. */
+  openReadInSheet: (entry: ContextSourceEntry, participantLabel: string) => void;
   addExcerptByPaste: () => void;
   addExcerptFromProject: () => void;
   applyTextSheet: (text: string) => void;
@@ -82,14 +117,19 @@ export function useWorkshopContextSheet({
   addContextText,
   updateContextText,
   openExcerptSelector,
-  requestShelfReplacement
+  requestShelfReplacement,
+  readInContent,
+  requestReadInResource,
+  openReadInResource,
+  clearReadInContent
 }: UseWorkshopContextSheetOptions): UseWorkshopContextSheetReturn {
   const [textSheet, setTextSheet] = React.useState<WorkshopTextSheetState | null>(null);
 
   const closeTextSheet = React.useCallback(() => {
     setTextSheet(null);
     clearAttachmentContent();
-  }, [clearAttachmentContent]);
+    clearReadInContent();
+  }, [clearAttachmentContent, clearReadInContent]);
 
   const openPasteSheet = React.useCallback(() => {
     setTextSheet({
@@ -139,8 +179,30 @@ export function useWorkshopContextSheet({
     [requestContextAttachment]
   );
 
+  const openReadInSheet = React.useCallback(
+    (entry: ContextSourceEntry, participantLabel: string) => {
+      const resource = entry.configuredResource;
+      if (entry.kind !== 'resource' || !resource) {
+        return;
+      }
+      setTextSheet({
+        mode: {
+          kind: 'read-in',
+          label: entry.label,
+          group: resource.group,
+          path: resource.path,
+          participantLabel,
+          deliveredAt: entry.deliveredAt
+        }
+      });
+      requestReadInResource(resource);
+    },
+    [requestReadInResource]
+  );
+
   const applyTextSheet = React.useCallback((text: string) => {
-    if (!textSheet) {
+    // The reader is read-only: nothing it shows can be applied.
+    if (!textSheet || textSheet.mode.kind === 'read-in') {
       return;
     }
     if (textSheet.mode.kind === 'excerpt') {
@@ -169,10 +231,14 @@ export function useWorkshopContextSheet({
   ]);
 
   const openAttachmentInEditor = React.useCallback(() => {
+    if (textSheet?.mode.kind === 'read-in') {
+      openReadInResource({ group: textSheet.mode.group, path: textSheet.mode.path });
+      return;
+    }
     if (textSheet?.attachmentId) {
       openContextAttachmentFile(textSheet.attachmentId);
     }
-  }, [openContextAttachmentFile, textSheet]);
+  }, [openContextAttachmentFile, openReadInResource, textSheet]);
 
   const chooseExcerptFromSheet = React.useCallback(() => {
     setTextSheet(null);
@@ -186,6 +252,35 @@ export function useWorkshopContextSheet({
     ? attachmentContent
     : undefined;
 
+  const sheetBody = ((): WorkshopTextSheetBody | undefined => {
+    if (!textSheet) {
+      return undefined;
+    }
+    if (textSheet.mode.kind === 'read-in') {
+      const { group, path } = textSheet.mode;
+      // Matched to the row on screen, as attachments are by id.
+      const reply = readInContent?.group === group && readInContent.path === path
+        ? readInContent
+        : undefined;
+      return {
+        value: reply?.content,
+        loading: reply?.content === undefined && reply?.error === undefined,
+        error: reply?.error,
+        truncated: reply?.truncated,
+        canOpenInEditor: reply?.canOpenInEditor ?? false
+      };
+    }
+    return {
+      value: textSheet.seed ?? sheetAttachment?.content,
+      loading: textSheet.seed === undefined
+        && sheetAttachment !== undefined
+        && sheetAttachment.content === undefined
+        && sheetAttachment.error === undefined,
+      error: sheetAttachment?.error,
+      canOpenInEditor: sheetAttachment?.canOpenInEditor ?? false
+    };
+  })();
+
   const verifiedDisplay = textSheet?.mode.kind === 'excerpt' &&
     verifiedExcerpt?.source.kind === 'editor-selection'
     ? (() => {
@@ -197,10 +292,12 @@ export function useWorkshopContextSheet({
   return {
     textSheet,
     sheetAttachment,
+    sheetBody,
     verifiedDisplay,
     openPasteSheet,
     openAddTextSheet,
     openAttachmentSheet,
+    openReadInSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,

@@ -24,7 +24,7 @@ import { Icon, IconName } from './components/shared/Icon';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { StreamingContent } from './components/shared/StreamingContent';
-import { MessageType } from '@shared/types';
+import { ContextSourceEntry, MessageType } from '@shared/types';
 import {
   CopyResultSuccessMessage,
   ErrorMessage,
@@ -42,6 +42,8 @@ import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { WorkshopRail } from './components/workshop/WorkshopRail';
+import { partitionContextSources } from '@utils/workshop/contextSources';
+import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -206,13 +208,41 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler, owned by the shared full-tab chrome (Lightbox Slice 1).
   const workshop = useWorkshopRoom();
+  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
+    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
+  const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
+    ? workshop.chatTarget.personaId
+    : undefined;
+  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
+    ? workshopToolLabel(workshop.chatTarget.toolId)
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? workshop.personaGuests.find((guest) => guest.personaId === guestTargetPersonaId)?.personaLabel
+        ?? guestTargetPersonaId
+        ?? 'Guest'
+      : activePersona.label;
+  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
+    ? `tool:${workshop.chatTarget.toolId}`
+    : workshop.chatTarget.kind === 'personaGuest'
+      ? guestTargetPersonaId ?? 'guest:unknown'
+      : activePersona.id;
+  // What the chat target read on its own (ADR 2026-11-03 D2): one partition,
+  // shared with the context gauge's popover.
+  const contextSources = workshop.contextBudget?.sources;
+  const readInSources = React.useMemo(
+    () => partitionContextSources(contextSources ?? []).readIn,
+    [contextSources]
+  );
+  const readIn = useWorkshopReadIn();
   // The rail's tab is this viewer's preference (webview state, never the
-  // session file); the controller re-baselines its badge on each new room.
+  // session file); the controller re-baselines its badges on each new room,
+  // and Material's on each new chat target.
   const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
   const railRoomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const railTabs = useWorkshopRailTabs({
     todos: workshop.todos,
     roomKey: railRoomKey,
+    readIn: readInSources,
+    readInKey: chatTargetIdentity,
     initialTab: persistedRailTab?.workshopRailTab
   });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
@@ -383,6 +413,7 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
+    readIn,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -478,23 +509,6 @@ export const WorkshopApp: React.FC = () => {
   const hasExcerpt = !!workshop.excerpt;
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
-  const activePersona = getWorkshopPersona(workshop.selectedPersonaId)
-    ?? getWorkshopPersona(DEFAULT_WORKSHOP_PERSONA_ID)!;
-  const guestTargetPersonaId = workshop.chatTarget.kind === 'personaGuest'
-    ? workshop.chatTarget.personaId
-    : undefined;
-  const chatTargetLabel = workshop.chatTarget.kind === 'tool'
-    ? workshopToolLabel(workshop.chatTarget.toolId)
-    : workshop.chatTarget.kind === 'personaGuest'
-      ? workshop.personaGuests.find((guest) => guest.personaId === guestTargetPersonaId)?.personaLabel
-        ?? guestTargetPersonaId
-        ?? 'Guest'
-      : activePersona.label;
-  const chatTargetIdentity = workshop.chatTarget.kind === 'tool'
-    ? `tool:${workshop.chatTarget.toolId}`
-    : workshop.chatTarget.kind === 'personaGuest'
-      ? guestTargetPersonaId ?? 'guest:unknown'
-      : activePersona.id;
 
   // Recomputing a full word split per streamed token was O(excerpt) work on
   // the token clock (PR #67 review #11) — the excerpt only changes on re-pin.
@@ -635,15 +649,20 @@ export const WorkshopApp: React.FC = () => {
     addContextText: workshop.addContextText,
     updateContextText: workshop.updateContextText,
     openExcerptSelector,
-    requestShelfReplacement: sessionSurfaces.requestShelfReplacement
+    requestShelfReplacement: sessionSurfaces.requestShelfReplacement,
+    readInContent: readIn.readInContent,
+    requestReadInResource: readIn.requestReadInResource,
+    openReadInResource: readIn.openReadInResource,
+    clearReadInContent: readIn.clearReadInContent
   });
   const {
     textSheet,
-    sheetAttachment,
+    sheetBody,
     verifiedDisplay: verifiedExcerpt,
     openPasteSheet,
     openAddTextSheet,
     openAttachmentSheet,
+    openReadInSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,
@@ -651,6 +670,11 @@ export const WorkshopApp: React.FC = () => {
     chooseExcerptFromSheet,
     closeTextSheet
   } = contextSheet;
+
+  const openReadInChatTargetSheet = React.useCallback(
+    (entry: ContextSourceEntry) => openReadInSheet(entry, chatTargetLabel),
+    [chatTargetLabel, openReadInSheet]
+  );
 
   const acceptSessionConfirm = React.useCallback(() => {
     const resumption = sessionSurfaces.acceptSessionConfirm();
@@ -1052,6 +1076,12 @@ export const WorkshopApp: React.FC = () => {
         onRunWizard: workshop.runContextWizard,
         onCancelWizard: workshop.cancelContextWizard
       }}
+      readIn={{
+        entries: readInSources,
+        participantIdentity: chatTargetIdentity,
+        participantLabel: chatTargetLabel,
+        onOpenReader: openReadInChatTargetSheet
+      }}
       todos={{
         todos: workshop.todos,
         onAction: workshop.todoAction,
@@ -1348,15 +1378,11 @@ export const WorkshopApp: React.FC = () => {
         <WorkshopTextSheet
           open
           mode={textSheet.mode}
-          value={textSheet.seed ?? sheetAttachment?.content}
-          loading={
-            textSheet.seed === undefined
-            && sheetAttachment !== undefined
-            && sheetAttachment.content === undefined
-            && sheetAttachment.error === undefined
-          }
-          error={sheetAttachment?.error}
-          canOpenInEditor={sheetAttachment?.canOpenInEditor ?? false}
+          value={sheetBody?.value}
+          loading={sheetBody?.loading}
+          error={sheetBody?.error}
+          truncated={sheetBody?.truncated}
+          canOpenInEditor={sheetBody?.canOpenInEditor ?? false}
           applyDisabled={roomMutationLocked}
           onApply={applyTextSheet}
           onPasteText={
