@@ -33,6 +33,7 @@ import {
 } from '@orchestration/AgentRunContracts';
 import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
+import type { AnalysisRunModel } from '@/domain/models/AnalysisResult';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
@@ -180,8 +181,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
   async fulfill(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<CapabilityFulfillment> {
     const startedAt = Date.now();
     let result: WorkshopCapabilityResult;
+    // Only a persona-run analysis is a provider run whose turn is stamped
+    // (ADR 2026-11-03 D7); the stamp rides beside the result, never in it,
+    // so it cannot reach the evidence the persona reads.
+    let model: AnalysisRunModel | undefined;
     try {
-      result = await this.dispatch(request, window);
+      result = await this.dispatch(request, window, (runModel) => { model = runModel; });
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
       result = {
@@ -194,7 +199,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       };
     }
 
-    const completedTurn = this.recordCompletedTurn(request, result);
+    const completedTurn = this.recordCompletedTurn(request, result, model);
     const duration = Date.now() - startedAt;
     const partialFailures = Array.isArray(result.metadata?.partialFailures)
       ? result.metadata.partialFailures.length
@@ -492,7 +497,11 @@ export class WorkshopPersonaCapability implements AgentCapability<
     return 'You have reached the Workshop capability-call limit for this user turn. Do not send another tool call. Produce the final response now using only the evidence already received, and state any missing evidence honestly.';
   }
 
-  private async dispatch(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
+  private async dispatch(
+    request: WorkshopCapabilityRequest,
+    window: CapabilityContextWindow | undefined,
+    onAnalysisModel: (model: AnalysisRunModel | undefined) => void
+  ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
       case 'dictionary.lookup':
@@ -528,7 +537,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
             });
           }
           this.analysisCalls += 1;
-          return this.runAnalysis(request, resolution.inputs);
+          return this.runAnalysis(request, resolution.inputs, onAnalysisModel);
         }
       case 'resource.catalog':
       case 'resource.search':
@@ -599,7 +608,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>,
-    inputs: WorkshopPersonaAnalysisRunInputs
+    inputs: WorkshopPersonaAnalysisRunInputs,
+    onModel: (model: AnalysisRunModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     const toolLabel = workshopToolLabel(request.toolId);
     const personaLabel = this.speakerLabel();
@@ -639,6 +649,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.analysisSidePass.discardConversation(analysis.conversationId);
     }
     if (!failed) {
+      onModel(analysis.model);
       const received = chunkCount > 0
         ? `${chunkCount} ${chunkCount === 1 ? 'chunk' : 'chunks'} received`
         : 'Report received';
@@ -668,7 +679,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private recordCompletedTurn(
     request: WorkshopCapabilityRequest,
-    result: WorkshopCapabilityResult
+    result: WorkshopCapabilityResult,
+    model: AnalysisRunModel | undefined
   ): WorkshopTurn | undefined {
     const details: WorkshopCapabilityArtifactDetails = {
       operation: request.capability,
@@ -688,7 +700,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
       ? this.analysisSidePass.adoptPersonaReport({
           ...artifactInput,
           toolId: request.toolId,
-          truncated: result.metadata?.truncated === true
+          truncated: result.metadata?.truncated === true,
+          model
         })
       : this.session.recordCapabilityArtifact(artifactInput);
     if (!completion) {

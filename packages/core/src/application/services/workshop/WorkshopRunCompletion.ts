@@ -21,6 +21,7 @@ import {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   inspectWorkshopWidgetRecommendation,
   WorkshopWidgetRecommendationInspection
@@ -306,7 +307,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     result.citations,
     widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource
       ? widgetRecommendation.recommendation
-      : undefined
+      : undefined,
+    workshopTurnModelOf(result.model)
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

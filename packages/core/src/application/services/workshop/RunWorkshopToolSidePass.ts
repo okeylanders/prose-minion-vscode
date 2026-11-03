@@ -144,7 +144,8 @@ export class RunWorkshopToolSidePass {
         usage: result.usage,
         truncated,
         toolId,
-        inputProvenance: result.inputProvenance
+        inputProvenance: result.inputProvenance,
+        model: result.model
       });
       if (!completion) {
         this.assistantToolService.discardConversation(result.conversationId);
