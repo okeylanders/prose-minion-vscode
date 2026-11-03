@@ -202,14 +202,25 @@ export interface WorkshopOpenContextAttachmentFileMessage
 // else; no absolute path crosses this contract in either direction.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Ask for a read-in file's current text, for the reader sheet. */
+/**
+ * Ask for a read-in file's current text, for the reader sheet. `requestId`
+ * is minted by the webview per request and echoed in the reply: the pair
+ * names a file, not a request, so reopening the same file must not take an
+ * earlier request's answer (PR #186 F-01).
+ */
+export interface WorkshopRequestReadInResourcePayload extends ConfiguredResourceRef {
+  requestId: string;
+}
+
 export interface WorkshopRequestReadInResourceMessage
-  extends MessageEnvelope<ConfiguredResourceRef> {
+  extends MessageEnvelope<WorkshopRequestReadInResourcePayload> {
   type: MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE;
 }
 
 export interface WorkshopReadInResourceContentPayload {
-  /** The request's group and path, echoed as sent so the sheet can match its reply. */
+  /** The request this answers; the webview takes only the one it is waiting on. */
+  requestId: string;
+  /** The request's group and path, echoed as sent. */
   group: string;
   path: string;
   /** The file as it is now, up to `resource.read`'s byte ceiling. */

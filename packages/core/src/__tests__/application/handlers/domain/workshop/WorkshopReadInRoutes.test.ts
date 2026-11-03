@@ -56,8 +56,8 @@ describe('Read in reader routes', () => {
     .filter((entry) => entry.type === MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT)
     .map((entry) => entry.payload);
 
-  const requestContent = (payload: unknown) => router.route(
-    message(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, payload) as never
+  const requestContent = (payload: object, requestId: unknown = 'readin-1') => router.route(
+    message(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, { requestId, ...payload }) as never
   );
 
   const openBeside = (payload: unknown) => router.route(
@@ -109,11 +109,37 @@ describe('Read in reader routes', () => {
     await requestContent({ group: 'characters', path: 'characters/rabbit.md' });
 
     expect(contentReplies()).toEqual([{
+      requestId: 'readin-1',
       group: 'characters',
       path: 'characters/rabbit.md',
       content: RABBIT_NOTES,
       canOpenInEditor: true
     }]);
+  });
+
+  it('echoes each request\'s own id, so the webview can tell two openings of one file apart (PR #186 F-01)', async () => {
+    await requestContent({ group: 'characters', path: 'characters/rabbit.md' }, 'readin-1');
+    await requestContent({ group: 'characters', path: 'characters/rabbit.md' }, 'readin-2');
+    await requestContent({ group: 'secrets', path: 'characters/rabbit.md' }, 'readin-3');
+
+    expect(contentReplies().map((reply) => reply.requestId)).toEqual(['readin-1', 'readin-2', 'readin-3']);
+  });
+
+  it.each([
+    ['no request id', undefined],
+    ['an empty request id', ''],
+    ['a request id that is not a string', 7],
+    ['an over-long request id', 'r'.repeat(129)]
+  ])('ignores a content request with %s, reading nothing', async (_case, requestId) => {
+    await router.route(message(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, {
+      ...(requestId === undefined ? {} : { requestId }),
+      group: 'characters',
+      path: 'characters/rabbit.md'
+    }) as never);
+
+    expect(contentReplies()).toEqual([]);
+    expect(loadResources).not.toHaveBeenCalled();
+    expect(logged()).toContain('without its request id was ignored');
   });
 
   it('resolves a path that differs only in letter case, as resource.read does', async () => {

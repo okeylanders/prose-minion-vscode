@@ -120,6 +120,20 @@ const deliver = (message: unknown) =>
 
 const rail = () => screen.getByLabelText('Session rail');
 
+const readInContent = (requestId: string, content: string, extra: object = {}) => ({
+  type: MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT,
+  source: 'extension.workshop',
+  payload: {
+    requestId,
+    group: 'characters',
+    path: 'characters/rabbit.md',
+    content,
+    canOpenInEditor: true,
+    ...extra
+  },
+  timestamp: 1
+});
+
 describe('WorkshopApp Read in', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
 
@@ -129,6 +143,15 @@ describe('WorkshopApp Read in', () => {
     (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
     Element.prototype.scrollIntoView = jest.fn();
   });
+
+  const readInRequestIds = (): string[] => vscode.postMessage.mock.calls
+    .map(([message]: [{ type: MessageType; payload: { requestId?: string } }]) => message)
+    .filter((message) => message.type === MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE)
+    .map((message) => message.payload.requestId!);
+
+  const openRabbit = () => fireEvent.click(within(rail()).getByRole('button', {
+    name: 'Open characters/rabbit.md in the reader'
+  }));
 
   afterEach(() => {
     jest.runOnlyPendingTimers();
@@ -144,24 +167,13 @@ describe('WorkshopApp Read in', () => {
     fireEvent.click(within(readIn).getByRole('button', { name: 'Open characters/rabbit.md in the reader' }));
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,
-      payload: { group: 'characters', path: 'characters/rabbit.md' }
+      payload: expect.objectContaining({ group: 'characters', path: 'characters/rabbit.md' })
     }));
     const sheet = screen.getByRole('dialog');
     expect(within(sheet).getByText('Read in by Jill')).toBeTruthy();
     expect(within(sheet).getByRole('status').textContent).toContain('Loading the file…');
 
-    deliver({
-      type: MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT,
-      source: 'extension.workshop',
-      payload: {
-        group: 'characters',
-        path: 'characters/rabbit.md',
-        content: '# The Rabbit\n\nHe checks his watch.',
-        truncated: true,
-        canOpenInEditor: true
-      },
-      timestamp: 1
-    });
+    deliver(readInContent(readInRequestIds()[0], '# The Rabbit\n\nHe checks his watch.', { truncated: true }));
     expect(within(sheet).getByRole('heading', { name: 'The Rabbit' })).toBeTruthy();
     expect(within(sheet).getByRole('note').textContent).toContain('Showing the start of the file only');
 
@@ -200,5 +212,31 @@ describe('WorkshopApp Read in', () => {
     render(<WorkshopApp />);
     deliver(session([]));
     expect(within(rail()).getByText('When Jill reads a file or runs a tool, it shows here.')).toBeTruthy();
+  });
+
+  it.each([
+    ['the earlier reply lands first', true],
+    ['the current reply lands first', false]
+  ])('Close, then reopen the same file: the reader shows the current answer when %s (PR #186 F-01)', (_case, earlierFirst) => {
+    render(<WorkshopApp />);
+    deliver(session([resourceRow('characters/rabbit.md', 1_000)]));
+
+    openRabbit();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+    openRabbit();
+    const [earlier, current] = readInRequestIds();
+    expect(current).not.toBe(earlier);
+
+    const stale = readInContent(earlier, 'The file before the writer saved.');
+    const fresh = readInContent(current, 'The file now.');
+    for (const reply of earlierFirst ? [stale, fresh] : [fresh, stale]) {
+      deliver(reply);
+    }
+
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText('The file now.', { selector: 'p' })).toBeTruthy();
+    expect(within(sheet).queryAllByText('The file before the writer saved.')).toEqual([]);
+    const source = sheet.querySelector('textarea') as HTMLTextAreaElement;
+    expect(source.value).toBe('The file now.');
   });
 });

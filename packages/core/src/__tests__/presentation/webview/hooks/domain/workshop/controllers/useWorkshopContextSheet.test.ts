@@ -167,6 +167,7 @@ describe('useWorkshopContextSheet', () => {
       act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
 
       props.readInContent = {
+        requestId: 'readin-2',
         group: 'characters',
         path: 'characters/hatter.md',
         content: 'The wrong file.',
@@ -176,7 +177,7 @@ describe('useWorkshopContextSheet', () => {
       expect(result.current.sheetBody?.loading).toBe(true);
       expect(result.current.sheetBody?.value).toBeUndefined();
 
-      props.readInContent = { ...rabbit, content: 'Down the hole.', truncated: true, canOpenInEditor: true };
+      props.readInContent = { requestId: 'readin-1', ...rabbit, content: 'Down the hole.', truncated: true, canOpenInEditor: true };
       rerender();
       expect(result.current.sheetBody).toEqual({
         value: 'Down the hole.',
@@ -186,7 +187,7 @@ describe('useWorkshopContextSheet', () => {
         canOpenInEditor: true
       });
 
-      props.readInContent = { ...rabbit, error: 'That file could not be read.', canOpenInEditor: false };
+      props.readInContent = { requestId: 'readin-1', ...rabbit, error: 'That file could not be read.', canOpenInEditor: false };
       rerender();
       expect(result.current.sheetBody).toMatchObject({ loading: false, error: 'That file could not be read.' });
     });

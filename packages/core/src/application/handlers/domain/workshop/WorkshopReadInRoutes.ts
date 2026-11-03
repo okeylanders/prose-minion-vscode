@@ -28,6 +28,16 @@ import {
 
 const LOG = '[WorkshopReadInRoutes]';
 
+/** Longest webview-minted request id the reader accepts. */
+const MAX_REQUEST_ID_LENGTH = 128;
+
+const requestIdOf = (payload: unknown): string | undefined => {
+  const value = (payload as { requestId?: unknown } | undefined)?.requestId;
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_REQUEST_ID_LENGTH
+    ? value
+    : undefined;
+};
+
 /** The pair as the webview sent it, echoed only when it is two strings. */
 const echoedRef = (payload: unknown): { group: string; path: string } => {
   const candidate = (payload ?? {}) as { group?: unknown; path?: unknown };
@@ -47,7 +57,14 @@ export class WorkshopReadInRoutes {
   ) {}
 
   async serveContent(message: WorkshopRequestReadInResourceMessage): Promise<void> {
-    const ref = echoedRef(message.payload);
+    // A reply nobody can match would only be ignored, so a request without
+    // its id is dropped here, as the Lightbox's correlated reads are.
+    const requestId = requestIdOf(message.payload);
+    if (!requestId) {
+      this.outputChannel.appendLine(`${LOG} A read-in request without its request id was ignored`);
+      return;
+    }
+    const ref = { requestId, ...echoedRef(message.payload) };
     let payload: WorkshopReadInResourceContentPayload;
     try {
       const catalog = await this.contextIntakeService.openCatalog();

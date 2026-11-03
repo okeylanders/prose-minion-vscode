@@ -3,10 +3,12 @@
  * read-in file's current text by `{ group, path }`, and ask it to open the
  * file beside the Workshop.
  *
- * One request is pending at a time. A reply is taken only while it matches
- * the pair the reader is waiting for, so a late answer for a row the writer
- * already closed never paints into the sheet. Nothing here is persisted: the
- * file on disk is the truth, read again each time.
+ * One request is pending at a time, under a request id this hook mints. A
+ * reply is taken only when it answers that request: the pair names a file,
+ * not a request, so a late answer to an earlier opening of the same file
+ * (Close, then reopen; or A → B → A) never paints into the sheet (PR #186
+ * F-01). Clearing drops the pending id. Nothing here is persisted: the file
+ * on disk is the truth, read again each time.
  */
 
 import * as React from 'react';
@@ -18,6 +20,8 @@ import {
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 
 export interface WorkshopReadInContentState {
+  /** The request this state belongs to. */
+  requestId: string;
   group: string;
   path: string;
   /** Undefined until the host answers, or when it refused. */
@@ -52,17 +56,22 @@ const SOURCE = 'webview.workshop.read-in';
 export function useWorkshopReadIn(): UseWorkshopReadInReturn {
   const vscode = useVSCodeApi();
   const [readInContent, setReadInContent] = React.useState<WorkshopReadInContentState | null>(null);
+  // This webview's prefix, so a reloaded webview never takes an answer meant
+  // for the one before it.
+  const ids = React.useRef({ prefix: `ws-readin-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
 
   const post = React.useCallback(
-    (type: MessageType, payload: ConfiguredResourceRef) => {
+    (type: MessageType, payload: ConfiguredResourceRef & { requestId?: string }) => {
       vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
     },
     [vscode]
   );
 
   const requestReadInResource = React.useCallback((ref: ConfiguredResourceRef) => {
-    setReadInContent({ group: ref.group, path: ref.path, canOpenInEditor: false });
-    post(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, { group: ref.group, path: ref.path });
+    ids.current.count += 1;
+    const requestId = `${ids.current.prefix}-${ids.current.count}`;
+    setReadInContent({ requestId, group: ref.group, path: ref.path, canOpenInEditor: false });
+    post(MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE, { requestId, group: ref.group, path: ref.path });
   }, [post]);
 
   const openReadInResource = React.useCallback((ref: ConfiguredResourceRef) => {
@@ -73,10 +82,15 @@ export function useWorkshopReadIn(): UseWorkshopReadInReturn {
 
   const handleReadInResourceContent = React.useCallback(
     (message: WorkshopReadInResourceContentMessage) => {
-      const { group, path, content, truncated, error, canOpenInEditor } = message.payload;
+      const { requestId, group, path, content, truncated, error, canOpenInEditor } = message.payload;
       setReadInContent((current) =>
-        current?.group === group && current.path === path
-          ? { group, path, content, truncated, error, canOpenInEditor }
+        current !== null
+          && current.requestId === requestId
+          && current.group === group
+          && current.path === path
+          && current.content === undefined
+          && current.error === undefined
+          ? { requestId, group, path, content, truncated, error, canOpenInEditor }
           : current
       );
     },
