@@ -152,3 +152,26 @@ this response's head, all pass.
 
 **Not exercised:** native VS Code activation, live provider calls, and Slice 7's
 display and export.
+
+
+## Re-review findings at `edf98ce` (2026-11-03)
+
+**Disposition: changes requested.** The original absent-model, engine fallback, and completion-stage widget witnesses now pass. Independent correction review found two further P2 provenance cases below. Dictionary ordering and the rest of the delta are still under review; this is an early handoff, not a final clean review. No formal GitHub review or approval is submitted.
+
+### F-03: P2: preserve a model-only frame after the last content on an interrupted stream
+
+**Locations:** [`OpenRouterClient.ts:373–388`](https://github.com/okeylanders/prose-minion-vscode/blob/edf98ce40c7014cea05520aeb91350cbb8e46c95/packages/core/src/infrastructure/api/providers/OpenRouterClient.ts#L373-L388), [`OpenRouterClient.ts:401–402`](https://github.com/okeylanders/prose-minion-vscode/blob/edf98ce40c7014cea05520aeb91350cbb8e46c95/packages/core/src/infrastructure/api/providers/OpenRouterClient.ts#L401-L402).
+
+With the real client and engine and only HTTP mocked, send a content frame without a model, then a later model-only frame naming `vendor/served`, then end the stream without `[DONE]`, finish reason, or usage. The engine retains the provider's partial text, but `servedModelIds` is `[]` although the provider named a model. A provider-error after that metadata frame has the same result. A `[DONE]` positive control retains `[vendor/served]`.
+
+The client records the later ID internally but yields it only with a content chunk or terminal chunk. A model-only frame emits neither, and interrupted EOF without finish/usage emits no terminal. Preserve reported identity across that boundary, including the provider-error path where retained content is committed; do not invent a fallback ID. Add real-client/engine regressions for both interruption forms and a normal completion control. Existing interruption coverage puts the model on the content frame and misses this ordering.
+
+### F-04: P2: exclude Dictionary blocks removed by normalization from model provenance
+
+**Location:** [`DictionaryService.ts:721–726`](https://github.com/okeylanders/prose-minion-vscode/blob/edf98ce40c7014cea05520aeb91350cbb8e46c95/packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts#L721-L726).
+
+The assembler tests raw `result.content.trim()` before `normalizeBlockContent`. A non-special-focus block containing only a `## **Special Focus: ...` section is nonempty before normalization but empty afterward. Nevertheless it increments `successCount` and enters `includedBlocks`, so its requested and served model become the entry stamp even though none of that block's content remains. If all other blocks fail, the committed entry consists only of the host-written header yet carries a provider stamp. An independent two-model control also shows a removed block's model contaminating the provenance of a different retained block.
+
+Determine inclusion and attribution from the normalized content actually retained, and ensure a header-only result does not acquire a provider stamp. Add regression coverage for a removed-only block, a removed block beside retained output from a different model, and normal retained output. This is distinct from the known host-fallback fix: the provider did return text, but the assembler discarded it before constructing the entry.
+
+**Independent checks so far:** the earlier seven real-client boundary probes now pass; five focused correction suites pass **60 tests**. The late-model probe has one passing `[DONE]` control and two expected failures (EOF and provider-error). Five Dictionary/adoption/codec suites pass **107 tests**; separate scratch probes reproduce F-04. Full local suite and native/live-provider testing have not been rerun in this correction review.
