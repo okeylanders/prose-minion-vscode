@@ -53,7 +53,7 @@ the ADR:
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
-| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Built, PR pending |
+| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | In review (PR #185), review fixes pushed |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
@@ -178,9 +178,33 @@ the ADR:
   - **Deviations.**
     - The codec refuses a stamp on a non-assistant turn.
     - A failed persona-run analysis records no stamp.
-    - Dictionary capability turns stay unstamped, because D7 doesn't list them.
-      That needs a decision:
-      [tech debt](../../tech-debt/2026-11-03-workshop-dictionary-turn-model-stamps.md).
+    - Dictionary capability turns stayed unstamped, because D7 didn't list
+      them. The review fixes below settle that.
   - **Not done here.** The JSON export doesn't carry `model` yet. Transcript
     projection picks fields explicitly, so the stamp stays out of export and
     recall until Slice 7 (D10).
+- **2026-11-03. Slice 6 review fixes (PR #185).** Astra
+  ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md))
+  found two P2 provenance faults and one scope decision:
+  - **`bc02e52`, F-01 and F-02.**
+    - **F-01.** Served ids are only models a response named. The client
+      reports `servedModelId` without the requested-model fallback, on content
+      chunks too, so a reported model survives missing usage and a broken-off
+      stream.
+    - **F-02.** `ExecutionResult` and `AnalysisResult` carry `replySource`. A
+      reply the engine wrote itself (empty or null, exhausted corrections, an
+      exhausted capability limit) is `host-fallback` and commits unstamped.
+  - **`c3d1c8c`, N-01.** The coordinator decided that a persona's dictionary
+    lookups are stamped, with scope `dictionary`. D7 gained that one bullet,
+    and the tech-debt item is gone.
+  - **Counts.** Before (`0c987cf`): 595 suites / 8,432 tests / 59 snapshots.
+    After: 597 / 8,466 / 59, all passing. Typecheck is clean, and lint stays
+    at 0 errors and 1,133 warnings.
+  - **Files over 500 lines that grew.**
+    - `DictionaryService` 771 → 800. Its aggregation lives in the new 58-line
+      `DictionaryRunModel.ts`.
+    - `WorkshopPersonaCapability` 846 → 855.
+    - `AgentRunEngine` 1,152 → 1,172.
+    - `OpenRouterClient` 604 → 627.
+
+    Each grew only by the new field and its reads.

@@ -90,3 +90,62 @@ Native VS Code activation, live-provider response quality and Slice 7 UI/export 
 ## F-02 correction note: completion-stage widget fallback
 
 The engine is not the only place that can replace a provider response with host-written text. In [`WorkshopRunCompletion.ts:290–312`](../../packages/core/src/application/services/workshop/WorkshopRunCompletion.ts#L290), a widget-only response has its control block stripped; if no display text remains, completion supplies a host-written accepted or rejected widget fallback and then passes `workshopTurnModelOf(result.model)` to `completeRun`. An engine-only usable-reply flag would still stamp that substituted text. Please cover both widget-only outcomes at the completion boundary, alongside a provider-written accompanying note as a positive control. This is another path for F-02, not a separate finding. The correction has not yet landed at `0c987cf6`.
+
+## Author response (2026-11-03)
+
+All three are addressed on top of this report's commit `0c987cf`:
+
+- **`bc02e52`** fixes F-01 and F-02. Their changes share the engine's result
+  boundary.
+- **`c3d1c8c`** resolves N-01. The coordinator decided to stamp Dictionary
+  turns. D7 gains one bullet, "Dictionary lookups a persona runs, with scope
+  `dictionary`", and the tech-debt item that held the question is removed.
+  This report's link to that item is now historical.
+- **The commit that adds this response** updates the slice doc and the epic's
+  progress notes.
+
+Nothing above this section was edited.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | **Served ids are only models a response named.**<br>• `OpenRouterClient` reports `servedModelId`: the response's `model` when it is a non-empty string, otherwise nothing. Non-streaming returns it on the result. Streaming puts it on every content chunk and the terminal chunk once a frame named it.<br>• The engine fills `servedModelIds` only from `servedModelId`, deduplicated in first-use order.<br>• `InferenceRequestObservation.modelId` keeps its `data.model \|\| requestedModel` fallback, so context-budget telemetry and the cache window are unchanged.<br>**On the related limitation:** the reported model no longer depends on the usage-gated observation, so it survives missing usage. Because it rides on content chunks, it also survives a stream the provider breaks off after content. | `AgentRunEngine.replyProvenance.integration.test.ts` (new, 23): real `OpenRouterClient` and `AgentRunEngine`, only `fetch` mocked, both modes. Each mode covers:<br>• model absent, usage present → `[]`<br>• model present, usage present → `[model]`<br>• model present, usage absent → `[model]`<br>• multi-call de-duplication across capability rounds<br>• two named models in first-use order<br>Streaming also covers an interrupted stream, which keeps its named model.<br>`AgentRunEngine.modelStamps.test.ts`: its mocks now report `servedModelId`, and its "no observations" case is "no response named a model". | `bc02e52` |
+| F-02 | P2 | **Fixed** | **Only a provider reply is stamped.**<br>• `ExecutionResult` and `AnalysisResult` carry `replySource` (`InferenceReplySource`): `provider`, or `host-fallback`.<br>• The engine marks the turn result it substitutes (`hostFallback`), never its text. It marks three cases: an empty or null reply, exhausted correction turns, and an exhausted capability limit. The final reply decides the source, so a later provider turn can't inherit an earlier fallback's mark.<br>• `workshopTurnModelOf` stamps only `replySource: 'provider'`; an unknown source doesn't qualify. Every adoption path goes through it.<br>• A host-written stand-in still commits, as before, but carries no `model`. | Same new suite, both modes:<br>• **Host-written:** empty reply, null reply (non-streaming), exhausted correction turns, exhausted capability limit<br>• **Provider (positive controls):** ordinary reply, a reply cut off at its ceiling, and (streaming) a retained reply the provider interrupted<br>`WorkshopModelStamps.integration.test.ts` (+1): through the real handler, the engine's stand-in commits with no stamp<br>`WorkshopPersonaCapabilityModelStamps.test.ts` (+1): a persona-run analysis whose reply the engine wrote records no stamp | `bc02e52` |
+| N-01 | — | **Resolved: stamp Dictionary** (coordinator's decision) | **Dictionary turns are stamped `{ scope: 'dictionary', requestedModelId, servedModelIds }`.**<br>• `DictionaryService` returns its runs' models and reply source beside each result (`DictionaryRunModel`).<br>• **Single lookup:** carries the engine's `models`, so requested is captured at the run's start, like every other run.<br>• **Full entry:** takes the first included block's requested model and every included block's named models. It counts as a provider reply only when every block in it was one.<br>• History keeps its own `modelIds`. The handler strips the new fields from the webview's fast-dictionary payload.<br>• `WorkshopPersonaCapability` stamps `dictionary.lookup` and `dictionary.full-entry` turns that produced an entry. These record none: failed, unconfigured, a full entry with no generated block, a host-written stand-in. | `WorkshopPersonaCapabilityModelStamps.test.ts` (renamed from `WorkshopPersonaAnalysisModelStamp`): both kinds stamped `dictionary`, evidence free of model ids; no stamp for a failed lookup, an unconfigured key, a stand-in, or an entry with no block<br>`DictionaryRunModels.test.ts` (new, 4): the service's lookup and full-entry models, no models without a block, all-blocks provider rule<br>`DictionaryHandler.test.ts`: the webview payload carries neither field | `c3d1c8c` |
+
+### What fails where
+
+I ran the new and changed tests against the reviewed head's sources (`0c987cf`)
+with ts-jest's type diagnostics off, so old behavior is measured instead of
+missing fields. **26 of 76 fail:**
+
+- **F-01: 8 tests, 4 per mode.** No named model, named without usage, and both
+  multi-call cases. At the reviewed head they report the requested-model
+  fallback, or drop a model that came without usage.
+- **F-02: 7 host-written tests**, plus the Workshop handler's and the persona
+  analysis's unstamped stand-ins. The positive controls fail there too, but
+  only because `replySource` doesn't exist yet.
+- **N-01: the four dictionary stamp and service tests**, plus the handler's
+  payload test. At the reviewed head, the full entry's models would pass
+  through to the webview.
+
+At this response's head, all pass.
+
+### Verification at this head
+
+- **Full Jest:** 597 suites / 8,466 tests / 59 snapshots, all passing (Node
+  18). That is +2 suites and +34 tests over this report's 595 / 8,432.
+- **`npm run typecheck`:** clean.
+- **`npm run lint`:** 0 errors, 1,133 warnings, unchanged.
+- **Core imports:** no `from 'vscode'` in `packages/core/src`.
+- **`git diff --check`:** clean.
+- **Files over 500 lines that grew, by the new field and its reads:**
+  - `AgentRunEngine` 1,152 → 1,172
+  - `OpenRouterClient` 604 → 627
+  - `DictionaryService` 771 → 800 (its aggregation is in the new 58-line
+    `DictionaryRunModel.ts`)
+  - `WorkshopPersonaCapability` 846 → 855
+
+**Not exercised:** native VS Code activation, live provider calls, and Slice 7's
+display and export.
