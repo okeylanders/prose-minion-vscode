@@ -148,3 +148,15 @@ F-02 is fixed in `3c184c2`. Nothing above this section was edited.
 - `git diff --check`: clean. No `from 'vscode'` in core.
 
 Native keyboard and screen-reader acceptance remain Slice 8's.
+
+
+## Independent re-review of `8c15a70` (2026-11-03)
+
+**Disposition: F-01 and F-02 are resolved; no new actionable defect found in the correction.** This report is not a formal GitHub approval or authorization to merge.
+
+- **F-02:** The original full-App loaded-A → B wrong-body reproduction now passes unchanged. The reader gets a fresh sheet lifetime for each request, so B's heading and body both show B. Independent controls cover same-file reopening, pending and reversed replies, a refusal clearing the old body, and retained authoring drafts. The text-sheet focus trap wraps Tab and Shift+Tab in the tested App DOM, including preview/source and changing enabled controls; Escape and opener focus restoration still work.
+- **F-01:** The prior close/reopen, all six A → B → A reply orders, late successes and refusals, duplicates, mismatched IDs/pairs, room/target replacement, and host ID-validation probes remain passing after the remount/focus changes. Configured-resource authorization and read-cap regressions also pass.
+
+**Independent verification on `8c15a70`:** the F-02 correction has **4 production suites / 53 tests** and **8 separate full-App probes** passing; access/correlation verification has **9 suites / 163 tests** passing, including **30 independent probes**. These groups overlap; they are not additive totals. Native Chromium Tab traversal was not exercised because the browser could not start under the review environment's socket restrictions; the focus evidence is App DOM/event testing and source inspection. Native VS Code editor-column and screen-reader acceptance remain unverified.
+
+[CI run 41742363318](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41742363318) passed on synthetic merge `050f822` of `8c15a70` into `07d24e7`: **606 suites / 8,608 tests / 59 snapshots**, typecheck, lint and both builds. The full local suite was not rerun independently. No implementation change, formal approval, merge or paid provider call was made during this re-review.
