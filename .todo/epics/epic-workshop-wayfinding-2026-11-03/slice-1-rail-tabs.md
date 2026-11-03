@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1
 **Design:** `Main.dc.html` and `Today.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Done (`da7f28fa`, `4a25d5cc`)
+**Status:** Built (`94d6b86`, `e188ea9`, cherry-picked from `da7f28f`, `4a25d5c`); the review fix makes the badge follow amended D1. In review as a PR into the epic.
 
 ## Outcome
 
@@ -12,8 +12,8 @@ The Workshop's rail has two file-style tabs:
 - **Material:** Excerpt, then Context.
 - **Notes:** To-dos.
 
-The Tools block is gone. When the host proposes a to-do while Notes is hidden,
-the Notes tab shows a "N new" badge. Selecting Notes clears it, and no tab ever
+The Tools block is gone. When a to-do lands while Notes is hidden, whoever
+added it, the Notes tab shows a "N new" badge (D1, amended 2026-11-03). Selecting Notes clears it, and no tab ever
 switches itself. The last-selected tab survives a webview reload.
 
 This slice changes no contract: no message, no session field, no host code.
@@ -72,9 +72,9 @@ presentation controller per `AGENTS.md`: no `useVSCodeApi`, `MessageType`, or
   initial persisted state the way sibling Workshop hooks do. An unknown stored
   value falls back to `material`.
 - **Input:** the current to-do list.
-  - Unseen means open to-dos whose source is the host or a tool, whose id was
-    not present when Notes was last visible, and that arrived while Notes was
-    hidden.
+  - Unseen means open, current to-dos whose id was not present when Notes
+    was last visible, and that arrived while Notes was hidden, whoever added
+    them (D1, amended).
   - On mount, every current id counts as seen, so a reload never badges old
     items.
   - The writer's own edits never badge.
@@ -129,8 +129,8 @@ presentation controller per `AGENTS.md`: no `useVSCodeApi`, `MessageType`, or
 - [x] The Tools block and its rail-only code and styles are deleted. Every tool
       is still reachable from the composer and the empty states.
       (`WorkshopApp.railTabs.test.tsx`; the deleted selectors had no other user)
-- [x] Notes badges host-added to-dos while it's hidden. Selecting Notes clears
-      the badge, and nothing switches tabs on its own.
+- [x] Notes badges to-dos that land while it's hidden. Selecting Notes
+      clears the badge, and nothing switches tabs on its own.
       (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`)
 - [x] The last tab survives a reload, and no session field changed.
       (`useWorkshopRailTabs.test.ts`, `WorkshopApp.railTabs.test.tsx`; the diff

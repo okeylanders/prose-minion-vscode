@@ -2,13 +2,13 @@
 
 /**
  * useWorkshopRailTabs (ADR 2026-11-03 D1): the rail's tab is restored and
- * persisted per viewer, and the Notes badge counts only host-sourced to-dos
- * that arrived while Notes was hidden. Nothing ever switches the tab.
+ * persisted per viewer, and the Notes badge counts open, current to-dos that
+ * arrived while Notes was hidden, whoever added them. Nothing ever switches
+ * the tab.
  */
 
 import { act, renderHook } from '@testing-library/react';
 import {
-  isHostSourcedTodo,
   parseWorkshopRailTab,
   useWorkshopRailTabs,
   UseWorkshopRailTabsOptions
@@ -51,24 +51,6 @@ describe('parseWorkshopRailTab', () => {
   });
 });
 
-describe('isHostSourcedTodo', () => {
-  it('counts host, guest, and tool findings', () => {
-    expect(isHostSourcedTodo(todo('a'))).toBe(true);
-    expect(isHostSourcedTodo(todo('b', {
-      source: {
-        kind: 'guest_turn', personaId: 'dev', turnId: 't', participantLabel: 'Dev',
-        findingKey: 'k', findingText: 'x', excerptVersion: 1
-      }
-    }))).toBe(true);
-    expect(isHostSourcedTodo(todo('c', {
-      source: {
-        kind: 'tool_report', toolId: 'cliche', turnId: 't', participantLabel: 'Cliché',
-        findingKey: 'k', findingText: 'x', excerptVersion: 1
-      }
-    }))).toBe(true);
-  });
-});
-
 describe('useWorkshopRailTabs', () => {
   it('starts on Material and persists the selected tab', () => {
     const { result } = renderTabs();
@@ -85,7 +67,7 @@ describe('useWorkshopRailTabs', () => {
     expect(renderTabs({ initialTab: 'pins' }).result.current.activeTab).toBe('material');
   });
 
-  it('badges a host to-do added while Notes is hidden, and clears it on selecting Notes', () => {
+  it('badges a to-do added while Notes is hidden, and clears it on selecting Notes', () => {
     const { result, rerender } = renderTabs({ todos: [todo('a')] });
     expect(result.current.unseenNotesCount).toBe(0);
 

@@ -20,27 +20,12 @@ export function parseWorkshopRailTab(value: unknown): WorkshopRailTab {
 }
 
 /**
- * Whether a to-do counts toward the Notes badge. Every source kind today is a
- * host, guest, or tool finding; a future kind must decide here (the `never`
- * default refuses to compile until it does).
+ * Whatever lands in a hidden tab badges it, whoever added it (ADR D1, amended
+ * 2026-11-03). Stale to-dos are left out, so the badge never exceeds the
+ * tab's open count.
  */
-export function isHostSourcedTodo(todo: WorkshopTodoItem): boolean {
-  const kind = todo.source.kind;
-  switch (kind) {
-    case 'tool_report':
-    case 'host_turn':
-    case 'guest_turn':
-      return true;
-    default: {
-      const unreachable: never = kind;
-      return unreachable;
-    }
-  }
-}
-
-/** Badged to-dos are a subset of the ones the Notes tab counts as open. */
 const isBadgeable = (todo: WorkshopTodoItem): boolean =>
-  todo.status === 'open' && !todo.stale && isHostSourcedTodo(todo);
+  todo.status === 'open' && !todo.stale;
 
 export interface UseWorkshopRailTabsOptions {
   /** The room's current to-dos, as the snapshot carries them. */
@@ -57,7 +42,7 @@ export interface UseWorkshopRailTabsOptions {
 
 export interface WorkshopRailTabsState {
   activeTab: WorkshopRailTab;
-  /** Open, current, host-sourced to-dos that arrived while Notes was hidden. */
+  /** Open, current to-dos that arrived while Notes was hidden. */
   unseenNotesCount: number;
 }
 

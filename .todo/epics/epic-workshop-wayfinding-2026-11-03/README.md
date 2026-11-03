@@ -48,7 +48,7 @@ the ADR:
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
-| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR); built in `da7f28f`, `4a25d5c` |
+| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR); built in `94d6b86`, `e188ea9` |
 | 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Planned |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
@@ -134,9 +134,10 @@ the ADR:
     nothing.
   - The canvas Okey approved badges whatever lands in a hidden tab, so that is
     the rule now, with no toast.
-- **2026-11-03. Slice 1 (rail tabs).** Landed in `da7f28fa` (the
-  `useWorkshopRailTabs` controller) and `4a25d5cc` (`WorkshopRail`, the
-  `WorkshopApp` rewire, the Tools block and its styles deleted).
+- **2026-11-03. Slice 1 (rail tabs).** Landed in `94d6b86` (the
+  `useWorkshopRailTabs` controller) and `e188ea9` (`WorkshopRail`, the
+  `WorkshopApp` rewire, the Tools block and its styles deleted). These are
+  cherry-picks of `da7f28f` and `4a25d5c` on the PR branch.
   - **Counts.** Before, at `1f8becb8`: 591 suites / 8,398 tests / 59
     snapshots. After: 594 / 8,422 / 59, all passing. `npm run typecheck`
     clean. `npm run lint`: 0 errors; warnings 1,130 → 1,133, all three the
@@ -158,10 +159,10 @@ the ADR:
       then `room:<roomRevision>`) and marks everything seen whenever it
       changes. That also keeps New, Open, Rewind and Branch from badging the
       room they bring in.
-    - *Badge eligibility.* Open, not stale, and host-sourced. "Host-sourced"
-      is an exhaustive switch over `WorkshopTodoSource.kind`
-      (`isHostSourcedTodo`); stale is excluded so the badge is never larger
-      than the tab's open count.
+    - *Badge eligibility.* Built as open, not stale, and host-sourced
+      (`isHostSourcedTodo`); the review fix drops the host-sourced check, per
+      amended D1. Stale is excluded so the badge is never larger than the
+      tab's open count.
     - *Accessible names.* Material is "Material, N items"; Notes is "Notes,
       N open" plus ", N new" (the doc's example omitted the open count).
     - *Copy.* The empty thread said "run a tool from the left"; it now says
