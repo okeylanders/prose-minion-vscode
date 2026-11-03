@@ -376,6 +376,10 @@ export class AgentRunEngine {
     let latestObservation: InferenceRequestObservation | undefined;
     let peakPromptTokens = 0;
     let correctionTurns = 0;
+    // Captured before the first request, with nothing awaited between: a
+    // selection change during the run must not relabel it (D7; PR #144 F-03).
+    const requestedModelId = this.requestModel(runOptions, provider);
+    const servedModelIds: string[] = [];
 
     const recordObservation = (observation?: InferenceRequestObservation): void => {
       if (!observation) {
@@ -384,6 +388,9 @@ export class AgentRunEngine {
           latestObservation = { ...latestObservation, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
         }
         return;
+      }
+      if (observation.modelId && !servedModelIds.includes(observation.modelId)) {
+        servedModelIds.push(observation.modelId);
       }
       latestObservation = observation;
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
@@ -580,6 +587,7 @@ export class AgentRunEngine {
         ...(last.reasoningTokens !== undefined ? { reasoningTokens: last.reasoningTokens } : {}),
         providerResponseId: last.providerResponseId,
         modelId: latestObservation?.modelId,
+        ...(requestedModelId ? { models: { requestedModelId, servedModelIds: [...servedModelIds] } } : {}),
         citations: runCitations,
         cancelled
       };
@@ -741,7 +749,7 @@ export class AgentRunEngine {
     retained: boolean,
     options: AgentRunOptions
   ): Promise<CapabilityFulfillment> {
-    const contextLength = OpenRouterModels.getCachedContextLength(options.model ?? provider.getModel?.() ?? this.model);
+    const contextLength = OpenRouterModels.getCachedContextLength(this.requestModel(options, provider));
     if (contextLength === undefined) {
       return capability.fulfill(request);
     }
@@ -755,6 +763,11 @@ export class AgentRunEngine {
     return capability.fulfill(request, window);
   }
 
+  /** The model the next request goes to: the run's pinned model, else the provider's now. */
+  private requestModel(options: AgentRunOptions, provider: OpenRouterClient): string {
+    return options.model ?? provider.getModel?.() ?? this.model;
+  }
+
   private async executeTurn(
     messages: OpenRouterMessage[],
     options: AgentRunOptions,
@@ -762,7 +775,7 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
-    const model = options.model ?? provider.getModel?.() ?? this.model;
+    const model = this.requestModel(options, provider);
     const contextLength = OpenRouterModels.getCachedContextLength(model);
     if (contextLength !== undefined) {
       this.contextPreflightUnavailableModel = undefined;
