@@ -212,6 +212,59 @@ describe.each([false, true])('reply provenance through the real client and engin
     });
 
     if (streaming) {
+      describe('F-03: a model named after the last content', () => {
+        const runFrames = async (events: unknown[]) => {
+          global.fetch = jest.fn(async () => streamingResponse(events)) as typeof fetch;
+          engine = new AgentRunEngine(new OpenRouterClient('key', REQUESTED), new ConversationManager());
+          return engine.runInitial({
+            toolName: 'host',
+            systemMessage: 'System',
+            userMessage: 'Hello',
+            policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
+            options: { onToken: jest.fn() }
+          });
+        };
+        const CONTENT = { choices: [{ delta: { content: 'Most of a reply' } }] };
+        const MODEL_ONLY = { model: 'vendor/served', choices: [{ delta: {} }] };
+
+        it('keeps it when the stream ends with no terminal frame', async () => {
+          const result = await runFrames([CONTENT, MODEL_ONLY]);
+
+          expect(result.content).toContain('Most of a reply');
+          expect(result.models?.servedModelIds).toEqual(['vendor/served']);
+          expect(result.replySource).toBe('provider');
+        });
+
+        it('keeps it when the provider errors after naming it', async () => {
+          const result = await runFrames([
+            CONTENT,
+            MODEL_ONLY,
+            { error: { code: 502, message: 'Upstream closed the stream' } }
+          ]);
+
+          expect(result.content).toContain('provider interrupted');
+          expect(result.models?.servedModelIds).toEqual(['vendor/served']);
+          expect(result.replySource).toBe('provider');
+        });
+
+        it('keeps it on a stream that finishes normally', async () => {
+          const result = await runFrames([
+            CONTENT,
+            MODEL_ONLY,
+            { choices: [{ delta: {}, finish_reason: 'stop' }], usage: USAGE },
+            '[DONE]'
+          ]);
+
+          expect(result.models?.servedModelIds).toEqual(['vendor/served']);
+        });
+
+        it('names nothing when no frame named a model', async () => {
+          const result = await runFrames([CONTENT, { choices: [{ delta: {} }] }]);
+
+          expect(result.models?.servedModelIds).toEqual([]);
+        });
+      });
+
       it('marks a retained reply the provider interrupted as the provider\'s', async () => {
         const result = await run([{ content: 'Most of a reply', model: 'vendor/served', interrupt: true }]);
 

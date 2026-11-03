@@ -372,6 +372,7 @@ export class OpenRouterClient {
             if (chunkUsage) usage = chunkUsage;
             reasoningTokens = toReasoningTokens(parsed.usage) ?? reasoningTokens;
             const chunkModel = reportedModelId(parsed.model);
+            const namesNewModel = chunkModel !== undefined && chunkModel !== servedModelId;
             if (chunkModel) {
               responseModel = chunkModel;
               servedModelId = chunkModel;
@@ -386,6 +387,11 @@ export class OpenRouterClient {
               // The model rides with the content too, so a stream the provider
               // breaks off after content still says who wrote it (D7).
               yield { token, done: false, ...(servedModelId ? { servedModelId } : {}) };
+            } else if (namesNewModel) {
+              // A frame that only names the model still reaches the caller at
+              // once: a stream that ends or errors before its terminal chunk
+              // must not lose it (Astra F-03).
+              yield { token: '', done: false, servedModelId };
             }
 
           } catch (error) {
