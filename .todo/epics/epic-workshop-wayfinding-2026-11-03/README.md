@@ -53,7 +53,7 @@ the ADR:
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
-| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Planned |
+| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Built, PR pending |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
@@ -134,3 +134,53 @@ the ADR:
     nothing.
   - The canvas Okey approved badges whatever lands in a hidden tab, so that is
     the rule now, with no toast.
+- **2026-11-03. Slice 6 (model stamps).** Built on
+  `epic/workshop-wayfinding-slice-6-model-stamps`:
+  - **Commits.**
+    - `7e38081`: `AgentRunEngine` returns `ExecutionResult.models`. It captures
+      the requested model before the run's first request and collects the
+      distinct served ids from each request's observation, in order.
+    - `9d86713`: `WorkshopTurn.model` (`WorkshopTurnModel`), its strict codec
+      (`WorkshopTurnModel.ts`, called from `assertTurn`), `MODEL_SCOPES` /
+      `isModelScope`, and `AnalysisResult.model`.
+    - `584a529`: `AssistantToolService` scopes each run's models as
+      `assistant`, and every provider-made commit path stamps its turn.
+  - **Stamped paths.** The [slice doc](slice-6-model-stamps.md#built) has the
+    table:
+    - host replies, guest first replies and guest replies, tool-sidecar
+      replies, and host syntheses, all through `completeWorkshopRun`;
+    - the writer's tool reports, through `adoptWriterReport`;
+    - persona-run analyses, through `adoptPersonaReport`.
+
+    Failed, cancelled, refused and zombie runs commit nothing, so they carry no
+    stamp. An integration test drives the real handler and checks that no
+    request sent to the engine (prompts, room catch-ups, room frames) contains
+    a stamp.
+  - **Counts.**
+    - Before, on a clean worktree at `fddc484`: 591 suites / 8,398 tests / 59
+      snapshots, all passing.
+    - After: 595 / 8,432 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors and 1,133 warnings, unchanged from the
+      baseline.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by the stamp's
+    parameter, field or call:
+    - `WorkshopSessionService` 2,555 → 2,562;
+    - `WorkshopSessionStateV1Shape` 1,028 → 1,037 (its assertion lives in the
+      new 64-line `WorkshopTurnModel.ts`);
+    - `AgentRunEngine` 1,139 → 1,152;
+    - `AssistantToolService` 1,078 → 1,100;
+    - `WorkshopPersonaCapability` 833 → 846;
+    - `session.ts` 925 → 942.
+
+    All were already tracked as oversized.
+  - **Deviations.**
+    - The codec refuses a stamp on a non-assistant turn.
+    - A failed persona-run analysis records no stamp.
+    - Dictionary capability turns stay unstamped, because D7 doesn't list them.
+      That needs a decision:
+      [tech debt](../../tech-debt/2026-11-03-workshop-dictionary-turn-model-stamps.md).
+  - **Not done here.** The JSON export doesn't carry `model` yet. Transcript
+    projection picks fields explicitly, so the stamp stays out of export and
+    recall until Slice 7 (D10).
