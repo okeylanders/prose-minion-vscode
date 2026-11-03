@@ -124,8 +124,112 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: Show vs. Tell Playground',
+    title: 'New: Lightbox',
     tag: 'new',
+    body: (
+      <>
+        Hold a chapter up to the light. Choose <b>Open File in Lightbox</b> from the editor&rsquo;s
+        title bar or the Explorer, or select a passage and choose <b>Open Selection in Lightbox</b>{' '}
+        from the editor&rsquo;s <b>Prose Minion</b> menu. The chapter opens on a board in its own
+        tab, measured by code with no model and no cost: a paragraph ribbon, the numbers, top
+        words, repeated phrases, and every sentence behind a count. Readings come only when you
+        press <b>Run AI analyses</b>, and its estimated price shows first. Each reading cites a
+        quote that code checks against your chapter, and a claim whose quote isn&rsquo;t found is
+        withheld.
+      </>
+    ),
+    note: (
+      <>
+        Pin a reading and choose <b>Bring to Workshop</b> to stage its claim and checked quotes
+        above this composer. Nothing is sent until you send it.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'lightbox-run-line',
+        alt: 'The top of a Lightbox board: One chapter, held up to the light, the Measured and Read legend, and 6 calls, est. $0.28 beside Run AI analyses',
+        maxWidthPx: 480,
+        ratio: '1520 / 520',
+        callouts: [
+          { label: '1', leftPercent: 29.6, topPercent: 64.2, widthPercent: 65.4, heightPercent: 10.4 },
+          { label: '2', leftPercent: 2, topPercent: 80.4, widthPercent: 39.6, heightPercent: 16.2 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'lightbox-checked-evidence',
+        alt: 'A pinned reading’s evidence, checked against the text: three quotes with their paragraph numbers, each found verbatim',
+        maxWidthPx: 280,
+        ratio: '582 / 544',
+        callouts: [
+          { label: '3', leftPercent: 3.8, topPercent: 10.7, widthPercent: 92.4, heightPercent: 29 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Measured · Read', detail: 'solid tiles are counted by code; dashed tiles are a model’s reading.' },
+      { label: '2', term: 'Run AI analyses', detail: 'reads the chapter with the lenses you turned on; its price shows first.' },
+      { label: '3', term: 'Evidence', detail: 'each quote is checked against your chapter; one not found is withheld.' }
+    ]
+  },
+  {
+    title: 'New: Proofread and Craft Flags',
+    tag: 'new',
+    body: (
+      <>
+        Right-click a Markdown or plain-text file and open the <b>Prose Minion</b> menu.{' '}
+        <b>Proofread and Flag</b> marks spelling, punctuation, and consistency slips, and shifts in
+        tense or person, in the editor and the Problems panel, with a quick fix where one is safe.
+        By default, <b>Proofread and Fix</b> opens its fixes in VS Code&rsquo;s Refactor Preview:
+        tick the ones to keep, then <b>Apply</b>. They land as one change you can undo, and the
+        file is never saved for you. <b>Craft Flags</b> leaves line notes on clichés, register,
+        gestures, and continuity, and shows its estimated cost before it sends anything.
+      </>
+    ),
+    note: (
+      <>
+        Tense, agreement, and other judgment calls are only ever flagged, and Craft Flags never
+        edits your text. Proofread has its own model; Craft Flags follows the Workshop&rsquo;s until
+        you choose one.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'draft-edit-menu',
+        alt: 'The editor’s right-click Prose Minion menu: Open File in Lightbox, Proofread and Flag, Proofread and Fix, and Craft Flags',
+        maxWidthPx: 420,
+        ratio: '1106 / 268',
+        callouts: [
+          { label: '1', leftPercent: 72.3, topPercent: 32.8, widthPercent: 27.1, heightPercent: 35.1 },
+          { label: '2', leftPercent: 72.3, topPercent: 76.5, widthPercent: 27.1, heightPercent: 18.7 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'proofread-refactor-preview',
+        alt: 'Refactor Preview with two Proofread fixes, each with a tick box, above Apply and Discard',
+        maxWidthPx: 440,
+        ratio: '1000 / 275',
+        callouts: [
+          { label: '3', leftPercent: 5.8, topPercent: 30.9, widthPercent: 5.4, heightPercent: 30.5 },
+          { label: '4', leftPercent: 3.8, topPercent: 79.6, widthPercent: 8.4, heightPercent: 16 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Proofread and Flag · Fix', detail: 'the whole file, or your selection.' },
+      { label: '2', term: 'Craft Flags', detail: 'line notes, priced before anything is sent.' },
+      { label: '3', term: 'Tick', detail: 'the fixes to keep.' },
+      { label: '4', term: 'Apply', detail: 'one change you can undo; the file is not saved.' }
+    ]
+  },
+  {
+    title: 'Show vs. Tell Playground',
+    tag: 'primer',
     body: (
       <>
         A Workshop widget for one beat. Open it from <b>Widgets</b>, paste or select a told beat,
@@ -176,8 +280,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: Chromatic Palettes',
-    tag: 'new',
+    title: 'Chromatic Palettes',
+    tag: 'primer',
     body: (
       <>
         Dictionary entries can now end with named color palettes. Each palette has a strip of
