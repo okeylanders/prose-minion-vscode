@@ -324,4 +324,59 @@ describe('WorkshopApp Read in', () => {
     deliver(readInContent(readInRequestIds()[1], 'Cliff\'s read.'));
     expect(shown().source).toBe('Cliff\'s read.');
   });
+
+  describe('replacing an open reader in place (PR #186 F-02)', () => {
+    // The backdrop blocks the pointer and the sheet now keeps Tab inside, so
+    // this activates the row behind the sheet directly, as a script could.
+    const twoRows = () => session([
+      resourceRow('characters/rabbit.md', 1_000),
+      resourceRow('characters/hatter.md', 2_000)
+    ]);
+    const title = () => within(screen.getByRole('dialog')).getByRole('heading', { level: 2 }).textContent;
+
+    it('shows B\'s heading and body after A had loaded', () => {
+      render(<WorkshopApp />);
+      deliver(twoRows());
+      openRow('characters/rabbit.md');
+      deliver(readInContent(readInRequestIds()[0], 'The Rabbit\'s file.'));
+      expect(shown().source).toBe('The Rabbit\'s file.');
+
+      openRow('characters/hatter.md');
+      deliver(readInContent(readInRequestIds()[1], 'The Hatter\'s file.', {}, 'characters/hatter.md'));
+
+      expect(title()).toBe('characters/hatter.md');
+      expect(shown()).toEqual({ preview: ['The Hatter\'s file.'], source: 'The Hatter\'s file.' });
+    });
+
+    it.each([
+      ['B answers first, then A late', true],
+      ['A answers late first, then B', false]
+    ])('shows only B when %s', (_case, bFirst) => {
+      render(<WorkshopApp />);
+      deliver(twoRows());
+      openRow('characters/rabbit.md');
+      openRow('characters/hatter.md');
+      const [a, b] = readInRequestIds();
+      const replyA = readInContent(a, 'The Rabbit\'s file.');
+      const replyB = readInContent(b, 'The Hatter\'s file.', {}, 'characters/hatter.md');
+      for (const reply of bFirst ? [replyB, replyA] : [replyA, replyB]) {
+        deliver(reply);
+      }
+
+      expect(title()).toBe('characters/hatter.md');
+      expect(shown()).toEqual({ preview: ['The Hatter\'s file.'], source: 'The Hatter\'s file.' });
+    });
+
+    it('starts B on the loading line, not on A\'s text', () => {
+      render(<WorkshopApp />);
+      deliver(twoRows());
+      openRow('characters/rabbit.md');
+      deliver(readInContent(readInRequestIds()[0], 'The Rabbit\'s file.'));
+      openRow('characters/hatter.md');
+
+      const sheet = screen.getByRole('dialog');
+      expect(within(sheet).getByRole('status').textContent).toContain('Loading the file…');
+      expect(within(sheet).queryAllByText('The Rabbit\'s file.')).toEqual([]);
+    });
+  });
 });

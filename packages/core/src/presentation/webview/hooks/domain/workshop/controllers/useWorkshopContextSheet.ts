@@ -85,6 +85,13 @@ export interface WorkshopContextSheetState {
   sheetAttachment?: WorkshopAttachmentContentState;
   /** The open sheet's body, loading and error state; undefined with no sheet. */
   sheetBody?: WorkshopTextSheetBody;
+  /**
+   * The sheet's lifetime: the sheet seeds its draft once per mount, so each
+   * reader request is its own sheet, and a reader replaced in place never
+   * keeps the earlier file's body (PR #186 F-02). Authoring modes share one
+   * key and behave as before.
+   */
+  sheetKey?: string;
   verifiedDisplay?: { text: string; note: string };
 }
 
@@ -274,6 +281,20 @@ export function useWorkshopContextSheet({
     ? attachmentContent
     : undefined;
 
+  const sheetKey = ((): string | undefined => {
+    if (!textSheet) {
+      return undefined;
+    }
+    if (textSheet.mode.kind !== 'read-in') {
+      return 'sheet';
+    }
+    const { group, path } = textSheet.mode;
+    const current = readInContent?.group === group && readInContent.path === path
+      ? readInContent.requestId
+      : `${group}\u0000${path}`;
+    return `read-in:${current}`;
+  })();
+
   const sheetBody = ((): WorkshopTextSheetBody | undefined => {
     if (!textSheet) {
       return undefined;
@@ -315,6 +336,7 @@ export function useWorkshopContextSheet({
     textSheet,
     sheetAttachment,
     sheetBody,
+    sheetKey,
     verifiedDisplay,
     openPasteSheet,
     openAddTextSheet,

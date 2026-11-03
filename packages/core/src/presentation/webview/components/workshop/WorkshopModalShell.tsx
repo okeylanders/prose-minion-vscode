@@ -31,13 +31,19 @@ interface WorkshopModalShellProps {
    * scrolling itself; the caller's `.pm-ws-sheet-body` owns the scroll.
    */
   variant?: 'panel' | 'sheet';
+  /**
+   * Keep Tab and Shift+Tab inside the dialog (PR #186 F-02). Opt-in: the
+   * shell neither traps focus nor makes the background inert by default
+   * (tech debt 2026-11-03-workshop-modal-focus-containment).
+   */
+  trapFocus?: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }
 
 export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
   CloseButton: typeof WorkshopModalCloseButton;
-} = ({ open, titleId, closeLabel, className, variant = 'panel', onClose, children }) => {
+} = ({ open, titleId, closeLabel, className, variant = 'panel', trapFocus = false, onClose, children }) => {
   /* Escape + focus capture/return live in the shared hook, so this shell and
      the full-surface guide cannot drift apart — or fight over focus when one
      hands off to the other (PR #94 review). */
@@ -52,6 +58,27 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
     [onClose]
   );
 
+  const keepTabInside = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') {
+      return;
+    }
+    const focusable = tabbableWithin(event.currentTarget);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !event.currentTarget.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !event.currentTarget.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, []);
+
   if (!open) {
     return null;
   }
@@ -63,6 +90,7 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onKeyDown={trapFocus ? keepTabInside : undefined}
       >
         <WorkshopModalShellContext.Provider value={{ closeButtonRef, closeLabel, onClose }}>
           {children}
@@ -71,6 +99,17 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
     </div>
   );
 };
+
+const TABBABLE = 'button, [href], input, select, textarea, [tabindex]';
+
+/** The dialog's Tab stops, in document order: enabled, shown, not tabindex -1. */
+function tabbableWithin(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(TABBABLE)].filter((element) =>
+    element.tabIndex >= 0
+    && !(element as HTMLButtonElement).disabled
+    && element.closest('[hidden]') === null
+  );
+}
 
 interface ShellContextValue {
   closeButtonRef: React.RefObject<HTMLButtonElement>;

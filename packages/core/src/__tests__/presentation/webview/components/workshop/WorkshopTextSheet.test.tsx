@@ -287,3 +287,54 @@ describe('WorkshopTextSheet — the Read in reader (Wayfinding Slice 2)', () => 
     expect(screen.queryByRole('note')).toBeNull();
   });
 });
+
+describe('WorkshopTextSheet — keyboard containment (PR #186 F-02)', () => {
+  const tabStops = () => {
+    const dialog = screen.getByRole('dialog');
+    return [...dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]')]
+      .filter((element) => element.tabIndex >= 0
+        && !(element as HTMLButtonElement).disabled
+        && element.closest('[hidden]') === null);
+  };
+
+  it.each([
+    ['the reader', {
+      mode: {
+        kind: 'read-in',
+        label: 'rabbit.md',
+        group: 'characters',
+        path: 'characters/rabbit.md',
+        participantLabel: 'Jill',
+        deliveredAt: 1
+      } as WorkshopTextSheetMode,
+      value: 'Down the hole.',
+      canOpenInEditor: true,
+      onOpenInEditor: jest.fn()
+    }],
+    ['an authoring sheet', { mode: { kind: 'context-new' } as WorkshopTextSheetMode, value: '' }]
+  ])('keeps Tab and Shift+Tab inside %s', (_case, overrides) => {
+    const outside = document.createElement('button');
+    outside.textContent = 'A rail row behind the sheet';
+    document.body.appendChild(outside);
+    renderSheet(overrides);
+    const dialog = screen.getByRole('dialog');
+    const stops = tabStops();
+    expect(stops.length).toBeGreaterThan(1);
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    // Tab between inner stops is left to the browser.
+    first.focus();
+    const midway = fireEvent.keyDown(first, { key: 'Tab' });
+    expect(midway).toBe(true);
+    outside.remove();
+  });
+});

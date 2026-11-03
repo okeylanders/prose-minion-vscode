@@ -659,6 +659,7 @@ export const WorkshopApp: React.FC = () => {
   const {
     textSheet,
     sheetBody,
+    sheetKey,
     verifiedDisplay: verifiedExcerpt,
     openPasteSheet,
     openAddTextSheet,
@@ -1377,6 +1378,7 @@ export const WorkshopApp: React.FC = () => {
           (Sprint 13A §5–§7). */}
       {textSheet && (
         <WorkshopTextSheet
+          key={sheetKey}
           open
           mode={textSheet.mode}
           value={sheetBody?.value}

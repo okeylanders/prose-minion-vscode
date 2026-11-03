@@ -243,5 +243,31 @@ describe('useWorkshopContextSheet', () => {
       rerender();
       expect(result.current.textSheet?.mode).toEqual({ kind: 'context-new' });
     });
+
+    it('gives each reader request its own sheet key, and every authoring mode one shared key (PR #186 F-02)', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+
+      act(() => result.current.openAddTextSheet());
+      expect(result.current.sheetKey).toBe('sheet');
+      act(() => result.current.openPasteSheet());
+      expect(result.current.sheetKey).toBe('sheet');
+
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+      props.readInContent = { requestId: 'readin-1', ...rabbit, canOpenInEditor: false };
+      rerender();
+      const first = result.current.sheetKey;
+      expect(first).toBe('read-in:readin-1');
+
+      act(() => result.current.openReadInSheet(readInRow({
+        label: 'characters/hatter.md',
+        configuredResource: { group: 'characters', path: 'characters/hatter.md' }
+      }), 'Jill'));
+      // Before the hook's state for B lands, B still keys apart from A.
+      expect(result.current.sheetKey).not.toBe(first);
+      props.readInContent = { requestId: 'readin-2', group: 'characters', path: 'characters/hatter.md', canOpenInEditor: false };
+      rerender();
+      expect(result.current.sheetKey).toBe('read-in:readin-2');
+    });
   });
 });
