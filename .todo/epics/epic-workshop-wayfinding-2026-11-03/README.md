@@ -335,14 +335,15 @@ the ADR:
   - **PR #186 review (Astra, 2026-11-03).** Changes requested on one P2
     (F-01). Replies were matched by `{ group, path }`, which names a file,
     not a request, so after Close → reopen a late reply to the first opening
-    seeded the reopened sheet. Fixed in `7a153fd`, after the coordinator's
-    merge of the epic (`8d27899`, Slice 6). The content request now carries
-    a webview-minted `requestId` that the host echoes, and only the pending
-    request's first reply is taken.
+    seeded the reopened sheet. Fixed in `7a153fd` and `1687b0a`, after the
+    coordinator's merge of the epic (`8d27899`, Slice 6). The content request
+    now carries a webview-minted `requestId` that the host echoes, and only
+    the pending request's first reply is taken. A room replacement or a
+    chat-target change closes an open reader and drops its request.
     - *Contract change.* The request payload gains `requestId` beyond the
       slice doc's `{ group, path }`. It is a message field, not a persisted
       one.
-    - *Counts.* At `7a153fd`: 606 suites / 8,594 tests / 59 snapshots, all
+    - *Counts.* At `1687b0a`: 606 suites / 8,601 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged
       from the merged head. The ledger is in
       [the review](../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md).

@@ -45,8 +45,9 @@ Report commit `d561a243` changes no executable source. Native VS Code editor-col
 
 ## Author response (2026-11-03)
 
-F-01 is fixed in `7a153fd`, on top of the coordinator's merge of the epic
-(`8d27899`, which brought Slice 6). Nothing above this section was edited.
+F-01 is fixed in `7a153fd` and `1687b0a`, on top of the coordinator's merge
+of the epic (`8d27899`, which brought Slice 6). Nothing above this section was
+edited.
 
 The pair names a file, not a request, so the fix gives every request its own
 identity. **`WORKSHOP_REQUEST_READ_IN_RESOURCE` carries a webview-minted
@@ -56,37 +57,44 @@ random prefix plus a counter, so a reloaded webview never takes an answer
 meant for the one before it.
 - `useWorkshopReadIn` holds one pending request and takes a reply only when
   its `requestId`, group and path all match. It takes that reply once: a
-  duplicate never replaces it.
-- Close clears the pending request, so any later reply to it is dropped. A
-  reopening mints a new id, so an earlier opening's reply can never seed the
-  reopened sheet, in either order.
+  duplicate or a straggler never replaces it.
+- The pending id is dropped on close, and replaced when another row opens.
+- **Room replacement and chat-target changes** (`1687b0a`): the context-sheet
+  controller takes `readInScopeKey`, which is the room generation plus the
+  chat target's identity. When it changes, an open reader closes and its
+  pending request is dropped, so a late reply lands nowhere. Other sheets
+  stay open. The reader's heading names who read the file, so it doesn't
+  outlive that participant or room.
+- **Seeding.** The sheet unmounts on close, so each opening seeds from its
+  own first body. Only the current request's reply can supply that body.
 - The host ignores a content request with no usable id (missing, empty, not a
   string, over 128 characters) and reads nothing, because no webview could
   match its reply.
-
-**Room replacement and chat-target changes.** The reader shows a configured
-file as it is now, by `{ group, path }`. It doesn't show anything a room or
-participant owns, so neither change invalidates an open sheet. Its correlation
-is per opening, not per room. While a sheet is open, the rail behind it can't
-open another row.
 
 ### Resolution ledger
 
 | ID | Severity | Disposition | Fix | Regression tests |
 | --- | --- | --- | --- | --- |
-| F-01 | P2 | **Fixed** (`7a153fd`) | The content request carries `requestId`, and the reply echoes it. `useWorkshopReadIn` accepts only the pending request's first reply. Close drops the pending id. The host ignores id-less requests. The id's length limit is listed with the Lightbox's in `promptBudgets.test.ts`'s `NON_PROMPT_LIMITS`. | `useWorkshopReadIn.test.ts`: Close → reopen the same file, with the earlier reply first and with it last. A → B → A, with replies in request order, in reverse, and first-A-last, then the current request's answer. A duplicate reply. A cleared reader. A current-request success. `WorkshopApp.readIn.test.tsx`: **your probe** through the production App (open, Close, reopen, deliver A then B), plus the reverse order. `WorkshopReadInRoutes.test.ts`: each request's id is echoed, and requests with a missing, empty, non-string or over-long id are ignored without reading |
+| F-01 | P2 | **Fixed** (`7a153fd`, `1687b0a`) | The content request carries `requestId`, and the reply echoes it. `useWorkshopReadIn` accepts only the pending request's first reply. Close, opening another row, room replacement and a chat-target change each drop the pending id; the last two also close the reader. The host ignores id-less requests. The id's length limit is listed with the Lightbox's in `promptBudgets.test.ts`'s `NON_PROMPT_LIMITS`. | `WorkshopApp.readIn.test.tsx` (production App): Close → reopen the same file with the earlier reply first, and with it last (**your probe**). A → B → A with earlier replies in request order, in reverse, and first-A-last, then the current answer, then a straggler. A late reply after a room replacement, and after a chat-target change. The current-request success case stays as the control. `useWorkshopReadIn.test.ts`: the same orders at the hook, plus a duplicate reply and a cleared reader. `useWorkshopContextSheet.test.ts`: a scope change closes the reader and drops its request, and leaves other sheets open. `WorkshopReadInRoutes.test.ts`: each request's id is echoed, and requests with a missing, empty, non-string or over-long id are ignored without reading |
 
-### What fails where
+### What fails on `5932927`
 
-With the hook's request-id check removed, the App-level "earlier reply lands
-first" case fails: it shows A's content, as your probe did. With the check in
-place, it passes. The reverse order passes either way, because the sheet seeds
-from the first body it receives. It stays in the suite as the control.
+These are the new test files run against `5932927`'s source in a scratch
+worktree:
+- **All seven new F-01 App cases fail**, and the four existing App cases pass.
+  The earlier-reply-first Close → reopen case shows A's content, as your
+  probe did. The other six also trip on the new id assertions, because
+  `5932927` sends no `requestId`.
+- `useWorkshopReadIn.test.ts` doesn't compile there, because the reply payload
+  has no `requestId`.
 
-### Verification at `7a153fd`
+On the fixed head, removing only the hook's request-id check brings back the
+earlier-reply-first failure.
 
-- `npx jest`: **606 suites / 8,594 tests / 59 snapshots**, all passing.
+### Verification at `1687b0a`
+
+- `npx jest`: **606 suites / 8,601 tests / 59 snapshots**, all passing.
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors, 1,136 warnings, the same count as the merged head
-  `8d27899` without this fix.
+  `8d27899`.
 - `git diff --check`: clean. No `from 'vscode'` in core.
