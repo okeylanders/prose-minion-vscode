@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 2 is in progress (its PR into the epic). Slice 6 is in review (PR #185).
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 2 is built and in review (PR #186). Slice 6 is in review (PR #185).
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -49,7 +49,7 @@ the ADR:
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
 | 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | Done: PR #184, merged at `d45d57c` |
-| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | In progress, on `epic/workshop-wayfinding-slice-2-read-in` |
+| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Built, PR #186 in review |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
@@ -184,3 +184,59 @@ the ADR:
       arrives while Notes is hidden badges.
     - *`.pm-ws-block-grow`:* deleted. Nothing uses it, and the Read in block
       doesn't need to grow.
+- **2026-11-03. Slice 2 (Read in and the reader).** Landed in `a88ef63` (host
+  routes) and `e1111b2` (webview), on PR #186.
+  - **What landed.**
+    - `WORKSHOP_REQUEST_READ_IN_RESOURCE` → `WORKSHOP_READ_IN_RESOURCE_CONTENT`
+      and `WORKSHOP_OPEN_READ_IN_RESOURCE`, registered as reads by
+      `WorkshopContextHandler` beside the attachment content and open-file
+      routes, served by `WorkshopReadInRoutes`.
+    - Resolution is `resource.read`'s, now one module
+      (`WorkshopConfiguredResourceLookup`: the safe-path rule the codec used,
+      exact-then-unique-case-folded matching, UTF-8 slicing), over the intake
+      catalog, which is built on the same `ContextResourceResolver` instance
+      as the persona capability. Refused by reason, with no content echoed
+      and no path or content logged: an unknown group, an unlisted file
+      (including a known group with nothing configured at that path), an
+      absolute POSIX or Windows path, a URI, `..`, a file over
+      `readSourceBytes`. Content stops at `readBytes` and says `truncated`.
+    - `partitionContextSources` and `readInOpenAction`
+      (`utils/workshop/contextSources.ts`); `WorkshopReadInPanel` in the
+      Material panel; the per-tab badge in `useWorkshopRailTabs`; the
+      `read-in` sheet mode; `useWorkshopReadIn` for transport.
+  - **Counts.** Before, at `2108bdc`: 594 suites / 8,425 tests / 59
+    snapshots. After: 599 / 8,499 / 59, all passing. `npm run typecheck`
+    clean. `npm run lint`: 0 errors, 1,133 → 1,133 warnings: three new
+    PascalCase `naming-convention` warnings (`WorkshopReadInPanel`,
+    `RowBody`, the new App test's `PmLogo` mock) and three `curly` warnings
+    gone with the safe-path rule's move out of the codec. No `from 'vscode'`
+    in core.
+  - **Sizes.** New files are all under 500 lines. Files already over 500
+    that grew: `WorkshopApp.tsx` 1,673 → 1,699 (the read-in wiring; the
+    sheet-body derivation moved out to the controller;
+    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md));
+    `WorkshopContextHandler.ts` 977 → 993 (two registrations and the
+    collaborator; the route bodies live in `WorkshopReadInRoutes`);
+    `WorkshopContextIntakeService.ts` 590 → 595 (`readText`, which `load`
+    now uses too); `styles/workshop/context.css` 782 → 892 (the Read in
+    rules; Jest maps no CSS, so a new stylesheet would need a mock in every
+    `WorkshopApp` test).
+  - **Deviations.**
+    - *Reply shape.* `WORKSHOP_READ_IN_RESOURCE_CONTENT` echoes `group` and
+      `path` as plain strings, exactly as sent, so the sheet matches its
+      reply even when the host refuses a malformed pair. The requests use
+      `ConfiguredResourceRef`.
+    - *Material's count* now includes read-in rows ("Material, N items").
+    - *Badge identity* is `kind`, `origin`, `label`, `deliveredAt`; `stale`
+      is left out, so a row being superseded never badges, and a stale row
+      drops its badge (as a stale to-do does).
+    - *Accessible description.* A reader row's `aria-label` names the action;
+      its kind and time are its `aria-describedby`.
+    - *Sheet body.* `useWorkshopContextSheet` returns one `sheetBody`
+      (value, loading, error, truncated, canOpenInEditor) for every mode, so
+      `WorkshopApp` no longer works out attachment loading itself.
+    - *Refusal copy* comes from `workshopReadInRefusalMessage`, a switch with
+      a `never` default; opening a refused pair reports on the existing error
+      path, as its neighbors do.
+  - **Follow-ups.** None new. The live check that Open beside lands in the
+    column beside the Workshop is Slice 8's.

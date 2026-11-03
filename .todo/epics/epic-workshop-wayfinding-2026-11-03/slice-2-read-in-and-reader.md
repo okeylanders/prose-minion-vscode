@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** In progress, on `epic/workshop-wayfinding-slice-2-read-in`
+**Status:** Built (`a88ef63`, `e1111b2`), on `epic/workshop-wayfinding-slice-2-read-in`; PR #186 in review
 
 ## Outcome
 
@@ -128,12 +128,20 @@ The only contract change is two new message pairs. No persisted field changes.
 
 ## Completion Criteria
 
-- [ ] The Read in block lists the chat target's fetched rows and names the
+- [x] The Read in block lists the chat target's fetched rows and names the
       participant. It changes when the chat target changes.
-- [ ] Resource rows open in the read-only sheet, and Open beside opens the file
-      beside the Workshop.
-- [ ] The host serves only configured resources, and refusals are tested.
-- [ ] The popover and the rail use one partition.
-- [ ] Read-in rows that arrive while Material is hidden badge it; a change of
-      chat target doesn't.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+      (`WorkshopReadInPanel.test.tsx`, `WorkshopApp.readIn.test.tsx`)
+- [x] Resource rows open in the read-only sheet, and Open beside opens the file
+      beside the Workshop. (`WorkshopTextSheet.test.tsx`,
+      `useWorkshopContextSheet.test.ts`, `useWorkshopReadIn.test.ts`,
+      `WorkshopReadInRoutes.test.ts`, `WorkshopApp.readIn.test.tsx`; the
+      editor column itself is the Slice 8 live pass)
+- [x] The host serves only configured resources, and refusals are tested.
+      (`WorkshopReadInRoutes.test.ts`)
+- [x] The popover and the rail use one partition. (`contextSources.test.ts`,
+      `ContextBudget.test.tsx`)
+- [x] Read-in rows that arrive while Material is hidden badge it; a change of
+      chat target doesn't. (`useWorkshopRailTabs.test.ts`,
+      `WorkshopRail.test.tsx`, `WorkshopApp.readIn.test.tsx`)
+- [x] The epic's per-slice verification passes. Counts are recorded (README
+      progress notes).

@@ -3,8 +3,8 @@
 /**
  * useWorkshopRailTabs (ADR 2026-11-03 D1): the rail's tab is restored and
  * persisted per viewer, and the Notes badge counts open, current to-dos that
- * arrived while Notes was hidden, whoever added them. Nothing ever switches
- * the tab.
+ * arrived while Notes was hidden, whoever added them. Slice 2: the Material
+ * badge counts read-in rows by the same rule. Nothing ever switches the tab.
  */
 
 import { act, renderHook } from '@testing-library/react';
