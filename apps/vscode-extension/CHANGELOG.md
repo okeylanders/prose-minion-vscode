@@ -2,7 +2,7 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
-## [2.12.0] - 2026-10-28
+## [2.12.0] - 2026-11-02
 
 ### Added
 
@@ -25,6 +25,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Upgrade notes
 
+- Existing Workshop sessions remain readable. Sessions saved with Lightbox tile attachments cannot be opened by earlier Prose Minion versions. If you sync sessions between machines, update every machine before opening sessions saved with these attachments.
 - AI readings and Draft Edit make model requests and may incur provider charges. Review estimates and proposed edits; model output is not a substitute for editorial judgment.
 - Lightbox and Draft Edit have extensive automated and integration review coverage. Native VS Code acceptance and live-provider quality checks remain separate release checks.
 

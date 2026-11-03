@@ -1,10 +1,30 @@
 # Release dependency audit follow-up
 
 **Date Identified**: 2026-10-02
-**Reviewed**: 2026-10-08
+**Reviewed**: 2026-11-02
 **Status**: Deferred — no applicable runtime exploit identified; renewed tooling audit findings recorded below
 **Priority**: Medium
 **Estimated Effort**: Small, focused dependency maintenance
+
+## Rechecked for v2.12.0 publication — 2026-11-02
+
+The public-registry full audit reports **45 affected package entries: 2 critical,
+6 high, 33 moderate, 4 low**. Both the full audit and
+`npm audit --audit-level=high` exit 1. The production-only audit reports **one
+critical package entry, DOMPurify**. Counts include propagated dependency
+severity, not independent exploitable vulnerabilities. No dependency resolution
+changed during this release. Every flagged lockfile path except DOMPurify has
+`dev: true`.
+
+| Package / severity | Applicability and verification | Action |
+| --- | --- | --- |
+| DOMPurify 3.4.14 / critical | `sanitizeMarkdownHtml` sanitizes a string with the HTML profile. The [critical shadow-root advisory](https://github.com/cure53/DOMPurify/security/advisories/GHSA-cg2g-xh64-v4q7) requires `SAFE_FOR_TEMPLATES`, DOM output and downstream template evaluation. The [hook advisory](https://github.com/cure53/DOMPurify/security/advisories/GHSA-mrv2-3pqr-j5jr), rated high by npm, requires `IN_PLACE` and node-removing hooks. The other reported issues require `IN_PLACE` or XHTML/SVG parsing. Those modes and hooks are absent from the application. Existing real-sanitizer tests cover the current string-rendering boundary; they do not prove unused vulnerable modes safe. | No applicable exploit path identified in the current configuration. Retain the focused update to 3.4.17 or later as maintenance; this audit remains failing. |
+| Handlebars 4.7.9 / critical | Development/test configuration dependency. Hostile templates or ASTs are not extension runtime inputs; repository-owned configuration is used. No advisory-specific test. | Defer focused tooling update. |
+| MSAL Node 5.2.5 and Azure Identity / high | VSCE tooling, not the extension bundle. The reported authorization-code flow is not used by the PAT-based release command. No advisory-specific test. | Defer tooling update. |
+| brace-expansion 1.1.18 / 2.1.4 / 5.0.9, markdown-it 14.2.0, source-map-js 1.2.1 / high | Glob, Markdown and source-map tooling consume repository-controlled build inputs, not manuscript or model input through these libraries. Build/package checks exercise ordinary inputs, not hostile-input resistance. | Defer focused tooling updates. |
+| undici 7.30.0 / high | VSCE networking dependency, absent from runtime dependencies. Reported networking modes have not been established as an extension runtime path; no advisory-specific test of the publishing tool. | Defer tooling update; retain tooling exposure as a risk. |
+| fast-uri 3.1.8, postcss-selector-parser 6.1.4, qs 6.16.0 / moderate | Schema, CSS and publishing tooling. No production import or advisory-specific test established. | Defer focused tooling updates. |
+| glob 7.2.3 / 10.5.0 / 13.0.6 and minimatch 3.1.5 / 9.0.9 / 10.2.5 / moderate | Newly reported cancellation / pattern-amplification findings propagate through Jest, ESLint, VSCE, Sucrase and related tools. All flagged paths are dev-only. Release globs and filesystem roots are repository-controlled; no advisory-specific test. | Defer a separately reviewed tooling refresh; do not apply npm's suggested forced major changes during release. |
 
 ## Evidence
 

@@ -5,7 +5,7 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.12.0] - 2026-10-28 — Lightbox and Draft Edit
+## [2.12.0] - 2026-11-02 — Lightbox and Draft Edit
 
 ### Overview
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runs can cover the board, remaining calls, a call, or a lens. Estimates, model fit, progress, cancellation and call-level failure notes accompany the controls. Earlier lens readings remain on screen until usable replacements land; their model, run and time are recorded when available. Rejected or truncated model responses have recovery and partial-result paths rather than silently becoming accepted readings.
 - A single-folder workspace saves boards in `prose-minion/boards/`, one file per board, with source text, measurements and readings. Names, browser operations, restore and changed-source notices operate on saved snapshots. No folder or a multi-root workspace uses session-only storage. File claims, revision checks and shutdown draining protect saves across windows and extension deactivation.
 - Selected readings can be staged for the Workshop; lexical fields can also seed Lexical Gravity. These are host-mediated handoffs, with the writer choosing whether to use the staged material. Lightbox's model setting follows the Workshop until explicitly selected and does not change it.
+- Existing Workshop sessions remain readable. New Lightbox tile attachments add optional persisted metadata and a thread-artifact kind that earlier versions' strict validators do not accept. This follows the session codec's existing forward-only policy for optional additions; users who sync sessions should update every machine before opening sessions saved with Lightbox tiles.
 - See the [Lightbox ADR](adr/2026-10-19-lightbox-inspiration-board.md), [epic](../.todo/epics/epic-lightbox-2026-10-19/README.md), and [integration review](pr-reviews/pr-183-lightbox-integration-review.md).
 
 ### Draft Edit
