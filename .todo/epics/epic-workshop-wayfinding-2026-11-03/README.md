@@ -45,8 +45,8 @@ the ADR:
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
-| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a badge for host-added to-dos | D1 | Next |
-| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block; resource rows open in the reader sheet and beside the Workshop | D2, D3, D4 (access) | Planned |
+| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a badge for host-added to-dos | D1 | Done (`da7f28fa`, `4a25d5cc`); awaiting review |
+| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block; resource rows open in the reader sheet and beside the Workshop | D2, D3, D4 (access) | Next |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (**writer gate:** D9) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
@@ -111,4 +111,49 @@ the rail and could move earlier if they're wanted sooner.
     messages (Slice 2).
   - Dictionary history already records served models as `modelIds`; the model
     stamp follows that naming.
-  - Baseline on `main` at `cfac12b`: see the Slice 1 notes once recorded.
+  - Baseline on `main` at `cfac12b`: see the Slice 1 notes below.
+- **2026-11-03. Slice 1 (rail tabs).** Landed in `da7f28fa` (the
+  `useWorkshopRailTabs` controller) and `4a25d5cc` (`WorkshopRail`, the
+  `WorkshopApp` rewire, the Tools block and its styles deleted).
+  - **Counts.** Before, at `1f8becb8`: 591 suites / 8,398 tests / 59
+    snapshots. After: 594 / 8,422 / 59, all passing. `npm run typecheck`
+    clean. `npm run lint`: 0 errors; warnings 1,130 → 1,133, all three the
+    PascalCase `naming-convention` kind (`WorkshopRail`, the test's
+    `StatefulRail` and `PmLogo` mock). No `from 'vscode'` in core.
+  - **Sizes.** `WorkshopApp.tsx` 1,743 → 1,671 (it was already over 500;
+    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md)).
+    `WorkshopRail.tsx` 158, `useWorkshopRailTabs.ts` 159. `styles/workshop/shell.css`
+    is already 2,600+ lines; the slice doc put the tab rules there, so it grew
+    by 23 net lines (tools rules out, tab rules in).
+  - **Deviations.**
+    - *Restoring the tab.* No sibling Workshop hook restores webview state, and
+      a controller may not call `useVSCodeApi`. `WorkshopApp` reads the stored
+      value with `usePersistedState` and passes it in as `initialTab`; the
+      controller parses it (`parseWorkshopRailTab`).
+    - *When a reload counts as seen.* The doc says "on mount", but the
+      to-dos arrive with the first session snapshot, after mount. The
+      controller takes a `roomKey` (`pending` until the session is ready,
+      then `room:<roomRevision>`) and marks everything seen whenever it
+      changes. That also keeps New, Open, Rewind and Branch from badging the
+      room they bring in.
+    - *Badge eligibility.* Open, not stale, and host-sourced. "Host-sourced"
+      is an exhaustive switch over `WorkshopTodoSource.kind`
+      (`isHostSourcedTodo`); stale is excluded so the badge is never larger
+      than the tab's open count.
+    - *Accessible names.* Material is "Material, N items"; Notes is "Notes,
+      N open" plus ", N new" (the doc's example omitted the open count).
+    - *Copy.* The empty thread said "run a tool from the left"; it now says
+      "run a tool below".
+    - *No rail entry points yet.* D1's "select the tab first" rule has no
+      caller today (nothing targets a rail panel); `selectTab` is the seam
+      for Slices 2 and 5.
+  - **For the coordinator.**
+    - Every to-do today enters through the writer's own "add" on a finding
+      (`WorkshopTodoLedger.addFromFinding`); the host never adds one
+      unprompted. By the slice doc's rule (source is host or tool) those
+      still badge, though D1 says items the writer made get a toast instead.
+      I followed the slice doc. If the ADR's reading wins, the change is to
+      badge nothing until a host-initiated path exists, and toast on add.
+    - `.pm-ws-block-grow` in `styles/fulltab/shell.css` has no user now (the
+      Tools block was its only one). It is in the shared shell the slice
+      leaves unchanged, so I kept it. Delete it or keep it for Read in?
