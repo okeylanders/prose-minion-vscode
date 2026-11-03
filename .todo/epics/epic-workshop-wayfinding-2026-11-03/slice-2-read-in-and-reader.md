@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Planned (after Slice 1)
+**Status:** In progress, on `epic/workshop-wayfinding-slice-2-read-in`
 
 ## Outcome
 
@@ -13,6 +13,15 @@ current chat target fetched on its own, and names that participant. A
 and an **Open beside** button. Every other row kind shows but doesn't open yet.
 
 The only contract change is two new message pairs. No persisted field changes.
+
+## Since Slice 1
+
+- `WorkshopRail` keeps both tab panels mounted and hides the inactive one
+  (PR #184 F-01). The Read in block mounts inside the Material panel, and
+  whatever local state it holds survives a tab switch.
+- `useWorkshopRailTabs` badges only Notes today (`unseenNotesCount`). The
+  Material badge below generalizes it per tab; keep the room re-baseline
+  (`roomKey`) and the rule that nothing switches a tab.
 
 ## Build
 
