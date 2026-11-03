@@ -19,6 +19,7 @@ import {
   buildWorkshopTodoEvidence,
   describeWorkshopPendingHostUpdates
 } from '@/application/services/workshop/WorkshopPromptBuilder';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   completeWorkshopRun,
   workshopSynthesisCompletionCopy
@@ -144,7 +145,8 @@ export class RunWorkshopToolSidePass {
         usage: result.usage,
         truncated,
         toolId,
-        inputProvenance: result.inputProvenance
+        inputProvenance: result.inputProvenance,
+        model: workshopTurnModelOf(result)
       });
       if (!completion) {
         this.assistantToolService.discardConversation(result.conversationId);

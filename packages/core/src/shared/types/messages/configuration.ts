@@ -12,6 +12,24 @@ import { TokenUsage } from './tokenUsage';
 
 export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget' | 'lightbox' | 'proofread' | 'craft';
 
+/** Every model scope, for readers that check a persisted value (Workshop model stamps). */
+const MODEL_SCOPE_MEMBERS = {
+  assistant: true,
+  dictionary: true,
+  context: true,
+  category: true,
+  widget: true,
+  lightbox: true,
+  proofread: true,
+  craft: true
+} as const satisfies Record<ModelScope, true>;
+
+export const MODEL_SCOPES = Object.freeze(Object.keys(MODEL_SCOPE_MEMBERS)) as readonly ModelScope[];
+
+export function isModelScope(value: unknown): value is ModelScope {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(MODEL_SCOPE_MEMBERS, value);
+}
+
 /**
  * A scope with no model of its own until the writer picks one (Lightbox
  * Slice 4L; Craft Flags, Draft Edit Slice 3c). Unset, it runs on the model

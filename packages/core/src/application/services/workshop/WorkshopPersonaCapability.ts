@@ -33,6 +33,7 @@ import {
 } from '@orchestration/AgentRunContracts';
 import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
@@ -41,6 +42,7 @@ import {
   WorkshopExcerpt,
   WorkshopPersonaId,
   WorkshopTurn,
+  WorkshopTurnModel,
   workshopExcerptTitle
 } from '@messages';
 import {
@@ -180,8 +182,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
   async fulfill(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<CapabilityFulfillment> {
     const startedAt = Date.now();
     let result: WorkshopCapabilityResult;
+    // Only a provider run's turn is stamped (ADR 2026-11-03 D7): a persona's
+    // analysis or dictionary lookup. The stamp rides beside the result,
+    // never in it, so it cannot reach the evidence the persona reads.
+    let model: WorkshopTurnModel | undefined;
     try {
-      result = await this.dispatch(request, window);
+      result = await this.dispatch(request, window, (runModel) => { model = runModel; });
     } catch (error) {
       const cancelled = this.turn.signal.aborted || this.isAbortError(error);
       result = {
@@ -194,7 +200,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       };
     }
 
-    const completedTurn = this.recordCompletedTurn(request, result);
+    const completedTurn = this.recordCompletedTurn(request, result, model);
     const duration = Date.now() - startedAt;
     const partialFailures = Array.isArray(result.metadata?.partialFailures)
       ? result.metadata.partialFailures.length
@@ -492,17 +498,21 @@ export class WorkshopPersonaCapability implements AgentCapability<
     return 'You have reached the Workshop capability-call limit for this user turn. Do not send another tool call. Produce the final response now using only the evidence already received, and state any missing evidence honestly.';
   }
 
-  private async dispatch(request: WorkshopCapabilityRequest, window?: CapabilityContextWindow): Promise<WorkshopCapabilityResult> {
+  private async dispatch(
+    request: WorkshopCapabilityRequest,
+    window: CapabilityContextWindow | undefined,
+    onRunModel: (model: WorkshopTurnModel | undefined) => void
+  ): Promise<WorkshopCapabilityResult> {
     if (this.turn.signal.aborted) throw this.abortError();
     switch (request.capability) {
       case 'dictionary.lookup':
-        return this.lookupDictionary(request);
+        return this.lookupDictionary(request, onRunModel);
       case 'dictionary.full-entry':
         if (this.fullEntryCalls >= PROMPT_BUDGETS.workshopCapability.fullEntriesPerTurn) {
           return this.rejected(request, 'Only one full Writer\'s Dictionary entry is allowed per user turn.');
         }
         this.fullEntryCalls += 1;
-        return this.generateFullEntry(request);
+        return this.generateFullEntry(request, onRunModel);
       case 'analysis.run':
         if (this.analysisCalls >= PROMPT_BUDGETS.workshopCapability.analysisRunsPerTurn) {
           return this.rejected(
@@ -528,7 +538,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
             });
           }
           this.analysisCalls += 1;
-          return this.runAnalysis(request, resolution.inputs);
+          return this.runAnalysis(request, resolution.inputs, onRunModel);
         }
       case 'resource.catalog':
       case 'resource.search':
@@ -545,7 +555,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   private async lookupDictionary(
-    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.lookup' }>
+    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.lookup' }>,
+    onModel: (model: WorkshopTurnModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     const lookup = await this.dictionaryService.lookupWordStreaming(
       request.word,
@@ -556,6 +567,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
     );
     if (this.turn.signal.aborted) throw this.abortError();
     const failed = isApiKeyNotConfiguredWarning(lookup.content) || lookup.content.startsWith('Error:');
+    if (!failed && lookup.outcome === 'entry') {
+      onModel(workshopTurnModelOf(lookup));
+    }
     return {
       capability: request.capability,
       status: failed ? 'failed' : isAgentRunIncomplete(lookup.finishReason) ? 'partial' : 'success',
@@ -568,7 +582,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
   }
 
   private async generateFullEntry(
-    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.full-entry' }>
+    request: Extract<WorkshopCapabilityRequest, { capability: 'dictionary.full-entry' }>,
+    onModel: (model: WorkshopTurnModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     const entry = await this.dictionaryService.generateParallelDictionary(
       request.word,
@@ -586,6 +601,9 @@ export class WorkshopPersonaCapability implements AgentCapability<
     if (this.turn.signal.aborted) throw this.abortError();
     const failed = isApiKeyNotConfiguredWarning(entry.result) || entry.metadata.successCount === 0;
     const partial = !failed && entry.metadata.partialFailures.length > 0;
+    if (!failed) {
+      onModel(workshopTurnModelOf(entry));
+    }
     return {
       capability: request.capability,
       status: failed ? 'failed' : partial ? 'partial' : 'success',
@@ -599,7 +617,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private async runAnalysis(
     request: Extract<WorkshopCapabilityRequest, { capability: 'analysis.run' }>,
-    inputs: WorkshopPersonaAnalysisRunInputs
+    inputs: WorkshopPersonaAnalysisRunInputs,
+    onModel: (model: WorkshopTurnModel | undefined) => void
   ): Promise<WorkshopCapabilityResult> {
     const toolLabel = workshopToolLabel(request.toolId);
     const personaLabel = this.speakerLabel();
@@ -639,6 +658,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.analysisSidePass.discardConversation(analysis.conversationId);
     }
     if (!failed) {
+      onModel(workshopTurnModelOf(analysis));
       const received = chunkCount > 0
         ? `${chunkCount} ${chunkCount === 1 ? 'chunk' : 'chunks'} received`
         : 'Report received';
@@ -668,7 +688,8 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private recordCompletedTurn(
     request: WorkshopCapabilityRequest,
-    result: WorkshopCapabilityResult
+    result: WorkshopCapabilityResult,
+    model: WorkshopTurnModel | undefined
   ): WorkshopTurn | undefined {
     const details: WorkshopCapabilityArtifactDetails = {
       operation: request.capability,
@@ -688,9 +709,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
       ? this.analysisSidePass.adoptPersonaReport({
           ...artifactInput,
           toolId: request.toolId,
-          truncated: result.metadata?.truncated === true
+          truncated: result.metadata?.truncated === true,
+          model
         })
-      : this.session.recordCapabilityArtifact(artifactInput);
+      : this.session.recordCapabilityArtifact({ ...artifactInput, model });
     if (!completion) {
       if (request.capability !== 'analysis.run') {
         // Name WHICH check refused (PR #89 review #6): a benign late arrival

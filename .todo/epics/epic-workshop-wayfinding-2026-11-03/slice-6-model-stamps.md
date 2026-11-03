@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D7 and D9
-**Status:** Planned (after Slice 5; it doesn't depend on Slices 1–5 and can move earlier)
+**Status:** Built (`7e38081`, `9d86713`, `584a529`); review fixes `623a4be`, `174012c`, `7e0b534`; re-review fixes `09ea77f`, `247c87a` ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)); PR #185 into `epic/workshop-wayfinding`
 
 ## Outcome
 
@@ -62,9 +62,73 @@ serving. Nothing displays the stamps yet; Slice 7 does.
 
 ## Completion Criteria
 
-- [ ] Every provider-produced assistant turn carries `model`; failed runs carry
-      none.
-- [ ] The requested model is captured at start; served models are
-      provider-reported.
-- [ ] Sessions without stamps are unchanged on read and write.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+- [x] Every provider-produced assistant turn carries `model`; failed runs carry
+      none, and neither does a reply the host wrote in its place.
+      (`WorkshopModelStamps.integration.test.ts`,
+      `WorkshopPersonaCapabilityModelStamps.test.ts`,
+      `AgentRunEngine.replyProvenance.integration.test.ts`)
+- [x] The requested model is captured at start; served models are
+      provider-reported: only models a response named.
+      (`AgentRunEngine.modelStamps.test.ts`,
+      `AgentRunEngine.replyProvenance.integration.test.ts`, through the real
+      `OpenRouterClient`)
+- [x] Sessions without stamps are unchanged on read and write.
+      (`WorkshopTurnModelCodec.test.ts`)
+- [x] The epic's per-slice verification passes. Counts are recorded in the
+      epic's progress notes.
+
+## Built
+
+**Stamped commit paths.** Every one adopts a provider reply and has a test:
+
+| Turn | Path | Test |
+|---|---|---|
+| Host reply (first and continued; quick actions take the same path) | `WorkshopRoomHandler.executeMessage` → `completeWorkshopRun` → `completeRun` | integration |
+| Guest's first reply | `handleInviteGuest` → `completeWorkshopRun` → `completeRun` | integration |
+| Guest reply | `executeMessage` (guest target) → `completeWorkshopRun` → `completeRun` | integration |
+| Tool-sidecar reply | `executeMessage` (tool target) → `completeWorkshopRun` → `completeRun` | integration |
+| Writer's tool report | `RunWorkshopToolSidePass` → `adoptWriterReport` → `completeToolReport` | integration |
+| Host synthesis | `RunWorkshopToolSidePass` → `completeWorkshopRun` → `completeRun` | integration |
+| Persona-run analysis | `WorkshopPersonaCapability.runAnalysis` → `adoptPersonaReport` → `recordCapabilityArtifact` | persona capability test |
+| Persona dictionary lookup and full entry (scope `dictionary`, added after review N-01) | `WorkshopPersonaCapability.lookupDictionary` / `generateFullEntry` → `recordCapabilityArtifact` | persona capability test, `DictionaryRunModels.test.ts` |
+
+**Where each part lives.**
+
+- **Requested** is captured by `AgentRunEngine` at the start of the run, before
+  its first request, with nothing awaited between. It is the model that first
+  request goes to (`options.model`, else the provider's model then).
+- **Served** is collected from each response's `servedModelId`. That is the
+  model the response named, reported by `OpenRouterClient` with or without
+  usage, and never its requested-model fallback (review F-01). The
+  observation's `modelId` keeps that fallback for context telemetry.
+- Both return as `ExecutionResult.models`, beside `replySource`. That is
+  `provider`, or `host-fallback` when the engine wrote the reply itself
+  (review F-02). Only a `provider` reply is stamped.
+- `DictionaryService` returns its runs' models, scoped `dictionary`, beside
+  each lookup (`DictionaryRunModel`).
+- `AssistantToolService` adds the scope (`assistant`: every Workshop run goes to
+  its assistant-scope engine) and returns `AnalysisResult.model`.
+- `WorkshopTurnModel.ts` turns that into the stamp and holds its codec.
+
+**Deviations.**
+
+- **Stamps only on assistant turns.** The codec also refuses a `model` on a
+  turn that isn't `role: 'assistant'`, following `widgetRecommendation`'s
+  participant check. This makes a stamp on a writer turn unrepresentable.
+- **Dictionary capability turns are stamped** with scope `dictionary`. The
+  coordinator decided this after review N-01, and D7 now lists them.
+  - A full entry is read in the order its blocks' requests were sent, not
+    the order they are shown (re-review N-02, matching D7). Its requested
+    model is the earliest-sent kept block's, and its served ids follow request
+    order.
+  - Only blocks whose text the entry keeps count: a block normalization
+    empties adds nothing to the stamp (re-review F-04).
+  - It counts as a provider reply only when every block in it was one.
+  - Resource and recall turns make no provider call and carry nothing.
+- **A failed persona-run analysis or dictionary lookup records no stamp,**
+  even though its evidence turn commits: its content is a host error, not a
+  provider reply.
+- **A host-written stand-in commits unstamped.** When the engine replaces an
+  unusable reply with its own text, the turn still commits, as before, but
+  carries no `model`. The same holds for the note completion writes when a
+  persona's reply is only a widget setup (review F-02, completion-stage note).

@@ -4,6 +4,7 @@ import { MessageEnvelope, MessageType } from '../base';
 import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
+import type { ModelScope } from '../configuration';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails
@@ -348,6 +349,20 @@ export type WorkshopExcerptSnapshot = Omit<WorkshopExcerpt, 'source' | 'sourceFi
 export type WorkshopTurnKind = 'tool_run' | 'message' | 'divider';
 
 /**
+ * The model that answered an assistant turn (Workshop Wayfinding ADR D7).
+ * Stamped only on turns a provider call produced; never rendered into a
+ * prompt, a room frame, or provider history.
+ */
+export interface WorkshopTurnModel {
+  /** The model scope that served the turn; 'assistant' for room replies today. */
+  scope: ModelScope;
+  /** The scope's selection, captured when the request started. */
+  requestedModelId: string;
+  /** Distinct provider-reported models across the turn's requests, in order. */
+  servedModelIds: string[];
+}
+
+/**
  * One completed entry in the session thread. Tool-run user turns record the
  * request ("Run Dialogue & Beats"); message user turns carry the follow-up
  * text; assistant turns carry the streamed analysis or reply. Content is
@@ -395,6 +410,8 @@ export interface WorkshopTurn {
   citations?: UrlCitation[];
   /** True when the response stopped at the max-token limit (assistant turns). */
   truncated?: boolean;
+  /** Requested and served models, on provider-produced assistant turns (ADR 2026-11-03 D7). */
+  model?: WorkshopTurnModel;
   /**
    * Effective conversation behavior stamped on persona-directed writer turns
    * and their persona replies (ADR 2026-07-20 §3) — keeps a restored

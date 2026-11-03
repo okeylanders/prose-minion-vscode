@@ -178,6 +178,7 @@ interface WorkshopTurnModel {
 
 - It's stamped on host and guest replies, tool-sidecar replies, tool reports,
   and syntheses.
+  - Dictionary lookups a persona runs, with scope `dictionary`.
 - `requestedModelId` is captured at request start, never read from settings
   later. `servedModelIds` collects `InferenceRequestObservation.modelId` across
   the run, matching Dictionary history's `modelIds`, and is empty when the
