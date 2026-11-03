@@ -60,6 +60,13 @@ export interface UseWorkshopContextSheetOptions {
   requestReadInResource: (ref: ConfiguredResourceRef) => void;
   openReadInResource: (ref: ConfiguredResourceRef) => void;
   clearReadInContent: () => void;
+  /**
+   * Whose reading the reader belongs to: the room generation and the chat
+   * target. When it changes, an open reader closes and its pending request
+   * is dropped, so a late reply never lands in a room or for a participant
+   * it wasn't asked in (PR #186 F-01).
+   */
+  readInScopeKey: string;
 }
 
 /** What the open sheet shows, whichever host round-trip feeds it. */
@@ -121,7 +128,8 @@ export function useWorkshopContextSheet({
   readInContent,
   requestReadInResource,
   openReadInResource,
-  clearReadInContent
+  clearReadInContent,
+  readInScopeKey
 }: UseWorkshopContextSheetOptions): UseWorkshopContextSheetReturn {
   const [textSheet, setTextSheet] = React.useState<WorkshopTextSheetState | null>(null);
 
@@ -130,6 +138,20 @@ export function useWorkshopContextSheet({
     clearAttachmentContent();
     clearReadInContent();
   }, [clearAttachmentContent, clearReadInContent]);
+
+  const scopeKeyRef = React.useRef(readInScopeKey);
+  const closeReaderWhenScopeChanged = React.useCallback(() => {
+    if (scopeKeyRef.current === readInScopeKey) {
+      return;
+    }
+    scopeKeyRef.current = readInScopeKey;
+    clearReadInContent();
+    setTextSheet((current) => (current?.mode.kind === 'read-in' ? null : current));
+  }, [clearReadInContent, readInScopeKey]);
+
+  React.useEffect(() => {
+    closeReaderWhenScopeChanged();
+  }, [closeReaderWhenScopeChanged]);
 
   const openPasteSheet = React.useCallback(() => {
     setTextSheet({

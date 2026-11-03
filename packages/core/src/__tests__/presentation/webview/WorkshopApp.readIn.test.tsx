@@ -120,13 +120,18 @@ const deliver = (message: unknown) =>
 
 const rail = () => screen.getByLabelText('Session rail');
 
-const readInContent = (requestId: string, content: string, extra: object = {}) => ({
+const readInContent = (
+  requestId: string,
+  content: string,
+  extra: object = {},
+  path = 'characters/rabbit.md'
+) => ({
   type: MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT,
   source: 'extension.workshop',
   payload: {
     requestId,
     group: 'characters',
-    path: 'characters/rabbit.md',
+    path,
     content,
     canOpenInEditor: true,
     ...extra
@@ -149,9 +154,21 @@ describe('WorkshopApp Read in', () => {
     .filter((message) => message.type === MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE)
     .map((message) => message.payload.requestId!);
 
-  const openRabbit = () => fireEvent.click(within(rail()).getByRole('button', {
-    name: 'Open characters/rabbit.md in the reader'
+  const openRow = (path: string) => fireEvent.click(within(rail()).getByRole('button', {
+    name: `Open ${path} in the reader`
   }));
+  const openRabbit = () => openRow('characters/rabbit.md');
+  const closeReader = () =>
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+  /** What the open reader shows: its rendered preview and its source text. */
+  const shown = () => {
+    const sheet = screen.getByRole('dialog');
+    return {
+      preview: within(sheet).queryAllByText(/./, { selector: '.pm-ws-text-sheet-preview p' })
+        .map((node) => node.textContent),
+      source: (sheet.querySelector('textarea') as HTMLTextAreaElement).value
+    };
+  };
 
   afterEach(() => {
     jest.runOnlyPendingTimers();
@@ -238,5 +255,73 @@ describe('WorkshopApp Read in', () => {
     expect(within(sheet).queryAllByText('The file before the writer saved.')).toEqual([]);
     const source = sheet.querySelector('textarea') as HTMLTextAreaElement;
     expect(source.value).toBe('The file now.');
+  });
+
+  it.each([
+    ['in request order', [0, 1, 2]],
+    ['in reverse', [2, 1, 0]],
+    ['first A last', [1, 2, 0]]
+  ])('A → B → A: the reader shows only the last opening\'s answer when earlier replies land %s (PR #186 F-01)', (_case, order) => {
+    render(<WorkshopApp />);
+    deliver(session([resourceRow('characters/rabbit.md', 1_000), resourceRow('characters/hatter.md', 2_000)]));
+
+    const paths = ['characters/rabbit.md', 'characters/hatter.md', 'characters/rabbit.md'];
+    for (const path of paths) {
+      openRow(path);
+      closeReader();
+    }
+    openRabbit();
+    const ids = readInRequestIds();
+    expect(new Set(ids).size).toBe(4);
+
+    for (const index of order) {
+      deliver(readInContent(ids[index], `An earlier answer, ${index}.`, {}, paths[index]));
+    }
+    expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toContain('Loading the file…');
+
+    deliver(readInContent(ids[3], 'The last opening.'));
+    expect(shown()).toEqual({ preview: ['The last opening.'], source: 'The last opening.' });
+
+    // The current answer is final: a straggler after it changes nothing.
+    deliver(readInContent(ids[0], 'A straggler.'));
+    expect(shown().source).toBe('The last opening.');
+  });
+
+  it('closes the reader when the room is replaced, and ignores its late answer', () => {
+    render(<WorkshopApp />);
+    deliver(session([resourceRow('characters/rabbit.md', 1_000)]));
+    openRabbit();
+    const [pending] = readInRequestIds();
+
+    deliver(session([resourceRow('characters/rabbit.md', 1_000)], { roomRevision: 2 }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    deliver(readInContent(pending, 'An answer for the old room.'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('An answer for the old room.')).toBeNull();
+
+    openRabbit();
+    expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toContain('Loading the file…');
+    deliver(readInContent(readInRequestIds()[1], 'The new room\'s read.'));
+    expect(shown().source).toBe('The new room\'s read.');
+  });
+
+  it('closes the reader when the chat target changes, and ignores its late answer', () => {
+    render(<WorkshopApp />);
+    deliver(session([resourceRow('characters/rabbit.md', 1_000)]));
+    openRabbit();
+    const [pending] = readInRequestIds();
+
+    deliver(withGuestTarget([resourceRow('characters/rabbit.md', 3_000)]));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    deliver(readInContent(pending, 'An answer Jill asked for.'));
+    expect(screen.queryByText('An answer Jill asked for.')).toBeNull();
+
+    openRabbit();
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText('Read in by Cliff')).toBeTruthy();
+    deliver(readInContent(readInRequestIds()[1], 'Cliff\'s read.'));
+    expect(shown().source).toBe('Cliff\'s read.');
   });
 });

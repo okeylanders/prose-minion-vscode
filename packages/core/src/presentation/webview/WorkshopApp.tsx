@@ -653,7 +653,8 @@ export const WorkshopApp: React.FC = () => {
     readInContent: readIn.readInContent,
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
-    clearReadInContent: readIn.clearReadInContent
+    clearReadInContent: readIn.clearReadInContent,
+    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`
   });
   const {
     textSheet,

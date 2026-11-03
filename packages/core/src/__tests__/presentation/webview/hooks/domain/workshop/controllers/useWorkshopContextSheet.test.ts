@@ -49,6 +49,7 @@ const options = (
   requestReadInResource: jest.fn(),
   openReadInResource: jest.fn(),
   clearReadInContent: jest.fn(),
+  readInScopeKey: 'room:1\u0000jill',
   ...overrides
 });
 
@@ -215,6 +216,32 @@ describe('useWorkshopContextSheet', () => {
       expect(props.clearReadInContent).toHaveBeenCalledTimes(1);
       expect(result.current.textSheet).toBeNull();
       expect(result.current.sheetBody).toBeUndefined();
+    });
+
+    it('closes the reader and drops its request when the room or chat target changes', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+
+      props.readInScopeKey = 'room:1\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
+      expect(props.clearReadInContent).toHaveBeenCalledTimes(1);
+
+      act(() => result.current.openReadInSheet(readInRow(), 'Cliff'));
+      props.readInScopeKey = 'room:2\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
+      expect(props.clearReadInContent).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves another sheet open when the scope changes', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openAddTextSheet());
+      props.readInScopeKey = 'room:2\u0000jill';
+      rerender();
+      expect(result.current.textSheet?.mode).toEqual({ kind: 'context-new' });
     });
   });
 });
