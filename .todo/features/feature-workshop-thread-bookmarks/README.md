@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-27
 **Source**: Brainstorm with Okey (Workshop sidebar batch). Okey's working name is "pins"
-**Status**: Idea
+**Status**: Planned in [Epic: Workshop Wayfinding](../../epics/epic-workshop-wayfinding-2026-11-03/README.md); decisions in [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md)
 **Priority**: Medium
 
 > Lives in tab 2 of the [two-tab rail](../feature-workshop-rail-tabs/README.md),
