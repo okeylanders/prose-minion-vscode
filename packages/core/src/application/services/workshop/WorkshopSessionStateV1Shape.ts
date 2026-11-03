@@ -22,6 +22,7 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -550,6 +551,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       'usage',
       'citations',
       'truncated',
+      // Model stamps (ADR 2026-11-03 D7; additive, D9).
+      'model',
       'behavior',
       'behaviorTransition',
       // Conversation Widgets (ADR 2026-07-22).
@@ -604,6 +607,12 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
     arrayOf(turn.citations, `${path}.citations`, assertCitation);
   }
   optionalBooleanAt(turn.truncated, `${path}.truncated`);
+  if (turn.model !== undefined) {
+    if (turn.role !== 'assistant') {
+      shapeError(`${path}.model`, 'a stamp on an assistant turn');
+    }
+    assertWorkshopTurnModel(turn.model, `${path}.model`);
+  }
   if (turn.behavior !== undefined) {
     assertBehavior(turn.behavior, `${path}.behavior`);
   }

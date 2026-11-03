@@ -35,6 +35,7 @@ import {
   WorkshopToolId,
   WorkshopTodoItem,
   WorkshopTurn,
+  WorkshopTurnModel,
   WorkshopTurnArtifact,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
@@ -129,6 +130,7 @@ import {
   workshopBubbleCut,
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   attachmentSnapshot,
   cloneAnalysisInputs,
@@ -1386,7 +1388,8 @@ export class WorkshopSessionService {
     analysisInputs?: {
       excerpt: WorkshopAnalysisInputProvenance;
       context: WorkshopAnalysisInputProvenance;
-    }
+    },
+    model?: WorkshopTurnModel
   ): WorkshopToolReportCompletion | undefined {
     const active = this.activeRun;
     if (
@@ -1413,6 +1416,7 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: usage ? { ...usage } : undefined,
       truncated: truncated || undefined,
+      model: model ? cloneTurnModel(model) : undefined,
       analysisInputs: analysisInputs ? cloneAnalysisInputs(analysisInputs) : undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: actionableFindings.length > 0
@@ -1488,6 +1492,7 @@ export class WorkshopSessionService {
       timestamp: this.now(),
       usage: input.result.usage ? { ...input.result.usage } : undefined,
       truncated: input.truncated || undefined,
+      model: input.model ? cloneTurnModel(input.model) : undefined,
       excerptVersion: input.excerptVersion,
       actionableFindings: input.actionableFindings && input.actionableFindings.length > 0
         ? cloneFindings(input.actionableFindings)
@@ -1650,7 +1655,8 @@ export class WorkshopSessionService {
     conversationId?: string,
     actionableFindings: WorkshopActionableFinding[] = [],
     citations?: UrlCitation[],
-    widgetRecommendation?: WorkshopWidgetRecommendation
+    widgetRecommendation?: WorkshopWidgetRecommendation,
+    model?: WorkshopTurnModel
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1687,6 +1693,7 @@ export class WorkshopSessionService {
       usage: usage ? { ...usage } : undefined,
       citations: citations?.map((citation) => ({ ...citation })),
       truncated: truncated || undefined,
+      model: model ? cloneTurnModel(model) : undefined,
       excerptVersion: active.excerptVersion,
       actionableFindings: (isHost || isGuest) && actionableFindings.length > 0
         ? cloneFindings(actionableFindings)

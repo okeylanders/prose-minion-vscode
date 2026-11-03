@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 2 is built and in review (PR #186). Slice 6 is in review (PR #185).
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 is built and in review (PR #186).
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -53,7 +53,7 @@ the ADR:
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
-| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Planned |
+| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
@@ -184,6 +184,98 @@ the ADR:
       arrives while Notes is hidden badges.
     - *`.pm-ws-block-grow`:* deleted. Nothing uses it, and the Read in block
       doesn't need to grow.
+- **2026-11-03. Slice 6 (model stamps).** Built on
+  `epic/workshop-wayfinding-slice-6-model-stamps`:
+  - **Commits.**
+    - `7e38081`: `AgentRunEngine` returns `ExecutionResult.models`. It captures
+      the requested model before the run's first request and collects the
+      distinct served ids from each request's observation, in order.
+    - `9d86713`: `WorkshopTurn.model` (`WorkshopTurnModel`), its strict codec
+      (`WorkshopTurnModel.ts`, called from `assertTurn`), `MODEL_SCOPES` /
+      `isModelScope`, and `AnalysisResult.model`.
+    - `584a529`: `AssistantToolService` scopes each run's models as
+      `assistant`, and every provider-made commit path stamps its turn.
+  - **Stamped paths.** The [slice doc](slice-6-model-stamps.md#built) has the
+    table:
+    - host replies, guest first replies and guest replies, tool-sidecar
+      replies, and host syntheses, all through `completeWorkshopRun`;
+    - the writer's tool reports, through `adoptWriterReport`;
+    - persona-run analyses, through `adoptPersonaReport`.
+
+    Failed, cancelled, refused and zombie runs commit nothing, so they carry no
+    stamp. An integration test drives the real handler and checks that no
+    request sent to the engine (prompts, room catch-ups, room frames) contains
+    a stamp.
+  - **Counts.**
+    - Before, on a clean worktree at `fddc484`: 591 suites / 8,398 tests / 59
+      snapshots, all passing.
+    - After: 595 / 8,432 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors and 1,133 warnings, unchanged from the
+      baseline.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by the stamp's
+    parameter, field or call:
+    - `WorkshopSessionService` 2,555 → 2,562;
+    - `WorkshopSessionStateV1Shape` 1,028 → 1,037 (its assertion lives in the
+      new 64-line `WorkshopTurnModel.ts`);
+    - `AgentRunEngine` 1,139 → 1,152;
+    - `AssistantToolService` 1,078 → 1,100;
+    - `WorkshopPersonaCapability` 833 → 846;
+    - `session.ts` 925 → 942.
+
+    All were already tracked as oversized.
+  - **Deviations.**
+    - The codec refuses a stamp on a non-assistant turn.
+    - A failed persona-run analysis records no stamp.
+    - Dictionary capability turns stayed unstamped, because D7 didn't list
+      them. The review fixes below settle that.
+  - **Not done here.** The JSON export doesn't carry `model` yet. Transcript
+    projection picks fields explicitly, so the stamp stays out of export and
+    recall until Slice 7 (D10).
+- **2026-11-03. Slice 6 review fixes (PR #185).** Astra
+  ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md))
+  found two P2 provenance faults and one scope decision:
+  - **`623a4be`, F-01 and F-02.**
+    - **F-01.** Served ids are only models a response named. The client
+      reports `servedModelId` without the requested-model fallback, on content
+      chunks too, so a reported model survives missing usage and a broken-off
+      stream.
+    - **F-02.** `ExecutionResult` and `AnalysisResult` carry `replySource`. A
+      reply the engine wrote itself (empty or null, exhausted corrections, an
+      exhausted capability limit) is `host-fallback` and commits unstamped.
+  - **`7e0b534`, F-02's completion-stage note.** When a persona's reply is
+    only a widget setup, completion writes the shown note itself. That turn now
+    commits unstamped.
+  - **`174012c`, N-01.** The coordinator decided that a persona's dictionary
+    lookups are stamped, with scope `dictionary`. D7 gained that one bullet,
+    and the tech-debt item is gone.
+  - **Counts.** Before (`0c987cf`): 595 suites / 8,432 tests / 59 snapshots.
+    After: 598 / 8,472 / 59, all passing. Typecheck is clean, and lint stays
+    at 0 errors and 1,133 warnings.
+  - **Files over 500 lines that grew.**
+    - `DictionaryService` 771 → 800. Its aggregation lives in the new 58-line
+      `DictionaryRunModel.ts`.
+    - `WorkshopPersonaCapability` 846 → 855.
+    - `AgentRunEngine` 1,152 → 1,172.
+    - `OpenRouterClient` 604 → 627.
+
+    Each grew only by the new field and its reads.
+- **2026-11-03. Slice 6 re-review fixes (PR #185).** Astra re-reviewed
+  `edf98ce`
+  ([notes](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md#re-review-findings-at-edf98ce-2026-11-03)).
+  The earlier fixes held. She found two more P2s and asked for one decision:
+  - **`09ea77f`, F-03.** A stream's model named in a frame with no content now
+    reaches the engine at once. An interrupted stream (EOF without a terminal
+    frame, or a provider error) keeps it.
+  - **`247c87a`, F-04 and N-02.**
+    - **F-04.** A dictionary block whose text normalization removes no longer
+      counts toward the entry's stamp.
+    - **N-02.** The coordinator decided that a full entry is read in request
+      order, as D7 says. Each block is numbered when its request is sent. The
+      ADR is unchanged.
+  - **Counts.** 598 suites / 8,480 tests / 59 snapshots, all passing.
+    Typecheck is clean, and lint has 0 errors and 1,133 warnings.
 - **2026-11-03. Slice 2 (Read in and the reader).** Landed in `a88ef63` (host
   routes) and `e1111b2` (webview), on PR #186.
   - **What landed.**

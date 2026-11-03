@@ -320,7 +320,9 @@ export class DictionaryHandler {
       }
 
       // Send result back to webview
-      this.sendFastGenerateResult(historyEntryId ? { ...result, historyEntryId } : result);
+      // The run's models are the Workshop stamp's reading, not the webview's.
+      const { model: _model, replySource: _replySource, ...payload } = result;
+      this.sendFastGenerateResult(historyEntryId ? { ...payload, historyEntryId } : payload);
       this.sendStatus('');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

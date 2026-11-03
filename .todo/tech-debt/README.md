@@ -112,6 +112,7 @@ elsewhere.
 | Low | [Offer the misnested-member repair to the Workshop widgets](2026-10-24-widget-misnested-member-repair.md) (Lightbox Slice 4K; after each adopts the shared parser) | Identified |
 | Low | [The session codec refuses sessions saved by newer builds](2026-11-03-workshop-session-codec-downgrade-tolerance.md) (Workshop Wayfinding ADR D9; a tolerant extension slot for later releases) | Identified |
 | Medium | [WorkshopApp.tsx is over three times the 500-line limit](2026-11-03-workshop-app-root-size.md) (Workshop Wayfinding Slice 1; extract the thread region before Slice 5) | Identified |
+| Low | [A dictionary block that normalization empties still counts as a success](2026-11-03-dictionary-normalized-block-success.md) (Workshop Wayfinding Slice 6, PR #185 F-04's scope note; history's `modelIds` too) | Identified |
 
 ## Review Guidance
 

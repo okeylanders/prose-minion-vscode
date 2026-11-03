@@ -3,7 +3,7 @@ import type {
   OpenRouterReasoningOptions,
   OpenRouterWebSearchTool
 } from '@providers/OpenRouterClient';
-import type { UrlCitation } from '@messages';
+import type { InferenceReplySource, InferenceRunModels, UrlCitation } from '@messages';
 
 /** The caller-selected capability surface available to one agent turn. */
 export type CapabilityCatalog =
@@ -187,6 +187,8 @@ export interface ContinuationRunRequest {
   readonly capability?: AnyAgentCapability;
 }
 
+export type AgentRunReplySource = InferenceReplySource;
+
 export interface ExecutionResult {
   /**
    * Provider content before presentation cleanup or the human truncation
@@ -210,6 +212,18 @@ export interface ExecutionResult {
   readonly providerResponseId?: string;
   /** Actual provider-reported model id for the final inference call. */
   readonly modelId?: string;
+  /**
+   * The run's requested model, captured before its first request, and the
+   * distinct provider-reported models across its requests, in order (Workshop
+   * Wayfinding D7). Absent only when the engine had no model to request.
+   */
+  readonly models?: InferenceRunModels;
+  /**
+   * Who wrote `content`: the provider, or the engine in its place (an empty
+   * reply, exhausted correction turns, an exhausted capability limit). Only
+   * a provider reply may be attributed to a model (Workshop Wayfinding D7).
+   */
+  readonly replySource?: AgentRunReplySource;
   readonly cancelled?: boolean;
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];

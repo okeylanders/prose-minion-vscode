@@ -74,6 +74,24 @@ export interface InferenceRequestObservation {
   measuredAt: number;
 }
 
+/**
+ * Who wrote a run's final reply: the provider, or the host in its place
+ * when the provider's reply was unusable. Only a provider reply may be
+ * attributed to a model (Workshop Wayfinding D7).
+ */
+export type InferenceReplySource = 'provider' | 'host-fallback';
+
+/**
+ * Which models answered one run (Workshop Wayfinding D7). `requestedModelId`
+ * is the model the run's first request was sent to, captured when the run
+ * started; `servedModelIds` are the distinct provider-reported models across
+ * the run's requests, in first-use order, and empty when none were reported.
+ */
+export interface InferenceRunModels {
+  requestedModelId: string;
+  servedModelIds: string[];
+}
+
 /** Backward-looking context and processed-traffic telemetry for one logical turn. */
 export interface ContextBudgetSnapshot {
   /** Latest request's cache-window estimate, ephemeral with the context reading. */

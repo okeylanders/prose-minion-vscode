@@ -21,6 +21,7 @@ import {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
+import { workshopTurnModelOf } from '@/application/services/workshop/WorkshopTurnModel';
 import {
   inspectWorkshopWidgetRecommendation,
   WorkshopWidgetRecommendationInspection
@@ -290,8 +291,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(result.content)
     : result.content;
-  const displayContent = widgetRecommendation.outcome !== 'absent'
-    && strippedDisplayContent.trim().length === 0
+  // A widget-only reply leaves no provider prose to show, so completion writes
+  // the displayed note itself, and the turn must not be attributed to a model
+  // (Astra F-02, completion-stage note).
+  const hostWritesDisplay = widgetRecommendation.outcome !== 'absent'
+    && strippedDisplayContent.trim().length === 0;
+  const displayContent = hostWritesDisplay
     ? recommendationRejected
       ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
       : `${label} returned a widget setup without an accompanying note.`
@@ -306,7 +311,8 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     result.citations,
     widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource
       ? widgetRecommendation.recommendation
-      : undefined
+      : undefined,
+    hostWritesDisplay ? undefined : workshopTurnModelOf(result)
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {

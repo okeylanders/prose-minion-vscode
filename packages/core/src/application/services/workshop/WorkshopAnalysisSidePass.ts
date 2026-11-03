@@ -18,7 +18,8 @@ import {
 import {
   WorkshopExcerpt,
   WorkshopToolId,
-  WorkshopTurn
+  WorkshopTurn,
+  WorkshopTurnModel
 } from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
@@ -183,6 +184,8 @@ export class WorkshopAnalysisSidePass {
     truncated?: boolean;
     toolId: WorkshopToolId;
     inputProvenance?: WorkshopAnalysisRunResult['inputProvenance'];
+    /** The report's stamp (`workshopTurnModelOf`), when its run earns one (ADR 2026-11-03 D7). */
+    model?: WorkshopTurnModel;
   }): WorkshopToolReportCompletion | undefined {
     const actionableFindings = this.inspectActionableFindings(
       input.content,
@@ -195,7 +198,8 @@ export class WorkshopAnalysisSidePass {
       input.usage,
       input.truncated,
       actionableFindings,
-      input.inputProvenance
+      input.inputProvenance,
+      input.model
     );
     if (completion) {
       // Adoption settles the sidecar completely — its conversation and
@@ -225,6 +229,8 @@ export class WorkshopAnalysisSidePass {
     result: WorkshopCapabilityResult;
     conversationId?: string;
     truncated?: boolean;
+    /** The persona-run analysis's stamp, when its run earns one (ADR 2026-11-03 D7). */
+    model?: WorkshopTurnModel;
   }): PersonaAnalysisAdoption | undefined {
     // Persona-requested runs are transcript evidence, not direct conversation
     // participants. Never let one adopt or replace the writer-owned sidecar.
@@ -242,7 +248,8 @@ export class WorkshopAnalysisSidePass {
       details: input.details,
       result: input.result,
       truncated: input.truncated,
-      actionableFindings
+      actionableFindings,
+      model: input.model
     });
     if (!completion) {
       this.outputChannel.appendLine(

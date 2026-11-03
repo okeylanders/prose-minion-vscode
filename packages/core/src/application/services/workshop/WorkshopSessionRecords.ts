@@ -30,6 +30,7 @@ import type {
   WorkshopSessionScope,
   WorkshopToolId,
   WorkshopTurn,
+  WorkshopTurnModel,
   WorkshopTurnArtifact,
   WorkshopTurnKind,
   WorkshopWidgetRecommendation
@@ -192,6 +193,8 @@ export interface WorkshopCapabilityArtifactInput {
   toolId?: WorkshopToolId;
   truncated?: boolean;
   actionableFindings?: WorkshopActionableFinding[];
+  /** Present only when the capability was a provider run (a persona-run analysis). */
+  model?: WorkshopTurnModel;
 }
 
 export interface WorkshopExcerptReplacement {
