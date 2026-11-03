@@ -98,3 +98,22 @@ earlier-reply-first failure.
 - `npm run lint`: 0 errors, 1,136 warnings, the same count as the merged head
   `8d27899`.
 - `git diff --check`: clean. No `from 'vscode'` in core.
+
+
+## Re-review at `0f940b6` (2026-11-03)
+
+**Disposition: F-01's original late-response race is fixed; one additional P2 reader-state issue remains.** This is a branch report, not a formal GitHub review, approval or authorization to merge.
+
+F-01 now has a unique request ID echoed by the host. Independent full-App probes pass the original close/reopen witness, all six A → B → A response permutations with mixed successes and refusals, duplicate replies, mismatched IDs/pairs, and late responses after room or target replacement. Host probes confirm invalid IDs are rejected before catalog access and the ID survives success and error paths. **57 production tests and 30 separate access/correlation probes pass.**
+
+### F-02: P2: replacing an open reader can retain the preceding file's body
+
+**Locations:** [`useWorkshopContextSheet.ts:204–220`](https://github.com/okeylanders/prose-minion-vscode/blob/0f940b627f8f7e656e151f16c367376c96dbf289/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopContextSheet.ts#L204-L220), [`WorkshopApp.tsx:1378–1383`](https://github.com/okeylanders/prose-minion-vscode/blob/0f940b627f8f7e656e151f16c367376c96dbf289/packages/core/src/presentation/webview/WorkshopApp.tsx#L1378-L1383), [`WorkshopTextSheet.tsx:223–234`](https://github.com/okeylanders/prose-minion-vscode/blob/0f940b627f8f7e656e151f16c367376c96dbf289/packages/core/src/presentation/webview/components/workshop/WorkshopTextSheet.tsx#L223-L234).
+
+A full-App probe opens and finishes loading resource A, then activates resource B without closing the sheet. The B request has a fresh ID and its response is correctly accepted, and the dialog heading changes to B, but the preview remains A's text. The sheet stays mounted and seeds its local draft only once per opening, so changing the sheet mode/ref in place does not seed B. The independent expected-B assertion fails with A's content.
+
+The ordinary pointer path is blocked by the full-screen backdrop. The keyboard path is supported by source and DOM inspection: the modal is a `div` with `aria-modal`, the background rows remain enabled and not inert, and [`useOverlayDismiss`](https://github.com/okeylanders/prose-minion-vscode/blob/0f940b627f8f7e656e151f16c367376c96dbf289/packages/core/src/presentation/webview/hooks/useOverlayDismiss.ts#L46-L55) handles Escape but does not trap Tab. Thus a user can tab out of the modal and activate a background row. The native Chromium keyboard sequence was **not** independently exercised because Chromium could not start in the review environment; the wrong-body result itself is independently reproduced in the production App. This state issue was present in the original Slice 2; it was not introduced by the request-ID correction.
+
+Please prevent the title/body mismatch when the reader target changes, for example by making a new target a new sheet lifetime or explicitly reseeding the read-only body. Also address the modal's background keyboard access as appropriate. Add an App regression that loads A, activates B without an intervening close, receives B, and verifies B's heading and body together; check reverse order and retained editable-sheet behavior. A focus-trap test or native keyboard acceptance should establish the intended modal interaction.
+
+**CI:** [run 41740258255](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41740258255) passed on synthetic merge `dc6ee80` of `0f940b6` into `07d24e7`: **606 suites / 8,601 tests / 59 snapshots**, typecheck, lint and both builds. The full local suite was not rerun independently. Native VS Code editor-column and screen-reader acceptance remain unverified. No implementation change, formal approval or merge was made.
