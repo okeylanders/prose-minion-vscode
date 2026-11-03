@@ -347,3 +347,16 @@ the ADR:
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged
       from the merged head. The ledger is in
       [the review](../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md).
+  - **PR #186 re-review (Astra, 2026-11-03).** F-01 confirmed fixed. A new
+    P2, F-02, had been there since the slice was first built: activating
+    another row behind an open reader showed B's heading over A's body,
+    because the sheet seeds once per mount. Keyboard users could reach that
+    row because nothing kept Tab inside the dialog. Fixed in `3c184c2`.
+    - Each reader request keys its own sheet (`sheetKey`), and authoring
+      modes keep one shared key.
+    - `WorkshopModalShell` gains an opt-in `trapFocus`, which only the text
+      sheet turns on.
+    - The shared modal gap is
+      [tech debt](../../tech-debt/2026-11-03-workshop-modal-focus-containment.md).
+    - *Counts.* At `3c184c2`: 606 suites / 8,608 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.

@@ -117,3 +117,34 @@ The ordinary pointer path is blocked by the full-screen backdrop. The keyboard p
 Please prevent the title/body mismatch when the reader target changes, for example by making a new target a new sheet lifetime or explicitly reseeding the read-only body. Also address the modal's background keyboard access as appropriate. Add an App regression that loads A, activates B without an intervening close, receives B, and verifies B's heading and body together; check reverse order and retained editable-sheet behavior. A focus-trap test or native keyboard acceptance should establish the intended modal interaction.
 
 **CI:** [run 41740258255](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41740258255) passed on synthetic merge `dc6ee80` of `0f940b6` into `07d24e7`: **606 suites / 8,601 tests / 59 snapshots**, typecheck, lint and both builds. The full local suite was not rerun independently. Native VS Code editor-column and screen-reader acceptance remain unverified. No implementation change, formal approval or merge was made.
+
+## Author response to the re-review (2026-11-03)
+
+F-02 is fixed in `3c184c2`. Nothing above this section was edited.
+
+- **Each reader request is its own sheet lifetime.** The context-sheet
+  controller returns `sheetKey`, and `WorkshopApp` keys `WorkshopTextSheet`
+  with it. A reader's key is its current request (`read-in:<requestId>`, or
+  the pair before the hook's state for it lands), so activating another row
+  remounts the sheet, which seeds from that request's own reply. All authoring
+  modes share the key `sheet`, so they behave exactly as before.
+- **Background keyboard access.** `WorkshopModalShell` had no focus trap and
+  no `inert` background; that gap is shared by every Workshop modal. Following
+  the scope you set, the shell gains an opt-in `trapFocus`, which wraps Tab
+  and Shift+Tab at the dialog's first and last tab stops. Only
+  `WorkshopTextSheet` turns it on. Every other modal's markup and behavior are
+  unchanged, and `FullTabShell`, which the Lightbox shares, is untouched. The
+  shared gap is filed as
+  [tech debt](../../.todo/tech-debt/2026-11-03-workshop-modal-focus-containment.md).
+
+| ID | Severity | Disposition | Fix | Regression tests | On `0f940b6` |
+| --- | --- | --- | --- | --- | --- |
+| F-02 | P2 | **Fixed** (`3c184c2`) | `sheetKey` per reader request remounts the sheet for a new target. Opt-in `trapFocus` on `WorkshopModalShell`, on for the text sheet only. | `WorkshopApp.readIn.test.tsx`, activating the row directly behind the open sheet: **your probe** (A loaded, then B: heading and body both B); B opened while A is still loading shows the loading line, never A's text; B-then-late-A and late-A-then-B both show only B. `WorkshopTextSheet.test.tsx`: Tab from the last stop and Shift+Tab from the first stay in the dialog, for the reader and for an authoring sheet, and Tab between inner stops is left to the browser. `useWorkshopContextSheet.test.ts`: authoring modes share one key across mode changes; each reader request keys apart | **Fail:** both App cases where A had loaded, and both focus cases. **Pass, as controls:** the two orders where A never loaded, since nothing was seeded. The controller suite doesn't compile there, because `sheetKey` doesn't exist yet. The existing editable-sheet tests pass on both heads |
+
+**Verification at `3c184c2`:**
+- `npx jest`: **606 suites / 8,608 tests / 59 snapshots**, all passing.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,136 warnings, unchanged.
+- `git diff --check`: clean. No `from 'vscode'` in core.
+
+Native keyboard and screen-reader acceptance remain Slice 8's.
