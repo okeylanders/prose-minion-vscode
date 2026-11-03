@@ -186,7 +186,7 @@ the ADR:
 - **2026-11-03. Slice 6 review fixes (PR #185).** Astra
   ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md))
   found two P2 provenance faults and one scope decision:
-  - **`bc02e52`, F-01 and F-02.**
+  - **`623a4be`, F-01 and F-02.**
     - **F-01.** Served ids are only models a response named. The client
       reports `servedModelId` without the requested-model fallback, on content
       chunks too, so a reported model survives missing usage and a broken-off
@@ -194,11 +194,14 @@ the ADR:
     - **F-02.** `ExecutionResult` and `AnalysisResult` carry `replySource`. A
       reply the engine wrote itself (empty or null, exhausted corrections, an
       exhausted capability limit) is `host-fallback` and commits unstamped.
-  - **`c3d1c8c`, N-01.** The coordinator decided that a persona's dictionary
+  - **`7e0b534`, F-02's completion-stage note.** When a persona's reply is
+    only a widget setup, completion writes the shown note itself. That turn now
+    commits unstamped.
+  - **`174012c`, N-01.** The coordinator decided that a persona's dictionary
     lookups are stamped, with scope `dictionary`. D7 gained that one bullet,
     and the tech-debt item is gone.
   - **Counts.** Before (`0c987cf`): 595 suites / 8,432 tests / 59 snapshots.
-    After: 597 / 8,466 / 59, all passing. Typecheck is clean, and lint stays
+    After: 598 / 8,472 / 59, all passing. Typecheck is clean, and lint stays
     at 0 errors and 1,133 warnings.
   - **Files over 500 lines that grew.**
     - `DictionaryService` 771 → 800. Its aggregation lives in the new 58-line

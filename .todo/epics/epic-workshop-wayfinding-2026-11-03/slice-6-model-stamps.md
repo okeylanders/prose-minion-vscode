@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D7 and D9
-**Status:** Built (`7e38081`, `9d86713`, `584a529`); review fixes `bc02e52`, `c3d1c8c` ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)); PR #185 into `epic/workshop-wayfinding`
+**Status:** Built (`7e38081`, `9d86713`, `584a529`); review fixes `623a4be`, `174012c`, `7e0b534` ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)); PR #185 into `epic/workshop-wayfinding`
 
 ## Outcome
 
@@ -125,4 +125,5 @@ serving. Nothing displays the stamps yet; Slice 7 does.
   provider reply.
 - **A host-written stand-in commits unstamped.** When the engine replaces an
   unusable reply with its own text, the turn still commits, as before, but
-  carries no `model`.
+  carries no `model`. The same holds for the note completion writes when a
+  persona's reply is only a widget setup (review F-02, completion-stage note).
