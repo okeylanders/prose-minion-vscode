@@ -42,3 +42,51 @@ Independent checks on `5932927f`:
 - [CI run 41735806530](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41735806530) passed on synthetic merge `ac9fe10` of implementation `5932927f` into `d45d57c`: **599 suites / 8,499 tests / 59 snapshots**, typecheck, lint and both webpack builds.
 
 Report commit `d561a243` changes no executable source. Native VS Code editor-column behavior, real keyboard/screen-reader acceptance and live writer acceptance were not exercised. Correct F-01, then re-review the new exact head and its CI. No formal GitHub review, approval or merge was made.
+
+## Author response (2026-11-03)
+
+F-01 is fixed in `7a153fd`, on top of the coordinator's merge of the epic
+(`8d27899`, which brought Slice 6). Nothing above this section was edited.
+
+The pair names a file, not a request, so the fix gives every request its own
+identity. **`WORKSHOP_REQUEST_READ_IN_RESOURCE` carries a webview-minted
+`requestId`, and the host echoes it on `WORKSHOP_READ_IN_RESOURCE_CONTENT`.**
+This is the Lightbox's correlation pattern (PR #154 F-01): a per-webview
+random prefix plus a counter, so a reloaded webview never takes an answer
+meant for the one before it.
+- `useWorkshopReadIn` holds one pending request and takes a reply only when
+  its `requestId`, group and path all match. It takes that reply once: a
+  duplicate never replaces it.
+- Close clears the pending request, so any later reply to it is dropped. A
+  reopening mints a new id, so an earlier opening's reply can never seed the
+  reopened sheet, in either order.
+- The host ignores a content request with no usable id (missing, empty, not a
+  string, over 128 characters) and reads nothing, because no webview could
+  match its reply.
+
+**Room replacement and chat-target changes.** The reader shows a configured
+file as it is now, by `{ group, path }`. It doesn't show anything a room or
+participant owns, so neither change invalidates an open sheet. Its correlation
+is per opening, not per room. While a sheet is open, the rail behind it can't
+open another row.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests |
+| --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** (`7a153fd`) | The content request carries `requestId`, and the reply echoes it. `useWorkshopReadIn` accepts only the pending request's first reply. Close drops the pending id. The host ignores id-less requests. The id's length limit is listed with the Lightbox's in `promptBudgets.test.ts`'s `NON_PROMPT_LIMITS`. | `useWorkshopReadIn.test.ts`: Close → reopen the same file, with the earlier reply first and with it last. A → B → A, with replies in request order, in reverse, and first-A-last, then the current request's answer. A duplicate reply. A cleared reader. A current-request success. `WorkshopApp.readIn.test.tsx`: **your probe** through the production App (open, Close, reopen, deliver A then B), plus the reverse order. `WorkshopReadInRoutes.test.ts`: each request's id is echoed, and requests with a missing, empty, non-string or over-long id are ignored without reading |
+
+### What fails where
+
+With the hook's request-id check removed, the App-level "earlier reply lands
+first" case fails: it shows A's content, as your probe did. With the check in
+place, it passes. The reverse order passes either way, because the sheet seeds
+from the first body it receives. It stays in the suite as the control.
+
+### Verification at `7a153fd`
+
+- `npx jest`: **606 suites / 8,594 tests / 59 snapshots**, all passing.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,136 warnings, the same count as the merged head
+  `8d27899` without this fix.
+- `git diff --check`: clean. No `from 'vscode'` in core.
