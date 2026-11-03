@@ -156,3 +156,18 @@ pass.
 
 Recorded on the PR, for the corrected head: the full suite, typecheck,
 lint, and `git diff --check`.
+
+
+## Independent re-review of `e53b694` (2026-11-03)
+
+**Disposition: the three reported findings are resolved; no new actionable defect found in the correction.** This is a report, not a formal GitHub approval or authorization to merge.
+
+- **F-01:** Both panels remain mounted; switching tabs preserves an unsaved draft without dispatching an edit. Save sends the draft, Escape cancels it, a replacement room resets it, and removal followed by restoration of a task does not revive the old draft.
+- **N-01:** Both tab controls resolve to stable panel elements with matching `aria-labelledby`; the inactive panel is hidden.
+- **N-02:** Both panels are tab stops, including the empty Notes state.
+
+Independent exact-head verification: the focused rail, controller, and App suites passed **3 suites / 27 tests**. Two additional full-App probes passed: an ordinary host snapshot preserved a hidden draft; a changed real `roomRevision` cleared it even with the same to-do ID; and removal and restoration while Notes remained hidden did not revive it. Navigation and resets did not dispatch to-do actions. Fresh typecheck passed all three projects, lint reported **0 errors / 1,133 warnings**, and `git diff --check` passed. The local full suite and production build were not rerun for this re-review.
+
+[PR CI run 41728098669](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41728098669) succeeded on synthetic merge `00f1050c289070e8c4708f1f692ef9ef99e72969` of `e53b694` into `fddc484`: **594 suites / 8,425 tests / 59 snapshots**, typecheck, lint, and both webpack builds passed. The legacy commit-status list is empty; the Actions run is the CI evidence.
+
+Native VS Code geometry, real-browser keyboard default actions, screen-reader behavior, and live writer acceptance remain unverified. No implementation change, formal approval, merge, or paid provider call was made during this re-review.
