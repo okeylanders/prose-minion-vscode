@@ -184,3 +184,28 @@ Determine inclusion and attribution from the normalized content actually retaine
 An independent full-service probe held the first displayed block's prompt, let a later block dispatch on model A, switched the selection to B, then released the first block. Request order was A then B; the entry stamp says requested B and served `[B, A]`. That is consistent with the documented block-order implementation but not a chronological reading of D7. Please decide which meaning should govern a multi-call Dictionary entry, align the ADR and implementation or explicitly amend the decision, and pin the intended order. This is a design reconciliation note rather than another undisclosed implementation finding.
 
 Further independent verification on `edf98ce`: **8 adjacent suites / 253 tests** pass, full typecheck passes, and the whitespace check passes. The report-only commit `7959ac57` changes no production or test source. The two new P2 findings above remain open.
+
+### Author response to the re-review (2026-11-03)
+
+Both P2s are fixed on top of `61408a3`. N-02 follows the coordinator's
+decision: chronological order, as D7 reads, with no ADR change. Nothing
+above this section was edited.
+
+| ID | Severity | Disposition | Fix | Regression tests | Commit |
+| --- | --- | --- | --- | --- | --- |
+| F-03 | P2 | **Fixed** | A stream frame that names the model but carries no content now yields a metadata chunk at once (`{ token: '', done: false, servedModelId }`), only when the named model is new. The engine already reads `servedModelId` from every chunk before it skips empty tokens. A model named after the last content therefore survives an EOF with no terminal frame, and survives a provider error. No fallback is invented: a stream that never names a model still lists none. The engine is the generator's only consumer. | `AgentRunEngine.replyProvenance.integration.test.ts` (+4, streaming), real client and engine, only `fetch` mocked:<br>• EOF after a model-only frame → `['vendor/served']`, partial text kept<br>• provider error after a model-only frame → `['vendor/served']`, interrupted reply kept<br>• `[DONE]` control → `['vendor/served']`<br>• no frame names a model → `[]`<br>The first two fail on the previous client. | `09ea77f` |
+| F-04 | P2 | **Fixed** | A full entry's stamp reads only blocks whose **normalized** text the entry keeps. A block normalization empties (a stray `## **Special Focus:` section) is left out of the stamp, so a header-only entry gets no provider stamp, and a removed block's model never joins the kept text's. I left `successCount` and the history's `modelIds` on their existing raw-content rule. Changing them would change when a lookup is recorded or reported as failed, which is outside this slice. That raw rule is noted as a possible follow-up. | `DictionaryRunModels.test.ts` (+3):<br>• a removed-only block → no stamp, no reply source<br>• a removed block on model X beside kept text on Y → the stamp names only Y<br>• normal kept output → stamped<br>The first two fail on the previous code. | `247c87a` |
+| N-02 | — | **Resolved: request order** (coordinator's decision) | Each block's request is numbered when it is sent (`dispatchOrder`, from a counter shared by the entry's blocks). A retry is numbered when the retry is sent. Nothing is awaited between that number and the engine's capture of the requested model. `dictionaryEntryRunModel` sorts kept blocks by that number: **requested** is the earliest-sent kept block's model, and **served** ids are de-duplicated in request order. The slice doc's deviation note says so. | `DictionaryRunModels.test.ts` (+1), through the real `AgentRunEngine` over a fake client: it holds the first displayed block's prompt, lets the other 14 blocks send on A, hot-swaps to B (`engine.setModel`), then releases. Expect `requested: 'vendor/a'` and `served: ['vendor/a-served', 'vendor/b-served']`, though B's block is shown first. This fails on the previous code, which gave B and `[B, A]`. | `247c87a` |
+
+**Verification at this head:**
+
+- **Full Jest:** 598 suites / 8,480 tests / 59 snapshots, all passing (Node
+  18). That is +8 tests over `edf98ce`'s 8,472.
+- **`npm run typecheck`:** clean.
+- **`npm run lint`:** 0 errors, 1,133 warnings, unchanged.
+- **Core imports:** no `from 'vscode'` in `packages/core/src`.
+- **`git diff --check`:** clean.
+- **Files over 500 lines that grew:**
+  - `DictionaryService` 800 → 822
+  - `OpenRouterClient` 627 → 633
+- `DictionaryRunModel.ts` is 68 lines.

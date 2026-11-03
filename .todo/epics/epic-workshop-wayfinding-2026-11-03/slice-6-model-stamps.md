@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D7 and D9
-**Status:** Built (`7e38081`, `9d86713`, `584a529`); review fixes `623a4be`, `174012c`, `7e0b534` ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)); PR #185 into `epic/workshop-wayfinding`
+**Status:** Built (`7e38081`, `9d86713`, `584a529`); review fixes `623a4be`, `174012c`, `7e0b534`; re-review fixes `09ea77f`, `247c87a` ([review](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md)); PR #185 into `epic/workshop-wayfinding`
 
 ## Outcome
 
@@ -117,7 +117,12 @@ serving. Nothing displays the stamps yet; Slice 7 does.
   participant check. This makes a stamp on a writer turn unrepresentable.
 - **Dictionary capability turns are stamped** with scope `dictionary`. The
   coordinator decided this after review N-01, and D7 now lists them.
-  - A full entry's requested model is its first included block's.
+  - A full entry is read in the order its blocks' requests were sent, not
+    the order they are shown (re-review N-02, matching D7). Its requested
+    model is the earliest-sent kept block's, and its served ids follow request
+    order.
+  - Only blocks whose text the entry keeps count: a block normalization
+    empties adds nothing to the stamp (re-review F-04).
   - It counts as a provider reply only when every block in it was one.
   - Resource and recall turns make no provider call and carry nothing.
 - **A failed persona-run analysis or dictionary lookup records no stamp,**

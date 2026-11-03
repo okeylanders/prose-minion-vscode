@@ -211,3 +211,18 @@ the ADR:
     - `OpenRouterClient` 604 → 627.
 
     Each grew only by the new field and its reads.
+- **2026-11-03. Slice 6 re-review fixes (PR #185).** Astra re-reviewed
+  `edf98ce`
+  ([notes](../../../docs/pr-reviews/workshop-wayfinding-slice-6-model-stamps-review.md#re-review-findings-at-edf98ce-2026-11-03)).
+  The earlier fixes held. She found two more P2s and asked for one decision:
+  - **`09ea77f`, F-03.** A stream's model named in a frame with no content now
+    reaches the engine at once. An interrupted stream (EOF without a terminal
+    frame, or a provider error) keeps it.
+  - **`247c87a`, F-04 and N-02.**
+    - **F-04.** A dictionary block whose text normalization removes no longer
+      counts toward the entry's stamp.
+    - **N-02.** The coordinator decided that a full entry is read in request
+      order, as D7 says. Each block is numbered when its request is sent. The
+      ADR is unchanged.
+  - **Counts.** 598 suites / 8,480 tests / 59 snapshots, all passing.
+    Typecheck is clean, and lint has 0 errors and 1,133 warnings.
