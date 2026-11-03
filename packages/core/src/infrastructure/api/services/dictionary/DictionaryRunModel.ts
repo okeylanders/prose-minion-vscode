@@ -30,21 +30,31 @@ export function dictionaryRunModel(result: Pick<ExecutionResult, 'models' | 'rep
   };
 }
 
+/** A block's run, numbered in the order its request was sent. */
+export type DictionaryBlockRun = Pick<ExecutionResult, 'models' | 'replySource'> & {
+  readonly dispatchOrder?: number;
+};
+
 /**
- * A full entry's runs, one per block that went into it, in block order. The
- * entry was requested of the first block's model, served by every model the
- * blocks' providers named, and is a provider reply only when every block in
- * it was one; a block the engine had to fill in makes the entry unattributable.
+ * A full entry's runs, one per block whose text the entry kept. Read in the
+ * order the requests were sent, not the order the blocks are shown (D7; Astra
+ * N-02): the entry was requested of the earliest-sent block's model, served
+ * by every model the blocks' providers named in that order, and is a provider
+ * reply only when every block in it was one; a block the engine had to fill
+ * in makes the entry unattributable.
  */
 export function dictionaryEntryRunModel(
-  includedBlocks: ReadonlyArray<Pick<ExecutionResult, 'models' | 'replySource'>>
+  includedBlocks: ReadonlyArray<DictionaryBlockRun>
 ): DictionaryRunModels {
-  const first = includedBlocks.find((block) => block.models)?.models;
-  if (!first || includedBlocks.length === 0) {
+  const sent = [...includedBlocks].sort(
+    (left, right) => (left.dispatchOrder ?? Number.MAX_SAFE_INTEGER) - (right.dispatchOrder ?? Number.MAX_SAFE_INTEGER)
+  );
+  const first = sent.find((block) => block.models)?.models;
+  if (!first || sent.length === 0) {
     return {};
   }
   const servedModelIds: string[] = [];
-  for (const block of includedBlocks) {
+  for (const block of sent) {
     for (const id of block.models?.servedModelIds ?? []) {
       if (!servedModelIds.includes(id)) {
         servedModelIds.push(id);

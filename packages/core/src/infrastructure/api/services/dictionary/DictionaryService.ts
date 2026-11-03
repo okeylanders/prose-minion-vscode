@@ -151,7 +151,14 @@ export type DictionaryLookupResult = AnalysisResult & {
 };
 
 /** A block's result with its run's models and reply source (Workshop stamps). */
-type DictionaryRunBlockResult = DictionaryBlockResult & Pick<ExecutionResult, 'models' | 'replySource'>;
+type DictionaryRunBlockResult = DictionaryBlockResult
+  & Pick<ExecutionResult, 'models' | 'replySource'>
+  & { readonly dispatchOrder?: number };
+
+/** One full entry's request numbering, shared by its blocks. */
+interface DictionaryDispatchCounter {
+  next: number;
+}
 
 /**
  * A full entry, with the stamp-only reading of its runs (`DictionaryRunModel`).
@@ -450,6 +457,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
     // Create concurrency limiter
     const limit = pLimit(this.CONCURRENCY_LIMIT);
+    // Numbers each block's request as it is sent, so the entry's stamp reads
+    // its runs in the order they were requested (D7; Astra N-02).
+    const dispatch: DictionaryDispatchCounter = { next: 0 };
 
     // Create block generation promises
     const blockPromises = selectedBlocks.map(blockName =>
@@ -461,7 +471,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           DICTIONARY_BLOCKS.indexOf(blockName) + 1,
           word,
           context,
-          options.signal
+          options.signal,
+          dispatch
         );
 
         // Update progress
@@ -502,10 +513,12 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     blockName: DictionaryBlockName,
     blockNumber: number,
     word: string,
-    context?: string,
-    signal?: AbortSignal
+    context: string | undefined,
+    signal: AbortSignal | undefined,
+    dispatch: DictionaryDispatchCounter
   ): Promise<DictionaryRunBlockResult> {
     const startTime = Date.now();
+    let dispatchOrder = -1;
     const paddedNumber = String(blockNumber).padStart(2, '0');
     const isTopicLexicon = blockName === 'topic-related-lexicon';
     // Developed topic explanations, vocabulary, and reading suggestions need
@@ -530,6 +543,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
       this.outputChannel?.appendLine(`[DictionaryService] Generating block: ${blockName}`);
 
       // The dictionary route explicitly has no resource catalog.
+      dispatchOrder = dispatch.next++;
       const result = await engine.runInitial({
         toolName: `dictionary-fast-${blockName}`,
         systemMessage,
@@ -551,7 +565,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         usage: result.usage,
         modelId: result.modelId,
         models: result.models,
-        replySource: result.replySource
+        replySource: result.replySource,
+        dispatchOrder
       };
     } catch (error) {
       if (this.isAbortError(error) || signal?.aborted) {
@@ -569,7 +584,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         const systemMessage = `${baseInstructions}\n\n---\n\n${blockPrompt}`;
         const userMessage = this.buildBlockUserMessage(blockName, word, context);
 
-        const result = await engine.runInitial({
+        dispatchOrder = dispatch.next++;
+      const result = await engine.runInitial({
           toolName: `dictionary-fast-${blockName}-retry`,
           systemMessage,
           userMessage,
@@ -590,7 +606,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           usage: result.usage,
           modelId: result.modelId,
           models: result.models,
-          replySource: result.replySource
+          replySource: result.replySource,
+          dispatchOrder
         };
       } catch (retryError) {
         if (this.isAbortError(retryError) || signal?.aborted) {
@@ -722,8 +739,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           partialFailures.push(blockName);
         } else if (result.content.trim()) {
           successCount++;
-          orderedContent.push(this.normalizeBlockContent(blockName, result.content));
-          includedBlocks.push(result);
+          const retained = this.normalizeBlockContent(blockName, result.content);
+          orderedContent.push(retained);
+          // Only text the entry keeps can be attributed to a model (Astra
+          // F-04): a block normalization empties adds nothing to the stamp.
+          if (retained.trim()) {
+            includedBlocks.push(result);
+          }
           if (result.modelId && !modelIds.includes(result.modelId)) {
             modelIds.push(result.modelId);
           }
