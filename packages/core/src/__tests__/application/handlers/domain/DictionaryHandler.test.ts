@@ -434,7 +434,10 @@ describe('DictionaryHandler', () => {
       mockService.generateParallelDictionary.mockResolvedValue({
         word: 'plosive', result: '# Partial entry',
         metadata: { totalDuration: 10, blockDurations: {}, partialFailures: ['definition'], successCount: 14, totalBlocks: 15 },
-        modelIds: [MODEL]
+        modelIds: [MODEL],
+        // The Workshop stamp's reading of the runs, never sent to the webview.
+        model: { scope: 'dictionary', requestedModelId: MODEL, servedModelIds: [MODEL] },
+        replySource: 'provider'
       });
 
       await handler.handleFastGenerate(fastMessage());
@@ -455,7 +458,9 @@ describe('DictionaryHandler', () => {
       });
       expect(posted(MessageType.FAST_GENERATE_DICTIONARY_RESULT)).toEqual([
         expect.objectContaining({ payload: expect.objectContaining({ result: '# Partial entry', historyEntryId: 'hist-1' }) })
-      ]);
+      ]);      const [fast] = posted(MessageType.FAST_GENERATE_DICTIONARY_RESULT);
+      expect(fast.payload).not.toHaveProperty('model');
+      expect(fast.payload).not.toHaveProperty('replySource');
     });
 
     it('does not record a fast lookup with no generated block', async () => {

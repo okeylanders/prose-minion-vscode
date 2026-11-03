@@ -48,6 +48,11 @@ import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
 import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { closeUnterminatedFence } from '@/utils/markdownFences';
+import {
+  dictionaryEntryRunModel,
+  dictionaryRunModel,
+  DictionaryRunModels
+} from '@services/dictionary/DictionaryRunModel';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -144,6 +149,15 @@ export type DictionaryLookupResult = AnalysisResult & {
    */
   readonly modelId?: string;
 };
+
+/** A block's result with its run's models and reply source (Workshop stamps). */
+type DictionaryRunBlockResult = DictionaryBlockResult & Pick<ExecutionResult, 'models' | 'replySource'>;
+
+/**
+ * A full entry, with the stamp-only reading of its runs (`DictionaryRunModel`).
+ * The handler sends the webview only the payload's own fields.
+ */
+export type ParallelDictionaryResult = FastGenerateDictionaryResultPayload & DictionaryRunModels;
 
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
@@ -242,7 +256,11 @@ export class DictionaryService {
       return this.lookupResult(
         'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        {
+          usage: executionResult.usage,
+          finishReason: executionResult.finishReason,
+          ...dictionaryRunModel(executionResult)
+        },
         executionResult.modelId
       );
     } catch (error) {
@@ -292,7 +310,11 @@ export class DictionaryService {
       return this.lookupResult(
         'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        {
+          usage: executionResult.usage,
+          finishReason: executionResult.finishReason,
+          ...dictionaryRunModel(executionResult)
+        },
         executionResult.modelId
       );
     } catch (error) {
@@ -397,7 +419,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     word: string,
     context?: string,
     options: ParallelDictionaryOptions = {}
-  ): Promise<FastGenerateDictionaryResultPayload> {
+  ): Promise<ParallelDictionaryResult> {
     const startTime = Date.now();
     const entry = resolveDictionaryEntryOptions(options);
     this.outputChannel?.appendLine(
@@ -482,7 +504,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     word: string,
     context?: string,
     signal?: AbortSignal
-  ): Promise<DictionaryBlockResult> {
+  ): Promise<DictionaryRunBlockResult> {
     const startTime = Date.now();
     const paddedNumber = String(blockNumber).padStart(2, '0');
     const isTopicLexicon = blockName === 'topic-related-lexicon';
@@ -527,7 +549,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         content: result.content,
         duration,
         usage: result.usage,
-        modelId: result.modelId
+        modelId: result.modelId,
+        models: result.models,
+        replySource: result.replySource
       };
     } catch (error) {
       if (this.isAbortError(error) || signal?.aborted) {
@@ -564,7 +588,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           content: result.content,
           duration: retryDuration,
           usage: result.usage,
-          modelId: result.modelId
+          modelId: result.modelId,
+          models: result.models,
+          replySource: result.replySource
         };
       } catch (retryError) {
         if (this.isAbortError(retryError) || signal?.aborted) {
@@ -645,9 +671,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   private assembleParallelResult(
     word: string,
     selectedBlocks: readonly DictionaryBlockName[],
-    blockResults: DictionaryBlockResult[],
+    blockResults: DictionaryRunBlockResult[],
     startTime: number
-  ): FastGenerateDictionaryResultPayload {
+  ): ParallelDictionaryResult {
     const totalDuration = Date.now() - startTime;
 
     // Collect metadata
@@ -669,6 +695,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     // What generated the entry: blocks share one engine, so a model swap
     // mid-run shows up here as a second model rather than being hidden.
     const modelIds: string[] = [];
+    const includedBlocks: DictionaryRunBlockResult[] = [];
 
     for (const blockName of selectedBlocks) {
       const result = blockResults.find(r => r.blockName === blockName);
@@ -696,6 +723,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         } else if (result.content.trim()) {
           successCount++;
           orderedContent.push(this.normalizeBlockContent(blockName, result.content));
+          includedBlocks.push(result);
           if (result.modelId && !modelIds.includes(result.modelId)) {
             modelIds.push(result.modelId);
           }
@@ -731,6 +759,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         totalBlocks: selectedBlocks.length
       },
       modelIds,
+      ...dictionaryEntryRunModel(includedBlocks),
       usage: hasUsageData ? {
         promptTokens: totalPromptTokens,
         completionTokens: totalCompletionTokens,

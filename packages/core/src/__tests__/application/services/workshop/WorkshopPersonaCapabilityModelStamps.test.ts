@@ -1,8 +1,9 @@
 /**
- * A persona-run analysis is a provider run, so its report turn carries the
- * run's model stamp (ADR 2026-11-03 D7). Capability turns that are not D7
- * replies carry none, a host-written stand-in carries none (Astra F-02), and
- * the stamp never reaches the evidence the persona reads.
+ * A persona's analyses and dictionary lookups are provider runs, so their
+ * turns carry the run's model stamp (ADR 2026-11-03 D7; dictionary added after
+ * Astra's N-01). Capability turns no provider made carry none, a host-written
+ * stand-in carries none (F-02), and the stamp never reaches the evidence the
+ * persona reads.
  */
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -34,6 +35,15 @@ const RUN_MODEL = {
   servedModelIds: ['vendor/served-for-analysis']
 };
 
+const DICTIONARY_MODEL = {
+  scope: 'dictionary' as const,
+  requestedModelId: 'vendor/dictionary-requested',
+  servedModelIds: ['vendor/dictionary-served']
+};
+
+const LOOKUP = { capability: 'dictionary.lookup' as const, word: 'liminal', context: 'threshold', purpose: 'tone' };
+const FULL_ENTRY = { capability: 'dictionary.full-entry' as const, word: 'liminal', context: 'threshold', purpose: 'tone' };
+
 describe('persona capability model stamps', () => {
   let session: WorkshopSessionService;
   let analyzeWritingTools: jest.Mock<Promise<AnalysisResult>>;
@@ -53,7 +63,19 @@ describe('persona capability model stamps', () => {
     });
     dictionary = {
       lookupWordStreaming: jest.fn().mockResolvedValue({
-        toolName: 'dictionary_lookup', content: '# liminal\nThreshold-toned.'
+        toolName: 'dictionary_lookup',
+        content: '# liminal\nThreshold-toned.',
+        outcome: 'entry',
+        model: DICTIONARY_MODEL,
+        replySource: 'provider'
+      }),
+      generateParallelDictionary: jest.fn().mockResolvedValue({
+        word: 'liminal',
+        result: '# Full entry',
+        metadata: { totalDuration: 1, blockDurations: {}, partialFailures: [], successCount: 3, totalBlocks: 3 },
+        modelIds: ['vendor/dictionary-served'],
+        model: DICTIONARY_MODEL,
+        replySource: 'provider'
       })
     } as unknown as jest.Mocked<DictionaryService>;
     listResources = jest.fn().mockReturnValue([]);
@@ -140,13 +162,51 @@ describe('persona capability model stamps', () => {
     expect(turnsWithArtifact('tool_report')[0].model).toBeUndefined();
   });
 
-  it('leaves capability turns that are not D7 replies unstamped', async () => {
+  it('stamps a dictionary lookup and a full entry with the dictionary scope', async () => {
     const adapter = capability();
-    await adapter.fulfill({ capability: 'resource.catalog' });
-    await adapter.fulfill({ capability: 'dictionary.lookup', word: 'liminal', context: 'threshold', purpose: 'tone' });
+    const lookup = await adapter.fulfill(LOOKUP);
+    const entry = await adapter.fulfill(FULL_ENTRY);
+
+    expect(turnsWithArtifact('dictionary_lookup')[0].model).toEqual(DICTIONARY_MODEL);
+    expect(turnsWithArtifact('dictionary_full_entry')[0].model).toEqual(DICTIONARY_MODEL);
+    expect(lookup.evidence).not.toContain('vendor/');
+    expect(entry.evidence).not.toContain('vendor/');
+  });
+
+  it.each([
+    ['a failed lookup', { content: 'Error: provider unavailable', outcome: 'failed' }],
+    ['an unconfigured key', { content: '⚠️ OpenRouter API key not configured', outcome: 'unconfigured' }],
+    ['a host-written stand-in', { content: 'The assistant returned no usable final response.', outcome: 'entry', replySource: 'host-fallback' }]
+  ])('records no dictionary stamp for %s', async (_label, outcome) => {
+    dictionary.lookupWordStreaming.mockResolvedValue({
+      toolName: 'dictionary_lookup',
+      model: DICTIONARY_MODEL,
+      replySource: 'provider',
+      ...outcome
+    } as never);
+
+    await capability().fulfill(LOOKUP);
+
+    expect(turnsWithArtifact('dictionary_lookup')[0].model).toBeUndefined();
+  });
+
+  it('records no full-entry stamp when no block was generated', async () => {
+    dictionary.generateParallelDictionary.mockResolvedValue({
+      word: 'liminal',
+      result: '# Prose Minion | Writer\'s Dictionary Lookup',
+      metadata: { totalDuration: 1, blockDurations: {}, partialFailures: ['definition'], successCount: 0, totalBlocks: 1 },
+      modelIds: []
+    });
+
+    await capability().fulfill(FULL_ENTRY);
+
+    expect(turnsWithArtifact('dictionary_full_entry')[0].model).toBeUndefined();
+  });
+
+  it('leaves capability turns no provider made unstamped', async () => {
+    await capability().fulfill({ capability: 'resource.catalog' });
 
     expect(turnsWithArtifact('resource_catalog')).toHaveLength(1);
-    expect(turnsWithArtifact('dictionary_lookup')).toHaveLength(1);
     expect(session.getSnapshot().turns.every((turn) => turn.model === undefined)).toBe(true);
   });
 });
