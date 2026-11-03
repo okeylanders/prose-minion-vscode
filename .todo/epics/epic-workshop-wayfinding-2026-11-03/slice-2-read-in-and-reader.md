@@ -1,7 +1,7 @@
 # Slice 2: Read In and the Reader
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D2, D3, and D4 (surface and access)
+**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
 **Status:** Planned (after Slice 1)
 
@@ -46,6 +46,13 @@ The only contract change is two new message pairs. No persisted field changes.
   - Mount it in the Material panel of `WorkshopRail`, fed from
     `workshop.contextBudget?.sources` and the chat-target identity already
     passed to `ContextBudget`.
+- **Material badge (D1, amended).** Read-in rows that arrive while Material is
+  hidden badge the Material tab through `useWorkshopRailTabs`, by the same
+  seen-set rule Slice 1 uses for to-dos.
+  - A row's identity is what the manifest gives it (kind, label, origin,
+    `deliveredAt`).
+  - A change of chat target re-baselines, so switching participants never
+    badges.
 - **Reader sheet mode.** Add `{ kind: 'read-in'; label; group; path;
   participantLabel; deliveredAt }` to `WorkshopTextSheetMode`.
   - The sheet is read-only, so it has no Apply.
@@ -118,4 +125,6 @@ The only contract change is two new message pairs. No persisted field changes.
       beside the Workshop.
 - [ ] The host serves only configured resources, and refusals are tested.
 - [ ] The popover and the rail use one partition.
+- [ ] Read-in rows that arrive while Material is hidden badge it; a change of
+      chat target doesn't.
 - [ ] The epic's per-slice verification passes. Counts are recorded.

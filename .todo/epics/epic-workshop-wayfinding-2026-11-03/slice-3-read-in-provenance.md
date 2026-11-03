@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** Planned (after Slice 2). **Writer gate:** Okey confirms D9 (forward-only compatibility) before this slice is merged into the epic, because it adds the first persisted field.
+**Status:** Planned (after Slice 2). D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 
@@ -95,7 +95,6 @@ Never hash files on every snapshot.
 
 ## Completion Criteria
 
-- [ ] Okey has confirmed D9, and the epic's README is updated to say so.
 - [ ] Rows record `turnId`, `lineRange`, and the host-private fingerprint.
       Sessions without these fields are unchanged on read and write.
 - [ ] The reader marks the lines read and says when the file has changed.

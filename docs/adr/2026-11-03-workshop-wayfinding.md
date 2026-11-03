@@ -1,6 +1,6 @@
 # ADR 2026-11-03: Workshop Wayfinding
 
-**Status:** Proposed (2026-11-03)
+**Status:** Proposed (2026-11-03); D1 amended and D9 confirmed by the writer on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed))
 **Date:** 2026-11-03
 **Epic:** [Workshop Wayfinding](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 **Design:** [`docs/design/workshop-wayfinding/`](../design/workshop-wayfinding/README.md), a snapshot of the planning canvas
@@ -67,9 +67,10 @@ tabs at the top:
   `FullTabShell` don't change, and the Lightbox rail is unaffected.
 - The last-selected tab is a per-viewer preference kept in webview persisted
   state through `usePersistence`. It never enters the session file.
-- An inactive tab shows a count badge for items the **host** added while it was
-  hidden (a proposed to-do). Items the writer made (a bookmark) get a toast
-  instead, because the writer already knows. No tab ever switches itself.
+- An inactive tab shows a count badge for items that land in it while it is
+  hidden: a to-do, a bookmark, a read-in row. Whoever added the item, selecting
+  the tab clears the badge. No tab ever switches itself, and nothing toasts.
+  (Amended 2026-11-03; see the amendment below.)
 - Any entry point that targets a rail panel selects that panel's tab first.
 - Tab state lives in a presentation controller (`useWorkshopRailTabs`) under
   `hooks/domain/workshop/controllers/`, with the tripartite interface.
@@ -223,8 +224,8 @@ turn's `model` from D7.
   [tech debt](../../.todo/tech-debt/2026-11-03-workshop-session-codec-downgrade-tolerance.md)
   for releases after this one.
 
-**Writer confirmation gate:** this decision is confirmed before Slice 3, the
-first slice that writes a new persisted field, merges.
+**Writer confirmation:** confirmed by the writer on 2026-11-03, before Slice 3
+(the first slice that writes a new persisted field).
 
 ### D10. Export carries bookmarks and models; recall and prompts don't
 
@@ -247,6 +248,17 @@ first slice that writes a new persisted field, merges.
 - The thread shows where a model change happened, and export keeps it.
 - Sessions saved after this ships can't be opened by v2.12 or earlier.
 - `WorkshopApp.tsx` sheds the rail, and the rail gains a component of its own.
+
+## Amendment 2026-11-03: one badge rule, and D9 confirmed
+
+- **D1's badge.** As first written, D1 badged only items the host added, and
+  toasted items the writer made. Building Slice 1 showed that every to-do comes
+  from the writer adding a finding (`WorkshopSessionService.addTodoFromFinding`
+  is the only producer), so the host-only rule would badge nothing. The canvas
+  the writer approved badges whatever lands in a hidden tab, bookmarks included.
+  D1 now says that, and nothing toasts. Read-in rows (Slice 2) badge the
+  Material tab by the same rule.
+- **D9.** The writer accepted forward-only compatibility before Slice 3.
 
 ## Out of Scope (follow-ups)
 

@@ -1,9 +1,9 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 is in review as a PR into the epic.
 **Priority:** Medium
 **Created:** 2026-11-03
-**Integration branch:** `epic/workshop-wayfinding`. Slices are built on it in order, each as its own reviewed commit series by one implementation thread. Each slice is reviewed before the next one starts.
+**Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
 **Decision:** [ADR 2026-11-03: Workshop Wayfinding](../../../docs/adr/2026-11-03-workshop-wayfinding.md) (Proposed)
 **Design:** [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md), a snapshot of the planning canvas
 **Realizes:** [Two-Tab Rail](../../features/feature-workshop-rail-tabs/README.md), [Read-In Material](../../features/feature-workshop-rail-read-in/README.md), [Thread Bookmarks](../../features/feature-workshop-thread-bookmarks/README.md), [Model Slices](../../features/feature-workshop-model-slices/README.md)
@@ -35,40 +35,52 @@ the ADR:
 
 - **Names:** Bookmarks (not pins), and the tabs Material and Notes.
 - **Rail:** retire the Tools block. The composer's tool button covers it.
+- **Badges:** an inactive tab badges whatever lands in it while it's hidden,
+  whoever added it. There's no toast (ADR D1, amended 2026-11-03 to match the
+  canvas, because every to-do today comes from a writer's click).
 - **Reader:** the text sheet plus "Open beside" first. A docked reader is a
   follow-up.
-- **Compatibility:** option A, forward-only (ADR D9). Okey confirms this before
-  Slice 3 merges.
+- **Compatibility:** option A, forward-only (ADR D9). Okey confirmed it on
+  2026-11-03.
 
 ## Slices
 
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
-| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a badge for host-added to-dos | D1 | Next |
-| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block; resource rows open in the reader sheet and beside the Workshop | D2, D3, D4 (access) | Planned |
-| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (**writer gate:** D9) |
+| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR) |
+| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Planned |
+| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Planned |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
-**Order.** Slice 1 has no contract change, and every later rail slice renders
-inside its tabs. Slices 2 and 3 come before bookmarks because Slice 5's
-out-of-window reader reuses Slice 2's sheet mode. Slices 6 and 7 don't depend on
-the rail and could move earlier if they're wanted sooner.
+**Order.** Two chains run side by side:
+
+- **The rail chain, 1 → 2 → 3 → 4 → 5.** Slice 1 has no contract change, and
+  every later rail slice renders inside its tabs. Slices 2 and 3 come before
+  bookmarks because Slice 5's out-of-window reader reuses Slice 2's sheet mode.
+- **The model chain, 6 → 7.** It doesn't depend on the rail, so Slice 6 starts
+  while Slice 1 is in review. Slice 7 lands after Slice 5, because both change
+  the bubble and the export.
 
 ## How the Slices Are Built
 
-- One implementation thread works on `epic/workshop-wayfinding`, one slice at a
-  time. It reads this README, the ADR, `AGENTS.md`, and its slice doc, then
-  builds, verifies, commits, and pushes. When a slice is done it updates the
-  slice doc's status and the progress notes below, then stops.
-- The coordinating thread reviews each slice before sending the next. Review
-  fixes land as follow-up commits in the same slice.
-- No PRs are opened per slice unless Okey asks. The epic merges to `main`
-  through one PR at the end, which carries the release review.
+- **One implementation thread per slice.** It works on that slice's branch,
+  `epic/workshop-wayfinding-slice-<N>-<slug>`, cut from the epic branch. It
+  reads this README, the ADR, `AGENTS.md`, and its slice doc, then builds,
+  verifies, commits, and pushes. When the slice is done, it updates the slice
+  doc's status and the progress notes below, then stops.
+- **The coordinating thread opens the PR** into `epic/workshop-wayfinding` and
+  watches it. Astra reviews each PR automatically.
+- **Findings are fixed on the slice branch**, as follow-up commits, and answered
+  on their threads.
+- **Merging:** once a PR is green and Astra's findings are settled, the
+  coordinator merges it into the epic and starts the next slice in that chain.
+- **To `main`:** the epic merges to `main` through one PR at the end, which
+  carries the release review.
 
 ## Verification (every slice)
 
@@ -111,4 +123,14 @@ the rail and could move earlier if they're wanted sooner.
     messages (Slice 2).
   - Dictionary history already records served models as `modelIds`; the model
     stamp follows that naming.
-  - Baseline on `main` at `cfac12b`: see the Slice 1 notes once recorded.
+  - Baseline on `main` at `cfac12b`: typecheck clean; 591 suites / 8,398 tests
+    / 59 snapshots, all passing.
+- **2026-11-03. Flow change.** Okey asked for a PR per slice into the epic,
+  reviewed by Astra, and confirmed D9. Slice 1 had been built straight onto the
+  epic (`da7f28f`, `4a25d5c`, `bf0e0e6`). Those commits are reverted here
+  (`6716f37`) and come back through Slice 1's PR. D1 is amended:
+  - Every to-do today comes from the writer adding a finding
+    (`addTodoFromFinding`), so "badge only what the host added" would badge
+    nothing.
+  - The canvas Okey approved badges whatever lands in a hidden tab, so that is
+    the rule now, with no toast.

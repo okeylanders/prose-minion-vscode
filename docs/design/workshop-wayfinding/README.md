@@ -26,9 +26,6 @@ and [ADR 2026-11-03](../../adr/2026-11-03-workshop-wayfinding.md).
 
 ## Where the build differs from the canvas
 
-- **Bookmark feedback:** the canvas badges the Notes tab when the writer
-  bookmarks from the Material tab. ADR D1 badges only items the host adds, and
-  confirms a writer's bookmark with a toast.
 - **"Changed since" on the rail row:** optional (Slice 3). The reader's banner
   is required.
 - **Header model chip:** the canvas shows a model button in the header. The

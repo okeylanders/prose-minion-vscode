@@ -1,7 +1,7 @@
 # Slice 5: Bookmarks in the Rail and Thread
 
 **Epic:** [Workshop Wayfinding](README.md)
-**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (toast, not badge), D5, and D6
+**Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (amended: badge, no toast), D5, and D6
 **Design:** `Main.dc.html` (the Bookmark button and the Notes tab) in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
 **Status:** Planned (after Slice 4)
 
@@ -23,8 +23,9 @@ of its toast.
     filled icon when it's set.
   - It posts `WORKSHOP_SET_TURN_BOOKMARK`.
   - It's disabled while the room's mutation lock is held, like its neighbors.
-- Setting a bookmark shows a toast ("Bookmarked · in Notes") through the
-  Workshop's existing toast. It doesn't badge the Notes tab (D1).
+- A bookmark set while Notes is hidden badges the Notes tab through
+  `useWorkshopRailTabs`, the same way a to-do does (D1, amended). There's no
+  toast.
 
 ### Notes tab
 
@@ -60,7 +61,9 @@ of its toast.
 ## Tests
 
 - **Bubble:** the toggle shows only on eligible turns, posts the message,
-  reflects `aria-pressed`, and is disabled under the lock; the toast appears.
+  reflects `aria-pressed`, and is disabled under the lock.
+- **Badge:** a bookmark added while Notes is hidden badges it; one added while
+  Notes is showing doesn't.
 - **List:**
   - Rows are in snapshot order, with the "opens in reader" tag.
   - Rename saves, cancels, and resets.
@@ -75,5 +78,5 @@ of its toast.
 
 - [ ] Writers can bookmark, rename, and jump from the thread and the Notes tab.
 - [ ] Out-of-window bookmarks and to-do sources open in the read-only preview.
-- [ ] Bookmarking toasts and never badges or switches tabs.
+- [ ] A bookmark added while Notes is hidden badges it, and nothing switches tabs.
 - [ ] The epic's per-slice verification passes. Counts are recorded.
