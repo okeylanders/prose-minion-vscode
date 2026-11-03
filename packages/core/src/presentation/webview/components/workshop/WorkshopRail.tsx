@@ -1,8 +1,11 @@
 /**
  * The Workshop's rail content: two file-style tabs, Material and Notes
  * (ADR 2026-11-03 D1). Presentational only; tab state lives in
- * `useWorkshopRailTabs`, and every panel's state lives above it in
- * WorkshopApp, so the inactive panel can unmount without losing anything.
+ * `useWorkshopRailTabs`. Both panels stay mounted and the inactive one is
+ * hidden, so a draft a panel holds (an unsaved to-do edit) survives a tab
+ * switch (PR #184 F-01), and each tab's `aria-controls` names a panel that
+ * exists (N-01). A new room remounts the to-do list, so its draft is
+ * dropped on purpose, never carried into another room.
  *
  * The tabs sit inside the rail's content: `FullTabRail` and `FullTabShell`
  * are unchanged, and the Lightbox rail is unaffected.
@@ -26,6 +29,8 @@ export interface WorkshopRailProps {
   excerpt: React.ComponentProps<typeof ExcerptPanel>;
   context: React.ComponentProps<typeof ContextPanel>;
   todos: React.ComponentProps<typeof WorkshopTodoList>;
+  /** Identity of the room generation; a change resets panel-local drafts. */
+  roomKey: string;
 }
 
 const TAB_LABELS: Record<WorkshopRailTab, string> = {
@@ -53,7 +58,7 @@ function summarizeTabs({
   context,
   todos,
   unseenNotesCount
-}: Omit<WorkshopRailProps, 'tabs'> & { unseenNotesCount: number }): Record<WorkshopRailTab, TabSummary> {
+}: Omit<WorkshopRailProps, 'tabs' | 'roomKey'> & { unseenNotesCount: number }): Record<WorkshopRailTab, TabSummary> {
   const materialCount = (excerpt.excerpt ? 1 : 0) + context.attachments.length;
   const openTodos = todos.todos.filter((todo) => todo.status === 'open' && !todo.stale).length;
   const badge = unseenNotesCount > 0 ? `${unseenNotesCount} new` : undefined;
@@ -88,7 +93,7 @@ function nextTabForKey(key: string, current: WorkshopRailTab): WorkshopRailTab |
   }
 }
 
-export const WorkshopRail: React.FC<WorkshopRailProps> = ({ tabs, excerpt, context, todos }) => {
+export const WorkshopRail: React.FC<WorkshopRailProps> = ({ tabs, excerpt, context, todos, roomKey }) => {
   const { activeTab, unseenNotesCount, selectTab } = tabs;
   const tabRefs = React.useRef<Partial<Record<WorkshopRailTab, HTMLButtonElement | null>>>({});
   const summaries = summarizeTabs({ excerpt, context, todos, unseenNotesCount });
@@ -138,20 +143,28 @@ export const WorkshopRail: React.FC<WorkshopRailProps> = ({ tabs, excerpt, conte
         })}
       </div>
 
+      {/* tabIndex 0: a panel is a tab stop even when it holds nothing
+          focusable, such as an empty to-do list (WAI-ARIA tabs; N-02). */}
       <div
         className="pm-ws-rail-panel"
         role="tabpanel"
-        id={workshopRailPanelId(activeTab)}
-        aria-labelledby={workshopRailTabId(activeTab)}
+        id={workshopRailPanelId('material')}
+        aria-labelledby={workshopRailTabId('material')}
+        tabIndex={0}
+        hidden={activeTab !== 'material'}
       >
-        {activeTab === 'material' ? (
-          <>
-            <ExcerptPanel {...excerpt} />
-            <ContextPanel {...context} />
-          </>
-        ) : (
-          <WorkshopTodoList {...todos} />
-        )}
+        <ExcerptPanel {...excerpt} />
+        <ContextPanel {...context} />
+      </div>
+      <div
+        className="pm-ws-rail-panel"
+        role="tabpanel"
+        id={workshopRailPanelId('notes')}
+        aria-labelledby={workshopRailTabId('notes')}
+        tabIndex={0}
+        hidden={activeTab !== 'notes'}
+      >
+        <WorkshopTodoList key={roomKey} {...todos} />
       </div>
     </>
   );

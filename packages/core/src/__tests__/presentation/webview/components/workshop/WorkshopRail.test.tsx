@@ -42,7 +42,7 @@ const todo = (id: string, overrides: Partial<WorkshopTodoItem> = {}): WorkshopTo
   ...overrides
 });
 
-const panelProps = (todos: WorkshopTodoItem[] = []): Omit<WorkshopRailProps, 'tabs'> => ({
+const panelProps = (todos: WorkshopTodoItem[] = []): Omit<WorkshopRailProps, 'tabs' | 'roomKey'> => ({
   excerpt: {
     excerpt: null,
     shelvedExcerpt: null,
@@ -75,11 +75,12 @@ const panelProps = (todos: WorkshopTodoItem[] = []): Omit<WorkshopRailProps, 'ta
 });
 
 const StatefulRail: React.FC<{
-  props: Omit<WorkshopRailProps, 'tabs'>;
+  props: Omit<WorkshopRailProps, 'tabs' | 'roomKey'>;
   initialTab?: WorkshopRailTab;
-}> = ({ props, initialTab }) => {
-  const tabs = useWorkshopRailTabs({ todos: props.todos.todos, roomKey: 'room:1', initialTab });
-  return <WorkshopRail tabs={tabs} {...props} />;
+  roomKey?: string;
+}> = ({ props, initialTab, roomKey = 'room:1' }) => {
+  const tabs = useWorkshopRailTabs({ todos: props.todos.todos, roomKey, initialTab });
+  return <WorkshopRail tabs={tabs} roomKey={roomKey} {...props} />;
 };
 
 const renderRail = (todos: WorkshopTodoItem[] = [], initialTab?: WorkshopRailTab) => {
@@ -110,6 +111,90 @@ describe('WorkshopRail', () => {
     expect(panel.id).toBe(material.getAttribute('aria-controls'));
     expect(panel.getAttribute('aria-labelledby')).toBe(material.id);
     expect(screen.getByRole('tabpanel', { name: /Material/ })).toBe(panel);
+
+    // Every tab's aria-controls names a panel that exists, selected or not
+    // (PR #184 N-01); the inactive one is hidden, not removed.
+    for (const each of tabs) {
+      const controlled = document.getElementById(each.getAttribute('aria-controls')!);
+      expect(controlled).not.toBeNull();
+      expect(controlled!.getAttribute('role')).toBe('tabpanel');
+      expect(controlled!.getAttribute('aria-labelledby')).toBe(each.id);
+      expect(controlled!.hidden).toBe(each.getAttribute('aria-selected') !== 'true');
+    }
+  });
+
+  it('keeps an empty panel in the tab sequence (PR #184 N-02)', () => {
+    renderRail([], 'notes');
+    const panel = screen.getByRole('tabpanel', { name: /Notes/ });
+    expect(within(panel).queryByRole('button')).toBeNull();
+    expect(panel.tabIndex).toBe(0);
+    expect(document.getElementById(tab(/^Material/).getAttribute('aria-controls')!)!.tabIndex).toBe(0);
+  });
+
+  it('keeps an unsaved to-do edit across a tab switch, then saves that draft (PR #184 F-01)', () => {
+    const { props } = renderRail([todo('draft')], 'notes');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit task' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit task text' }), {
+      target: { value: 'Unsaved writer correction' }
+    });
+
+    fireEvent.click(tab(/^Material/));
+    expect(screen.queryByRole('textbox', { name: 'Edit task text' })).toBeNull();
+    fireEvent.click(tab(/^Notes/));
+
+    const input = screen.getByRole('textbox', { name: 'Edit task text' }) as HTMLInputElement;
+    expect(input.value).toBe('Unsaved writer correction');
+    expect(props.todos.onAction).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save task' }));
+    expect(props.todos.onAction).toHaveBeenCalledWith({
+      action: 'edit',
+      todoId: 'draft',
+      text: 'Unsaved writer correction'
+    });
+  });
+
+  it('still cancels an edit with Escape, and never autosaves on a tab switch', () => {
+    const { props } = renderRail([todo('draft')], 'notes');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit task' }));
+    const input = screen.getByRole('textbox', { name: 'Edit task text' });
+    fireEvent.change(input, { target: { value: 'Second thoughts' } });
+    fireEvent.click(tab(/^Material/));
+    fireEvent.click(tab(/^Notes/));
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Edit task text' }), { key: 'Escape' });
+
+    expect(screen.queryByRole('textbox', { name: 'Edit task text' })).toBeNull();
+    expect(screen.getByText('Check the cup in scene draft.')).toBeTruthy();
+    expect(props.todos.onAction).not.toHaveBeenCalled();
+  });
+
+  it('drops a draft when the room is replaced, or when its task leaves the list', () => {
+    const props = panelProps([todo('1'), todo('2')]);
+    const { rerender } = render(<StatefulRail props={props} initialTab="notes" />);
+    const [firstEdit] = screen.getAllByRole('button', { name: 'Edit task' });
+    fireEvent.click(firstEdit);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit task text' }), {
+      target: { value: 'Old room draft' }
+    });
+
+    // New, Open, Rewind and Branch bring a new room generation: same ids,
+    // different room. The draft must not carry over.
+    rerender(<StatefulRail props={props} initialTab="notes" roomKey="room:2" />);
+    expect(screen.queryByRole('textbox', { name: 'Edit task text' })).toBeNull();
+
+    const [againEdit] = screen.getAllByRole('button', { name: 'Edit task' });
+    fireEvent.click(againEdit);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit task text' }), {
+      target: { value: 'Draft for a task about to go' }
+    });
+    const withoutFirst = { ...props, todos: { ...props.todos, todos: [todo('2')] } };
+    rerender(<StatefulRail props={withoutFirst} initialTab="notes" roomKey="room:2" />);
+    expect(screen.queryByRole('textbox', { name: 'Edit task text' })).toBeNull();
+
+    // The id coming back does not revive the dropped draft.
+    rerender(<StatefulRail props={props} initialTab="notes" roomKey="room:2" />);
+    expect(screen.queryByRole('textbox', { name: 'Edit task text' })).toBeNull();
+    expect(props.todos.onAction).not.toHaveBeenCalled();
   });
 
   it('moves focus and selection with the arrow, Home, and End keys', () => {

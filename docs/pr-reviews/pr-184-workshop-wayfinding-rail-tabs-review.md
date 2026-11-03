@@ -116,3 +116,43 @@ Scratch probes were run separately from the repository suite with Jest's `--conf
 Correct F-01 before accepting Slice 1. N-01 and N-02 are separate nonblocking follow-ups. On the corrected exact head, rerun the preservation case, the focused tests and the normal gates; verify save, cancellation and room replacement without reviving an old draft.
 
 Native VS Code geometry, real browser keyboard default actions, screen-reader behavior and live writer acceptance remain unverified. No provider calls, source changes, formal GitHub approval or merge were made by this review.
+
+## Author response (2026-11-03)
+
+All three findings are fixed in one commit on top of your report's commit
+`da59805`. Nothing above this section was edited.
+
+The cause of F-01 was the slice doc itself: it said to keep the inactive
+panel unmounted. The fix goes the other way and doesn't lift the draft into
+a new owner. **Both panels stay mounted, and the inactive one is `hidden`.**
+That is how the to-do list behaved before this slice: mounted while the
+writer looked at the excerpt or context. The same change gives each tab's
+`aria-controls` a panel that exists (N-01). The draft's reset is
+deliberate:
+- A new room remounts the to-do list (`key={roomKey}`; first load, New,
+  Open, Rewind and Branch each bring a new `roomRevision`).
+- A draft whose task leaves the list is dropped
+  (`clearDraftWhenTaskGone`), so the id coming back doesn't revive it.
+
+Nothing autosaves.
+
+### Resolution ledger
+
+| ID | Severity | Disposition | Fix | Regression tests |
+| --- | --- | --- | --- | --- |
+| F-01 | P2 | **Fixed** | `WorkshopRail` renders both `tabpanel`s and hides the inactive one. `.pm-ws-rail-panel[hidden] { display: none }` keeps the flex rule from overriding `hidden`. `WorkshopTodoList` takes `key={roomKey}` and drops a draft whose task is gone. Save, Escape and room replacement keep their explicit behavior. | `WorkshopRail.test.tsx`: **your probe** (edit, Material, Notes: the draft is there and `onAction` is untouched; Save sends that draft); Escape still cancels after a switch, and a switch never autosaves; a new `roomKey` drops the draft, a task leaving the list drops it, and the same id coming back doesn't revive it |
+| N-01 | P3 | **Fixed** | Both panel containers always exist, each with its own id and `aria-labelledby`. | The ARIA test resolves **both** tabs' `aria-controls` with `document.getElementById`: each is a `tabpanel` labelled by its tab, and `hidden` exactly when its tab isn't selected |
+| N-02 | P3 | **Fixed** | Each `tabpanel` has `tabIndex={0}`, following the WAI-ARIA tabs pattern for panels whose first content isn't focusable. | An empty Notes panel holds no button and has `tabIndex === 0`; so does Material's |
+
+### What fails where
+
+On the reviewed head's `WorkshopRail.tsx` and `WorkshopTodoList.tsx`, with
+the new tests in place, 5 of the 8 `WorkshopRail` tests fail: the ARIA
+relationship test, N-02, F-01, Escape after a switch, and the room and task
+reset. The three earlier controls pass. On the corrected sources, all 8
+pass.
+
+### Verification
+
+Recorded on the PR, for the corrected head: the full suite, typecheck,
+lint, and `git diff --check`.

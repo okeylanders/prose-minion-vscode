@@ -209,9 +209,10 @@ export const WorkshopApp: React.FC = () => {
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badge on each new room.
   const persistedRailTab = usePersistedState<Partial<WorkshopRailTabsPersistence>>();
+  const railRoomKey = workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending';
   const railTabs = useWorkshopRailTabs({
     todos: workshop.todos,
-    roomKey: workshop.sessionReady ? `room:${workshop.roomRevision}` : 'pending',
+    roomKey: railRoomKey,
     initialTab: persistedRailTab?.workshopRailTab
   });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
@@ -1022,6 +1023,7 @@ export const WorkshopApp: React.FC = () => {
   const railContent = (
     <WorkshopRail
       tabs={railTabs}
+      roomKey={railRoomKey}
       excerpt={{
         excerpt: workshop.excerpt,
         shelvedExcerpt: workshop.shelvedExcerpt,

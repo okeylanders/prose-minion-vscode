@@ -15,6 +15,16 @@ export const WorkshopTodoList: React.FC<WorkshopTodoListProps> = ({
 }) => {
   const [editingId, setEditingId] = React.useState<string>();
   const [draft, setDraft] = React.useState('');
+
+  // A draft belongs to its task: once that task leaves the list, drop the
+  // draft rather than let it reappear on a later list (PR #184 F-01).
+  const clearDraftWhenTaskGone = React.useCallback(() => {
+    if (editingId !== undefined && !todos.some((todo) => todo.id === editingId)) {
+      setEditingId(undefined);
+      setDraft('');
+    }
+  }, [editingId, todos]);
+  React.useEffect(clearDraftWhenTaskGone, [clearDraftWhenTaskGone]);
   const openCount = todos.filter((todo) => todo.status === 'open' && !todo.stale).length;
   const completedCount = todos.filter((todo) => todo.status === 'completed').length;
 

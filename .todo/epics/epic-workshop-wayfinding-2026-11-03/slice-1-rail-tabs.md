@@ -52,8 +52,11 @@ This slice changes no contract: no message, no session field, no host code.
     - Notes, with a count of open to-dos, plus the badge "N new" when the
       controller reports unseen items.
   - The badge's count goes in the tab's accessible name ("Notes, 2 new").
-  - Keep the inactive panel unmounted, but keep the controller state (and any
-    hook state) above it in `WorkshopApp`, so switching tabs loses nothing.
+  - Keep both panels mounted and hide the inactive one, so switching tabs
+    loses nothing a panel holds, such as an unsaved to-do edit (PR #184 F-01,
+    which corrected this line's first version: "keep the inactive panel
+    unmounted"). Key the to-do list by room, so its draft never crosses
+    rooms.
 - **`WorkshopApp.tsx`.** `railContent` becomes `<WorkshopRail … />`. Delete the
   Tools block, `RAIL_TOOL_IDS`, `RAIL_TOOLS`, `announceToolGate`, and any
   variable left unused, such as `toolsGatedByExcerpt` if only the rail used it.

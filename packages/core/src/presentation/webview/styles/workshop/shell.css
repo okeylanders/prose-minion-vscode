@@ -179,6 +179,11 @@
   flex-direction: column;
   gap: 12px;
 }
+/* The inactive panel stays mounted (PR #184 F-01); the display above would
+   otherwise override the hidden attribute. */
+[data-pm-surface="workshop"] .pm-ws-rail-panel[hidden] {
+  display: none;
+}
 
 /* Writer-owned task list */
 [data-pm-surface="workshop"] .pm-ws-todos {

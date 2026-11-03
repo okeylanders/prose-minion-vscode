@@ -170,6 +170,13 @@ the ADR:
     - *No rail entry points yet.* D1's "select the tab first" rule has no
       caller today (nothing targets a rail panel); `selectTab` is the seam
       for Slices 2 and 5.
+  - **PR #184 review (Astra, 2026-11-03).** Changes requested on one P2:
+    switching tabs unmounted Notes and lost an unsaved to-do edit. The slice
+    doc had asked for that unmounting. Two P3 accessibility notes came with
+    it. All three are fixed: both panels stay mounted and the inactive one is
+    `hidden`; the list is keyed by room, so a draft never crosses rooms; a
+    draft whose task is gone is dropped; each panel is a tab stop. The ledger
+    is in [the review](../../../docs/pr-reviews/pr-184-workshop-wayfinding-rail-tabs-review.md).
   - **Coordinator's answers (2026-11-03).**
     - *Badge vs. toast:* D1 is amended to the canvas's rule. An inactive tab
       badges whatever lands in it while hidden, whoever added it, and nothing
