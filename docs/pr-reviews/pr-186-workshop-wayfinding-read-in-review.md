@@ -28,3 +28,17 @@ The reader says it shows the file as it is now, and its editor action can open t
 ## Verification and limits so far
 
 A full-App independent regression reproduces F-01: **1 expected failure**. Six focused existing suites pass **124 tests**. These are separate observations, not a claim that the full repository suite or native VS Code acceptance has passed. The implementation is still under review, including resource authorization, race isolation, badge state and integration. No implementation change, formal review, merge or paid provider call was made.
+
+
+## Completed review and verification
+
+The functional, state, resource-access and presentation review found no additional actionable issue beyond F-01. Review covered configured-resource resolution and refusals, read ceilings, sanitization, reader actions, the shared source partition, badge baselines, target and room changes, and the existing attachment flow. In particular, the apparent row-identity collision across configured groups was not reproducible through the production catalog: it deduplicates normalized paths across groups, and configured rows use full paths.
+
+Independent checks on `5932927f`:
+
+- **19 production suites / 329 tests pass**, covering reader/UI, badge/controller, partition, context gauge, capability/codec/intake, routes and architecture boundaries.
+- **4 separate state probes pass**, covering initial hidden-tab hydration, metadata/reorder/removal, participant A → B → A, repeated deliveries, non-opening kinds, room replacement and badge clearing.
+- The separate full-App F-01 probe remains an **expected failure**, not part of the passing totals. The access review also ran targeted containment/symlink, sanitizer and modal tests.
+- [CI run 41735806530](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41735806530) passed on synthetic merge `ac9fe10` of implementation `5932927f` into `d45d57c`: **599 suites / 8,499 tests / 59 snapshots**, typecheck, lint and both webpack builds.
+
+Report commit `d561a243` changes no executable source. Native VS Code editor-column behavior, real keyboard/screen-reader acceptance and live writer acceptance were not exercised. Correct F-01, then re-review the new exact head and its CI. No formal GitHub review, approval or merge was made.
