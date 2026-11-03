@@ -209,3 +209,18 @@ above this section was edited.
   - `DictionaryService` 800 → 822
   - `OpenRouterClient` 627 → 633
 - `DictionaryRunModel.ts` is 68 lines.
+
+
+## Independent re-review of `fbab67d` (2026-11-03)
+
+**Disposition: F-01 through F-04 are resolved; N-01 and N-02 are resolved by the recorded decisions. No new actionable defect was found in the corrective delta or merge resolution.** This is a report, not a formal GitHub approval or authorization to merge. CI for the reviewed implementation is still running; merge readiness has not been established by this report.
+
+- **F-01 and F-02:** The original independent client/engine and completion witnesses pass: absent IDs stay unknown, reported IDs do not depend on usage, and host-written stand-ins (including widget-only notes) remain unstamped. Provider-written positive controls retain stamps.
+- **F-03:** A model-only streaming frame now reaches the engine even with no token. Both previously failing interrupted-stream witnesses, EOF and provider-error after that frame, pass; `[DONE]` remains a passing control. All **10 independent engine probes** pass.
+- **F-04:** Provenance now excludes a block whose normalized content is empty. Independent tests cover a header-only entry through session export and hydration, a removed block beside kept text on another model, normal Special Focus content, retry dispatch, and defensive copies. All **7 Dictionary scratch probes** pass. The existing raw-content `successCount` and history `modelIds` behavior remains as the author documented; this review does not claim it changed.
+- **N-02:** The recorded coordinator decision is chronological request order. An independent out-of-display-order, mid-run model-switch witness and a retry-dispatch control now preserve the selected requested model and ordered served IDs for retained blocks.
+- **Integration:** The ten rail production, style and test blobs from merged #184 match base `d45d57c` byte for byte. Both slices' notes remain present, no conflict markers were found, and GitHub reports the branch mergeable against that base.
+
+**Verification on `fbab67d`:** independent engine probes **2 suites / 10 tests pass**; engine, client, completion, stamp and rail tests **11 suites / 284 tests pass**; independent Dictionary/adoption tests **9 suites / 214 tests pass**; full typecheck passes all three projects; `git diff --check` passes. Some focused suites overlap between these totals. The full local suite and production builds were not rerun independently. The author reports **598 suites / 8,480 tests / 59 snapshots**, lint and typecheck passing on Node 18. [PR CI run 41735296255](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41735296255) was still in progress when this report was written.
+
+Native VS Code activation, live-provider calls, screen-reader acceptance, and Slice 7 display/export remain unverified. No implementation change, formal approval, merge or paid provider call was made during this re-review.
