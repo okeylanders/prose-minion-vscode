@@ -112,3 +112,14 @@ The original successful-Open F-02 witness and N-01 private labels now pass indep
   - Typecheck clean.
   - Lint: 0 errors, 1,150 warnings, unchanged.
   - No `from 'vscode'` in core.
+
+
+## Independent re-review of `e452a45` (2026-11-04)
+
+**Disposition: F-01 through F-04 and N-01 are resolved; no new actionable defect found in the corrective delta.** This report is not a formal GitHub approval or authorization to merge. Exact-head CI was still running at report time.
+
+- **F-01/F-03:** The original real-coordinator refusal/retry witness passes and the submitted draft stays with its request owner. In the cross-row real-host tests, B cannot replace A while A is pending; accepted A closes/focuses A, refused A restores A's draft/error, and B remains unchanged and available afterward. Cancel, room replacement, sequential renames, visible locks and failed-New controls pass.
+- **F-02/F-04:** Successful Open still cannot show the replacement room's content under an old request. In the original real-App/coordinator/store disk-full rollback witness, failed Open now publishes the restored room revision before its failure result; three subsequent App-generated previews succeed without a manual repair snapshot. An in-flight old preview is refused and closed, and reopening works. Queued replacement, malformed revision and correlation controls pass.
+- **N-01:** Normal private Prose writer/reply previews now display the same private-audience label as their in-window bubbles.
+
+**Independent verification on `e452a45`:** rename verification ran **8 suites / 130 tests**, including nine independent probes; preview/rollback verification ran **13 production suites / 212 tests** plus **2 independent suites / 23 tests**. These groups may overlap. [CI run 41779907412](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41779907412) was still running when checked. The full local suite and native VS Code live pass were not rerun independently. No implementation change, formal approval or merge was made during this re-review.
