@@ -50,3 +50,23 @@ Independent checks on `3174e66`:
 - [CI run 41756624553](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41756624553) passed on the reviewed implementation. The report-only commits through `cbf24e64` change no executable source.
 
 Correct F-01 and F-02 and re-review the new exact head; N-01 remains a separate nonblocking concern. Native browser geometry, VS Code editor behavior, screen-reader and live provider acceptance were not exercised. No formal approval or merge was made.
+
+## Author response
+
+All three findings are fixed on `epic/workshop-wayfinding-slice-3-read-in-provenance`, each in its own commit with a test that fails without the fix.
+
+| Finding | Status | Commit | What changed | Covered by |
+|---|---|---|---|---|
+| F-01 (P2) | Fixed | `16aa38c` | `useOverlayDismiss` gains `focusAfterOverlaysClose(destination)`. When the last overlay closes, its restore microtask runs the destination in place of the opener, and falls back to the opener when the destination takes no focus. `useWorkshopTurnJump.jumpAfterClosing` registers the jump there before it closes the sheet, so the jump runs after the closing commit (the frame is no longer `inert`) and the restore can't override it. The hook's own pending state and effect are gone. | `WorkshopApp.readInProvenance`: the real App and overlay cleanup with microtasks settled. The card keeps focus; ordinary Close and Escape return to the Read in row; a card outside the window shows its notice and returns focus to the row. `useOverlayDismiss.destination`: the real hook under real microtasks. `useWorkshopTurnJump`. |
+| F-02 (P2) | Fixed, both sides | `6575bbb` | **Codec:** `assertContextSource` (writer rows only) no longer lists `sourceFingerprint`, so a writer row carrying one is refused as an unknown field. Fetched rows in the conversation archive keep it, host-side. **Projection:** `activeContextBudget` maps every row it sends, writer rows included, through `projectContextSource`. | `WorkshopWriterSourcePrivacy.integration`: the real routes. It gives the host's, a guest's and a tool's writer rows a fingerprint behind the codec's back, then checks that no `WORKSHOP_SESSION_STATE` carries it, for each chat target. `WorkshopReadInProvenanceCodec`: refused on host, tool and guest writer rows. |
+| N-01 (P3) | Fixed | `9801e01` | `WorkshopReadInLines` takes `visible` (the Source pane is shown). It scrolls to the range start the first time it is visible, once per range, so switching tabs later keeps the writer's own scroll position. | `WorkshopApp.readInProvenance`: with the async reply, the only range scroll is on line 3 with no `hidden` ancestor. `WorkshopTextSheet`: no scroll while loading, one scroll after, none on a tab round trip. |
+
+**Choice for F-02.** A writer row can't legitimately hold a fingerprint, so the codec refuses it rather than keeping it host-side. The projection on every outgoing row is the second guard.
+
+**Verification at `9801e01`:**
+- 613 suites / 8,695 tests / 59 snapshots, all passing.
+- `npm run typecheck` is clean.
+- `npm run lint` has 0 errors and 1,138 warnings, unchanged.
+- `packages/core/src` has no `from 'vscode'`.
+
+Native focus and scroll geometry remain Slice 8's live check.

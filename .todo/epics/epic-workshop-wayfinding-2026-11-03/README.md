@@ -457,3 +457,26 @@ the ADR:
       rows that share a delivery time share provenance in the reader.
     - Slice 8's live pass should check two things: the reader's scroll to the
       range, and the jump's focus in a real webview.
+  - **PR #187 review (Astra, 2026-11-04).** Two P2s and one P3, all fixed.
+    The ledger is in
+    [the review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md).
+    - **`6575bbb`, F-02.** A writer-source row validated with a
+      `sourceFingerprint` would have reached `WORKSHOP_SESSION_STATE`.
+      - The codec now refuses the key on writer rows.
+      - `activeContextBudget` projects every row it sends.
+      - A route regression covers host, guest and tool writer rows.
+    - **`16aa38c`, F-01.** The overlay's queued opener restore took focus back
+      from the card after "Show where it was read".
+      - `useOverlayDismiss.focusAfterOverlaysClose` runs a deliberate
+        destination in place of the opener restore, and falls back to the
+        opener when the destination takes no focus.
+      - The jump registers there before it closes the sheet.
+    - **`9801e01`, N-01.** The range scroll ran while the Source pane was
+      still hidden. It now runs the first time the pane is visible, once per
+      range.
+    - **Counts.** At `9801e01`: 613 suites / 8,695 tests / 59 snapshots, all
+      passing. Typecheck is clean. Lint has 0 errors and 1,138 warnings,
+      unchanged.
+    - **Sizes.** `WorkshopRoomHandler` 1,593 → 1,597 (the projection) and
+      `WorkshopSessionStateV1Shape` 1,052 → 1,055 (the comment).
+      `WorkshopApp.tsx` went 1,714 → 1,713.

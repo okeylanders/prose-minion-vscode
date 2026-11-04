@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** Built (`e36e4af`, `3b23a92`, `2163cb9`), PR #187 in review. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
+**Status:** Built (`e36e4af`, `3b23a92`, `2163cb9`; review fixes `6575bbb`, `16aa38c`, `9801e01`), PR #187 in review. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 
@@ -225,3 +225,18 @@ Each has a test.
 - **Optional rail tag.** The "changed since" tag on the rail row is not
   built. No existing scan covers read-in files, and the doc rules out
   hashing on every snapshot.
+
+### PR #187 review fixes
+
+Astra's [review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)
+found three issues. All three are fixed; the ledger is in her report.
+
+- **F-01, `16aa38c`.** After a jump, the overlay's opener restore took focus
+  back from the card. Now `useOverlayDismiss.focusAfterOverlaysClose` runs
+  the jump in place of the opener restore, falling back to the opener when
+  the turn is outside the window.
+- **F-02, `6575bbb`.** A writer row could carry a fingerprint to the webview.
+  - The codec now refuses `sourceFingerprint` on writer rows.
+  - `activeContextBudget` projects every outgoing row.
+- **N-01, `9801e01`.** The range scroll ran while the Source pane was still
+  hidden. It now waits until the pane is visible, once per range.
