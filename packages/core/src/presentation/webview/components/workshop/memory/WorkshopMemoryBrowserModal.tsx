@@ -37,6 +37,8 @@ export interface WorkshopMemoryBrowserModalProps extends WorkshopMemoryManagerIn
   query: string;
   /** A manager action is in flight: rows' writes wait for it. */
   actionPending: boolean;
+  /** The latest refused action, in the host's words. */
+  actionError?: string;
   /** The clock the date groups read; now by default. */
   now?: Date;
   onQueryChange: (query: string) => void;
@@ -57,6 +59,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
   workspace,
   query,
   actionPending,
+  actionError,
   now,
   onQueryChange,
   onRename,
@@ -124,6 +127,11 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
           {workspace.kind === 'unknown' && (
             <div className="pm-ws-sessions-unavailable" role="alert">
               <Icon name="x" size={14} /> The memory folder couldn’t be listed just now. Your memory files weren’t touched.
+            </div>
+          )}
+          {actionError && (
+            <div className="pm-ws-sessions-unavailable" role="alert">
+              <Icon name="alert" size={14} /> {actionError}
             </div>
           )}
           {view.offNote && (

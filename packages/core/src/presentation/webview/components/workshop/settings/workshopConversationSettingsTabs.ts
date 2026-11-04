@@ -4,7 +4,7 @@
  * tab is one entry here plus its panel (Project Memory Slice 4a).
  */
 
-export type WorkshopConversationSettingsTab = 'behavior' | 'profile' | 'advanced';
+export type WorkshopConversationSettingsTab = 'behavior' | 'profile' | 'memory' | 'advanced';
 
 export interface WorkshopConversationSettingsTabEntry {
   id: WorkshopConversationSettingsTab;
@@ -30,6 +30,13 @@ export const WORKSHOP_CONVERSATION_SETTINGS_TABS: readonly WorkshopConversationS
     tabElementId: 'pm-ws-profile-tab',
     panelElementId: 'pm-ws-profile-panel',
     panelClassName: 'pm-ws-behavior-body pm-ws-profile-body'
+  },
+  {
+    id: 'memory',
+    label: 'Memory',
+    tabElementId: 'pm-ws-memory-tab',
+    panelElementId: 'pm-ws-memory-panel',
+    panelClassName: 'pm-ws-behavior-body pm-ws-memory-body'
   },
   {
     id: 'advanced',

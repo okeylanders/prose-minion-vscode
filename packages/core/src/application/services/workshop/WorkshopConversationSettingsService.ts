@@ -16,6 +16,7 @@ import {
   WorkshopPersonaId,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
   coerceWorkshopWebResearchSettings,
   isValidWorkshopWebResearchSettings,
   workshopWebResearchSettingsEqual
@@ -28,6 +29,7 @@ export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
   writerProfile?: string;
   webResearch?: string;
+  projectMemory?: string;
 }
 
 export interface WorkshopConversationSettingsUpdate {
@@ -82,17 +84,26 @@ export class WorkshopConversationSettingsService {
     this.projectMemoryPrompted = this.projectMemoryOn();
   }
 
-  /** Apply and persist the modal's complete Behavior, About You, and Advanced submission. */
+  /**
+   * Apply and persist the modal's complete Behavior, About You, Memory and
+   * Advanced submission. The project-memory mode is global and read live
+   * (ADR 2026-11-04 D8), so it is written first: the prompt rebuild below
+   * then sees the mode the writer chose. Absent (`undefined`), it is left
+   * as it is.
+   */
   applyFromWebview(
     rawBehavior: unknown,
     rawWriterProfile: unknown,
-    rawWebResearch: unknown = undefined
+    rawWebResearch: unknown = undefined,
+    rawProjectMemory: unknown = undefined
   ): Promise<WorkshopConversationSettingsUpdate> {
     const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
     const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
     const nextWebResearch = coerceWorkshopWebResearchSettings(rawWebResearch);
+    const nextProjectMemory = rawProjectMemory === undefined ? undefined : coerceWorkshopProjectMemoryMode(rawProjectMemory);
     return this.serialize(async () => {
       this.assertBetweenRuns();
+      const projectMemoryError = await this.persistProjectMemoryMode(nextProjectMemory);
       const result = await this.apply(nextBehavior, nextProfile);
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
@@ -111,10 +122,12 @@ export class WorkshopConversationSettingsService {
       this.webResearch = nextWebResearch;
       const changed = result.changed || webResearchChanged;
       if (!persistBehavior && !persistProfile && !persistWebResearch) {
-        return this.publicResult({ ...result, changed });
+        return this.publicResult(projectMemoryError
+          ? { ...result, changed, persistenceErrors: { projectMemory: projectMemoryError } }
+          : { ...result, changed });
       }
 
-      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
+      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = projectMemoryError ? { projectMemory: projectMemoryError } : {};
       if (persistBehavior) {
         try {
           await this.settings.update(
@@ -300,10 +313,29 @@ export class WorkshopConversationSettingsService {
     return { ...this.webResearch };
   }
 
-  private projectMemoryOn(): boolean {
+  /** The global project-memory mode, read live (D8): the Memory tab's draft starts from it. */
+  getProjectMemoryMode(): WorkshopProjectMemoryMode {
     return coerceWorkshopProjectMemoryMode(
       this.settings.get<unknown>(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key)
-    ) !== 'off';
+    );
+  }
+
+  private projectMemoryOn(): boolean {
+    return this.getProjectMemoryMode() !== 'off';
+  }
+
+  /** Write the mode when the draft changed it; the error, when VS Code couldn't save it (the mode then stays as it was). */
+  private async persistProjectMemoryMode(next: WorkshopProjectMemoryMode | undefined): Promise<string | undefined> {
+    if (next === undefined || next === this.getProjectMemoryMode()) {
+      return undefined;
+    }
+    try {
+      await this.settings.update(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key, next);
+      this.outputChannel.appendLine(`[WorkshopConversationSettingsService] Project memory mode set to ${next}`);
+      return undefined;
+    } catch (error) {
+      return this.errorMessage(error);
+    }
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {

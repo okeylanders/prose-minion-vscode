@@ -27,6 +27,7 @@ import {
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
   WorkshopWriterProfile
 } from './settings';
 import {
@@ -877,6 +878,12 @@ export interface WorkshopSessionStatePayload {
   writerProfile: WorkshopWriterProfile;
   /** Global web-research preference; deliberately outside the session aggregate. */
   webResearch: WorkshopWebResearchSettings;
+  /**
+   * The global project-memory mode (ADR 2026-11-04 D8), outside the session
+   * aggregate like web research. The host always sends it; absent, the
+   * webview reads Off (fail closed).
+   */
+  projectMemory?: WorkshopProjectMemoryMode;
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';

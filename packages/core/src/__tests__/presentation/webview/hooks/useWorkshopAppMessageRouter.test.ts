@@ -36,6 +36,12 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleEditData: jest.fn(),
     handleEstimateResult: jest.fn()
   },
+  memoryManager: {
+    handleListing: jest.fn(),
+    handleManagerResult: jest.fn(),
+    noteWriteResult: jest.fn(),
+    noteEditData: jest.fn()
+  },
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
     handleWidgetConfigRestored: jest.fn(),
@@ -331,5 +337,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_OFFERED]).toBe(deps.lightboxTiles.handleTileOffered);
     expect(routes[MessageType.WORKSHOP_LIGHTBOX_TILE_STAGED]).toBe(deps.lightboxTiles.handleTileStaged);
+  });
+
+  it('hands Slice 3\'s write answers and edit data to both memory hooks, and the manager its own answers (Slice 4b)', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const write = { type: MessageType.WORKSHOP_MEMORY_WRITE_RESULT, payload: { requestId: 'r', ok: true } } as never;
+    const edit = { type: MessageType.WORKSHOP_MEMORY_EDIT_DATA, payload: { requestId: 'e', memoryId: 'mem-7f3c21' } } as never;
+    routes[MessageType.WORKSHOP_MEMORY_WRITE_RESULT]?.(write);
+    routes[MessageType.WORKSHOP_MEMORY_EDIT_DATA]?.(edit);
+    expect(deps.projectMemory.handleWriteResult).toHaveBeenCalledWith(write);
+    expect(deps.memoryManager.noteWriteResult).toHaveBeenCalledWith(write);
+    expect(deps.projectMemory.handleEditData).toHaveBeenCalledWith(edit);
+    expect(deps.memoryManager.noteEditData).toHaveBeenCalledWith(edit);
+    expect(routes[MessageType.WORKSHOP_MEMORY_LISTING]).toBe(deps.memoryManager.handleListing);
+    expect(routes[MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]).toBe(deps.memoryManager.handleManagerResult);
   });
 });

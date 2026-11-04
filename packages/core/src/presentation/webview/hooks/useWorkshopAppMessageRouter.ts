@@ -63,6 +63,7 @@ import type {
 } from '@hooks/domain/workshop/useWorkshopLightboxTiles';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import type { UseWorkshopProjectMemoryReturn } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import type { UseWorkshopMemoryManagerReturn } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
@@ -73,6 +74,8 @@ export interface WorkshopAppMessageRouterDeps {
   bookmarks: UseWorkshopBookmarksReturn;
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
+  /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
+  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -102,6 +105,7 @@ export function buildWorkshopAppMessageRoutes(
     readIn,
     bookmarks,
     projectMemory,
+    memoryManager,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -150,8 +154,17 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
     [MessageType.WORKSHOP_TURN_PREVIEW]: bookmarks.handleTurnPreview,
     [MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT]: bookmarks.handleRenameResult,
-    [MessageType.WORKSHOP_MEMORY_WRITE_RESULT]: projectMemory.handleWriteResult,
-    [MessageType.WORKSHOP_MEMORY_EDIT_DATA]: projectMemory.handleEditData,
+    // Slice 3's answers reach both hooks; each takes only its own requests.
+    [MessageType.WORKSHOP_MEMORY_WRITE_RESULT]: (message) => {
+      projectMemory.handleWriteResult(message);
+      memoryManager.noteWriteResult(message);
+    },
+    [MessageType.WORKSHOP_MEMORY_EDIT_DATA]: (message) => {
+      projectMemory.handleEditData(message);
+      memoryManager.noteEditData(message);
+    },
+    [MessageType.WORKSHOP_MEMORY_LISTING]: memoryManager.handleListing,
+    [MessageType.WORKSHOP_MEMORY_MANAGER_RESULT]: memoryManager.handleManagerResult,
     [MessageType.WORKSHOP_MEMORY_ESTIMATE_RESULT]: projectMemory.handleEstimateResult,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:

@@ -6,7 +6,7 @@ import {
 describe('workshopConversationSettingsTabs', () => {
   it('lists the tabs in strip order with distinct ids', () => {
     expect(WORKSHOP_CONVERSATION_SETTINGS_TABS.map((entry) => entry.label))
-      .toEqual(['Behavior', 'About you', 'Advanced']);
+      .toEqual(['Behavior', 'About you', 'Memory', 'Advanced']);
     const ids = WORKSHOP_CONVERSATION_SETTINGS_TABS.flatMap((entry) => [
       entry.id,
       entry.tabElementId,

@@ -47,8 +47,11 @@ import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProjectMemory';
+import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
+import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
+import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -243,6 +246,7 @@ export const WorkshopApp: React.FC = () => {
   const readIn = useWorkshopReadIn();
   const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   const projectMemory = useWorkshopProjectMemory();
+  const memoryManager = useWorkshopMemoryManager();
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
@@ -427,6 +431,7 @@ export const WorkshopApp: React.FC = () => {
     readIn,
     bookmarks,
     projectMemory,
+    memoryManager,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -637,7 +642,11 @@ export const WorkshopApp: React.FC = () => {
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
   );
-  const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
+  const requestMemoryListing = memoryManager.requestListing;
+  const openBehaviorModal = React.useCallback(() => {
+    setBehaviorModalOpen(true);
+    requestMemoryListing();
+  }, [requestMemoryListing]);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
     workshop.requestContextCatalog();
@@ -1663,10 +1672,20 @@ export const WorkshopApp: React.FC = () => {
         behavior={workshop.conversationBehavior}
         writerProfile={workshop.writerProfile}
         webResearch={workshop.webResearch}
+        projectMemoryMode={workshop.projectMemoryMode}
+        memory={workshopMemoryTabInputOf(memoryManager.listing)}
         isRunning={roomMutationLocked}
         errorMessage={workshop.errorMessage}
         onApply={workshop.setConversationSettings}
+        onOpenMemoryManager={memoryManager.openManager}
+        onOpenMemoryFolder={memoryManager.openFolder}
         onClose={closeBehaviorModal}
+      />
+      <WorkshopMemoryManagerMount
+        manager={memoryManager}
+        mode={workshop.projectMemoryMode}
+        onEdit={projectMemory.editMemory}
+        onNewMemory={projectMemory.newMemory}
       />
         <WorkshopContextSelectorModal
           open={contextSelectorOpen}

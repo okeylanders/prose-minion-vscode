@@ -415,7 +415,8 @@ export class WorkshopRoomHandler {
       const result = await this.conversationSettingsService.applyFromWebview(
         message.payload?.behavior,
         message.payload?.writerProfile,
-        message.payload?.webResearch
+        message.payload?.webResearch,
+        message.payload?.projectMemory
       );
       if (result.persistenceErrors) {
         const persistenceDetails = [
@@ -427,7 +428,8 @@ export class WorkshopRoomHandler {
             : undefined,
           result.persistenceErrors.webResearch
             ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined
+            : undefined,
+          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined
         ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
@@ -1495,6 +1497,7 @@ export class WorkshopRoomHandler {
         session,
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
+        projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

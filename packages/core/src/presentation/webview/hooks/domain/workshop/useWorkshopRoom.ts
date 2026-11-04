@@ -63,6 +63,8 @@ import {
   WorkshopTurnMessage,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
+  coerceWorkshopProjectMemoryMode,
   WorkshopStandingDirectiveSummary,
   coerceWorkshopConversationBehavior,
   coerceWorkshopWriterProfile,
@@ -164,6 +166,8 @@ export interface WorkshopRoomState {
   /** Global profile mirrored beside, never inside, the host session snapshot. */
   writerProfile: WorkshopWriterProfile;
   webResearch: WorkshopWebResearchSettings;
+  /** The global project-memory mode (ADR 2026-11-04 D8): the Memory tab's draft starts from it. */
+  projectMemoryMode: WorkshopProjectMemoryMode;
   /** Public metadata for the latest retained sidecar per tool. */
   toolSidecars: WorkshopToolSidecarSnapshot[];
   /** Explicitly invited persona guests, including disposed history markers. */
@@ -234,7 +238,8 @@ export interface WorkshopRoomActions {
   setConversationSettings: (
     behavior: WorkshopConversationBehavior,
     writerProfile: WorkshopWriterProfile,
-    webResearch?: WorkshopWebResearchSettings
+    webResearch?: WorkshopWebResearchSettings,
+    projectMemoryMode?: WorkshopProjectMemoryMode
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
@@ -323,6 +328,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     React.useState<WorkshopWriterProfile>({ ...DEFAULT_WORKSHOP_WRITER_PROFILE });
   const [webResearch, setWebResearch] =
     React.useState<WorkshopWebResearchSettings>({ ...DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS });
+  const [projectMemoryMode, setProjectMemoryMode] = React.useState<WorkshopProjectMemoryMode>('off');
   const [toolSidecars, setToolSidecars] = React.useState<WorkshopToolSidecarSnapshot[]>([]);
   const [personaGuests, setPersonaGuests] = React.useState<WorkshopPersonaGuestSnapshot[]>([]);
   const [contextBudget, setContextBudget] = React.useState<LabeledContextBudgetSnapshot | undefined>();
@@ -556,15 +562,21 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   // the system-message replacement batch the old mode stays visible. The new
   // object arrives with the next WORKSHOP_SESSION_STATE.
   const setConversationSettings = React.useCallback(
-    (behavior: WorkshopConversationBehavior, profile: WorkshopWriterProfile, research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS) => {
+    (
+      behavior: WorkshopConversationBehavior,
+      profile: WorkshopWriterProfile,
+      research = DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS,
+      memoryMode: WorkshopProjectMemoryMode = projectMemoryMode
+    ) => {
       setErrorMessage('');
       post(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS, {
         behavior,
         writerProfile: profile,
-        webResearch: research
+        webResearch: research,
+        projectMemory: memoryMode
       });
     },
-    [post]
+    [post, projectMemoryMode]
   );
 
   const todoAction = React.useCallback(
@@ -662,6 +674,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setConversationBehaviorState(coerceWorkshopConversationBehavior(session.conversationBehavior));
       setWriterProfile(coerceWorkshopWriterProfile(message.payload.writerProfile));
       setWebResearch(coerceWorkshopWebResearchSettings(message.payload.webResearch));
+      setProjectMemoryMode(coerceWorkshopProjectMemoryMode(message.payload.projectMemory));
       setToolSidecars(session.participants.toolSidecars);
       setPersonaGuests(session.participants.personaGuests);
       setContextBudget(session.contextBudget);
@@ -831,6 +844,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     conversationBehavior,
     writerProfile,
     webResearch,
+    projectMemoryMode,
     toolSidecars,
     personaGuests,
     contextBudget,

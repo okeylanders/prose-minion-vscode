@@ -10,7 +10,6 @@
 import * as React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import {
-  WORKSHOP_MEMORY_SETTINGS_TAB_IDS,
   WorkshopMemorySettingsPanel,
   type WorkshopMemorySettingsPanelProps
 } from '@components/workshop/settings/WorkshopMemorySettingsPanel';
@@ -31,7 +30,7 @@ function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) 
     onOpenFolder: jest.fn(),
     ...overrides
   };
-  const ids = WORKSHOP_MEMORY_SETTINGS_TAB_IDS;
+  const ids = MEMORY_TAB;
   const view = render(
     <>
       <div role="tablist" aria-label="Conversation settings sections">
@@ -45,6 +44,8 @@ function renderPanel(overrides: Partial<WorkshopMemorySettingsPanelProps> = {}) 
   return { props, view };
 }
 
+const MEMORY_TAB = WORKSHOP_CONVERSATION_SETTINGS_TABS.find((entry) => entry.id === 'memory')!;
+
 const card = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) });
 
 describe('WorkshopMemorySettingsPanel', () => {
@@ -52,8 +53,8 @@ describe('WorkshopMemorySettingsPanel', () => {
     renderPanel();
     expect(screen.getByRole('tabpanel', { name: 'Memory' })).not.toBeNull();
     const used = WORKSHOP_CONVERSATION_SETTINGS_TABS.flatMap((entry) => [entry.tabElementId, entry.panelElementId]);
-    expect(used).not.toContain(WORKSHOP_MEMORY_SETTINGS_TAB_IDS.tabElementId);
-    expect(used).not.toContain(WORKSHOP_MEMORY_SETTINGS_TAB_IDS.panelElementId);
+    expect(new Set(used).size).toBe(used.length);
+    expect(WORKSHOP_CONVERSATION_SETTINGS_TABS.map((entry) => entry.label)).toEqual(['Behavior', 'About you', 'Memory', 'Advanced']);
   });
 
   it('on, with memories: the well, the cards, the start-of-conversation row and its meters', () => {
