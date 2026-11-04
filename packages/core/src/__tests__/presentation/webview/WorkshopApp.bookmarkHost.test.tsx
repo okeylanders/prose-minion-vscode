@@ -11,12 +11,19 @@
  * draft back with the host's reason, and the label is unchanged. An accepted
  * rename closes the field onto the new label. Escape and a room replacement
  * still close the field.
+ *
+ * And the preview of a private exchange out of the window (PR #189 N-01):
+ * the writer's and the instrument's turns, opened through the real preview
+ * route once the room has passed the snapshot window, carry the label their
+ * bubbles showed in it.
  */
 
 import './support/jsdomTextEncoding';
 import * as React from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MessageType } from '@messages';
+import { WORKSHOP_TURN_ID_ATTRIBUTE } from '@components/workshop/WorkshopTurnBubble';
+import { WORKSHOP_SNAPSHOT_TURN_WINDOW } from '@/application/services/workshop/WorkshopSessionService';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import {
   createWorkshopRouteTestHarness,
@@ -184,5 +191,71 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
     await pump();
 
     expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+  });
+
+  describe('a private exchange out of the window (PR #189 N-01)', () => {
+    it('previews the writer\'s and the instrument\'s turns with the labels their bubbles showed', async () => {
+      const harness = createWorkshopRouteTestHarness();
+      await harness.pin();
+      await harness.runProse();
+      await harness.router.route(message(MessageType.WORKSHOP_SET_CHAT_TARGET, { kind: 'tool', toolId: 'prose' }) as never);
+      await harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Why the pacing flag?' }) as never);
+      const ledger = harness.session.readRoomLedger();
+      const writer = ledger.filter((turn) => turn.role === 'user' && turn.kind === 'message').at(-1)!;
+      const reply = ledger.at(-1)!;
+      expect(reply.participant).toBe('tool');
+      for (const turn of [writer, reply]) {
+        await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_BOOKMARK, { turnId: turn.id, bookmarked: true }) as never);
+      }
+
+      let delivered = 0;
+      const pump = async () => {
+        await act(async () => {
+          const sent = vscode.postMessage.mock.calls.map(([entry]: [{ type: MessageType }]) => entry);
+          vscode.postMessage.mockClear();
+          for (const entry of sent.filter((candidate) => TO_HOST.has(candidate.type))) {
+            await harness.router.route(entry as never);
+          }
+          const replies = harness.postMessage.mock.calls.slice(delivered).map(([entry]) => entry);
+          delivered = harness.postMessage.mock.calls.length;
+          for (const entry of replies.filter((candidate) => TO_WEBVIEW.has(candidate.type))) {
+            window.dispatchEvent(new MessageEvent('message', { data: entry }));
+          }
+        });
+      };
+      render(<WorkshopApp />);
+      await pump();
+
+      // In the window, each bubble says who heard it.
+      const bubbleLabel = (turnId: string) => document
+        .querySelector(`[${WORKSHOP_TURN_ID_ATTRIBUTE}="${turnId}"] .pm-ws-private-thread-label`)
+        ?.textContent?.trim();
+      const inWindow = { [writer.id]: bubbleLabel(writer.id), [reply.id]: bubbleLabel(reply.id) };
+      expect(inWindow[writer.id]).toBe('Private · you + Prose');
+      expect(inWindow[reply.id]).toBe('Private · you + Prose');
+
+      // The room moves on past the snapshot window.
+      for (let i = 0; i < WORKSHOP_SNAPSHOT_TURN_WINDOW; i += 1) {
+        harness.session.recordSessionMarker('resume', `Session resumed, pass ${i}`);
+      }
+      await act(async () => {
+        await harness.router.route(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as never);
+      });
+      await pump();
+      fireEvent.click(screen.getByRole('tab', { name: /^Notes/ }));
+      const summaries = harness.session.getSnapshot().bookmarks;
+      expect(summaries.map((summary) => summary.inWindow)).toEqual([false, false]);
+
+      for (const summary of summaries) {
+        fireEvent.click(within(screen.getByLabelText('Session rail'))
+          .getByRole('button', { name: `${summary.label}: open it in the reader` }));
+        await pump();
+        const sheet = screen.getByRole('dialog');
+        expect(within(sheet).queryByText('Loading the message…')).toBeNull();
+        expect(sheet.querySelector('.pm-ws-private-thread-label')?.textContent?.trim()).toBe(inWindow[summary.turnId]);
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+        await act(async () => { await Promise.resolve(); });
+      }
+    });
   });
 });

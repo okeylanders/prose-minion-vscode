@@ -616,7 +616,8 @@ the ADR:
     - *Counts.* At `e944375`: 628 suites / 8,910 tests / 59 snapshots, all
       passing. At `c97d947`: 628 / 8,913 / 59; one Lightbox passages
       wall-clock test failed under load in the full run and passed alone
-      ([tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)). Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
+      ([tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)).
+      With the N-01 App witness: 628 / 8,914 / 59, all passing. Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
       `naming-convention`: one enum member, one `PmLogo` mock, and the jsdom
       text-encoding shim's two names.
     - *Sizes.* `WorkshopSessionService` 2,595 → 2,600 (`readRoomRevision`);

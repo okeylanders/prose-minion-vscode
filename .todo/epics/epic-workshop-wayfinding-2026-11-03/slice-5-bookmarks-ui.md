@@ -238,6 +238,7 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
 ### Deviations
 
 - **Preview shape.** The slice doc said `turn?: <projected turn>`. The webview cannot import `application/`, so the message carries `WorkshopTurnPreview`, a named subset of the projected entry. The writer is "You" (the thread's word, as the bookmark default label uses), and a one-line notice is "Session".
+- **The preview's narrow subset** leaves out widget, attachment and citation metadata, which would be safe to show. Astra's review did not count it as a finding, and no ordinary flow produces a turn that would preview blank without it, so it stays out of scope.
 - **A malformed preview request.** One without a usable `requestId` (missing, empty, over 128 characters) has no sheet to answer, so it reports through `workshop.bookmark`. A bad `turnId` under a good id is answered under that id with the unknown-turn refusal.
 - **A writer message now carries its turn id** (`data-workshop-turn-id`, `tabIndex={-1}`), as replies did. Without it a jump to a bookmarked writer message found nothing and fell through to the preview.
 - **Remove from the list** (optional in the doc) is built: the only way to clear a bookmark whose bubble is outside the window. It reuses `WORKSHOP_SET_TURN_BOOKMARK`.
@@ -254,7 +255,7 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
 
 - **F-01: a rename waits for its answer.** `WORKSHOP_RENAME_BOOKMARK` gains `requestId`. `WORKSHOP_RENAME_BOOKMARK_RESULT` answers it: accepted, or refused with the host's reason, the session-operation gate's refusal included. The field holds the submitted draft, "Saving…", until then. Accepted closes it; refused gives the draft back with the reason. With a request id, a refused rename shows in the field, not on the room's error banner.
 - **F-02: a preview is bound to its room.** The request carries the snapshot's `roomRevision`. The host waits while any session operation is pending, then refuses ("The room changed…") when the room is another. The webview drops a reply naming another room, or arriving once its room is off screen. `WorkshopSessionService.readRoomRevision()` is the one-line read it compares against.
-- **N-01 (P3): the preview names who heard a private exchange** (`c97d947`). It uses the bubble's wording, through `workshopPrivateThreadLabel`.
+- **N-01 (P3): the preview names who heard a private exchange** (`c97d947`). It uses the bubble's wording, through `workshopPrivateThreadLabel`. Witnessed through the real route and App past the 200-turn window in `WorkshopApp.bookmarkHost.test.tsx`.
 - **Tests.**
   - `WorkshopApp.bookmarkHost.test.tsx`: the real App bridged to the real host routes.
   - `WorkshopTurnPreviewRoomBinding.test.ts`: the real coordinator and store.
