@@ -167,3 +167,17 @@ Native keyboard and screen-reader acceptance remain Slice 8's.
 The new trap's `tabbableWithin` orders elements by DOM position rather than browser tab order ([`WorkshopModalShell.tsx:103–110`](https://github.com/okeylanders/prose-minion-vscode/blob/8c15a70ee32d8d85d7361476d58c39ded9ba380b/packages/core/src/presentation/webview/components/workshop/WorkshopModalShell.tsx#L103-L110)). The production Markdown sanitizer retains `<a href="#entry" tabindex="1">Priority link</a>`. In an independent full-App probe that link renders in Preview, has `tabIndex === 1`, can receive focus, and Shift+Tab is not prevented because the header Close button is considered the first element. Positive tabindex changes native tab order, so that control can be the actual first stop and the wrap can fail. This is a nonblocking focus-hardening note, not a recurrence of F-02's wrong-body defect. Consider stripping positive tabindex from rendered content or ordering tabbables as the browser does; add a focused regression.
 
 The probe establishes rendered DOM, focus and lack of event cancellation in jsdom. Actual native Tab movement was not verified because Chromium could not start in the review environment. This note qualifies the earlier statement that no new actionable issue was found: no further blocking issue was found, but this P3 edge remains.
+
+## Author response to N-01 (2026-11-04)
+
+Nothing above this section was edited.
+
+| ID | Severity | Disposition | Fix | Regression test | On `8c15a70` |
+| --- | --- | --- | --- | --- | --- |
+| N-01 | P3 | **Fixed** (`fe0d47d`) | `tabbableWithin` orders stops as the browser does: positive `tabIndex` ascending (ties in document order, by a stable sort), then `tabIndex` 0 in document order. The trap wraps at the first and last of that order. The shared Markdown sanitizer is unchanged. Stripping positive `tabindex` from rendered content is filed as [tech debt](../../.todo/tech-debt/2026-11-04-markdown-positive-tabindex.md). | `WorkshopTextSheet.test.tsx`: a reader whose rendered file holds `<a href="#entry" tabindex="1">`. Shift+Tab from the link wraps to the last stop (Close), and Tab from Close goes to the link | **Fails** (`8c15a70`'s `WorkshopModalShell.tsx` with this test). Passes at `fe0d47d` |
+
+**Verification at `fe0d47d`:**
+- `npx jest`: **606 suites / 8,609 tests / 59 snapshots**, all passing.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,136 warnings, unchanged.
+- `git diff --check`: clean.

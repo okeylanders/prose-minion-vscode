@@ -360,3 +360,11 @@ the ADR:
       [tech debt](../../tech-debt/2026-11-03-workshop-modal-focus-containment.md).
     - *Counts.* At `3c184c2`: 606 suites / 8,608 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 second re-review (Astra, 2026-11-04).** F-01 and F-02
+    resolved. One P3, N-01: the new focus trap ordered stops by document
+    position, so a positive `tabindex` in rendered Markdown escaped the
+    wrap. Fixed in `fe0d47d` by ordering stops as the browser does.
+    Stripping positive `tabindex` from rendered content is
+    [tech debt](../../tech-debt/2026-11-04-markdown-positive-tabindex.md).
+    - *Counts.* At `fe0d47d`: 606 suites / 8,609 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
