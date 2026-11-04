@@ -158,6 +158,12 @@ describe('workshopMemoryTabView', () => {
     expect(attention?.files.map((file) => file.reason)).toEqual(['same id as another file', 'same id as another file']);
   });
 
+  it('a set-aside copy joins the attention row as needing attention, in its short words', () => {
+    const { attention } = tab({ unreadable: [{ entryKey: 'k3', fileName: 'cheshire-cat-1a0005.md', reason: 'set-aside' }] });
+    expect(attention?.title).toBe('1 file needs attention');
+    expect(attention?.files[0].reason).toBe('a copy set aside, not yet put back');
+  });
+
   it.each([
     ['no-workspace', 'No folder is open, so there’s no project to keep memories in.'],
     ['multi-root', 'This workspace has several folders, so memory can’t tell which project it belongs to.']

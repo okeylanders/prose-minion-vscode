@@ -142,6 +142,18 @@ memory only call back (Slice 3 owns the sheet).
    mocks each Workshop stylesheet by path, so the 22 such tests each gained
    one `jest.mock` line for `memory.css`, beside their `schematic.css` line.
 
+9. **Set-aside copies** (the store's `set-aside` reason, from Slice 2a's
+   merge of #194). The row is under the name of the *standing* file the copy
+   sits beside; the copy itself is a claim the store moves to a file of its
+   own when it can.
+   - So the row offers **no Open file**: opening it would show the standing
+     file, which holds something else.
+   - Badge **Set aside**, meta `set aside`, and the reason "A copy kept
+     beside this file couldn't be put back yet. Memory moves it to a file of
+     its own as soon as it can, and never removes it."
+   - The tab's short form is "a copy set aside, not yet put back", and the
+     tab's row then reads "needing attention".
+
 ## For 4b-wire
 
 - Register the tab: add `'memory'` to `WorkshopConversationSettingsTab` and
@@ -153,6 +165,8 @@ memory only call back (Slice 3 owns the sheet).
   message."). The header copy gains "what they remember about this project".
 - Map the library's listing and estimate into the view inputs. `fullLoad`
   comes from the frame's `pinnedLoaded` ids, never from dates.
+- A set-aside row and the standing file's own row share a file name. Give
+  them distinct `entryKey`s, since the view keys rows by them.
 - Open the manager over the settings modal (0d open question 2). Opening it
   must not discard or commit the drafts (watchpoint 2).
 
@@ -163,7 +177,7 @@ Node 22, on this branch:
 | | Suites | Tests | Snapshots |
 |---|---|---|---|
 | Before (`7ec50ba`) | 652 | 9,228 | 59 |
-| After | 658 | 9,293 | 59 |
+| After (with 2a at `27da6fee` merged) | 658 | 9,307 | 59 |
 
 - `npm ci`, then `npm run typecheck`: clean.
 - `npm run lint`: 0 errors. 12 new warnings, all `naming-convention`:

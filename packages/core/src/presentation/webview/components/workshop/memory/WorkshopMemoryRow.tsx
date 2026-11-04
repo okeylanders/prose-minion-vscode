@@ -3,7 +3,8 @@
  * `SavedItemRow` (its rename and delete-with-confirm included); its own
  * utilities are Always load in full (a toggle, the `eye` glyph: the UI
  * never says "pin"), Archive and Open file. A file that needs attention
- * is drawn with the same row classes but offers Open file only: no rename,
+ * is drawn with the same row classes but offers Open file only (a set-aside
+ * copy, none: its row names the standing file beside it); no rename,
  * Always load in full, archive, edit or delete can reach it (ADR D10).
  */
 
@@ -149,7 +150,7 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
   );
 };
 
-/** A conflicting or unreadable file: the row classes, its reason, and Open file only. */
+/** A conflicting or unreadable file: the row classes, its reason, and Open file only (none for a set-aside copy). */
 export const WorkshopMemoryAttentionRow: React.FC<{
   row: AttentionRowView;
   disabled: boolean;
@@ -168,17 +169,19 @@ export const WorkshopMemoryAttentionRow: React.FC<{
         <div className="pm-ws-session-row-meta" title={row.meta}><span>{row.meta}</span></div>
         <div className="pm-ws-session-row-preview" title={row.reason}>{row.reason}</div>
       </div>
-      <div className="pm-ws-session-row-actions">
-        <button
-          className="pm-ws-session-secondary"
-          type="button"
-          disabled={disabled}
-          aria-label={`Open file ${row.fileName}`}
-          onClick={() => onOpenFile(row.entryKey)}
-        >
-          Open file
-        </button>
-      </div>
+      {row.canOpen && (
+        <div className="pm-ws-session-row-actions">
+          <button
+            className="pm-ws-session-secondary"
+            type="button"
+            disabled={disabled}
+            aria-label={`Open file ${row.fileName}`}
+            onClick={() => onOpenFile(row.entryKey)}
+          >
+            Open file
+          </button>
+        </div>
+      )}
     </article>
   </div>
 );

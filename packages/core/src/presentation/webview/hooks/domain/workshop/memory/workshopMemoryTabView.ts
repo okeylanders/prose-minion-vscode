@@ -20,7 +20,14 @@ import type {
   WorkshopProjectMemoryMode
 } from './workshopMemoryViewInputs';
 import { WORKSHOP_MEMORY_BUDGETS } from './workshopMemoryViewInputs';
-import { aboutTokens, filesWord, memoriesWord, memoryCount, unreadableReasonWords } from './workshopMemoryWords';
+import {
+  aboutTokens,
+  filesWord,
+  memoriesWord,
+  memoryCount,
+  unreadableReasonWords,
+  WORKSHOP_MEMORY_SET_ASIDE
+} from './workshopMemoryWords';
 
 export interface WorkshopMemoryTabInput {
   /** The mode draft: what Apply would write. */
@@ -339,7 +346,8 @@ function attentionView(
   if (files.length === 0) {
     return {};
   }
-  const onlyUnreadable = conflictFiles.length === 0;
+  // A set-aside copy isn't a file to fix: like a conflict, it reads as needing attention.
+  const onlyUnreadable = conflictFiles.length === 0 && unreadable.every((file) => file.reason !== WORKSHOP_MEMORY_SET_ASIDE);
   return {
     attention: {
       title: onlyUnreadable

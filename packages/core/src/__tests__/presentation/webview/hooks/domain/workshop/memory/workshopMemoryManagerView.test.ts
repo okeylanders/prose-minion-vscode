@@ -59,23 +59,39 @@ describe('workshopMemoryManagerView', () => {
         fileName: 'rabbit-watch-runs-backward-7f3c2a.md',
         badge: 'Same id',
         meta: 'mem-7f3c2a',
-        reason: 'Same id as rabbit-watch-copy-7f3c2a.md. Change one file’s id, or delete one copy.'
+        reason: 'Same id as rabbit-watch-copy-7f3c2a.md. Change one file’s id, or delete one copy.',
+        canOpen: true
       },
       {
         entryKey: 'key-copy-b',
         fileName: 'rabbit-watch-copy-7f3c2a.md',
         badge: 'Same id',
         meta: 'mem-7f3c2a',
-        reason: 'Same id as rabbit-watch-runs-backward-7f3c2a.md. Change one file’s id, or delete one copy.'
+        reason: 'Same id as rabbit-watch-runs-backward-7f3c2a.md. Change one file’s id, or delete one copy.',
+        canOpen: true
       },
       {
         entryKey: 'key-seating',
         fileName: 'tea-party-seating-1a9e04.md',
         badge: 'Can’t read',
         meta: 'unreadable',
-        reason: '“kind” isn’t one Memory knows: decision, canon, preference or open-thread.'
+        reason: '“kind” isn’t one Memory knows: decision, canon, preference or open-thread.',
+        canOpen: true
       }
     ]);
+  });
+
+  it('a set-aside copy: its own badge and words, and no Open file, since its row names the standing file beside it', () => {
+    const library = { ...managerLibrary(), unreadable: [{ entryKey: 'key-aside', fileName: 'cheshire-cat-1a0005.md', reason: 'set-aside' }], conflicts: [] };
+    expect(workshopMemoryManagerView({ mode: 'ask', library }).attention).toEqual([{
+      entryKey: 'key-aside',
+      fileName: 'cheshire-cat-1a0005.md',
+      badge: 'Set aside',
+      meta: 'set aside',
+      reason: 'A copy kept beside this file couldn’t be put back yet. Memory moves it to a file of its own as soon as it can, and never removes it.',
+      canOpen: false
+    }]);
+    expect(manager().attention.every((row) => row.canOpen)).toBe(true);
   });
 
   it('active rows: in effect only, newest first, origin and source in words, the Loaded in full badge', () => {

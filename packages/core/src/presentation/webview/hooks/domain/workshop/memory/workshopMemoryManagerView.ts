@@ -34,7 +34,8 @@ import {
   memorySourceWords,
   plainList,
   quotedList,
-  unreadableReasonSentence
+  unreadableReasonSentence,
+  WORKSHOP_MEMORY_SET_ASIDE
 } from './workshopMemoryWords';
 
 export interface WorkshopMemoryManagerInput {
@@ -53,9 +54,11 @@ export interface WorkshopMemoryChip {
 export interface WorkshopMemoryAttentionRow {
   readonly entryKey: string;
   readonly fileName: string;
-  readonly badge: 'Same id' | 'Can’t read';
+  readonly badge: 'Same id' | 'Can’t read' | 'Set aside';
   readonly meta: string;
   readonly reason: string;
+  /** Open file is offered: false for a set-aside copy, whose row names the standing file beside it. */
+  readonly canOpen: boolean;
 }
 
 export interface WorkshopMemoryBadge {
@@ -188,16 +191,21 @@ function attentionRows(library: WorkshopMemoryLibrary): WorkshopMemoryAttentionR
       fileName: file.fileName,
       badge: 'Same id' as const,
       meta: conflict.id,
-      reason: `Same id as ${plainList(others)}. Change one file’s id, or delete one copy.`
+      reason: `Same id as ${plainList(others)}. Change one file’s id, or delete one copy.`,
+      canOpen: true
     };
   }));
-  const unreadable = library.unreadable.map((file) => ({
-    entryKey: file.entryKey,
-    fileName: file.fileName,
-    badge: 'Can’t read' as const,
-    meta: 'unreadable',
-    reason: unreadableReasonSentence(file.reason, file.key)
-  }));
+  const unreadable = library.unreadable.map((file) => {
+    const setAside = file.reason === WORKSHOP_MEMORY_SET_ASIDE;
+    return {
+      entryKey: file.entryKey,
+      fileName: file.fileName,
+      badge: setAside ? 'Set aside' as const : 'Can’t read' as const,
+      meta: setAside ? 'set aside' : 'unreadable',
+      reason: unreadableReasonSentence(file.reason, file.key),
+      canOpen: !setAside
+    };
+  });
   return [...conflicts, ...unreadable];
 }
 

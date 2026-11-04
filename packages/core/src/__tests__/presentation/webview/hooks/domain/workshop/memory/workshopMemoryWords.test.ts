@@ -38,7 +38,7 @@ describe('workshopMemoryWords', () => {
     const reasons = [
       'no-frontmatter', 'unclosed-frontmatter', 'malformed-line', 'unknown-key', 'duplicate-key', 'missing-key',
       'unsupported-format', 'invalid-value', 'too-long', 'proposal-without-provenance', 'turns-without-session',
-      'updated-before-created', 'supersedes-itself', 'too-large', 'not-text', 'read-failed'
+      'updated-before-created', 'supersedes-itself', 'too-large', 'not-text', 'read-failed', 'set-aside'
     ];
     const words = reasons.map((reason) => unreadableReasonWords(reason, undefined));
     expect(new Set(words).size).toBe(reasons.length);

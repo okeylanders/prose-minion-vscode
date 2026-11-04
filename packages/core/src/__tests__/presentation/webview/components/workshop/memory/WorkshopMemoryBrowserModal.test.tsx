@@ -153,6 +153,13 @@ describe('WorkshopMemoryBrowserModal', () => {
     expect((given.onOpenFile as jest.Mock).mock.calls).toEqual([['key-copy-a'], ['key-copy-b']]);
   });
 
+  it('a set-aside copy shows its reason with no Open file', () => {
+    renderManager({ library: { ...managerLibrary(), unreadable: [{ entryKey: 'key-aside', fileName: 'cheshire-cat-1a0005.md', reason: 'set-aside' }] } });
+    const aside = rowOf('cheshire-cat-1a0005.md');
+    expect(within(aside).getByText('Set aside')).not.toBeNull();
+    expect(within(aside).queryAllByRole('button')).toHaveLength(0);
+  });
+
   it('superseded and archived rows: Edit or Restore, no Always load in full or Archive', () => {
     const { props: given } = renderManager();
     const stops = rowOf('The Rabbit’s watch stops at six');

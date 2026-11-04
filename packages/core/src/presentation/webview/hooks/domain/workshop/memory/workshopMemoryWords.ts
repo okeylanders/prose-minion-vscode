@@ -108,6 +108,15 @@ export function plainList(names: readonly string[]): string {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
+/**
+ * The store's reason for bytes kept under a claim beside a standing file of
+ * the row's name, that are not its earlier version (Slice 1, PR #194 F-02).
+ * The row names the standing file, not the copy, so it offers no Open file:
+ * opening it would show the standing file. The store restores the copy as
+ * a file of its own once it can; nothing removes it.
+ */
+export const WORKSHOP_MEMORY_SET_ASIDE = 'set-aside';
+
 /** Whether a memory loads at the start of a conversation: active and not superseded (D4, D5). */
 export function memoryInEffect(entry: Pick<WorkshopMemoryEntry, 'status' | 'superseded'>): boolean {
   return entry.status === 'active' && !entry.superseded;
@@ -165,6 +174,10 @@ export function unreadableReasonWords(reason: string, key: string | undefined, s
       return 'the file isn’t UTF-8 text';
     case 'read-failed':
       return 'the file couldn’t be read just now';
+    case 'set-aside':
+      return short
+        ? 'a copy set aside, not yet put back'
+        : 'a copy kept beside this file couldn’t be put back yet. Memory moves it to a file of its own as soon as it can, and never removes it';
     default:
       return 'it doesn’t read as a memory file';
   }
