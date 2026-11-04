@@ -106,7 +106,43 @@ export function projectMemoryBody(markdown: string): string {
   return text.length > 0 ? `\n${text}\n` : '';
 }
 
-/** The ids the given readable memories name in `supersedes`: superseded, derived (never stored). */
-export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'supersedes'>[]): Set<string> {
-  return new Set(memories.flatMap((memory) => memory.supersedes));
+/**
+ * The ids superseded among the given readable memories: derived, never
+ * stored (ADR 2026-11-04 D4). A memory is superseded when another names it
+ * in `supersedes`, unless the two are on a cycle (it names, directly or
+ * through others, the memory that names it): in a cycle, neither is
+ * superseded (PR #194 N-01). An id no given memory holds may be superseded
+ * too.
+ */
+export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'id' | 'supersedes'>[]): Set<string> {
+  const names = new Map<string, readonly string[]>();
+  for (const memory of memories) {
+    names.set(memory.id, [...(names.get(memory.id) ?? []), ...memory.supersedes]);
+  }
+  /** Whether `from` reaches `to` along `supersedes`. */
+  const reaches = (from: string, to: string): boolean => {
+    const seen = new Set<string>([from]);
+    const queue = [from];
+    while (queue.length > 0) {
+      for (const next of names.get(queue.shift() as string) ?? []) {
+        if (next === to) {
+          return true;
+        }
+        if (!seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    return false;
+  };
+  const superseded = new Set<string>();
+  for (const [newer, older] of names) {
+    for (const id of older) {
+      if (id !== newer && !reaches(id, newer)) {
+        superseded.add(id);
+      }
+    }
+  }
+  return superseded;
 }

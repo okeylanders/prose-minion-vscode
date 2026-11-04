@@ -275,3 +275,28 @@ describe('the file\'s byte bound (PR #194 F-05)', () => {
     }
   });
 });
+
+describe('superseded, derived, with ADR D4\'s cycle rule (PR #194 N-01)', () => {
+  const memory = (id: string, ...supersedes: string[]) => ({ id, supersedes });
+
+  it('a memory another names is superseded; one that names nothing is not', () => {
+    expect(supersededProjectMemoryIds([memory('mem-00000b', 'mem-00000a'), memory('mem-00000a')])).toEqual(new Set(['mem-00000a']));
+    // A chain: each one named by a newer is superseded, the newest is not.
+    expect(supersededProjectMemoryIds([memory('mem-00000c', 'mem-00000b'), memory('mem-00000b', 'mem-00000a'), memory('mem-00000a')]))
+      .toEqual(new Set(['mem-00000a', 'mem-00000b']));
+  });
+
+  it('in a cycle, neither memory is superseded: A and B naming each other', () => {
+    expect(supersededProjectMemoryIds([memory('mem-00000a', 'mem-00000b'), memory('mem-00000b', 'mem-00000a')])).toEqual(new Set());
+  });
+
+  it('in a longer cycle, none is: A → B → C → A', () => {
+    expect(supersededProjectMemoryIds([memory('mem-00000a', 'mem-00000b'), memory('mem-00000b', 'mem-00000c'), memory('mem-00000c', 'mem-00000a')]))
+      .toEqual(new Set());
+  });
+
+  it('a memory off the cycle that a cycle names is still superseded', () => {
+    expect(supersededProjectMemoryIds([memory('mem-00000a', 'mem-00000b', 'mem-00000d'), memory('mem-00000b', 'mem-00000a'), memory('mem-00000d')]))
+      .toEqual(new Set(['mem-00000d']));
+  });
+});
