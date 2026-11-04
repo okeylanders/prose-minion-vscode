@@ -66,6 +66,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         widgetConfigs: [],
         standingDirectives: [],
         todos: [],
+        bookmarks: [],
         turns,
         turnRewindability: {},
         totalTurns: turns.length,

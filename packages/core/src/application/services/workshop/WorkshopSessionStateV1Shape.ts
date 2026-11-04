@@ -24,6 +24,7 @@ import {
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
+import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -115,7 +116,9 @@ function assertWorkshopSessionShape(
       'threadArtifacts',
       // Optional since ADR 2026-09-30: pre-rewind checkpoints carry no marks.
       'retainedHistoryMarks',
-      'hostContextDelivery'
+      'hostContextDelivery',
+      // Optional since ADR 2026-11-03 D9: written only when one exists.
+      'bookmarks'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -158,6 +161,9 @@ function assertWorkshopSessionShape(
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.bookmarks !== undefined) {
+    assertWorkshopBookmarksShape(state.bookmarks);
+  }
   if (state.widgetConfigs !== undefined) {
     arrayOf(
       state.widgetConfigs,

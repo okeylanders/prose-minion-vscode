@@ -23,6 +23,7 @@ import {
 import {
   findInconsistentRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import { assertWorkshopBookmarkIntegrity } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 
 export interface WorkshopSessionStateV1ValidationOptions {
   /**
@@ -39,6 +40,8 @@ export interface WorkshopSessionStateV1ValidationOptions {
    * logged normalization, never allowed to refuse a writer's session open.
    */
   skipRetainedHistoryMarkIntegrity?: boolean;
+  /** Raw checkpoint preflight runs before a dangling bookmark is dropped (ADR 2026-11-03 D9). */
+  allowDanglingBookmarks?: boolean;
 }
 
 export function validateWorkshopSessionStateV1(
@@ -439,6 +442,9 @@ export function validateWorkshopSessionStateV1(
   if (greatestTodoNumber > state.counters.todo) {
     throw new Error('Persisted Workshop task counter trails an existing id');
   }
+  assertWorkshopBookmarkIntegrity(state.bookmarks, state.turns, {
+    allowDanglingTurns: options.allowDanglingBookmarks
+  });
 
   if (!isWorkshopPersonaId(state.participants.host.personaId)) {
     throw new Error('Persisted Workshop host persona is invalid');
