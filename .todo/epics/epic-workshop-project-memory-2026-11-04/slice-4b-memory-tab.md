@@ -7,9 +7,10 @@
 - **4b-ui** (the presentation, as tested components and pure view models,
   with no host wiring) is done: [slice-4b-1-ui.md](slice-4b-1-ui.md), on
   `epic/workshop-project-memory-slice-4b-ui`.
-- **4b-wire** waits on **Slice 3** (the memory sheet and the write routes;
-  PR #192 F-03). It covers the routes, `useWorkshopProjectMemory`, mounting
-  the tab, and reusing Slice 3's sheet.
+- **4b-wire** is built and verified on Slice 3's head:
+  [slice-4b-2-wire.md](slice-4b-2-wire.md). It covers the manager's routes,
+  `useWorkshopMemoryManager`, the mounted tab and its mode draft, and reuses
+  Slice 3's sheet and write routes. Its PR waits for #200 to merge.
 
 ## Outcome
 
