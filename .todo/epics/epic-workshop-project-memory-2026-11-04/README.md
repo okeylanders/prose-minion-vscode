@@ -46,7 +46,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
 | 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | Done: PR #199, merged at `0994557` (Astra: F-01, F-02, N-01 closed) |
 | 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | In progress from Slice 3's head |
-| 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | In progress from Slice 3's head |
+| 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | In review: PR #201 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
 
 **Order.** Slices 0, 0d, 1 and 4a start together on 2026-11-04. They touch
@@ -230,4 +230,16 @@ The feature note's six open questions, plus the design scope:
   - **One unreproduced full-run test failure** during Slice 3 (name not
     captured; five later runs passed) is noted in `slice-3-write-path.md`.
     CI watches it.
-
+- **2026-11-04. Slice 5 in review.** PR #201 opened from
+  `4c13ce5`, which merges the epic at `7bd1d9a` (680 suites / 9,586 tests).
+  - A pure decision (`WorkshopMemoryAutoSave`) saves at once, or holds the
+    card when the run had web search tools attached or the room's
+    `autoSavesPerRoom` cap is reached. The cap counts the room's `by: 'auto'`
+    receipts, so a Rewind lowers it.
+  - The held reason is an optional `memoryProposal.held`; no
+    `schemaVersion` bump.
+  - Auto saves share the handler's in-flight map with the writer's Save
+    (one file, one receipt). A send waits for an auto save still in flight,
+    so its receipt lands right after its reply.
+  - Open for review: the receipt keeps Slice 3's `role="separator"` though
+    it holds buttons.
