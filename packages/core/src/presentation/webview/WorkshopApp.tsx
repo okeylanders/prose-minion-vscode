@@ -1250,6 +1250,8 @@ export const WorkshopApp: React.FC = () => {
             bookmarkedTurnIds={bookmarks.bookmarkedTurnIds}
             bookmarkDisabled={roomMutationLocked}
             onToggleBookmark={bookmarks.setTurnBookmark}
+            modelOptions={modelsSettings.modelOptions}
+            modelsBeforeWindow={workshop.modelsBeforeWindow}
           />
 
           {showLiveTurn && (

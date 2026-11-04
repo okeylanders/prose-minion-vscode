@@ -35,6 +35,7 @@ import {
   workshopWidgetSelectionUnitLabel
 } from '@shared/constants/workshopWidgets';
 import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
+import { workshopRawModelId, workshopServedByNote, workshopTurnModelTitle } from '@utils/workshop/workshopTurnModelNote';
 import { workshopCapabilityArtifactLabel } from '@shared/constants/workshopCapabilityLabels';
 import {
   workshopCapabilityFamily,
@@ -93,6 +94,8 @@ interface WorkshopTurnBubbleProps {
   bookmarkDisabled?: boolean;
   /** Offered only on turns the host would accept. */
   onToggleBookmark?: (turnId: string, bookmarked: boolean) => void;
+  /** A model's display name for the served-by note (ADR 2026-11-03 D8); the raw id when absent. */
+  modelLabel?: (modelId: string) => string;
 }
 
 /**
@@ -363,8 +366,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onBranch,
   bookmarked = false,
   bookmarkDisabled = false,
-  onToggleBookmark
+  onToggleBookmark,
+  modelLabel = workshopRawModelId
 }) => {
+  const servedByNote = workshopServedByNote(turn.model, modelLabel);
   const bookmarkAction = onToggleBookmark && isWorkshopBookmarkableTurn(turn)
     ? (
         <WorkshopBookmarkToggle
@@ -571,7 +576,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
         tabIndex={-1}
       >
         <div className="pm-ws-turn-head">
-          <span className="pm-ws-eyebrow">
+          <span className="pm-ws-eyebrow" title={workshopTurnModelTitle(turn.model)}>
             <Icon name={turn.personaId ? 'person' : 'sparkle'} size={12} />{' '}
             {turn.personaLabel ?? turn.toolLabel ?? 'Follow-up'}
           </span>
@@ -731,6 +736,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 </a>
               ))}
             </div>
+          </div>
+        )}
+        {servedByNote && (
+          <div className="pm-ws-turn-usage pm-ws-turn-served-by">
+            <Icon name="branch" size={11} /> {servedByNote}
           </div>
         )}
         <div className="pm-ws-turn-actions">

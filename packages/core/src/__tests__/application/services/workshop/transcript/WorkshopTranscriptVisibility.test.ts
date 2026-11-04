@@ -7,7 +7,7 @@
 
 import { projectWorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { WorkshopTurn } from '@messages';
-import { FIXTURE_EPOCH, dividerTurn, fixtureTurn, writerTurn } from './workshopTranscriptFixtures';
+import { FIXTURE_EPOCH, dividerTurn, fixtureTurn, turnEntries, writerTurn } from './workshopTranscriptFixtures';
 
 const HIDDEN = {
   attachmentId: 'HIDDEN-ATTACHMENT-ID',
@@ -119,7 +119,7 @@ describe('projectWorkshopTranscript visibility', () => {
   });
 
   it('still emits the labels and lines a reader sees', () => {
-    const entries = project().entries;
+    const entries = turnEntries(project());
 
     expect(entries.find((entry) => entry.turnId === 'u-attachment'))
       .toMatchObject({ kind: 'writer', attachmentLabels: ['letters.md'] });

@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 is in progress.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 is in progress.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -52,9 +52,9 @@ the ADR:
 | 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Done: PR #186, merged at `d59b651` |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Done: PR #187, merged at `89d6f26` |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Done: PR #188, merged at `356c751` |
-| 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | In progress |
+| 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Done: PR #189, merged at `4a180ab` |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
-| 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
+| 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | In progress |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
 **Order.** Two chains run side by side:
@@ -638,3 +638,49 @@ the ADR:
       passing. Typecheck clean. Lint 0 errors, 1,150 warnings, unchanged.
     - *Sizes.* `WorkshopSessionMessageHandler` grew by 4 lines (the post and
       its comment). New and touched files otherwise stay under 500.
+  - **Merged.** Astra's re-review at `e452a45` resolved F-01 through F-04 and
+    N-01. CI was green on `9cbf9d3`, and the coordinator merged PR #189 into
+    the epic at `4a180ab`.
+- **2026-11-04. Slice 7 (model slices).** Started on
+  `epic/workshop-wayfinding-slice-7-model-slices`, cut from the epic at
+  `4a180ab`. This is the last build slice; Slice 8 is the live pass. The
+  slice doc's [Since Slices 5 and 6](slice-7-model-slices.md#since-slices-5-and-6)
+  section lists what the earlier slices settled for it.
+  - **Built.** The commits, in order:
+    - `1fdcabb`: the shared derivation and the window seed.
+    - `b6b6b70`: `modelsBeforeWindow` on the snapshot.
+    - `6712111`: the thread divider.
+    - `0d2bc51`: the bubble's served-by note and the label's title.
+    - `b564a4b`: export slices in Markdown and HTML, `model` in JSON, and the
+      mirror. Includes the thread/export DOM parity test.
+    - `9c17bd4`: the recall pin.
+    - `a78afa6`: a test's lint cleanup.
+
+    Deviations, each with its reason, are in the slice doc's
+    [Built](slice-7-model-slices.md#built) section. In short: the search
+    for the prompting writer turn passes a run's capability cards; a
+    dictionary slice says "Dictionary model"; the separator is named by its
+    visible text; JSON prints no slice entries.
+  - **Counts.**
+    - Before, at `4a180ab`: 629 suites / 8,924 tests / 59 snapshots.
+    - After, at `a78afa6` on a clean tree: 636 / 8,977 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,150 → 1,153, all
+      `naming-convention`: `WorkshopModelSliceDivider` and two new App tests'
+      `PmLogo` mocks.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by calls into the new
+    modules, or by props and state:
+    - `WorkshopSessionService.ts` 2,600 → 2,607
+    - `WorkshopApp.tsx` 1,738 → 1,740
+    - `WorkshopTurnBubble.tsx` 782 → 792
+    - `useWorkshopRoom.ts` 899 → 909
+    - `shell.css` 2,797 → 2,802, with `WorkshopTranscriptHtmlStyles.ts`
+      640 → 645 for the one mirrored rule
+    - `session.ts` (messages) 948 → 954
+    - `OpenRouterModels.ts` 1,358 → 1,368
+    - `extension.ts` 895 → 899
+
+    New files are all under 500 lines.
+  - **Filed:** [divider accessible names](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
+

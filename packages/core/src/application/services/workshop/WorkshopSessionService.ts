@@ -135,6 +135,7 @@ import {
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 import {
   attachmentSnapshot,
   cloneAnalysisInputs,
@@ -2364,6 +2365,11 @@ export class WorkshopSessionService {
 
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turnLedger.window(WORKSHOP_SNAPSHOT_TURN_WINDOW);
+    // The model-slice seed (ADR 2026-11-03 D8): undefined unless the window truncates.
+    const modelsBeforeWindow = workshopModelsBeforeWindow(
+      this.turnLedger.project((turn) => turn),
+      this.turnLedger.count() - windowed.length
+    );
     const passageState = this.passageScope.exportState();
     const visibleWidgetConfigIds = new Set(
       [
@@ -2404,6 +2410,7 @@ export class WorkshopSessionService {
       ),
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
+      ...(modelsBeforeWindow ? { modelsBeforeWindow } : {}),
       roomHasMemory: this.hasRoomMemory(),
       participants: this.participantRoster.snapshot(),
       conversationBehavior: { ...this.behavior },

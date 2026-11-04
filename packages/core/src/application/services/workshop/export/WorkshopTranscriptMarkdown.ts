@@ -13,6 +13,7 @@ import {
   WORKSHOP_TRANSCRIPT_WRITER_LABEL,
   WorkshopTranscript,
   WorkshopTranscriptEntry,
+  WorkshopTranscriptLine,
   countWorkshopTranscriptMessages
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
@@ -26,8 +27,11 @@ export function renderWorkshopTranscriptMarkdown(transcript: WorkshopTranscript)
   return `${blocks.join('\n\n')}\n`;
 }
 
-function renderEntry(entry: WorkshopTranscriptEntry): string {
+function renderEntry(entry: WorkshopTranscriptLine): string {
   switch (entry.kind) {
+    // A model slice (ADR 2026-11-03 D8) reads like the thread's other dividers.
+    case 'model-slice':
+      return `_${escapeInline(entry.text)}_`;
     case 'event':
       return `_${entry.bookmarked ? `${BOOKMARKED} · ` : ''}${escapeInline(entry.text)}_`;
     case 'writer': {

@@ -353,6 +353,11 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   height: 1px;
   background: var(--pm-border-soft);
 }
+[data-pm-surface="workshop"] .pm-ws-model-slice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 [data-pm-surface="workshop"] .pm-ws-turn {
   display: flex;
   flex-direction: column;

@@ -69,6 +69,7 @@ import {
   coerceWorkshopWebResearchSettings
 } from '@messages';
 import { LabeledContextBudgetSnapshot } from '@messages';
+import type { WorkshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 
 /**
  * One attachment body, fetched on demand for the Edit/Preview sheet (Sprint 13A
@@ -140,6 +141,8 @@ export interface WorkshopRoomState {
    * 2026-09-30 §4). Rendered, never re-derived: the host re-checks anyway.
    */
   turnRewindability: Readonly<Record<string, WorkshopTurnRewindability>>;
+  /** The snapshot's model-slice seed (ADR 2026-11-03 D8); undefined when nothing was cut. */
+  modelsBeforeWindow?: WorkshopModelsBeforeWindow;
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
    * window bit on reload of a marathon thread). 0 in normal operation.
@@ -257,6 +260,7 @@ export type WorkshopRoomPersistence = Record<string, never>;
 
 export interface WorkshopRoomThreadSnapshot {
   turns: WorkshopTurn[];
+  modelsBeforeWindow?: WorkshopModelsBeforeWindow;
   totalTurns: number;
   errorMessage: string;
 }
@@ -308,6 +312,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [turnRewindability, setTurnRewindability] =
     React.useState<Readonly<Record<string, WorkshopTurnRewindability>>>({});
   const [totalTurns, setTotalTurns] = React.useState(0);
+  const [modelsBeforeWindow, setModelsBeforeWindow] =
+    React.useState<WorkshopModelsBeforeWindow | undefined>(undefined);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
   const [chatTarget, setChatTargetState] = React.useState<WorkshopChatTarget>({ kind: 'host' });
@@ -583,16 +589,18 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   }, []);
 
   const beginReplacement = React.useCallback((): WorkshopRoomThreadSnapshot => {
-    const snapshot = { turns: [...turns], totalTurns, errorMessage };
+    const snapshot = { turns: [...turns], modelsBeforeWindow, totalTurns, errorMessage };
     clearStatus();
     setErrorMessage('');
     setTurns([]);
+    setModelsBeforeWindow(undefined);
     setTotalTurns(0);
     return snapshot;
-  }, [clearStatus, errorMessage, totalTurns, turns]);
+  }, [clearStatus, errorMessage, modelsBeforeWindow, totalTurns, turns]);
 
   const restoreReplacement = React.useCallback((snapshot: WorkshopRoomThreadSnapshot) => {
     setTurns(snapshot.turns);
+    setModelsBeforeWindow(snapshot.modelsBeforeWindow);
     setTotalTurns(snapshot.totalTurns);
     setErrorMessage(snapshot.errorMessage);
   }, []);
@@ -665,6 +673,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       // persisted session retain the complete ledger for future pagination.
       // A rewind arrives the same way: a shorter snapshot replaces the thread.
       setTurns(session.turns);
+      setModelsBeforeWindow(session.modelsBeforeWindow);
       setTurnRewindability(session.turnRewindability ?? {});
 
       const activeRequestId = session.activeRequestId ?? null;
@@ -814,6 +823,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     wizardRunning: wizardRun !== null,
     turns,
     turnRewindability,
+    modelsBeforeWindow,
     hiddenTurns,
     hasHostConversation,
     selectedPersonaId,

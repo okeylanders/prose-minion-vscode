@@ -30,6 +30,14 @@ export interface WorkshopTranscriptLedgerPort {
   readBookmarkedTurnIds(): ReadonlySet<string>;
 }
 
+/**
+ * A model's display name for the export's model slices (ADR 2026-11-03 D8),
+ * or undefined for the raw id. The host's names come from its model catalog;
+ * the thread's from `MODEL_DATA`, so the two can name an id differently, but
+ * never place a slice differently.
+ */
+export type WorkshopTranscriptModelLabelPort = (modelId: string) => string | undefined;
+
 export interface WorkshopTranscriptFilePort {
   writeNew(
     stem: string,
@@ -71,7 +79,8 @@ export class WorkshopTranscriptExportService {
   constructor(
     private readonly ledger: WorkshopTranscriptLedgerPort,
     private readonly files: WorkshopTranscriptFilePort,
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    private readonly modelLabel: WorkshopTranscriptModelLabelPort = () => undefined
   ) {}
 
   async export(request: WorkshopTranscriptExportRequest): Promise<WorkshopTranscriptExportResult> {
@@ -87,7 +96,8 @@ export class WorkshopTranscriptExportService {
     const transcript = projectWorkshopTranscript(this.ledger.readRoomLedger(), {
       title,
       exportedAt: this.now(),
-      bookmarkedTurnIds: this.ledger.readBookmarkedTurnIds()
+      bookmarkedTurnIds: this.ledger.readBookmarkedTurnIds(),
+      modelLabel: this.modelLabel
     });
     const messageCount = countWorkshopTranscriptMessages(transcript);
     if (messageCount === 0) {

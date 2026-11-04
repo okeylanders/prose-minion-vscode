@@ -12,6 +12,7 @@ import {
   participantIdentityColorIndex
 } from '@utils/contextBudget';
 import { partitionContextSources } from '@utils/workshop/contextSources';
+import { modelOptionLabel } from '@utils/modelOptionLabel';
 
 interface ContextBudgetProps {
   /** Canonical persona id or a namespaced non-persona participant key. */
@@ -200,7 +201,7 @@ export const ContextBudget: React.FC<ContextBudgetProps> = ({
         <Chevron />
       </summary>
       <dl className="pm-context-budget-details">
-        <div><dt>Measured model</dt><dd>{model?.label ?? snapshot.modelId}</dd></div>
+        <div><dt>Measured model</dt><dd>{modelOptionLabel(modelOptions, snapshot.modelId)}</dd></div>
         <div>
           <dt>Model window</dt>
           <dd>{view.usableInputTokens === undefined ? 'Unavailable' : model?.contextLength?.toLocaleString()}</dd>
