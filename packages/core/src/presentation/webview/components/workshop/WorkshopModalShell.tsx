@@ -32,7 +32,9 @@ interface WorkshopModalShellProps {
    */
   variant?: 'panel' | 'sheet';
   /**
-   * Keep Tab and Shift+Tab inside the dialog (PR #186 F-02). Opt-in: the
+   * Keep Tab and Shift+Tab inside the dialog (PR #186 F-02): every Tab steps
+   * through the dialog's own stops in browser order, wrapping at the ends
+   * (N-01, N-02). Opt-in: the
    * shell neither traps focus nor makes the background inert by default
    * (tech debt 2026-11-03-workshop-modal-focus-containment).
    */
@@ -58,25 +60,24 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
     [onClose]
   );
 
+  // With the trap on, the dialog moves focus on every Tab itself, through
+  // its own stops in browser order, so the page-wide order (which a
+  // positive tabindex outside the dialog can interleave) never takes part
+  // (PR #186 N-02).
   const keepTabInside = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Tab') {
       return;
     }
+    event.preventDefault();
     const focusable = tabbableWithin(event.currentTarget);
     if (focusable.length === 0) {
-      event.preventDefault();
       return;
     }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || !event.currentTarget.contains(active))) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (active === last || !event.currentTarget.contains(active))) {
-      event.preventDefault();
-      first.focus();
-    }
+    const index = focusable.indexOf(document.activeElement as HTMLElement);
+    const next = index === -1
+      ? (event.shiftKey ? focusable.length - 1 : 0)
+      : (index + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length;
+    focusable[next].focus();
   }, []);
 
   if (!open) {

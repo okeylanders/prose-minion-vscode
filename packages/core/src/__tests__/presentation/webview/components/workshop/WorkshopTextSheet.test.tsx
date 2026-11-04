@@ -331,10 +331,15 @@ describe('WorkshopTextSheet — keyboard containment (PR #186 F-02)', () => {
     expect(document.activeElement).toBe(last);
     expect(dialog.contains(document.activeElement)).toBe(true);
 
-    // Tab between inner stops is left to the browser.
-    first.focus();
-    const midway = fireEvent.keyDown(first, { key: 'Tab' });
-    expect(midway).toBe(true);
+    // Every Tab is the dialog's: inner stops step in local order, one at a
+    // time, forward and back (PR #186 N-02).
+    for (let index = 0; index < stops.length - 1; index += 1) {
+      stops[index].focus();
+      expect(fireEvent.keyDown(stops[index], { key: 'Tab' })).toBe(false);
+      expect(document.activeElement).toBe(stops[index + 1]);
+      expect(fireEvent.keyDown(stops[index + 1], { key: 'Tab', shiftKey: true })).toBe(false);
+      expect(document.activeElement).toBe(stops[index]);
+    }
     outside.remove();
   });
 });
@@ -370,5 +375,63 @@ describe('WorkshopTextSheet — browser tab order in the trap (PR #186 N-01)', (
     // …and Tab from the last stop goes to the link, not the header's Close button.
     fireEvent.keyDown(last, { key: 'Tab' });
     expect(document.activeElement).toBe(link);
+  });
+});
+
+describe('WorkshopTextSheet — the trap owns every Tab (PR #186 N-02)', () => {
+  const readerWith = (value: string) => renderSheet({
+    mode: {
+      kind: 'read-in',
+      label: 'rabbit.md',
+      group: 'characters',
+      path: 'characters/rabbit.md',
+      participantLabel: 'Jill',
+      deliveredAt: 1
+    },
+    value,
+    canOpenInEditor: true,
+    onOpenInEditor: jest.fn()
+  });
+
+  it('never lets a background positive tabindex interleave with the sheet\'s order', () => {
+    // A rendered transcript link behind the sheet, at tabindex 2: in the
+    // page-wide order it falls between the sheet's tabindex-1 link and the
+    // sheet's tabindex-0 stops.
+    const outside = document.createElement('a');
+    outside.href = '#behind';
+    outside.tabIndex = 2;
+    outside.textContent = 'A transcript link behind the sheet';
+    document.body.appendChild(outside);
+    readerWith('See <a href="#entry" tabindex="1">the entry</a> below.');
+    const dialog = screen.getByRole('dialog');
+    const link = within(dialog).getByRole('link', { name: 'the entry' });
+    const close = within(dialog).getByRole('button', { name: 'Close rabbit.md' });
+
+    link.focus();
+    expect(fireEvent.keyDown(link, { key: 'Tab' })).toBe(false);
+    expect(document.activeElement).toBe(close);
+    expect(document.activeElement).not.toBe(outside);
+
+    expect(fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(link);
+    outside.remove();
+  });
+
+  it('starts from the first stop, or the last on Shift+Tab, when focus is outside its stops', () => {
+    readerWith('Down the hole.');
+    const dialog = screen.getByRole('dialog');
+    const stops = [...dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]')]
+      .filter((element) => element.tabIndex >= 0
+        && !(element as HTMLButtonElement).disabled
+        && element.closest('[hidden]') === null);
+    const heading = within(dialog).getByRole('heading', { level: 2 });
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    fireEvent.keyDown(heading, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    fireEvent.keyDown(heading, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(stops[stops.length - 1]);
   });
 });
