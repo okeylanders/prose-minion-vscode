@@ -36,3 +36,17 @@ Nine existing focused suites pass **115 tests**. Two independent full-App probes
 The new strict codec permits `sourceFingerprint` on persisted context-source rows, including writer-source rows. `collectWriterSources` calls `cloneSourceEntry`, which now preserves the stored fingerprint, and `activeContextBudget` forwards those clones to the webview without the new display-safe projection. In an independent production room-route probe, a valid checkpoint with a fingerprint on an existing host writer-source row is hydrated; `WORKSHOP_REQUEST_SESSION` then emits that digest in `WORKSHOP_SESSION_STATE.session.contextBudget.sources[0]`.
 
 The current ordinary writer-source producers do not add a fingerprint, so this witness is a **validated loaded-checkpoint boundary**, not a claim that a normal resource read currently leaks it. Nevertheless the codec accepts the shape and the field is explicitly host-private. Apply the public projection to writer sources as well, or reject the impossible combination consistently at the codec boundary. Add a real route/snapshot regression for validated host, guest and tool writer-source rows, alongside existing fetched-source privacy tests; retain the fingerprint internally where legitimate.
+
+
+## Completed review and verification
+
+No additional actionable issue was established in the persistence, access, hashing or response-correlation review. The current normal resource-read path keeps the digest out of capability metadata/evidence and projects fetched rows before sending them; F-02 is specifically the separately validated writer-source checkpoint path described above. Full-file fingerprint controls cover CRLF/Unicode, changes beyond the display cap and empty files. A delayed host lookup can observe a newer target after a read, but the production reader discards its old request after room/target replacement; no user-visible defect was established for that observation.
+
+Independent checks on `3174e66`:
+
+- **11 production suites / 186 tests** pass for lifecycle, persistence, range, jump and related behavior; separate full-App probes reproduce F-01 and N-01. Both fake-timer and real JavaScript microtask variants confirm F-01.
+- **5 production suites / 78 tests** pass for access and provenance; 9 independent probes cover the F-02 witness, target timing, App correlation and full-file fingerprints. These suite groups may overlap.
+- A separate rewind/projection control passes: the earlier delivery reactivates with provenance intact, ranges are defensively copied and the fetched-row fingerprint stays out of the display projection.
+- [CI run 41756624553](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41756624553) passed on the reviewed implementation. The report-only commits through `cbf24e64` change no executable source.
+
+Correct F-01 and F-02 and re-review the new exact head; N-01 remains a separate nonblocking concern. Native browser geometry, VS Code editor behavior, screen-reader and live provider acceptance were not exercised. No formal approval or merge was made.
