@@ -120,6 +120,7 @@ An actual WorkshopApp regression opens settings then the manager, presses Open m
 | N01 | Fixed | `7f507259` | `setSettingsVisible` from WorkshopApp's open and close; another hook's write refreshes while the manager or the settings show the listing. |
 | N02 | Fixed | `7f507259` | `memoryControls.onOpenManager` opens the manager with that memory's row marked (`aria-current`) and scrolled to. |
 | N03 | Fixed | `2ffc0879` | The hook keeps the newest folder request's id; an older answer changes neither the folder's status nor the manager's alert. Hook test: the second press opens, then the first fails; no error. |
+| N04 | Fixed | `d1e20b53` | Each room snapshot reaches the memory manager hook, which remembers the Save and tell me receipts it has seen; a new one refreshes the listing while the manager or the settings show it. Unrelated snapshots ask nothing. Hook and router tests. |
 | Rename (title-only write) | Tracked | `286a01bd` (tech debt, the coordinator's) | Still the sheet's read then whole-draft update. A title change writes a receipt (D7), so a host title-only write belongs with the receipt path, not this PR. Recorded in the slice doc's deviations. |
 
 F04, N01 and N02 share the hook and WorkshopApp's wiring, so they are one commit; each has its own tests, which fail on `87e14f6a`.

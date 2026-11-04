@@ -141,6 +141,9 @@ The coordinator's brief:
   while the manager or the settings show it.
 - **N03:** only the newest Open memory folder press sets the folder's
   status; an older, late answer says nothing.
+- **N04:** a Save and tell me receipt new in the room's snapshot refreshes
+  the listing while the manager or the settings show it (an automatic save
+  sends no write result).
 - **N02:** a saved card's Open in manager opens the manager with that
   memory's row marked (`aria-current`, an accent edge) and scrolled to.
 
@@ -205,6 +208,7 @@ Node 22, on this branch:
 | After 4b-wire (`87e14f6a`) | 682 | 9,598 | 59 |
 | After the review fixes | 685 | 9,622 | 59 |
 | Round 2, with Slice 5 (#201) merged in | 690 | 9,679 | 59 |
+| Round 3 (F01's Always load in full, N03, N04) | 690 | 9,684 | 59 |
 
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors and no new warnings. The memory components mark
