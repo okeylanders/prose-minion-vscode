@@ -21,7 +21,7 @@ import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/W
 import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
-import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { resolveWorkshopReplyMemory, type WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -639,16 +639,8 @@ export class WorkshopRoomHandler {
           capability: guestCapability,
           webResearch: this.conversationSettingsService.getWebResearch().enabled
         });
-        // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
-        // only a reply holding a frame reads the listing.
-        const replyMemory = hasWorkshopMemoryProposalText(result.content)
-          ? await resolveWorkshopReplyMemory(
-            this.capabilityFactory,
-            result.content,
-            controller.signal,
-            workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile())
-          )
-          : undefined;
+        const pendingMemory = this.replyMemory(result.content, controller.signal);
+        const replyMemory = pendingMemory && await pendingMemory;
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
           session: this.session,
@@ -1177,16 +1169,8 @@ export class WorkshopRoomHandler {
             webResearch: this.conversationSettingsService.getWebResearch().enabled
           });
 
-      // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
-      // only a reply holding a frame reads the listing.
-      const replyMemory = hasWorkshopMemoryProposalText(result.content)
-        ? await resolveWorkshopReplyMemory(
-          this.capabilityFactory,
-          result.content,
-          controller.signal,
-          workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile())
-        )
-        : undefined;
+      const pendingMemory = this.replyMemory(result.content, controller.signal);
+      const replyMemory = pendingMemory && await pendingMemory;
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
         session: this.session,
@@ -1376,6 +1360,18 @@ export class WorkshopRoomHandler {
       return 'room';
     }
     return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
+  }
+
+  /**
+   * A reply's project-memory context, settled at completion (ADR 2026-11-04
+   * D6). Only a reply holding a frame reads the listing; any other gets
+   * none, so its completion costs no await.
+   */
+  private replyMemory(reply: string, signal: AbortSignal): Promise<WorkshopReplyMemoryContext> | undefined {
+    return hasWorkshopMemoryProposalText(reply)
+      ? resolveWorkshopReplyMemory(this.capabilityFactory, reply, signal,
+        workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile()))
+      : undefined;
   }
 
   private excerptMutationBlockedReason(): string | undefined {
