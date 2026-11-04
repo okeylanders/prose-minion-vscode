@@ -1050,6 +1050,7 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryManager.ts',
   'ProjectMemoryUpdateNote.ts',
   'ProjectMemoryVersion.ts',
+  'ProjectMemoryWorkspaceIdentity.ts',
   'ProjectMemoryWrites.ts',
   'WorkshopMemoryAutoSave.ts',
   'WorkshopMemoryProposalPhrasing.ts',

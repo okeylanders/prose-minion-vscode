@@ -114,7 +114,9 @@ The coordinator's brief:
   (live room and memory folder) at the request, before either queue can
   wait, and the store compares its turn and every commit point with that
   folder. A copied project with the same id and file name is never deleted
-  for a request about another.
+  for a request about another. **Round 3:** Always load in full is bound
+  the same way (`ProjectMemoryWorkspaceIdentity`; the store's `replace` takes
+  the captured folder).
 - **F02: the manager's answers stay with their root.** `moved(directory)`
   compares the scope and the store's folder now with the folder the rows
   were read for, after each await (the queued list, the titles, making the
@@ -137,6 +139,8 @@ The coordinator's brief:
 - **N01:** WorkshopApp tells the hook when Conversation settings open and
   close (`setSettingsVisible`). Another hook's write refreshes the listing
   while the manager or the settings show it.
+- **N03:** only the newest Open memory folder press sets the folder's
+  status; an older, late answer says nothing.
 - **N02:** a saved card's Open in manager opens the manager with that
   memory's row marked (`aria-current`, an accent edge) and scrolled to.
 
