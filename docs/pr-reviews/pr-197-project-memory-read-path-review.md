@@ -1,10 +1,10 @@
 # PR #197 review: Project Memory Slice 2a read path
 
-**Verdict: changes requested before merge into `epic/workshop-project-memory`. One P2 finding remains: F-02's successor traversal stops at an archived intermediate note. The other findings and notes are independently verified fixed.**
+**Verdict: code review clear for merge into `epic/workshop-project-memory`, subject to successful current-head CI. All three P2 findings and both P3 notes are independently verified fixed.**
 
 **PR:** [#197](https://github.com/okeylanders/prose-minion-vscode/pull/197)  
 **Reviewed:** 2026-11-04  
-**Current reviewed head:** `b609285d3298b95f0df294ffbb39b18a84dfe8d9`  
+**Current reviewed head:** `94fcabb7f6b64fd3a82432353d8865f31ced2e3d`  
 **Initial reviewed head:** `27da6fee5d7ca97119b563f1b6d121eef524bf9f`  
 **Target branch:** `epic/workshop-project-memory`  
 **Base:** `067c804fd92edb4663a7058687d8ec3bc83ca252`  
@@ -12,11 +12,30 @@
 
 This report covers Slice 2a against the parent epic, ADR D1–D5/D8/D10–D13, repository architecture rules, and its explicit split from Slice 2b. D14 update notes are intentionally deferred to #198 and are not reported here as missing implementation. This is a branch report, not a formal GitHub approval or authorization to merge.
 
-## Independent re-review at b609285d
+## Independent final correction review at 94fcabb7
+
+**Current status:** F-01, F-02, F-03, N-01 and N-02 are closed. No new actionable finding in the final correction.
+
+The code change in `57ce420e` follows accepted successor links through archived as well as superseded intermediate notes. It still returns only active, unsuperseded endpoints, deduplicates them, and terminates via its seen set. The added regressions cover the archived-middle chain, its second-branch control and a diamond through an archived note.
+
+### Exact-head verification
+
+- Replayed the original archived-middle witness through the actual store, library and read renderer: A ← B (archived) ← C now names C. Its active-middle control also names C.
+- Independent graph replay confirms the branching case returns C and D. Active chains, archived terminals, cyclic-edge exclusion and diamond deduplication remain correct.
+- Replayed the global-setting privacy witness against the current manifest and production adapter/library/frame: global Off defeats workspace Ask and Auto with no store listing; global Ask is not disabled by workspace Off.
+- Replayed the real engine/capability/library/store successful `memory.read` path **without supplying any debug setting**: no title sentinel enters the log and the generic project-note label remains. The existing debug off/on Jest regressions also pass.
+- The real-engine initial-user-frame placement, unchanged system prompt, continuation stability and tool separation probes still pass.
+- **18 local Jest suites / 347 tests passed** at this head. Core and webview typechecks passed.
+- The modified production and test files were fetched at the exact head and verified against their Git blob hashes. Local probes used exact production modules with test filesystem/provider boundaries, not native VS Code or live provider calls.
+- [CI run 41896823415](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41896823415) is still running at publication. The correction and this report's subsequent head must retain successful CI before merge.
+
+The following earlier re-review and author ledger are retained as history. This final correction status supersedes their open/closed wording.
+
+## Historical independent re-review at b609285d
 
 **Current status:** F-01 and F-03 are closed; N-01 and N-02 are closed. F-02's original archived-terminal and active-chain examples are fixed, but the combination below remains incorrect.
 
-### F-02 remains open, P2: traverse archived intermediate successors
+### F-02 was still open at b609285d, P2: traverse archived intermediate successors
 
 **Location:** [ProjectMemoryLibraryContracts.ts:119–120](https://github.com/okeylanders/prose-minion-vscode/blob/b609285d3298b95f0df294ffbb39b18a84dfe8d9/packages/core/src/application/services/workshop/memory/ProjectMemoryLibraryContracts.ts#L119-L120).
 
@@ -43,7 +62,7 @@ The same chain with B active correctly names C. D4 preserves supersession relati
 - Graph controls pass for active chains, archived terminals, cyclic-edge exclusion and diamond deduplication. Archived-intermediate and branching witnesses reproduce the remaining F-02 issue.
 - **18 local Jest suites / 344 tests passed**, including the three new regression suites. Core and webview typechecks passed.
 - The initial-frame/continuation/tool-separation probe still passes through the real engine.
-- [CI run 41893325994](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41893325994) for `b609285d` was running at publication. Earlier green runs are not a substitute for this head's checks.
+- [CI run 41893325994](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41893325994) for `b609285d` subsequently passed, as did the re-review report head `ce527349`. Those earlier green runs are not a substitute for the current head's checks.
 
 ## Initial review and author correction history
 
