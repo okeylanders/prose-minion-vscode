@@ -34,3 +34,18 @@ Bind the read to the originating room generation and refuse or discard it if rep
 ## Verification so far
 
 Independent production coverage so far includes **12 suites / 219 tests** for bookmark UI/state and **9 suites / 180 tests** for preview/access boundaries; these may overlap. The separate lifecycle probes reproduce F-01 and F-02 and are not part of those passing totals. More privacy, preview completeness and room-operation review remains. Exact-head CI is still in progress. No implementation change, formal approval or merge was made.
+
+
+## N-01: P3: the preview drops the private-audience label
+
+**Locations:** [`WorkshopTurnPreview.ts:24–45`](https://github.com/okeylanders/prose-minion-vscode/blob/d76180c2510a905da98645ef856cc5e382b83eaa/packages/core/src/application/services/workshop/transcript/WorkshopTurnPreview.ts#L24-L45), [`WorkshopTextSheet.tsx:206–216`](https://github.com/okeylanders/prose-minion-vscode/blob/d76180c2510a905da98645ef856cc5e382b83eaa/packages/core/src/presentation/webview/components/workshop/WorkshopTextSheet.tsx#L206-L216).
+
+The preview payload preserves `privateWith`, but the sheet does not display it. A real-route/App witness pins an excerpt, runs Prose, selects that target, sends a private message and bookmarks both writer and assistant turns. In-window, both bubbles say “Private · you + Prose.” After the ledger advances beyond the 200-turn window, the actual preview route returns `privateWith: 'Prose'` for both, yet neither preview displays the private label. The writer's preview does not name Prose at all; the assistant preview names its speaker but is indistinguishable from a room-visible tool report.
+
+This does not transmit private data to a new recipient, but it omits useful context about who heard the exchange. Render the safe private-audience label in the read-only preview and test both writer and assistant turns against their in-window labels. This is nonblocking.
+
+## Further verification
+
+The F-01 reproduction has now been strengthened through the real App, production routes, persistence coordinator and store; only a disk write was deferred to model slow I/O. The latest `d76180c` delta after `9b2a605` splits App tests and updates documentation only; production behavior is unchanged. Independent verification includes **12 suites / 219 tests** on the implementation, the latest split suites and real-coordinator lifecycle probes, plus **9 suites / 180 tests** for preview/access boundaries. The App and route witnesses for F-01 and F-02 remain separate from passing production totals.
+
+[CI run 41772202938](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41772202938) passed on synthetic merge `6a30822` of `9b2a605` into `356c751`: **625 suites / 8,891 tests / 59 snapshots**, typecheck, lint and both builds. Current-head CI is being checked. F-01 and F-02 remain open despite green CI; the broader review is continuing.
