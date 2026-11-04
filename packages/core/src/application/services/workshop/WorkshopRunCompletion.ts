@@ -42,6 +42,7 @@ import {
   WORKSHOP_REPLY_MEMORY_CLOSED,
   type WorkshopReplyMemoryContext
 } from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { countWorkshopRoomAutoSaves } from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
@@ -126,6 +127,8 @@ export interface WorkshopRunCompletionInput {
    * a trailer is still stripped, and dropped.
    */
   memory?: WorkshopReplyMemoryContext;
+  /** Save and tell me (Slice 5): the recorded reply whose card is saved at once; absent, the card waits. */
+  memoryAutoSave?: (turn: WorkshopTurn) => void;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -271,7 +274,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   // the rest; every log takes the redacted copy, never the memory's text.
   const memoryContext = input.memory ?? WORKSHOP_REPLY_MEMORY_CLOSED;
   const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
-  const memory = settleWorkshopMemoryProposal(controls.memory, memoryContext);
+  const memory = settleWorkshopMemoryProposal(controls.memory, memoryContext, input.memoryAutoSave && {
+    webResearchAttached: result.webResearchAttached === true,
+    autoSavesInRoom: () => countWorkshopRoomAutoSaves(session.readRoomLedger())
+  });
   if (memory.log) {
     input.log(`${memory.log} (${label})`);
   }
@@ -373,6 +379,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       readRetainedHistory: input.readRetainedHistory,
       log: input.log
     });
+  }
+  if (memory.autoSave && turn.memoryProposal) {
+    input.memoryAutoSave?.(turn);
   }
   return turn;
 }

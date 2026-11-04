@@ -68,6 +68,8 @@ export interface WorkshopToolSidePassEvents {
   status: (message: string, tickerMessage?: string) => void;
   error: (message: string, details?: string) => void;
   widgetRecommendationRejected: (message: string, details?: string) => void;
+  /** Save and tell me (Slice 5): the synthesis whose memory card is saved at once. */
+  memoryAutoSave?: (turn: WorkshopTurn) => void;
   settled: (requestId: string) => void;
 }
 
@@ -273,6 +275,7 @@ export class RunWorkshopToolSidePass {
         : undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
+        memoryAutoSave: events.memoryAutoSave,
         session: this.session,
         requestId: synthesisRequestId,
         label: `${personaLabel} synthesis`,

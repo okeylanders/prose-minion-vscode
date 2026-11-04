@@ -14,7 +14,8 @@ import {
   PROJECT_MEMORY_KINDS,
   PROJECT_MEMORY_LIST_ENTRIES
 } from '@shared/types/projectMemory';
-import type { WorkshopMemoryDraft, WorkshopMemoryPinnedEstimate } from '@messages';
+import type { WorkshopMemoryDraft, WorkshopMemoryHold, WorkshopMemoryPinnedEstimate } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export type WorkshopMemoryDraftFault =
   | 'not-a-draft'
@@ -113,6 +114,28 @@ export function workshopMemoryPinnedHelp(estimate: WorkshopMemoryPinnedEstimate 
   }
   return `${lead} This one adds about ${roundTokens(estimate.thisTokens)} tokens; ` +
     `memories loaded in full would come to about ${roundTokens(estimate.totalTokens)} of ${estimate.budgetTokens.toLocaleString('en-US')}.`;
+}
+
+/**
+ * Why a held card waits (Slice 0d, "In the thread", item 4; D8). Neither
+ * line claims a search ran (the hold reads whether search tools were
+ * attached: PR #196 F-01), and the cap is room-wide, so neither names a
+ * persona (F-02).
+ */
+export function workshopMemoryHeldReason(held: WorkshopMemoryHold): string {
+  switch (held) {
+    case 'web-research':
+      return 'Live web research was available for this reply, so this memory waits for you to save it.';
+    case 'room-cap':
+      return `This conversation has reached its limit of ${PROMPT_BUDGETS.workshopProjectMemory.autoSavesPerRoom} ` +
+        'automatic memory saves. This one waits for you.';
+    default:
+      return assertNeverHold(held);
+  }
+}
+
+function assertNeverHold(value: never): never {
+  throw new Error(`Unhandled memory hold: ${JSON.stringify(value)}`);
 }
 
 /** Tokens as the tab and the sheet say them: "about 60", "about 4,360". */

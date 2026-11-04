@@ -45,7 +45,8 @@ export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'rea
 
 /** Who a new memory came from; the host fills it, never a model (D6). */
 export interface ProjectMemorySaveProvenance {
-  readonly origin: Exclude<ProjectMemoryOrigin, 'auto'>;
+  /** `auto` only for Save and tell me's own save (Slice 5). */
+  readonly origin: ProjectMemoryOrigin;
   readonly proposedBy?: string;
   readonly sourceSession?: string;
   readonly sourceTurns: readonly string[];

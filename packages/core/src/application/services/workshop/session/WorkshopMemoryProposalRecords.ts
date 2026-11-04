@@ -6,10 +6,12 @@
  *
  * When present it is exact, within the format's bounds, and only on a
  * persona's reply (a host or guest assistant turn). A saved card names the
- * memory it became; a pending or dismissed one names none.
+ * memory it became; a pending or dismissed one names none. A card Save and
+ * tell me held (Slice 5) names why in `held`, also optional and additive.
  */
 
 import {
+  WORKSHOP_MEMORY_HOLDS,
   WORKSHOP_MEMORY_PROPOSAL_STATES,
   type WorkshopMemoryProposal,
   type WorkshopTurn
@@ -47,13 +49,16 @@ export function assertWorkshopMemoryProposalShape(
     turn.memoryProposal,
     at,
     ['title', 'kind', 'summary', 'body', 'state'],
-    ['supersedes', 'droppedSupersedes', 'memoryId']
+    ['supersedes', 'droppedSupersedes', 'memoryId', 'held']
   );
   oneLineAt(proposal.title, `${at}.title`, PROJECT_MEMORY_FIELD_CHARACTERS.title);
   enumAt(proposal.kind, `${at}.kind`, PROJECT_MEMORY_KINDS);
   oneLineAt(proposal.summary, `${at}.summary`, PROJECT_MEMORY_FIELD_CHARACTERS.summary);
   boundedStringAt(proposal.body, `${at}.body`, PROJECT_MEMORY_FIELD_CHARACTERS.body);
   enumAt(proposal.state, `${at}.state`, WORKSHOP_MEMORY_PROPOSAL_STATES);
+  if (proposal.held !== undefined) {
+    enumAt(proposal.held, `${at}.held`, WORKSHOP_MEMORY_HOLDS);
+  }
   if (proposal.supersedes !== undefined) {
     boundedArrayAt(proposal.supersedes, `${at}.supersedes`, 1, PROJECT_MEMORY_LIST_ENTRIES.supersedes, 'replaced memories');
     const ids = new Set<string>();
@@ -90,7 +95,8 @@ export function cloneWorkshopMemoryProposal(proposal: WorkshopMemoryProposal): W
     ...(proposal.supersedes ? { supersedes: proposal.supersedes.map((item) => ({ id: item.id, title: item.title })) } : {}),
     ...(proposal.droppedSupersedes !== undefined ? { droppedSupersedes: proposal.droppedSupersedes } : {}),
     state: proposal.state,
-    ...(proposal.memoryId !== undefined ? { memoryId: proposal.memoryId } : {})
+    ...(proposal.memoryId !== undefined ? { memoryId: proposal.memoryId } : {}),
+    ...(proposal.held !== undefined ? { held: proposal.held } : {})
   };
 }
 

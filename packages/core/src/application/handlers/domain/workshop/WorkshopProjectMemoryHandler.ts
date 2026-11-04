@@ -5,9 +5,13 @@
  * Forget or Restore from a receipt. Slice 4b's manager reuses them and adds
  * only pin, archive and delete.
  *
- * - **The writer acts.** Nothing is saved without one of these routes. Under
- *   `auto` a proposal waits as under `ask` until Slice 5. Memory Off doesn't
- *   stop a write: a card pending from before the switch keeps its Save (D8).
+ * - **The writer acts,** or the writer's setting does. Nothing is saved
+ *   without one of these routes, or, under Save and tell me (Slice 5),
+ *   `autoSaveProposal`: the room hands it a reply whose card completion
+ *   marked for saving, and it saves it with `origin: auto` and a receipt
+ *   `by: 'auto'`, through the same in-flight hold a writer's Save joins.
+ *   Memory Off doesn't stop a writer's write: a card pending from before the
+ *   switch keeps its Save (D8).
  * - **Behind the gate.** Every route that changes the room is registered
  *   behind the shared session-operation gate. A write the library awaits
  *   then waits out any room replacement queued meanwhile, and records its
@@ -63,12 +67,16 @@ import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import { PROJECT_MEMORY_SOURCE_TURN } from '@shared/types/projectMemory';
+import { WorkshopMemoryAutoSaves } from '@handlers/domain/workshop/WorkshopMemoryAutoSaves';
+import {
+  workshopProposalProvenance,
+  workshopWriterProvenance
+} from '@handlers/domain/workshop/WorkshopProjectMemoryProvenance';
 
 /** The library's write half, as the handler reaches it; satisfied by ProjectMemoryLibrary. */
 export type WorkshopProjectMemoryWritePort = Pick<
   ProjectMemoryLibrary,
-  'save' | 'edit' | 'forget' | 'restore' | 'editData' | 'estimatePinned'
+  'save' | 'edit' | 'forget' | 'restore' | 'editData' | 'estimatePinned' | 'mode'
 >;
 
 /** The room facts a write needs: is a reply running, and which room is this. */
@@ -122,6 +130,17 @@ export class WorkshopProjectMemoryHandler {
    * receipt, the same answer), and Dismiss or Reopen waits it out.
    */
   private readonly proposalSaves = new Map<string, Promise<WorkshopMemoryWriteResultPayload>>();
+  private readonly autoSaves = new WorkshopMemoryAutoSaves(
+    this.session,
+    this.library,
+    this.room,
+    this.proposalSaves,
+    {
+      provenance: (turn) => this.proposalProvenance(turn, 'auto'),
+      settleRoom: () => this.settleRoom('project memory receipt'),
+      log: (line) => this.log(line)
+    }
+  );
 
   registerRoutes(router: MessageRouter, registerMutation: WorkshopMutationRouteRegistrar): void {
     const refuseUnderGate = (reason: string, message: { payload?: { requestId?: unknown } }) =>
@@ -180,7 +199,7 @@ export class WorkshopProjectMemoryHandler {
       pinned: false
     };
     const saving = this.write(requestId, `proposal save turnId=${turn.id}`, draft, false, async () => {
-      const result = await this.library.save(draft, this.proposalProvenance(turn));
+      const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
       return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
     }, () => this.session.readRoomLedger().some((candidate) => candidate.id === turn.id && candidate.memoryProposal?.state !== 'saved'));
     this.proposalSaves.set(turn.id, saving);
@@ -206,7 +225,7 @@ export class WorkshopProjectMemoryHandler {
       return;
     }
     await this.write(requestId, `save turn turnId=${turn.id}`, payload.draft, false, async () => ({
-      result: await this.library.save(payload.draft, this.writerProvenance([turn.id])),
+      result: await this.library.save(payload.draft, workshopWriterProvenance([turn.id], this.room.liveSessionId())),
       action: 'saved'
     }));
   }
@@ -218,7 +237,7 @@ export class WorkshopProjectMemoryHandler {
       return;
     }
     await this.write(requestId, 'create', message.payload.draft, false, async () => ({
-      result: await this.library.save(message.payload.draft, this.writerProvenance([])),
+      result: await this.library.save(message.payload.draft, workshopWriterProvenance([], this.room.liveSessionId())),
       action: 'saved'
     }));
   }
@@ -247,6 +266,21 @@ export class WorkshopProjectMemoryHandler {
       result: payload.action === 'forget' ? await this.library.forget(payload.memoryId) : await this.library.restore(payload.memoryId),
       action: payload.action === 'forget' ? 'forgotten' : 'restored'
     }));
+  }
+
+  /**
+   * Save and tell me (Slice 5; D8): the card on `turnId`, which completion
+   * marked for saving, saved now (`WorkshopMemoryAutoSaves`). It holds the
+   * card's in-flight save, so a writer's Save joins it and a Dismiss waits
+   * it out. Not a route: the room calls it once the reply is recorded.
+   */
+  autoSaveProposal(turnId: string): Promise<void> {
+    return this.autoSaves.save(turnId);
+  }
+
+  /** Save and tell me's saves still in flight, or undefined when there are none (no await for the room). */
+  autoSavesSettled(): Promise<void> | undefined {
+    return this.autoSaves.settled();
   }
 
   async handleRequestEdit(message: WorkshopMemoryRequestEditMessage): Promise<void> {
@@ -364,28 +398,8 @@ export class WorkshopProjectMemoryHandler {
   }
 
   /** A persona's proposal: the host's provenance, never the trailer's (D6). */
-  private proposalProvenance(turn: WorkshopTurn): ProjectMemorySaveProvenance {
-    const ledger = this.session.readRoomLedger();
-    const index = ledger.findIndex((candidate) => candidate.id === turn.id);
-    const prompted = ledger.slice(0, Math.max(index, 0)).reverse()
-      .find((candidate) => candidate.participant === 'writer' && candidate.kind === 'message');
-    const session = this.room.liveSessionId();
-    return {
-      origin: 'proposed',
-      ...(turn.personaId ? { proposedBy: turn.personaId } : {}),
-      ...(session ? { sourceSession: session } : {}),
-      sourceTurns: session ? [prompted?.id, turn.id].filter(isSourceTurn) : []
-    };
-  }
-
-  private writerProvenance(turnIds: readonly string[]): ProjectMemorySaveProvenance {
-    const session = this.room.liveSessionId();
-    const sourceTurns = session ? turnIds.filter(isSourceTurn) : [];
-    return {
-      origin: 'writer',
-      ...(session && sourceTurns.length > 0 ? { sourceSession: session } : {}),
-      sourceTurns
-    };
+  private proposalProvenance(turn: WorkshopTurn, origin: 'proposed' | 'auto'): ProjectMemorySaveProvenance {
+    return workshopProposalProvenance(this.session.readRoomLedger(), turn, this.room.liveSessionId(), origin);
   }
 
   private settleRoom(reason: string): void {
@@ -417,10 +431,6 @@ export class WorkshopProjectMemoryHandler {
   private log(line: string): void {
     this.outputChannel.appendLine(`${LOG} ${line}`);
   }
-}
-
-function isSourceTurn(id: string | undefined): id is string {
-  return typeof id === 'string' && PROJECT_MEMORY_SOURCE_TURN.test(id);
 }
 
 function requestIdOf(payload: { requestId?: unknown } | undefined): string | undefined {

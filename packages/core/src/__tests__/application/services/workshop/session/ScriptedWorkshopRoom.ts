@@ -118,6 +118,10 @@ export class ScriptedWorkshopRoom {
 
   /** The project-memory context completion reads (ADR 2026-11-04 D6); closed unless a test opens it. */
   memoryContext?: WorkshopReplyMemoryContext;
+  /** Save and tell me's saver (Slice 5); absent, a card waits as under Ask first. */
+  memoryAutoSave?: (turn: WorkshopTurn) => void;
+  /** Whether each reply's run had web search tools attached (Slice 5's hold). */
+  webResearchAttached = false;
 
   constructor() {
     this.session = new WorkshopSessionService(() => ++this.clock);
@@ -539,6 +543,7 @@ export class ScriptedWorkshopRoom {
       readRetainedHistory: (id) => this.conversations.getCommittedHistoryCounts(id),
       settleCommittedRun: settle,
       memory: this.memoryContext,
+      ...(this.memoryAutoSave ? { memoryAutoSave: this.memoryAutoSave } : {}),
       log: (line) => this.log.push(line),
       events: silentEvents()
     });
@@ -668,7 +673,9 @@ export class ScriptedWorkshopRoom {
   }
 
   private result(content: string, conversationId: string | undefined): AnalysisResult {
-    return { toolName: 'scripted', content, conversationId } as AnalysisResult;
+    return {
+      toolName: 'scripted', content, conversationId, ...(this.webResearchAttached ? { webResearchAttached: true } : {})
+    } as AnalysisResult;
   }
 
   private requestId(kind: string): string {

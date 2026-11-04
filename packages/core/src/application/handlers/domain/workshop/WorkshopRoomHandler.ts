@@ -361,6 +361,10 @@ export class WorkshopRoomHandler {
       return;
     }
 
+    const memorySaves = this.memoryAutoSavesInFlight();
+    if (memorySaves) {
+      await memorySaves;
+    }
     const excerpt = this.session.getExcerpt();
     if (!excerpt || excerpt.text.trim().length === 0) {
       this.sendError('workshop.run_tool', 'Pin an excerpt before running a tool.');
@@ -395,6 +399,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.run_tool', errorMessage, details),
       widgetRecommendationRejected: (errorMessage, details) =>
         this.sendError('workshop.widget_recommendation', errorMessage, details),
+      memoryAutoSave: this.memoryAutoSave,
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -559,6 +564,10 @@ export class WorkshopRoomHandler {
     }
 
     try {
+      const memorySaves = this.memoryAutoSavesInFlight();
+      if (memorySaves) {
+        await memorySaves;
+      }
       this.session.validatePersonaGuestInvitation(personaId);
       this.preemptActiveRun();
 
@@ -644,6 +653,7 @@ export class WorkshopRoomHandler {
         const replyMemory = pendingMemory && await pendingMemory;
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
+          memoryAutoSave: this.memoryAutoSave,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -956,6 +966,10 @@ export class WorkshopRoomHandler {
       onRoomAccepted?: (userTurnId: string) => void;
     }
   ): Promise<{ committed: boolean; refusalReason?: string }> {
+    const memorySaves = this.memoryAutoSavesInFlight();
+    if (memorySaves) {
+      await memorySaves;
+    }
     const personaId = this.session.getSelectedPersonaId();
     const targetPlan = this.resolveMessageTarget(
       targetOverride ?? this.session.getChatTarget(),
@@ -1175,6 +1189,7 @@ export class WorkshopRoomHandler {
       const replyMemory = pendingMemory && await pendingMemory;
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
+        memoryAutoSave: this.memoryAutoSave,
         session: this.session,
         requestId,
         label,
@@ -1362,6 +1377,21 @@ export class WorkshopRoomHandler {
       return 'room';
     }
     return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
+  }
+
+  /** Save and tell me (Slice 5): a recorded reply's card, saved now by the memory handler. */
+  private readonly memoryAutoSave = (turn: WorkshopTurn): void => {
+    this.sliceComposition.autoSaveMemoryProposal(turn);
+  };
+
+  /**
+   * A new run waits out Save and tell me's saves in flight, so a receipt
+   * lands right after the reply it came from, never inside the next
+   * exchange, and the next delivery carries it. With none, undefined, and
+   * the caller doesn't await: an ordinary run keeps its timing.
+   */
+  private memoryAutoSavesInFlight(): Promise<void> | undefined {
+    return this.sliceComposition.memoryAutoSavesSettled();
   }
 
   /**

@@ -54,7 +54,7 @@ import type {
   WorkshopSliceCompositionDependencies,
   WorkshopSliceHostEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import type { WorkshopSessionAction } from '@messages';
+import type { WorkshopSessionAction, WorkshopTurn } from '@messages';
 import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
@@ -321,6 +321,16 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
     );
+  }
+
+  /** Save and tell me (Slice 5): a recorded reply's card, saved now. */
+  autoSaveMemoryProposal(turn: WorkshopTurn): void {
+    void this.projectMemoryHandler.autoSaveProposal(turn.id);
+  }
+
+  /** Save and tell me's saves in flight, for a new run to wait out; undefined when none. */
+  memoryAutoSavesSettled(): Promise<void> | undefined {
+    return this.projectMemoryHandler.autoSavesSettled();
   }
 
   isContextRunActive(): boolean {
