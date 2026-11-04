@@ -36,8 +36,13 @@ import { storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
 /** The folder, from the workspace's one root. */
 export const PROJECT_MEMORY_DISPLAY_PATH = 'prose-minion/memory';
 
-/** A claim on a memory file: its saved name, hidden, then when it was taken and the writer's id (`StoredFileClaims`). */
-export const PROJECT_MEMORY_CLAIM = /^\.([^/\\]+\.md)\.claim-(\d{13})-[A-Za-z0-9-]+$/;
+/**
+ * A claim on a memory file: its saved name, hidden, then when it was taken
+ * and the writer's id (`StoredFileClaims`). The saved name's extension is
+ * matched in any case, as `isMemoryFileName` lists it (PR #194 F-03), so a
+ * claim on `note.MD` is seen, kept busy and put back like one on `note.md`.
+ */
+export const PROJECT_MEMORY_CLAIM = /^\.([^/\\]+\.[Mm][Dd])\.claim-(\d{13})-[A-Za-z0-9-]+$/;
 
 const SLUG_CHARACTERS = 48;
 const INDEX_FILE = 'index.md';

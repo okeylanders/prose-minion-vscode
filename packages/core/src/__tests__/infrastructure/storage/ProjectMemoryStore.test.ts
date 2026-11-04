@@ -325,3 +325,26 @@ describe('claims another window left', () => {
     expect((await createdEntry(other.store)).memory.id).toBe('mem-1a9e04');
   });
 });
+
+describe('claims on files named with any Markdown casing (PR #194 F-03)', () => {
+  it.each(['note.MD', 'Mixed.Md'])('%s: busy under a live claim, put back once abandoned, and its leftover retired by a delete', async (fileName) => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    const saved = path.join(MEMORY, fileName);
+    await fileSystem.rename(path.join(MEMORY, entry.fileName), saved);
+
+    // Live: the memory is busy, never missing.
+    await fileSystem.rename(saved, claimOf(fileName, clock.at, 'live1'));
+    expect(await store.read(entry.memory.id)).toEqual({ kind: 'busy' });
+
+    // Abandoned: put back under its saved name.
+    clock.at += STORED_FILE_CLAIM_LEASE_MS + 1;
+    expect(await store.read(entry.memory.id)).toMatchObject({ kind: 'memory', entry: { fileName } });
+    expect(everyFile(fileSystem)).toEqual([fileName]);
+
+    // A leftover beside it goes with a delete; nothing comes back.
+    fileSystem.files.set(claimOf(fileName, clock.at - 1, 'old1'), new TextEncoder().encode('an earlier version'));
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'deleted' });
+    expect(everyFile(fileSystem)).toEqual([]);
+  });
+});
