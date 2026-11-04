@@ -28,6 +28,10 @@ import {
   InitialRunRequest,
   RunPolicy
 } from './AgentRunContracts';
+import {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
@@ -374,7 +378,7 @@ export class AgentRunEngine {
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
     const requestedResources: string[] = [];
-    const collectedSources: ContextSourceEntry[] = [];
+    const collectedSources: StoredContextSourceEntry[] = [];
     let totalUsage: TokenUsage | undefined;
     let runCitations: UrlCitation[] | undefined;
     let latestObservation: InferenceRequestObservation | undefined;
@@ -680,6 +684,14 @@ export class AgentRunEngine {
     return this.conversationManager.getContextSources(conversationId);
   }
 
+  /** Host-side only: what was recorded when a file was read (Workshop Wayfinding D4). */
+  findConversationContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    return this.conversationManager.findContextSourceRead(conversationId, identity);
+  }
+
   /** Committed history lengths, measured in archive units, for one retained conversation. */
   getConversationHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
     return this.conversationManager.getCommittedHistoryCounts(conversationId);
@@ -697,7 +709,7 @@ export class AgentRunEngine {
     promptTokensBefore: number | undefined,
     promptTokensAfter: number | undefined,
     artifactId: string | undefined
-  ): ContextSourceEntry[] {
+  ): StoredContextSourceEntry[] {
     const roundDelta = promptTokensBefore !== undefined &&
       promptTokensAfter !== undefined &&
       promptTokensAfter > promptTokensBefore
@@ -718,7 +730,11 @@ export class AgentRunEngine {
         promptTokensDelta: exact ? roundDelta : apportioned,
         isEstimate: !exact,
         artifactId,
-        deliveredAt: Date.now()
+        deliveredAt: Date.now(),
+        // Provenance is written only when the capability observed it (D9).
+        ...(source.turnId ? { turnId: source.turnId } : {}),
+        ...(source.lineRange ? { lineRange: { ...source.lineRange } } : {}),
+        ...(source.sourceFingerprint ? { sourceFingerprint: source.sourceFingerprint } : {})
       };
     });
   }

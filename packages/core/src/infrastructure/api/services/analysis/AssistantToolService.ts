@@ -20,6 +20,10 @@ import { DialogueMicrobeatAssistant } from '@/tools/assist/dialogueMicrobeatAssi
 import { ProseAssistant } from '@/tools/assist/proseAssistant';
 import { WritingToolsAssistant } from '@/tools/assist/writingToolsAssistant';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import type {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
 import { AnalysisResult, AnalysisResultFactory, AnalysisRunModel } from '@/domain/models/AnalysisResult';
@@ -976,6 +980,14 @@ export class AssistantToolService {
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
+  }
+
+  /** Host-side only: the line range and fingerprint recorded for one read-in row (Wayfinding D4). */
+  findConversationContextSourceRead(
+    conversationId: string | undefined,
+    identity: ContextSourceReadIdentity
+  ): Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined {
+    return this.currentAssistantEngine()?.findConversationContextSourceRead(conversationId, identity);
   }
 
   /**

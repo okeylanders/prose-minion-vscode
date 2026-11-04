@@ -126,7 +126,7 @@ describe('WorkshopContextHandler', () => {
       intake,
       postMessage,
       log,
-      effects
+      { ...effects, findReadInRecord: jest.fn() }
     );
     registerMutation = jest.fn((type, route) => {
       router.register(type, route as never);

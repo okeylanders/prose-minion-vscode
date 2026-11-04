@@ -23,6 +23,7 @@ import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopModalShell } from './WorkshopModalShell';
+import { WorkshopReadInLines } from './WorkshopReadInLines';
 import { countWords } from '@/utils/textUtils';
 import { formatReadInTime } from '@utils/workshop/contextSources';
 import type {
@@ -42,6 +43,12 @@ export interface WorkshopTextSheetProps {
   canOpenInEditor?: boolean;
   /** True when the host stopped the text at its read ceiling (the reader). */
   truncated?: boolean;
+  /** The reader: the lines the participant read (Wayfinding D4). */
+  lineRange?: { start: number; end: number };
+  /** The reader: true when the file no longer matches what was read. */
+  changedSinceRead?: boolean;
+  /** The reader: shows the card that recorded the read, closing the sheet first. */
+  onShowWhereRead?: () => void;
   /** Disables Apply while a run/session operation holds the room. */
   applyDisabled?: boolean;
   onApply: (text: string) => void;
@@ -202,6 +209,9 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   error,
   canOpenInEditor = false,
   truncated = false,
+  lineRange,
+  changedSinceRead = false,
+  onShowWhereRead,
   applyDisabled = false,
   onApply,
   onOpenInEditor,
@@ -214,8 +224,12 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   const [tab, setTab] = React.useState<'edit' | 'preview'>('edit');
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const previewRef = React.useRef<HTMLDivElement>(null);
+  const linesRef = React.useRef<HTMLDivElement>(null);
 
   const copy = sheetCopy(mode, { onChooseFromProject });
+  // A ranged read opens on its numbered lines, where the band and marker are.
+  const readIn = mode.kind === 'read-in' ? mode : undefined;
+  const linesView = readIn !== undefined && lineRange !== undefined;
 
   // Seed from the incoming body exactly once per opening: re-seeding on every
   // `value` render would overwrite the writer mid-sentence when an unrelated
@@ -235,11 +249,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
 
   React.useEffect(() => {
     if (open) {
-      // A read-only file opens on the rendered read; everything else opens
-      // where the writer's hands are.
-      setTab(copy.readOnly ? 'preview' : 'edit');
+      // A read-only file opens on the rendered read, and a ranged read on its
+      // lines; everything else opens where the writer's hands are.
+      setTab(copy.readOnly && !linesView ? 'preview' : 'edit');
     }
-  }, [copy.readOnly, open]);
+  }, [copy.readOnly, linesView, open]);
 
   React.useEffect(() => {
     if (open && !copy.readOnly && !loading) {
@@ -260,7 +274,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
     // so a keyboard reader is not left behind on the tab strip.
     window.setTimeout(() => {
       if (next === 'edit') {
-        textareaRef.current?.focus();
+        (linesRef.current ?? textareaRef.current)?.focus();
       } else {
         previewRef.current?.focus();
       }
@@ -280,6 +294,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           <div className="pm-ws-eyebrow">{copy.kicker}</div>
           <h2 id={TITLE_ID}>{copy.title}</h2>
           <p>{copy.sub}</p>
+          {readIn && lineRange ? (
+            <p className="pm-ws-readin-sheet-range">
+              Read at {formatReadInTime(readIn.deliveredAt)} · lines {lineRange.start}–{lineRange.end}
+            </p>
+          ) : null}
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -311,6 +330,12 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
       </div>
 
       <div className="pm-ws-text-sheet-body">
+        {readIn && changedSinceRead && !loading && !error ? (
+          <div className="pm-ws-text-sheet-notice pm-ws-readin-changed" role="note">
+            <Icon name="alert" size={14} /> This file has changed since {readIn.participantLabel} read
+            it. You&rsquo;re seeing it as it is now.
+          </div>
+        ) : null}
         {error ? (
           <div className="pm-ws-text-sheet-notice" role="alert">
             <Icon name="x" size={14} /> {error}
@@ -336,7 +361,18 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           role="tabpanel"
           hidden={tab !== 'edit'}
         >
+          {linesView && readIn && lineRange && value !== undefined ? (
+            <WorkshopReadInLines
+              ref={linesRef}
+              visible={tab === 'edit'}
+              text={value}
+              lineRange={lineRange}
+              participantLabel={readIn.participantLabel}
+              label={readIn.path}
+            />
+          ) : null}
           <textarea
+            hidden={linesView}
             ref={textareaRef}
             className="pm-ws-text-sheet-input"
             value={draft}
@@ -398,7 +434,17 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
       </div>
 
       <footer className="pm-ws-session-sheet-foot">
-        <span>{copy.foot}</span>
+        <span>
+          {copy.foot}
+          {readIn && onShowWhereRead ? (
+            <>
+              {' · '}
+              <button className="pm-ws-text-sheet-link" type="button" onClick={onShowWhereRead}>
+                Show where it was read
+              </button>
+            </>
+          ) : null}
+        </span>
         {canOpenInEditor && onOpenInEditor ? (
           <button className="pm-ws-session-secondary" type="button" onClick={onOpenInEditor}>
             <Icon name="doc" size={13} /> {copy.openLabel}

@@ -6,6 +6,11 @@
  * Both are reads: they resolve the webview's `{ group, path }` only through
  * the configured catalog (`readWorkshopReadInResource`), refuse anything
  * else, and never log file content or the writer's text.
+ *
+ * A content request may also name the row it opened by `deliveredAt`. The
+ * host then looks that row up in the chat target's manifest and answers with
+ * its line range and whether the file has changed since it was read, by
+ * comparing fingerprints here. The fingerprint itself never leaves the host.
  */
 
 import {
@@ -19,6 +24,10 @@ import {
 } from '@/application/services/workshop/WorkshopReadInResource';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { LogSink, ShellService } from '@/platform';
+import type {
+  ContextSourceReadIdentity,
+  StoredContextSourceEntry
+} from '@orchestration/ContextSourceRecord';
 import {
   MessageType,
   WorkshopOpenReadInResourceMessage,
@@ -27,6 +36,17 @@ import {
 } from '@messages';
 
 const LOG = '[WorkshopReadInRoutes]';
+
+/** Finds what the chat target's manifest recorded for one read-in row; host-side only. */
+export type WorkshopReadInRecordLookup = (
+  identity: ContextSourceReadIdentity
+) => Pick<StoredContextSourceEntry, 'lineRange' | 'sourceFingerprint'> | undefined;
+
+/** The row's delivery time, when the request names one. */
+const deliveredAtOf = (payload: unknown): number | undefined => {
+  const value = (payload as { deliveredAt?: unknown } | undefined)?.deliveredAt;
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
+};
 
 /** Longest webview-minted request id the reader accepts. */
 const MAX_REQUEST_ID_LENGTH = 128;
@@ -53,7 +73,8 @@ export class WorkshopReadInRoutes {
     private readonly shell: ShellService,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    private readonly reportError: (message: string, details?: string) => void
+    private readonly reportError: (message: string, details?: string) => void,
+    private readonly findReadInRecord: WorkshopReadInRecordLookup
   ) {}
 
   async serveContent(message: WorkshopRequestReadInResourceMessage): Promise<void> {
@@ -81,6 +102,7 @@ export class WorkshopReadInRoutes {
           ...ref,
           content: read.content,
           ...(read.truncated ? { truncated: true } : {}),
+          ...this.provenance(message.payload, read.resource, read.fingerprint),
           canOpenInEditor: true
         };
       }
@@ -99,6 +121,35 @@ export class WorkshopReadInRoutes {
       payload,
       timestamp: Date.now()
     });
+  }
+
+  /**
+   * The row's line range and "changed since", from the newest manifest row
+   * naming this file at the requested delivery time. A row without a stored
+   * fingerprint (a whole-file tool read, or a row stored before Slice 3)
+   * says nothing about change, rather than guessing.
+   */
+  private provenance(
+    request: unknown,
+    resource: { group: string; path: string },
+    fingerprint: string
+  ): Pick<WorkshopReadInResourceContentPayload, 'lineRange' | 'changedSinceRead'> {
+    const deliveredAt = deliveredAtOf(request);
+    if (deliveredAt === undefined) {
+      return {};
+    }
+    const record = this.findReadInRecord({ group: resource.group, path: resource.path, deliveredAt });
+    if (!record) {
+      this.outputChannel.appendLine(`${LOG} No manifest row matched the read-in request`);
+      return {};
+    }
+    const changedSinceRead = record.sourceFingerprint === undefined
+      ? undefined
+      : record.sourceFingerprint !== fingerprint;
+    return {
+      ...(record.lineRange ? { lineRange: { ...record.lineRange } } : {}),
+      ...(changedSinceRead === undefined ? {} : { changedSinceRead })
+    };
   }
 
   async openBeside(message: WorkshopOpenReadInResourceMessage): Promise<void> {

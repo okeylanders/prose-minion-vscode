@@ -15,7 +15,10 @@ import {
 import { searchConfiguredResourceContent } from '@/application/services/ConfiguredResourceContentSearch';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
-import { WorkshopReadInRoutes } from '@handlers/domain/workshop/WorkshopReadInRoutes';
+import {
+  WorkshopReadInRecordLookup,
+  WorkshopReadInRoutes
+} from '@handlers/domain/workshop/WorkshopReadInRoutes';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
@@ -76,7 +79,7 @@ const WORKSHOP_CONTEXT_EDIT_REFUSALS: Readonly<
 type WorkshopContextEffects = Pick<
   WorkshopRoomEffects,
   'postSessionState' | 'postTurn' | 'markDirty' | 'reportError' | 'sendStatus'
->;
+> & { findReadInRecord: WorkshopReadInRecordLookup };
 
 /**
  * Owns Workshop's context/resource routes and the independent Context wizard
@@ -100,7 +103,7 @@ export class WorkshopContextHandler {
     private readonly effects: WorkshopContextEffects
   ) {
     this.readIn = new WorkshopReadInRoutes(
-      contextIntakeService, shell, postMessage, outputChannel, effects.reportError
+      contextIntakeService, shell, postMessage, outputChannel, effects.reportError, effects.findReadInRecord
     );
   }
 

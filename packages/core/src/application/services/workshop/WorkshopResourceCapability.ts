@@ -15,7 +15,11 @@ import {
   WorkshopCapabilityResult
 } from '@shared/types/workshopCapabilities';
 import { WorkshopResourceGroupAvailability } from './WorkshopCapabilityXmlCodec';
-import { findConfiguredResource, sliceUtf8 } from './WorkshopConfiguredResourceLookup';
+import {
+  configuredResourceFingerprint,
+  findConfiguredResource,
+  sliceUtf8
+} from './WorkshopConfiguredResourceLookup';
 
 type ResourceRequest = Extract<WorkshopCapabilityRequest, {
   capability: 'resource.catalog' | 'resource.search' | 'resource.read';
@@ -41,6 +45,23 @@ export interface WorkshopResourceTurnContext {
   readonly requestId: string;
   readonly personaId: WorkshopPersonaId;
   readonly signal: AbortSignal;
+}
+
+/**
+ * The lines a successful `resource.read` returned, from the metadata `read`
+ * writes below (Wayfinding D4). Undefined when no line was returned (a read
+ * whose byte ceiling fell inside its first line) or the metadata is not a
+ * read's.
+ */
+export function resourceReadLineRange(
+  metadata: Record<string, unknown> | undefined
+): { start: number; end: number } | undefined {
+  const start = metadata?.startLine;
+  const end = metadata?.endLine;
+  return Number.isInteger(start) && Number.isInteger(end)
+    && (start as number) >= 1 && (end as number) >= (start as number)
+    ? { start: start as number, end: end as number }
+    : undefined;
 }
 
 export class WorkshopResourceCapability {
@@ -355,7 +376,9 @@ export class WorkshopResourceCapability {
         totalBytes,
         windowBytes: sliced.totalBytes,
         truncated: sliced.truncated
-      }
+      },
+      // The whole file at read time, so the reader can say when it changed.
+      sourceFingerprint: configuredResourceFingerprint(loaded.content)
     };
   }
 

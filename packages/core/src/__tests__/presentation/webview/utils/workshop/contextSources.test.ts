@@ -105,6 +105,29 @@ describe('readInOpenAction', () => {
       .toEqual(EXPECTED[kind]);
   });
 
+  describe('with the card that fetched the row (Wayfinding Slice 3)', () => {
+    const CARD = 'turn-4-assistant-1793632500000';
+    // Every kind again, now recorded with its card.
+    const WITH_CARD: Record<ContextSourceKind, ReadInOpenAction> = {
+      ...EXPECTED,
+      // A resource keeps the reader; the reader offers its card.
+      resource: { kind: 'reader' },
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- ContextSourceKind ids are kebab-case protocol literals.
+      'tool-evidence': { kind: 'jump', turnId: CARD },
+      dictionary: { kind: 'jump', turnId: CARD },
+      transcript: { kind: 'jump', turnId: CARD }
+    };
+
+    it.each(CONTEXT_SOURCE_KINDS.map((kind) => [kind]))('gives %s exactly one action', (kind) => {
+      expect(readInOpenAction(entry(kind, 'host', kind, { configuredResource: rabbit, turnId: CARD })))
+        .toEqual(WITH_CARD[kind]);
+    });
+
+    it('opens nothing for a card-backed kind stored before rows recorded their card', () => {
+      expect(readInOpenAction(entry('dictionary', 'host', 'tardy'))).toEqual({ kind: 'none' });
+    });
+  });
+
   it('opens nothing for a resource row without a configured file', () => {
     expect(readInOpenAction(entry('resource', 'host', 'characters/rabbit.md'))).toEqual({ kind: 'none' });
   });

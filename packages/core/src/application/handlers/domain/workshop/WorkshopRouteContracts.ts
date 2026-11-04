@@ -32,6 +32,7 @@ import type {
   WorkshopTranscriptExportResult
 } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { LogSink, ShellService } from '@/platform';
+import type { WorkshopReadInRecordLookup } from '@handlers/domain/workshop/WorkshopReadInRoutes';
 import type {
   ErrorSource,
   MessageType,
@@ -137,6 +138,11 @@ export interface WorkshopSliceHostEffects {
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
   sendRoomMessage: WorkshopOneShotWidgetRoomSend;
   isRoomRunActive: () => boolean;
+  /**
+   * Host-side only (Wayfinding D4): what the chat target's manifest recorded
+   * when a read-in file was read, for the reader's "changed since".
+   */
+  findReadInRecord: WorkshopReadInRecordLookup;
   disposeRoomSubscriptions: () => void;
   disposeActiveRoomRun: () => void;
 }

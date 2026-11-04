@@ -287,3 +287,128 @@ describe('WorkshopTextSheet — the Read in reader (Wayfinding Slice 2)', () => 
     expect(screen.queryByRole('note')).toBeNull();
   });
 });
+
+describe('WorkshopTextSheet — the reader\'s provenance (Wayfinding Slice 3)', () => {
+  const deliveredAt = Date.UTC(2026, 10, 3, 15, 14);
+  const readInMode: WorkshopTextSheetMode = {
+    kind: 'read-in',
+    label: 'rabbit.md',
+    group: 'characters',
+    path: 'characters/rabbit.md',
+    participantLabel: 'Jill',
+    deliveredAt,
+    turnId: 'turn-4-assistant-1'
+  };
+  const RABBIT = ['# The Rabbit', 'Checks his watch.', 'Late for the Duchess.', 'Wears a waistcoat.', 'Carries gloves.']
+    .join('\n');
+  let scrollIntoView: jest.Mock;
+
+  beforeEach(() => {
+    scrollIntoView = jest.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  const lineItems = () => Array.from(document.querySelectorAll<HTMLElement>('.pm-ws-readin-lines-list > li'));
+
+  it('opens on the numbered lines, marking the lines read with the band', () => {
+    renderSheet({ mode: readInMode, value: RABBIT, lineRange: { start: 2, end: 4 }, canOpenInEditor: true });
+
+    expect(screen.getByRole('tab', { name: 'Source' }).getAttribute('aria-selected')).toBe('true');
+    const region = screen.getByRole('region', { name: 'characters/rabbit.md, lines 2–4 read by Jill' });
+    expect(region).toBeTruthy();
+    const read = Array.from(document.querySelectorAll<HTMLElement>('.pm-ws-readin-line-read'))
+      .map((line) => line.dataset.line);
+    expect(read).toEqual(['2', '3', '4']);
+    expect(screen.getByText(`Read at ${formatReadInTime(deliveredAt)} · lines 2–4`)).toBeTruthy();
+    // The read-only textarea gives way to the lines.
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('puts the end-of-read marker right after the last line read', () => {
+    renderSheet({ mode: readInMode, value: RABBIT, lineRange: { start: 2, end: 4 } });
+
+    const items = lineItems();
+    const marker = items.findIndex((item) => item.classList.contains('pm-ws-readin-line-marker'));
+    expect(items[marker].textContent).toBe('End of Jill\'s read · line 4');
+    expect(items[marker - 1].dataset.line).toBe('4');
+    expect(items[marker + 1].dataset.line).toBe('5');
+  });
+
+  it('scrolls to the first line read when it opens', () => {
+    renderSheet({ mode: readInMode, value: RABBIT, lineRange: { start: 3, end: 4 } });
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    expect((scrollIntoView.mock.contexts[0] as HTMLElement).dataset.line).toBe('3');
+  });
+
+  it('scrolls once the lines are on screen, not while the body is still loading, and only once', () => {
+    const { rerender, props } = renderSheet({ mode: readInMode, value: undefined, loading: true });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    rerender(<WorkshopTextSheet {...props} value={RABBIT} loading={false} lineRange={{ start: 3, end: 4 }} />);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect((scrollIntoView.mock.contexts[0] as HTMLElement).closest('[hidden]')).toBeNull();
+
+    // Back and forth between tabs keeps the writer's own scroll position.
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the marker out when the text no longer reaches the last line read', () => {
+    renderSheet({ mode: readInMode, value: 'One line now.', lineRange: { start: 1, end: 64 } });
+
+    expect(document.querySelector('.pm-ws-readin-line-marker')).toBeNull();
+    expect(document.querySelectorAll('.pm-ws-readin-line-read')).toHaveLength(1);
+  });
+
+  it('says when the file has changed since it was read', () => {
+    renderSheet({ mode: readInMode, value: RABBIT, lineRange: { start: 2, end: 4 }, changedSinceRead: true });
+
+    expect(screen.getByRole('note').textContent)
+      .toBe(' This file has changed since Jill read it. You’re seeing it as it is now.');
+  });
+
+  it('shows no banner for an unchanged file, or one whose change is unknown', () => {
+    const { rerender, props } = renderSheet({ mode: readInMode, value: RABBIT, changedSinceRead: false });
+    expect(screen.queryByRole('note')).toBeNull();
+    rerender(<WorkshopTextSheet {...props} changedSinceRead={undefined} />);
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
+  it('keeps the rendered read, as before, for a row with no line range', () => {
+    renderSheet({ mode: readInMode, value: RABBIT });
+
+    expect(screen.getByRole('tab', { name: 'Preview' }).getAttribute('aria-selected')).toBe('true');
+    expect(document.querySelector('.pm-ws-readin-lines')).toBeNull();
+  });
+
+  it('moves focus to the lines, not the hidden source, when Source is chosen', () => {
+    jest.useFakeTimers();
+    try {
+      renderSheet({ mode: readInMode, value: RABBIT, lineRange: { start: 2, end: 4 } });
+      fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+      fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+      jest.runOnlyPendingTimers();
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: /lines 2–4 read by Jill/ }));
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('offers "Show where it was read" only when given a way to show it', () => {
+    const onShowWhereRead = jest.fn();
+    const { rerender, props } = renderSheet({ mode: readInMode, value: RABBIT, onShowWhereRead });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show where it was read' }));
+    expect(onShowWhereRead).toHaveBeenCalledTimes(1);
+
+    rerender(<WorkshopTextSheet {...props} onShowWhereRead={undefined} />);
+    expect(screen.queryByRole('button', { name: 'Show where it was read' })).toBeNull();
+  });
+});

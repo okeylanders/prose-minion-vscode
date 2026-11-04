@@ -199,6 +199,12 @@ export interface WorkshopCapabilityResult {
   metadata?: Record<string, unknown>;
   usage?: TokenUsage;
   error?: string;
+  /**
+   * Host-private provenance (Workshop Wayfinding D4): the SHA-256 of a read
+   * file's whole text when `resource.read` read it. It rides beside
+   * `metadata`, never in it, because the card persists and shows `metadata`.
+   */
+  sourceFingerprint?: string;
 }
 
 /**

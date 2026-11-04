@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 is built and in review (PR #186).
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 is built, PR #187 in review.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -49,8 +49,8 @@ the ADR:
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
 | 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | Done: PR #184, merged at `d45d57c` |
-| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Built, PR #186 in review |
-| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
+| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Done: PR #186, merged at `d59b651` |
+| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Built, PR #187 in review |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
@@ -387,3 +387,96 @@ the ADR:
       does. Native traversal is Slice 8's live check.
     - *Counts.* At `e69125b`: 606 suites / 8,610 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+- **2026-11-04. Slice 3 (read-in provenance).** Built on
+  `epic/workshop-wayfinding-slice-3-read-in-provenance`, PR #187. The
+  [slice doc](slice-3-read-in-provenance.md#built) has the full map.
+  - **Commits.**
+    - `e36e4af`: rows record their provenance.
+      - `ContextSourceEntry` gains `turnId` and `lineRange`.
+      - The host-only `StoredContextSourceEntry` adds `sourceFingerprint`,
+        which `getContextSources` projects away.
+      - Every persona capability family names its card. `resource.read`
+        records its range and a SHA-256 of the whole file.
+      - The codec and the archive validator accept the new fields and refuse
+        malformed ones.
+      - A pre-provenance fixture reads and saves byte for byte.
+    - `3b23a92`: the reader's request names its row by `deliveredAt`. The
+      host looks that row up in the chat target's conversation, compares
+      fingerprints, and answers `lineRange` and `changedSinceRead`. The
+      fingerprint never leaves the host.
+    - `2163cb9`: the webview side.
+      - `jump` for card-backed rows.
+      - The numbered-lines view, with the band, the end-of-read marker and
+        the scroll to the range.
+      - The amber banner.
+      - "Show where it was read", which closes the sheet before it jumps.
+      - `useWorkshopTurnJump`, now shared with to-do "show source".
+  - **Paths that mint no card carry no `turnId`, each with a test:**
+    - a call the session refused;
+    - a tool side-pass (`WorkshopToolContextCapability`).
+  - **Counts.**
+    - Before, on a clean worktree at `0839502`: 606 suites / 8,610 tests / 59
+      snapshots. One wall-clock test failed under load and passed alone. It
+      is already tracked:
+      [tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md).
+    - After, at `2163cb9`: 611 / 8,683 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,136 → 1,138, both new
+      ones the PascalCase `naming-convention` kind (`WorkshopReadInLines`,
+      the new App test's `PmLogo` mock).
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by the new seam:
+    - `WorkshopApp.tsx` 1,709 → 1,714. The jump moved out to
+      `useWorkshopTurnJump`.
+    - `WorkshopRoomHandler` 1,583 → 1,593. `chatTargetConversation` was
+      extracted from `activeContextBudget`, and the effect added.
+    - `AgentRunEngine` 1,172 → 1,188.
+    - `AssistantToolService` 1,106 → 1,118.
+    - `WorkshopSessionStateV1Shape` 1,037 → 1,052.
+    - `WorkshopPersonaCapability` 855 → 872.
+    - `ConversationManager` 672 → 698. Its row logic lives in the new
+      `ContextSourceRecord.ts`, at 111 lines.
+    - `WorkshopContextHandler` 993 → 996.
+    - `styles/workshop/context.css` 892 → 960. These are the reader's rules;
+      a new sheet would need a Jest mock in every `WorkshopApp` test.
+
+    All of them were already over 500.
+  - **Deviations.**
+    - The fingerprint rides beside the capability result's `metadata`, not in
+      it. `metadata` is persisted on the card, shown in the thread, and
+      printed into the persona's evidence.
+    - A row is named by `deliveredAt` plus its file. Rows have no id.
+    - `changedSinceRead` is absent, not `false`, when the row has no
+      fingerprint.
+    - The band is drawn on the Source tab's numbered lines, and a ranged
+      read opens there.
+    - Jump rows are named "Show the card for {label} in the thread".
+    - The optional rail "changed since" tag is not built.
+  - **Follow-ups.**
+    - [Read-in row identity](../../tech-debt/2026-11-04-read-in-row-identity.md):
+      rows that share a delivery time share provenance in the reader.
+    - Slice 8's live pass should check two things: the reader's scroll to the
+      range, and the jump's focus in a real webview.
+  - **PR #187 review (Astra, 2026-11-04).** Two P2s and one P3, all fixed.
+    The ledger is in
+    [the review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md).
+    - **`6575bbb`, F-02.** A writer-source row validated with a
+      `sourceFingerprint` would have reached `WORKSHOP_SESSION_STATE`.
+      - The codec now refuses the key on writer rows.
+      - `activeContextBudget` projects every row it sends.
+      - A route regression covers host, guest and tool writer rows.
+    - **`16aa38c`, F-01.** The overlay's queued opener restore took focus back
+      from the card after "Show where it was read".
+      - `useOverlayDismiss.focusAfterOverlaysClose` runs a deliberate
+        destination in place of the opener restore, and falls back to the
+        opener when the destination takes no focus.
+      - The jump registers there before it closes the sheet.
+    - **`9801e01`, N-01.** The range scroll ran while the Source pane was
+      still hidden. It now runs the first time the pane is visible, once per
+      range.
+    - **Counts.** At `9801e01`: 613 suites / 8,695 tests / 59 snapshots, all
+      passing. Typecheck is clean. Lint has 0 errors and 1,138 warnings,
+      unchanged.
+    - **Sizes.** `WorkshopRoomHandler` 1,593 → 1,597 (the projection) and
+      `WorkshopSessionStateV1Shape` 1,052 → 1,055 (the comment).
+      `WorkshopApp.tsx` went 1,714 → 1,713.

@@ -890,3 +890,71 @@
   margin-top: 4px;
   color: var(--pm-muted);
 }
+
+/* The reader's provenance (Wayfinding Slice 3; design: Reader.dc.html): the
+   ranged read's numbered lines, its accent band and end-of-read marker. The
+   amber "changed since" banner is the sheet's own notice. */
+[data-pm-surface="workshop"] .pm-ws-readin-sheet-range {
+  font-family: var(--pm-mono);
+  font-size: 11.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-lines {
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 10px 0;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  background: var(--pm-inset);
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-lines:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-lines-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line {
+  display: flex;
+  gap: 14px;
+  padding: 0 14px 0 10px;
+  border-left: 3px solid transparent;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line-read {
+  border-left-color: color-mix(in srgb, var(--pm-accent) 55%, transparent);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line-number {
+  flex: 0 0 28px;
+  text-align: right;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line-marker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 0 14px;
+  color: var(--pm-accent-hi);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-readin-line-marker::before,
+[data-pm-surface="workshop"] .pm-ws-readin-line-marker::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--pm-accent) 50%, transparent);
+}

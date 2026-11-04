@@ -167,4 +167,53 @@ describe('useWorkshopReadIn', () => {
   it('persists nothing', () => {
     expect(renderHook(() => useWorkshopReadIn()).result.current.persistedState).toEqual({});
   });
+  describe('the row a request names (Wayfinding Slice 3)', () => {
+    it('sends the row\'s delivery time, and keeps it on the pending state', () => {
+      const { result } = renderHook(() => useWorkshopReadIn());
+
+      act(() => result.current.requestReadInResource({ ...rabbit, deliveredAt: 5_000 }));
+
+      expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.WORKSHOP_REQUEST_READ_IN_RESOURCE,
+        payload: { requestId: requestIds()[0], ...rabbit, deliveredAt: 5_000 }
+      }));
+      expect(result.current.readInContent).toMatchObject({ ...rabbit, deliveredAt: 5_000 });
+    });
+
+    it('sends no delivery time when the request names no row', () => {
+      const { result } = renderHook(() => useWorkshopReadIn());
+
+      act(() => result.current.requestReadInResource(rabbit));
+
+      const [[posted]] = vscode.postMessage.mock.calls;
+      expect(posted.payload).not.toHaveProperty('deliveredAt');
+    });
+
+    it('takes the line range and "changed since" from the pending request\'s reply', () => {
+      const { result } = renderHook(() => useWorkshopReadIn());
+      act(() => result.current.requestReadInResource({ ...rabbit, deliveredAt: 5_000 }));
+      const [requestId] = requestIds();
+
+      act(() => result.current.handleReadInResourceContent(reply({
+        requestId,
+        ...rabbit,
+        content: 'Down the hole.',
+        lineRange: { start: 1, end: 64 },
+        changedSinceRead: true,
+        canOpenInEditor: true
+      })));
+
+      expect(result.current.readInContent).toEqual({
+        requestId,
+        ...rabbit,
+        deliveredAt: 5_000,
+        content: 'Down the hole.',
+        truncated: undefined,
+        lineRange: { start: 1, end: 64 },
+        changedSinceRead: true,
+        error: undefined,
+        canOpenInEditor: true
+      });
+    });
+  });
 });

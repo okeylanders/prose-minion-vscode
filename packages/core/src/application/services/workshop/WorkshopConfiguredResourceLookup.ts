@@ -10,6 +10,7 @@
 
 import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import type { ContextPathGroup } from '@shared/types';
+import { createHash } from 'crypto';
 import * as path from 'path';
 
 /**
@@ -58,6 +59,15 @@ export function findConfiguredResource(
   return caseFolded.length === 1
     ? { kind: 'found', resource: caseFolded[0] }
     : { kind: 'missing' };
+}
+
+/**
+ * The fingerprint of a configured file's whole text (ADR 2026-11-03 D4): the
+ * SHA-256 of its UTF-8 bytes as the provider loaded it. `resource.read`
+ * records it and the reader compares against it, so both hash the same way.
+ */
+export function configuredResourceFingerprint(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
 export interface Utf8Slice {

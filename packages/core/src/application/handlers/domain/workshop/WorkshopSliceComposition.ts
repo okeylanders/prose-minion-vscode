@@ -99,7 +99,8 @@ export class WorkshopSliceComposition {
         markDirty,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopContextHandler'),
-        sendStatus: host.sendStatus
+        sendStatus: host.sendStatus,
+        findReadInRecord: host.findReadInRecord
       }
     );
     this.excerptScopeHandler = new WorkshopExcerptScopeHandler(

@@ -23,6 +23,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -517,7 +518,13 @@ function assertContextSource(value: unknown, path: string): void {
       'promptTokensDelta',
       'excerptVersion',
       'stale',
-      'artifactId'
+      'artifactId',
+      // Read-in provenance (ADR 2026-11-03 D4; additive, D9). A writer row
+      // never carries the host-private `sourceFingerprint`: only a fetched
+      // row in a conversation archive does, so the key is unknown here and
+      // refused (PR #187 F-02).
+      'turnId',
+      'lineRange'
     ]
   );
   enumAt(source.kind, `${path}.kind`, CONTEXT_SOURCE_KINDS);
@@ -531,7 +538,18 @@ function assertContextSource(value: unknown, path: string): void {
   optionalNumberAt(source.excerptVersion, `${path}.excerptVersion`);
   optionalBooleanAt(source.stale, `${path}.stale`);
   optionalStringAt(source.artifactId, `${path}.artifactId`);
+  const fault = contextSourceProvenanceFault(source);
+  if (fault) {
+    shapeError(`${path}.${fault}`, CONTEXT_SOURCE_PROVENANCE_EXPECTED[fault]);
+  }
 }
+
+const CONTEXT_SOURCE_PROVENANCE_EXPECTED = {
+  turnId: 'a non-empty string',
+  lineRange: 'positive integer lines { start, end } with start <= end',
+  // Unreachable while the key is refused above; kept so the record stays total.
+  sourceFingerprint: 'absent on a writer-source row'
+} as const;
 
 function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(

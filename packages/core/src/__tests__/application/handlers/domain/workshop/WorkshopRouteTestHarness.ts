@@ -175,6 +175,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     getConversationContextSources: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextSources.get(conversationId) ?? [] : []
     ),
+    findConversationContextSourceRead: jest.fn(() => undefined),
     addStatusListener: jest.fn(() => disposeStatusListener)
   } as unknown as jest.Mocked<AssistantToolService>;
   const contextAssistant = {

@@ -12,6 +12,7 @@ import type { ContextResourceSummary } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isContextPathGroup } from '@shared/types/context';
 import {
+  configuredResourceFingerprint,
   findConfiguredResource,
   isSafeConfiguredResourcePath,
   sliceUtf8
@@ -71,6 +72,11 @@ export type WorkshopReadInRead =
       truncated: boolean;
       bytes: number;
       totalBytes: number;
+      /**
+       * The whole file's fingerprint now, by `resource.read`'s rule. Host-side
+       * only: compared with a row's stored one, never sent.
+       */
+      fingerprint: string;
     }
   | { kind: 'refused'; reason: WorkshopReadInRefusalReason };
 
@@ -139,6 +145,7 @@ export async function readWorkshopReadInResource(
     content: sliced.content,
     truncated: sliced.truncated,
     bytes: sliced.bytes,
-    totalBytes: sliced.totalBytes
+    totalBytes: sliced.totalBytes,
+    fingerprint: configuredResourceFingerprint(text)
   };
 }
