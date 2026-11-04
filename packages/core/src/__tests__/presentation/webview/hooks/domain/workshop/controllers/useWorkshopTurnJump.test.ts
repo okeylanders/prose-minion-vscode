@@ -2,14 +2,20 @@
 
 /**
  * useWorkshopTurnJump (ADR 2026-11-03 D3, D4): one scroll-and-focus path for a
- * turn. From inside a sheet it closes the sheet first and jumps only once the
- * sheet is gone, because the frame behind an open sheet is inert and an inert
- * turn cannot take focus.
+ * turn. From inside a sheet it hands the jump to the overlay's focus restore,
+ * which runs it in place of the opener once the sheet is gone (PR #187 F-01).
+ * The full path through the real sheet is in `WorkshopApp.readInProvenance`.
  */
 
 import { act, renderHook } from '@testing-library/react';
 import { useWorkshopTurnJump } from '@hooks/domain/workshop/controllers/useWorkshopTurnJump';
 import { WORKSHOP_TURN_ID_ATTRIBUTE } from '@components/workshop/WorkshopTurnBubble';
+import { focusAfterOverlaysClose, __resetOverlayFocusStateForTests } from '@hooks/useOverlayDismiss';
+
+jest.mock('@hooks/useOverlayDismiss', () => ({
+  ...jest.requireActual('@hooks/useOverlayDismiss'),
+  focusAfterOverlaysClose: jest.fn()
+}));
 
 describe('useWorkshopTurnJump', () => {
   let turn: HTMLElement;
@@ -25,12 +31,13 @@ describe('useWorkshopTurnJump', () => {
   });
 
   afterEach(() => {
+    __resetOverlayFocusStateForTests();
+    (focusAfterOverlaysClose as jest.Mock).mockReset();
     turn.remove();
     delete (Element.prototype as Partial<Element>).scrollIntoView;
   });
 
   const options = (overrides: Partial<Parameters<typeof useWorkshopTurnJump>[0]> = {}) => ({
-    overlayOpen: false,
     closeOverlay: jest.fn(),
     onOutsideWindow: jest.fn(),
     ...overrides
@@ -40,8 +47,10 @@ describe('useWorkshopTurnJump', () => {
     const props = options();
     const { result } = renderHook(() => useWorkshopTurnJump(props));
 
-    act(() => result.current.jumpToTurn('turn-4-assistant-1'));
+    let took = false;
+    act(() => { took = result.current.jumpToTurn('turn-4-assistant-1'); });
 
+    expect(took).toBe(true);
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
     expect(document.activeElement).toBe(turn);
     expect(props.onOutsideWindow).not.toHaveBeenCalled();
@@ -51,8 +60,11 @@ describe('useWorkshopTurnJump', () => {
     const props = options();
     const { result } = renderHook(() => useWorkshopTurnJump(props));
 
-    act(() => result.current.jumpToTurn('turn-1-assistant-0'));
+    let took = true;
+    act(() => { took = result.current.jumpToTurn('turn-1-assistant-0'); });
 
+    // Taking no focus leaves the overlay's opener restore to run.
+    expect(took).toBe(false);
     expect(props.onOutsideWindow).toHaveBeenCalledTimes(1);
     expect(scrollIntoView).not.toHaveBeenCalled();
   });
@@ -66,25 +78,18 @@ describe('useWorkshopTurnJump', () => {
     expect(props.onOutsideWindow).toHaveBeenCalledTimes(1);
   });
 
-  it('closes the overlay first, and jumps only once it has closed', () => {
-    const props = options({ overlayOpen: true });
-    const { result, rerender } = renderHook((current) => useWorkshopTurnJump(current), { initialProps: props });
+  it('hands the jump to the overlay\'s focus restore before it closes the overlay', () => {
+    const order: string[] = [];
+    (focusAfterOverlaysClose as jest.Mock).mockImplementation(() => order.push('destination'));
+    const props = options({ closeOverlay: jest.fn(() => order.push('close')) });
+    const { result } = renderHook(() => useWorkshopTurnJump(props));
 
     act(() => result.current.jumpAfterClosing('turn-4-assistant-1'));
 
-    expect(props.closeOverlay).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['destination', 'close']);
     expect(scrollIntoView).not.toHaveBeenCalled();
-    expect(result.current.pendingTurnId).toBe('turn-4-assistant-1');
-
-    rerender({ ...props, overlayOpen: false });
-
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    const [[destination]] = (focusAfterOverlaysClose as jest.Mock).mock.calls;
+    expect(destination()).toBe(true);
     expect(document.activeElement).toBe(turn);
-    expect(result.current.pendingTurnId).toBeNull();
-
-    // A later overlay opening and closing jumps nowhere again.
-    rerender({ ...props, overlayOpen: true });
-    rerender({ ...props, overlayOpen: false });
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

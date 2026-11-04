@@ -212,18 +212,73 @@ describe('WorkshopApp Read in provenance', () => {
     expect(within(sheet).getByText('End of Jill\'s read · line 3')).toBeTruthy();
   });
 
-  it('"Show where it was read" closes the reader before it focuses the card', () => {
+  /** Lets the overlay's cleanup and its queued focus restore run (PR #187 F-01). */
+  const settle = async () => {
+    await act(async () => {
+      jest.runAllTicks();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
+  const openRabbitFromRail = () => {
+    const row = within(rail()).getByRole('button', { name: 'Open characters/rabbit.md in the reader' });
+    row.focus();
+    fireEvent.click(row);
+    return row;
+  };
+
+  it('"Show where it was read" closes the reader, then the card keeps focus after the overlay settles', async () => {
     render(<WorkshopApp />);
     deliver(withCard([{ ...resourceRow('characters/rabbit.md', 1_000), turnId: 'turn-2' }]));
     const { card, focusedWhileInert } = watchFocus();
 
-    fireEvent.click(within(rail()).getByRole('button', { name: 'Open characters/rabbit.md in the reader' }));
+    openRabbitFromRail();
+    await settle();
     expect(screen.getByLabelText('Session thread').closest('[inert]')).not.toBeNull();
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Show where it was read' }));
+    await settle();
 
     expect(screen.queryByRole('dialog')).toBeNull();
+    // The opener restore must not take focus back to the Read in row.
     expect(document.activeElement).toBe(card);
-    expect(focusedWhileInert).toEqual([false]);
+    expect(focusedWhileInert.every((inert) => !inert)).toBe(true);
+    expect(focusedWhileInert.length).toBeGreaterThan(0);
+  });
+
+  it('still returns focus to the Read in row on an ordinary Close or Escape', async () => {
+    render(<WorkshopApp />);
+    deliver(withCard([{ ...resourceRow('characters/rabbit.md', 1_000), turnId: 'turn-2' }]));
+
+    let row = openRabbitFromRail();
+    await settle();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+    await settle();
+    expect(document.activeElement).toBe(row);
+
+    row = openRabbitFromRail();
+    await settle();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await settle();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(row);
+  });
+
+  it('returns focus to the Read in row, and says so, when the card is outside the window', async () => {
+    render(<WorkshopApp />);
+    // The row names a card the snapshot's window no longer holds.
+    deliver(session([{ ...resourceRow('characters/rabbit.md', 1_000), turnId: 'turn-0' }]));
+
+    const row = openRabbitFromRail();
+    await settle();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Show where it was read' }));
+    await settle();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText('That source turn is outside the current reload window.')).toBeTruthy();
+    expect(document.activeElement).toBe(row);
+    // Let the notice's own timer run inside act.
+    act(() => { jest.runOnlyPendingTimers(); });
   });
 
   it('offers no "Show where it was read" for a row that recorded no card', () => {

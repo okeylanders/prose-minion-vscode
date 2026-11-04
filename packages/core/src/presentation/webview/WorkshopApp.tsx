@@ -902,7 +902,6 @@ export const WorkshopApp: React.FC = () => {
     [showToast]
   );
   const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
-    overlayOpen: textSheet !== null,
     closeOverlay: closeTextSheet,
     onOutsideWindow: showTurnOutsideWindow
   });
