@@ -42,7 +42,7 @@ This is distinct from the documented choice to record an already-committed save'
 - **Three independent corrected-behavior run-ownership witnesses pass.**
 - **Two UI suites / 16 tests pass** for disclosure/group semantics and draft-preserving refusal/retry.
 - The additional independent post-commit cap witness confirms F-04.
-- The full suite and [CI run 41914004062](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41914004062) are still running. No aggregate pass is claimed for this new head yet.
+- The independent full suite passed: **681 suites / 9,598 tests / 59 snapshots**, in 379 seconds (reviewer-only probes excluded). [CI run 41914004062](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41914004062) also passed. F-04 remains open despite these green checks.
 - No formal GitHub approval or merge performed. Earlier findings below remain the historical record of `4c13ce58`.
 
 ## Original scope at `4c13ce58`
