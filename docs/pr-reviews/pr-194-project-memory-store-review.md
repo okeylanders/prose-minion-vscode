@@ -1,20 +1,60 @@
 # PR #194 review: Project Memory Slice 1, store and format 1
 
-**Verdict: changes requested before merge into `epic/workshop-project-memory`. Two reproduced P2 issues remain: F-02's rejected-delete recovery collision, and F-06's stale busy metadata.**
+**Verdict: changes requested before merge into `epic/workshop-project-memory`. One P2 issue remains: F-02's refused claim can still be purged after transient release failures. F-06 is closed against the requested ordering policy.**
 
 **PR:** [#194](https://github.com/okeylanders/prose-minion-vscode/pull/194)  
 **Re-reviewed:** 2026-11-04  
-**Current reviewed implementation:** `b8846c46c78e7daabcb79d6107e22174c676fd75`  
+**Current reviewed implementation:** `eba4fc8b8d5ea4cd1e75428ffcb657edbb4da5d4`  
 **Target branch:** `epic/workshop-project-memory`  
 **Base reported by PR API:** `8fb016fa3e767964fe8c53c778d6453f8507667d`  
-**Current passing CI merge:** `e7f0c4adbd39913b7ec5174ab04d824489e01603`, combining reviewed head with target `3d00a4dce0f5e6fe2c50ab6f75a0552bfba67b61` according to checkout logs  
+**Current passing CI merge:** `af39fd0256f9fdecf69bdc202f03b8c7be22683d`, combining reviewed head with target `9ba38154e883c2b29dce3d5455fef45b8271f80e` according to checkout logs  
 **Initial reviewed implementation:** `5008f071f0b5fb3b093f0e9bb2eb44e86bad86e7`  
 **Initial CI merge:** `886b58446264d0a0107db90d6fb480dba8bde052`  
 **Current spec checked:** merged [PR #192](https://github.com/okeylanders/prose-minion-vscode/pull/192), head `daa7859302a5a3e3cca296ccecbe222c112736e2`
 
-This is a branch review report, not a formal GitHub approval or authorization to merge. #192 has merged and its ADR records the writer's decisions on all six questions. The earlier dependency/question gate is therefore no longer an open gate in this review; the two implementation findings below determine the verdict.
+This is a branch review report, not a formal GitHub approval or authorization to merge. #192 has merged and its ADR records the writer's decisions on all six questions. The earlier dependency/question gate is therefore no longer an open gate in this review; the remaining preservation issue below determines the verdict.
 
-## Independent re-review at b8846c46
+## Independent re-review at eba4fc8b
+
+**Current status:** F-01, F-03, F-04, F-05, F-06 and N-01 are closed. N-02 now follows the requested newest-claim ordering policy. F-02 remains open only for preservation after failed release attempts.
+
+### F-02 remains open, P2: a transient release failure must not turn a refused delete into later data loss
+
+**Location:** [StoredFileClaims.ts:265–272](https://github.com/okeylanders/prose-minion-vscode/blob/eba4fc8b8d5ea4cd1e75428ffcb657edbb4da5d4/packages/core/src/infrastructure/storage/StoredFileClaims.ts#L265-L272).
+
+The original occupied-path reproduction is now fixed: `0909c1c` restores the refused bytes to a free fallback filename. That control survives a subsequent lease-settling listing.
+
+However, `releaseRefused` still leaves an ordinary, purgeable claim if its immediate attempts fail. The catch treats all filesystem errors as name collisions. This does not require four competing writers to steal successive names: one temporary source-file lock can make the rename attempts fail with `EPERM`. After the lock clears, a later listing sees the standing occupant and deletes the refused claim as an earlier committed version.
+
+**Exact-source actual-store reproduction:**
+
+1. Repeat the prior occupied-path case: the delete requested `mem-000001`, actually claimed `mem-abcdef`, and `mem-fedcba` now occupies its saved pathname.
+2. Make claim-to-file release renames fail with `EPERM` while a temporary lock is held. The original name and three immediate fallbacks are attempted, then the delete returns `{ kind: 'changed' }`. The refused bytes remain in the claim.
+3. Clear the lock, advance the injected clock by 31 seconds, and call `list()`.
+4. Only `mem-fedcba` survives. The log's “kept under its claim” copy has been deleted by normal leftover cleanup.
+
+The same harness without the transient failure preserves both memories. An independent claim-layer probe also reproduced loss with the original name occupied and only the three fallback moves locked. This is still the F-02 preservation defect, narrowed to unsuccessful release, rather than a new unrelated requirement.
+
+**Required correction:** give uncommitted/refused claim bytes a durable preservation or recovery distinction that prevents ordinary rewrite-leftover cleanup from deleting them. Merely increasing the synchronous retry count does not provide that distinction. Include a regression where release fails temporarily, service recovers, and a subsequent listing or another store's recovery preserves the refused bytes beside the occupant.
+
+### F-06 closed against the requested ordering policy
+
+`daf4668` sorts claims by descending timestamp, with the same deterministic filename tie-break as recovery. The original real-store overlapping-successful-rewrite reproduction now returns `Latest committed summary`, `pinned: true`; both writes succeed. The author added overlap, directory-order and equal-timestamp ordering regressions.
+
+**Residual limitation, not a new blocker:** a filename tie-break is deterministic but does not establish chronological order for two operations within one millisecond, or across skewed clocks. An equal-millisecond overlap with a lexically greater older claim can still select that older version. This is inherited from the existing recovery ordering policy and is outside the narrower F-06 correction requested here; avoid treating the sorting rule as a total guarantee of real-time recency.
+
+### Verification at eba4fc8b
+
+- [CI run 41874821296, verify job](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41874821296/job/126731265608) passed **640 suites / 9,112 tests / 59 snapshots**, typechecks, lint and builds. Lint: **0 errors / 1,156 warnings**.
+- Independently executed exact-source store and claim-layer controls plus the transient-release-failure witness. The original collision is fixed; unsuccessful release still loses data.
+- Replayed the original F-06 no-failure overlap witness against this head: corrected. Standing/held duplicate-ID conflict behavior remains correct.
+- Full local Jest and native/live-provider testing remain unavailable and are not claimed. CI totals are observed from the job logs.
+- This report's publication is report-only; the ensuing head has its own required CI.
+
+## Prior re-review at b8846c46 (history)
+
+The following section records the preceding review and the subsequent author's correction ledger. The current status above supersedes its open/closed wording.
+
 
 The seven corrective commits and subsequent documentation update were inspected against the original report. F-01, F-03, F-04 and F-05 are independently verified fixed. The original simple F-02 substitution cases now return `changed` and restore bytes, but the collision case below still loses the rejected file. N-01's cycle handling is verified. N-02 now retains metadata and detects duplicate IDs across standing and held rows, but its new claim-selection path introduces F-06.
 
@@ -63,7 +103,7 @@ A separate reproduction using a failed old-claim cleanup produces the same resul
 - The full Jest suite was not run locally because the review workspace lacked dependencies. Full-suite totals above are observed GitHub CI results, not a claim of a local run. No native VS Code or live-provider testing is claimed.
 - The report-only commit containing this update needs its own required CI; this result applies to the implementation head and integration merge specified above.
 
-## Current resolution ledger
+## Earlier resolution ledger, with author correction notes
 
 | ID | Priority | Independent status at b8846c46 |
 |---|---|---|
