@@ -1,0 +1,177 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-04T15:00:00Z"
+  },
+  "title": "Workshop Memory Settings",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 940,
+      "h": 920,
+      "title": "On, with memories · Ask first (click the cards)",
+      "is_interactive": true
+    },
+    "Off.dc.html": {
+      "x": 1020,
+      "y": 0,
+      "w": 940,
+      "h": 920,
+      "title": "Off"
+    },
+    "Empty.dc.html": {
+      "x": 2040,
+      "y": 0,
+      "w": 940,
+      "h": 920,
+      "title": "On, no memories yet"
+    },
+    "OverBudget.dc.html": {
+      "x": 0,
+      "y": 1340,
+      "w": 940,
+      "h": 920,
+      "title": "Over budget: pinned first, the rest searchable"
+    },
+    "Unreadable.dc.html": {
+      "x": 1020,
+      "y": 1340,
+      "w": 940,
+      "h": 920,
+      "title": "Unreadable memory files"
+    },
+    "NoFolder.dc.html": {
+      "x": 0,
+      "y": 2680,
+      "w": 940,
+      "h": 920,
+      "title": "Unavailable · no folder (the mode still applies elsewhere)"
+    },
+    "MultiRoot.dc.html": {
+      "x": 1020,
+      "y": 2680,
+      "w": 940,
+      "h": 920,
+      "title": "Unavailable · several folders"
+    },
+    "LightMemories.dc.html": {
+      "x": 0,
+      "y": 4020,
+      "w": 940,
+      "h": 920,
+      "title": "Light · on, with memories (proposal)"
+    },
+    "LightOver.dc.html": {
+      "x": 1020,
+      "y": 4020,
+      "w": 940,
+      "h": 920,
+      "title": "Light · over budget (proposal)"
+    },
+    "Manager.dc.html": {
+      "x": 0,
+      "y": 5360,
+      "w": 1180,
+      "h": 1320,
+      "title": "Memory manager (click Group by)",
+      "is_interactive": true
+    },
+    "Thread.dc.html": {
+      "x": 1260,
+      "y": 5360,
+      "w": 940,
+      "h": 2400,
+      "title": "In the thread: suggestion card, receipts (click the chevron), update note",
+      "is_interactive": true
+    },
+    "EditSheet.dc.html": {
+      "x": 2280,
+      "y": 5360,
+      "w": 760,
+      "h": 980,
+      "title": "Save to memory… / Edit… / New memory sheet"
+    },
+    "ManagerOverPinned.dc.html": {
+      "x": 0,
+      "y": 6800,
+      "w": 1180,
+      "h": 1380,
+      "title": "Manager · pinned over budget (hand edit or two windows)"
+    },
+    "EditRefused.dc.html": {
+      "x": 2280,
+      "y": 6420,
+      "w": 760,
+      "h": 1040,
+      "title": "Edit refused: a pinned memory's edit would pass the budget"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Off.dc.html",
+    "Empty.dc.html",
+    "OverBudget.dc.html",
+    "Unreadable.dc.html",
+    "NoFolder.dc.html",
+    "MultiRoot.dc.html",
+    "LightMemories.dc.html",
+    "LightOver.dc.html",
+    "Manager.dc.html",
+    "Thread.dc.html",
+    "EditSheet.dc.html",
+    "ManagerOverPinned.dc.html",
+    "EditRefused.dc.html"
+  ],
+  "notes": {
+    "row1": {
+      "x": 0,
+      "y": -300,
+      "text": "Memory tab · the everyday states",
+      "kind": "title1",
+      "maxW": 2980
+    },
+    "row2": {
+      "x": 0,
+      "y": 1040,
+      "text": "When the catalog needs attention",
+      "kind": "title1",
+      "maxW": 1960
+    },
+    "row3": {
+      "x": 0,
+      "y": 2380,
+      "text": "When memory can't belong to a project",
+      "kind": "title1",
+      "maxW": 1960
+    },
+    "row4": {
+      "x": 0,
+      "y": 3720,
+      "text": "Light theme (full tabs are dark-only today)",
+      "kind": "title1",
+      "maxW": 1960
+    },
+    "row5": {
+      "x": 0,
+      "y": 5060,
+      "text": "Manager, thread and the save sheet",
+      "kind": "title1",
+      "maxW": 3040
+    },
+    "calls": {
+      "x": 2120,
+      "y": 1340,
+      "w": 420,
+      "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Pinned 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.",
+      "fill": "orange",
+      "size": "m"
+    }
+  },
+  "designSystems": []
+}

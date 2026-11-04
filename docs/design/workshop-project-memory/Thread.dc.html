@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thread · memory suggestion and receipts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.th{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--accentSoft:rgba(224,103,58,.14);
+  --amber:#e2b24a;
+  width:940px;min-height:2400px;box-sizing:border-box;padding:28px 32px;background:var(--bg);
+  display:flex;flex-direction:column;gap:22px;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
+}
+.label{font:600 10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accentHi);border-top:1px dashed var(--border2);padding-top:14px;}
+.label span{color:var(--dim);letter-spacing:0;text-transform:none;font-weight:400;margin-left:8px;}
+.divider{display:flex;align-items:center;gap:12px;color:var(--dim);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.06em;}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--soft);}
+.receipt{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:11.5px;}
+.receipt::before,.receipt::after{content:"";flex:1;height:1px;background:var(--soft);}
+.receipt .in{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;max-width:720px;}
+.receipt svg{color:var(--accentHi);flex:none;}
+.receipt b{color:var(--text2);font-weight:600;}
+.receipt .lnk{border:0;background:transparent;color:var(--accentHi);font:inherit;padding:2px 4px;border-radius:5px;cursor:pointer;}
+.receipt .lnk:hover{background:var(--accentSoft);}
+.receipt.gone svg{color:var(--dim);}
+.user{display:flex;flex-direction:column;align-items:flex-end;}
+.umsg{max-width:640px;font-size:13px;line-height:1.55;color:var(--text);background:var(--s3);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;}
+.bubble{background:var(--surface);border:1px solid var(--soft);border-radius:12px;padding:14px 16px;max-width:860px;box-sizing:border-box;}
+.head{display:flex;align-items:center;gap:6px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.body{font-size:13.5px;line-height:1.65;color:var(--text2);}
+.body p{margin:8px 0;}
+.card{margin-top:14px;padding:12px 13px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:9px;background:var(--inset);display:flex;flex-direction:column;gap:8px;}
+.card.held{border-color:color-mix(in srgb,var(--amber) 50%,var(--border));}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.card-title{display:flex;align-items:center;gap:7px;color:var(--muted);font:600 10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;}
+.card-title svg{color:var(--accentHi);}
+.kind{font:600 9.5px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:2px 7px;}
+.mem-title{font-size:13.5px;font-weight:600;color:var(--text);}
+.mem-sum{font-size:12px;line-height:1.5;color:var(--text2);}
+.replaces{font-size:11.5px;color:var(--dim);}
+.replaces b{color:var(--muted);font-weight:600;}
+details{font-size:12px;color:var(--muted);}
+summary{cursor:pointer;color:var(--muted);font-size:11.5px;}
+details p{margin:6px 0 0;line-height:1.55;color:var(--text2);padding-left:12px;border-left:2px solid var(--border2);}
+.card-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px;}
+.why{flex:1;min-width:220px;font-size:11px;line-height:1.45;color:var(--dim);}
+.why.held{color:var(--amber);}
+.save{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--accentLo);border-radius:8px;background:var(--accent);color:#fff;font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:5px 11px;cursor:pointer;}
+.ghost{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:8px;background:var(--s2);color:var(--muted);font:11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:5px 10px;cursor:pointer;}
+.settled{margin-top:14px;display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--inset);font-size:12px;color:var(--muted);}
+.settled svg{color:var(--accentHi);flex:none;}
+.settled b{color:var(--text2);font-weight:600;}
+.settled .lnk{border:0;background:transparent;color:var(--accentHi);font:inherit;padding:2px 4px;cursor:pointer;}
+.settled.off svg{color:var(--dim);}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.acts button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);padding:6px 9px;font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;cursor:pointer;}
+.acts button.new{border-color:color-mix(in srgb,var(--accent) 50%,var(--border));color:var(--text2);}
+.exp{display:inline-grid;place-items:center;width:24px;height:24px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--muted);cursor:pointer;padding:0;}
+.exp:hover{border-color:var(--border2);color:var(--text);}
+.exp .down{transform:rotate(90deg);}
+.card.saved{margin-top:-10px;border-color:var(--border);max-width:720px;align-self:center;width:100%;box-sizing:border-box;}
+.update{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.update .sub{font-size:11px;color:var(--dim);}
+</style>
+</helmet>
+<div class="th">
+
+<div class="label">1 · Ask first: a persona suggests a memory <span>The card sits under the reply. Nothing is saved until Save.</span></div>
+<div class="user"><div class="umsg">So it’s settled: the Rabbit’s watch runs backward from chapter 3 on, and nobody remarks on it.</div></div>
+<div class="bubble">
+<div class="head"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg> Jill · Developmental editor</div>
+<div class="body"><p>Good. It earns its place: the first sign that time here is wrong, and the reader notices before Alice does. Leaving it unremarked keeps it eerie rather than whimsical.</p><p>That settles the old “stops at six” idea, so I’d replace it.</p></div>
+<div class="card" role="group" aria-label="Suggested memory">
+<div class="card-head">
+<span class="card-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>Suggested for project memory</span>
+<span class="kind">canon</span>
+</div>
+<div class="mem-title">The Rabbit’s watch runs backward</div>
+<div class="mem-sum">From chapter 3 on, the White Rabbit’s watch runs backward; nobody in Wonderland remarks on it.</div>
+<div class="replaces">Replaces <b>The Rabbit’s watch stops at six</b>, which stays searchable.</div>
+<details><summary>Full note</summary><p>We settled this while working chapter 3’s tea-party scene. The watch running backward is the first sign that time in Wonderland is wrong. Nobody comments on it; the reader notices before Alice does.</p></details>
+<div class="card-foot">
+<button class="save" type="button"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Save</button>
+<button class="ghost" type="button">Edit…</button>
+<button class="ghost" type="button">Dismiss</button>
+<span class="why" style="text-align: right">Saved to this project only. Later conversations start knowing it.</span>
+</div>
+</div>
+<div class="acts">
+<button type="button">Copy</button><button type="button">Save to notes</button><button type="button">Bookmark</button><button type="button" class="new">Save to memory…</button>
+</div>
+</div>
+
+<div class="label">2 · After Save, or after Dismiss <span>The card settles in place; a receipt joins the thread for everyone in the room.</span></div>
+<div class="settled"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Saved to project memory: <b>The Rabbit’s watch runs backward</b></span><button class="lnk" type="button">Open in manager</button></div>
+<div class="receipt"><span class="in"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>Saved to project memory: <b>The Rabbit’s watch runs backward</b></span></span></div>
+<div class="settled off"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span>Dismissed. <b>The Rabbit’s watch runs backward</b> wasn’t saved.</span><button class="lnk" type="button">Show it again</button></div>
+
+<div class="label">3 · Save and tell me <span>Saved at once; the receipt carries Edit and Forget.</span></div>
+<div class="bubble">
+<div class="head"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg> Jill · Developmental editor</div>
+<div class="body"><p>And the Cat never arrives on the page: every scene with it starts after it’s already there. Worth keeping that rule.</p></div>
+</div>
+<div class="receipt"><span class="in"><button class="exp" type="button" aria-expanded="{{expanded}}" aria-controls="pm-mem-receipt-cat" aria-label="{{expandLabel}}" onClick="{{toggle}}"><svg class="{{chevClass}}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg><span>Jill saved to project memory: <b>The Cheshire Cat is never seen arriving</b></span><button class="lnk" type="button">Edit</button><span>·</span><button class="lnk" type="button">Forget</button></span></div>
+<sc-if value="{{isOpen}}" hint-placeholder-val="{{ false }}">
+<div class="card saved" id="pm-mem-receipt-cat" role="group" aria-label="Saved memory">
+<div class="card-head">
+<span class="card-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>Saved to project memory</span>
+<span class="kind">canon</span>
+</div>
+<div class="mem-title">The Cheshire Cat is never seen arriving</div>
+<div class="mem-sum">It is always already there. Every scene with the Cat starts after it has appeared.</div>
+<div class="replaces">Replaces <b>The Cat fades in from the grin</b>, which stays searchable.</div>
+<details><summary>Full note</summary><p>Jill and I agreed the Cat’s arrivals are never shown. The reader meets it mid-scene, already settled, so its comings and goings stay uncanny. The grin-first fade is kept only for its exit in chapter 6.</p></details>
+</div>
+</sc-if>
+<div class="why" style="text-align: center; margin-top: -10px">The chevron expands the saved memory in place: read-only, collapsed by default. Click it.</div>
+<div class="receipt gone"><span class="in"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"></path></svg><span>Forgotten from project memory: <b>The Cheshire Cat is never seen arriving</b>. It’s archived, not deleted.</span><button class="lnk" type="button">Restore</button></span></div>
+
+<div class="label">4 · Held for you, even under Save and tell me <span>Web research was attached to the reply, or the room’s save cap is reached.</span></div>
+<div class="card held" role="group" aria-label="Suggested memory, held for you">
+<div class="card-head">
+<span class="card-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--amber)"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>Held for you to decide</span>
+<span class="kind">decision</span>
+</div>
+<div class="mem-title">Tea is served at six, always</div>
+<div class="mem-sum">The Hatter’s table stays set for six o’clock tea in every scene that visits it.</div>
+<div class="card-foot">
+<button class="save" type="button">Save</button>
+<button class="ghost" type="button">Edit…</button>
+<button class="ghost" type="button">Dismiss</button>
+<span class="why held" style="text-align: right">This reply used live web research, so it isn’t saved on its own.</span>
+</div>
+</div>
+<div class="why held" style="margin-top: -12px; padding-left: 2px">Cap variant: “Jill has saved 5 memories in this conversation, the most it saves on its own. This one waits for you.”</div>
+
+<div class="label">5 · The memory update note <span>Memories changed after the conversation started. Personas get the note with your next message; the thread marks it once.</span></div>
+<div class="update">
+<div class="divider" style="width: 100%"><span>Project memory updated · 1 new, 1 changed</span></div>
+<span class="sub">Sent to the personas with your next message. <button class="ghost" type="button" style="padding: 2px 8px; font-size: 11px">Show what changed</button></span>
+</div>
+<div class="user"><div class="umsg">Let’s look at the trial scene next.</div></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"receiptOpen":{"editor":"boolean","default":false},"$preview":{"width":940,"height":2400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const open = this.state && this.state.open !== undefined ? this.state.open : Boolean(this.props.receiptOpen);
+    return {
+      isOpen: open,
+      expanded: open ? 'true' : 'false',
+      expandLabel: open ? 'Hide the saved memory' : 'Show the saved memory',
+      chevClass: open ? 'down' : '',
+      toggle: () => this.setState({ open: !open })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Project memories · manager</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.mg{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--accentSoft:rgba(224,103,58,.14);
+  --amber:#e2b24a;--red:#ef7d66;
+  width:1180px;min-height:1320px;box-sizing:border-box;padding-top:40px;background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
+}
+.mono{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+.box{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 28px 90px rgba(0,0,0,.55);}
+.eyebrow{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.close{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--muted);cursor:pointer;}
+.search{display:flex;align-items:center;flex:1;gap:8px;padding:0 11px;border:1px solid var(--border);border-radius:8px;color:var(--dim);background:var(--inset);}
+.search input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:10px 0;}
+.scope{flex:none;border:1px solid var(--border);border-radius:999px;padding:3px 7px;color:var(--faint);font:9px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;}
+.group{display:flex;align-items:center;gap:8px;flex:none;color:var(--faint);font:9.5px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;}
+.seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--s2);}
+.seg button{border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:6px 10px;cursor:pointer;}
+.seg button.on{border-color:var(--accentLo);background:var(--accentSoft);color:var(--text);}
+.status{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 28px;}
+.chip{font:11px ui-monospace,Menlo,monospace;color:var(--text2);background:var(--inset);border:1px solid var(--border);border-radius:999px;padding:3px 9px;}
+.chip.warn{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,var(--border));}
+.offnote{display:flex;gap:8px;align-items:center;width:100%;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--muted);font-size:11.5px;line-height:1.5;}
+.offnote svg{color:var(--accentHi);flex:none;}
+.sect-title{color:var(--faint);font:10px ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;}
+.sect-title span{margin-left:7px;letter-spacing:0;text-transform:none;}
+.glabel{display:flex;align-items:center;gap:7px;color:var(--dim);font:10.5px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;}
+.glabel span{color:var(--faint);}
+.row{position:relative;display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:start;gap:14px;padding:15px 16px;border:1px solid var(--border);border-radius:12px;background:var(--s2);cursor:pointer;}
+.row.focus{border-color:var(--border2);background:var(--s3);}
+.row.warn{border-color:color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 6%,var(--s2));cursor:default;}
+.row.quiet{background:color-mix(in srgb,var(--s2) 70%,var(--surface));}
+.row.quiet strong{color:var(--text2);}
+.glyph{width:38px;height:38px;display:grid;place-items:center;color:var(--accentHi);border:1px solid var(--border2);border-radius:9px;background:var(--s3);}
+.row.warn .glyph{color:var(--amber);}
+.row.quiet .glyph{color:var(--dim);}
+.title{display:flex;align-items:center;gap:8px;min-width:0;}
+.title strong{overflow:hidden;color:var(--text);font-size:13.5px;text-overflow:ellipsis;white-space:nowrap;}
+.badge{flex:none;border:1px solid var(--accentLo);border-radius:999px;padding:2px 7px;color:var(--accentHi);background:var(--accentSoft);font:600 9.5px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;}
+.badge.muted{border-color:var(--border2);color:var(--muted);background:transparent;}
+.badge.amber{border-color:color-mix(in srgb,var(--amber) 55%,transparent);color:var(--amber);background:color-mix(in srgb,var(--amber) 10%,transparent);}
+.meta{display:flex;gap:6px;margin-top:5px;color:var(--dim);font:10.5px ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.who{color:var(--accentHi);}
+.preview{margin-top:6px;color:var(--muted);font-size:11.5px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.refuse{display:flex;gap:6px;align-items:flex-start;margin-top:8px;color:var(--amber);font-size:11px;line-height:1.45;}
+.refuse svg{flex:none;margin-top:1px;}
+.util{position:absolute;top:-14px;right:12px;display:flex;gap:4px;padding:3px;border:1px solid var(--border2);border-radius:11px;background:var(--s3);box-shadow:0 4px 14px rgba(0,0,0,.28);}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:31px;min-height:31px;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--s2);color:var(--text2);cursor:pointer;}
+.ib.on{color:var(--accentHi);border-color:var(--accentLo);}
+.ib.del{color:var(--red);}
+.ib:disabled{opacity:.42;cursor:default;}
+.acts{display:flex;align-items:center;gap:9px;align-self:center;}
+.sec{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:7px 13px;border:1px solid var(--border);border-radius:8px;background:var(--s2);color:var(--text2);font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;cursor:pointer;}
+.prim{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 16px;border:1px solid var(--accentLo);border-radius:8px;background:var(--accent);color:#fff;font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;cursor:pointer;}
+.big{min-height:38px;padding:8px 16px;}
+</style>
+</helmet>
+<div class="mg">
+<div class="box" role="dialog" aria-labelledby="pm-mem-title" style="width: 1180px">
+
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 24px 28px 14px">
+<div>
+<div class="eyebrow">Workshop · Project memory</div>
+<h2 id="pm-mem-title" style="margin: 7px 0 6px; color: var(--text); font-size: 24px; line-height: 1.15">Project memories</h2>
+<p style="max-width: 780px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5">What this project’s personas start each conversation knowing. Pinned memories load in full; the rest load as a title and summary, and a persona opens the full note when it needs it.</p>
+</div>
+<button class="close" type="button" aria-label="Close project memories"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 16px; padding: 0 28px 16px">
+<label class="search">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+<input type="search" aria-label="Search project memories" placeholder="Search titles, summaries and notes…">
+<span class="scope">searches notes</span>
+</label>
+<div class="group" aria-label="Group memories by">
+<span>Group by</span>
+<div class="seg">
+<button type="button" class="{{kindClass}}" onClick="{{byKind}}">Kind</button>
+<button type="button" class="{{dateClass}}" onClick="{{byDate}}">Date</button>
+</div>
+</div>
+</div>
+
+<div class="status">
+<sc-if value="{{memoryOff}}" hint-placeholder-val="{{ false }}">
+<div class="offnote"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Memory is off, so personas don’t read these. You can still edit, pin, archive and delete them. Turn memory on in Conversation settings.</span></div>
+</sc-if>
+<sc-if value="{{overPinned}}" hint-placeholder-val="{{ false }}">
+<div class="offnote" style="background: color-mix(in srgb, var(--amber) 8%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--amber)"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span>Pinned memories are over their budget, probably from an edit outside the manager. The oldest pins load in full; “The Cheshire Cat is never seen arriving” loads as a list entry instead. Unpin one to make room. Nothing is unpinned for you.</span></div>
+</sc-if>
+<sc-for list="{{chips}}" as="ch" hint-placeholder-count="4"><span class="chip {{ch.cls}}">{{ch.text}}</span></sc-for>
+</div>
+
+<div style="padding: 16px 28px 24px; display: grid; gap: 24px">
+
+<section style="display: grid; gap: 10px" aria-labelledby="pm-mem-attn">
+<div class="sect-title" id="pm-mem-attn">Needs attention <span>Not loaded. Fix the file in the editor; Memory never rewrites it.</span></div>
+<sc-for list="{{attention}}" as="r" hint-placeholder-count="3">
+<article class="row warn">
+<div class="glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></div>
+<div style="min-width: 0">
+<div class="title"><strong class="mono" style="font-size: 12.5px">{{r.file}}</strong><span class="badge amber">{{r.badge}}</span></div>
+<div class="meta">{{r.meta}}</div>
+<div class="preview">{{r.reason}}</div>
+</div>
+<div class="acts"><button class="sec" type="button">Open file</button></div>
+</article>
+</sc-for>
+</section>
+
+<section style="display: grid; gap: 10px" aria-labelledby="pm-mem-active">
+<div class="sect-title" id="pm-mem-active">Active <span>Load at the start of each conversation.</span></div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div style="display: grid; gap: 9px; margin-bottom: 6px">
+<div class="glabel">{{g.label}} <span>{{g.count}}</span></div>
+<sc-for list="{{g.rows}}" as="m" hint-placeholder-count="2">
+<article class="row {{m.rowClass}}">
+<div class="glyph">
+<sc-if value="{{m.isDecision}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22h14M6 18h12v-2a2 2 0 0 0-2-2h-1l.6-3.6A3 3 0 0 0 12.7 5h-1.4a3 3 0 0 0-2.9 2.4L9 11H8a2 2 0 0 0-2 2z"></path></svg></sc-if>
+<sc-if value="{{m.isCanon}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5a2 2 0 0 1 2-2h6v17H4a2 2 0 0 0-2 2z"></path><path d="M22 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"></path></svg></sc-if>
+<sc-if value="{{m.isPreference}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg></sc-if>
+<sc-if value="{{m.isThread}}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path></svg></sc-if>
+</div>
+<div style="min-width: 0">
+<div class="title"><strong>{{m.title}}</strong>
+<sc-for list="{{m.badges}}" as="b" hint-placeholder-count="1"><span class="badge {{b.cls}}">{{b.text}}</span></sc-for>
+</div>
+<div class="meta"><span>{{m.kind}}</span><span>·</span><span class="who">{{m.who}}</span><span>·</span><span>{{m.when}}</span><span>·</span><span>{{m.source}}</span></div>
+<div class="preview">{{m.summary}}</div>
+<sc-if value="{{m.refused}}" hint-placeholder-val="{{ false }}">
+<div class="refuse" role="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Can’t pin this one: pinned memories would come to about 5,100 of 5,000 tokens. Unpin another, or shorten this note.</span></div>
+</sc-if>
+<sc-if value="{{m.notLoaded}}" hint-placeholder-val="{{ false }}">
+<div class="refuse" role="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span>Over the pinned budget, so it loads as a list entry, not in full. It’s the newest pin; unpin it or another to make room.</span></div>
+</sc-if>
+</div>
+<sc-if value="{{m.showUtil}}" hint-placeholder-val="{{ false }}">
+<div class="util">
+<button class="ib" type="button" aria-label="Rename {{m.title}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button>
+<button class="ib {{m.pinClass}}" type="button" aria-label="{{m.pinLabel}}" aria-pressed="{{m.pinPressed}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg></button>
+<button class="ib" type="button" aria-label="Archive {{m.title}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"></path></svg></button>
+<button class="ib" type="button" aria-label="Open the file for {{m.title}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg></button>
+<button class="ib del" type="button" aria-label="Delete {{m.title}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg></button>
+</div>
+</sc-if>
+<div class="acts"><button class="sec" type="button">Edit</button></div>
+</article>
+</sc-for>
+</div>
+</sc-for>
+</section>
+
+<section style="display: grid; gap: 10px" aria-labelledby="pm-mem-past">
+<div class="sect-title" id="pm-mem-past">Superseded and archived <span>Never loaded. Personas find them only by searching.</span></div>
+<sc-for list="{{past}}" as="m" hint-placeholder-count="2">
+<article class="row quiet">
+<div class="glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5a2 2 0 0 1 2-2h6v17H4a2 2 0 0 0-2 2z"></path><path d="M22 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z"></path></svg></div>
+<div style="min-width: 0">
+<div class="title"><strong>{{m.title}}</strong><span class="badge muted">{{m.badge}}</span></div>
+<div class="meta"><span>{{m.kind}}</span><span>·</span><span class="who">{{m.who}}</span><span>·</span><span>{{m.when}}</span></div>
+<div class="preview">{{m.line}}</div>
+</div>
+<div class="acts"><button class="sec" type="button">{{m.action}}</button></div>
+</article>
+</sc-for>
+</section>
+
+</div>
+
+<footer style="display: flex; align-items: center; gap: 12px; padding: 16px 28px; border-top: 1px solid var(--border); background: var(--surface); border-radius: 0 0 12px 12px">
+<span style="flex: 1; color: var(--faint); font-size: 11px; line-height: 1.5">Changes save to the memory’s file right away. Archive keeps a memory searchable; Delete removes its file.</span>
+<button class="sec big" type="button">Open memory folder</button>
+<button class="prim" type="button"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>New memory</button>
+</footer>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"memoryOff":{"editor":"boolean","default":false},"overPinned":{"editor":"boolean","default":false},"groupBy":{"editor":"enum","options":["kind","date"],"default":"kind"},"$preview":{"width":1180,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const groupBy = (this.state && this.state.groupBy) || this.props.groupBy || 'kind';
+    const over = Boolean(this.props.overPinned);
+    const mk = (m) => ({
+      isDecision: m.kind === 'decision',
+      isCanon: m.kind === 'canon',
+      isPreference: m.kind === 'preference',
+      isThread: m.kind === 'open thread',
+      rowClass: m.focus ? 'focus' : '',
+      showUtil: Boolean(m.focus),
+      pinClass: m.pinned ? 'on' : '',
+      pinLabel: m.pinned ? 'Unpin ' + m.title : 'Pin ' + m.title,
+      pinPressed: m.pinned ? 'true' : 'false',
+      badges: m.pinned ? (over && m.newestPin ? [{ text: 'Pinned, not loaded', cls: 'amber' }] : [{ text: 'Pinned', cls: '' }]) : [],
+      refused: Boolean(m.refused) && !over,
+      notLoaded: over && Boolean(m.newestPin),
+      ...m
+    });
+    const all = [
+      { title: 'Critique structure before line edits', kind: 'preference', pinned: true, who: 'written by you', when: 'Oct 28', date: 'Earlier', source: 'made in the manager', summary: 'Until the chapter’s structure settles, talk about scenes and order, not sentences.' },
+      { title: 'Keep the Duchess’s kitchen offstage', kind: 'decision', pinned: true, who: 'suggested by Cliff · saved by you', when: 'Nov 2', date: 'This week', source: 'from “Chapter 6 pass”', summary: 'We only hear the kitchen through the door; the pepper and the noise do the work.' },
+      { title: 'We cut the Mock Turtle’s second song', kind: 'decision', pinned: true, who: 'suggested by Jill · saved by you', when: 'Nov 1', date: 'This week', source: 'from “Chapter 9 trims”', summary: 'One song is enough; the second slowed the beach scene and repeated its joke.' },
+      { title: 'The Rabbit’s watch runs backward', kind: 'canon', pinned: false, focus: true, refused: true, who: 'suggested by Jill · saved by you', when: 'Nov 3', date: 'Today', source: 'from “Tea-party pacing”', summary: 'From chapter 3 on, the White Rabbit’s watch runs backward; nobody in Wonderland remarks on it.' },
+      { title: 'The Cheshire Cat is never seen arriving', kind: 'canon', pinned: true, newestPin: true, who: 'saved by Jill', when: 'Nov 3', date: 'Today', source: 'from “Tea-party pacing”', summary: 'It is always already there. Every scene with the Cat starts after it has appeared.' },
+      { title: 'Does the Queen know the tarts were moved?', kind: 'open thread', pinned: false, who: 'suggested by Cliff · saved by you', when: 'Oct 30', date: 'Earlier', source: 'from “Trial outline”', summary: 'Undecided. It changes whether the trial is a farce or a trap.' }
+    ];
+    const order = groupBy === 'kind'
+      ? [['Decisions', 'decision'], ['Canon', 'canon'], ['Preferences', 'preference'], ['Open threads', 'open thread']].map(([label, k]) => ({ label, rows: all.filter((m) => m.kind === k) }))
+      : ['Today', 'This week', 'Earlier'].map((d) => ({ label: d, rows: all.filter((m) => m.date === d) }));
+    const groups = order.map((g) => ({ label: g.label, count: String(g.rows.length), rows: g.rows.map(mk) }));
+    return {
+      memoryOff: Boolean(this.props.memoryOff),
+      overPinned: over,
+      chips: [
+        { text: '6 active', cls: '' },
+        over ? { text: '4 pinned · ≈ 5,600 of 5,000 tokens', cls: 'warn' } : { text: '4 pinned · ≈ 4,300 of 5,000 tokens', cls: '' },
+        { text: over ? 'list · ≈ 800 of 2,000 tokens' : 'list · ≈ 700 of 2,000 tokens', cls: '' },
+        { text: '3 files need attention', cls: 'warn' }
+      ],
+      kindClass: groupBy === 'kind' ? 'on' : '',
+      dateClass: groupBy === 'date' ? 'on' : '',
+      byKind: () => this.setState({ groupBy: 'kind' }),
+      byDate: () => this.setState({ groupBy: 'date' }),
+      groups,
+      attention: [
+        { file: 'rabbit-watch-runs-backward-7f3c2a.md', badge: 'Same id', meta: 'mem-7f3c2a', reason: 'Same id as rabbit-watch-copy-7f3c2a.md. Change one file’s id, or delete one copy.' },
+        { file: 'rabbit-watch-copy-7f3c2a.md', badge: 'Same id', meta: 'mem-7f3c2a', reason: 'Same id as rabbit-watch-runs-backward-7f3c2a.md. Change one file’s id, or delete one copy.' },
+        { file: 'tea-party-seating-1a9e04.md', badge: 'Can’t read', meta: 'unreadable', reason: '“kind” isn’t one Memory knows: decision, canon, preference or open-thread.' }
+      ],
+      past: [
+        { title: 'The Rabbit’s watch stops at six', badge: 'Superseded', kind: 'canon', who: 'suggested by Jill · saved by you', when: 'Oct 22', line: 'Superseded by “The Rabbit’s watch runs backward”.', action: 'Edit' },
+        { title: 'Alice narrates in present tense', badge: 'Archived', kind: 'decision', who: 'saved by Cliff', when: 'Oct 19', line: 'Forgotten from the thread on Oct 24. Restore it to load it again.', action: 'Restore' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
