@@ -63,16 +63,17 @@ export function memoryOriginWords(origin: ProjectMemoryOrigin, proposedByLabel: 
 }
 
 /**
- * Where a memory came from. Only a saved, named session is named; anything
- * else says so, never "made in the manager" for a file the writer may have
- * typed by hand (PR #196 watchpoint 5).
+ * Where a memory came from. Only a saved, named session is named; a source
+ * that can't be named now (the current room, unnamed, deleted, unreadable)
+ * says it isn't available, and none says none. Never "made in the manager",
+ * which format 1 can't know (PR #196 watchpoint 5).
  */
 export function memorySourceWords(source: WorkshopMemorySource): string {
   switch (source.kind) {
     case 'session':
       return `from “${source.title}”`;
     case 'unnamed':
-      return 'from a conversation that isn’t saved';
+      return 'source conversation not available';
     case 'none':
       return 'no source conversation';
   }

@@ -23,7 +23,7 @@ describe('workshopMemoryWords', () => {
     expect(memoryOriginWords('auto', 'Jill')).toBe('saved by Jill');
     expect(memoryOriginWords('auto', '  ')).toBe('saved by a persona');
     expect(memorySourceWords({ kind: 'session', title: 'Tea-party pacing' })).toBe('from “Tea-party pacing”');
-    expect(memorySourceWords({ kind: 'unnamed' })).toBe('from a conversation that isn’t saved');
+    expect(memorySourceWords({ kind: 'unnamed' })).toBe('source conversation not available');
     expect(memorySourceWords({ kind: 'none' })).toBe('no source conversation');
   });
 

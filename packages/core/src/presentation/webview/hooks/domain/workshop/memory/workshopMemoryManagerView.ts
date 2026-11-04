@@ -230,7 +230,7 @@ function rowView(
     notes.push(`Doesn’t fit in the ${budget} tokens loaded in full, so it loads as a list entry. Turn off Always load in full on it or another to make room.`);
   }
   if (entry.busy) {
-    notes.push('Another window is changing this memory now. Its actions come back when that finishes.');
+    notes.push('Another VS Code window is changing this memory. Edit, archive and delete come back when it’s done.');
   }
   return {
     entry,

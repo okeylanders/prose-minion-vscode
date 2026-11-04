@@ -112,21 +112,24 @@ memory only call back (Slice 3 owns the sheet).
    and Delete (except for `current`, which also highlights the row). They
    use its classes and markup with Open file alone, rather than adding a
    second opt-in.
-4. **States the canvas doesn't draw.** The words are mine, for the design
-   pass to confirm:
-   - reading ("Reading this project's memories…");
-   - the folder couldn't be listed ("This project's memories couldn't be
-     read");
-   - nothing in effect ("Nothing loads yet": every memory is superseded or
-     archived);
-   - a memory another window holds (badge "Being edited", writes off;
-     D10, N-02).
+4. **States the canvas doesn't draw.** Drawn in the build, then reviewed by
+   the design thread, which approved some words and replaced others. They
+   are now in Slice 0d's doc:
+   - reading ("Reading this project's memories…"), approved as is;
+   - the folder couldn't be listed ("This project's memory folder couldn't
+     be listed"; the manager's line names that the files weren't touched);
+   - nothing active ("No memories are active", chip "0 active");
+   - a memory another window holds (badge "Being edited", approved, with
+     the note "Another VS Code window is changing this memory. Edit,
+     archive and delete come back when it's done."; D10, N-02);
+   - the manager's unavailable lines, which now carry the tab's fix ("Open
+     a single folder to use project memory.").
 5. **Source words** (watchpoint 5).
    - The canvas's "made in the manager" isn't used: format 1 can't tell a
      manager-made memory from a hand-written file. A memory without a source
      session reads "no source conversation".
-   - One whose session can't be named reads "from a conversation that isn't
-     saved".
+   - One whose session can't be named reads "source conversation not
+     available" (the design review's wording).
 6. **The tab's attention row includes conflicts.** The row lists conflicting
    files too ("same id as another file"), and its title becomes "N files
    need attention" when any are present. With unreadable files alone it
@@ -160,7 +163,7 @@ Node 22, on this branch:
 | | Suites | Tests | Snapshots |
 |---|---|---|---|
 | Before (`7ec50ba`) | 652 | 9,228 | 59 |
-| After | 658 | 9,292 | 59 |
+| After | 658 | 9,293 | 59 |
 
 - `npm ci`, then `npm run typecheck`: clean.
 - `npm run lint`: 0 errors. 12 new warnings, all `naming-convention`:

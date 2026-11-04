@@ -95,7 +95,7 @@ describe('workshopMemoryManagerView', () => {
     expect(kitchen.badges).toEqual([{ text: 'Loaded in full', tone: 'accent' }]);
     expect(kitchen.line).toBe('A line of summary.');
     expect(kitchen.primary).toBe('edit');
-    expect(view.active[1]).toMatchObject({ origin: 'saved by Jill', source: 'from a conversation that isn’t saved' });
+    expect(view.active[1]).toMatchObject({ origin: 'saved by Jill', source: 'source conversation not available' });
     expect(view.active[5]).toMatchObject({ origin: 'written by you', source: 'no source conversation', kindWords: 'preference' });
     expect(view.active[4]).toMatchObject({ kindWords: 'open thread', badges: [] });
   });
@@ -178,7 +178,7 @@ describe('workshopMemoryManagerView', () => {
     const library = { memories: [memoryEntry({ title: 'Held', busy: true })], unreadable: [], conflicts: [] };
     const [row] = workshopMemoryManagerView({ mode: 'ask', library }).active;
     expect(row.badges).toEqual([{ text: 'Being edited', tone: 'muted' }]);
-    expect(row.notes).toEqual(['Another window is changing this memory now. Its actions come back when that finishes.']);
+    expect(row.notes).toEqual(['Another VS Code window is changing this memory. Edit, archive and delete come back when it’s done.']);
   });
 
   it('without an estimate: the active count alone, and the attention label', () => {

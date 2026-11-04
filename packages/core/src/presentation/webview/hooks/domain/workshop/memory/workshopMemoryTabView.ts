@@ -157,8 +157,8 @@ function loadView(input: WorkshopMemoryTabInput, budgets: WorkshopMemoryBudgets)
       return { name: 'Reading this project’s memories…', description: '', chips: [], meters: [], more: [] };
     case 'unknown':
       return {
-        name: 'This project’s memories couldn’t be read',
-        description: 'The memory folder couldn’t be listed just now. Nothing was changed.',
+        name: 'This project’s memory folder couldn’t be listed',
+        description: 'The folder couldn’t be listed just now, so nothing from it is shown. Your memory files weren’t touched.',
         chips: [],
         meters: [],
         more: []
@@ -195,9 +195,9 @@ function loadView(input: WorkshopMemoryTabInput, budgets: WorkshopMemoryBudgets)
   }
   if (estimate.memories === 0) {
     return {
-      name: 'Nothing loads yet',
-      description: 'Every memory in this project is superseded or archived. Restore one in Manage memories… to load it.',
-      chips: [quiet('0 in effect')],
+      name: 'No memories are active',
+      description: 'Every memory in this project is archived or replaced by a newer one, so none loads. Restore an archived one in Manage memories… to make it active again.',
+      chips: [quiet('0 active')],
       meters: [],
       more: []
     };

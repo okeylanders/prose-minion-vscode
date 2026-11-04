@@ -192,6 +192,9 @@ The tab order is Behavior · About you · **Memory** · Advanced.
 | **Unreadable files** | An amber row under "Your memories": "2 files can't be read". "They aren't loaded, and personas can't find them. Fix the frontmatter in the editor, or move the file out of the folder. Nothing else is affected." Each file is listed with its reason, plus **Show in manager** |
 | **Unavailable: no folder** | An amber notice at the top: "**Project memory isn't available here.** No folder is open, so there's no project to keep memories in. Open a single folder to use project memory. The mode above still applies to your other projects." Row "Nothing loads": "Personas in this workspace get no project memory, whatever the mode above says." Both buttons are disabled |
 | **Unavailable: several folders** | The same, with "This workspace has several folders, so memory can't tell which project it belongs to." |
+| **Reading** (added in 4b-ui after design review) | Row "Reading this project's memories…", with no description, labels or meters |
+| **Folder can't be listed** (added in 4b-ui after design review) | Row "This project's memory folder couldn't be listed": "The folder couldn't be listed just now, so nothing from it is shown. Your memory files weren't touched." No labels or meters. This is the listing, not files (D10), so it isn't the unreadable-files state |
+| **No memories active** (added in 4b-ui after design review) | Every memory is archived or superseded. Row "No memories are active": "Every memory in this project is archived or replaced by a newer one, so none loads. Restore an archived one in Manage memories… to make it active again." Label `0 active` |
 
 ## The memory manager
 
@@ -224,7 +227,13 @@ Lightbox's markup stay unchanged.
   - Glyphs by kind: decision `stamp`, canon `book`, preference `sliders`,
     open thread `dialogue`.
   - Badge: **Loaded in full**.
-  - Meta line: kind · origin in words · date · "from 'session title'".
+  - Meta line: kind · origin in words · date · source.
+  - Source words (decided in 4b-ui after design review; they replace the
+    canvas's "made in the manager", which format 1 can't know):
+    - "from '<title>'" for a saved, named session;
+    - "source conversation not available" for the current room, or an
+      unnamed, deleted or unreadable session;
+    - "no source conversation" when the memory names none.
   - The summary sits under the meta line.
   - Hover or focus utilities: Rename, **Always load in full** (a toggle
     with `aria-pressed`, the `eye` glyph, never a pin), Archive
@@ -246,6 +255,18 @@ Lightbox's markup stay unchanged.
     full, so it loads as a list entry. Turn off Always load in full on it or
     another to make room." The row never
     infers why from a date (PR #196 F-03).
+- **States added in 4b-ui after design review:**
+  - **Reading:** "Reading this project's memories…" in the status area.
+  - **Folder can't be listed:** "The memory folder couldn't be listed just
+    now. Your memory files weren't touched."
+  - **Unavailable:** "Project memory isn't available here: no folder is
+    open. Open a single folder to use project memory." The several-folders
+    form reads "…: this workspace has several folders. Open a single folder
+    to use project memory." These are the tab notice's words, fix included.
+  - **Being edited:** a muted **Being edited** badge on a memory another
+    window holds under a live claim (D10). Its writes are off, and its note
+    reads "Another VS Code window is changing this memory. Edit, archive and
+    delete come back when it's done." Open file still works.
 - **Section "Superseded and archived"** ("Never loaded. Personas find them
   only by searching."), in muted rows:
   - superseded rows read "Superseded by '…'.", with **Edit**;

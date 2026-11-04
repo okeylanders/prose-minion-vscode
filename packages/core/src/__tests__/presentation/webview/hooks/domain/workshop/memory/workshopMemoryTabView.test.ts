@@ -182,12 +182,13 @@ describe('workshopMemoryTabView', () => {
     expect(tab({ workspace: { kind: 'loading' } }).load.name).toBe('Reading this project’s memories…');
     expect(tab({ estimate: undefined }).load.name).toBe('Reading this project’s memories…');
     expect(tab({ workspace: { kind: 'unknown' } }).load).toMatchObject({
-      name: 'This project’s memories couldn’t be read',
-      description: 'The memory folder couldn’t be listed just now. Nothing was changed.'
+      name: 'This project’s memory folder couldn’t be listed',
+      description: 'The folder couldn’t be listed just now, so nothing from it is shown. Your memory files weren’t touched.'
     });
     expect(tab({ estimate: { ...IN_BUDGET, memories: 0, pinned: 0, pinnedLoaded: 0, catalogEntries: 0 }, saved: 3 }).load).toMatchObject({
-      name: 'Nothing loads yet',
-      chips: [{ text: '0 in effect', quiet: true }]
+      name: 'No memories are active',
+      description: 'Every memory in this project is archived or replaced by a newer one, so none loads. Restore an archived one in Manage memories… to make it active again.',
+      chips: [{ text: '0 active', quiet: true }]
     });
   });
 

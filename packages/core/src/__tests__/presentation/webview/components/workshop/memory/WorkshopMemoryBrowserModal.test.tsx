@@ -204,9 +204,15 @@ describe('WorkshopMemoryBrowserModal', () => {
 
   it('unavailable while open: the reason, the search and every write off', () => {
     renderManager({ workspace: { kind: 'unavailable', reason: 'multi-root' } });
-    expect(screen.getByText(/this workspace has several folders/)).not.toBeNull();
+    expect(screen.getByRole('status').textContent?.trim())
+      .toBe('Project memory isn’t available here: this workspace has several folders. Open a single folder to use project memory.');
     expect((screen.getByRole('searchbox', { name: 'Search project memories' }) as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'New memory' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('a folder that can’t be listed says the files weren’t touched', () => {
+    renderManager({ workspace: { kind: 'unknown' } });
+    expect(screen.getByRole('alert').textContent?.trim()).toBe('The memory folder couldn’t be listed just now. Your memory files weren’t touched.');
   });
 
   it('closing returns focus to what opened it', () => {

@@ -48,8 +48,8 @@ export interface WorkshopMemoryBrowserModalProps extends WorkshopMemoryManagerIn
 }
 
 const UNAVAILABLE: Record<'no-workspace' | 'multi-root', string> = {
-  'no-workspace': 'Project memory isn’t available here: no folder is open.',
-  'multi-root': 'Project memory isn’t available here: this workspace has several folders.'
+  'no-workspace': 'Project memory isn’t available here: no folder is open. Open a single folder to use project memory.',
+  'multi-root': 'Project memory isn’t available here: this workspace has several folders. Open a single folder to use project memory.'
 };
 
 export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProps> = ({
@@ -120,7 +120,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
           )}
           {workspace.kind === 'unknown' && (
             <div className="pm-ws-sessions-unavailable" role="alert">
-              <Icon name="x" size={14} /> The memory folder couldn’t be listed just now. Nothing was changed.
+              <Icon name="x" size={14} /> The memory folder couldn’t be listed just now. Your memory files weren’t touched.
             </div>
           )}
           {view.offNote && (
