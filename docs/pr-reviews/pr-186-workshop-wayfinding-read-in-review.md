@@ -208,3 +208,16 @@ Nothing above this section was edited.
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors, 1,136 warnings, unchanged.
 - `git diff --check`: clean.
+
+
+## Re-review of `a7b0222` (2026-11-04)
+
+N-02's global-order witness is fixed: Tab is now intercepted and directed among the dialog's own controls. The updated witness and **12 independent full-App controls** pass; **4 production suites / 56 tests** and webview typecheck pass. One new nonblocking accessibility regression follows.
+
+### N-03: Manual traversal skips native Markdown disclosure controls (P3)
+
+[`WorkshopModalShell.tsx:63–80`](https://github.com/okeylanders/prose-minion-vscode/blob/a7b02223bdcd77e81051b8bbd5970353be528ba8/packages/core/src/presentation/webview/components/workshop/WorkshopModalShell.tsx#L63-L80) now handles every Tab itself, but its [tab-stop selector](https://github.com/okeylanders/prose-minion-vscode/blob/a7b02223bdcd77e81051b8bbd5970353be528ba8/packages/core/src/presentation/webview/components/workshop/WorkshopModalShell.tsx#L104) does not include native `<summary>` elements. Rendered Markdown can contain `<details><summary>Character details</summary>Backstory.</details>`: it survives sanitization, the summary has `tabIndex === 0`, and it can receive focus. In an independent full-App probe, Tab from the preceding Preview control is prevented and focus jumps directly to Open beside, skipping the summary, so a keyboard user cannot reach that disclosure through this trap.
+
+This is introduced by replacing native middle-step Tab behavior with the manual traversal. Include native disclosure controls in the dialog's tab order and test a sanitized Markdown details/summary alongside ordinary links and controls. Consider other native focusable elements and disabled/hidden ancestors when defining the traversal. This is a P3 focus-hardening note, not a recurrence of the resolved reader-content issues. The DOM and event result are reproduced; native Chromium traversal remains unverified because of the review environment's socket restriction.
+
+[CI run 41747153971](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41747153971) was in progress when checked. No implementation change, formal approval or merge was made during this re-review.
