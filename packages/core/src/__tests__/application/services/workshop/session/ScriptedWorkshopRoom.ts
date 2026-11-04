@@ -51,6 +51,7 @@ import type {
   WorkshopChatTarget,
   WorkshopGesturePlaygroundDraft,
   WorkshopPersonaId,
+  WorkshopProjectMemoryDelivery,
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
@@ -151,6 +152,8 @@ export class ScriptedWorkshopRoom {
       attachment?: ScriptedAttachment;
       resources?: string[];
       reply?: string;
+      /** Project memory this message delivered, staged as the persona capability stages it (D14). */
+      projectMemory?: WorkshopProjectMemoryDelivery;
     } = {}
   ): WorkshopTurn {
     this.session.setChatTarget({ kind: 'host' });
@@ -161,6 +164,9 @@ export class ScriptedWorkshopRoom {
       ? this.session.collectPendingHostUpdates()
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
+    if (options.projectMemory) {
+      this.session.stageProjectMemoryDelivery(requestId, options.projectMemory);
+    }
     const evidence = this.recordCapabilityEvidence(requestId, options.capabilityRounds ?? 0);
     const replyContent = options.reply ?? `Host reply to "${text}".`;
     const conversationId = this.commitHistory(
