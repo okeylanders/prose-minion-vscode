@@ -23,3 +23,10 @@ Also exercise **Show where it was read** when the card is outside the loaded win
 ## Scope and limits
 
 These are checklist issues; no native VS Code pass, model call, implementation change, formal approval or merge was performed. All five listed writer decisions remain open and their built defaults are not treated as acceptance. The aggregate technical integration review is separate and in progress.
+
+
+## N-04: Make close-out evidence and compatibility language precise
+
+Record the tested commit, VS Code/OS and screen reader, plus actual outcomes. If a decision or later main integration changes behavior, rerun the affected acceptance checks and required gates. “Tick it, or file what you find as tech debt” should not itself imply that every defect is acceptable; distinguish blockers from debt the writer explicitly accepts.
+
+For release copy, the precise compatibility condition is that a session **containing** the new provenance, bookmark or model fields cannot reopen in v2.12 or earlier. Unmodified legacy sessions can still round-trip without those fields, and host-written fallback replies deliberately remain unstamped. This preserves the D9 warning without implying every possible save adds a new field.
