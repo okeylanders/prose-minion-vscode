@@ -3,7 +3,7 @@
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D7 (receipt actions), D8 (Save and tell me, caps, the web-research hold, Forget). No `INDEX.md` (question 2, decided).
 **Branch:** `epic/workshop-project-memory-slice-5-save-and-tell-me`, from Slice 3's head with the epic merged in (`cbb1446`)
-**Status:** Built, verified and pushed. Waits on PR #200 (Slice 3) to merge, then merges the epic in.
+**Status:** Built, verified and pushed; the epic (with #200 merged at `7bd1d9a`) merged in.
 
 ## Outcome
 
@@ -97,7 +97,7 @@ provenance call and the two delegating methods.
 | Edit from the receipt: `updated` receipt, one file | same |
 | A writer's Save while the automatic save is in flight joins it (one file, one receipt, answered with its id) | same |
 | The next message waits for a save in flight (receipt before the next exchange); fails with the wait removed (checked) | same |
-| No memory text in any log; the held and saved log lines | same |
+| No memory text in any log; the held and saved log lines; a save that throws (text in its error) or is refused writes nothing, leaves the card waiting, and logs only ids and reasons | same |
 | The decision's order and the count; the held copy (claims no search, room-wide, N from the budget) | `services/.../memory/WorkshopMemoryAutoSave.test.ts` |
 | Completion: held puts `held` and calls no saver; unheld under `auto` calls the saver once, after the turn is recorded; `held` round-trips through save, reopen and hydrate; unknown reason refused; the fixture byte for byte; clone | `session/WorkshopMemoryHeldCard.test.ts` (with `ScriptedWorkshopRoom`'s two new optional knobs) |
 | The run reports web research attached without citations, and not when off | `AssistantToolService.test.ts` |
@@ -121,6 +121,9 @@ provenance call and the two delegating methods.
   `ScriptedWorkshopRoom.ts`, `boundaries.test.ts`,
   `AssistantToolService.test.ts` by a few lines each.
 - *Alice* and made-up ids; no live provider calls.
+- **After merging the epic** (#200 merged at `7bd1d9a`: docs only) and the
+  failed-save privacy test: typecheck clean, lint 1,170, **680 suites /
+  9,586 tests / 59 snapshots**, all passing.
 
 ## Deviations
 

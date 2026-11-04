@@ -221,6 +221,27 @@ describe('Workshop routes — Save and tell me', () => {
     expect(kinds.slice(-4)).toEqual(['host', 'receipt', 'writer', 'host']);
   });
 
+  it('a save that fails or is refused writes nothing, leaves the card waiting, and logs no memory text', async () => {
+    const save = jest.spyOn(harness.memory.library, 'save');
+    save.mockRejectedValueOnce(new Error(`disk said no: ${BODY_SENTINEL}`));
+    const failed = await reply();
+    save.mockResolvedValueOnce({ kind: 'refused', reason: 'busy' });
+    const refused = await reply();
+
+    for (const turn of [failed, refused]) {
+      expect(turn.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(turn.memoryProposal?.held).toBeUndefined();
+    }
+    expect(memoryFiles()).toEqual([]);
+    expect(receipts()).toEqual([]);
+    const lines = (harness.log.appendLine as jest.Mock).mock.calls.map(([line]) => String(line)).join('\n')
+      + harness.memory.lines.join('\n');
+    expect(lines).not.toContain(BODY_SENTINEL);
+    expect(lines).not.toContain('Tea is served at six');
+    expect(lines).toMatch(/auto save failed turnId=\S+ reason=Error/);
+    expect(lines).toMatch(/auto save turnId=\S+ card waits reason=busy/);
+  });
+
   it('logs ids and reasons, never the memory\'s text', async () => {
     await reply();
     await reply({ webResearchAttached: true });
