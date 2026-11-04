@@ -241,16 +241,18 @@ describe('the model in the header: thread and export', () => {
     const fromThread = threadHeaders(ROOM, true);
 
     // The room exercises every row of the rule, and a reply the export omits.
-    expect(Object.fromEntries(fromExport)).toMatchObject({
-      'a-1': '· Model A',
-      'a-10': '· Model A via Model X',
-      'a-11': '· Model A, Model B, Model C',
-      'a-12': '· Model B',
-      'a-13': `· ${model('unlisted')} via Model X`,
-      'a-14': null,
-      'g-5': '· Model E',
-      'a-3': '· Model C'
-    });
+    for (const [turnId, text] of [
+      ['a-1', '· Model A'],
+      ['a-3', '· Model C'],
+      ['g-5', '· Model E'],
+      ['a-10', '· Model A via Model X'],
+      ['a-11', '· Model A, Model B, Model C'],
+      ['a-12', '· Model B'],
+      ['a-13', `· ${model('unlisted')} via Model X`],
+      ['a-14', null]
+    ] as const) {
+      expect({ turnId, text: fromExport.get(turnId) }).toEqual({ turnId, text });
+    }
     expect(fromExport.has('a-7')).toBe(false);
     for (const [turnId, text] of fromExport) {
       expect({ turnId, text: fromThread.get(turnId) }).toEqual({ turnId, text });
