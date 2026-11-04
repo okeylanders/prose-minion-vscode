@@ -17,7 +17,7 @@ note with only what changed, and never the same change twice. This replaces
 | Piece | Where |
 |---|---|
 | Versions | `memory/ProjectMemoryVersion.ts`: the first 12 hex of a SHA-256 over the canonical id, title, kind, summary, body, pinned flag and standing (active, superseded, archived). `listProjectMemories` attaches it as `ProjectMemoryListed.version`; it's never stored in the file |
-| The record | `WorkshopTurn.projectMemoryDelivery?: { participant, kind: 'frame' \| 'note', memories: { id, version }[] }[]` (`participant` is the capability principal: host, or a persona guest) |
+| The record | `WorkshopTurn.projectMemoryDelivery?: { participant, kind: 'frame' \| 'note', memories: { id, version }[], digest? }[]` on the persona reply (`participant` is the capability principal and must be the reply's own; `digest` is `{ count, hash }` past 4,096) |
 | Its codec | `session/WorkshopProjectMemoryDeliveryRecords.ts`, called from the shape file: refused on any turn but a writer turn; each participant once per turn; ids `mem-` + 6 hex, each once; versions 12 hex; at most 4,096 memories a snapshot. Optional and additive, so there's no `schemaVersion` bump |
 | When it's written | `WorkshopSessionService.stageProjectMemoryDelivery(requestId, delivery)` stages it on the active run. `completeRun` writes it onto the run's writer turn when the reply commits (for a host synthesis, the tool request before its report). A rolled-back, abandoned, cancelled or overtaken run leaves no record |
 | The fold | `memory/ProjectMemoryDeliveredView.ts`: per participant, the latest snapshot in ledger order. No record is an empty view, so a conversation that started with memory off, or before this epic, gets the whole catalog as its first note |
@@ -76,18 +76,20 @@ Past either budget:
 
 ## Deviations
 
-1. **The record is written when the reply commits, not when the message is
-   sent.** D14 puts the record "on the turn that carried it". Built: staged on
-   the active run and written onto that writer turn in `completeRun`. A run
-   that's cancelled, abandoned or overtaken keeps its writer turn visible, but
-   the participant never retained that message. Writing the record at send
-   time would mark a note delivered that the conversation never kept, and the
-   change would never be told. Rollback, Rewind, Branch and New are still
-   right by construction, since the record lives on the turn.
-2. **A synthesis's record goes on the tool request.** A host synthesis run has
-   no writer turn of its own, so the frame or note it carried is recorded on
-   the tool request before the report.
-3. **An empty folder records an empty frame.** A conversation that started
+1. **The record is written on the reply, when it commits** (PR #198 F-01).
+   D14 puts the record "on the turn that carried it". Built: staged on the
+   active run, and written onto the persona reply that committed it. A run
+   that's cancelled, abandoned or overtaken never records. A cut that removes
+   the delivery removes the reply, so the record goes with the history that
+   received it, a host synthesis included. (The first build wrote it on the
+   writer turn, or for a synthesis on the tool request, which outlived a cut
+   to the report.)
+2. **A conversation that starts with nothing records an empty frame** (PR
+   #198 F-02). This covers memory off, an unavailable workspace, an unlisted
+   folder and a failure. A new conversation's view, a re-invited guest's
+   included, therefore starts from nothing and never inherits an earlier
+   membership's.
+3. **An empty folder records an empty frame too.** A conversation that started
    with memory on and nothing saved still has a record, so its first note is
    a delta like any other. That's identical in content to "no record means
    the whole catalog".
@@ -96,7 +98,10 @@ Past either budget:
    / `buildWorkshopGuestMessage`. This is the same seam as 2a's frame, for the
    same reason: one place covers host messages, a host synthesis and guest
    deliveries, and it's last in the message, as D14 asks.
-5. **`<gone>` for a memory whose file was deleted or no longer reads** says
+5. **A set past the record's bound is a digest** (PR #198 F-03). Over 4,096
+   memories, a delivery records a count and a hash in place of the list; any
+   change against a digest is the count line.
+6. **`<gone>` for a memory whose file was deleted or no longer reads** says
    "it is no longer among this project's notes": the folder can't say which.
 
 ## Completion Criteria

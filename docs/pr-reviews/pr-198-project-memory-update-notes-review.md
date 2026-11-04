@@ -14,6 +14,14 @@
   two P2. The green existing suites do not cover these cases. No formal
   GitHub approval or merge was performed.
 
+## Author resolution ledger
+
+| ID | Priority | Status |
+|---|---|---|
+| F-01 | P1 | Fixed in `7e3d566c`: the record rides the persona reply that committed it, never the writer turn or the tool request. A cut that removes the delivery (a synthesis included) removes the reply and its record with the history that received them. The codec refuses it on any turn but a host or guest reply, and for another participant; staging refuses a record for a conversation the run doesn't answer for. Regression: Rewind (through the coordinator and through the transform) and Branch to just after a report restore the report's view, A (`WorkshopProjectMemoryDeliveryWholeRoom.test.ts`). It failed before the fix. |
+| F-02 | P2 | Fixed in `1106e278`: every conversation start records a frame, an empty one when it delivered nothing (memory off, the workspace unavailable, the folder unlisted, a failure). A new membership's view therefore starts from nothing, and earlier memberships' records stay in history for valid cuts. Regressions (`ProjectMemoryUpdateNotes.test.ts`): On → dismiss → re-invite Off → On, with an unchanged set and with a partly changed set, both deliver the whole current set and then nothing; a re-invite with memory On gets its own frame; a join while unavailable, then available; the new membership's empty frame through save and reopen. The first two and the last failed before the fix. |
+| F-03 | P2 | Fixed in `6b4a45ed`: past the codec's 4,096, a delivery records `digest: { count, hash }` over its ids and versions in place of the list, so every committed record validates. The codec accepts a digest only above the bound and only beside an empty list. The fold compares a digest whole: the same set sends nothing; any change sends the count line and records the new digest, so nothing is announced twice or lost. Regressions: 4,096 real files record a list, and 4,097 a digest, through a frame and a note, each through the strict persisted-session parse; an unchanged digest sends no note; an edited memory sends the count line once; plus the codec's digest cases. |
+
 ## Findings
 
 ### F-01 (P1): a synthesis snapshot survives a cut that removes its delivery
