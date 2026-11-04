@@ -70,3 +70,16 @@ All three findings are fixed on `epic/workshop-wayfinding-slice-3-read-in-proven
 - `packages/core/src` has no `from 'vscode'`.
 
 Native focus and scroll geometry remain Slice 8's live check.
+
+
+## Independent re-review of `119a0ce` (2026-11-04)
+
+**Disposition: F-01, F-02 and N-01 are resolved; no new actionable defect found in the corrective delta.** This is a branch report, not a formal GitHub approval or authorization to merge.
+
+- **F-01:** The original real-microtask App witness now passes: the card keeps focus after overlay cleanup. Ordinary Close/Escape still restores the opener; missing-card fallback and nested-overlay controls pass. An already-open notice defers the requested destination until it closes and consumes it once; a notice arriving in a later task does not replay the completed jump.
+- **F-02:** The original validated writer-row fingerprint input is now rejected on parse and hydration, and the outgoing snapshot also projects all writer and fetched sources. Independent controls verify host, guest and tool writer rows preserve permitted provenance, injected fingerprints are stripped without changing host data, and legitimate fetched fingerprints survive checkpoint/archive roundtrips while staying out of the webview.
+- **N-01:** The asynchronous range witness now records its first and only scroll while Source is visible. Tab toggles and unrelated snapshots do not repeat it; reopening scrolls once again.
+
+**Independent checks:** 10 UI/overlay/Lightbox production suites / **89 tests** plus **8 separate full-App probes** pass. Privacy/access verification has **68 production tests** and **6 independent probes** passing. The full local suite was not rerun independently; native browser focus and scroll geometry, VS Code editor behavior and screen-reader acceptance remain unverified.
+
+[CI run 41759107828](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41759107828) passed on synthetic merge `4190711` of `119a0ce` into `d59b651`: **613 suites / 8,695 tests / 59 snapshots**, typecheck, lint and both builds. No implementation change, formal approval, merge or paid provider call was made during this re-review.
