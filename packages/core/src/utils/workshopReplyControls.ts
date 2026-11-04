@@ -5,8 +5,9 @@
  * **last**, after any `### Try a widget` section.
  *
  * - It removes **every** `<prose-minion-memory-proposal>` frame: from its
- *   opening tag to its closing tag, or to the end of the reply when it is
- *   unclosed (which takes anything written after it, a widget frame
+ *   opening tag to the closing tag that brings its depth back to zero (a
+ *   frame opened inside it is part of it, PR #200 F-03), or to the end of
+ *   the reply when it is unclosed (which takes anything written after it, a widget frame
  *   included: that was already out of order). A stray closing tag is
  *   removed too.
  * - `rest` is the reply without memory frames: what the widget inspector,
@@ -37,7 +38,7 @@ export type WorkshopReplyMemoryRejection =
   | 'misplaced'
   | 'duplicate'
   | 'memory-off'
-  | `malformed:${'unclosed' | 'unopened' | WorkshopMemoryProposalFault}`;
+  | `malformed:${'unclosed' | 'unopened' | 'nested' | WorkshopMemoryProposalFault}`;
 
 export type WorkshopReplyMemoryControl =
   | { readonly kind: 'none' }
@@ -65,6 +66,8 @@ interface Frame {
   /** Its inside, between the tags; undefined for a stray closing tag. */
   readonly inner?: string;
   readonly closed: boolean;
+  /** Whether another frame opened inside it: never a proposal (PR #200 F-03). */
+  readonly nested?: boolean;
 }
 
 /** Split a reply into its prose (and any widget control) and its memory frames. */
@@ -101,6 +104,26 @@ export function stripWorkshopMemoryProposalForRetention(reply: string): string {
   return controls.rest;
 }
 
+/**
+ * What a reply still streaming may show (PR #200 F-02): every memory frame
+ * removed as `rest` removes it (an unclosed one to the end, so a frame
+ * being written never shows), and a trailing fragment that could still
+ * become a frame's tag held back until the next token settles it. Pure
+ * over the text so far; the final reply is the extractor's.
+ */
+export function stripWorkshopMemoryProposalForStreaming(partial: string): string {
+  const { rest } = extractWorkshopReplyControls(partial, { memoryOpen: false });
+  const lastOpen = rest.lastIndexOf('<');
+  if (lastOpen < 0) {
+    return rest;
+  }
+  const tail = rest.slice(lastOpen).toLowerCase();
+  const name = tail.startsWith('</') ? tail.slice(2) : tail.slice(1);
+  const pending = `${WORKSHOP_MEMORY_PROPOSAL_TAG}`.startsWith(name)
+    || (name.startsWith(WORKSHOP_MEMORY_PROPOSAL_TAG) && /^\s/.test(name.slice(WORKSHOP_MEMORY_PROPOSAL_TAG.length)) && !name.includes('>'));
+  return pending ? rest.slice(0, lastOpen).replace(/\s+$/, '') : rest;
+}
+
 function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyControlsOptions): WorkshopReplyMemoryControl {
   if (!options.memoryOpen) {
     return rejected('memory-off');
@@ -116,6 +139,9 @@ function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyCo
   if (!frame.closed) {
     return rejected('malformed:unclosed');
   }
+  if (frame.nested) {
+    return rejected('malformed:nested');
+  }
   const after = removeFrames(reply.slice(frame.end), frames
     .filter((other) => other.start >= frame.end)
     .map((other) => ({ ...other, start: other.start - frame.end, end: other.end - frame.end })), '');
@@ -130,38 +156,56 @@ function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyCo
 
 function findFrames(reply: string): Frame[] {
   const frames: Frame[] = [];
-  let at = 0;
-  while (at < reply.length) {
-    OPEN.lastIndex = at;
-    CLOSE.lastIndex = at;
-    const open = OPEN.exec(reply);
-    const close = CLOSE.exec(reply);
-    if (!open && !close) {
-      break;
-    }
-    if (close && (!open || close.index < open.index)) {
-      // A closing tag with no frame open: debris, removed with no inside.
-      frames.push({ start: close.index, end: close.index + close[0].length, closed: true });
-      at = close.index + close[0].length;
+  let depth = 0;
+  let opening: { start: number; innerStart: number } | undefined;
+  let nested = false;
+  for (const tag of tagsOf(reply)) {
+    if (tag.open) {
+      if (depth === 0) {
+        opening = { start: tag.start, innerStart: tag.end };
+        nested = false;
+      } else {
+        nested = true;
+      }
+      depth += 1;
       continue;
     }
-    const opening = open as RegExpExecArray;
-    const innerStart = opening.index + opening[0].length;
-    CLOSE.lastIndex = innerStart;
-    const closing = CLOSE.exec(reply);
-    if (!closing) {
-      frames.push({ start: opening.index, end: reply.length, inner: reply.slice(innerStart), closed: false });
-      break;
+    if (depth === 0) {
+      // A closing tag with no frame open: debris, removed with no inside.
+      frames.push({ start: tag.start, end: tag.end, closed: true });
+      continue;
     }
-    frames.push({
-      start: opening.index,
-      end: closing.index + closing[0].length,
-      inner: reply.slice(innerStart, closing.index),
-      closed: true
-    });
-    at = closing.index + closing[0].length;
+    depth -= 1;
+    if (depth === 0 && opening) {
+      // The outer frame ends only where its own depth closes, so nothing
+      // inside a nested frame is ever read as text after it (PR #200 F-03).
+      frames.push({
+        start: opening.start,
+        end: tag.end,
+        inner: reply.slice(opening.innerStart, tag.start),
+        closed: true,
+        nested
+      });
+      opening = undefined;
+    }
+  }
+  if (opening) {
+    // Unclosed at any depth: everything from its opening tag is removed.
+    frames.push({ start: opening.start, end: reply.length, inner: reply.slice(opening.innerStart), closed: false, nested });
   }
   return frames;
+}
+
+/** Every opening and closing tag, in order. */
+function tagsOf(reply: string): Array<{ readonly open: boolean; readonly start: number; readonly end: number }> {
+  const tags: Array<{ open: boolean; start: number; end: number }> = [];
+  for (const [pattern, open] of [[OPEN, true], [CLOSE, false]] as const) {
+    pattern.lastIndex = 0;
+    for (let match = pattern.exec(reply); match; match = pattern.exec(reply)) {
+      tags.push({ open, start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return tags.sort((a, b) => a.start - b.start);
 }
 
 /**

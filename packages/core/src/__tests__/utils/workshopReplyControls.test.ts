@@ -2,6 +2,7 @@ import {
   extractWorkshopReplyControls,
   hasWorkshopMemoryProposalText,
   sanitizeWorkshopReplyForRetention,
+  stripWorkshopMemoryProposalForStreaming,
   WORKSHOP_MEMORY_ONLY_REPLY_LINE,
   WORKSHOP_MEMORY_PROPOSAL_REDACTION
 } from '@/utils/workshopReplyControls';
@@ -166,5 +167,65 @@ describe('sanitizeWorkshopReplyForRetention', () => {
   it('then strips the widget control as before', () => {
     expect(sanitizeWorkshopReplyForRetention(`${PROSE}\n\n${WIDGET}\n\n${memoryFrame()}`)).toBe(PROSE);
     expect(sanitizeWorkshopReplyForRetention(`${WIDGET}\n${memoryFrame()}`)).toBe('[Widget setup delivered through the Workshop interface.]');
+  });
+});
+
+describe('nested frames consume the whole outer region (PR #200 F-03)', () => {
+  const O = '<prose-minion-memory-proposal>';
+  const C = '</prose-minion-memory-proposal>';
+
+  it.each([
+    ['one level', `${PROSE}\n\n${O}<title>A</title>${O}SENTINEL-INNER${C}SENTINEL-OUTER${C}`],
+    ['two levels', `${PROSE}\n\n${O}${O}${O}SENTINEL-INNER${C}SENTINEL-MID${C}SENTINEL-OUTER${C}`],
+    ['nested, outer unclosed', `${PROSE}\n\n${O}SENTINEL-A${O}SENTINEL-B${C}SENTINEL-OUTER`],
+    ['nested, nothing closed', `${PROSE}\n\n${O}SENTINEL-A${O}SENTINEL-B`]
+  ])('%s', (_label, reply) => {
+    for (const memoryOpen of [true, false]) {
+      const controls = extractWorkshopReplyControls(reply, { memoryOpen });
+      expect(controls.rest).toBe(PROSE);
+      expect(controls.redacted).toBe(`${PROSE}\n\n[project memory proposal removed]`);
+      expect(controls.memory.kind).toBe('rejected');
+      expect(sanitizeWorkshopReplyForRetention(reply)).not.toContain('SENTINEL');
+    }
+  });
+
+  it('names a closed nested frame as nested', () => {
+    expect(extractWorkshopReplyControls(`${O}${memoryFrame({})}${C}`, OPEN).memory)
+      .toEqual({ kind: 'rejected', reason: 'malformed:nested' });
+  });
+
+  it('keeps prose after a closed nested frame, and still reads it as misplaced', () => {
+    const reply = `${PROSE}\n\n${O}x${O}SENTINEL${C}SENTINEL${C}\n\nAfter.`;
+    const controls = extractWorkshopReplyControls(reply, OPEN);
+    expect(controls.rest).toBe(`${PROSE}\n\nAfter.`);
+    expect(controls.redacted).not.toContain('SENTINEL');
+  });
+});
+
+describe('a streaming reply never shows a memory frame (PR #200 F-02)', () => {
+  const O = '<prose-minion-memory-proposal>';
+  const C = '</prose-minion-memory-proposal>';
+  const frame = memoryFrame({ title: 'SENTINEL title', summary: 'SENTINEL summary', body: 'SENTINEL body' });
+
+  it.each([
+    ['a whole frame', `${PROSE}\n\n${frame}`],
+    ['a frame with attributes', `${PROSE}\n\n<prose-minion-memory-proposal data-x="SENTINEL">${frame}`],
+    ['a nested frame', `${PROSE}\n\n${O}SENTINEL${O}SENTINEL${C}SENTINEL${C}`],
+    ['a frame after the widget section', `${PROSE}\n\n${WIDGET}\n\n${frame}`]
+  ])('at every prefix of %s', (_label, reply) => {
+    for (let length = 0; length <= reply.length; length += 1) {
+      const shown = stripWorkshopMemoryProposalForStreaming(reply.slice(0, length));
+      expect(shown).not.toMatch(/SENTINEL|<prose-minion-mem|<\/prose-minion-mem/i);
+      expect(reply.startsWith(shown.trimEnd()) || shown === '').toBe(true);
+    }
+    expect(stripWorkshopMemoryProposalForStreaming(reply)).toBe(extractWorkshopReplyControls(reply, OPEN).rest);
+  });
+
+  it('holds back a fragment that could still open a frame, and releases one that cannot', () => {
+    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <`)).toBe(PROSE);
+    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <prose-min`)).toBe(PROSE);
+    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} </prose-minion-memory`)).toBe(PROSE);
+    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <em>`)).toBe(`${PROSE} <em>`);
+    expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <prose-minion-memory-proposalx`)).toBe(`${PROSE} <prose-minion-memory-proposalx`);
   });
 });
