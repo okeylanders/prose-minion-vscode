@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** Planned (after Slice 2). D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
+**Status:** In progress, on `epic/workshop-wayfinding-slice-3-read-in-provenance`. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 
@@ -14,6 +14,30 @@ range it read and a host-private fingerprint. The reader then:
 - marks the lines that were read,
 - shows an "End of {persona}'s read · line N" marker,
 - shows a "changed since" banner when the file no longer matches.
+
+## Since Slice 2
+
+Slice 2 (PR #186) settled several things this slice builds on.
+
+- **The reader routes** live in `WorkshopReadInRoutes`, and resolution is
+  `WorkshopConfiguredResourceLookup`, which `resource.read` shares.
+  `readInOpenAction` and `partitionContextSources` live in
+  `presentation/webview/utils/workshop/contextSources.ts`.
+- **Every reader request carries a webview-minted `requestId`**, which the
+  host echoes. `useWorkshopReadIn` takes only the pending request's first
+  reply. The fields this slice adds to `WORKSHOP_READ_IN_RESOURCE_CONTENT`
+  (`lineRange`, `changedSinceRead`) ride the same correlated reply. Pick the
+  row by its delivery identity in the request, as the Reader honesty section
+  says, and never by `{ group, path }` alone.
+- **Each reader opening is its own sheet**, keyed `read-in:<requestId>`.
+  A room or chat-target change closes an open reader.
+- **While any text sheet is open, the frame behind it is `inert`**, through
+  `FullTabShell`'s opt-in `inertBehindOverlay`. The "Show where it was read"
+  jump must close the sheet before it scrolls the thread; otherwise the
+  thread is inert and can't take focus.
+- **Astra checks** for: state lost or carried across a remount, response
+  correlation, ARIA relationships, focus, and exact-head verification. See
+  `docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md`.
 
 ## Build
 

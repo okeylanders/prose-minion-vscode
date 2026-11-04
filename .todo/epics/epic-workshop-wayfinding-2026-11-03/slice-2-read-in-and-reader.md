@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Built (`a88ef63`, `e1111b2`; review fixes `7a153fd`, `1687b0a`, `3c184c2`, `fe0d47d`, `cf1b8c4`, `e69125b`; the last replaces the focus trap), on `epic/workshop-wayfinding-slice-2-read-in`; PR #186 in review
+**Status:** Done. Merged into the epic through PR #186 (`d59b651`) after Astra's fifth round resolved F-01, F-02 and N-01 to N-03 ([review](../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md)). Built in `a88ef63`, `e1111b2`; review fixes `7a153fd`, `1687b0a`, `3c184c2`, `fe0d47d`, `cf1b8c4`, `e69125b` (the last replaces the focus trap with an inert frame).
 
 ## Outcome
 

@@ -115,6 +115,7 @@ elsewhere.
 | Low | [A dictionary block that normalization empties still counts as a success](2026-11-03-dictionary-normalized-block-success.md) (Workshop Wayfinding Slice 6, PR #185 F-04's scope note; history's `modelIds` too) | Identified |
 | Medium | [Workshop modals don't contain focus](2026-11-03-workshop-modal-focus-containment.md) (Workshop Wayfinding Slice 2, PR #186 F-02/N-03; the text sheet makes the frame behind it `inert`, the rest don't) | Identified |
 | Low | [Rendered Markdown keeps positive `tabindex`](2026-11-04-markdown-positive-tabindex.md) (Workshop Wayfinding Slice 2, PR #186 N-01; the sheet's trap orders stops as the browser does) | Identified |
+| Low | [The Lightbox passage linear-time tests are bounded by a wall clock](2026-11-03-lightbox-passages-wall-clock-test.md) (failed CI on PR #186's report commit under runner load; count the work instead) | Identified |
 
 ## Review Guidance
 
