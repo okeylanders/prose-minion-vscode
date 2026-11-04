@@ -43,3 +43,12 @@ All four checklist corrections are applied to `slice-8-live-pass.md`.
 | N-04 | Applied | The pass now records the commit, VS Code and OS, the screen reader, and outcomes. Blockers are fixed. Only debt Okey explicitly accepts is filed. A decision or a `main` merge that changes behavior reruns the affected checks. The release-note wording now names sessions that *contain* the new fields, and keeps the legacy round-trip and the unstamped host fallback. |
 
 The five writer decisions remain open. Their built defaults are not acceptance.
+
+
+## Re-review of `03dab15` (2026-11-04)
+
+N-01, N-03 and N-04 are substantively addressed: the checklist uses the writer's actual to-do action, adds the reader/rail and sheet-handoff acceptance cases, records test context and outcomes, distinguishes blockers from explicitly accepted debt, and narrows the D9 release wording. All five writer decisions remain unchecked; the defaults are not treated as accepted.
+
+**N-02 is mostly addressed, with one qualification still needed.** The checklist now correctly separates Markdown/HTML slice placement from JSON's absence of synthetic slices. Its JSON step says replies and capability cards **each** carry `model`, however. Resource/recall cards, host-written fallback turns and legacy entries can legitimately be unstamped. Ask that JSON preserve the model **where the underlying turn has a stamp**, with an unstamped control; otherwise expected output can be misclassified as failure.
+
+No native pass, implementation change, formal approval or merge was performed. The aggregate technical review remains separate and in progress.
