@@ -23,15 +23,29 @@ written, and the epic merges to `main` through one PR with the release review.
 
 ## Checklist
 
-Each item names the slice that left it for this pass. Tick it, or file what
-you find as `.todo/tech-debt/` and link it here.
+Each item names the slice that left it for this pass.
+
+**Record for the pass:**
+- the commit tested;
+- the VS Code version and OS;
+- the screen reader used;
+- what happened at each step.
+
+**For each problem found, decide which kind it is:**
+- **A blocker** is fixed before the epic merges.
+- **Accepted debt** is filed as `.todo/tech-debt/` and linked here, but only when Okey explicitly accepts it.
+
+Filing something doesn't make it acceptable.
+
+**If something changes behavior** (a decision below, or bringing `main` in), rerun the checks it affects and the epic's verification.
 
 ### Rail tabs (Slice 1)
 
 - [ ] The rail shows **Material** and **Notes** tabs, and the Tools block is
       gone. No tab switches by itself, whatever arrives.
-- [ ] A to-do the host adds while Notes is hidden badges Notes. Opening Notes
-      clears it.
+- [ ] With **Material** showing, add a finding from a reply as a to-do. That
+      is the only way a to-do is made (D1 amendment). Notes gets a badge, and
+      opening Notes clears it.
 - [ ] A half-typed to-do edit survives switching tabs and back.
 
 ### Read in and the reader (Slices 2 and 3)
@@ -40,15 +54,27 @@ you find as `.todo/tech-debt/` and link it here.
       for that persona. If Material is hidden, the row badges it.
 - [ ] Opening the row shows the reader sheet. **Open beside** opens that file
       in the editor column beside the Workshop, and nothing else.
-- [ ] While the sheet is open, Tab stays inside it. Note what Tab past the last
-      control does: it may reach VS Code's own chrome, as a native modal's
-      does. Escape returns focus to the row.
+- [ ] Open a rich-Markdown resource in the reader, one with a
+      `<details>`/`<summary>` block and a disabled form control inside a
+      disabled fieldset. While the sheet is open:
+  - [ ] Tab and Shift+Tab reach the summary and skip the inherited-disabled
+        controls.
+  - [ ] The Workshop behind the sheet stays inert: neither the mouse nor the
+        keyboard can reach it.
+  - [ ] Note what Tab past the last control does. It may reach VS Code's own
+        chrome, as a native modal's does.
+  - [ ] Escape returns focus to the row.
+- [ ] With a screen reader, move through the rail's tabs, the Read in rows and
+      the reader sheet. Each one is named and announced.
 - [ ] A ranged read opens on **Source** at the first line read, scrolled
       there, with the band and the "End of … read · line N" marker.
 - [ ] Edit the file, then open the row again. The amber "changed since" banner
       shows.
 - [ ] **Show where it was read** closes the sheet, scrolls to the card, and
       leaves focus on the card.
+- [ ] **Show where it was read** for a card outside the loaded window replaces
+      the reader with the turn preview. Focus never lands behind the active
+      sheet, and closing the preview returns focus to the rail row.
 
 ### Bookmarks (Slices 4 and 5)
 
@@ -80,8 +106,11 @@ you find as `.todo/tech-debt/` and link it here.
 - [ ] With an auto-router model, a reply served by another model shows
       "served by …" under its body. The participant label's tooltip names
       both ids.
-- [ ] Export (Markdown, HTML, JSON) shows the same slices as the thread, and
-      JSON turns carry `model`.
+- [ ] Markdown and HTML export draw the same slices as the thread, in the
+      same places.
+- [ ] JSON export has no slice entries; that's by design. Its replies and
+      capability cards each carry `model`, and these match the thread's
+      stamps.
 - [ ] A session saved before this epic opens unchanged and shows no slices.
 
 ## Decisions for Okey
@@ -122,8 +151,13 @@ Once the checklist is done:
    - the counts (629 → 636 suites at the end);
    - the open tech debt.
 4. Open the epic's PR into `main` with the release review. Its release notes
-   must say what D9 accepted: **builds up to v2.12 won't open a session this
-   build saves.** Model stamps land on every new reply.
+   must state what D9 accepted:
+   - **A session that contains the new provenance, bookmark or model fields
+     won't open in v2.12 or earlier.**
+   - In practice that is most new work, because every provider reply is
+     stamped.
+   - An unchanged legacy session still round-trips without those fields.
+   - A reply the host wrote in the model's place stays unstamped.
 
 ## Open tech debt from this epic
 
