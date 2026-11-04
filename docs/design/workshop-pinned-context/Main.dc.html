@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conversation settings · Pinned context tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#ee7d49}a:hover{color:#e0673a}
+.pm-dark{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--accentSoft:rgba(224,103,58,.14);
+  --amber:#e2b24a;--blue:#5aa2f0;--backdrop:rgba(0,0,0,.48);--shadow:0 28px 90px rgba(0,0,0,.55);
+}
+.root{width:940px;box-sizing:border-box;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.eyebrow{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0;}
+.rule{display:flex;align-items:center;gap:12px;margin:22px 0 9px;}
+.rule hr{flex:1;border:0;border-top:1px solid var(--border);margin:0;}
+.note{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--dim);}
+.row{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;background:var(--s2);border:1px solid var(--border);border-radius:9px;}
+.row.warn{border-color:color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 7%,var(--s2));}
+.row-text{flex:1;min-width:0;}
+.row-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);}
+.row-desc{margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--dim);}
+.readout{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:330px;}
+.chip{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text2);background:var(--inset);border:1px solid var(--border);border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.chip.quiet{color:var(--dim);}
+.meter{margin-top:10px;height:5px;border-radius:999px;background:var(--s3);overflow:hidden;}
+.meter-fill{height:100%;border-radius:999px;background:var(--accent);}
+.meter-fill.full{background:var(--amber);}
+.meter-cap{display:flex;justify-content:space-between;margin-top:5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--faint);}
+.more{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:9px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:11.5px;line-height:1.5;color:var(--muted);}
+.more svg{flex:none;margin-top:2px;color:var(--amber);}
+.notice{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:12px;line-height:1.5;color:var(--muted);}
+.notice svg{flex:none;margin-top:2px;color:var(--amber);}
+.notice b{color:var(--text);font-weight:600;}
+.well{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);font-size:12px;line-height:1.5;color:var(--muted);}
+.well svg{flex:none;margin-top:2px;color:var(--accentHi);}
+.well b{color:var(--text);font-weight:600;}
+.path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--text);}
+.btns{display:flex;gap:8px;flex:none;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
+.row .btn,.prow .btn{background:var(--surface);}
+.btn:not(:disabled):hover{border-color:var(--accentHi);color:var(--text);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.primary{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;font-family:inherit;color:#fff;background:linear-gradient(180deg,var(--accentHi),var(--accentLo));cursor:pointer;}
+.primary:disabled{opacity:.5;cursor:not-allowed;}
+.tabs{display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--soft);}
+.tab{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--dim);font-family:inherit;font-size:12px;font-weight:600;padding:10px 12px 9px;cursor:pointer;}
+.tab.on{color:var(--text);border-bottom-color:var(--accent);}
+.close{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--muted);cursor:pointer;}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.prow{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 8px;background:var(--s2);border:1px solid var(--border);border-radius:9px;}
+.prow.warn{border-color:color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 6%,var(--s2));}
+.pos{width:18px;flex:none;text-align:right;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--faint);}
+.fglyph{flex:none;color:var(--blue);}
+.pname{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:600;color:var(--text);}
+.ppath{margin-top:2px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tag{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;}
+.here{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:500;color:var(--accentHi);}
+.issue{display:flex;gap:6px;align-items:flex-start;margin-top:4px;font-size:11px;line-height:1.45;color:var(--amber);}
+.issue svg{flex:none;margin-top:2px;}
+.words{flex:none;min-width:86px;text-align:right;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--muted);white-space:nowrap;}
+.utils{display:flex;gap:4px;align-items:center;flex:none;}
+.ibtn{width:28px;height:28px;display:grid;place-items:center;padding:0;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--muted);cursor:pointer;}
+.ibtn:not(:disabled):hover{border-color:var(--accentHi);color:var(--text);}
+.ibtn:disabled{opacity:.35;cursor:not-allowed;}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;}
+</style>
+</helmet>
+<div class="root pm-dark" style="padding: 40px 0 0 0; min-height: {{minHeight}}">
+<div class="modal" role="dialog" aria-labelledby="pm-ws-settings-title">
+
+<div style="display: flex; justify-content: space-between; gap: 20px; padding: 20px 20px 16px">
+<div>
+<div class="eyebrow">Workshop · Room settings</div>
+<h2 id="pm-ws-settings-title" style="font-size: 20px; line-height: 1.2; margin: 7px 0 4px; color: var(--text)">Conversation settings</h2>
+<p style="color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0">Choose how Workshop personas respond, what they may proactively offer, what you explicitly share and attach to every new conversation, what they remember about this project, and whether they may research the live web.</p>
+</div>
+<button class="close" type="button" aria-label="Close conversation settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</div>
+
+<div class="tabs" role="tablist" aria-label="Conversation settings sections">
+<button class="tab" type="button" role="tab" aria-selected="false">Behavior</button>
+<button class="tab" type="button" role="tab" aria-selected="false">About you</button>
+<button class="tab on" type="button" role="tab" aria-selected="true">Pinned context</button>
+<button class="tab" type="button" role="tab" aria-selected="false">Memory</button>
+<button class="tab" type="button" role="tab" aria-selected="false">Advanced</button>
+</div>
+
+<div role="tabpanel" aria-label="Pinned context" style="padding: 2px 20px 8px">
+
+<sc-if value="{{hasNotice}}" hint-placeholder-val="{{ false }}">
+<div class="notice" role="status">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span><b>{{noticeTitle}}</b> {{noticeText}}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{hasChanged}}" hint-placeholder-val="{{ false }}">
+<div class="well" role="status">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+<span><b>Pinned context changed in another window.</b> This is the current list.</span>
+</div>
+</sc-if>
+
+<div class="rule"><span class="eyebrow">Pinned context</span><hr></div>
+<div class="row">
+<div class="row-text">
+<div class="row-name">{{summary.name}}</div>
+<div class="row-desc">{{summary.desc}}</div>
+<sc-if value="{{summary.showMeter}}" hint-placeholder-val="{{ true }}">
+<div class="meter" role="img" aria-label="{{summary.meterLabel}}"><div class="meter-fill {{summary.meterCls}}" style="width: {{summary.meterWidth}}"></div></div>
+<div class="meter-cap"><span>{{summary.capLeft}}</span><span>{{summary.capRight}}</span></div>
+</sc-if>
+</div>
+<div class="readout">
+<sc-for list="{{summary.chips}}" as="ch" hint-placeholder-count="3"><span class="chip {{ch.cls}}">{{ch.text}}</span></sc-for>
+</div>
+</div>
+<sc-if value="{{hasMore}}" hint-placeholder-val="{{ false }}">
+<div class="more">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span>{{moreText}}</span>
+</div>
+</sc-if>
+<sc-if value="{{showStartNote}}" hint-placeholder-val="{{ true }}">
+<p class="note">New session and New session: full reset both start with these files, in this order. Opening, branching or rewinding a saved session leaves its context as it was.</p>
+</sc-if>
+
+<sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
+<div class="rule"><span class="eyebrow">Files, in order</span><hr></div>
+<ol class="plist" aria-label="Pinned files, in the order new conversations attach them">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+<li class="prow {{r.cls}}">
+<span class="pos" aria-hidden="true">{{r.pos}}</span>
+<svg class="fglyph" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<div class="row-text">
+<div class="pname">
+<span>{{r.name}}</span>
+<sc-if value="{{r.hasGroup}}" hint-placeholder-val="{{ true }}"><span class="tag">{{r.group}}</span></sc-if>
+<sc-if value="{{r.here}}" hint-placeholder-val="{{ false }}"><span class="here"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>In this conversation</span></sc-if>
+</div>
+<div class="ppath">{{r.path}}</div>
+<sc-if value="{{r.hasIssue}}" hint-placeholder-val="{{ false }}">
+<div class="issue"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg><span>{{r.issue}}</span></div>
+</sc-if>
+</div>
+<span class="words">{{r.wordsText}}</span>
+<div class="utils">
+<button class="ibtn" type="button" aria-label="Move {{r.name}} up" disabled="{{r.upDisabled}}" onClick="{{r.up}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate(180deg)"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+<button class="ibtn" type="button" aria-label="Move {{r.name}} down" disabled="{{r.downDisabled}}" onClick="{{r.down}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+<button class="btn" type="button" aria-label="Open {{r.name}}" disabled="{{r.openDisabled}}">Open</button>
+<button class="btn" type="button" aria-label="Unpin {{r.name}}" onClick="{{r.unpin}}">Unpin</button>
+</div>
+</li>
+</sc-for>
+</ol>
+</sc-if>
+
+<div class="actions">
+<button class="primary" type="button" disabled="{{locked}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Add from project…</button>
+<button class="btn" type="button" disabled="{{locked}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"></path></svg>Pin what’s attached now (3)</button>
+<sc-if value="{{showAttachMissing}}" hint-placeholder-val="{{ true }}">
+<button class="btn" type="button" disabled="{{attachMissingDisabled}}" aria-describedby="pm-pin-attach-why">Attach missing to this conversation ({{missingCount}})</button>
+</sc-if>
+</div>
+<sc-if value="{{showRunningNote}}" hint-placeholder-val="{{ false }}">
+<p class="note" id="pm-pin-attach-why">Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.</p>
+</sc-if>
+<sc-if value="{{showSourceNote}}" hint-placeholder-val="{{ true }}">
+<p class="note">Pin files from this project only. Unpinning a file never removes it from a conversation it’s already in.</p>
+</sc-if>
+
+<div class="rule"><span class="eyebrow">Saved in this project</span><hr></div>
+<div class="row {{fileRowCls}}" style="align-items: center">
+<div class="row-text">
+<div class="row-name"><span class="path">prose-minion/pinned-context.json</span></div>
+<div class="row-desc">{{fileDesc}}</div>
+</div>
+<div class="btns">
+<button class="btn" type="button" disabled="{{fileOpenDisabled}}">Open file</button>
+</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px 20px; margin-top: 10px; border-top: 1px solid var(--soft)">
+<span style="flex: 1; font-size: 11px; line-height: 1.5; color: var(--faint)">Applies the Behavior, About You, Memory, and Advanced drafts together. Pinned context saves as you change it and applies to new conversations. Memory and live web research take effect on your next message.</span>
+<button class="btn" type="button">Cancel</button>
+<button class="primary" type="button">Apply to next turn</button>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["listed","empty","problems","over","changed","running","unreadable","nofolder","multiroot"],"default":"listed"},"minH":{"editor":null,"default":"1380"},"$preview":{"width":940,"height":1380}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const view = this.props.viewState ?? 'listed';
+    const minHeight = (this.props.minH ?? '1380') + 'px';
+    const limit = 100000;
+    const fmt = (n) => n.toLocaleString('en-US');
+    const unavailable = view === 'nofolder' || view === 'multiroot';
+    const fileBroken = view === 'unreadable';
+    const empty = view === 'empty';
+    const locked = unavailable || fileBroken;
+
+    const base = [
+      { id: 'brief', name: 'brief.md', path: 'Brief/brief.md', group: 'Project Brief', words: 1850, here: true },
+      { id: 'voice', name: 'voice-and-tone.md', path: 'Tone-And-Style/voice-and-tone.md', group: 'General References', words: 2100, here: true },
+      { id: 'alice', name: 'alice.md', path: 'Characters/alice.md', group: 'Characters', words: 3400, here: true },
+      { id: 'rabbit', name: 'the-white-rabbit.md', path: 'Characters/the-white-rabbit.md', group: 'Characters', words: 1900, here: true },
+      { id: 'hatter', name: 'the-hatter.md', path: 'Characters/the-hatter.md', group: 'Characters', words: 2600, here: true },
+      { id: 'queen', name: 'the-queen-of-hearts.md', path: 'Characters/the-queen-of-hearts.md', group: 'Characters', words: 2200, here: true },
+      { id: 'cat', name: 'the-cheshire-cat.md', path: 'Characters/the-cheshire-cat.md', group: 'Characters', words: 1700, here: true },
+      { id: 'land', name: 'wonderland.md', path: 'Locations/wonderland.md', group: 'Locations & Settings', words: 2900, here: true },
+      { id: 'tea', name: 'tea-party-rules.md', path: 'Things/tea-party-rules.md', group: 'Things / Props', words: 1400, here: false },
+      { id: 'size', name: 'curiosity-and-size.md', path: 'Themes/curiosity-and-size.md', group: 'Themes', words: 3350, here: false }
+    ];
+    const files = base.map((f) => Object.assign({ state: 'ready' }, f));
+    if (view === 'over') {
+      files.push({ id: 'ms', name: 'manuscript.md', path: 'Manuscript/manuscript.md', group: 'Manuscript', words: 84200, here: false, state: 'ready' });
+    }
+    if (view === 'problems') {
+      files.forEach((f) => {
+        if (f.id === 'cat') { f.state = 'missing'; f.here = false; }
+        if (f.id === 'land') { f.state = 'unreadable'; f.reason = 'it’s larger than the 5 MB file limit'; f.here = false; }
+      });
+    }
+
+    const st = this.state || {};
+    const removed = st.removed || {};
+    const known = files.map((f) => f.id);
+    const ids = (st.order || known).filter((id) => !removed[id] && known.indexOf(id) >= 0);
+    known.forEach((id) => { if (!removed[id] && ids.indexOf(id) < 0) { ids.push(id); } });
+    const byId = {};
+    files.forEach((f) => { byId[f.id] = f; });
+    const ordered = ids.map((id) => byId[id]);
+
+    const move = (id, delta) => () => {
+      const next = ids.slice();
+      const at = next.indexOf(id);
+      const to = at + delta;
+      if (at < 0 || to < 0 || to >= next.length) { return; }
+      next.splice(at, 1);
+      next.splice(to, 0, id);
+      this.setState({ order: next });
+    };
+    const unpin = (id) => () => {
+      const nextRemoved = Object.assign({}, removed);
+      nextRemoved[id] = true;
+      this.setState({ removed: nextRemoved, order: ids.filter((x) => x !== id) });
+    };
+
+    let used = 0;
+    let total = 0;
+    let hereCount = 0;
+    let missingCount = 0;
+    let wontAttach = 0;
+    const rows = ordered.map((f, i) => {
+      let issue = '';
+      let attaches = false;
+      if (f.state === 'missing') {
+        issue = 'Not found. New conversations start without it. Unpin it, or put the file back.';
+      } else if (f.state === 'unreadable') {
+        issue = 'Can’t read: ' + f.reason + '. New conversations start without it.';
+      } else if (used + f.words > limit) {
+        issue = 'Doesn’t fit: with the files above it, it would pass the ' + fmt(limit) + '-word context limit, so new conversations start without it.';
+      } else {
+        used += f.words;
+        attaches = true;
+      }
+      if (f.state === 'ready') { total += f.words; }
+      if (!attaches) { wontAttach += 1; }
+      const here = attaches && f.here;
+      if (here) { hereCount += 1; }
+      if (attaches && !f.here) { missingCount += 1; }
+      return {
+        pos: String(i + 1),
+        name: f.name,
+        path: f.path,
+        group: f.group,
+        hasGroup: f.state !== 'missing',
+        here: here,
+        hasIssue: issue.length > 0,
+        issue: issue,
+        cls: issue.length > 0 ? 'warn' : '',
+        wordsText: f.state === 'ready' ? fmt(f.words) + ' words' : '—',
+        upDisabled: i === 0,
+        downDisabled: i === ordered.length - 1,
+        openDisabled: f.state === 'missing',
+        up: move(f.id, -1),
+        down: move(f.id, 1),
+        unpin: unpin(f.id)
+      };
+    });
+
+    const over = total > limit;
+    let summary;
+    if (unavailable) {
+      summary = { name: 'Nothing attaches', desc: 'New conversations in this workspace start without pinned context.', showMeter: false, chips: [{ text: 'unavailable', cls: 'quiet' }] };
+    } else if (fileBroken) {
+      summary = { name: 'Nothing attaches until the file is fixed', desc: 'New conversations start without pinned context while pinned-context.json can’t be read. The files listed in it stay pinned.', showMeter: false, chips: [{ text: 'file can’t be read', cls: 'quiet' }] };
+    } else if (empty || rows.length === 0) {
+      summary = { name: 'Nothing pinned yet', desc: 'Add files from your project, or pin what’s attached to this conversation now. Pinned files are attached to every new conversation in this project.', showMeter: false, chips: [{ text: '0 files', cls: 'quiet' }] };
+    } else {
+      summary = {
+        name: 'Attached to every new conversation',
+        desc: 'Pinned files are context: sent in full, and counted toward the ' + fmt(limit) + '-word context limit with anything else you attach. Each new conversation reads them as they are when it starts.',
+        showMeter: true,
+        meterCls: over ? 'full' : '',
+        meterWidth: Math.min(100, Math.round((total / limit) * 100)) + '%',
+        meterLabel: 'Pinned context: about ' + fmt(total) + ' of ' + fmt(limit) + ' words',
+        capLeft: 'Pinned · ' + rows.length + ' files' + (wontAttach > 0 ? ' · ' + wontAttach + ' won’t attach' : ''),
+        capRight: 'about ' + fmt(total) + ' of ' + fmt(limit) + ' words',
+        chips: [
+          { text: rows.length + ' files', cls: '' },
+          { text: '≈ ' + fmt(total) + ' words', cls: '' },
+          { text: hereCount + ' in this conversation', cls: '' }
+        ]
+      };
+    }
+
+    let moreText = '';
+    if (view === 'over') {
+      moreText = 'Pinned context comes to about ' + fmt(total) + ' of ' + fmt(limit) + ' words, probably because a file grew or the list was edited outside this tab. New conversations attach the files that fit, in order. Unpin a file to make room. Nothing is unpinned for you.';
+    } else if (view === 'problems' && wontAttach > 0) {
+      moreText = wontAttach + ' pinned files won’t attach: one isn’t there, and one can’t be read. New conversations start with the other ' + (rows.length - wontAttach) + '. Nothing is unpinned for you.';
+    }
+
+    let noticeTitle = '';
+    let noticeText = '';
+    if (view === 'nofolder') {
+      noticeTitle = 'Pinned context isn’t available here.';
+      noticeText = 'No folder is open, so there’s no project to pin files in. Open a single folder to use pinned context.';
+    } else if (view === 'multiroot') {
+      noticeTitle = 'Pinned context isn’t available here.';
+      noticeText = 'This workspace has several folders, so pinned context can’t tell which project it belongs to. Open a single folder to use pinned context.';
+    } else if (fileBroken) {
+      noticeTitle = 'pinned-context.json can’t be read.';
+      noticeText = 'Characters/alice.md is listed twice. Fix it in the editor. Until then, new conversations start without pinned context, and this tab can’t change the list.';
+    }
+
+    let fileDesc = 'The list, in order, saved in this project. You can read and edit it in VS Code; edits apply to the next new conversation.';
+    if (empty) { fileDesc = 'The file is made when you pin the first file.'; }
+    if (unavailable) { fileDesc = 'There’s no project folder to save it in.'; }
+    if (fileBroken) { fileDesc = 'Open it to fix it. Prose Minion never rewrites a file it can’t read.'; }
+
+    const listShown = !unavailable && !fileBroken && !empty && rows.length > 0;
+    return {
+      minHeight: minHeight,
+      hasNotice: noticeTitle.length > 0,
+      noticeTitle: noticeTitle,
+      noticeText: noticeText,
+      hasChanged: view === 'changed',
+      summary: summary,
+      hasMore: moreText.length > 0,
+      moreText: moreText,
+      showStartNote: !unavailable && !fileBroken,
+      showList: listShown,
+      rows: rows,
+      locked: locked,
+      showAttachMissing: listShown,
+      attachMissingDisabled: view === 'running' || missingCount === 0,
+      missingCount: String(missingCount),
+      showRunningNote: view === 'running',
+      showSourceNote: !unavailable && !fileBroken,
+      fileRowCls: fileBroken ? 'warn' : '',
+      fileDesc: fileDesc,
+      fileOpenDisabled: empty || unavailable
+    };
+  }
+}
+</script>
+</body>
+</html>

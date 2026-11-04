@@ -1,16 +1,25 @@
 # Epic: Workshop Pinned Context
 
-**Status:** Slice 0 (spec) written, with six questions waiting on Okey. Code
+**Status:** Slice 0 (spec) written, with six questions waiting on Okey.
+Slice 0d (tab design), first pass drawn, waiting on Okey's review. Code
 slices are gated on Project Memory reaching `main` (see [Order](#order)).
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic-pinned-context`, cut from `main` at `24d9d6e`.
-Each slice is built on its own branch,
-`epic-pinned-context-slice-<N>-<slug>`, and merges into the epic through a
-reviewed PR. The epic merges to `main` through one PR at the end.
+- **Docs and design go straight on this branch.** That covers the spec, the
+  slice docs and the design snapshot. They get no slice branch, and no work
+  for this epic goes on a generated (`claude/…`) branch.
+- **Code slices** are built on named branches,
+  `epic-pinned-context-slice-<N>-<slug>`, and merge in through reviewed PRs.
+- **Before the first code slice,** `main` merges in if Project Memory has
+  reached it; otherwise `epic/workshop-project-memory` does.
+- **The epic merges to `main`** through one PR at the end.
+
 **Decision:** [ADR 2026-11-04: Workshop Pinned Context](../../../docs/adr/2026-11-04-workshop-pinned-context.md) (Proposed)
-**Design:** `docs/design/workshop-pinned-context/` (Slice 0d, not yet drawn).
-It follows Project Memory's approved settings design (PR #196).
+**Design:** [`docs/design/workshop-pinned-context/`](../../../docs/design/workshop-pinned-context/README.md)
+(canvas https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz). First pass,
+not yet approved. It follows Project Memory's approved settings design
+(PR #196).
 
 ## Goal
 
@@ -34,7 +43,7 @@ every conversation through Choose from project, and wants to stop.
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Written; six questions open for Okey |
-| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `…-slice-0d-tab-design` | Can start now ([doc](slice-0d-tab-design.md)) |
+| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | First pass drawn (12 artboards), waiting on Okey ([doc](slice-0d-tab-design.md)) |
 | 1 | Format and store | `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes), with fixtures. No UI, no seeding | `…-slice-1-format-store` | Codec can start now. The store waits on `StoredFileClaims` on `main` ([doc](slice-1-format-and-store.md)) |
 | 2 | Room seed | `WorkshopPinnedContextLibrary`, the `WorkshopRoomSeed` port, seeding on first room / New / full reset, the New result's report, the full reset's copy | `…-slice-2-room-seed` | Waits on 1 ([doc](slice-2-room-seed.md)) |
 | 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open | `…-slice-3-settings-tab` | Waits on 0d, 2, and 4a on `main` ([doc](slice-3-settings-tab.md)) |
@@ -59,13 +68,12 @@ So:
 
 1. **Now:** Slice 0 (this). Slice 0d, which is design work and touches no
    code. Slice 1's pure codec and its tests, which are new files only.
-2. **When Project Memory merges to `main`,** `main` merges into
-   `epic-pinned-context`, before anything else lands. Then Slice 1's store,
-   then 2, then 3, then 4.
-3. **If Okey wants it sooner,** the alternative is to re-cut the integration
-   branch from `epic/workshop-project-memory`, and merge back the way that
-   epic does. The cost is that this epic can't reach `main` before memory
-   does. Okey decides.
+2. **Before coding begins** (Okey's decision, 2026-11-04): if Project Memory
+   has merged to `main`, `main` merges into `epic-pinned-context`.
+   Otherwise `epic/workshop-project-memory` merges in. The branch is not
+   re-cut. Then Slice 1's store, then 2, then 3, then 4.
+3. **If memory merges in before it reaches `main`,** this epic can't reach
+   `main` before memory does. Its final PR waits for memory's.
 
 Slices 2 and 3 don't overlap much: 2 is host-side (coordinator, session
 message handler, the menu's copy), and 3 is the handler, hook and panel. Once
@@ -105,8 +113,13 @@ Project Memory's process, unchanged:
 
 ## Decisions
 
-None recorded yet. The ADR's six [open questions](../../../docs/adr/2026-11-04-workshop-pinned-context.md#open-questions)
-are for Okey:
+**Branch and base (Okey, 2026-11-04).** Everything goes on
+`epic-pinned-context`. Before coding, `main` merges in if Project Memory has
+landed there, otherwise the memory epic branch does (see
+[Order](#order)).
+
+The ADR's six [open questions](../../../docs/adr/2026-11-04-workshop-pinned-context.md#open-questions)
+are still for Okey:
 
 1. The tab's position (after About you, recommended).
 2. Whether an ordinary New session tops up (yes, recommended).
@@ -137,3 +150,20 @@ the repo:
   context path on `main` and Project Memory's ADR, epic and approved
   settings design (PR #196). It wrote the ADR (Proposed, D1–D9, six open
   questions), this README, and slice docs 0d–5. No production code changed.
+- **2026-11-04. Branch and base decided** (Okey):
+  - all docs and design work for this epic go on `epic-pinned-context`,
+    never a generated `claude/…` branch;
+  - before coding, `main` merges in if memory has landed there, otherwise
+    the memory epic branch does.
+- **2026-11-04. Slice 0d first pass.**
+  - The canvas has 12 artboards:
+    - the tab in 9 states;
+    - the picker in pin mode, and the picker refusing a pin;
+    - a Workshop board with the pill mark, the full reset's subtitle and
+      the New result.
+  - It reuses the approved Memory design's dialog shell by value, and is
+    snapshotted in `docs/design/workshop-pinned-context/`.
+  - Found while drawing: the `pin` glyph is already on the excerpt's
+    "Re-pin" button and marks a Lightbox tile among a message's
+    attachments. ADR D1 is corrected, and the glyph is now a question for
+    Okey (0d question 3).

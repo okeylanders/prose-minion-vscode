@@ -101,10 +101,21 @@ Workshop room starts with, as ordinary context attachments.**
   standing writer text, and the excerpt is a passage, not a resource.
 - **Workshop only.** The Lightbox's context shelf is out of scope.
 - **The name is "Pinned context".** It follows the Memory design's decision
-  16, which keeps the word "pin" for this feature. In the UI, "pinned" means
-  one thing in Conversation settings: attached automatically to every new
-  conversation. The Workshop's "pinned excerpt" is internal wording and
-  tooltip copy, and this feature doesn't touch it.
+  16, which keeps the word "pin" for this feature. In Conversation settings,
+  "pinned" means one thing: attached automatically to every new
+  conversation.
+- **"Pin" is already used elsewhere in the Workshop, and this feature
+  doesn't change that.** The excerpt's controls read "Re-pin *chapter* v2"
+  and "Continue with current excerpt", both with the `pin` glyph
+  (`ExcerptPanel.tsx:182`, `:209`; `WorkshopPathChooser.tsx:99`). The
+  same glyph marks a Lightbox tile among a message's attachments
+  (`WorkshopComposer.tsx:227`, `WorkshopTurnBubble.tsx:486`).
+  - Those are different nouns from "pinned context". Context pills
+    (`ContextPanel.tsx`) use `doc`, `pen` and `sparkle` today, so a pin mark
+    there is new to that surface.
+  - Slice 0d draws the mark as a small accent `pin` after the word count.
+    Okey decides whether that reads clearly beside the other uses, or
+    whether the mark takes another glyph.
 
 ### D2. When it applies: room starts, and only room starts
 

@@ -1,0 +1,40 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-04T17:40:00Z" },
+  "title": "Workshop Pinned Context Settings",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 940, "h": 1380, "title": "Listed · 10 files (Move, Unpin work)", "is_interactive": true },
+    "Empty.dc.html": { "x": 1020, "y": 0, "w": 940, "h": 820, "title": "Nothing pinned yet" },
+    "Problems.dc.html": { "x": 2040, "y": 0, "w": 940, "h": 1460, "title": "A missing file and an unreadable file" },
+    "OverBudget.dc.html": { "x": 0, "y": 1580, "w": 940, "h": 1500, "title": "Over the 100,000-word context limit" },
+    "Changed.dc.html": { "x": 1020, "y": 1580, "w": 940, "h": 1440, "title": "Changed in another window" },
+    "Running.dc.html": { "x": 2040, "y": 1580, "w": 940, "h": 1420, "title": "A reply is running" },
+    "Unreadable.dc.html": { "x": 0, "y": 3200, "w": 940, "h": 900, "title": "pinned-context.json can't be read" },
+    "NoFolder.dc.html": { "x": 1020, "y": 3200, "w": 940, "h": 900, "title": "Unavailable · no folder" },
+    "MultiRoot.dc.html": { "x": 2040, "y": 3200, "w": 940, "h": 900, "title": "Unavailable · several folders" },
+    "Picker.dc.html": { "x": 0, "y": 4520, "w": 940, "h": 1380, "title": "Add from project… in pin mode (click files)", "is_interactive": true },
+    "PickerRefused.dc.html": { "x": 1020, "y": 4520, "w": 940, "h": 1380, "title": "A pin refused past the limit" },
+    "Workshop.dc.html": { "x": 2040, "y": 4520, "w": 940, "h": 1000, "title": "In the Workshop: the pill's mark, full reset, the New result" }
+  },
+  "order": [
+    "Main.dc.html",
+    "Empty.dc.html",
+    "Problems.dc.html",
+    "OverBudget.dc.html",
+    "Changed.dc.html",
+    "Running.dc.html",
+    "Unreadable.dc.html",
+    "NoFolder.dc.html",
+    "MultiRoot.dc.html",
+    "Picker.dc.html",
+    "PickerRefused.dc.html",
+    "Workshop.dc.html"
+  ],
+  "notes": {
+    "tabTitle": { "x": 0, "y": -300, "text": "Conversation settings · Pinned context tab", "kind": "title1", "maxW": 2980 },
+    "flowTitle": { "x": 0, "y": 4220, "text": "Adding files, and the rest of the Workshop", "kind": "title1", "maxW": 2980 }
+  },
+  "designSystems": []
+}

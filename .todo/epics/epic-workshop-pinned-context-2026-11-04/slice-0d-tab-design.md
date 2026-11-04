@@ -6,7 +6,8 @@
 `docs/design/workshop-project-memory/` and
 `.todo/epics/epic-workshop-project-memory-2026-11-04/slice-0d-settings-design.md`
 on `epic/workshop-project-memory-slice-0-design`
-**Status:** Not started. It can start now, because it touches no code.
+**Canvas:** https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to Okey), snapshotted in `docs/design/workshop-pinned-context/`
+**Status:** First pass drawn and published (12 artboards). Waiting on Okey's review.
 
 ## Outcome
 
@@ -106,9 +107,58 @@ message."
    question for its manager (its 0d, question 2).
 2. **Move up and Move down, or drag?** Buttons are keyboard-honest and cheap.
    Drag can come later.
-3. **The glyph.** `iconPaths.ts` already has `pin` (`:40`); check where it is
-   used before giving it this meaning. It must not be Memory's `eye`.
+3. **The glyph.** `iconPaths.ts` already has `pin` (`:40`), and the
+   Workshop already uses it twice. It's on the excerpt's "Re-pin *chapter*
+   v2" and "Continue with current excerpt" buttons, and it marks a Lightbox
+   tile among a message's attachments (ADR D1). The first pass draws the
+   pinned pill's mark as a small accent `pin` after the word count, where
+   context pills had no pin before. Okey decides whether that reads clearly,
+   or whether the mark takes another glyph. Memory's `eye` is out either
+   way.
+
+## First pass (2026-11-04)
+
+The boards, and what they settle, are listed in the
+[design README](../../../docs/design/workshop-pinned-context/README.md).
+Choices the brief left open, made here for Okey to accept or change:
+
+- **The list is numbered,** with the order spelled out in the heading
+  ("Files, in order"). Order is the attach order, so it's shown, not
+  implied.
+- **"In this conversation"** is an accent check on each row the current room
+  holds (ADR D4). The meter's chips count them ("8 in this conversation").
+  "Attach missing to this conversation (2)" takes its count from the same
+  rule.
+- **Move up and Move down are buttons** (question 2): two small chevron
+  buttons with full accessible names ("Move alice.md up"). Drag is left for
+  later.
+- **Problems sit on their rows,** in amber, with the reason in words. One
+  amber line under the meter counts them and ends "Nothing is unpinned for
+  you." This matches the Memory tab's over-budget line.
+- **A start note under the meter** says which room starts seed: "New session
+  and New session: full reset both start with these files, in this order.
+  Opening, branching or rewinding a saved session leaves its context as it
+  was." (ADR D2).
+- **Picker stacking** (question 1) is drawn as the picker over the dimmed
+  dialog. Escape and focus return still need checking against
+  `WorkshopModalShell` when Slice 3 builds it.
+- **The picker in pin mode** keeps the shared picker's markup. Only its
+  copy and footer change: eyebrow "Pin context", already-pinned files
+  disabled and tagged "Pinned", "Pin N files", and the estimate measured
+  against what pinned context has left (76,600 of 100,000 words).
+- **A refused pin** shows as an alert in the picker, above its footer, so
+  the writer sees it where they acted.
+- **Pin from a pill** (ADR question 6) is drawn as a small "Pin" button on a
+  hovered, unpinned file pill. It's drawn so Okey can judge it, and is cut
+  if the answer is no.
 
 ## Progress
 
-- **2026-11-04.** Brief written with the spec. Not started.
+- **2026-11-04.** Brief written with the spec.
+- **2026-11-04. First pass.** Okey asked to start the design. The canvas
+  reuses the approved Memory design's dialog shell, tokens and rules by
+  value, so the two tabs read as one dialog. It has 12 artboards: 9 tab
+  states, the picker in pin mode and refusing a pin, and one Workshop board
+  (pill mark, full reset copy, New result). It is published and snapshotted
+  under `docs/design/workshop-pinned-context/`. Waiting on Okey's review.
+  No production code; no tests run (docs only).
