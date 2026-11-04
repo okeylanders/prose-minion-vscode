@@ -2,8 +2,9 @@
  * The model in export headers (ADR 2026-11-03 D10, amended 2026-11-04).
  * Markdown and HTML reply headers name the model after the speaker, by the
  * thread's own rule, from each entry's `model` and the renderer's label
- * lookup. The per-turn entry recall reads never carries it. An unstamped
- * reply's header is unchanged, a capability card stays a one-line event, and
+ * lookup. A stamped capability card (a dictionary lookup, a persona-run
+ * analysis) stays a one-line event that ends with the same text. The per-turn
+ * entry recall reads never carries it. An unstamped header is unchanged, and
  * JSON is byte-identical whatever the labels. Hostile ids render inert.
  */
 
@@ -75,6 +76,40 @@ const room: WorkshopTurn[] = [
     } as WorkshopTurn['capability'],
     content: 'Dictionary evidence body.',
     model: stamp(B, [B], 'dictionary')
+  }),
+  fixtureTurn('r-10', {
+    kind: 'tool_run',
+    participant: 'tool',
+    artifact: 'tool_report',
+    personaId: undefined,
+    personaLabel: undefined,
+    toolId: 'stock-and-signature',
+    toolLabel: 'Stock & Signature',
+    capability: {
+      operation: 'analysis.run',
+      status: 'success',
+      requestSummary: 'excerpt replace',
+      requestedByPersonaId: 'jill',
+      invokedBy: { kind: 'host' }
+    } as WorkshopTurn['capability'],
+    content: 'Analysis report body.',
+    model: stamp(AUTO, [A])
+  }),
+  fixtureTurn('d-11', {
+    kind: 'tool_run',
+    participant: 'tool',
+    artifact: 'dictionary_lookup',
+    personaId: undefined,
+    personaLabel: undefined,
+    toolLabel: 'Dictionary',
+    capability: {
+      operation: 'dictionary.lookup',
+      status: 'success',
+      requestSummary: 'unstamped',
+      requestedByPersonaId: 'jill',
+      invokedBy: { kind: 'host' }
+    } as WorkshopTurn['capability'],
+    content: 'Dictionary evidence body.'
   })
 ];
 
@@ -104,10 +139,19 @@ describe('the model in Markdown headers', () => {
     ]);
   });
 
-  it('names raw ids without a lookup, and leaves a capability card a one-line event', () => {
+  it('ends a stamped capability card’s one-line event with its model, and nothing else’s', () => {
+    const markdown = renderWorkshopTranscriptMarkdown(transcript(), { modelLabel: label });
+    expect(markdown).toContain("\n_Writer's Dictionary · liminal · requested by Jill · success · Model B_\n");
+    expect(markdown).toContain('\n_Stock & Signature · excerpt replace · requested by Jill · success · Model A via Auto router_\n');
+    expect(markdown).toContain("\n_Writer's Dictionary · unstamped · requested by Jill · success_\n");
+    // The card's evidence never leaves the session.
+    expect(markdown).not.toMatch(/evidence body|report body/);
+  });
+
+  it('names raw ids without a lookup', () => {
     const markdown = renderWorkshopTranscriptMarkdown(transcript());
     expect(markdownHeadings(markdown)[3]).toBe(`### Jill · ${B} via ${AUTO}`);
-    expect(markdown).toContain("\n_Writer's Dictionary · liminal · requested by Jill · success_\n");
+    expect(markdown).toContain(`· success · ${A} via ${AUTO}_`);
   });
 
   it('keeps a header one line, and escapes what a model id could inject', () => {
@@ -148,6 +192,16 @@ describe('the model in HTML headers', () => {
     );
   });
 
+  it('ends a stamped capability card’s divider with the model’s span', () => {
+    expect(html).toContain(
+      '<div class="pm-ws-revision-divider" role="separator"><span>Stock &amp; Signature · excerpt replace · ' +
+      'requested by Jill · success <span class="pm-ws-turn-model">· Model A via Auto router</span></span></div>'
+    );
+    expect(html).toContain(
+      '<span>Writer&#39;s Dictionary · unstamped · requested by Jill · success</span></div>'
+    );
+  });
+
   it('leaves an unstamped reply’s header as it was', () => {
     expect(heads[5]).toEqual({ speaker: 'Jill', model: undefined });
     const unstamped = representativeRoom();
@@ -175,6 +229,7 @@ describe('the model in HTML headers', () => {
   it('styles the model’s span with rules mirrored verbatim from the thread', () => {
     for (const selector of [
       '[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow {',
+      '[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow > svg {',
       '[data-pm-surface="workshop"] .pm-ws-turn-model {'
     ]) {
       expect(WORKSHOP_TRANSCRIPT_MIRRORED_STYLES.some(({ css }) => css.includes(selector))).toBe(true);

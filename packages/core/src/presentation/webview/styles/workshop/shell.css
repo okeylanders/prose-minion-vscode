@@ -901,10 +901,13 @@
 }
 /* The reply's model (ADR 2026-11-03 D8, amended 2026-11-04): muted, and in a
    narrow column the one part of the label that is cut short. The name, held
-   to one line, never shrinks. */
+   to one line, and the icon never shrink. */
 [data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow {
   min-width: 0;
   white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow > svg {
+  flex-shrink: 0;
 }
 [data-pm-surface="workshop"] .pm-ws-turn-model {
   min-width: 0;

@@ -265,5 +265,7 @@ describe('the model in the bubble header', () => {
     const eyebrow = rule('[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow');
     expect(eyebrow).toContain('white-space: nowrap;');
     expect(eyebrow).toContain('min-width: 0;');
+    // Nor does the icon, which a flex item would otherwise give up first.
+    expect(rule('[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow > svg')).toContain('flex-shrink: 0;');
   });
 });

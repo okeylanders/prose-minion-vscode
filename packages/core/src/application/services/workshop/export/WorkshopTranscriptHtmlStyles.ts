@@ -388,6 +388,9 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   min-width: 0;
   white-space: nowrap;
 }
+[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow > svg {
+  flex-shrink: 0;
+}
 [data-pm-surface="workshop"] .pm-ws-turn-model {
   min-width: 0;
   overflow: hidden;
