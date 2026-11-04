@@ -44,11 +44,11 @@ export const WORKSHOP_CONVERSATION_SETTINGS_TABS: readonly WorkshopConversationS
  * The tab a key moves to from `current`, or undefined for a key the strip
  * does not handle. Home and End go to the ends; the arrows wrap.
  */
-export function workshopConversationSettingsTabForKey(
-  tabs: readonly WorkshopConversationSettingsTabEntry[],
-  current: WorkshopConversationSettingsTab,
+export function workshopConversationSettingsTabForKey<Tab extends string>(
+  tabs: ReadonlyArray<{ id: Tab }>,
+  current: Tab,
   key: string
-): WorkshopConversationSettingsTab | undefined {
+): Tab | undefined {
   if (tabs.length === 0) return undefined;
   const currentIndex = tabs.findIndex((entry) => entry.id === current);
   switch (key) {
