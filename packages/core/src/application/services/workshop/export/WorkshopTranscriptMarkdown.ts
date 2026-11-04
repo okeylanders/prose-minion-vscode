@@ -21,7 +21,6 @@ import {
   workshopTranscriptReplyModel,
   type WorkshopTranscriptRenderOptions
 } from './WorkshopTranscriptModelHeader';
-import { WORKSHOP_TURN_MODEL_SEPARATOR } from '@shared/workshop/workshopTurnModelLabel';
 
 export function renderWorkshopTranscriptMarkdown(
   transcript: WorkshopTranscript,
@@ -66,7 +65,7 @@ function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptR
       const model = workshopTranscriptReplyModel(entry, options);
       const lines = [
         `### ${escapeInline(entry.speaker)}${
-          model ? `${WORKSHOP_TURN_MODEL_SEPARATOR}${escapeInline(model)}` : ''
+          model ? ` · ${escapeInline(model)}` : ''
         }${
           entry.privateWith ? ' · private' : ''
         }${bookmarkSuffix(entry)}`

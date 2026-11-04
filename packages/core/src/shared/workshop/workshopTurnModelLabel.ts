@@ -2,9 +2,10 @@
  * The model a stamped reply's header names (Workshop Wayfinding ADR
  * 2026-11-03 D8 and D10, amended 2026-11-04): "Jill · Opus 5.5".
  *
- * This is the one rule the thread's bubble header and the Markdown and HTML
- * export headers call, so the two can name a reply's model differently only
- * where their label lookups differ, never by rule. It lives in `shared/`
+ * The caller writes it after the participant with the thread's middle dot,
+ * " · ". This is the one rule the thread's bubble header and the Markdown
+ * and HTML export headers call, so the two can name a reply's model
+ * differently only where their label lookups differ, never by rule. It lives in `shared/`
  * because the export cannot import `presentation/` and the webview cannot
  * import `application/`.
  *
@@ -31,9 +32,6 @@ import type { WorkshopTurnModel } from '@messages';
 
 /** A model's display name, or undefined (or blank) for its raw id. */
 export type WorkshopModelLabelLookup = (modelId: string) => string | undefined;
-
-/** The separator between the participant's name and the model text. */
-export const WORKSHOP_TURN_MODEL_SEPARATOR = ' · ';
 
 export function workshopTurnModelLabel(
   model: WorkshopTurnModel | undefined,

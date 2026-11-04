@@ -6,10 +6,7 @@
  */
 
 import type { ModelScope, WorkshopTurnModel } from '@messages';
-import {
-  WORKSHOP_TURN_MODEL_SEPARATOR,
-  workshopTurnModelLabel
-} from '@shared/workshop/workshopTurnModelLabel';
+import { workshopTurnModelLabel } from '@shared/workshop/workshopTurnModelLabel';
 
 const AUTO = 'vendor/auto';
 const A = 'vendor/model-a';
@@ -75,9 +72,5 @@ describe('workshopTurnModelLabel', () => {
     expect(workshopTurnModelLabel(stamp(AUTO, [hostile]), label))
       .toBe('vendor/x ### Injected <b>bold</b> via Auto router');
     expect(workshopTurnModelLabel(stamp(A, [A]), () => '  Model\nA  ')).toBe('Model A');
-  });
-
-  it('uses the thread’s middle dot as the separator', () => {
-    expect(WORKSHOP_TURN_MODEL_SEPARATOR).toBe(' · ');
   });
 });
