@@ -49,3 +49,14 @@ F-01 is fixed on `epic/workshop-wayfinding-slice-4-bookmarks-host` in `5d0b5fc`.
 - `npm run lint` has 0 errors and 1,140 warnings, unchanged.
 - `packages/core/src` has no `from 'vscode'` outside test string literals.
 
+
+
+## Independent re-review of `c42abe1` (2026-11-04)
+
+**Disposition: F-01 is resolved; no new actionable defect found in the correction.** This report is not a formal GitHub approval or authorization to merge. Exact-head CI was still running at report time.
+
+The codec now rejects noncanonical or unsafe numeric ID parts before hydration. Allocation checks the safe boundary before changing state, and hydration computes the maximum without an unbounded spread. The original 400-digit and `1e21` witnesses, plus `2^53` and malformed IDs, now fail parsing/checkpoint decoding/direct hydration instead of poisoning the counter. Ordinary existing IDs and the pre-bookmark fixture remain compatible.
+
+Independent controls verify MAX_SAFE−1 allocates MAX_SAFE exactly once; the next set is refused without mutation, while rename, clear and strict save still work. Rejected unsafe hydration preserves an existing room and subsequent normal allocation. A real store invalid-open → reset → clean-open → autosave succeeds, as does rename/autosave after a boundary refusal. Same-clock clear/reset/lower-counter reopening does not reuse IDs.
+
+**Verification:** one independent pass ran **15 suites / 278 tests**, including seven review probes; another ran **11 suites / 165 tests**, including 17 boundary/store controls. These totals overlap. [CI run 41767503387](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41767503387) was still in progress when checked: typecheck and tests passed, lint and build remained. The full suite was not rerun independently. No implementation change, formal approval or merge was made during this re-review.
