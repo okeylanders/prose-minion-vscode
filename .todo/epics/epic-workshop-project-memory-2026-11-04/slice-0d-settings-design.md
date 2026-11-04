@@ -1,7 +1,7 @@
 # Slice 0d: Settings Design
 
 **Epic:** [Workshop Project Memory](README.md)
-**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D4 (limits), D5 (budgets), D7 (receipts), D8 (modes)
+**Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D4 (limits), D5 (budgets), D7 (receipts), D8 (modes, unavailable), D10 (storage), D14 (update notes)
 **Design:** [`docs/design/workshop-project-memory/`](../../../docs/design/workshop-project-memory/README.md)
 (canvas https://claude.ai/artifact/NYB5iZWgaJB4BJdPuN3hwF)
 **Branch:** `epic/workshop-project-memory-slice-0-design`
@@ -28,7 +28,7 @@ production code changed.
 | Memory tab (every state below) | 4b, on 4a's per-tab panels |
 | Memory manager, including conflict, unreadable and over-pinned rows | 4b |
 | Suggestion card, its settled states, writer-save receipts | 3 |
-| Update note divider | 3, with the update note's own mechanism (see "Not yet in the ADR") |
+| Update note divider | 3 draws it; 2b builds the note itself (ADR D14) |
 | "Save to memory…" on a bubble, and the sheet (save, edit, new, refused) | 3 (4b's manager opens the same sheet for New and Edit) |
 | Save-and-tell-me receipt (Edit · Forget, the expand), the held card | 5, rendered by Slice 3's components |
 
@@ -251,15 +251,22 @@ Lightbox's markup stay unchanged.
   note, or unpin this memory or another." **Save changes** is disabled. The
   same rule applies to pinning in the sheet.
 
-## Not yet in the ADR (for the spec thread)
+## Reconciled with the ADR
 
-- Decision 3's refinement (the cards stay choosable when unavailable). The
-  coordinator has passed it on.
-- The update note (decision 7) as a mechanism: what it carries and when it is
-  recorded. The design gives only its visible trace.
-- **The held card's copy** differs from Slice 5's draft ("Held because this
-  reply used web research"). The design's wording is "This reply used live web
-  research, so it isn't saved on its own." Slice 5 should adopt one.
+Everything the design decided is in the merged ADR (PR #192) or its slice
+docs:
+
+- **Unavailable keeps the mode** (decision 3): ADR D8 ("An unavailable
+  workspace … disables this workspace's memory, never the mode") and D10 (no
+  session-only mode).
+- **The update note** (decision 7): ADR D14 is its mechanism: the
+  per-participant delivery record, the delta of new, changed and gone
+  memories, and the count line past the budget. Slice 2b builds it. The design
+  gives only its visible divider, which Slice 3 draws.
+- **The held card's copy:** the design's wording, which Okey approved, is now
+  Slice 5's: "This reply used live web research, so it isn't saved on its
+  own." The cap variant is aligned too. ADR D8 quotes no copy for the hold
+  ("the card says why"), so it needed no change.
 
 ## Open questions for Slice 4b and Slice 3
 
