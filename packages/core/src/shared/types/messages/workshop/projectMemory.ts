@@ -6,7 +6,8 @@
  * - **A proposal** is persisted on the assistant turn that carried it
  *   (`WorkshopTurn.memoryProposal`), after the host stripped its trailer
  *   from the bubble and from retained history. Nothing is saved without the
- *   writer's action in Ask first (Slice 5 adds Save and tell me).
+ *   writer's action in Ask first; Save and tell me saves one at once, or
+ *   holds it with a reason (Slice 5).
  * - **A receipt** is a session divider turn (`WorkshopTurn.projectMemoryReceipt`)
  *   that every participant receives as room history. It never carries the
  *   memory's body (D7; PR #196 watchpoint 1).
@@ -23,6 +24,14 @@ import type { ProjectMemoryKind } from '@shared/types/projectMemory';
 
 export const WORKSHOP_MEMORY_PROPOSAL_STATES = ['pending', 'saved', 'dismissed'] as const;
 export type WorkshopMemoryProposalState = typeof WORKSHOP_MEMORY_PROPOSAL_STATES[number];
+
+/**
+ * Why a proposal waits under Save and tell me (D8; Slice 5): its reply's run
+ * had web research attached, or the room reached `autoSavesPerRoom`. Absent
+ * under Ask first, and on a card Save and tell me saved.
+ */
+export const WORKSHOP_MEMORY_HOLDS = ['web-research', 'room-cap'] as const;
+export type WorkshopMemoryHold = typeof WORKSHOP_MEMORY_HOLDS[number];
 
 /** A memory the proposal replaces, as the listing named it when the reply landed. */
 export interface WorkshopMemoryProposalReplaces {
@@ -47,6 +56,8 @@ export interface WorkshopMemoryProposal {
   state: WorkshopMemoryProposalState;
   /** The memory it became, once saved. */
   memoryId?: string;
+  /** Held for the writer under Save and tell me, and why (Slice 5); kept once settled. */
+  held?: WorkshopMemoryHold;
 }
 
 /**

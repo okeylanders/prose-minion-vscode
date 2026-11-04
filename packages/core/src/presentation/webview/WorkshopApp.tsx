@@ -50,6 +50,7 @@ import { useWorkshopProjectMemory } from '@hooks/domain/workshop/useWorkshopProj
 import { useWorkshopMemoryManager } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { workshopMemoryTabInputOf } from '@hooks/domain/workshop/memory/workshopMemoryListingInputs';
 import type { WorkshopTurnMemoryControls } from '@components/workshop/memory/WorkshopTurnMemory';
+import { workshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemorySheet } from '@components/workshop/memory/WorkshopMemorySheet';
 import { WorkshopMemoryManagerMount } from '@components/workshop/memory/WorkshopMemoryManagerMount';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
@@ -529,8 +530,10 @@ export const WorkshopApp: React.FC = () => {
   const toolsEnabled = hasExcerpt && !roomMutationLocked && workshop.sessionReady;
   const composerToolsEnabled = !roomMutationLocked && workshop.sessionReady;
   // Project memory in the thread (ADR 2026-11-04 D6, D7); the host's snapshot is the truth.
+  const autoSavedMemories = React.useMemo(() => workshopAutoSavedMemories(workshop.turns), [workshop.turns]);
   const memoryControls = React.useMemo<WorkshopTurnMemoryControls>(() => ({
     disabled: roomMutationLocked,
+    autoSaved: autoSavedMemories,
     busyTurnIds: projectMemory.busyTurnIds,
     cardErrors: projectMemory.cardErrors,
     onSaveCard: projectMemory.saveCard,
@@ -543,7 +546,7 @@ export const WorkshopApp: React.FC = () => {
     onRestore: projectMemory.restore,
     onOpenManager: memoryManager.openManager
   }), [
-    roomMutationLocked, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
+    roomMutationLocked, autoSavedMemories, projectMemory.busyTurnIds, projectMemory.cardErrors, projectMemory.saveCard,
     projectMemory.editCard, projectMemory.dismissCard, projectMemory.reopenCard, projectMemory.saveTurn,
     projectMemory.editMemory, projectMemory.forget, projectMemory.restore, memoryManager.openManager
   ]);

@@ -55,7 +55,7 @@ import type {
   WorkshopSliceCompositionDependencies,
   WorkshopSliceHostEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import type { WorkshopSessionAction } from '@messages';
+import type { WorkshopSessionAction, WorkshopTurn } from '@messages';
 import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
@@ -332,6 +332,16 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
     );
     this.projectMemoryManagerHandler.registerRoutes(router);
+  }
+
+  /** Save and tell me (Slice 5): a recorded reply's card, saved now, as the tail of the run `signal` belongs to. */
+  autoSaveMemoryProposal(turn: WorkshopTurn, signal: AbortSignal): Promise<void> {
+    return this.projectMemoryHandler.autoSaveProposal(turn.id, signal);
+  }
+
+  /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
+  memoryAutoSavesInRoom(): number {
+    return this.projectMemoryHandler.autoSavesInRoom();
   }
 
   isContextRunActive(): boolean {

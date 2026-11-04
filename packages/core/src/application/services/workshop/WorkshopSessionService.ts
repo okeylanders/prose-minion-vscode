@@ -41,6 +41,7 @@ import {
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation,
   WorkshopMemoryProposal,
+  WorkshopMemoryHold,
   WorkshopMemoryProposalState,
   WorkshopProjectMemoryReceipt,
   WorkshopProjectMemoryDelivery
@@ -1867,6 +1868,15 @@ export class WorkshopSessionService {
       throw Object.assign(new Error('That message no longer holds a memory suggestion.'), { reason: 'no-proposal' });
     }
     return cloneTurn(turn);
+  }
+
+  /** Hold a pending card for the writer, with why (Save and tell me's cap reached at its commit: PR #201 F-04). */
+  holdMemoryProposal(turnId: string, held: WorkshopMemoryHold): void {
+    this.turnLedger.update(turnId, (current) => {
+      if (current.memoryProposal?.state === 'pending') {
+        current.memoryProposal = { ...current.memoryProposal, held };
+      }
+    });
   }
 
   /** Record a memory receipt as a session divider every participant receives (D7). */

@@ -46,7 +46,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
 | 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | Done: PR #199, merged at `0994557` (Astra: F-01, F-02, N-01 closed) |
 | 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | In review: PR #202 |
-| 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | In review: PR #201 |
+| 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | Done: PR #201, merged at `d7fd159` (Astra: F-01–F-04 closed) |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
 
 **Order.** Slices 0, 0d, 1 and 4a start together on 2026-11-04. They touch
@@ -255,3 +255,20 @@ The feature note's six open questions, plus the design scope:
 
     The thread is weighing whether to make the auto save the tail of the
     run that produced it, which removes the unowned wait.
+- **2026-11-04. Slice 5 merged; #202 in its second round.**
+  - **#201** merged at `d7fd159` after three rounds:
+    - F-01: a live permit, checked in the queue and at the store's commit.
+    - F-02: an edited Save after an auto save lands as an edit, or is
+      refused with the draft kept while the run settles.
+    - F-03: the auto save is now the tail of its own run, so no later
+      request waits on it.
+    - F-04: room-cap reservations keyed by room revision, released in the
+      step that records the receipt.
+    - Interactive receipts are labelled groups.
+  - **#202** (4b-wire): F02, F04, N01 and N02 are closed. Still open: F01
+    (bind remove and set-load-in-full to the root they were requested in,
+    before the library queue), F03 (rollback restores only its own mode
+    write, never a newer external choice) and N03 (newest folder request
+    wins). The thread is also merging the epic, now with Slice 5.
+  - Rename's read-then-whole-draft write is filed as tech debt
+    (`.todo/tech-debt/2026-11-04-workshop-memory-title-only-rename.md`).

@@ -62,7 +62,9 @@ const WRITE_REFUSALS: Readonly<Record<ProjectMemoryDeleteRefusalReason, string>>
   invalid: 'That memory can’t be saved as written.',
   failed: 'That couldn’t be done. Try again.',
   'pinned-budget': 'Can’t load this one in full: memories loaded in full would pass their budget.',
-  changed: 'That memory’s file changed before it could be deleted, so nothing was deleted.'
+  changed: 'That memory’s file changed before it could be deleted, so nothing was deleted.',
+  // Slice 5's save permit; no manager action asks for one, so this is never sent.
+  withdrawn: 'That couldn’t be done just now. Your memory files weren’t touched.'
 };
 
 const FILE_REFUSALS: Readonly<Record<Extract<ProjectMemoryManagerFile, { kind: 'refused' }>['reason'], string>> = {

@@ -2,12 +2,16 @@
  * Project memory in the thread (ADR 2026-11-04 D6, D7; Slice 0d, "In the
  * thread"), rendered by `WorkshopTurnBubble`:
  *
- * - a persona reply's card, in its three states: the suggestion (pending),
- *   "Saved to project memory: …", and "Dismissed. … wasn't saved. · Show it
- *   again";
+ * - a persona reply's card, in its states: the suggestion (pending), the
+ *   held card under Save and tell me ("Held for you to decide", with the
+ *   host's reason: Slice 5), "Saved to project memory: …", and "Dismissed.
+ *   … wasn't saved. · Show it again". A card Save and tell me saved shows
+ *   nothing here: its receipt carries it;
  * - a receipt divider: "Saved to project memory: …", "Forgotten from
  *   project memory: …. It's archived, not deleted. · Restore", and, for a
- *   save under Save and tell me (Slice 5), "… · Edit · Forget";
+ *   save under Save and tell me (Slice 5), "Jill saved to project memory: …
+ *   · Edit · Forget", whose chevron expands the saved card, read only and
+ *   collapsed by default (Slice 0d decision 13);
  * - "Save to memory…" on a bubble bookmarks allow (ADR 2026-11-03 D5).
  *
  * Every action reaches the host through `WorkshopTurnMemoryControls`; the
@@ -18,7 +22,9 @@ import * as React from 'react';
 import type { WorkshopTurn } from '@messages';
 import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { isWorkshopPersonaId, workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import { workshopMemoryHeldReason } from '@shared/constants/workshopProjectMemoryWrites';
 import { Icon } from '@components/shared/Icon';
+import type { WorkshopAutoSavedMemories } from '@hooks/domain/workshop/memory/workshopMemoryAutoReceipts';
 import { WorkshopMemoryCard } from './WorkshopMemoryCard';
 
 /** What the thread can ask of project memory; WorkshopApp wires the memory hook in. */
@@ -35,6 +41,8 @@ export interface WorkshopTurnMemoryControls {
   onEditMemory: (memoryId: string) => void;
   onForget: (memoryId: string) => void;
   onRestore: (memoryId: string) => void;
+  /** Save and tell me's saved cards, from the snapshot's turns (Slice 5); absent reads as none. */
+  autoSaved?: WorkshopAutoSavedMemories;
   /** Slice 4b's manager; the settled card offers "Open in manager" only when it exists. */
   onOpenManager?: (memoryId: string) => void;
 }
@@ -48,6 +56,9 @@ export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: Wo
   }
   const busy = controls.disabled || controls.busyTurnIds.has(turn.id);
   if (proposal.state === 'saved') {
+    if (controls.autoSaved?.replyTurnIds.has(turn.id)) {
+      return null;
+    }
     return (
       <div className="pm-ws-memory-settled">
         <Icon name="check" size={13} />
@@ -73,7 +84,8 @@ export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: Wo
   }
   return (
     <WorkshopMemoryCard
-      heading="Suggested for project memory"
+      heading={proposal.held ? 'Held for you to decide' : 'Suggested for project memory'}
+      {...(proposal.held ? { held: workshopMemoryHeldReason(proposal.held) } : {})}
       kind={proposal.kind}
       title={proposal.title}
       summary={proposal.summary}
@@ -94,12 +106,16 @@ export const WorkshopTurnMemoryCard: React.FC<{ turn: WorkshopTurn; controls: Wo
 /** A receipt divider (D7): every participant received it as room history. */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?: WorkshopTurnMemoryControls }> = ({ turn, controls }) => {
+  // Collapsed by default (Slice 0d decision 13); kept per receipt while it is on screen.
+  const [open, setOpen] = React.useState(false);
   const receipt = turn.projectMemoryReceipt;
   if (!receipt) {
     return null;
   }
   const disabled = controls?.disabled ?? true;
   const title = <b>{receipt.title}</b>;
+  const saved = receipt.action === 'saved' && receipt.by === 'auto' ? controls?.autoSaved?.cards.get(turn.id) : undefined;
+  const cardId = `pm-ws-memory-receipt-${turn.id}`;
   let line: React.ReactNode;
   let actions: React.ReactNode = null;
   switch (receipt.action) {
@@ -134,17 +150,53 @@ export const WorkshopMemoryReceiptLine: React.FC<{ turn: WorkshopTurn; controls?
       line = <>Restored to project memory: {title}</>;
       break;
   }
-  return (
+  // A receipt with controls is a labelled group, its rules drawn by CSS and
+  // decorative; one with none stays a separator (PR #201, accessibility).
+  const interactive = actions !== null || saved !== undefined;
+  const divider = (
     <div
       className={`pm-ws-memory-receipt${receipt.action === 'forgotten' ? ' pm-ws-memory-receipt-gone' : ''}`}
-      role="separator"
+      role={interactive ? 'group' : 'separator'}
       aria-label={turn.content}
     >
       <span className="pm-ws-memory-receipt-in">
+        {saved && (
+          <button
+            type="button"
+            className={`pm-ws-memory-expand${open ? ' pm-ws-memory-expand-open' : ''}`}
+            aria-expanded={open}
+            aria-controls={cardId}
+            aria-label={open ? 'Hide the saved memory' : 'Show the saved memory'}
+            onClick={() => setOpen((current) => !current)}
+          >
+            <Icon name="chevRight" size={12} />
+          </button>
+        )}
         <Icon name={receipt.action === 'forgotten' ? 'trash' : 'bookmark'} size={12} />
         <span>{line}</span>
         {actions}
       </span>
+    </div>
+  );
+  if (!saved) {
+    return divider;
+  }
+  return (
+    <div className="pm-ws-memory-receipt-expandable">
+      {divider}
+      <div id={cardId} hidden={!open}>
+        {open && (
+          <WorkshopMemoryCard
+            heading="Saved to project memory"
+            kind={saved.kind}
+            title={saved.title}
+            summary={saved.summary}
+            body={saved.body}
+            replaces={saved.supersedes}
+            droppedReplaces={saved.droppedSupersedes}
+          />
+        )}
+      </div>
     </div>
   );
 };
