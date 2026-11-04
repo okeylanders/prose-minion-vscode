@@ -277,5 +277,44 @@ describe('what the header label never reaches', () => {
     ).export({ format: 'markdown', title: 'Keeper' });
     const written = (files.writeNew.mock.calls[0] as unknown as [string, string, string])[2];
     expect(written).toContain('### Jill · Model B via Auto router');
+    // A name the host's catalog lacks falls back to its raw id on the service path.
+    expect(written).toContain(`### Jill · ${UNLISTED} via Auto router`);
+  });
+
+  it('keeps the private label, bookmark, truncation notice and speaker name beside the model', () => {
+    const turns = [
+      writerTurn('u-1', { artifact: 'direct_tool_message', toolLabel: 'Prose Assistant', content: 'Private.' }),
+      fixtureTurn('a-1', {
+        participant: 'tool',
+        artifact: 'direct_tool_response',
+        toolLabel: 'Prose Assistant',
+        personaId: undefined,
+        personaLabel: undefined,
+        content: 'Cut short.',
+        truncated: true,
+        model: stamp(AUTO, [B])
+      })
+    ];
+    const projected = projectWorkshopTranscript(turns, {
+      title: 'Dock scene', exportedAt: FIXTURE_EPOCH, bookmarkedTurnIds: new Set(['a-1'])
+    });
+    const markdown = renderWorkshopTranscriptMarkdown(projected, { modelLabel: label });
+    expect(markdown).toContain(
+      '### Prose Assistant · Model B via Auto router · private · Bookmarked\n\n' +
+      '_Response hit the max-token limit and was truncated._\n\nCut short.'
+    );
+    const html = renderWorkshopTranscriptHtml(projected, { modelLabel: label });
+    expect(html).toContain(
+      'aria-label="Prose Assistant"><div class="pm-ws-turn-head"><span class="pm-ws-eyebrow">'
+    );
+    expect(html).toMatch(new RegExp(
+      '</svg> Prose Assistant <span class="pm-ws-turn-model">· Model B via Auto router</span></span>' +
+      '<span class="pm-ws-private-thread-label">.*?Private · you \\+ Prose Assistant</span>' +
+      '<span class="pm-ws-export-bookmark">.*?Bookmarked</span></div>' +
+      '<p class="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>'
+    ));
+    // One model label per reply: the header alone.
+    expect(html.split('Model B via Auto router')).toHaveLength(2);
+    expect(markdown.split('Model B via Auto router')).toHaveLength(2);
   });
 });

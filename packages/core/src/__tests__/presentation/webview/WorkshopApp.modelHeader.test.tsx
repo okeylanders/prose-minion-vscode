@@ -231,6 +231,30 @@ describe('the model in the bubble header', () => {
     expect(label('a-7').hasAttribute('title')).toBe(false);
   });
 
+  it('keeps the usage, private label and truncation notice beside the model', () => {
+    renderRoom([
+      writer('u-1', { artifact: 'direct_tool_message', toolLabel: 'Prose Assistant' }),
+      reply('a-1', {
+        participant: 'tool',
+        artifact: 'direct_tool_response',
+        toolLabel: 'Prose Assistant',
+        personaId: undefined,
+        personaLabel: undefined,
+        truncated: true,
+        usage: { promptTokens: 1_000, completionTokens: 200, totalTokens: 1_200, requestCount: 2 },
+        model: stamp(AUTO, [B])
+      })
+    ]);
+
+    expect(labelText('a-1')).toBe('Prose Assistant · Model B via Auto router');
+    const head = label('a-1').parentElement!;
+    expect(head.querySelector('.pm-ws-private-thread-label')?.textContent).toContain('Prose Assistant');
+    expect(head.querySelector('.pm-ws-turn-usage')?.textContent).toBe('1,200 processed');
+    expect(bubble('a-1').querySelector('.pm-ws-turn-truncated')?.textContent)
+      .toBe('Response hit the max-token limit and was truncated.');
+    expect(bubble('a-1').textContent!.split('Model B via Auto router')).toHaveLength(2);
+  });
+
   it('renders a hostile model id as inert text', () => {
     const hostile = '<img src=x onerror="alert(1)">\n### Injected';
     renderRoom([writer('u-1'), reply('a-1', { model: stamp(AUTO, [hostile]) })]);
