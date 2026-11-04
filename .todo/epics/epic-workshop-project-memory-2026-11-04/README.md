@@ -45,7 +45,7 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 3 | Write path | Tail extractor and redaction everywhere (replay, retention, logs, streaming), proposal trailer, card, receipts folded into D14, supersession, the memory sheet, "Save to memory…", single-writer library writes, shutdown drain | `…-slice-3-write-path` | Done: PR #200, merged at `7bd1d9a` (Astra: F-01–F-06, N-01 closed over three rounds) |
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
 | 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | Done: PR #199, merged at `0994557` (Astra: F-01, F-02, N-01 closed) |
-| 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | In progress from Slice 3's head |
+| 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | In review: PR #202 |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | In review: PR #201 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
 
@@ -243,3 +243,15 @@ The feature note's six open questions, plus the design scope:
     so its receipt lands right after its reply.
   - Open for review: the receipt keeps Slice 3's `role="separator"` though
     it holds buttons.
+- **2026-11-04. 4b-wire in review; #201 has findings.**
+  - **#202** (4b-wire) was opened from `87e14f6a` (682 suites / 9,598
+    tests). The manager's route owner is `WorkshopProjectMemoryManagerHandler`,
+    so the composition-tier construction guard sees it. It merges first.
+  - **#201** (Slice 5): Astra asked for three P2 fixes:
+    - F-01: recheck the auto-save permission at commit.
+    - F-02: an edited Save must not silently join the auto draft.
+    - F-03: runs waiting on an auto save must stay bound to their room and
+      lifecycle.
+
+    The thread is weighing whether to make the auto save the tail of the
+    run that produced it, which removes the unowned wait.
