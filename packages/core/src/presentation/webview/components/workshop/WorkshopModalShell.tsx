@@ -102,13 +102,23 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
 
 const TABBABLE = 'button, [href], input, select, textarea, [tabindex]';
 
-/** The dialog's Tab stops, in document order: enabled, shown, not tabindex -1. */
+/**
+ * The dialog's Tab stops (enabled, shown, not tabindex -1) in the browser's
+ * own tab order: positive tabIndex first, ascending, ties in document order,
+ * then tabIndex 0 in document order. Rendered Markdown may carry a positive
+ * tabindex, so document order alone would wrap at the wrong stop (PR #186
+ * N-01).
+ */
 function tabbableWithin(root: HTMLElement): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>(TABBABLE)].filter((element) =>
+  const inDocumentOrder = [...root.querySelectorAll<HTMLElement>(TABBABLE)].filter((element) =>
     element.tabIndex >= 0
     && !(element as HTMLButtonElement).disabled
     && element.closest('[hidden]') === null
   );
+  const positive = inDocumentOrder
+    .filter((element) => element.tabIndex > 0)
+    .sort((left, right) => left.tabIndex - right.tabIndex);
+  return [...positive, ...inDocumentOrder.filter((element) => element.tabIndex === 0)];
 }
 
 interface ShellContextValue {

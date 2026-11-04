@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { WorkshopTextSheet } from '@components/workshop/WorkshopTextSheet';
 import type {
   WorkshopTextSheetMode
@@ -336,5 +336,39 @@ describe('WorkshopTextSheet — keyboard containment (PR #186 F-02)', () => {
     const midway = fireEvent.keyDown(first, { key: 'Tab' });
     expect(midway).toBe(true);
     outside.remove();
+  });
+});
+
+describe('WorkshopTextSheet — browser tab order in the trap (PR #186 N-01)', () => {
+  it('wraps at a positive-tabindex link in the rendered file, as the browser orders it', () => {
+    renderSheet({
+      mode: {
+        kind: 'read-in',
+        label: 'rabbit.md',
+        group: 'characters',
+        path: 'characters/rabbit.md',
+        participantLabel: 'Jill',
+        deliveredAt: 1
+      },
+      value: 'See <a href="#entry" tabindex="1">the entry</a> below.',
+      canOpenInEditor: true,
+      onOpenInEditor: jest.fn()
+    });
+    const dialog = screen.getByRole('dialog');
+    // The reader opens on the rendered preview, so the link is live.
+    const link = within(dialog).getByRole('link', { name: 'the entry' });
+    expect(link.tabIndex).toBe(1);
+    const footerButtons = within(dialog).getAllByRole('button');
+    const last = footerButtons[footerButtons.length - 1];
+    expect(last.textContent).toContain('Close');
+
+    // The browser's first stop is the tabindex-1 link, so Shift+Tab from it wraps to the last stop…
+    link.focus();
+    fireEvent.keyDown(link, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+
+    // …and Tab from the last stop goes to the link, not the header's Close button.
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(link);
   });
 });

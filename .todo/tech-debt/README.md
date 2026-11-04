@@ -114,6 +114,7 @@ elsewhere.
 | Medium | [WorkshopApp.tsx is over three times the 500-line limit](2026-11-03-workshop-app-root-size.md) (Workshop Wayfinding Slice 1; extract the thread region before Slice 5) | Identified |
 | Low | [A dictionary block that normalization empties still counts as a success](2026-11-03-dictionary-normalized-block-success.md) (Workshop Wayfinding Slice 6, PR #185 F-04's scope note; history's `modelIds` too) | Identified |
 | Medium | [Workshop modals don't contain focus](2026-11-03-workshop-modal-focus-containment.md) (Workshop Wayfinding Slice 2, PR #186 F-02; the text sheet opts in to a trap, the rest don't) | Identified |
+| Low | [Rendered Markdown keeps positive `tabindex`](2026-11-04-markdown-positive-tabindex.md) (Workshop Wayfinding Slice 2, PR #186 N-01; the sheet's trap orders stops as the browser does) | Identified |
 
 ## Review Guidance
 
