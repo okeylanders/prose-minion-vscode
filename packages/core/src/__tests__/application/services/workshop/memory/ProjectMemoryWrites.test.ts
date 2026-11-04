@@ -169,6 +169,18 @@ describe('ProjectMemoryLibrary writes', () => {
     });
   });
 
+  it('never writes an unreadable or set-aside file, nor lets a new memory name it', async () => {
+    const host = libraryHost();
+    const file = path.join(MEMORY, 'watch-7f3c2a.md');
+    host.putText('watch-7f3c2a.md', '---\nformat: 1\nid: mem-7f3c2a\nkind: secret\n---\nAlice.\n');
+    const before = bytesOf(host.fileSystem, file);
+
+    expect(await host.library.update('mem-7f3c2a', draft())).toEqual({ kind: 'refused', reason: 'missing' });
+    expect(await host.library.forget('mem-7f3c2a')).toMatchObject({ kind: 'refused' });
+    expect(await host.library.save(draft({ supersedes: ['mem-7f3c2a'] }), WRITER)).toMatchObject({ kind: 'written', memory: { supersedes: [] } });
+    expect(bytesOf(host.fileSystem, file)).toBe(before);
+  });
+
   it('two windows on one folder save at once, and both files stand', async () => {
     const one = libraryHost();
     const two = libraryHost({ fileSystem: one.fileSystem });

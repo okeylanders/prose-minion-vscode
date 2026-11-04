@@ -238,6 +238,14 @@ production codec.
 - **After merging the epic** (PR #196 merged: the design snapshot, Slice 0d's
   doc, and Slice 1's store fixes): typecheck clean, lint 1,158 warnings,
   **661 suites / 9,373 tests / 59 snapshots**, all passing.
+- **After merging 2a's head** (`2b4aaba9`, which carries `27da6fee`: the
+  store's review fixes and the #197 review): the store's create and replace
+  results are unchanged, so the writes compile and settle as before. A
+  `set-aside` or unreadable file is only ever in the listing's `unreadable`
+  rows, never `memories`, so it is never a write target and a new memory
+  can't name it in `supersedes` (pinned by a test). The library never calls
+  delete (that's Slice 4b's). Typecheck clean, lint 1,158 warnings,
+  **661 suites / 9,375 tests / 59 snapshots**, all passing.
 
 ## Deviations
 
