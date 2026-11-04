@@ -143,8 +143,12 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
    * The writer's writes (Slice 3; `ProjectMemoryWrites`): never a model's.
    * Each is owed until it settles; `shutDown` drains them at deactivation.
    */
-  save(draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<ProjectMemoryWriteResult> {
-    return this.writes.save(draft, provenance);
+  save(
+    draft: WorkshopMemoryDraft,
+    provenance: ProjectMemorySaveProvenance,
+    options?: { readonly permit?: () => boolean }
+  ): Promise<ProjectMemoryWriteResult> {
+    return this.writes.save(draft, provenance, options);
   }
 
   /** Edit a saved memory (the sheet's Save changes). `update` is the update note's (D14). */

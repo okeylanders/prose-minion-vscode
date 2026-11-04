@@ -208,17 +208,32 @@ describe('Workshop routes — Save and tell me', () => {
     expect(answer).toEqual([{ requestId: 'j1', ok: true, memoryId: receipts()[0].projectMemoryReceipt?.memoryId }]);
   });
 
-  it('the next message waits for an automatic save in flight, so its receipt lands before the next exchange', async () => {
+  it('the save is the tail of its run: the send settles with the receipt in place, before the next exchange', async () => {
     harness.service.startWorkshopPersonaConversation.mockResolvedValueOnce(
       analysisResult(`Good.\n\n${memoryFrame()}`, { conversationId: 'host-conv' }) as never
     );
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'So the watch runs backward?' });
-    // No settling between: the second send must wait out the save.
+    expect(receipts()).toHaveLength(1);
     await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'And the Hatter?' });
 
     const kinds = ledger().filter((turn) => turn.kind !== 'divider' || turn.projectMemoryReceipt)
       .map((turn) => turn.projectMemoryReceipt ? 'receipt' : `${turn.participant}`);
     expect(kinds.slice(-4)).toEqual(['host', 'receipt', 'writer', 'host']);
+  });
+
+  it('a tool run\'s synthesis and a guest\'s opening reply save the same way, each before its run settles', async () => {
+    harness.service.startWorkshopPersonaConversation.mockResolvedValueOnce(
+      analysisResult(`Synthesis.\n\n${memoryFrame({ title: 'Tea is served at six' })}`, { conversationId: 'host-conv' }) as never
+    );
+    await harness.runProse();
+    expect(receipts().map((turn) => turn.projectMemoryReceipt?.by)).toEqual(['auto']);
+
+    harness.service.startWorkshopGuestConversation.mockResolvedValueOnce(
+      analysisResult(`Hello.\n\n${memoryFrame({ title: 'The Cat is never seen arriving' })}`, { conversationId: 'guest-conv' }) as never
+    );
+    await route(MessageType.WORKSHOP_INVITE_GUEST, { personaId: 'margot', openingMessage: 'Read this with us.' });
+    expect(receipts().map((turn) => turn.projectMemoryReceipt?.proposedBy)).toEqual(['jill', 'margot']);
+    expect(memoryFiles()).toHaveLength(2);
   });
 
   it('a save that fails or is refused writes nothing, leaves the card waiting, and logs no memory text', async () => {

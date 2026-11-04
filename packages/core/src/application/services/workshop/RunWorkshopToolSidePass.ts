@@ -68,8 +68,8 @@ export interface WorkshopToolSidePassEvents {
   status: (message: string, tickerMessage?: string) => void;
   error: (message: string, details?: string) => void;
   widgetRecommendationRejected: (message: string, details?: string) => void;
-  /** Save and tell me (Slice 5): the synthesis whose memory card is saved at once. */
-  memoryAutoSave?: (turn: WorkshopTurn) => void;
+  /** Save and tell me (Slice 5): the synthesis whose card is saved now; the pass awaits it as its tail (PR #201 F-03). */
+  memoryAutoSave?: (turn: WorkshopTurn) => Promise<void>;
   settled: (requestId: string) => void;
 }
 
@@ -273,9 +273,12 @@ export class RunWorkshopToolSidePass {
           workshopWriterPreferredAddress(this.writerProfileService.getProfile())
         )
         : undefined;
+      let memorySave: Promise<void> | undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
-        memoryAutoSave: events.memoryAutoSave,
+        memoryAutoSave: events.memoryAutoSave && ((turn) => {
+          memorySave = events.memoryAutoSave!(turn);
+        }),
         session: this.session,
         requestId: synthesisRequestId,
         label: `${personaLabel} synthesis`,
@@ -330,6 +333,9 @@ export class RunWorkshopToolSidePass {
         );
       }
       events.sessionChanged();
+      if (memorySave) {
+        await memorySave;
+      }
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       if (error instanceof AgentRunUnavailableError && !reportAdopted) {

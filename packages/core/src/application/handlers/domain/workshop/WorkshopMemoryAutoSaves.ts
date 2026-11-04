@@ -4,28 +4,30 @@
  *
  * - **Only what completion marked.** Completion routes a reply's proposal
  *   (`WorkshopMemoryAutoSave`): held cards and Ask first's never reach here.
- *   The mode is read again before saving, since it was read before the
- *   reply's listing was awaited; a card no longer under Save and tell me
- *   waits for the writer.
+ * - **The tail of the run that produced it** (PR #201 F-03). The run awaits
+ *   the save under its own controller before it settles, so no later
+ *   request waits on it, and New, Open, a preempting run and disposal treat
+ *   it as they treat any running run: they abort it, or replace its room.
+ * - **A live permission** (PR #201 F-01). Save and tell me still on, the
+ *   run not aborted, the same room, and the card still pending: asked
+ *   before the save, when its turn in the write queue comes, and at the
+ *   store's commit point with nothing awaited before the rename. Withdrawn,
+ *   nothing is written and the card waits for the writer.
  * - **One save per card.** It holds the card's save in the handler's
- *   in-flight map, so a writer's Save of the same card joins it (one file,
- *   one receipt) and a Dismiss waits it out.
- * - **Never silently.** A save leaves a receipt `by: 'auto'` naming the
- *   persona, with the file's full provenance (`origin: auto`). The room
- *   waits for every save in flight before its next run, so the receipt
- *   lands right after the reply it came from. A refused save writes
- *   nothing, and the card waits for the writer.
+ *   in-flight map, so an unedited Save of the same card joins it (one file,
+ *   one receipt) and a Dismiss waits it out. An edited Save never joins: it
+ *   applies to the saved memory once this lands (PR #201 F-02).
+ * - **Never silently.** A committed save leaves a receipt `by: 'auto'`
+ *   naming the persona, with the file's full provenance (`origin: auto`),
+ *   unless its room was replaced meanwhile (logged; the memory stands).
  * - **Logs** carry turn and memory ids and reasons, never memory text.
  */
 
-import type {
-  WorkshopMemoryDraft,
-  WorkshopMemoryWriteResultPayload,
-  WorkshopTurn
-} from '@messages';
+import type { WorkshopMemoryWriteResultPayload, WorkshopTurn } from '@messages';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { ProjectMemorySaveProvenance } from '@/application/services/workshop/memory/ProjectMemoryWrites';
+import { workshopMemoryProposalDraft } from '@shared/constants/workshopProjectMemoryWrites';
 
 export type WorkshopMemoryAutoSaveLibrary = Pick<ProjectMemoryLibrary, 'save' | 'mode'>;
 
@@ -41,9 +43,6 @@ export interface WorkshopMemoryAutoSaveHooks {
 }
 
 export class WorkshopMemoryAutoSaves {
-  /** Saves in flight, settled or not, for the room to wait out. */
-  private readonly inFlight = new Set<Promise<void>>();
-
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly library: WorkshopMemoryAutoSaveLibrary,
@@ -53,61 +52,57 @@ export class WorkshopMemoryAutoSaves {
     private readonly hooks: WorkshopMemoryAutoSaveHooks
   ) {}
 
-  /** Save the card on `turnId`; resolves once it is saved, or waits, and never rejects. */
-  save(turnId: string): Promise<void> {
-    const saving = this.proposalSaves.get(turnId) ?? this.saveCard(turnId);
+  /** Save the card on `turnId` for the run `signal` belongs to; resolves once saved or withdrawn, and never rejects. */
+  save(turnId: string, signal: AbortSignal): Promise<void> {
+    const existing = this.proposalSaves.get(turnId);
+    if (existing) {
+      return existing.then(() => undefined, () => undefined);
+    }
+    const saving = this.saveCard(turnId, signal);
     this.proposalSaves.set(turnId, saving);
-    const settled: Promise<void> = saving.then(() => undefined, (error: unknown) => {
+    return saving.then(() => undefined, (error: unknown) => {
       this.hooks.log(`auto save failed turnId=${turnId} reason=${error instanceof Error ? error.name : 'unknown'}`);
     }).finally(() => {
       if (this.proposalSaves.get(turnId) === saving) {
         this.proposalSaves.delete(turnId);
       }
-      this.inFlight.delete(settled);
     });
-    this.inFlight.add(settled);
-    return settled;
   }
 
-  /** Every save in flight, settled; undefined when there are none, so the room needn't await. */
-  settled(): Promise<void> | undefined {
-    return this.inFlight.size === 0 ? undefined : Promise.all([...this.inFlight]).then(() => undefined);
-  }
-
-  private async saveCard(turnId: string): Promise<WorkshopMemoryWriteResultPayload> {
+  private async saveCard(turnId: string, signal: AbortSignal): Promise<WorkshopMemoryWriteResultPayload> {
     const target = `auto save turnId=${turnId}`;
     const waits = (reason: string): WorkshopMemoryWriteResultPayload => {
       this.hooks.log(`${target} card waits reason=${reason}`);
       return { requestId: '', ok: false };
     };
+    const pendingCard = () => {
+      const proposal = this.session.readRoomLedger().find((candidate) => candidate.id === turnId)?.memoryProposal;
+      return proposal?.state === 'pending' && !proposal.held ? proposal : undefined;
+    };
     const turn = this.session.readRoomLedger().find((candidate) => candidate.id === turnId);
-    const proposal = turn?.memoryProposal;
-    if (!turn || proposal?.state !== 'pending' || proposal.held) {
+    const proposal = pendingCard();
+    if (!turn || !proposal) {
       return waits('no-pending-card');
     }
-    if (this.library.mode() !== 'auto') {
-      return waits('mode');
-    }
-    const draft: WorkshopMemoryDraft = {
-      title: proposal.title,
-      kind: proposal.kind,
-      summary: proposal.summary,
-      body: proposal.body,
-      supersedes: (proposal.supersedes ?? []).map((item) => item.id),
-      pinned: false
-    };
     const revision = this.session.readRoomRevision();
-    const result = await this.library.save(draft, this.hooks.provenance(turn));
+    const permitted = (): boolean => this.library.mode() === 'auto'
+      && !signal.aborted
+      && this.session.readRoomRevision() === revision
+      && pendingCard() !== undefined;
+    if (!permitted()) {
+      return waits(this.withdrawnReason(signal, revision));
+    }
+    const result = await this.library.save(workshopMemoryProposalDraft(proposal), this.hooks.provenance(turn), { permit: permitted });
     if (result.kind === 'refused') {
-      return waits(result.reason);
+      return waits(result.reason === 'withdrawn' ? this.withdrawnReason(signal, revision) : result.reason);
     }
     while (this.room.isSessionOperationPending()) {
       await this.room.waitForSessionOperations();
     }
     const current = this.session.readRoomLedger().find((candidate) => candidate.id === turn.id);
     if (this.session.readRoomRevision() !== revision || current?.memoryProposal?.state !== 'pending') {
-      // The room was replaced (New, Open, Rewind, Branch) while the file was written: the
-      // memory stands, and the manager lists it as saved by its persona.
+      // The room was replaced (New, Open, Rewind, Branch) after the file committed: the memory
+      // stands, and the manager lists it as saved by its persona.
       this.hooks.log(`${target} written memoryId=${result.memory.id}; receipt not recorded reason=room-changed`);
       return { requestId: '', ok: true, memoryId: result.memory.id };
     }
@@ -123,5 +118,16 @@ export class WorkshopMemoryAutoSaves {
     this.hooks.settleRoom();
     this.hooks.log(`${target} saved memoryId=${result.memory.id} receipt`);
     return { requestId: '', ok: true, memoryId: result.memory.id };
+  }
+
+  /** Why a save's permission was withdrawn, for the log: a fact, never text. */
+  private withdrawnReason(signal: AbortSignal, revision: number): string {
+    if (this.library.mode() !== 'auto') {
+      return 'withdrawn:mode';
+    }
+    if (signal.aborted) {
+      return 'withdrawn:run-stopped';
+    }
+    return this.session.readRoomRevision() !== revision ? 'withdrawn:room-changed' : 'withdrawn:card-settled';
   }
 }

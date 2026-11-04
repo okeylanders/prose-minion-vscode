@@ -55,6 +55,8 @@ import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks'
 import {
   checkWorkshopMemoryDraft,
   WORKSHOP_MEMORY_DRAFT_FAULTS,
+  workshopMemoryDraftsEqual,
+  workshopMemoryProposalDraft,
   workshopMemoryPinnedRefusal
 } from '@shared/constants/workshopProjectMemoryWrites';
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
@@ -105,7 +107,8 @@ const REFUSALS: Readonly<Record<Exclude<ProjectMemoryWriteRefusalReason, 'pinned
   busy: 'Another window is editing that memory. Try again in a moment.',
   conflict: 'Two files hold that memory\'s id. Fix one in the editor first.',
   invalid: 'That memory can\'t be saved as written. Check its title, summary and note.',
-  failed: 'The memory couldn\'t be saved. Try again.'
+  failed: 'The memory couldn\'t be saved. Try again.',
+  withdrawn: 'The memory wasn\'t saved: the setting changed before it could be. It waits for you.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -162,10 +165,16 @@ export class WorkshopProjectMemoryHandler {
       this.effects.reportError('A memory suggestion action must name its request, a turn and an action');
       return;
     }
+    // An edited Save that says something other than the card (PR #201 F-02) never joins a save of
+    // the card's own draft: once that one lands, the edit applies to the saved memory below.
+    const edits = (candidate: WorkshopTurn | undefined): boolean => payload.edited !== undefined
+      && candidate?.memoryProposal !== undefined
+      && !workshopMemoryDraftsEqual(payload.edited, workshopMemoryProposalDraft(candidate.memoryProposal));
     const inFlight = this.proposalSaves.get(payload.turnId);
     if (inFlight) {
       const first = await inFlight;
-      if (payload.action === 'save' && first.ok) {
+      const current = this.session.readRoomLedger().find((candidate) => candidate.id === payload.turnId);
+      if (payload.action === 'save' && first.ok && !edits(current)) {
         this.answer({ ...first, requestId }, `proposal save joined turnId=${payload.turnId}`);
         return;
       }
@@ -185,19 +194,20 @@ export class WorkshopProjectMemoryHandler {
       this.answer({ requestId, ok: true }, `proposal ${payload.action} turnId=${turn.id}`);
       return;
     }
-    if (turn.memoryProposal.state === 'saved') {
-      this.answer({ requestId, ok: true, memoryId: turn.memoryProposal.memoryId }, `proposal save unchanged turnId=${turn.id}`);
+    const savedId = turn.memoryProposal.state === 'saved' ? turn.memoryProposal.memoryId : undefined;
+    if (savedId && payload.edited && edits(turn)) {
+      const edited = payload.edited;
+      await this.write(requestId, `proposal edit of saved memoryId=${savedId} turnId=${turn.id}`, edited, true, async () => ({
+        result: await this.library.edit(savedId, edited),
+        action: 'updated'
+      }));
       return;
     }
-    const proposal = turn.memoryProposal;
-    const draft: WorkshopMemoryDraft = payload.edited ?? {
-      title: proposal.title,
-      kind: proposal.kind,
-      summary: proposal.summary,
-      body: proposal.body,
-      supersedes: (proposal.supersedes ?? []).map((item) => item.id),
-      pinned: false
-    };
+    if (savedId) {
+      this.answer({ requestId, ok: true, memoryId: savedId }, `proposal save unchanged turnId=${turn.id}`);
+      return;
+    }
+    const draft: WorkshopMemoryDraft = payload.edited ?? workshopMemoryProposalDraft(turn.memoryProposal);
     const saving = this.write(requestId, `proposal save turnId=${turn.id}`, draft, false, async () => {
       const result = await this.library.save(draft, this.proposalProvenance(turn, 'proposed'));
       return { result, onRecorded: (memoryId) => this.session.setMemoryProposalState(turn.id, 'saved', memoryId), action: 'saved', proposedBy: turn.personaId };
@@ -271,16 +281,12 @@ export class WorkshopProjectMemoryHandler {
   /**
    * Save and tell me (Slice 5; D8): the card on `turnId`, which completion
    * marked for saving, saved now (`WorkshopMemoryAutoSaves`). It holds the
-   * card's in-flight save, so a writer's Save joins it and a Dismiss waits
-   * it out. Not a route: the room calls it once the reply is recorded.
+   * card's in-flight save, so an unedited Save joins it and a Dismiss waits
+   * it out. Not a route: the run that produced the reply awaits it as its
+   * tail, under its own controller (`signal`), before it settles (PR #201 F-03).
    */
-  autoSaveProposal(turnId: string): Promise<void> {
-    return this.autoSaves.save(turnId);
-  }
-
-  /** Save and tell me's saves still in flight, or undefined when there are none (no await for the room). */
-  autoSavesSettled(): Promise<void> | undefined {
-    return this.autoSaves.settled();
+  autoSaveProposal(turnId: string, signal: AbortSignal): Promise<void> {
+    return this.autoSaves.save(turnId, signal);
   }
 
   async handleRequestEdit(message: WorkshopMemoryRequestEditMessage): Promise<void> {

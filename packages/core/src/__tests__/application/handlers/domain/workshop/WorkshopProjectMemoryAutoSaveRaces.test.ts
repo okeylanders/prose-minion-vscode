@@ -1,0 +1,229 @@
+/**
+ * Save and tell me's races (PR #201 F-01–F-03), through the real router,
+ * room handler, completion, library and store, with the store's create
+ * held so the race is deterministic:
+ *
+ * - **F-01:** Save and tell me turned to Ask first or Off while the save
+ *   waits behind another write, or while its own commit is delayed: nothing
+ *   is written, and the card waits for the writer. A writer's save while
+ *   memory is Off still works.
+ * - **F-02:** an edited Save sent while the automatic save is in flight is
+ *   never acknowledged with its edits ignored.
+ * - **F-03:** the save is its run's tail. A later send doesn't wait on it,
+ *   and preempts it; a room replaced, or the room handler disposed, while it
+ *   is held withdraws it. No request crosses into another room or recipient.
+ *
+ * *Alice*, made-up ids.
+ */
+
+import { MessageType, type WorkshopTurn } from '@messages';
+import { memoryFrame } from '@/__tests__/application/services/workshop/memory/memoryProposalFixtures';
+import { MEMORY } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
+import { analysisResult, createWorkshopRouteTestHarness, message, type WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
+
+describe('Workshop routes — Save and tell me races', () => {
+  let harness: WorkshopRouteTestHarness;
+
+  const route = (type: MessageType, payload: unknown) => harness.router.route(message(type, payload) as never);
+  const memoryFiles = () => [...harness.memory.fileSystem.files.keys()].filter((file) => file.startsWith(MEMORY) && file.endsWith('.md'));
+  const ledger = () => harness.session.readRoomLedger();
+  const receipts = () => ledger().filter((turn) => turn.projectMemoryReceipt);
+  const card = () => ledger().find((turn) => turn.memoryProposal);
+  const results = () => harness.posted(MessageType.WORKSHOP_MEMORY_WRITE_RESULT).map((entry) => entry.payload);
+  const tick = async (rounds = 8) => {
+    for (let round = 0; round < rounds; round += 1) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+  const until = async (condition: () => boolean) => {
+    for (let round = 0; round < 50 && !condition(); round += 1) {
+      await tick(1);
+    }
+    expect(condition()).toBe(true);
+  };
+
+  /** Hold the store's next create before it reaches its commit; returns its release. */
+  function holdNextCreate(): { release: () => void; reached: () => boolean } {
+    const store = harness.memory.store;
+    const real = store.create.bind(store);
+    let release!: () => void;
+    let reached = false;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    jest.spyOn(store, 'create').mockImplementationOnce(async (draft, options) => {
+      reached = true;
+      await gate;
+      return real(draft, options);
+    });
+    return { release, reached: () => reached };
+  }
+
+  /** Send a message whose reply carries a card; resolves when the card is on the turn (the send itself is returned). */
+  async function sendCarded(title = 'The Rabbit\'s watch runs backward'): Promise<{ sending: Promise<void>; turn: WorkshopTurn }> {
+    harness.service.startWorkshopPersonaConversation.mockResolvedValueOnce(
+      analysisResult(`Good.\n\n${memoryFrame({ title })}`, { conversationId: 'host-conv' }) as never
+    );
+    const sending = route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'So the watch runs backward?' });
+    await until(() => card() !== undefined);
+    return { sending, turn: card()! };
+  }
+
+  beforeEach(async () => {
+    harness = createWorkshopRouteTestHarness();
+    harness.memory.state.mode = 'auto';
+    await harness.pin();
+  });
+
+  describe('F-01: permission withdrawn before the commit', () => {
+    it.each(['ask', 'off'] as const)('turned to %s while the save waits behind another write: nothing is written, and the card waits', async (mode) => {
+      const held = holdNextCreate();
+      const writerSave = route(MessageType.WORKSHOP_MEMORY_CREATE, {
+        requestId: 'w1',
+        draft: { title: 'Tea is served at six', kind: 'decision', summary: 'Six o\'clock, always.', body: '', supersedes: [], pinned: false }
+      });
+      await until(held.reached);
+      const { sending, turn } = await sendCarded();
+
+      harness.memory.state.mode = mode;
+      held.release();
+      await Promise.all([writerSave, sending]);
+
+      expect(results().find((result) => result.requestId === 'w1')).toMatchObject({ ok: true });
+      expect(memoryFiles()).toHaveLength(1);
+      expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['writer']);
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(harness.memory.lines.join('\n')).toContain('save refused reason=withdrawn');
+    });
+
+    it.each(['ask', 'off'] as const)('turned to %s while the save\'s own commit is delayed: nothing is written, and the card waits', async (mode) => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+
+      harness.memory.state.mode = mode;
+      held.release();
+      await sending;
+
+      expect(memoryFiles()).toEqual([]);
+      expect(receipts()).toEqual([]);
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+    });
+
+    it('a writer\'s Save of the card still works with memory Off afterwards', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+      harness.memory.state.mode = 'off';
+      held.release();
+      await sending;
+
+      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'm1', turnId: turn.id, action: 'save' });
+      expect(results().at(-1)).toMatchObject({ requestId: 'm1', ok: true });
+      expect(memoryFiles()).toHaveLength(1);
+      expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['writer']);
+    });
+  });
+
+  describe('F-02: an edited Save during the automatic save', () => {
+    it('is never acknowledged with its edits ignored: refused in words while the reply settles, the draft kept', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+
+      const edited = { title: 'Corrected by writer', kind: 'canon', summary: 'The watch runs backward from chapter 3.', body: '', supersedes: [], pinned: false };
+      const editing = route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e1', turnId: turn.id, action: 'save', edited });
+      held.release();
+      await Promise.all([sending, editing]);
+
+      // The reply's run is still settling its save, so the edit is refused in words, and the sheet keeps its draft.
+      expect(results().find((result) => result.requestId === 'e1'))
+        .toEqual({ requestId: 'e1', ok: false, error: 'Wait for the reply to finish, then save to memory.' });
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId!;
+      const saved = await harness.memory.store.read(memoryId);
+      expect(saved.kind === 'memory' && saved.entry.memory.title).toBe('The Rabbit\'s watch runs backward');
+      expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.action)).toEqual(['saved']);
+      expect(memoryFiles()).toHaveLength(1);
+    });
+
+    it('sent again once the reply has settled, the edit applies to the saved memory with an updated receipt', async () => {
+      const { sending, turn } = await sendCarded();
+      await sending;
+      const edited = { title: 'Corrected by writer', kind: 'canon', summary: 'The watch runs backward from chapter 3.', body: '', supersedes: [], pinned: false };
+      await route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'e2', turnId: turn.id, action: 'save', edited });
+
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId!;
+      expect(results().at(-1)).toEqual({ requestId: 'e2', ok: true, memoryId });
+      const saved = await harness.memory.store.read(memoryId);
+      expect(saved.kind === 'memory' && saved.entry.memory.title).toBe('Corrected by writer');
+      expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.action)).toEqual(['saved', 'updated']);
+      expect(memoryFiles()).toHaveLength(1);
+    });
+
+    it('an unedited Save, or an edit equal to the card, still joins: one file, one receipt', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+      const same = { title: 'The Rabbit\'s watch runs backward', kind: 'canon', summary: 'From chapter 3 on, the White Rabbit\'s watch runs backward.',
+        body: 'We settled this while working the tea-party scene.', supersedes: [], pinned: false };
+      const saves = [
+        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u1', turnId: turn.id, action: 'save' }),
+        route(MessageType.WORKSHOP_MEMORY_PROPOSAL_ACTION, { requestId: 'u2', turnId: turn.id, action: 'save', edited: same })
+      ];
+      held.release();
+      await Promise.all([sending, ...saves]);
+
+      const memoryId = ledger().find((candidate) => candidate.id === turn.id)!.memoryProposal!.memoryId;
+      expect(results()).toEqual([{ requestId: 'u1', ok: true, memoryId }, { requestId: 'u2', ok: true, memoryId }]);
+      expect(memoryFiles()).toHaveLength(1);
+      expect(receipts()).toHaveLength(1);
+    });
+  });
+
+  describe('F-03: the save is its run\'s tail', () => {
+    it('a later send doesn\'t wait on it, goes to the recipient chosen for it, and preempts the save', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+
+      await route(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'NEW_MESSAGE_71bb' });
+      // The second send completed while the save is still held: nothing waited on it.
+      expect(ledger().some((candidate) => candidate.content === 'NEW_MESSAGE_71bb')).toBe(true);
+      expect(harness.service.continueConversation).toHaveBeenLastCalledWith('host-conv', expect.stringContaining('NEW_MESSAGE_71bb'), expect.anything());
+
+      held.release();
+      await sending;
+      expect(memoryFiles()).toEqual([]);
+      expect(receipts()).toEqual([]);
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending' });
+      expect(harness.memory.lines.join('\n') + (harness.log.appendLine as jest.Mock).mock.calls.join('\n')).toContain('reason=withdrawn:run-stopped');
+    });
+
+    it('a room replaced while it is held withdraws it: nothing is written into, or recorded in, the new room', async () => {
+      const held = holdNextCreate();
+      const { sending } = await sendCarded();
+      await until(held.reached);
+
+      harness.session.reset();
+      held.release();
+      await sending;
+
+      expect(memoryFiles()).toEqual([]);
+      expect(receipts()).toEqual([]);
+    });
+
+    it('disposing the room handler while it is held withdraws it, and starts nothing after', async () => {
+      const held = holdNextCreate();
+      const { sending } = await sendCarded();
+      await until(held.reached);
+      const calls = harness.service.continueConversation.mock.calls.length + harness.service.startWorkshopPersonaConversation.mock.calls.length;
+
+      harness.handler.dispose();
+      held.release();
+      await sending;
+      await tick();
+
+      expect(memoryFiles()).toEqual([]);
+      expect(receipts()).toEqual([]);
+      expect(harness.service.continueConversation.mock.calls.length + harness.service.startWorkshopPersonaConversation.mock.calls.length).toBe(calls);
+    });
+  });
+});

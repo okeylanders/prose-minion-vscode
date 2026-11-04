@@ -61,7 +61,9 @@ export type ProjectMemoryWriteRefusalReason =
   | 'conflict'
   | 'invalid'
   | 'failed'
-  | 'pinned-budget';
+  | 'pinned-budget'
+  /** A save's permission was withdrawn before it committed (Save and tell me: PR #201 F-01). */
+  | 'withdrawn';
 
 export type ProjectMemoryWriteResult =
   | {
@@ -106,9 +108,23 @@ export class ProjectMemoryWrites {
     private readonly outputChannel: LogSink
   ) {}
 
-  /** A new memory from the writer's draft (Save, Save to memory…, New). */
-  save(draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<ProjectMemoryWriteResult> {
+  /**
+   * A new memory from the writer's draft (Save, Save to memory…, New), or
+   * Save and tell me's. `permit`, when given, is asked once the save's turn
+   * in the queue comes and again at the store's commit point, with nothing
+   * awaited before the rename: a save whose permission was withdrawn
+   * meanwhile writes nothing (PR #201 F-01). A writer's save passes none.
+   */
+  save(
+    draft: WorkshopMemoryDraft,
+    provenance: ProjectMemorySaveProvenance,
+    options: { readonly permit?: () => boolean } = {}
+  ): Promise<ProjectMemoryWriteResult> {
+    const permitted = () => options.permit?.() ?? true;
     return this.owe('save', async () => {
+      if (!permitted()) {
+        return this.refused('save', 'withdrawn');
+      }
       const listed = await this.listed();
       if (listed.kind === 'refused') {
         return listed;
@@ -141,12 +157,14 @@ export class ProjectMemoryWrites {
         return { kind: 'refused', reason: 'pinned-budget', budget };
       }
       const { id: _id, created: _created, updated: _updated, ...fields } = candidate;
-      const created = await this.store.create(fields, { beforeCommit: () => this.workspaceReason() === undefined });
+      const created = await this.store.create(fields, { beforeCommit: () => this.workspaceReason() === undefined && permitted() });
       if (created.kind === 'invalid') {
         this.log(`save invalid fault=${created.reason}${created.key ? ` key=${created.key}` : ''}`);
       }
       if (created.kind !== 'created') {
-        return this.refused('save', created.kind === 'withdrawn' ? 'failed' : created.kind === 'unavailable' ? created.reason : created.kind);
+        return this.refused('save', created.kind === 'withdrawn'
+          ? (permitted() ? 'failed' : 'withdrawn')
+          : created.kind === 'unavailable' ? created.reason : created.kind);
       }
       const memory = created.entry.memory;
       this.log(`saved id=${memory.id} origin=${memory.origin} supersedes=${memory.supersedes.length} pinned=${memory.pinned}`);

@@ -323,14 +323,9 @@ export class WorkshopSliceComposition {
     );
   }
 
-  /** Save and tell me (Slice 5): a recorded reply's card, saved now. */
-  autoSaveMemoryProposal(turn: WorkshopTurn): void {
-    void this.projectMemoryHandler.autoSaveProposal(turn.id);
-  }
-
-  /** Save and tell me's saves in flight, for a new run to wait out; undefined when none. */
-  memoryAutoSavesSettled(): Promise<void> | undefined {
-    return this.projectMemoryHandler.autoSavesSettled();
+  /** Save and tell me (Slice 5): a recorded reply's card, saved now, as the tail of the run `signal` belongs to. */
+  autoSaveMemoryProposal(turn: WorkshopTurn, signal: AbortSignal): Promise<void> {
+    return this.projectMemoryHandler.autoSaveProposal(turn.id, signal);
   }
 
   isContextRunActive(): boolean {
