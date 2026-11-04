@@ -259,3 +259,19 @@ describe('prepareProjectMemoryFile: what is written is what was meant (PR #194 F
     expect(prepareProjectMemoryFile({ ...RABBIT, sourceTurns: [' turn-12-assistant-1730643725000'] })).toEqual({ kind: 'invalid', reason: 'not-as-written' });
   });
 });
+
+describe('the file\'s byte bound (PR #194 F-05)', () => {
+  it('is checked on the encoded bytes before anything is written: at the bound it passes, one byte over it is refused', () => {
+    const bytes = new TextEncoder().encode(encodeProjectMemory(RABBIT)).byteLength;
+    expect(prepareProjectMemoryFile(RABBIT, bytes).kind).toBe('file');
+    expect(prepareProjectMemoryFile(RABBIT, bytes - 1)).toEqual({ kind: 'invalid', reason: 'file-too-large' });
+  });
+
+  it('bounds a turn id\'s digit runs, so the field bounds imply a byte bound', () => {
+    expect(decoded(withLine(fixture('the-rabbits-watch-runs-backward-7f3c2a.md'), 'source-turns', `source-turns: turn-999999999-user-${'9'.repeat(16)}`)).sourceTurns).toHaveLength(1);
+    for (const turn of [`turn-1234567890-user-1`, `turn-1-user-${'9'.repeat(17)}`]) {
+      expect(decodeProjectMemory(withLine(fixture('the-rabbits-watch-runs-backward-7f3c2a.md'), 'source-turns', `source-turns: ${turn}`)))
+        .toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'source-turns' });
+    }
+  });
+});

@@ -434,3 +434,32 @@ describe('a field never writes frontmatter of its own (PR #194 F-01)', () => {
     expect(fileSystem.files.size).toBe(0);
   });
 });
+
+describe('a saved memory is always one the folder reads (PR #194 F-05)', () => {
+  it('refuses the review\'s oversized turn id, and writes nothing', async () => {
+    const { fileSystem, store } = host();
+    const turn = `turn-${'1'.repeat(270_000)}-assistant-1`;
+    expect(await store.create({ ...DRAFT, sourceTurns: [turn] })).toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'source-turns' });
+    const entry = await createdEntry(store);
+    const before = text(fileSystem.files.get(path.join(MEMORY, entry.fileName)));
+    expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, sourceTurns: [turn] })))
+      .toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'source-turns' });
+    expect(text(fileSystem.files.get(path.join(MEMORY, entry.fileName)))).toBe(before);
+  });
+
+  it('a memory at every bound, in three-byte characters, saves, lists readable, and round-trips', async () => {
+    const { store } = host();
+    const wide = (characters: number) => '☃'.repeat(characters);
+    const draft = {
+      ...DRAFT,
+      title: wide(120),
+      summary: wide(280),
+      body: `\n${wide(7_998)}\n`,
+      sourceTurns: Array.from({ length: 32 }, (_, index) => `turn-${String(index + 100_000_000)}-assistant-${'9'.repeat(16)}`),
+      supersedes: Array.from({ length: 8 }, (_, index) => `mem-00000${index}`)
+    };
+    const entry = await createdEntry(store, draft);
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
+    expect(entry.memory).toMatchObject({ title: draft.title, body: draft.body, sourceTurns: draft.sourceTurns });
+  });
+});

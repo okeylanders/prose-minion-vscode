@@ -61,10 +61,14 @@ export const PROJECT_MEMORY_LIST_ENTRIES = {
 /** A memory's id: `mem-` and six lower-case hex digits, minted by the store. Never read from a file name. */
 export const PROJECT_MEMORY_ID = /^mem-[0-9a-f]{6}$/;
 
-/** A Workshop turn id, as `WorkshopTurnLedger` mints it: `turn-<n>-<role>-<epoch ms>`. */
-export const PROJECT_MEMORY_SOURCE_TURN = /^turn-\d+-(?:user|assistant|system)-\d+$/;
+/**
+ * A Workshop turn id, as `WorkshopTurnLedger` mints it: `turn-<n>-<role>-<epoch ms>`.
+ * Its digit runs are bounded (a counter of at most 9 digits, a time of at
+ * most 16), so the field bounds imply a byte bound (PR #194 F-05).
+ */
+export const PROJECT_MEMORY_SOURCE_TURN = /^turn-\d{1,9}-(?:user|assistant|system)-\d{1,16}$/;
 
-/** The largest memory file read; a larger one is unreadable (`too-large`). */
+/** The largest memory file read; a larger one is unreadable (`too-large`), and none is written (`file-too-large`). */
 export const PROJECT_MEMORY_FILE_BYTES = 256 * 1024;
 
 export interface ProjectMemory {

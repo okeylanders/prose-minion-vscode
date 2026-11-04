@@ -55,6 +55,7 @@
 
 import {
   PROJECT_MEMORY_FIELD_CHARACTERS,
+  PROJECT_MEMORY_FILE_BYTES,
   PROJECT_MEMORY_FORMAT,
   PROJECT_MEMORY_ID,
   PROJECT_MEMORY_KINDS,
@@ -135,7 +136,7 @@ export function decodeProjectMemory(text: string): ProjectMemoryDecodeResult {
 }
 
 /** Why a memory cannot be written: a format fault at a key, or a file that would not read back as the memory meant. */
-export type ProjectMemoryWriteFault = ProjectMemoryInvalidReason | 'not-as-written';
+export type ProjectMemoryWriteFault = ProjectMemoryInvalidReason | 'not-as-written' | 'file-too-large';
 
 export type ProjectMemoryPrepared =
   | { kind: 'file'; text: string; memory: ProjectMemory }
@@ -148,9 +149,12 @@ export type ProjectMemoryPrepared =
  * entry), is refused at its key, so no field can write frontmatter of its
  * own. Then the text is decoded, and must be exactly the memory meant,
  * field by field (`not-as-written` otherwise): decoding alone does not show
- * a file holds what the caller asked for.
+ * a file holds what the caller asked for. Last, its UTF-8 bytes are held to
+ * the bound a folder reads (`file-too-large`, PR #194 F-05), so a saved
+ * memory is never one the next listing finds too large; the field bounds
+ * imply it today, and this keeps a future field from reopening the gap.
  */
-export function prepareProjectMemoryFile(memory: ProjectMemory): ProjectMemoryPrepared {
+export function prepareProjectMemoryFile(memory: ProjectMemory, fileBytes: number = PROJECT_MEMORY_FILE_BYTES): ProjectMemoryPrepared {
   const fault = fieldFault(memory);
   if (fault) {
     return { kind: 'invalid', reason: 'invalid-value', key: fault };
@@ -162,6 +166,9 @@ export function prepareProjectMemoryFile(memory: ProjectMemory): ProjectMemoryPr
   }
   if (!sameProjectMemory(decoded.memory, memory)) {
     return { kind: 'invalid', reason: 'not-as-written' };
+  }
+  if (new TextEncoder().encode(text).byteLength > fileBytes) {
+    return { kind: 'invalid', reason: 'file-too-large' };
   }
   return { kind: 'file', text, memory: decoded.memory };
 }
