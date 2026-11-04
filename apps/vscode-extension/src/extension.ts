@@ -53,6 +53,7 @@ import {
   WorkshopTranscriptRecallService,
   WorkshopTranscriptExportService,
   WorkshopTranscriptExportStore,
+  OpenRouterModels,
   GesturePlaygroundService,
   CreativeVariationsService,
   ShowVsTellService,
@@ -364,7 +365,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // documents under prose-minion/exports.
   const workshopTranscriptExportService = new WorkshopTranscriptExportService(
     workshopSessionService,
-    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace)
+    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace),
+    Date.now,
+    // Model slices name models from the host's catalog (ADR 2026-11-03 D8).
+    (modelId) => OpenRouterModels.getDisplayName(modelId)
   );
 
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one

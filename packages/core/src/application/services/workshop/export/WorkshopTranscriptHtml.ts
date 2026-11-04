@@ -23,6 +23,8 @@ import {
   WORKSHOP_TRANSCRIPT_WRITER_LABEL,
   WorkshopTranscript,
   WorkshopTranscriptEntry,
+  WorkshopTranscriptLine,
+  WorkshopTranscriptModelSliceEntry,
   WorkshopTranscriptReplyEntry,
   WorkshopTranscriptWriterEntry,
   countWorkshopTranscriptMessages
@@ -108,8 +110,10 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
   ].join('\n');
 }
 
-function renderEntry(entry: WorkshopTranscriptEntry): string {
+function renderEntry(entry: WorkshopTranscriptLine): string {
   switch (entry.kind) {
+    case 'model-slice':
+      return renderModelSlice(entry);
     case 'event':
       return `<div class="pm-ws-revision-divider" role="separator"><span>${
         escapeHtml(entry.text)
@@ -119,6 +123,17 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
     case 'reply':
       return renderReply(entry);
   }
+}
+
+/**
+ * The thread's slice divider (WorkshopModelSliceDivider), markup for markup:
+ * its rules are mirrored thread CSS, and it is named by its visible text.
+ */
+function renderModelSlice(entry: WorkshopTranscriptModelSliceEntry): string {
+  const text = escapeHtml(entry.text);
+  return '<div class="pm-ws-revision-divider pm-ws-session-divider pm-ws-model-slice" role="separator" ' +
+    `aria-label="${text}" title="${escapeHtml(`${entry.fromModelId} → ${entry.toModelId}`)}">` +
+    `<span>${icon('chip', 12)}${text}</span></div>`;
 }
 
 function renderWriter(entry: WorkshopTranscriptWriterEntry): string {

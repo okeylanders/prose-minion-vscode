@@ -1343,6 +1343,16 @@ export class OpenRouterModels {
   }
 
   /**
+   * A model's display name for host-side readers (the transcript export's
+   * model slices, ADR 2026-11-03 D8): the curated name, as the model options
+   * the webview receives give it, else the live catalog's, else undefined.
+   */
+  static getDisplayName(model: string): string | undefined {
+    return RECOMMENDED_MODELS.find(candidate => candidate.id === model)?.name
+      ?? this.cachedModels?.find(candidate => candidate.id === model)?.name;
+  }
+
+  /**
    * Get recommended models (doesn't require API call)
    */
   static getRecommendedModels() {

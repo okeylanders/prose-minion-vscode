@@ -60,7 +60,8 @@ const transcript = (bookmarkedTurnIds?: ReadonlySet<string>) =>
 
 describe('bookmarks in the transcript export', () => {
   it('marks exactly the bookmarked turns in the projection', () => {
-    const entries = transcript(BOOKMARKED).entries;
+    // These turns carry no model stamps, so the transcript holds no model slice.
+    const entries = transcript(BOOKMARKED).entries.flatMap((entry) => (entry.kind === 'model-slice' ? [] : [entry]));
 
     expect(entries.map((entry) => [entry.turnId, entry.bookmarked === true])).toEqual([
       ['s-1', false],
