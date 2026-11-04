@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (amended: badge, no toast), D5, and D6
 **Design:** `Main.dc.html` (the Bookmark button and the Notes tab) in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Built on `epic/workshop-wayfinding-slice-5-bookmarks-ui` (cut from the epic at `356c751`, Slice 4 merged); in review on PR #189.
+**Status:** Done. Merged into the epic through PR #189 (`4a180ab`) after Astra's re-review resolved F-01 through F-04 and N-01 ([review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md)). Built in `d295bcd`, `bba9a43`, `3823135`, `5a59a0c`, `47326e1`; review fixes `e944375`, `c97d947`, `0659956`, `905f43b`.
 
 ## Outcome
 
