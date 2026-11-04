@@ -285,7 +285,10 @@ export class ScriptedWorkshopRoom {
   }
 
   /** Writer-requested tool run: report (sidecar commit) then host synthesis. */
-  toolRun(toolId: WorkshopToolId): { report: WorkshopTurn; synthesis: WorkshopTurn } {
+  toolRun(
+    toolId: WorkshopToolId,
+    options: { projectMemory?: WorkshopProjectMemoryDelivery } = {}
+  ): { report: WorkshopTurn; synthesis: WorkshopTurn } {
     const toolRequestId = this.requestId(`tool-${toolId}`);
     this.session.beginToolRun(toolId, toolRequestId);
     const toolConversationId = this.commitHistory(
@@ -312,6 +315,9 @@ export class ScriptedWorkshopRoom {
       : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const synthesisRequestId = this.requestId(`synthesis-${toolId}`);
     this.session.beginPersonaSynthesis(synthesisRequestId, completion.turn.id);
+    if (options.projectMemory) {
+      this.session.stageProjectMemoryDelivery(synthesisRequestId, options.projectMemory);
+    }
     const hostConversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,

@@ -138,9 +138,9 @@ describe('update notes (ADR 2026-11-04 D14)', () => {
     expect(note).toMatch(/ count="3">3 memories changed since this conversation last saw them; call memory\.catalog\.<\/project-memory-update>$/);
     expect(note).not.toContain('teatime');
     expect(noteOf(await say('And now?'))).toBeUndefined();
-    const [, writer] = session.readRoomLedger().filter((turn) => turn.role === 'user');
-    expect(writer.projectMemoryDelivery?.[0]).toMatchObject({ kind: 'note' });
-    expect(writer.projectMemoryDelivery?.[0].memories.map(({ id }) => id)).toEqual(['mem-0e0e01', 'mem-0e0e02', 'mem-0e0e03', 'mem-7f3c2a']);
+    const [, reply] = session.readRoomLedger().filter((turn) => turn.participant === 'host');
+    expect(reply.projectMemoryDelivery?.[0]).toMatchObject({ kind: 'note' });
+    expect(reply.projectMemoryDelivery?.[0].memories.map(({ id }) => id)).toEqual(['mem-0e0e01', 'mem-0e0e02', 'mem-0e0e03', 'mem-7f3c2a']);
   });
 
   it('sends no note, and writes no record, while the folder cannot be listed; the next message catches up', async () => {

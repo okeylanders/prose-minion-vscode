@@ -443,10 +443,11 @@ export interface WorkshopTurn {
    */
   widgetRecommendation?: WorkshopWidgetRecommendation;
   /**
-   * What project memory this writer turn delivered (ADR 2026-11-04 D14): a
-   * frame's or an update note's snapshot of the memories in effect, per
-   * participant. Written when the reply that received it commits, so a
-   * rolled-back, cancelled or cut turn takes its record with it.
+   * What project memory the message this persona reply answers delivered
+   * (ADR 2026-11-04 D14): a frame's or an update note's snapshot of the
+   * memories in effect. Written on the reply when it commits, so a cut, a
+   * rollback or a cancellation that removes the delivery removes its record
+   * too (PR #198 F-01).
    */
   projectMemoryDelivery?: WorkshopProjectMemoryDelivery[];
 }

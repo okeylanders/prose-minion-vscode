@@ -5,10 +5,12 @@
  * exactly as before, and it needs no `schemaVersion` bump (ADR 2026-07-30;
  * ADR 2026-11-03 D9). Called from the session shape file.
  *
- * When present it is exact: a writer turn's (`role: 'user'`) list of
- * `{ participant, kind, memories }`, each participant at most once, each
- * memory `{ id, version }` with the `mem-` id shape, a 12-hex version, and
- * each id at most once.
+ * When present it is exact: on a persona reply (`role: 'assistant'`, a host
+ * or guest turn), one `{ participant, kind, memories }` naming that reply's
+ * own participant, each memory `{ id, version }` with the `mem-` id shape, a
+ * 12-hex version, and each id at most once. It rides the reply, never the
+ * writer turn, so a cut that removes the reply removes the record with the
+ * history that received it (PR #198 F-01).
  */
 
 import type { WorkshopProjectMemoryDelivery } from '@messages';
@@ -28,10 +30,14 @@ export const WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS = Object.freeze({ memories:
 
 const VERSION = /^[0-9a-f]{12}$/;
 
-/** Strict structure of a turn's `projectMemoryDelivery`; refused on any turn but a writer turn. */
-export function assertWorkshopProjectMemoryDeliveryShape(value: unknown, path: string, role: unknown): void {
-  if (role !== 'user') {
-    shapeError(path, 'a record on a writer turn');
+/** Strict structure of a turn's `projectMemoryDelivery`; refused on any turn but a persona reply, or for another participant. */
+export function assertWorkshopProjectMemoryDeliveryShape(
+  value: unknown,
+  path: string,
+  turn: { readonly role?: unknown; readonly participant?: unknown; readonly personaId?: unknown }
+): void {
+  if (turn.role !== 'assistant' || (turn.participant !== 'host' && turn.participant !== 'guest')) {
+    shapeError(path, 'a record on a persona reply');
   }
   const participants = new Set<string>();
   arrayOf(value, path, (item, itemPath) => {
@@ -46,6 +52,10 @@ export function assertWorkshopProjectMemoryDeliveryShape(value: unknown, path: s
       shapeError(`${itemPath}.participant`, 'each participant once per turn');
     }
     participants.add(key);
+    const own = turn.participant === 'host' ? 'host' : `guest:${String(turn.personaId)}`;
+    if (key !== own) {
+      shapeError(`${itemPath}.participant`, 'the reply\'s own participant');
+    }
     enumAt(delivery.kind, `${itemPath}.kind`, ['frame', 'note']);
     boundedArrayAt(delivery.memories, `${itemPath}.memories`, 0, WORKSHOP_PROJECT_MEMORY_DELIVERY_LIMITS.memories, 'delivered memories');
     const ids = new Set<string>();

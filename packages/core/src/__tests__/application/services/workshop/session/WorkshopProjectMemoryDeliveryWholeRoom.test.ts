@@ -48,11 +48,12 @@ async function openDeliveredRoom() {
 }
 
 describe('the delivery record across whole-room operations (ADR 2026-11-04 D14)', () => {
-  it('rides the writer turn that delivered it, and Open loads it with the session', async () => {
-    const { session, questions } = await openDeliveredRoom();
+  it('rides the reply that received it, and Open loads it with the session', async () => {
+    const { session, questions, replies } = await openDeliveredRoom();
     const turns = session.readRoomLedger();
-    expect(turns.find((turn) => turn.id === questions[0].id)?.projectMemoryDelivery).toEqual([frame('aaaaaaaaaaaa')]);
-    expect(turns.find((turn) => turn.id === questions[1].id)?.projectMemoryDelivery).toBeUndefined();
+    expect(turns.find((turn) => turn.id === replies[0].id)?.projectMemoryDelivery).toEqual([frame('aaaaaaaaaaaa')]);
+    expect(turns.find((turn) => turn.id === questions[0].id)?.projectMemoryDelivery).toBeUndefined();
+    expect(turns.find((turn) => turn.id === replies[1].id)?.projectMemoryDelivery).toBeUndefined();
     expect(viewOf(turns)).toEqual([['mem-1a9e04', 'bbbbbbbbbbbb'], ['mem-7f3c2a', 'bbbbbbbbbbbb']]);
   });
 
@@ -102,17 +103,35 @@ describe('the delivery record across whole-room operations (ADR 2026-11-04 D14)'
     expect(viewOf(session.readRoomLedger())).toEqual([['mem-7f3c2a', 'aaaaaaaaaaaa']]);
   });
 
-  it('keeps each participant\'s record apart: a guest\'s note is not the host\'s view', () => {
+  it('a synthesis\'s record dies with the synthesis: Rewind and Branch to its report restore the report\'s view (PR #198 F-01)', async () => {
     const room = new ScriptedWorkshopRoom().start();
-    room.hostMessage('What did we settle?', {
-      projectMemory: { participant: { kind: 'personaGuest', personaId: 'cliff' }, kind: 'note', memories: [{ id: 'mem-1a9e04', version: 'eeeeeeeeeeee' }] }
-    });
-    expect(projectMemoryDeliveredView(room.session.readRoomLedger(), HOST).recorded).toBe(false);
-    expect([...projectMemoryDeliveredView(room.session.readRoomLedger(), { kind: 'personaGuest', personaId: 'cliff' }).memories])
-      .toEqual([['mem-1a9e04', 'eeeeeeeeeeee']]);
+    room.hostMessage('What did we settle?', { projectMemory: frame('aaaaaaaaaaaa') });
+    const { report } = room.toolRun('prose', { projectMemory: note('bbbbbbbbbbbb') });
+    expect(viewOf(room.session.readRoomLedger())).toEqual([['mem-1a9e04', 'bbbbbbbbbbbb'], ['mem-7f3c2a', 'bbbbbbbbbbbb']]);
+
+    const cut = rewindWorkshopSession({ workshop: room.session.exportCommittedState(), conversations: room.archive(), cut: after(report.id) });
+    expect(viewOf(cut.workshop.turns)).toEqual([['mem-7f3c2a', 'aaaaaaaaaaaa']]);
+
+    const harness = setupCoordinator();
+    await harness.store.saveNamed(scriptedCheckpoint('synthesized', room));
+    await harness.coordinator.initialize();
+    await harness.coordinator.openNamed('synthesized');
+    const branched = await harness.coordinator.branchFrom(after(report.id));
+    expect(viewOf((await harness.store.readNamed(branched.branch.sessionId))!.workshop.turns)).toEqual([['mem-7f3c2a', 'aaaaaaaaaaaa']]);
+    await harness.coordinator.rewindTo(after(report.id), { origin: 'writer' });
+    expect(viewOf(harness.session.readRoomLedger())).toEqual([['mem-7f3c2a', 'aaaaaaaaaaaa']]);
   });
 
-  it('saves a session without the field byte for byte, and refuses the field on any turn but a writer turn', () => {
+  it('stages a record only for the conversation the run answers for', () => {
+    const room = new ScriptedWorkshopRoom().start();
+    room.session.beginPersonaMessage('host-run', 'What did we settle?');
+    expect(room.session.stageProjectMemoryDelivery('host-run', {
+      participant: { kind: 'personaGuest', personaId: 'cliff' }, kind: 'note', memories: [{ id: 'mem-1a9e04', version: 'eeeeeeeeeeee' }]
+    })).toBe(false);
+    expect(room.session.stageProjectMemoryDelivery('host-run', frame('aaaaaaaaaaaa'))).toBe(true);
+  });
+
+  it('saves a session without the field byte for byte, and refuses the field on any turn but a persona reply', () => {
     const room = new ScriptedWorkshopRoom().start();
     room.hostMessage('What did we settle?');
     const checkpoint = scriptedCheckpoint('plain', room);
@@ -121,18 +140,22 @@ describe('the delivery record across whole-room operations (ADR 2026-11-04 D14)'
     expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(raw)))).toBe(raw);
     expect(JSON.stringify(parseWorkshopPersistedSession(JSON.parse(raw)))).not.toContain('projectMemoryDelivery');
 
-    const onReply = JSON.parse(raw);
-    const reply = onReply.workshop.turns.find((turn: { role: string }) => turn.role === 'assistant');
-    reply.projectMemoryDelivery = [frame('aaaaaaaaaaaa')];
-    expect(() => parseWorkshopPersistedSession(onReply)).toThrow(/projectMemoryDelivery must be a record on a writer turn/);
+    type RawTurn = { role: string; participant: string; projectMemoryDelivery?: unknown };
+    const reply = (state: { workshop: { turns: RawTurn[] } }) => state.workshop.turns.find((turn) => turn.participant === 'host')!;
+    const onWriter = JSON.parse(raw);
+    onWriter.workshop.turns.find((turn: RawTurn) => turn.role === 'user').projectMemoryDelivery = [frame('aaaaaaaaaaaa')];
+    expect(() => parseWorkshopPersistedSession(onWriter)).toThrow(/projectMemoryDelivery must be a record on a persona reply/);
 
     const badVersion = JSON.parse(raw);
-    const writer = badVersion.workshop.turns.find((turn: { role: string }) => turn.role === 'user');
-    writer.projectMemoryDelivery = [frame('not-a-version')];
+    reply(badVersion).projectMemoryDelivery = [frame('not-a-version')];
     expect(() => parseWorkshopPersistedSession(badVersion)).toThrow(/version must be a memory version/);
 
     const twice = JSON.parse(raw);
-    twice.workshop.turns.find((turn: { role: string }) => turn.role === 'user').projectMemoryDelivery = [frame('aaaaaaaaaaaa'), note('bbbbbbbbbbbb')];
+    reply(twice).projectMemoryDelivery = [frame('aaaaaaaaaaaa'), note('bbbbbbbbbbbb')];
     expect(() => parseWorkshopPersistedSession(twice)).toThrow(/each participant once per turn/);
+
+    const another = JSON.parse(raw);
+    reply(another).projectMemoryDelivery = [{ ...frame('aaaaaaaaaaaa'), participant: { kind: 'personaGuest', personaId: 'cliff' } }];
+    expect(() => parseWorkshopPersistedSession(another)).toThrow(/participant must be the reply's own participant/);
   });
 });

@@ -1764,8 +1764,13 @@ export class WorkshopSessionService {
         );
       }
     }
+    // What project memory the run's message delivered rides the reply that
+    // received it, so any cut that removes the delivery removes its record,
+    // a synthesis's included (ADR 2026-11-04 D14; PR #198 F-01).
+    if ((isHost || isGuest) && active.projectMemoryDelivery) {
+      turn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, active.projectMemoryDelivery);
+    }
     this.turnLedger.append(turn);
-    this.commitProjectMemoryDelivery(active);
     for (const capabilityTurnId of new Set(active.capabilityTurnIds ?? [])) {
       this.turnLedger.update(capabilityTurnId, (capabilityTurn) => {
         if (
@@ -1789,44 +1794,25 @@ export class WorkshopSessionService {
 
   /**
    * Stage what project memory this run's message delivered (ADR 2026-11-04
-   * D14). It reaches the writer turn only if the reply commits, so a
+   * D14). It is written onto the reply only if the reply commits, so a
    * cancelled, abandoned or rolled-back run leaves no record. False when the
    * run is no longer the active one.
    */
   stageProjectMemoryDelivery(requestId: string, delivery: WorkshopProjectMemoryDelivery): boolean {
-    if (this.activeRun?.requestId !== requestId) {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId) {
       return false;
     }
-    this.activeRun.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
+    // A record belongs to the conversation this run's reply answers for.
+    const own = active.target === 'host'
+      ? delivery.participant.kind === 'host'
+      : active.target === 'personaGuest' && delivery.participant.kind === 'personaGuest'
+        && delivery.participant.personaId === active.guestPersonaId;
+    if (!own) {
+      return false;
+    }
+    this.activeRun!.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(undefined, delivery)[0];
     return true;
-  }
-
-  /**
-   * The staged delivery, onto the run's writer turn: the message's, a
-   * guest's join, or, for a synthesis, the tool request before its report.
-   */
-  private commitProjectMemoryDelivery(active: WorkshopActiveRun): void {
-    const delivery = active.projectMemoryDelivery;
-    if (!delivery) {
-      return;
-    }
-    const anchor = active.writerTurnId ?? this.writerTurnBefore(active.reportTurnId);
-    if (anchor) {
-      this.turnLedger.update(anchor, (writerTurn) => {
-        writerTurn.projectMemoryDelivery = withWorkshopProjectMemoryDelivery(writerTurn.projectMemoryDelivery, delivery);
-      });
-    }
-  }
-
-  private writerTurnBefore(turnId: string | undefined): string | undefined {
-    const turns = this.turnLedger.all();
-    const at = turnId ? turns.findIndex((turn) => turn.id === turnId) : -1;
-    for (let index = at - 1; index >= 0; index -= 1) {
-      if (turns[index].role === 'user') {
-        return turns[index].id;
-      }
-    }
-    return undefined;
   }
 
   addTodoFromFinding(sourceTurnId: string, findingKey: string): WorkshopTodoItem {

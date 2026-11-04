@@ -656,7 +656,7 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
   if (turn.projectMemoryDelivery !== undefined) {
-    assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn.role);
+    assertWorkshopProjectMemoryDeliveryShape(turn.projectMemoryDelivery, `${path}.projectMemoryDelivery`, turn);
   }
   if (turn.standingDirectiveChange !== undefined) {
     assertStandingDirectiveChange(
