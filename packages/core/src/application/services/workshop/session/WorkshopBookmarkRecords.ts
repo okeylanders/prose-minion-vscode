@@ -21,7 +21,7 @@ import {
 } from '@/application/services/workshop/persistedValidation';
 import {
   isWorkshopBookmarkableTurn,
-  WORKSHOP_BOOKMARK_ID_PATTERN
+  parseWorkshopBookmarkId
 } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
 
 const PATH = 'Workshop session state.bookmarks';
@@ -32,8 +32,8 @@ export function assertWorkshopBookmarksShape(value: unknown): void {
   const turnIds = new Set<string>();
   arrayOf(value, PATH, (item, path) => {
     const bookmark = exactObject(item, path, ['id', 'turnId', 'createdAt'], ['label']);
-    if (typeof bookmark.id !== 'string' || !WORKSHOP_BOOKMARK_ID_PATTERN.test(bookmark.id)) {
-      shapeError(`${path}.id`, 'a bookmark id (bookmark-<n>-<ms>)');
+    if (typeof bookmark.id !== 'string' || !parseWorkshopBookmarkId(bookmark.id)) {
+      shapeError(`${path}.id`, 'a bookmark id (bookmark-<n>-<ms>, each a canonical safe integer of at least 1)');
     }
     if (typeof bookmark.turnId !== 'string' || bookmark.turnId.length === 0) {
       shapeError(`${path}.turnId`, 'non-empty string');

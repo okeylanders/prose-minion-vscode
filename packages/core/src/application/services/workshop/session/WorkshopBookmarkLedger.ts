@@ -9,7 +9,9 @@
  * frame, provider history, or recall.
  *
  * Ids carry their number (`bookmark-<n>-<ms>`), so a reopened session's
- * ledger resumes numbering past them without a persisted counter.
+ * ledger resumes numbering past them without a persisted counter. Both parts
+ * are canonical safe integers (PR #188 F-01): no accepted id can make the
+ * ledger mint one the codec would refuse.
  */
 
 import type {
@@ -24,8 +26,25 @@ import {
 import { workshopCapabilityFamilyLabel } from '@shared/constants/workshopCapabilityLabels';
 import { projectWorkshopTranscriptTurn } from '@/application/services/workshop/transcript/WorkshopTranscript';
 
-/** The id grammar the ledger mints and the codec accepts. */
-export const WORKSHOP_BOOKMARK_ID_PATTERN = /^bookmark-(\d+)-(\d+)$/;
+const ID_SHAPE = /^bookmark-([1-9]\d*)-([1-9]\d*)$/;
+
+/** A canonical decimal from 1 to `Number.MAX_SAFE_INTEGER`, or undefined. */
+function safeCanonicalInteger(digits: string): number | undefined {
+  const value = Number(digits);
+  return Number.isSafeInteger(value) && value >= 1 && String(value) === digits ? value : undefined;
+}
+
+/**
+ * The id grammar the ledger mints and the codec accepts: `bookmark-<n>-<ms>`,
+ * each part a canonical decimal from 1 to `Number.MAX_SAFE_INTEGER` (no
+ * leading zero). Returns the parts, or undefined for anything else.
+ */
+export function parseWorkshopBookmarkId(id: string): { counter: number; createdMs: number } | undefined {
+  const match = ID_SHAPE.exec(id);
+  const counter = match ? safeCanonicalInteger(match[1]) : undefined;
+  const createdMs = match ? safeCanonicalInteger(match[2]) : undefined;
+  return counter !== undefined && createdMs !== undefined ? { counter, createdMs } : undefined;
+}
 
 /** The longest default label, ellipsis included. */
 export const WORKSHOP_BOOKMARK_DEFAULT_LABEL_CHARACTERS = 60;
@@ -33,7 +52,11 @@ export const WORKSHOP_BOOKMARK_DEFAULT_LABEL_CHARACTERS = 60;
 /** What the thread calls the writer; the transcript's export label is for a shared page. */
 const WRITER_LABEL = 'You';
 
-export type WorkshopBookmarkRefusalReason = 'unknown-turn' | 'ineligible-turn' | 'unknown-bookmark';
+export type WorkshopBookmarkRefusalReason =
+  | 'unknown-turn'
+  | 'ineligible-turn'
+  | 'unknown-bookmark'
+  | 'ids-exhausted';
 
 /** A bookmark change the host refused. Its message is display copy and names no content. */
 export class WorkshopBookmarkRefusedError extends Error {
@@ -47,7 +70,8 @@ export class WorkshopBookmarkRefusedError extends Error {
 const REFUSAL_MESSAGES: Readonly<Record<WorkshopBookmarkRefusalReason, string>> = {
   'unknown-turn': 'That message is no longer in this session.',
   'ineligible-turn': 'Only replies, your messages, reports and capability cards can be bookmarked.',
-  'unknown-bookmark': 'That bookmark is no longer in this session.'
+  'unknown-bookmark': 'That bookmark is no longer in this session.',
+  'ids-exhausted': 'This session cannot number another bookmark.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -136,11 +160,8 @@ const cloneBookmark = (bookmark: WorkshopTurnBookmark): WorkshopTurnBookmark => 
   createdAt: bookmark.createdAt
 });
 
-/** The number in a minted id, or 0 for one the ledger did not mint. */
-const idNumber = (id: string): number => {
-  const match = WORKSHOP_BOOKMARK_ID_PATTERN.exec(id);
-  return match ? Number(match[1]) : 0;
-};
+/** The number in an id, or 0 for one outside the grammar (the codec refuses those first). */
+const idNumber = (id: string): number => parseWorkshopBookmarkId(id)?.counter ?? 0;
 
 export class WorkshopBookmarkLedger {
   private counter = 0;
@@ -171,12 +192,32 @@ export class WorkshopBookmarkLedger {
     if (index >= 0) {
       return 'unchanged';
     }
-    let id: string;
-    do {
-      id = `bookmark-${++this.counter}-${this.now()}`;
-    } while (this.bookmarks.some((bookmark) => bookmark.id === id));
+    const id = this.mintId();
     this.bookmarks.push({ id, turnId, createdAt: this.now() });
     return 'set';
+  }
+
+  /**
+   * The next id the grammar accepts, or a refusal that changes nothing: the
+   * counter moves only when an id is taken, and never past the largest safe
+   * integer (PR #188 F-01).
+   */
+  private mintId(): string {
+    let counter = this.counter;
+    for (;;) {
+      if (counter >= Number.MAX_SAFE_INTEGER) {
+        throw refused('ids-exhausted');
+      }
+      counter += 1;
+      const id = `bookmark-${counter}-${this.now()}`;
+      if (!parseWorkshopBookmarkId(id)) {
+        throw refused('ids-exhausted');
+      }
+      if (!this.bookmarks.some((bookmark) => bookmark.id === id)) {
+        this.counter = counter;
+        return id;
+      }
+    }
   }
 
   /** Name a bookmark, or restore its default with `null` or a blank label. */
@@ -261,7 +302,11 @@ export class WorkshopBookmarkLedger {
    */
   prepareState(bookmarks: readonly WorkshopTurnBookmark[]): WorkshopBookmarkLedgerState {
     return {
-      counter: Math.max(this.counter, ...bookmarks.map((bookmark) => idNumber(bookmark.id))),
+      counter: bookmarks.reduce((greatest, bookmark) => {
+        const number = idNumber(bookmark.id);
+        // A second guard behind the codec: only a safe integer is ever installed.
+        return Number.isSafeInteger(number) && number > greatest ? number : greatest;
+      }, this.counter),
       bookmarks: bookmarks.map(cloneBookmark)
     };
   }
