@@ -1,0 +1,66 @@
+/**
+ * The Conversation settings tabs, in strip order. The tab strip, each tab's
+ * ARIA wiring and the arrow-key navigation all read this one list, so a new
+ * tab is one entry here plus its panel (Project Memory Slice 4a).
+ */
+
+export type WorkshopConversationSettingsTab = 'behavior' | 'profile' | 'advanced';
+
+export interface WorkshopConversationSettingsTabEntry {
+  id: WorkshopConversationSettingsTab;
+  label: string;
+  /** The tab button's element id; its panel is labelled by it. */
+  tabElementId: string;
+  /** The panel's element id; the tab button controls it. */
+  panelElementId: string;
+  panelClassName: string;
+}
+
+export const WORKSHOP_CONVERSATION_SETTINGS_TABS: readonly WorkshopConversationSettingsTabEntry[] = [
+  {
+    id: 'behavior',
+    label: 'Behavior',
+    tabElementId: 'pm-ws-behavior-tab',
+    panelElementId: 'pm-ws-behavior-panel',
+    panelClassName: 'pm-ws-behavior-body'
+  },
+  {
+    id: 'profile',
+    label: 'About you',
+    tabElementId: 'pm-ws-profile-tab',
+    panelElementId: 'pm-ws-profile-panel',
+    panelClassName: 'pm-ws-behavior-body pm-ws-profile-body'
+  },
+  {
+    id: 'advanced',
+    label: 'Advanced',
+    tabElementId: 'pm-ws-advanced-tab',
+    panelElementId: 'pm-ws-advanced-panel',
+    panelClassName: 'pm-ws-behavior-body pm-ws-profile-body'
+  }
+];
+
+/**
+ * The tab a key moves to from `current`, or undefined for a key the strip
+ * does not handle. Home and End go to the ends; the arrows wrap.
+ */
+export function workshopConversationSettingsTabForKey(
+  tabs: readonly WorkshopConversationSettingsTabEntry[],
+  current: WorkshopConversationSettingsTab,
+  key: string
+): WorkshopConversationSettingsTab | undefined {
+  if (tabs.length === 0) return undefined;
+  const currentIndex = tabs.findIndex((entry) => entry.id === current);
+  switch (key) {
+    case 'Home':
+      return tabs[0].id;
+    case 'End':
+      return tabs[tabs.length - 1].id;
+    case 'ArrowLeft':
+      return tabs[(currentIndex + tabs.length - 1) % tabs.length].id;
+    case 'ArrowRight':
+      return tabs[(currentIndex + 1) % tabs.length].id;
+    default:
+      return undefined;
+  }
+}
