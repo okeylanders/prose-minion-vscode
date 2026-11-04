@@ -6,7 +6,7 @@
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
 import type { ProjectMemoryInvalidReason, ProjectMemoryKey } from '@/infrastructure/storage/ProjectMemoryCodec';
-import type { ProjectMemoryHeldFile, ProjectMemoryUnreadableFile } from '@/infrastructure/storage/ProjectMemoryFiles';
+import type { ProjectMemoryConflict, ProjectMemoryHeldFile, ProjectMemoryUnreadableFile } from '@/infrastructure/storage/ProjectMemoryFiles';
 
 export type ProjectMemoryUnavailableReason = 'no-workspace' | 'multi-root';
 
@@ -28,9 +28,12 @@ export type ProjectMemoryListing =
     memories: ProjectMemoryEntry[];
     /** Every file that does not, with its reason; never rewritten or deleted. */
     unreadable: ProjectMemoryUnreadableFile[];
+    /** Ids more than one readable file holds; none of those files is a memory here, and none is rewritten or deleted. */
+    conflicts: ProjectMemoryConflict[];
     /** Files another window holds under a live claim now. */
     busy: ProjectMemoryHeldFile[];
   }
+  /** Memory is off: no folder, or several (memory has no session-only mode). */
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   /** The folder could not be read; never an empty folder. */
   | { kind: 'unknown' };
@@ -42,11 +45,11 @@ export type ProjectMemoryRead =
   /** Another window holds it under a live claim now. */
   | { kind: 'busy' }
   /** More than one file holds the id; neither is read. */
-  | { kind: 'unreadable' }
+  | { kind: 'conflict' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   | { kind: 'unknown' };
 
-/** What a new memory is made of: the store mints its id and its times. */
+/** What a new memory is made of: the store mints its id and its times. Its body is as stored (`projectMemoryBody`). */
 export type ProjectMemoryDraft = Omit<ProjectMemory, 'id' | 'created' | 'updated'>;
 
 export type ProjectMemoryCreateResult =
@@ -65,7 +68,7 @@ export type ProjectMemoryReplaceResult =
   | { kind: 'missing' }
   | { kind: 'busy' }
   /** More than one file holds the id: left as they are. */
-  | { kind: 'unreadable' }
+  | { kind: 'conflict' }
   /** The update changed the memory's id or creation time, or would not read back; nothing was written. */
   | { kind: 'invalid'; reason: ProjectMemoryInvalidReason | 'identity-changed'; key?: ProjectMemoryKey }
   | { kind: 'withdrawn' }
@@ -76,7 +79,8 @@ export type ProjectMemoryDeleteResult =
   | { kind: 'deleted' }
   | { kind: 'missing' }
   | { kind: 'busy' }
-  | { kind: 'unreadable' }
+  /** More than one file holds the id: left as they are. */
+  | { kind: 'conflict' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   | { kind: 'failed' };
 

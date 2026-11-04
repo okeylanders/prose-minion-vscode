@@ -24,15 +24,22 @@ export const PROJECT_MEMORY_KINDS = ['decision', 'canon', 'preference', 'open-th
 export type ProjectMemoryKind = typeof PROJECT_MEMORY_KINDS[number];
 
 /**
- * `active` memories are in the catalog; `superseded` ones were replaced by a
- * newer memory that names them in `supersedes`; `archived` ones the writer
- * put away. The last two stay searchable; nothing deletes a memory on its own.
+ * What is stored: `active` memories are in the catalog; `archived` ones the
+ * writer put away. Superseded is derived, never stored: a memory is
+ * superseded while any readable memory names it in `supersedes`
+ * (`supersededProjectMemoryIds`), so a supersession is one new file and
+ * never a rewrite of the old one. Archived and superseded memories stay
+ * searchable; nothing deletes a memory on its own.
  */
-export const PROJECT_MEMORY_STATUSES = ['active', 'superseded', 'archived'] as const;
+export const PROJECT_MEMORY_STATUSES = ['active', 'archived'] as const;
 export type ProjectMemoryStatus = typeof PROJECT_MEMORY_STATUSES[number];
 
-/** `proposed`: a persona proposed it (provenance required); `writer`: the writer made it. */
-export const PROJECT_MEMORY_ORIGINS = ['proposed', 'writer'] as const;
+/**
+ * `writer`: the writer made it; `proposed`: a persona proposed it and the
+ * writer saved it; `auto`: saved on a persona's proposal under "Save and
+ * tell me". The last two require their provenance.
+ */
+export const PROJECT_MEMORY_ORIGINS = ['writer', 'proposed', 'auto'] as const;
 export type ProjectMemoryOrigin = typeof PROJECT_MEMORY_ORIGINS[number];
 
 /**
@@ -51,8 +58,14 @@ export const PROJECT_MEMORY_LIST_ENTRIES = {
   supersedes: 8
 } as const;
 
-/** A memory's id: `mem-` and six lower-case hex digits, minted by the store. */
+/** A memory's id: `mem-` and six lower-case hex digits, minted by the store. Never read from a file name. */
 export const PROJECT_MEMORY_ID = /^mem-[0-9a-f]{6}$/;
+
+/** A Workshop turn id, as `WorkshopTurnLedger` mints it: `turn-<n>-<role>-<epoch ms>`. */
+export const PROJECT_MEMORY_SOURCE_TURN = /^turn-\d+-(?:user|assistant|system)-\d+$/;
+
+/** The largest memory file read; a larger one is unreadable (`too-large`). */
+export const PROJECT_MEMORY_FILE_BYTES = 256 * 1024;
 
 export interface ProjectMemory {
   readonly id: string;
@@ -67,14 +80,29 @@ export interface ProjectMemory {
   readonly created: string;
   readonly updated: string;
   readonly origin: ProjectMemoryOrigin;
-  /** The persona that proposed it; only for `origin: proposed`, which requires it. */
+  /** The persona that proposed it; required for `proposed` and `auto`. */
   readonly proposedBy?: string;
-  /** The Workshop session it came from; required for `origin: proposed`. */
+  /** The Workshop session it came from; required for `proposed` and `auto`. */
   readonly sourceSession?: string;
-  /** The turn ids it came from, in order; at least one for `origin: proposed`. */
+  /** The turn ids it came from, in order; at least one for `proposed` and `auto`. */
   readonly sourceTurns: readonly string[];
   /** The ids of the memories this one replaces. */
   readonly supersedes: readonly string[];
-  /** Free Markdown; trailing white space is not kept. May be empty. */
+  /**
+   * Everything after the closing `---` line, byte for byte (a rewrite keeps
+   * it exactly, line endings included). `projectMemoryBody` gives a new
+   * memory's body its blank separating line.
+   */
   readonly body: string;
+}
+
+/** A new memory's body from its Markdown: a blank line after the frontmatter, then the text and one newline; empty for none. */
+export function projectMemoryBody(markdown: string): string {
+  const text = markdown.replace(/\s+$/, '');
+  return text.length > 0 ? `\n${text}\n` : '';
+}
+
+/** The ids the given readable memories name in `supersedes`: superseded, derived (never stored). */
+export function supersededProjectMemoryIds(memories: readonly Pick<ProjectMemory, 'supersedes'>[]): Set<string> {
+  return new Set(memories.flatMap((memory) => memory.supersedes));
 }

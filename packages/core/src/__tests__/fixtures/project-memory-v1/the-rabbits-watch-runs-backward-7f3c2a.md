@@ -12,7 +12,6 @@ origin: proposed
 proposed-by: cliff
 source-session: 6b0f3c9e-2c1d-4e8a-9a51-0d6f2b7c9e11
 source-turns: turn-12-assistant-1730643725000, turn-15-assistant-1730643925000
-supersedes:
 ---
 
 We settled this while working the tea-party scene. The watch running

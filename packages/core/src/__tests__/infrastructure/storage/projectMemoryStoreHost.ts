@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import type { LogSink } from '@/platform';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { projectMemoryBody } from '@shared/types/projectMemory';
 import { ProjectMemoryStore, type ProjectMemoryDraft, type ProjectMemoryEntry } from '@/infrastructure/storage/ProjectMemoryStore';
 
 export const ROOT = '/workspace';
@@ -27,7 +28,7 @@ export const DRAFT: ProjectMemoryDraft = {
   sourceSession: '6b0f3c9e-2c1d-4e8a-9a51-0d6f2b7c9e11',
   sourceTurns: ['turn-12-assistant-1730643725000'],
   supersedes: [],
-  body: 'Settled at the tea party.'
+  body: projectMemoryBody('Settled at the tea party.')
 };
 
 interface HostOptions {

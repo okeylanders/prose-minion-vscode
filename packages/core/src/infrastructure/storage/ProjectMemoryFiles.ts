@@ -4,27 +4,31 @@
  * `ProjectMemoryStore`, which owns the queue and calls this inside it.
  *
  * - **Names.** A new memory's file is `<slug>-<short id>.md`: the title's
- *   slug (ASCII letters and digits, at most `SLUG_CHARACTERS`) and the six
- *   hex digits of its id. A file is found by the id it holds, never by its
- *   name, so a file the writer renamed or made by hand reads as well.
+ *   slug at creation (ASCII letters and digits, at most `SLUG_CHARACTERS`)
+ *   and the six hex digits of its id. A file is never renamed (a title edit
+ *   is a rewrite in place), and its identity is never read from its name:
+ *   a file is found by the id it holds, so one the writer renamed or made
+ *   by hand reads as well.
  * - **What is listed.** Every `*.md` file of the folder but `INDEX.md`
  *   (derived for the writer, never read back) and hidden files (a write's
  *   staging, a claim). A folder that is not there holds nothing; one that
  *   cannot be read is `unknown`, never empty.
  * - **One bad file never fails the folder.** A file too large, not UTF-8,
- *   or not format 1 is listed as unreadable with its reason; two files with
- *   one id are both unreadable (`duplicate-id`). Unreadable files are never
- *   rewritten or deleted.
+ *   or not format 1 is listed as unreadable with its reason. Two readable
+ *   files with one id (a copied file) are a **conflict**: both are listed
+ *   together, neither is read as a memory. Unreadable and conflicting files
+ *   are never rewritten or deleted. Not recursive.
  * - **Held files.** A file a live claim holds (another window rewriting or
  *   deleting it) is not standing; its claim is read, so the listing can say
  *   which memory is busy.
- * - **Logs** name a file by its memory id (`projectMemoryLogName`), never
- *   by its name, whose slug is the writer's text.
+ * - **Logs** never name a file (`projectMemoryLogName`): its slug is the
+ *   writer's text, and identity is never read from a name. The store's own
+ *   lines name memories by id.
  */
 
 import * as path from 'node:path';
 import { FileType, type FileSystem } from '@/platform';
-import type { ProjectMemory } from '@shared/types/projectMemory';
+import { PROJECT_MEMORY_FILE_BYTES, type ProjectMemory } from '@shared/types/projectMemory';
 import { decodeProjectMemory, type ProjectMemoryInvalidReason, type ProjectMemoryKey } from '@/infrastructure/storage/ProjectMemoryCodec';
 import { isMissingFileSystemPathError } from '@/infrastructure/storage/fileSystemErrors';
 import { storedFileExists } from '@/infrastructure/storage/StoredFileClaims';
@@ -35,9 +39,6 @@ export const PROJECT_MEMORY_DISPLAY_PATH = 'prose-minion/memory';
 /** A claim on a memory file: its saved name, hidden, then when it was taken and the writer's id (`StoredFileClaims`). */
 export const PROJECT_MEMORY_CLAIM = /^\.([^/\\]+\.md)\.claim-(\d{13})-[A-Za-z0-9-]+$/;
 
-/** A file larger than this is not read (listed as `too-large`). */
-export const PROJECT_MEMORY_FILE_BYTES = 256 * 1024;
-
 const SLUG_CHARACTERS = 48;
 const INDEX_FILE = 'index.md';
 
@@ -47,8 +48,6 @@ export type ProjectMemoryUnreadableReason =
   | 'too-large'
   /** Not UTF-8 text. */
   | 'not-text'
-  /** Another file holds the same id; neither is read. */
-  | 'duplicate-id'
   /** Listed, but could not be read. */
   | 'read-failed';
 
@@ -64,6 +63,12 @@ export interface ProjectMemoryUnreadableFile {
   readonly reason: ProjectMemoryUnreadableReason;
   /** The format key the fault was found at, when there is one. */
   readonly key?: ProjectMemoryKey;
+}
+
+/** Readable files that hold one id (the writer copied a file): neither is read as a memory. */
+export interface ProjectMemoryConflict {
+  readonly id: string;
+  readonly fileNames: readonly string[];
 }
 
 /** A memory another window holds under a live claim now. */
@@ -83,8 +88,8 @@ export type ProjectMemoryFolderRead =
     claimed: boolean;
     /** Whether a listed file was gone when it was read (another window moved it): the store reads again. */
     moved: boolean;
-    /** The ids more than one file holds (each such file is unreadable, `duplicate-id`). */
-    duplicateIds: string[];
+    /** Ids more than one readable file holds, by id. */
+    conflicts: ProjectMemoryConflict[];
   }
   | { kind: 'unknown' };
 
@@ -95,7 +100,7 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
     entries = await fileSystem.readDirectory(folder);
   } catch (error) {
     return isMissingFileSystemPathError(error)
-      ? { kind: 'read', files: [], unreadable: [], held: [], claimed: false, moved: false, duplicateIds: [] }
+      ? { kind: 'read', files: [], unreadable: [], held: [], claimed: false, moved: false, conflicts: [] }
       : { kind: 'unknown' };
   }
   const names = entries.map(([name]) => name);
@@ -116,9 +121,7 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
   for (const result of read) {
     if (!('memory' in result)) {
       unreadable.push('key' in result && result.key ? { fileName: result.fileName, reason: result.reason, key: result.key } : { fileName: result.fileName, reason: result.reason });
-    } else if ((counts.get(result.memory.id) ?? 0) > 1) {
-      unreadable.push({ fileName: result.fileName, reason: 'duplicate-id' });
-    } else {
+    } else if ((counts.get(result.memory.id) ?? 0) <= 1) {
       files.push(result);
     }
   }
@@ -134,8 +137,11 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
     const claimed = await readOne(fileSystem, path.join(folder, claim), saved);
     held.push('memory' in claimed ? { fileName: saved, id: claimed.memory.id } : { fileName: saved });
   }
-  const duplicateIds = [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort();
-  return { kind: 'read', files, unreadable, held, claimed: claims.length > 0, moved, duplicateIds };
+  const conflicts = [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort().map((id) => ({
+    id,
+    fileNames: read.flatMap((result) => ('memory' in result && result.memory.id === id ? [result.fileName] : []))
+  }));
+  return { kind: 'read', files, unreadable, held, claimed: claims.length > 0, moved, conflicts };
 }
 
 /** Whether `name` is a memory file the folder lists: `*.md`, not hidden, not `INDEX.md`. */
@@ -161,10 +167,9 @@ export function projectMemorySlug(title: string): string {
   return slug.length > 0 ? slug : 'memory';
 }
 
-/** A file or a claim as a log line names it: by the id its name ends with, never by its slug. */
-export function projectMemoryLogName(name: string): string {
-  const id = /-([0-9a-f]{6})\.md(?:\.claim-.*)?$/.exec(name)?.[1];
-  return id ? `mem-${id}'s file` : 'a memory file';
+/** A file or a claim as a log line names it: never by its name, whose slug is the writer's text. */
+export function projectMemoryLogName(): string {
+  return 'a memory file';
 }
 
 /** `stem.md`, or the first numbered `stem-N.md` free: a claim put back never takes a standing file's name. */

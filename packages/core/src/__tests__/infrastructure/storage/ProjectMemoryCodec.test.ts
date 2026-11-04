@@ -7,7 +7,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ProjectMemory } from '@shared/types/projectMemory';
+import { projectMemoryBody, supersededProjectMemoryIds, type ProjectMemory } from '@shared/types/projectMemory';
 import {
   PROJECT_MEMORY_INVALID_REASONS,
   PROJECT_MEMORY_KEYS,
@@ -34,12 +34,14 @@ const RABBIT: ProjectMemory = {
   sourceTurns: ['turn-12-assistant-1730643725000', 'turn-15-assistant-1730643925000'],
   supersedes: [],
   body: [
+    '',
     'We settled this while working the tea-party scene. The watch running',
     'backward is the first sign that time in Wonderland is wrong, and it pays',
     'off when the Hatter says it has always been six o\'clock.',
     '',
     '- It is never explained.',
-    '- Alice notices once, in chapter 7.'
+    '- Alice notices once, in chapter 7.',
+    ''
   ].join('\n')
 };
 
@@ -51,12 +53,13 @@ function decoded(text: string): ProjectMemory {
   return result.memory;
 }
 
-/** The fixture's text with the `key:` line replaced by `line` (or removed when `line` is undefined). */
+/** The fixture's text with the `key:` line replaced by `line` (or removed when `line` is undefined); added before the closing fence when absent. */
 function withLine(text: string, key: string, line: string | undefined): string {
   const lines = text.split('\n');
   const index = lines.findIndex((candidate) => candidate.startsWith(`${key}:`));
   if (index < 0) {
-    throw new Error(`no ${key} line`);
+    const close = lines.indexOf('---', 1);
+    return [...lines.slice(0, close), ...(line === undefined ? [] : [line]), ...lines.slice(close)].join('\n');
   }
   return [...lines.slice(0, index), ...(line === undefined ? [] : [line]), ...lines.slice(index + 1)].join('\n');
 }
@@ -68,12 +71,14 @@ describe('format 1: a round trip, and the fixtures as written', () => {
     expect(encodeProjectMemory(RABBIT)).toBe(text);
   });
 
-  it('writes every fixture canonically: every key, in order, empty optionals bare', () => {
+  it('writes every fixture canonically: the keys present, in order, and no empty optional', () => {
     for (const name of fs.readdirSync(FIXTURES)) {
       const text = fixture(name);
       expect(encodeProjectMemory(decoded(text))).toBe(text);
-      const keys = text.split('\n').slice(1, PROJECT_MEMORY_KEYS.length + 1).map((line) => line.split(':')[0]);
-      expect(keys).toEqual([...PROJECT_MEMORY_KEYS]);
+      const frontmatter = text.split('\n---\n')[0].split('\n').slice(1);
+      const keys = frontmatter.map((line) => line.split(':')[0]);
+      expect(keys).toEqual(PROJECT_MEMORY_KEYS.filter((key) => keys.includes(key)));
+      expect(frontmatter.filter((line) => /:$/.test(line))).toEqual([]);
     }
   });
 
@@ -82,24 +87,42 @@ describe('format 1: a round trip, and the fixtures as written', () => {
       origin: 'writer', pinned: true, updated: '2026-10-30T16:45:12.250Z', sourceTurns: [], supersedes: []
     });
     const duchess = decoded(fixture('the-duchess-baby-c0ffee.md'));
-    expect(duchess).toMatchObject({ status: 'superseded', kind: 'open-thread', body: '', supersedes: ['mem-0badd0', 'mem-abcdef'] });
+    expect(duchess).toMatchObject({ status: 'archived', kind: 'open-thread', body: '', supersedes: ['mem-0badd0', 'mem-abcdef'] });
     expect(duchess).not.toHaveProperty('proposedBy');
+    expect(decoded(fixture('the-hatter-keeps-six-oclock-5a5a5a.md'))).toMatchObject({ origin: 'auto', proposedBy: 'agnes', supersedes: ['mem-7f3c2a'] });
+  });
+
+  it('derives superseded from the memories that name it, and never stores it', () => {
+    const memories = fs.readdirSync(FIXTURES).map((name) => decoded(fixture(name)));
+    expect(supersededProjectMemoryIds(memories)).toEqual(new Set(['mem-7f3c2a', 'mem-0badd0', 'mem-abcdef']));
+    // The superseded Rabbit note is still stored as active, untouched.
+    expect(memories.find((memory) => memory.id === 'mem-7f3c2a')?.status).toBe('active');
+  });
+
+  it('gives a new memory\'s Markdown its separating blank line', () => {
+    expect(projectMemoryBody('Settled at the tea party.  \n\n')).toBe('\nSettled at the tea party.\n');
+    expect(projectMemoryBody('  \n')).toBe('');
   });
 
   it('round-trips every kind, status and origin', () => {
     for (const kind of ['decision', 'canon', 'preference', 'open-thread'] as const) {
-      for (const status of ['active', 'superseded', 'archived'] as const) {
+      for (const status of ['active', 'archived'] as const) {
         const memory: ProjectMemory = { ...RABBIT, kind, status, pinned: status === 'active' };
         expect(decoded(encodeProjectMemory(memory))).toEqual(memory);
       }
     }
-    const { proposedBy: _proposer, ...writer } = RABBIT;
-    const written: ProjectMemory = { ...writer, origin: 'writer' };
+    for (const origin of ['writer', 'proposed', 'auto'] as const) {
+      expect(decoded(encodeProjectMemory({ ...RABBIT, origin }))).toEqual({ ...RABBIT, origin });
+    }
+    // A writer's memory may leave its provenance out.
+    const { proposedBy: _proposer, sourceSession: _session, ...writer } = RABBIT;
+    const written: ProjectMemory = { ...writer, origin: 'writer', sourceTurns: [] };
     expect(decoded(encodeProjectMemory(written))).toEqual(written);
+    expect(encodeProjectMemory(written)).not.toMatch(/^(?:proposed-by|source-session|source-turns|supersedes):/m);
   });
 
-  it('keeps a body that holds its own --- lines and Markdown', () => {
-    const memory: ProjectMemory = { ...RABBIT, body: 'Above.\n\n---\n\n    indented code\n\n## A heading' };
+  it('keeps the body byte for byte, with its own --- lines, indentation, blank lines and line endings', () => {
+    const memory: ProjectMemory = { ...RABBIT, body: '\n\n\nAbove.\r\n\n---\n\n    indented code\n\n## A heading  \n\n' };
     expect(decoded(encodeProjectMemory(memory))).toEqual(memory);
   });
 });
@@ -107,9 +130,11 @@ describe('format 1: a round trip, and the fixtures as written', () => {
 describe('hand edits in VS Code', () => {
   const text = fixture('the-rabbits-watch-runs-backward-7f3c2a.md');
 
-  it('reads CRLF and lone CR line endings, and a byte-order mark', () => {
-    expect(decoded(text.replace(/\n/g, '\r\n'))).toEqual(RABBIT);
-    expect(decoded(text.replace(/\n/g, '\r'))).toEqual(RABBIT);
+  it('reads CRLF and lone CR line endings and a byte-order mark; writes LF, and keeps the body\'s own endings', () => {
+    const crlf = decoded(text.replace(/\n/g, '\r\n'));
+    expect(crlf).toEqual({ ...RABBIT, body: RABBIT.body.replace(/\n/g, '\r\n') });
+    expect(encodeProjectMemory(crlf).split('\n---\n')[0]).not.toMatch(/\r/);
+    expect(decoded(text.replace(/\n/g, '\r'))).toEqual({ ...RABBIT, body: RABBIT.body.replace(/\n/g, '\r') });
     expect(decoded(`\uFEFF${text}`)).toEqual(RABBIT);
   });
 
@@ -120,18 +145,17 @@ describe('hand edits in VS Code', () => {
     expect(decoded(edited)).toEqual(RABBIT);
   });
 
-  it('skips blank lines inside the frontmatter, and drops the body\'s leading blank lines and trailing space', () => {
-    const edited = withLine(text, 'kind', '\nkind: canon\n').replace(/\n$/, '\n\n\n   \n');
-    expect(decoded(edited.replace('---\n\nWe settled', '---\n\n\n\nWe settled'))).toEqual(RABBIT);
+  it('skips blank lines inside the frontmatter', () => {
+    expect(decoded(withLine(text, 'kind', '\nkind: canon\n'))).toEqual(RABBIT);
   });
 
-  it('reads missing optional keys as none: pinned false, no supersessions, no provenance', () => {
-    let edited = fixture('structure-before-line-edits-1a9e04.md');
-    for (const key of ['pinned', 'proposed-by', 'source-session', 'source-turns', 'supersedes']) {
-      edited = withLine(edited, key, undefined);
-    }
-    expect(decoded(edited)).toMatchObject({ pinned: false, sourceTurns: [], supersedes: [] });
-    expect(decoded(edited)).not.toHaveProperty('sourceSession');
+  it('reads a missing or empty optional key as none, and writes neither back', () => {
+    const edited = withLine(fixture('structure-before-line-edits-1a9e04.md'), 'pinned', 'supersedes:\nsource-session:   \nproposed-by:');
+    const memory = decoded(edited);
+    expect(memory).toMatchObject({ pinned: false, sourceTurns: [], supersedes: [] });
+    expect(memory).not.toHaveProperty('sourceSession');
+    expect(memory).not.toHaveProperty('proposedBy');
+    expect(encodeProjectMemory(memory)).toBe(fixture('structure-before-line-edits-1a9e04.md').replace('pinned: true', 'pinned: false'));
   });
 
   it('takes a value literally: quotation marks and colons stay', () => {
@@ -161,6 +185,8 @@ describe('fails closed, by name', () => {
     ['invalid-value', withLine(text, 'id', 'id: ../../etc'), 'id'],
     ['invalid-value', withLine(text, 'kind', 'kind: rumor'), 'kind'],
     ['invalid-value', withLine(text, 'status', 'status: deleted'), 'status'],
+    // Superseded is derived, never stored.
+    ['invalid-value', withLine(text, 'status', 'status: superseded'), 'status'],
     ['invalid-value', withLine(text, 'origin', 'origin: model'), 'origin'],
     ['invalid-value', withLine(text, 'pinned', 'pinned: yes'), 'pinned'],
     ['invalid-value', withLine(text, 'created', 'created: 2026-02-30T00:00:00Z'), 'created'],
@@ -169,20 +195,22 @@ describe('fails closed, by name', () => {
     ['invalid-value', withLine(text, 'proposed-by', 'proposed-by: Cliff Hanger'), 'proposed-by'],
     ['invalid-value', withLine(text, 'source-session', 'source-session: a/b'), 'source-session'],
     ['invalid-value', withLine(text, 'source-turns', 'source-turns: turn-1,,turn-2'), 'source-turns'],
-    ['invalid-value', withLine(text, 'source-turns', 'source-turns: turn-1, turn-1'), 'source-turns'],
+    ['invalid-value', withLine(text, 'source-turns', 'source-turns: turn-1-user-1, turn-1-user-1'), 'source-turns'],
+    ['invalid-value', withLine(text, 'source-turns', 'source-turns: t-0412'), 'source-turns'],
+    ['invalid-value', withLine(text, 'source-turns', 'source-turns: turn-4-persona-1730643725000'), 'source-turns'],
     ['invalid-value', withLine(text, 'supersedes', 'supersedes: mem-1a9e04,'), 'supersedes'],
     ['invalid-value', withLine(text, 'title', 'title: The Rabbit\u2028watch'), 'title'],
     ['invalid-value', withLine(text, 'summary', 'summary: A\u0007bell'), 'summary'],
     ['too-long', withLine(text, 'title', `title: ${'a'.repeat(121)}`), 'title'],
     ['too-long', withLine(text, 'summary', `summary: ${'a'.repeat(281)}`), 'summary'],
-    ['too-long', withLine(text, 'source-turns', `source-turns: ${Array.from({ length: 33 }, (_, index) => `turn-${index}`).join(', ')}`), 'source-turns'],
+    ['too-long', withLine(text, 'source-turns', `source-turns: ${Array.from({ length: 33 }, (_, index) => `turn-${index}-user-1`).join(', ')}`), 'source-turns'],
     ['too-long', withLine(text, 'supersedes', `supersedes: ${Array.from({ length: 9 }, (_, index) => `mem-00000${index}`).join(', ')}`), 'supersedes'],
     ['too-long', `${text}${'a'.repeat(8_001)}\n`, undefined],
     ['proposal-without-provenance', withLine(text, 'proposed-by', undefined), 'proposed-by'],
     ['proposal-without-provenance', withLine(text, 'source-session', 'source-session:'), 'source-session'],
     ['proposal-without-provenance', withLine(text, 'source-turns', undefined), 'source-turns'],
-    ['proposer-without-proposal', withLine(text, 'origin', 'origin: writer'), 'proposed-by'],
-    ['turns-without-session', withLine(withLine(withLine(text, 'origin', 'origin: writer'), 'proposed-by', undefined), 'source-session', undefined), 'source-turns'],
+    ['proposal-without-provenance', withLine(withLine(text, 'origin', 'origin: auto'), 'proposed-by', undefined), 'proposed-by'],
+    ['turns-without-session', withLine(withLine(text, 'origin', 'origin: writer'), 'source-session', undefined), 'source-turns'],
     ['updated-before-created', withLine(text, 'updated', 'updated: 2026-11-03T14:22:04Z'), 'updated'],
     ['supersedes-itself', withLine(text, 'supersedes', 'supersedes: mem-1a9e04, mem-7f3c2a'), 'supersedes']
   ];
@@ -203,6 +231,8 @@ describe('fails closed, by name', () => {
 
   it('a body exactly at its bound reads; one character past does not', () => {
     expect(decoded(encodeProjectMemory({ ...RABBIT, body: 'a'.repeat(8_000) })).body).toHaveLength(8_000);
+    // A writer's memory may name the persona it came from.
+    expect(decodeProjectMemory(withLine(text, 'origin', 'origin: writer')).kind).toBe('memory');
     expect(decodeProjectMemory(encodeProjectMemory({ ...RABBIT, body: 'a'.repeat(8_001) }))).toEqual({ kind: 'invalid', reason: 'too-long' });
   });
 

@@ -1,7 +1,7 @@
 /**
  * ProjectMemoryCodec — one Workshop project memory's file, format 1 (epic
- * 2026-11-04, Slice 1; the feature note's "The memory file"). Pure: no
- * host, no I/O.
+ * 2026-11-04, Slice 1; the feature note's "The memory file" as ADR
+ * 2026-11-04 (Proposed) amends it). Pure: no host, no I/O.
  *
  * ```markdown
  * ---
@@ -17,36 +17,40 @@
  * origin: proposed
  * proposed-by: cliff
  * source-session: 6b0f3c9e-2c1d-4e8a-9a51-0d6f2b7c9e11
- * source-turns: t-0412, t-0415
- * supersedes:
+ * source-turns: turn-12-assistant-1730643725000, turn-15-assistant-1730643925000
  * ---
  *
  * The body: free Markdown.
  * ```
  *
- * - **Flat `key: value` lines, no YAML.** A line is a key, a colon and a
- *   value; space around either is ignored, and a blank line is skipped. A
- *   value is taken literally: no quotes, escapes or nesting, so a quoted
- *   title keeps its quotation marks. An indented line, a comment or a
- *   list item is malformed.
+ * - **Flat `key: value` lines, no YAML.** The first line is `---`. A line
+ *   is a key, a colon and a value, split at the first colon; space around
+ *   either is ignored, and a blank line is skipped. A value is taken
+ *   literally: no quotes, escapes or nesting, so a quoted title keeps its
+ *   quotation marks. An indented line, a comment or a list item is
+ *   malformed.
  * - **Closed keys** (`PROJECT_MEMORY_KEYS`). An unknown key, or one written
  *   twice, fails the file. Optional keys may be left out or left empty
- *   (`supersedes:`): `pinned` reads as `false`, a list as none.
- * - **Closed vocabularies** for `kind`, `status` and `origin`, and the
- *   bounds of `PROJECT_MEMORY_FIELD_CHARACTERS` and
+ *   (`supersedes:`); both mean none, and `pinned` reads as `false`.
+ * - **Closed vocabularies** for `kind`, `status` (`active | archived`:
+ *   superseded is derived, never stored) and `origin` (`writer | proposed |
+ *   auto`), and the bounds of `PROJECT_MEMORY_FIELD_CHARACTERS` and
  *   `PROJECT_MEMORY_LIST_ENTRIES`. No value holds a control character.
- * - **Provenance.** A proposed memory names its persona, session and at
- *   least one turn; a writer's memory names no persona. Turns need a
- *   session.
- * - **Hand edits read.** A byte-order mark, CRLF or CR line endings, extra
- *   space and missing optional keys are all read; leading blank lines and
- *   trailing white space of the body are not kept.
+ *   Source turns are Workshop turn ids (`PROJECT_MEMORY_SOURCE_TURN`).
+ * - **Provenance.** A proposed or automatic memory names its persona,
+ *   session and at least one turn; a writer's may. Turns need a session.
+ * - **Identity is the `id` key,** never the file's name.
+ * - **Hand edits read.** A byte-order mark, CRLF or CR line endings in the
+ *   frontmatter, extra space and missing optional keys are all read.
+ * - **The body is kept byte for byte:** everything after the closing
+ *   `---` line, its line endings included, so a rewrite never changes it.
  * - **Fails closed, by name.** Every refusal is one of
  *   `PROJECT_MEMORY_INVALID_REASONS`, with the known key it was found at.
  *   Neither carries the file's text, so either may be logged.
- * - **Canonical encoding.** Every key, in `PROJECT_MEMORY_KEYS`' order, an
- *   empty optional as a bare `key:`, LF line endings, then a blank line and
- *   the body. A decoded memory encodes to the same memory again.
+ * - **Canonical encoding.** The required keys and `pinned`, then each
+ *   optional key that is present, in `PROJECT_MEMORY_KEYS`' order; LF line
+ *   endings; then the body as held. A decoded memory encodes to the same
+ *   memory again.
  */
 
 import {
@@ -56,6 +60,7 @@ import {
   PROJECT_MEMORY_KINDS,
   PROJECT_MEMORY_LIST_ENTRIES,
   PROJECT_MEMORY_ORIGINS,
+  PROJECT_MEMORY_SOURCE_TURN,
   PROJECT_MEMORY_STATUSES,
   type ProjectMemory,
   type ProjectMemoryKind,
@@ -90,10 +95,8 @@ export const PROJECT_MEMORY_INVALID_REASONS = [
   'invalid-value',
   /** A value, a list or the body past its bound. */
   'too-long',
-  /** A proposed memory without its persona, session or turns. */
+  /** A proposed or automatic memory without its persona, session or turns. */
   'proposal-without-provenance',
-  /** A writer's memory naming a persona that proposed it. */
-  'proposer-without-proposal',
   /** Source turns without the session they belong to. */
   'turns-without-session',
   'updated-before-created',
@@ -112,7 +115,6 @@ const CONTROL = /[\u0000-\u001f\u007f\u2028\u2029]/;
 const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 const PERSONA = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SESSION = /^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/;
-const TURN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 
 class Invalid extends Error {
   constructor(readonly reason: ProjectMemoryInvalidReason, readonly key?: ProjectMemoryKey) {
@@ -135,7 +137,7 @@ export function decodeProjectMemory(text: string): ProjectMemoryDecodeResult {
 /** Write one memory file's text, canonically. The caller checks it reads back (`decodeProjectMemory`) before writing it. */
 export function encodeProjectMemory(memory: ProjectMemory): string {
   /* eslint-disable @typescript-eslint/naming-convention -- keyed by format 1's kebab-case keys. */
-  const values: Record<ProjectMemoryKey, string> = {
+  const values: Record<ProjectMemoryKey, string | undefined> = {
     format: String(PROJECT_MEMORY_FORMAT),
     id: memory.id,
     title: memory.title,
@@ -146,27 +148,29 @@ export function encodeProjectMemory(memory: ProjectMemory): string {
     created: memory.created,
     updated: memory.updated,
     origin: memory.origin,
-    'proposed-by': memory.proposedBy ?? '',
-    'source-session': memory.sourceSession ?? '',
-    'source-turns': memory.sourceTurns.join(', '),
-    supersedes: memory.supersedes.join(', ')
+    'proposed-by': memory.proposedBy,
+    'source-session': memory.sourceSession,
+    'source-turns': memory.sourceTurns.length > 0 ? memory.sourceTurns.join(', ') : undefined,
+    supersedes: memory.supersedes.length > 0 ? memory.supersedes.join(', ') : undefined
   };
   /* eslint-enable @typescript-eslint/naming-convention */
-  const lines = PROJECT_MEMORY_KEYS.map((key) => (values[key] === '' ? `${key}:` : `${key}: ${values[key]}`));
-  const body = memory.body.length > 0 ? `\n${memory.body}\n` : '';
-  return `---\n${lines.join('\n')}\n---\n${body}`;
+  const lines = PROJECT_MEMORY_KEYS.flatMap((key) => (values[key] === undefined ? [] : [`${key}: ${values[key]}`]));
+  return `---\n${lines.join('\n')}\n---\n${memory.body}`;
 }
 
 function decode(text: string): ProjectMemory {
-  const lines = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
-  if (!FENCE.test(lines[0] ?? '')) {
+  const source = text.replace(/^\uFEFF/, '');
+  // Each line with its terminator, so the body after the closing fence is kept byte for byte.
+  const lines = source.match(/[^\r\n]*(?:\r\n|\r|\n|$)/g)?.filter((line, index, all) => line !== '' || index < all.length - 1) ?? [];
+  const bare = lines.map((line) => line.replace(/(?:\r\n|\r|\n)$/, ''));
+  if (!FENCE.test(bare[0] ?? '')) {
     throw new Invalid('no-frontmatter');
   }
-  const close = lines.findIndex((line, index) => index > 0 && FENCE.test(line));
+  const close = bare.findIndex((line, index) => index > 0 && FENCE.test(line));
   if (close < 0) {
     throw new Invalid('unclosed-frontmatter');
   }
-  const fields = readFields(lines.slice(1, close));
+  const fields = readFields(bare.slice(1, close));
   for (const key of REQUIRED_KEYS) {
     if (!fields.has(key)) {
       throw new Invalid('missing-key', key);
@@ -192,9 +196,9 @@ function decode(text: string): ProjectMemory {
     origin: oneOf<ProjectMemoryOrigin>(fields, 'origin', PROJECT_MEMORY_ORIGINS),
     ...optional('proposedBy', fields.has('proposed-by') ? matching(fields, 'proposed-by', PERSONA) : undefined),
     ...optional('sourceSession', fields.has('source-session') ? matching(fields, 'source-session', SESSION) : undefined),
-    sourceTurns: list(fields, 'source-turns', TURN, PROJECT_MEMORY_LIST_ENTRIES.sourceTurns),
+    sourceTurns: list(fields, 'source-turns', PROJECT_MEMORY_SOURCE_TURN, PROJECT_MEMORY_LIST_ENTRIES.sourceTurns),
     supersedes: list(fields, 'supersedes', PROJECT_MEMORY_ID, PROJECT_MEMORY_LIST_ENTRIES.supersedes),
-    body: readBody(lines.slice(close + 1))
+    body: readBody(lines.slice(close + 1).join(''))
   };
   checkProvenance(memory);
   if (Date.parse(memory.updated) < Date.parse(memory.created)) {
@@ -237,8 +241,7 @@ function readFields(lines: readonly string[]): Map<ProjectMemoryKey, string> {
   return fields;
 }
 
-function readBody(lines: readonly string[]): string {
-  const body = lines.join('\n').replace(/^(?:[ \t]*\n)+/, '').replace(/\s+$/, '');
+function readBody(body: string): string {
   if (body.length > PROJECT_MEMORY_FIELD_CHARACTERS.body) {
     throw new Invalid('too-long');
   }
@@ -246,7 +249,7 @@ function readBody(lines: readonly string[]): string {
 }
 
 function checkProvenance(memory: ProjectMemory): void {
-  if (memory.origin === 'proposed') {
+  if (memory.origin !== 'writer') {
     if (memory.proposedBy === undefined) {
       throw new Invalid('proposal-without-provenance', 'proposed-by');
     }
@@ -256,8 +259,6 @@ function checkProvenance(memory: ProjectMemory): void {
     if (memory.sourceTurns.length === 0) {
       throw new Invalid('proposal-without-provenance', 'source-turns');
     }
-  } else if (memory.proposedBy !== undefined) {
-    throw new Invalid('proposer-without-proposal', 'proposed-by');
   }
   if (memory.sourceTurns.length > 0 && memory.sourceSession === undefined) {
     throw new Invalid('turns-without-session', 'source-turns');

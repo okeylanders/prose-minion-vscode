@@ -13,6 +13,7 @@ import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import { createFakeWorkspace } from '@/__tests__/mocks/platform';
 import { ProjectMemoryStore } from '@/infrastructure/storage/ProjectMemoryStore';
 import { STORED_FILE_CLAIM_LEASE_MS } from '@/infrastructure/storage/StoredFileClaims';
+import { supersededProjectMemoryIds } from '@shared/types/projectMemory';
 import {
   DRAFT,
   MEMORY,
@@ -55,7 +56,7 @@ describe('where memory is kept', () => {
 describe('the folder, read whole', () => {
   it('a folder that is not there holds nothing; one that cannot be read is unknown, never empty', async () => {
     const { fileSystem, store, lines } = host();
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], busy: [] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [], busy: [] });
     fileSystem.files.set(path.join(MEMORY, 'x.md'), new Uint8Array());
     jest.spyOn(fileSystem, 'readDirectory').mockRejectedValue(new Error('EACCES: permission denied'));
     expect(await store.list()).toEqual({ kind: 'unknown' });
@@ -77,7 +78,7 @@ describe('the folder, read whole', () => {
     ]);
 
     const listing = await store.list();
-    expect(listing).toEqual({ kind: 'listed', memories: [entry], unreadable: [], busy: [] });
+    expect(listing).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
   });
 
   it('names every file that does not read, with its reason, and never fails the folder over one', async () => {
@@ -100,16 +101,16 @@ describe('the folder, read whole', () => {
         { fileName: 'a-no-frontmatter.md', reason: 'no-frontmatter' },
         { fileName: 'b-unknown-kind.md', reason: 'invalid-value', key: 'kind' },
         { fileName: 'c-too-large.md', reason: 'too-large' },
-        { fileName: 'd-not-text.md', reason: 'not-text' },
-        { fileName: 'e-copy.md', reason: 'duplicate-id' },
-        { fileName: 'f-copy-again.md', reason: 'duplicate-id' }
+        { fileName: 'd-not-text.md', reason: 'not-text' }
       ],
+      // A copied file: both copies listed together, neither a memory.
+      conflicts: [{ id: 'mem-0d0d0d', fileNames: ['e-copy.md', 'f-copy-again.md'] }],
       busy: []
     });
-    // Neither copy is read, rewritten or deleted.
-    expect(await store.read('mem-0d0d0d')).toEqual({ kind: 'unreadable' });
-    expect(await store.replace('mem-0d0d0d', (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'unreadable' });
-    expect(await store.delete('mem-0d0d0d')).toEqual({ kind: 'unreadable' });
+    // Neither copy is read, rewritten or deleted, and no new memory takes the id.
+    expect(await store.read('mem-0d0d0d')).toEqual({ kind: 'conflict' });
+    expect(await store.replace('mem-0d0d0d', (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'conflict' });
+    expect(await store.delete('mem-0d0d0d')).toEqual({ kind: 'conflict' });
     expect(everyFile(fileSystem)).toEqual(['a-no-frontmatter.md', 'b-unknown-kind.md', 'c-too-large.md', 'd-not-text.md', 'e-copy.md', entry.fileName, 'f-copy-again.md'].sort());
   });
 });
@@ -211,17 +212,32 @@ describe('a rewrite in place', () => {
     expect(lines).toContain('[ProjectMemoryStore] Rewrote mem-7f3c2a in place.');
   });
 
-  it('archives and supersedes; an update that changes nothing writes nothing', async () => {
+  it('archives and edits a title in place, never renaming the file; an update that changes nothing writes nothing', async () => {
     const { fileSystem, store } = host();
     const old = await createdEntry(store);
-    const replacement = await createdEntry(store, { title: 'The watch runs forward after all', supersedes: [old.memory.id] });
-    expect(await store.replace(old.memory.id, (memory) => ({ ...memory, status: 'superseded' }))).toMatchObject({ kind: 'replaced' });
-    expect(await store.replace(replacement.memory.id, (memory) => ({ ...memory, status: 'archived' }))).toMatchObject({ kind: 'replaced' });
+    expect(await store.replace(old.memory.id, (memory) => ({ ...memory, status: 'archived' }))).toMatchObject({ kind: 'replaced' });
+    expect(await store.replace(old.memory.id, (memory) => ({ ...memory, title: 'The watch runs forward after all' })))
+      .toMatchObject({ kind: 'replaced', entry: { fileName: old.fileName, memory: { title: 'The watch runs forward after all' } } });
+    expect(everyFile(fileSystem)).toEqual([old.fileName]);
 
     const renames = fileSystem.renameCalls.length;
     expect(await store.replace(old.memory.id, (memory) => ({ ...memory }))).toMatchObject({ kind: 'unchanged' });
     expect(await store.replace(old.memory.id, () => undefined)).toMatchObject({ kind: 'unchanged' });
     expect(fileSystem.renameCalls.length).toBe(renames);
+  });
+
+  it('keeps a hand-edited body byte for byte, CRLF and all, and writes the frontmatter LF', async () => {
+    const { fileSystem, store } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const body = '\r\nSettled at the tea party.  \r\n\r\n\r\n- Edited in VS Code.\r\n';
+    const [frontmatter] = text(fileSystem.files.get(filePath)).split('\n---\n');
+    fileSystem.files.set(filePath, new TextEncoder().encode(`${frontmatter.replace(/\n/g, '\r\n')}\r\n---\r\n${body}`));
+
+    expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }))).toMatchObject({ kind: 'replaced', entry: { memory: { body } } });
+    const written = text(fileSystem.files.get(filePath));
+    expect(written.endsWith(`\n---\n${body}`)).toBe(true);
+    expect(written.slice(0, written.length - body.length)).not.toMatch(/\r/);
   });
 
   it('never changes a memory\'s id or creation time, and never writes what would not read back', async () => {
@@ -242,6 +258,20 @@ describe('a rewrite in place', () => {
     expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }), { beforeCommit: () => false })).toEqual({ kind: 'withdrawn' });
     expect(everyFile(fileSystem)).toEqual([entry.fileName]);
     expect(text(fileSystem.files.get(path.join(MEMORY, entry.fileName)))).toBe(before);
+  });
+});
+
+describe('a supersession', () => {
+  it('is one new memory naming the old: the old file is never rewritten, and reads superseded by derivation', async () => {
+    const { fileSystem, store } = host();
+    const old = await createdEntry(store);
+    const before = text(fileSystem.files.get(path.join(MEMORY, old.fileName)));
+    await createdEntry(store, { title: 'The watch runs forward after all', supersedes: [old.memory.id] });
+    const listing = await store.list();
+    expect(listing.kind === 'listed' && [...supersededProjectMemoryIds(listing.memories.map((entry) => entry.memory))]).toEqual([old.memory.id]);
+    expect(text(fileSystem.files.get(path.join(MEMORY, old.fileName)))).toBe(before);
+    expect(await store.replace(old.memory.id, (memory) => ({ ...memory, status: 'superseded' as never })))
+      .toEqual({ kind: 'invalid', reason: 'invalid-value', key: 'status' });
   });
 });
 
@@ -271,10 +301,10 @@ describe('claims another window left', () => {
     const entry = await createdEntry(store);
     await fileSystem.rename(path.join(MEMORY, entry.fileName), claimOf(entry.fileName, clock.at - STORED_FILE_CLAIM_LEASE_MS - 1, 'gone1'));
 
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], busy: [] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [entry], unreadable: [], conflicts: [], busy: [] });
     expect(everyFile(fileSystem)).toEqual([entry.fileName]);
-    // Named by its id, never by the slug of its title.
-    expect(lines).toContain('[ProjectMemoryStore] Put back mem-7f3c2a\'s file, left mid-rewrite.');
+    // Never named by its file name, whose slug is the title's.
+    expect(lines).toContain('[ProjectMemoryStore] Put back a memory file, left mid-rewrite.');
     expect(lines.join('\n')).not.toMatch(/rabbit/i);
   });
 
@@ -284,7 +314,7 @@ describe('claims another window left', () => {
     const claim = claimOf(entry.fileName, clock.at, 'live1');
     await fileSystem.rename(path.join(MEMORY, entry.fileName), claim);
 
-    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], busy: [{ fileName: entry.fileName, id: entry.memory.id }] });
+    expect(await store.list()).toEqual({ kind: 'listed', memories: [], unreadable: [], conflicts: [], busy: [{ fileName: entry.fileName, id: entry.memory.id }] });
     expect(await store.read(entry.memory.id)).toEqual({ kind: 'busy' });
     expect(await store.replace(entry.memory.id, (memory) => ({ ...memory, pinned: true }))).toEqual({ kind: 'busy' });
     expect(await store.delete(entry.memory.id)).toEqual({ kind: 'busy' });

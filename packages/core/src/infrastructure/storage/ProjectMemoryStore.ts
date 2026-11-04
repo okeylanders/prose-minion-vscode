@@ -6,8 +6,10 @@
  * once at the composition root, when it has a consumer.
  *
  * - **Where, read live.** One workspace folder keeps memory; none, or
- *   several, keeps none, and says why (`availability()`, the rule
- *   `WorkshopSessionStore` follows). Every path is checked with
+ *   several, is unavailable, and says why (`availability()`, read on every
+ *   operation). Memory has no session-only mode: unavailable means off.
+ * - **No room state.** The store knows files, not rooms; what reaches a
+ *   persona, and the accepted-workspace check, are Slice 2's. Every path is checked with
  *   `isPathWithinRoot` before it is written.
  * - **Ids, never paths.** `read`, `replace` and `delete` take a memory's
  *   id and resolve it through the folder's listing, so no caller (and no
@@ -19,7 +21,7 @@
  *     point (`beforeCommit`) runs with nothing awaited before the rename,
  *     and the rename never overwrites. A name another window took first is
  *     never reported as this write's: a new id is minted and tried again.
- *   - An edit, a pin, an archive or a supersession is a rewrite in place
+ *   - An edit, a pin or an archive is a rewrite in place
  *     under a claim (`commitStoredFileRewrite`): only a file that reads, and
  *     only the bytes that were read, are replaced, so a rewrite never
  *     brings back a memory another window deleted, and one that finds the
@@ -80,7 +82,7 @@ const encoder = new TextEncoder();
 type Read = Extract<ProjectMemoryFolderRead, { kind: 'read' }>;
 type Found =
   | { kind: 'found'; file: ProjectMemoryFile; filePath: string }
-  | { kind: 'missing' | 'busy' | 'unreadable' | 'unknown' };
+  | { kind: 'missing' | 'busy' | 'conflict' | 'unknown' };
 
 export class ProjectMemoryStore {
   private queue: Promise<unknown> = Promise.resolve();
@@ -136,6 +138,7 @@ export class ProjectMemoryStore {
         kind: 'listed',
         memories: read.files.map(({ fileName, memory }) => ({ fileName, memory })),
         unreadable: read.unreadable,
+        conflicts: read.conflicts,
         busy: read.held
       };
     });
@@ -167,7 +170,7 @@ export class ProjectMemoryStore {
         this.log.appendLine(`${LOG} The memory folder could not be read; nothing was saved.`);
         return { kind: 'failed' };
       }
-      const taken = new Set([...read.files.map((file) => file.memory.id), ...read.held.flatMap((held) => (held.id ? [held.id] : [])), ...read.duplicateIds]);
+      const taken = new Set([...read.files.map((file) => file.memory.id), ...read.held.flatMap((held) => (held.id ? [held.id] : [])), ...read.conflicts.map((conflict) => conflict.id)]);
       for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
         const id = this.freshId(taken);
         if (!id) {
@@ -199,8 +202,8 @@ export class ProjectMemoryStore {
   }
 
   /**
-   * Rewrite the memory `id` names in place (an edit, a pin, an archive, a
-   * supersession): `update` gets the memory as it reads now and returns it
+   * Rewrite the memory `id` names in place (an edit, a pin, an archive; a
+   * supersession is a new memory naming the old, never a rewrite of it): `update` gets the memory as it reads now and returns it
    * changed, or undefined to leave it. Its id and creation time cannot
    * change; its `updated` time is the caller's to set.
    */
@@ -265,7 +268,7 @@ export class ProjectMemoryStore {
     }));
   }
 
-  /** Delete the memory `id` names, under a claim; a file that does not read is never deleted. */
+  /** Delete the memory `id` names, under a claim; a file that does not read, or conflicts, is never deleted. */
   delete(id: string): Promise<ProjectMemoryDeleteResult> {
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
@@ -302,8 +305,8 @@ export class ProjectMemoryStore {
       const filePath = path.join(directory, file.fileName);
       return isPathWithinRoot(directory, filePath) ? { kind: 'found', file, filePath } : { kind: 'missing' };
     }
-    if (read.duplicateIds.includes(id)) {
-      return { kind: 'unreadable' };
+    if (read.conflicts.some((conflict) => conflict.id === id)) {
+      return { kind: 'conflict' };
     }
     return { kind: read.held.some((held) => held.id === id) ? 'busy' : 'missing' };
   }
@@ -396,7 +399,7 @@ export class ProjectMemoryStore {
 }
 
 /** A memory not found, as a write answers it: a folder that could not be read failed the write. */
-function notFound(kind: Exclude<Found['kind'], 'found'>): { kind: 'missing' | 'busy' | 'unreadable' } | { kind: 'failed' } {
+function notFound(kind: Exclude<Found['kind'], 'found'>): { kind: 'missing' | 'busy' | 'conflict' } | { kind: 'failed' } {
   return kind === 'unknown' ? { kind: 'failed' } : { kind };
 }
 
