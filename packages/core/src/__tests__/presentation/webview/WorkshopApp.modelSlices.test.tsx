@@ -6,8 +6,8 @@
  * model changed in its scope, named from the model options `MODEL_DATA`
  * carries with the raw id as the fallback, and seeded across the snapshot's
  * window by `modelsBeforeWindow`. A turn with no stamp never draws one. A
- * bubble whose provider served another model than the one requested says so
- * in its served-by note, and its participant label's title names the ids.
+ * bubble's participant label's title names the ids; its header's model text
+ * is pinned in `WorkshopApp.modelHeader.test.tsx`.
  */
 
 import * as React from 'react';
@@ -246,23 +246,17 @@ describe('WorkshopApp model slices', () => {
   describe('the bubble', () => {
     const bubble = (turnId: string) =>
       document.querySelector<HTMLElement>(`[${WORKSHOP_TURN_ID_ATTRIBUTE}="${turnId}"]`)!;
-    const note = (turnId: string) => bubble(turnId).querySelector('.pm-ws-turn-served-by');
 
-    it('notes a served model that differs from the request, and only then', () => {
+    it('draws no slice for a served model that differs from the request', () => {
       render(<WorkshopApp />);
       deliver(modelData);
       deliver(session([
         writer('u-1'), reply('a-1', A),
         writer('u-2'), reply('a-2', A, { model: stamp(A, 'assistant', [B]) }),
-        writer('u-3'), reply('a-3', A, { model: stamp(A, 'assistant', []) }),
-        writer('u-4'), reply('a-4')
+        writer('u-3'), reply('a-3', A, { model: stamp(A, 'assistant', []) })
       ]));
 
-      expect(note('a-2')?.textContent?.trim()).toBe('Model A · served by Model B');
-      expect(note('a-1')).toBeNull();
-      expect(note('a-3')).toBeNull();
-      expect(note('a-4')).toBeNull();
-      // A served-by difference is not a change of request: no slice.
+      // A served-by difference is not a change of request.
       expect(slices()).toEqual([]);
     });
 

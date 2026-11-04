@@ -1,11 +1,8 @@
 /**
- * What a bubble says about the model that answered it (ADR 2026-11-03 D8).
- *
- * - The served-by note appears only when the provider named a model other
- *   than the one requested ("Auto router · served by Claude Sonnet 5"). A
- *   match, or a reply whose provider named no model, says nothing: that is
- *   not a mismatch, only an absence of evidence.
- * - The participant label's title names the raw ids, on every stamped reply.
+ * The participant label's tooltip on a stamped reply (ADR 2026-11-03 D8): it
+ * names the raw ids. The label's visible model text is the shared header rule,
+ * `workshopTurnModelLabel` (amended 2026-11-04), which retired the under-body
+ * served-by note.
  *
  * Neither is a slice: a slice marks a change in what was requested.
  */
@@ -19,16 +16,6 @@ export const workshopRawModelId = (modelId: string): string => modelId;
 function servedAsRequested(model: WorkshopTurnModel): boolean {
   return model.servedModelIds.length === 0 ||
     (model.servedModelIds.length === 1 && model.servedModelIds[0] === model.requestedModelId);
-}
-
-export function workshopServedByNote(
-  model: WorkshopTurnModel | undefined,
-  modelLabel: (modelId: string) => string
-): string | undefined {
-  if (!model || servedAsRequested(model)) {
-    return undefined;
-  }
-  return `${modelLabel(model.requestedModelId)} · served by ${model.servedModelIds.map(modelLabel).join(', ')}`;
 }
 
 export function workshopTurnModelTitle(model: WorkshopTurnModel | undefined): string | undefined {
