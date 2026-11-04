@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), all decisions
-**Status:** Waiting on Okey. Slices 1–7 are merged into the epic (last merge `6c12df5`). This slice needs a human with VS Code.
+**Status:** Waiting on Okey for the live pass. Slices 1–7 and 7b are merged into the epic (last merge `4578b71`), and his five decisions are settled. This slice needs a human with VS Code.
 
 ## Outcome
 
@@ -128,21 +128,25 @@ Filing something doesn't make it acceptable.
 
 ## Decisions for Okey
 
-Each one has a default already built, and each is a small change.
+Okey settled all five on 2026-11-04.
 
-- [x] **The dictionary slice's wording.** *Okey, 2026-11-04: keep "Dictionary model · …".* It reads "Dictionary model · …"
-      (Slice 7), so a lookup's model change doesn't read as the room's. Keep
-      it, or use the plain "Model · …"?
-- [x] **The served-by note in export.** *Okey, 2026-11-04: yes. Every stamped reply's header names its model after the participant ("Jill · Opus 5.5"), with "via {requested}" when another model served it. The under-body note folds into the header. Markdown and HTML export headers use the same rule. The slices stay. Built in [Slice 7b](slice-7b-model-in-header.md).* It is thread-only today; Markdown and
-      HTML don't print it, and JSON carries the ids (Slice 7). Should Markdown
-      and HTML print it too?
-- [x] **Tool-run requests aren't bookmarkable.** *Okey, 2026-11-04: keep.* The tool report that answers
-      one is (Slice 4). Keep that, or allow the request too?
-- [x] **Escape on a pending rename.** *Okey, 2026-11-04: keep A. Escape closes the field and drops the late answer.* It cancels the field and drops the late
-      answer; the host may still have kept the name (Slice 5). Keep that, or
-      have Escape do nothing until the answer comes back?
-- [x] **Bring `main` into the epic.** *Okey, 2026-11-04: wait for the epic's final PR.* Do it before this pass (one merge PR), or
-      in the epic's final PR? The default is the final PR.
+- [x] **The dictionary slice's wording.** Keep "Dictionary model · A → B"
+      (Slice 7), so a lookup's model change doesn't read as the room's.
+- [x] **The model in export.**
+  - Every stamped reply's header names its model after the participant:
+    "Jill · Opus 5.5".
+  - When another model served the reply, the header adds "via {requested}".
+  - The under-body served-by note is retired.
+  - Markdown and HTML export headers use the same rule, and the slices stay.
+  - Recorded in the ADR's 2026-11-04 amendment and built in
+    [Slice 7b](slice-7b-model-in-header.md) (PR #195).
+- [x] **Tool-run requests aren't bookmarkable.** Keep it: the tool report that
+      answers a request is bookmarkable (Slice 4).
+- [x] **Escape on a pending rename.** Keep option A.
+  - Escape closes the field and drops the late answer.
+  - The host may still have kept the name; the next snapshot shows it
+    (Slice 5).
+- [x] **Bring `main` into the epic.** Wait for the epic's final PR.
 
 ## Close-out
 
