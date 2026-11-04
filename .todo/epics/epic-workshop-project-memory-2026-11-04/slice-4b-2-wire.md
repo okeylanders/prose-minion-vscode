@@ -4,7 +4,7 @@
 **Part of:** [Slice 4b](slice-4b-memory-tab.md), after [4b-ui](slice-4b-1-ui.md) (PR #199, merged)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D5, D8, D10, D13
 **Branch:** `epic/workshop-project-memory-slice-4b-ui`, fast-forwarded to Slice 3's head (`cbb1446c`, #200 with the epic and #199 merged in). The branch name is my session's designated one (see Deviations).
-**Status:** Built and verified; waiting for #200 to merge, then the epic merge and the PR.
+**Status:** Built and verified, on the epic with #200 merged (`7bd1d9a`, head `6a96481`); ready for its PR.
 
 ## Scope
 
@@ -55,7 +55,7 @@ The coordinator's brief:
     Slice 3's refusal table is untouched.
   - The library passes them through as `setLoadInFull` and `remove`, beside
     `managerListing`, `managerFile` and `memoryFolder`.
-- **`WorkshopProjectMemoryManagerRoutes`** (a sibling route owner composed in
+- **`WorkshopProjectMemoryManagerHandler`** (a sibling route owner composed in
   `WorkshopSliceComposition`):
   - `WORKSHOP_MEMORY_LIST` answers `WORKSHOP_MEMORY_LISTING`.
   - `WORKSHOP_MEMORY_MANAGER_ACTION` (`set-load-in-full`, `delete`,
@@ -113,11 +113,11 @@ The coordinator's brief:
    read-then-write the sheet's Edit does. Another window's edit between the
    two is overwritten, as with the sheet. Always load in full and Delete
    avoid this because they are single atomic writes.
-4. **The construction guard can't see the new route owner.** Its class name,
-   `WorkshopProjectMemoryManagerRoutes`, doesn't end in `Handler`, so the
-   composition-tier guard doesn't detect it. The extracted-slice guard and
-   the route ledger do cover it. The coordinator suggested the name. Renaming
-   it `…Handler` would bring it under the construction guard too.
+4. **The route owner is a `…Handler`** (the coordinator's call). It was
+   first named `WorkshopProjectMemoryManagerRoutes`, which the
+   composition-tier construction guard couldn't see. Renamed to
+   `WorkshopProjectMemoryManagerHandler`, it is in that guard's list as well
+   as the route ledger and the extracted-slice guard.
 5. **Files over 500 that grew.** Each was already past 500 lines:
    - `WorkshopApp.tsx` (1,775 → 1,794): the hook, the mount, the modal's
      props;
@@ -155,9 +155,9 @@ Node 22, on this branch:
 | After | 682 | 9,598 | 59 |
 
 - `npm run typecheck`: clean.
-- `npm run lint`: 0 errors. One new warning, the PascalCase
-  `WorkshopMemoryManagerMount`; the files I modified hold 186 warnings
-  before and after.
+- `npm run lint`: 0 errors and no new warnings. The memory components mark
+  their PascalCase names as Slice 3's siblings in the same folder do, so the
+  repository's count fell from 1,171 to 1,165.
 - No `from 'vscode'` in `packages/core/src`.
 - No new file over 500 lines (the largest is `useWorkshopMemoryManager.ts`,
   at 261). Touched files under 500 stay under: `ProjectMemoryWrites`
@@ -170,7 +170,7 @@ Node 22, on this branch:
     distinctness, the folder, logs, and both writes, including Delete
     reviving what it superseded and the store's `changed`, `busy` and
     `conflict`.
-  - `WorkshopProjectMemoryManagerRoutes.test.ts`: every route's success,
+  - `WorkshopProjectMemoryManagerHandler.test.ts`: every route's success,
     refusal and busy or stale case through the real router and composition,
     with no receipt and no snapshot.
   - `WorkshopConversationSettingsMemoryApply.test.ts`: the mode round trip.
