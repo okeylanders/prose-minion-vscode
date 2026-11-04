@@ -116,7 +116,10 @@ The coordinator's brief:
   folder. A copied project with the same id and file name is never deleted
   for a request about another. **Round 3:** Always load in full is bound
   the same way (`ProjectMemoryWorkspaceIdentity`; the store's `replace` takes
-  the captured folder).
+  the captured folder). It now lives in the write queue for every write:
+  `owe` binds each one at the request, so Save, Edit, Archive, Restore and
+  Save and tell me's save are bound too, and the store's `create` withdraws
+  under another folder as `replace` and `delete` do.
 - **F02: the manager's answers stay with their root.** `moved(directory)`
   compares the scope and the store's folder now with the folder the rows
   were read for, after each await (the queued list, the titles, making the
@@ -209,6 +212,7 @@ Node 22, on this branch:
 | After the review fixes | 685 | 9,622 | 59 |
 | Round 2, with Slice 5 (#201) merged in | 690 | 9,679 | 59 |
 | Round 3 (F01's Always load in full, N03, N04) | 690 | 9,684 | 59 |
+| F01 in the queue, for every write | 691 | 9,696 | 59 |
 
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors and no new warnings. The memory components mark
