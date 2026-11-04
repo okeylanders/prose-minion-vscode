@@ -651,3 +651,27 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Save and tell me's receipt (Slice 5): the chevron that expands the saved card. */
+[data-pm-surface="workshop"] .pm-ws-memory-expand {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand:hover {
+  background: var(--pm-accent-soft);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand svg {
+  transition: transform 120ms ease;
+}
+[data-pm-surface="workshop"] .pm-ws-memory-expand-open svg {
+  transform: rotate(90deg);
+}
+[data-pm-surface="workshop"] .pm-ws-memory-receipt-expandable .pm-ws-memory-card {
+  max-width: 720px;
+  margin: 10px auto 0;
+}
