@@ -100,6 +100,15 @@ export interface ProjectMemoryWriteOptions {
   beforeCommit?: () => boolean;
 }
 
+export interface ProjectMemoryDeleteOptions extends ProjectMemoryWriteOptions {
+  /**
+   * The memory folder the writer asked about, captured at the request
+   * (PR #202 F01). Absent, the folder at the call. A delete whose turn comes
+   * under another folder is withdrawn, even if that folder holds the same id.
+   */
+  directory?: string;
+}
+
 export interface ProjectMemoryStoreOptions {
   now?: () => Date;
   /** The private part of a staged file's or a claim's name; a random UUID by default. */

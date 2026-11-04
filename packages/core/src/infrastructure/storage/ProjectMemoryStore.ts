@@ -71,7 +71,8 @@ import type {
   ProjectMemoryReplaceResult,
   ProjectMemoryStoreOptions,
   ProjectMemoryUpdate,
-  ProjectMemoryWriteOptions
+  ProjectMemoryWriteOptions,
+  ProjectMemoryDeleteOptions
 } from '@/infrastructure/storage/ProjectMemoryStoreContracts';
 
 export * from '@/infrastructure/storage/ProjectMemoryStoreContracts';
@@ -299,11 +300,18 @@ export class ProjectMemoryStore {
    * `beforeCommit` must allow it, else the file is put back (`withdrawn`,
    * PR #202 F01).
    */
-  delete(id: string, options: ProjectMemoryWriteOptions = {}): Promise<ProjectMemoryDeleteResult> {
+  delete(id: string, options: ProjectMemoryDeleteOptions = {}): Promise<ProjectMemoryDeleteResult> {
+    // The folder asked about is the one at the request, before the queue can wait (PR #202 F01).
+    const requested = this.availability();
+    const target = options.directory ?? (requested.available ? requested.directory : undefined);
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
         return { kind: 'unavailable', reason: where.reason };
+      }
+      if (where.directory !== target || (options.beforeCommit && !options.beforeCommit())) {
+        this.log.appendLine(`${LOG} ${id} was not deleted: the workspace changed before its turn.`);
+        return { kind: 'withdrawn' };
       }
       const found = await this.find(where.directory, id);
       if (found.kind !== 'found') {
@@ -320,7 +328,7 @@ export class ProjectMemoryStore {
         fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName)),
         stillPermitted: () => {
           const now = this.availability();
-          return now.available && now.directory === where.directory && (options.beforeCommit?.() ?? true);
+          return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
         }
       });
       if (deleted === 'deleted') {

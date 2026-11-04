@@ -66,6 +66,7 @@ import {
   type ProjectMemoryEstimateResult,
   type ProjectMemorySaveProvenance,
   type ProjectMemoryWriteResult,
+  type ProjectMemoryWorkspaceIdentity,
   type ProjectMemoryWriteStorePort
 } from '@/application/services/workshop/memory/ProjectMemoryWrites';
 import type { WorkshopMemoryDraft } from '@messages';
@@ -145,7 +146,7 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     options: ProjectMemoryLibraryOptions = {}
   ) {
     this.now = options.now ?? (() => new Date());
-    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), this.now, outputChannel);
+    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), () => this.workspaceIdentity(), this.now, outputChannel);
     this.manager = new ProjectMemoryManager(store, () => this.workspaceReason(), recall, this.now, outputChannel);
   }
 
@@ -453,6 +454,13 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     }
     const availability = this.store.availability();
     return availability.available ? undefined : availability.reason;
+  }
+
+  /** The accepted workspace as a write names it: the live room and the memory folder (PR #202 F01). */
+  private workspaceIdentity(): ProjectMemoryWorkspaceIdentity | undefined {
+    const scope = this.scope.recallScope();
+    const availability = this.store.availability();
+    return scope.available && availability.available ? { room: scope.liveSessionId, directory: availability.directory } : undefined;
   }
 
   private log(line: string): void {

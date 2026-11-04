@@ -101,6 +101,16 @@ export type ProjectMemoryEstimateResult =
 
 type Listed = { readonly kind: 'listed'; readonly memories: ProjectMemoryListed[] } | { readonly kind: 'refused'; readonly reason: ProjectMemoryWriteRefusalReason };
 
+/** Which accepted workspace a write was asked for: its live room and its memory folder. */
+export interface ProjectMemoryWorkspaceIdentity {
+  readonly room: string;
+  readonly directory: string;
+}
+
+function sameWorkspace(now: ProjectMemoryWorkspaceIdentity | undefined, asked: ProjectMemoryWorkspaceIdentity): boolean {
+  return now !== undefined && now.room === asked.room && now.directory === asked.directory;
+}
+
 const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
 export class ProjectMemoryWrites {
@@ -112,6 +122,8 @@ export class ProjectMemoryWrites {
     private readonly store: ProjectMemoryWriteStorePort,
     /** This workspace's reason to hold no memory now, read live (D8, D10). */
     private readonly workspaceReason: () => ProjectMemoryClosedReason | undefined,
+    /** The accepted workspace's identity (its room and memory folder), read live; undefined when it holds no memory. */
+    private readonly workspaceIdentity: () => ProjectMemoryWorkspaceIdentity | undefined,
     private readonly now: () => Date,
     private readonly outputChannel: LogSink
   ) {}
@@ -237,13 +249,16 @@ export class ProjectMemoryWrites {
    * them back (`changed`). A memory it superseded is in effect again (D4).
    */
   remove(id: string): Promise<ProjectMemoryDeleteResult> {
+    // The workspace the writer asked about, captured before this queue or the store's can wait (PR #202 F01).
+    const asked = this.workspaceIdentity();
+    const still = () => asked !== undefined && sameWorkspace(this.workspaceIdentity(), asked);
     return this.owe('delete', async () => {
-      const closed = this.workspaceReason();
-      if (closed) {
-        this.refused('delete', closed, id);
-        return { kind: 'refused' as const, reason: closed };
+      const closed = this.workspaceReason() ?? (still() ? undefined : 'workspace-changed');
+      if (closed || !asked) {
+        this.refused('delete', closed ?? 'workspace-changed', id);
+        return { kind: 'refused' as const, reason: closed ?? 'workspace-changed' };
       }
-      const deleted = await this.store.delete(id, { beforeCommit: () => this.workspaceReason() === undefined });
+      const deleted = await this.store.delete(id, { directory: asked.directory, beforeCommit: still });
       if (deleted.kind === 'deleted') {
         this.log(`delete deleted id=${id}`);
         return { kind: 'deleted' as const };

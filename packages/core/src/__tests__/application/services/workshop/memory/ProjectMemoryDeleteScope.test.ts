@@ -66,4 +66,53 @@ describe('Delete and the workspace at its commit point (PR #202 F01)', () => {
     expect(await host.library.remove('mem-00d003')).toEqual({ kind: 'deleted' });
     expect(host.fileSystem.files.has(file)).toBe(false);
   });
+
+  describe('a delete keeps the project it was asked for while it waits (PR #202 F01 re-review)', () => {
+    const B_MEMORY = path.join('/project-b', 'prose-minion', 'memory');
+    /** Root A and a copied project B, with the same id under the same file name. */
+    function copied() {
+      const host = libraryHost();
+      const fileA = host.put(writerMemory({ id: 'mem-000001', title: 'Alice keeps the key' }), 'key-note.md');
+      const fileB = path.join(B_MEMORY, 'key-note.md');
+      host.fileSystem.files.set(fileB, new TextEncoder().encode(
+        new TextDecoder().decode(host.fileSystem.files.get(fileA)).replace('Alice keeps the key', 'The Hatter keeps the key')
+      ));
+      const toB = () => { host.state.folders = [{ path: '/project-b', name: 'project-b' }]; };
+      return { host, fileA, fileB, toB };
+    }
+
+    it('behind a queued list, a switch to B deletes neither project’s file', async () => {
+      const { host, fileA, fileB, toB } = copied();
+      const hold = holdOnce(host.fileSystem as never, 'readDirectory', () => true);
+      const listing = host.store.list();
+      await hold.arrived;
+      const deleteSpy = jest.spyOn(host.store, 'delete');
+      const removing = host.library.remove('mem-000001');
+      await Promise.resolve();
+      expect(deleteSpy).toHaveBeenCalled();
+      toB();
+      hold.release();
+      await listing;
+
+      expect(await removing).toEqual({ kind: 'refused', reason: 'workspace-changed' });
+      expect(host.fileSystem.files.has(fileA)).toBe(true);
+      expect(host.fileSystem.files.has(fileB)).toBe(true);
+    });
+
+    it('behind the library’s write queue, a switch to B deletes neither project’s file', async () => {
+      const { host, fileA, fileB, toB } = copied();
+      const hold = holdOnce(host.fileSystem as never, 'readDirectory', () => true);
+      const earlier = host.library.remove('mem-0000ff');
+      await hold.arrived;
+      const removing = host.library.remove('mem-000001');
+      toB();
+      hold.release();
+      await earlier;
+
+      expect(await removing).toEqual({ kind: 'refused', reason: 'workspace-changed' });
+      expect(host.fileSystem.files.has(fileA)).toBe(true);
+      expect(host.fileSystem.files.has(fileB)).toBe(true);
+    });
+  });
 });
+
