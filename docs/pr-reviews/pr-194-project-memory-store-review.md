@@ -1,20 +1,47 @@
 # PR #194 review: Project Memory Slice 1, store and format 1
 
-**Verdict: changes requested before merge into `epic/workshop-project-memory`. One P2 issue remains: F-02's refused claim can still be purged after transient release failures. F-06 is closed against the requested ordering policy.**
+**Verdict: implementation ready for merge into `epic/workshop-project-memory`, subject to the current head's required CI. All reproduced findings are closed; no remaining actionable blocker was found.**
 
 **PR:** [#194](https://github.com/okeylanders/prose-minion-vscode/pull/194)  
 **Re-reviewed:** 2026-11-04  
-**Current reviewed implementation:** `eba4fc8b8d5ea4cd1e75428ffcb657edbb4da5d4`  
+**Current reviewed implementation:** `798d32f9a2f8e3eea0fb8f631d3f54379136191a`  
 **Target branch:** `epic/workshop-project-memory`  
 **Base reported by PR API:** `8fb016fa3e767964fe8c53c778d6453f8507667d`  
-**Current passing CI merge:** `af39fd0256f9fdecf69bdc202f03b8c7be22683d`, combining reviewed head with target `9ba38154e883c2b29dce3d5455fef45b8271f80e` according to checkout logs  
+**Previous passing CI merge (eba4fc8b, not the current implementation):** `af39fd0256f9fdecf69bdc202f03b8c7be22683d`, combining reviewed head with target `9ba38154e883c2b29dce3d5455fef45b8271f80e` according to checkout logs  
 **Initial reviewed implementation:** `5008f071f0b5fb3b093f0e9bb2eb44e86bad86e7`  
 **Initial CI merge:** `886b58446264d0a0107db90d6fb480dba8bde052`  
 **Current spec checked:** merged [PR #192](https://github.com/okeylanders/prose-minion-vscode/pull/192), head `daa7859302a5a3e3cca296ccecbe222c112736e2`
 
-This is a branch review report, not a formal GitHub approval or authorization to merge. #192 has merged and its ADR records the writer's decisions on all six questions. The earlier dependency/question gate is therefore no longer an open gate in this review; the remaining preservation issue below determines the verdict.
+This is a branch review report, not a formal GitHub approval or authorization to merge. #192 has merged and its ADR records the writer's decisions on all six questions. The earlier dependency/question gate is therefore no longer an open gate in this review; all reproduced implementation findings are now independently closed. Required CI for the current head remains the merge gate.
 
-## Independent re-review at eba4fc8b
+## Independent closure review at 798d32f9
+
+The `3fc18e9` correction adds a memory-specific leftover predicate to the shared claim lifecycle. Cleanup and delete-retirement now remove a claim only when it decodes as the same memory ID as the standing/deleting file. Different-ID and unreadable bytes are restored to a free ordinary filename, or retained when restoration is blocked. The unconfigured Lightbox cleanup policy is unchanged.
+
+**F-02 is independently closed.** The prior transient-release-failure witness now preserves both memories after the lock clears and lease recovery runs. This closes the final reproduced blocker; F-01, F-03, F-04, F-05, F-06, N-01 and N-02 retain their prior closure status.
+
+### Closure verification
+
+Executed exact-head production modules with the repository's in-memory filesystem fixture, including independent actual-store and claim-lifecycle probes:
+
+- Original occupied-name collision and transient release lock: both memory IDs survive; refused bytes move to a free ordinary file.
+- Persistent rename lock: refused bytes remain byte-identical across 31 seconds and a full day, with a `set-aside` row while beside the occupant.
+- Fresh-store recovery works after unlocking. A fresh store cannot delete the occupant while restoration is blocked; it returns `failed` and preserves both copies.
+- After unlocking, deleting the occupant preserves the unrelated refused bytes separately.
+- The same preservation and deletion controls pass for invalid UTF-8/unreadable bytes.
+- Multiple abandoned claims without a standing file recover distinct IDs and unreadable content without loss; newest takes the saved name.
+- Genuine same-ID rewrite leftovers still clean up, including during deletion.
+- The shared default policy without a leftover predicate retains prior Lightbox settling and retirement behavior.
+- Prior codec/size witnesses and the 36 focused codec/domain assertion groups plus all 4,096 four-node graph comparisons still pass. The F-06 overlap witness remains corrected under its stated timestamp ordering policy.
+
+**CI:** [run 41880864217](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41880864217) for `798d32f9` was queued at publication. The last completed implementation CI at `eba4fc8b` passed **640 suites / 9,112 tests / 59 snapshots**, typechecks, lint and builds; it is historical evidence, not a substitute for the current checks. This report-only publication also requires its own branch-head CI.
+
+Full local Jest, native VS Code and live-provider testing are not claimed. The previously documented equal-timestamp/clock-skew ordering limitation remains nonblocking and unchanged.
+
+## Re-review at eba4fc8b (history)
+
+The following review and author correction notes are retained as history. The independent closure above supersedes their open/closed wording.
+
 
 **Current status:** F-01, F-03, F-04, F-05, F-06 and N-01 are closed. N-02 now follows the requested newest-claim ordering policy. F-02 remains open only for preservation after failed release attempts.
 
@@ -51,7 +78,7 @@ The same harness without the transient failure preserves both memories. An indep
 - Full local Jest and native/live-provider testing remain unavailable and are not claimed. CI totals are observed from the job logs.
 - This report's publication is report-only; the ensuing head has its own required CI.
 
-## Current resolution ledger
+## Author resolution ledger after the second correction
 
 | ID | Priority | Status |
 |---|---|---|
