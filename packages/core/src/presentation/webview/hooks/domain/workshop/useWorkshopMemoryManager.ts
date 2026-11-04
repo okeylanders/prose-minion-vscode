@@ -108,6 +108,8 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
   const [folder, setFolder] = React.useState<WorkshopMemoryFolderStatus>({ pending: false });
   const [focusMemoryId, setFocusMemoryId] = React.useState<string | undefined>(undefined);
   const settingsVisibleRef = React.useRef(false);
+  /** The newest Open memory folder press: only its answer says how the folder went (PR #202 N03). */
+  const folderRequest = React.useRef<string | undefined>(undefined);
   const listRequest = React.useRef<string | undefined>(undefined);
   const queryRef = React.useRef('');
   const managerOpenRef = React.useRef(false);
@@ -137,7 +139,7 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
     setActionPending(pending.current.size > 0 || renames.current.size > 0);
   }, []);
 
-  const start = React.useCallback((entry: Pending, type: MessageType, payload: object) => {
+  const start = React.useCallback((entry: Pending, type: MessageType, payload: object): string => {
     const requestId = mint();
     pending.current.set(requestId, entry);
     setActionPending(true);
@@ -146,6 +148,7 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
       setRefusal(undefined);
     }
     post(type, { requestId, ...payload });
+    return requestId;
   }, [mint, post]);
 
   const openManager = React.useCallback((focus?: string) => {
@@ -202,7 +205,7 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
     openFile: (entryKey) => start({ kind: 'open' }, MessageType.WORKSHOP_MEMORY_MANAGER_ACTION, { action: 'open-file', entryKey }),
     openFolder: () => {
       setFolder({ pending: true });
-      start({ kind: 'folder' }, MessageType.WORKSHOP_MEMORY_MANAGER_ACTION, { action: 'open-folder' });
+      folderRequest.current = start({ kind: 'folder' }, MessageType.WORKSHOP_MEMORY_MANAGER_ACTION, { action: 'open-folder' });
     },
     handleListing: (message) => {
       if (message.payload.requestId !== listRequest.current) {
@@ -221,11 +224,12 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
       pending.current.delete(message.payload.requestId);
       settleAction();
       if (entry.kind === 'folder') {
-        // Only the newest press's answer says how Open memory folder went.
-        const newest = ![...pending.current.values()].some((other) => other.kind === 'folder');
-        if (newest) {
-          setFolder(message.payload.ok ? { pending: false } : { pending: false, error: message.payload.error });
+        // Only the newest press's answer says how Open memory folder went; an older one, however late, says nothing.
+        if (message.payload.requestId !== folderRequest.current) {
+          return;
         }
+        folderRequest.current = undefined;
+        setFolder(message.payload.ok ? { pending: false } : { pending: false, error: message.payload.error });
       }
       if (message.payload.ok) {
         if (entry.kind !== 'open' && entry.kind !== 'folder') {

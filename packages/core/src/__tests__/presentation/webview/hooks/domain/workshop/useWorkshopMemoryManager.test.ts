@@ -186,4 +186,21 @@ describe('useWorkshopMemoryManager', () => {
     act(() => result.current.closeManager());
     expect(result.current.focusMemoryId).toBeUndefined();
   });
+
+  it('an older folder press that fails after a newer one opened leaves no error (PR #202 N03)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    act(() => result.current.setSettingsVisible(true));
+    act(() => result.current.openManager());
+    act(() => result.current.openFolder());
+    const first = lastId(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION);
+    act(() => result.current.openFolder());
+    const second = lastId(MessageType.WORKSHOP_MEMORY_MANAGER_ACTION);
+    act(() => result.current.handleManagerResult(envelope(MessageType.WORKSHOP_MEMORY_MANAGER_RESULT, { requestId: second, ok: true })));
+    expect(result.current.folder).toEqual({ pending: false });
+    act(() => result.current.handleManagerResult(envelope(MessageType.WORKSHOP_MEMORY_MANAGER_RESULT, { requestId: first, ok: false, error: 'Old.' })));
+    expect(result.current.folder).toEqual({ pending: false });
+    expect(result.current.actionError).toBeUndefined();
+    expect(result.current.actionPending).toBe(false);
+  });
 });
+
