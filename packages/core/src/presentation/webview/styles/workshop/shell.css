@@ -316,6 +316,121 @@
   opacity: 0.72;
 }
 
+/* Bookmarks (ADR 2026-11-03 D5): rows open their bubble, or the reader. */
+[data-pm-surface="workshop"] .pm-ws-bookmarks {
+  gap: 9px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmarks .pm-ws-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-open,
+[data-pm-surface="workshop"] .pm-ws-bookmark-rename {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 9px;
+  padding: 9px 10px;
+  text-align: left;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-tile);
+  color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-open {
+  align-items: flex-start;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-open:hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-icon {
+  display: inline-flex;
+  margin-top: 1px;
+  color: var(--pm-ws-bookmark-identity, var(--pm-text-2));
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-icon svg {
+  fill: currentColor;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-label {
+  color: var(--pm-text);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-outside {
+  padding: 1px 6px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 999px;
+  color: var(--pm-text-2);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-rename {
+  flex-direction: column;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-rename input {
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--pm-text);
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-saving {
+  margin: 0;
+  color: var(--pm-dim);
+  font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-fault {
+  margin: 0;
+  color: var(--pm-red);
+  font-size: 11px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-rename-actions {
+  display: flex;
+  gap: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-rename-actions button {
+  padding: 3px 8px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  background: transparent;
+  color: var(--pm-muted);
+  font: 11.5px var(--pm-sans);
+}
+
 /* ---------- Thread ---------- */
 [data-pm-surface="workshop"] .pm-ws-thread {
   flex: 1;
@@ -937,6 +1052,15 @@
 [data-pm-surface="workshop"] .pm-ws-turn-actions-writer {
   justify-content: flex-end;
   margin-top: 4px;
+}
+/* Bookmark (ADR 2026-11-03 D5): pressed reads as the accent, icon filled. */
+[data-pm-surface="workshop"] .pm-ws-turn-actions .pm-ws-bookmark-toggle-on {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-toggle-on svg {
+  fill: currentColor;
 }
 
 /* Quick actions */

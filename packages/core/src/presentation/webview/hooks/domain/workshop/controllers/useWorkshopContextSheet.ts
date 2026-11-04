@@ -17,6 +17,8 @@ import type {
   WorkshopReadInRequest
 } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type { ContextSourceEntry } from '@shared/types';
+import type { WorkshopTurnPreview } from '@messages';
+import type { WorkshopTurnPreviewState } from '@hooks/domain/workshop/useWorkshopBookmarks';
 
 /** What the sheet is being used for; drives kicker, copy, and affordances. */
 export type WorkshopTextSheetMode =
@@ -38,7 +40,13 @@ export type WorkshopTextSheetMode =
       deliveredAt: number;
       /** The card that recorded the read, when the row names one (Wayfinding D4). */
       turnId?: string;
-    };
+    }
+  /**
+   * A turn outside the snapshot's window (ADR 2026-11-03 D6), read-only, as
+   * the transcript projects it. Each opening is its own request, and so its
+   * own sheet.
+   */
+  | { kind: 'turn-preview'; turnId: string; requestId: string; label?: string };
 
 export interface WorkshopTextSheetState {
   mode: WorkshopTextSheetMode;
@@ -72,6 +80,10 @@ export interface UseWorkshopContextSheetOptions {
    * it wasn't asked in (PR #186 F-01).
    */
   readInScopeKey: string;
+  /** The turn preview's transport (`useWorkshopBookmarks`); closed by the same scope key. */
+  turnPreview: WorkshopTurnPreviewState | null;
+  requestTurnPreview: (turnId: string) => string;
+  clearTurnPreview: () => void;
 }
 
 /** What the open sheet shows, whichever host round-trip feeds it. */
@@ -86,6 +98,8 @@ export interface WorkshopTextSheetBody {
   /** The reader's provenance, from the host's correlated reply (Wayfinding D4). */
   lineRange?: { start: number; end: number };
   changedSinceRead?: boolean;
+  /** The turn preview's projected turn, once answered (D6). */
+  turnPreview?: WorkshopTurnPreview;
 }
 
 export interface WorkshopContextSheetState {
@@ -109,6 +123,8 @@ export interface WorkshopContextSheetActions {
   openAttachmentSheet: (attachment: WorkshopContextAttachmentSnapshot) => void;
   /** Opens a read-in row in the reader; a row with no configured file opens nothing. */
   openReadInSheet: (entry: ContextSourceEntry, participantLabel: string) => void;
+  /** Opens a turn outside the window in the read-only preview, replacing any open sheet. */
+  openTurnPreviewSheet: (turnId: string, label?: string) => void;
   addExcerptByPaste: () => void;
   addExcerptFromProject: () => void;
   applyTextSheet: (text: string) => void;
@@ -159,7 +175,10 @@ export function useWorkshopContextSheet({
   requestReadInResource,
   openReadInResource,
   clearReadInContent,
-  readInScopeKey
+  readInScopeKey,
+  turnPreview,
+  requestTurnPreview,
+  clearTurnPreview
 }: UseWorkshopContextSheetOptions): UseWorkshopContextSheetReturn {
   const [textSheet, setTextSheet] = React.useState<WorkshopTextSheetState | null>(null);
 
@@ -167,7 +186,8 @@ export function useWorkshopContextSheet({
     setTextSheet(null);
     clearAttachmentContent();
     clearReadInContent();
-  }, [clearAttachmentContent, clearReadInContent]);
+    clearTurnPreview();
+  }, [clearAttachmentContent, clearReadInContent, clearTurnPreview]);
 
   const scopeKeyRef = React.useRef(readInScopeKey);
   const closeReaderWhenScopeChanged = React.useCallback(() => {
@@ -176,8 +196,11 @@ export function useWorkshopContextSheet({
     }
     scopeKeyRef.current = readInScopeKey;
     clearReadInContent();
-    setTextSheet((current) => (current?.mode.kind === 'read-in' ? null : current));
-  }, [clearReadInContent, readInScopeKey]);
+    clearTurnPreview();
+    setTextSheet((current) =>
+      current?.mode.kind === 'read-in' || current?.mode.kind === 'turn-preview' ? null : current
+    );
+  }, [clearReadInContent, clearTurnPreview, readInScopeKey]);
 
   React.useEffect(() => {
     closeReaderWhenScopeChanged();
@@ -254,9 +277,16 @@ export function useWorkshopContextSheet({
     [requestReadInResource]
   );
 
+  const openTurnPreviewSheet = React.useCallback((turnId: string, label?: string) => {
+    clearAttachmentContent();
+    clearReadInContent();
+    const requestId = requestTurnPreview(turnId);
+    setTextSheet({ mode: { kind: 'turn-preview', turnId, requestId, ...(label ? { label } : {}) } });
+  }, [clearAttachmentContent, clearReadInContent, requestTurnPreview]);
+
   const applyTextSheet = React.useCallback((text: string) => {
-    // The reader is read-only: nothing it shows can be applied.
-    if (!textSheet || textSheet.mode.kind === 'read-in') {
+    // The reader and the preview are read-only: nothing they show can be applied.
+    if (!textSheet || textSheet.mode.kind === 'read-in' || textSheet.mode.kind === 'turn-preview') {
       return;
     }
     if (textSheet.mode.kind === 'excerpt') {
@@ -310,6 +340,9 @@ export function useWorkshopContextSheet({
     if (!textSheet) {
       return undefined;
     }
+    if (textSheet.mode.kind === 'turn-preview') {
+      return `turn-preview:${textSheet.mode.requestId}`;
+    }
     if (textSheet.mode.kind !== 'read-in') {
       return 'sheet';
     }
@@ -321,6 +354,17 @@ export function useWorkshopContextSheet({
   const sheetBody = ((): WorkshopTextSheetBody | undefined => {
     if (!textSheet) {
       return undefined;
+    }
+    if (textSheet.mode.kind === 'turn-preview') {
+      // Matched to the opening on screen by its request id.
+      const reply = turnPreview?.requestId === textSheet.mode.requestId ? turnPreview : undefined;
+      return {
+        value: reply?.turn?.content,
+        loading: reply?.turn === undefined && reply?.error === undefined,
+        error: reply?.error,
+        canOpenInEditor: false,
+        turnPreview: reply?.turn
+      };
     }
     if (textSheet.mode.kind === 'read-in') {
       // Matched to the row on screen, as attachments are by id.
@@ -364,6 +408,7 @@ export function useWorkshopContextSheet({
     openAddTextSheet,
     openAttachmentSheet,
     openReadInSheet,
+    openTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,

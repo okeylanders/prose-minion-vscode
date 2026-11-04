@@ -21,6 +21,10 @@ import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 import { formatReadInTime } from '@utils/workshop/contextSources';
+import { WorkshopTurnBubble } from '@components/workshop/WorkshopTurnBubble';
+import type { WorkshopTurn } from '@messages';
+// The preview's projection, so the sheet is tested against what the host sends.
+import { workshopTurnPreview } from '@/application/services/workshop/transcript/WorkshopTurnPreview';
 
 const renderSheet = (
   overrides: Partial<React.ComponentProps<typeof WorkshopTextSheet>> = {}
@@ -410,5 +414,92 @@ describe('WorkshopTextSheet — the reader\'s provenance (Wayfinding Slice 3)', 
 
     rerender(<WorkshopTextSheet {...props} onShowWhereRead={undefined} />);
     expect(screen.queryByRole('button', { name: 'Show where it was read' })).toBeNull();
+  });
+});
+
+describe('WorkshopTextSheet — turn preview (ADR 2026-11-03 D6)', () => {
+  const mode = { kind: 'turn-preview' as const, turnId: 'turn-0', requestId: 'ws-preview-1' };
+  const turn = { kind: 'reply' as const, speaker: 'Jill', content: 'An older reply.', timestamp: 0 };
+
+  it('is titled by the label it was opened with, else the speaker once the host answers', () => {
+    const { rerender } = render(
+      <WorkshopTextSheet open mode={{ ...mode, label: 'Jill · An older reply' }} loading onApply={jest.fn()} onClose={jest.fn()} />
+    );
+    expect(screen.getByRole('heading', { name: 'Jill · An older reply' })).toBeTruthy();
+    expect(screen.getByText('Loading the message…')).toBeTruthy();
+
+    rerender(<WorkshopTextSheet open mode={mode} value="An older reply." turnPreview={turn} onApply={jest.fn()} onClose={jest.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Jill' })).toBeTruthy();
+    expect(screen.getByText(`Jill · ${formatReadInTime(0)}`)).toBeTruthy();
+    expect(screen.getByText('Outside the loaded window')).toBeTruthy();
+  });
+
+  it('is read-only, and says when the reply stopped at the token limit', () => {
+    render(
+      <WorkshopTextSheet
+        open
+        mode={mode}
+        value="An older reply."
+        turnPreview={{ ...turn, truncated: true }}
+        onApply={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: /Apply|Save/ })).toBeNull();
+    expect(screen.getByText(/stopped at the max-token limit/)).toBeTruthy();
+  });
+});
+
+describe('WorkshopTextSheet — a private turn\'s preview names who heard it (PR #189 N-01)', () => {
+  const writer: WorkshopTurn = {
+    id: 'turn-7-user-1', role: 'user', kind: 'message', participant: 'writer',
+    artifact: 'direct_tool_message', toolId: 'prose', toolLabel: 'Prose',
+    content: 'Why the pacing flag?', timestamp: 0, excerptVersion: 1
+  };
+  const reply: WorkshopTurn = {
+    id: 'turn-8-assistant-1', role: 'assistant', kind: 'message', participant: 'tool',
+    artifact: 'direct_tool_response', toolId: 'prose', toolLabel: 'Prose',
+    content: 'Three long sentences in a row.', timestamp: 0, excerptVersion: 1
+  };
+  const noop = () => undefined;
+
+  it.each([['the writer\'s message', writer], ['the instrument\'s reply', reply]])(
+    'shows %s with the label its bubble shows in the window',
+    (_label, turn) => {
+      const bubble = render(
+        <WorkshopTurnBubble turn={turn} quickActionToolId={null} onQuickAction={noop} onTalkDirectly={noop} onCopy={noop} onSave={noop} />
+      );
+      const inWindow = bubble.container.querySelector('.pm-ws-private-thread-label')?.textContent?.trim();
+      bubble.unmount();
+      expect(inWindow).toBe('Private · you + Prose');
+
+      const preview = workshopTurnPreview(turn)!;
+      expect(preview.privateWith).toBe('Prose');
+      const sheet = render(
+        <WorkshopTextSheet
+          open
+          mode={{ kind: 'turn-preview', turnId: turn.id, requestId: 'ws-preview-1' }}
+          value={preview.content}
+          turnPreview={preview}
+          onApply={jest.fn()}
+          onClose={jest.fn()}
+        />
+      );
+      expect(sheet.container.querySelector('.pm-ws-private-thread-label')?.textContent?.trim()).toBe(inWindow);
+    }
+  );
+
+  it('says nothing of privacy for a room-visible turn', () => {
+    const { container } = render(
+      <WorkshopTextSheet
+        open
+        mode={{ kind: 'turn-preview', turnId: 'turn-0', requestId: 'ws-preview-1' }}
+        value="A room reply."
+        turnPreview={{ kind: 'reply', speaker: 'Jill', content: 'A room reply.', timestamp: 0 }}
+        onApply={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(container.querySelector('.pm-ws-private-thread-label')).toBeNull();
   });
 });

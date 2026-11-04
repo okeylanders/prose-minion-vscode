@@ -32,6 +32,7 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
+  WorkshopBookmarkSummary,
   WorkshopTurn,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
@@ -44,6 +45,7 @@ import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { WorkshopRail } from './components/workshop/WorkshopRail';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
+import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -233,6 +235,7 @@ export const WorkshopApp: React.FC = () => {
     [contextSources]
   );
   const readIn = useWorkshopReadIn();
+  const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
@@ -243,6 +246,7 @@ export const WorkshopApp: React.FC = () => {
     roomKey: railRoomKey,
     readIn: readInSources,
     readInKey: chatTargetIdentity,
+    bookmarks: bookmarks.bookmarks,
     initialTab: persistedRailTab?.workshopRailTab
   });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
@@ -414,6 +418,7 @@ export const WorkshopApp: React.FC = () => {
 
   useWorkshopAppMessageRouter({
     readIn,
+    bookmarks,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -654,7 +659,10 @@ export const WorkshopApp: React.FC = () => {
     requestReadInResource: readIn.requestReadInResource,
     openReadInResource: readIn.openReadInResource,
     clearReadInContent: readIn.clearReadInContent,
-    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`
+    readInScopeKey: `${railRoomKey}\u0000${chatTargetIdentity}`,
+    turnPreview: bookmarks.turnPreview,
+    requestTurnPreview: bookmarks.requestTurnPreview,
+    clearTurnPreview: bookmarks.clearTurnPreview
   });
   const {
     textSheet,
@@ -665,6 +673,7 @@ export const WorkshopApp: React.FC = () => {
     openAddTextSheet,
     openAttachmentSheet,
     openReadInSheet,
+    openTurnPreviewSheet,
     addExcerptByPaste,
     addExcerptFromProject,
     applyTextSheet,
@@ -894,17 +903,21 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode, workshop.excerpt]);
 
-  // To-do "show source", Read in's card rows, and the reader's "Show where it
-  // was read" share one scroll-and-focus path (Wayfinding D3, D4).
+  // To-do "show source", Read in's card rows, the reader's "Show where it
+  // was read" and bookmarks share one scroll-and-focus path (Wayfinding D3,
+  // D4); a turn outside the window opens in the read-only preview (D6).
   const readInCardTurnId = textSheet?.mode.kind === 'read-in' ? textSheet.mode.turnId : undefined;
-  const showTurnOutsideWindow = React.useCallback(
-    () => showToast({ message: 'That source turn is outside the current reload window.', icon: 'doc' }),
-    [showToast]
-  );
   const { jumpToTurn, jumpAfterClosing } = useWorkshopTurnJump({
     closeOverlay: closeTextSheet,
-    onOutsideWindow: showTurnOutsideWindow
+    onOutsideWindow: openTurnPreviewSheet
   });
+  const openBookmark = React.useCallback(
+    // The host's `inWindow` decides; the thread is never searched to re-derive it.
+    (bookmark: WorkshopBookmarkSummary) => bookmark.inWindow
+      ? jumpToTurn(bookmark.turnId, bookmark.label)
+      : openTurnPreviewSheet(bookmark.turnId, bookmark.label),
+    [jumpToTurn, openTurnPreviewSheet]
+  );
 
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
@@ -1096,6 +1109,14 @@ export const WorkshopApp: React.FC = () => {
         onAction: workshop.todoAction,
         onShowSource: jumpToTurn
       }}
+      bookmarks={{
+        bookmarks: bookmarks.bookmarks,
+        disabled: roomMutationLocked,
+        onOpen: openBookmark,
+        onRename: bookmarks.renameBookmark,
+        renameOutcome: bookmarks.renameOutcome,
+        onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
+      }}
     />
   );
 
@@ -1226,6 +1247,9 @@ export const WorkshopApp: React.FC = () => {
             turnBranchability={workshop.turnRewindability}
             branchPausedReason={branchPausedReason}
             onBranch={requestBranch}
+            bookmarkedTurnIds={bookmarks.bookmarkedTurnIds}
+            bookmarkDisabled={roomMutationLocked}
+            onToggleBookmark={bookmarks.setTurnBookmark}
           />
 
           {showLiveTurn && (
@@ -1397,6 +1421,7 @@ export const WorkshopApp: React.FC = () => {
           lineRange={sheetBody?.lineRange}
           changedSinceRead={sheetBody?.changedSinceRead}
           onShowWhereRead={readInCardTurnId ? () => jumpAfterClosing(readInCardTurnId) : undefined}
+          turnPreview={sheetBody?.turnPreview}
           applyDisabled={roomMutationLocked}
           onApply={applyTextSheet}
           onPasteText={

@@ -2,7 +2,8 @@
  * Presentation controller for the Workshop rail's two tabs (ADR 2026-11-03 D1).
  *
  * It owns which tab is showing and, per tab, how many items arrived while
- * that tab was hidden: to-dos for Notes, read-in rows for Material (D2). It
+ * that tab was hidden: to-dos and bookmarks (D5) for Notes, read-in rows for
+ * Material (D2). It
  * never switches a tab by itself: a badge is the whole signal.
  * The selected tab is a per-viewer preference (webview state, never the
  * session file); the seen-id set is deliberately not persisted, so a reload
@@ -10,7 +11,7 @@
  */
 
 import * as React from 'react';
-import type { WorkshopTodoItem } from '@messages';
+import type { WorkshopBookmarkSummary, WorkshopTodoItem } from '@messages';
 import type { ContextSourceEntry } from '@shared/types';
 import { readInRowIdentity } from '@utils/workshop/contextSources';
 
@@ -50,13 +51,18 @@ export interface UseWorkshopRailTabsOptions {
    * participants never badges Material.
    */
   readInKey?: string;
+  /**
+   * The snapshot's bookmark summaries. A bookmark's identity is its `id`;
+   * every bookmark may badge, and one cleared while unseen drops its badge.
+   */
+  bookmarks?: readonly WorkshopBookmarkSummary[];
   /** The stored tab from webview state, read by the caller; may be anything. */
   initialTab?: unknown;
 }
 
 export interface WorkshopRailTabsState {
   activeTab: WorkshopRailTab;
-  /** Open, current to-dos that arrived while Notes was hidden. */
+  /** Open, current to-dos and bookmarks that arrived while Notes was hidden. */
   unseenNotesCount: number;
   /** Current read-in rows that arrived while Material was hidden. */
   unseenMaterialCount: number;
@@ -155,12 +161,14 @@ function useHiddenTabArrivals({
 }
 
 const NO_READ_IN: readonly ContextSourceEntry[] = [];
+const NO_BOOKMARKS: readonly WorkshopBookmarkSummary[] = [];
 
 export function useWorkshopRailTabs({
   todos,
   roomKey,
   readIn = NO_READ_IN,
   readInKey = '',
+  bookmarks = NO_BOOKMARKS,
   initialTab
 }: UseWorkshopRailTabsOptions): UseWorkshopRailTabsReturn {
   const [activeTab, setActiveTab] = React.useState<WorkshopRailTab>(
@@ -172,12 +180,23 @@ export function useWorkshopRailTabs({
     () => new Set(todos.filter(isBadgeableTodo).map((todo) => todo.id)),
     [todos]
   );
-  const unseenNotesCount = useHiddenTabArrivals({
+  const unseenTodoCount = useHiddenTabArrivals({
     visible: activeTab === 'notes',
     ids: todoIds,
     badgeableIds: badgeableTodoIds,
     baselineKey: roomKey
   });
+
+  const bookmarkIds = React.useMemo(() => bookmarks.map((bookmark) => bookmark.id), [bookmarks]);
+  const badgeableBookmarkIds = React.useMemo(() => new Set(bookmarkIds), [bookmarkIds]);
+  const unseenBookmarkCount = useHiddenTabArrivals({
+    visible: activeTab === 'notes',
+    ids: bookmarkIds,
+    badgeableIds: badgeableBookmarkIds,
+    // A new room re-baselines, so opening a session with bookmarks never badges.
+    baselineKey: roomKey
+  });
+  const unseenNotesCount = unseenTodoCount + unseenBookmarkCount;
 
   const readInIds = React.useMemo(() => readIn.map(readInRowIdentity), [readIn]);
   const badgeableReadInIds = React.useMemo(

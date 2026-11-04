@@ -12,7 +12,11 @@ import {
   useWorkshopRailTabs,
   WorkshopRailTab
 } from '@hooks/domain/workshop/controllers/useWorkshopRailTabs';
-import { WorkshopContextAttachmentSnapshot, WorkshopTodoItem } from '@messages';
+import {
+  WorkshopBookmarkSummary,
+  WorkshopContextAttachmentSnapshot,
+  WorkshopTodoItem
+} from '@messages';
 import type { ContextSourceEntry } from '@shared/types';
 
 const readInRow = (label: string, deliveredAt = 1_000): ContextSourceEntry => ({
@@ -53,9 +57,19 @@ const todo = (id: string, overrides: Partial<WorkshopTodoItem> = {}): WorkshopTo
   ...overrides
 });
 
+const bookmark = (id: string, inWindow = true): WorkshopBookmarkSummary => ({
+  id,
+  turnId: `turn-${id}`,
+  label: `Jill · Bookmark ${id}`,
+  participant: 'host',
+  personaId: 'jill',
+  inWindow
+});
+
 const panelProps = (
   todos: WorkshopTodoItem[] = [],
-  readIn: ContextSourceEntry[] = []
+  readIn: ContextSourceEntry[] = [],
+  bookmarks: WorkshopBookmarkSummary[] = []
 ): Omit<WorkshopRailProps, 'tabs' | 'roomKey'> => ({
   excerpt: {
     excerpt: null,
@@ -92,7 +106,8 @@ const panelProps = (
     onOpenReader: jest.fn(),
     onJump: jest.fn()
   },
-  todos: { todos, onAction: jest.fn(), onShowSource: jest.fn() }
+  todos: { todos, onAction: jest.fn(), onShowSource: jest.fn() },
+  bookmarks: { bookmarks, onOpen: jest.fn(), onRename: jest.fn(() => 'rename-1'), onRemove: jest.fn() }
 });
 
 const StatefulRail: React.FC<{
@@ -105,6 +120,7 @@ const StatefulRail: React.FC<{
     roomKey,
     readIn: props.readIn.entries,
     readInKey: props.readIn.participantIdentity,
+    bookmarks: props.bookmarks.bookmarks,
     initialTab
   });
   return <WorkshopRail tabs={tabs} roomKey={roomKey} {...props} />;
@@ -334,5 +350,50 @@ describe('WorkshopRail', () => {
     };
     rerender(<StatefulRail props={guest} initialTab="notes" />);
     expect(screen.getByRole('tab', { name: 'Material, 3 items' })).toBeTruthy();
+  });
+
+  describe('bookmarks (Slice 5)', () => {
+    it('lists bookmarks under the to-dos on Notes, and counts them in the tab', () => {
+      const props = panelProps([todo('1')], [], [bookmark('a'), bookmark('b', false)]);
+      render(<StatefulRail props={props} initialTab="notes" />);
+
+      const notes = screen.getByRole('tabpanel', { name: /Notes/ });
+      const text = notes.textContent ?? '';
+      expect(text.indexOf('To-do List')).toBeGreaterThanOrEqual(0);
+      expect(text.indexOf('Bookmarks')).toBeGreaterThan(text.indexOf('To-do List'));
+      expect(within(notes).getByRole('region', { name: 'Bookmarks' })).toBeTruthy();
+      expect(tab(/^Notes/).getAttribute('aria-label')).toBe('Notes, 1 open, 2 bookmarks');
+    });
+
+    it('keeps an open rename across a tab switch, then saves that draft', () => {
+      const props = panelProps([], [], [bookmark('a')]);
+      render(<StatefulRail props={props} initialTab="notes" />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rename bookmark: Jill · Bookmark a' }));
+      fireEvent.change(screen.getByRole('textbox', { name: 'Bookmark name' }), {
+        target: { value: 'The lantern beat' }
+      });
+
+      fireEvent.click(tab(/^Material/));
+      expect(screen.queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+      fireEvent.click(tab(/^Notes/));
+
+      const input = screen.getByRole('textbox', { name: 'Bookmark name' }) as HTMLInputElement;
+      expect(input.value).toBe('The lantern beat');
+      expect(props.bookmarks.onRename).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(props.bookmarks.onRename).toHaveBeenCalledWith('a', 'The lantern beat');
+    });
+
+    it('drops an open rename when the room is replaced', () => {
+      const props = panelProps([], [], [bookmark('a')]);
+      const { rerender } = render(<StatefulRail props={props} initialTab="notes" />);
+      fireEvent.click(screen.getByRole('button', { name: 'Rename bookmark: Jill · Bookmark a' }));
+      fireEvent.change(screen.getByRole('textbox', { name: 'Bookmark name' }), { target: { value: 'Old room' } });
+
+      rerender(<StatefulRail props={props} initialTab="notes" roomKey="room:2" />);
+
+      expect(screen.queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+      expect(props.bookmarks.onRename).not.toHaveBeenCalled();
+    });
   });
 });

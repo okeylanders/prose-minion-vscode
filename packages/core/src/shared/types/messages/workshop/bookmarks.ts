@@ -1,5 +1,7 @@
 /**
- * Workshop bookmarks (ADR 2026-11-03 D5, D6, D9, D10).
+ * Workshop bookmarks (ADR 2026-11-03 D5, D6, D9, D10), and the read-only
+ * turn preview that opens a bookmark, a to-do's source or a read-in card
+ * outside the snapshot's window (D6).
  *
  * The writer marks a bubble to come back to it. Bookmarks are host-owned
  * session state: the host checks which turns may carry one, mints ids, and
@@ -54,8 +56,14 @@ export interface WorkshopSetTurnBookmarkMessage
   type: MessageType.WORKSHOP_SET_TURN_BOOKMARK;
 }
 
-/** Name a bookmark; `null` (or a blank label) restores the default. */
+/**
+ * Name a bookmark; `null` (or a blank label) restores the default.
+ * `requestId` is minted by the webview and echoed in
+ * `WORKSHOP_RENAME_BOOKMARK_RESULT`, so the field keeps the writer's draft
+ * until the host says whether it kept the name (PR #189 F-01).
+ */
 export interface WorkshopRenameBookmarkPayload {
+  requestId: string;
   bookmarkId: string;
   label: string | null;
 }
@@ -63,4 +71,78 @@ export interface WorkshopRenameBookmarkPayload {
 export interface WorkshopRenameBookmarkMessage
   extends MessageEnvelope<WorkshopRenameBookmarkPayload> {
   type: MessageType.WORKSHOP_RENAME_BOOKMARK;
+}
+
+/**
+ * The host's answer to one rename: accepted (the next snapshot holds the
+ * label) or refused, with a reason that names no content. A refusal changed
+ * nothing.
+ */
+export interface WorkshopRenameBookmarkResultPayload {
+  requestId: string;
+  bookmarkId: string;
+  accepted: boolean;
+  error?: string;
+}
+
+export interface WorkshopRenameBookmarkResultMessage
+  extends MessageEnvelope<WorkshopRenameBookmarkResultPayload> {
+  type: MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT;
+}
+
+/**
+ * Ask for one turn of the room, read-only, for the preview sheet (ADR
+ * 2026-11-03 D6). `requestId` is minted by the webview and echoed, so only
+ * the answer to the pending request is taken (as the Read in reader's is).
+ */
+export interface WorkshopRequestTurnPreviewPayload {
+  requestId: string;
+  turnId: string;
+  /**
+   * The room the webview was showing (the snapshot's `roomRevision`). The
+   * host answers only from that room, and refuses once it has been replaced
+   * (PR #189 F-02).
+   */
+  roomRevision: number;
+}
+
+export interface WorkshopRequestTurnPreviewMessage
+  extends MessageEnvelope<WorkshopRequestTurnPreviewPayload> {
+  type: MessageType.WORKSHOP_REQUEST_TURN_PREVIEW;
+}
+
+/**
+ * One turn as the preview shows it: exactly what the transcript projection
+ * (`projectWorkshopTranscriptTurn`) gives export and recall, so no
+ * host-private body (attachment text, widget payloads, capability evidence,
+ * context details) is ever sent.
+ */
+export interface WorkshopTurnPreview {
+  /** A writer message, a participant reply, or a one-line notice. */
+  kind: 'writer' | 'reply' | 'event';
+  /** Who wrote it, as the thread names them ("You" for the writer). */
+  speaker: string;
+  /** The projected Markdown body (a notice's one line). */
+  content: string;
+  /** Epoch ms of the turn. */
+  timestamp: number;
+  /** The instrument it went to or came from privately, when it bypassed the room. */
+  privateWith?: string;
+  /** A reply that stopped at the max-token limit. */
+  truncated?: true;
+}
+
+export interface WorkshopTurnPreviewPayload {
+  requestId: string;
+  turnId: string;
+  /** The room the request named, echoed. */
+  roomRevision: number;
+  /** Absent when the host refused; then `error` says why, naming no content. */
+  turn?: WorkshopTurnPreview;
+  error?: string;
+}
+
+export interface WorkshopTurnPreviewMessage
+  extends MessageEnvelope<WorkshopTurnPreviewPayload> {
+  type: MessageType.WORKSHOP_TURN_PREVIEW;
 }

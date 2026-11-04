@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D5, D6, D9, and D10 (bookmarks)
-**Status:** Built, on `epic/workshop-wayfinding-slice-4-bookmarks-host` (cut from the epic at `89d6f26`); review fix F-01 verified at `5d0b5fc`; in review on PR #188.
+**Status:** Done. Merged into the epic through PR #188 (`356c751`) after Astra's re-review resolved F-01 ([review](../../../docs/pr-reviews/pr-188-workshop-wayfinding-bookmarks-host-review.md)). Built in `1ed59f5`, `9f3b261`, `b476e99`, `c72906d`, `c813fb4`, `852e023`, `87c089a`; review fix `5d0b5fc`.
 
 ## Outcome
 

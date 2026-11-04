@@ -13,16 +13,16 @@
  */
 
 import type { WorkshopTurn, WorkshopTurnBookmark } from '@messages';
-import { isStoredWorkshopBookmarkLabel } from '@shared/constants/workshopBookmarks';
+import {
+  isStoredWorkshopBookmarkLabel,
+  isWorkshopBookmarkableTurn
+} from '@shared/constants/workshopBookmarks';
 import {
   arrayOf,
   exactObject,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
-import {
-  isWorkshopBookmarkableTurn,
-  parseWorkshopBookmarkId
-} from '@/application/services/workshop/session/WorkshopBookmarkLedger';
+import { parseWorkshopBookmarkId } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
 
 const PATH = 'Workshop session state.bookmarks';
 

@@ -8,7 +8,9 @@
  * wizard suggestion. Two read-only cases serve files: an attached project
  * file, and a file a participant read on its own (Read in, ADR 2026-11-03
  * D4) — the prettified in-webview markdown read, with an explicit escape
- * hatch to the real document in an editor tab.
+ * hatch to the real document in an editor tab. One more read-only case shows
+ * a turn outside the thread's loaded window (D6), as the transcript
+ * projects it.
  *
  * Preview reuses the shared sanitized MarkdownRenderer rather than a local
  * regex renderer: the comp's preview promises "markdown rendered as the room
@@ -26,6 +28,8 @@ import { WorkshopModalShell } from './WorkshopModalShell';
 import { WorkshopReadInLines } from './WorkshopReadInLines';
 import { countWords } from '@/utils/textUtils';
 import { formatReadInTime } from '@utils/workshop/contextSources';
+import type { WorkshopTurnPreview } from '@messages';
+import { workshopPrivateThreadLabel } from './WorkshopTurnBubble';
 import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
@@ -49,6 +53,8 @@ export interface WorkshopTextSheetProps {
   changedSinceRead?: boolean;
   /** The reader: shows the card that recorded the read, closing the sheet first. */
   onShowWhereRead?: () => void;
+  /** The turn preview's projected turn, once the host has answered (D6). */
+  turnPreview?: WorkshopTurnPreview;
   /** Disables Apply while a run/session operation holds the room. */
   applyDisabled?: boolean;
   onApply: (text: string) => void;
@@ -92,7 +98,7 @@ const ATTACHED_TEXT_LOADING = 'Loading the attached text…';
 
 const sheetCopy = (
   mode: WorkshopTextSheetMode,
-  handlers: Pick<WorkshopTextSheetProps, 'onChooseFromProject'>
+  handlers: Pick<WorkshopTextSheetProps, 'onChooseFromProject' | 'turnPreview'>
 ): SheetCopy => {
   switch (mode.kind) {
     case 'excerpt':
@@ -198,6 +204,22 @@ const sheetCopy = (
         openLabel: 'Open beside',
         loadingLabel: 'Loading the file…'
       };
+    case 'turn-preview': {
+      const turn = handlers.turnPreview;
+      return {
+        kicker: turn ? `${turn.speaker} · ${formatReadInTime(turn.timestamp)}` : 'From this session',
+        title: mode.label ?? turn?.speaker ?? 'A message from this session',
+        sub: 'This message is outside the thread’s loaded window, so it opens here, read-only.',
+        placeholder: '',
+        editLabel: 'Source',
+        meta: 'Outside the loaded window',
+        foot: turn?.truncated ? 'The reply stopped at the max-token limit · read-only' : 'Read-only',
+        applyLabel: '',
+        readOnly: true,
+        openLabel: '',
+        loadingLabel: 'Loading the message…'
+      };
+    }
   }
 };
 
@@ -212,6 +234,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   lineRange,
   changedSinceRead = false,
   onShowWhereRead,
+  turnPreview,
   applyDisabled = false,
   onApply,
   onOpenInEditor,
@@ -226,7 +249,7 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
   const previewRef = React.useRef<HTMLDivElement>(null);
   const linesRef = React.useRef<HTMLDivElement>(null);
 
-  const copy = sheetCopy(mode, { onChooseFromProject });
+  const copy = sheetCopy(mode, { onChooseFromProject, turnPreview });
   // A ranged read opens on its numbered lines, where the band and marker are.
   const readIn = mode.kind === 'read-in' ? mode : undefined;
   const linesView = readIn !== undefined && lineRange !== undefined;
@@ -294,6 +317,11 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
           <div className="pm-ws-eyebrow">{copy.kicker}</div>
           <h2 id={TITLE_ID}>{copy.title}</h2>
           <p>{copy.sub}</p>
+          {mode.kind === 'turn-preview' && turnPreview?.privateWith ? (
+            <p className="pm-ws-private-thread-label">
+              <Icon name="info" size={11} /> {workshopPrivateThreadLabel(turnPreview.privateWith)}
+            </p>
+          ) : null}
           {readIn && lineRange ? (
             <p className="pm-ws-readin-sheet-range">
               Read at {formatReadInTime(readIn.deliveredAt)} · lines {lineRange.start}–{lineRange.end}

@@ -238,7 +238,9 @@ export class WorkshopSliceComposition {
         markDirty,
         reportError: (message, details) =>
           host.reportRouteError('workshop.bookmark', message, details, 'WorkshopBookmarkHandler')
-      }
+      },
+      postMessage,
+      sessionPersistence
     );
   }
 

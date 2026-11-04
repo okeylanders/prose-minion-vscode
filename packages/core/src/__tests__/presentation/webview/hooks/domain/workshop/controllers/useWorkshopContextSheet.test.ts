@@ -50,6 +50,9 @@ const options = (
   openReadInResource: jest.fn(),
   clearReadInContent: jest.fn(),
   readInScopeKey: 'room:1\u0000jill',
+  turnPreview: null,
+  requestTurnPreview: jest.fn(() => 'ws-preview-1'),
+  clearTurnPreview: jest.fn(),
   ...overrides
 });
 
@@ -322,6 +325,79 @@ describe('useWorkshopContextSheet', () => {
       };
       rerender();
       expect(result.current.sheetBody).toMatchObject({ loading: true, value: undefined, lineRange: undefined });
+    });
+  });
+
+  describe('the turn preview (ADR 2026-11-03 D6)', () => {
+    const preview = { kind: 'reply' as const, speaker: 'Jill', content: 'An older reply.', timestamp: 1 };
+
+    it('asks for the turn and opens its own sheet, keyed by the request', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+
+      act(() => result.current.openTurnPreviewSheet('turn-0', 'Jill · An older reply'));
+
+      expect(props.requestTurnPreview).toHaveBeenCalledWith('turn-0');
+      expect(result.current.textSheet?.mode).toEqual({
+        kind: 'turn-preview',
+        turnId: 'turn-0',
+        requestId: 'ws-preview-1',
+        label: 'Jill · An older reply'
+      });
+      expect(result.current.sheetKey).toBe('turn-preview:ws-preview-1');
+      expect(result.current.sheetBody).toMatchObject({ loading: true, value: undefined, canOpenInEditor: false });
+    });
+
+    it('fills the body only from the reply to its own request', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openTurnPreviewSheet('turn-0'));
+
+      props.turnPreview = { requestId: 'ws-preview-0', turnId: 'turn-0', roomRevision: 1, turn: { ...preview, content: 'Late' } };
+      rerender();
+      expect(result.current.sheetBody?.value).toBeUndefined();
+
+      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', roomRevision: 1, turn: preview };
+      rerender();
+      expect(result.current.sheetBody).toMatchObject({ loading: false, value: 'An older reply.', turnPreview: preview });
+
+      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', roomRevision: 1, error: 'That message is no longer in this session.' };
+      rerender();
+      expect(result.current.sheetBody).toMatchObject({ loading: false, error: 'That message is no longer in this session.' });
+    });
+
+    it('replaces an open reader in place, dropping the reader\'s request', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+
+      act(() => result.current.openTurnPreviewSheet('turn-0'));
+
+      expect(result.current.textSheet?.mode.kind).toBe('turn-preview');
+      expect(props.clearReadInContent).toHaveBeenCalled();
+    });
+
+    it('applies nothing, and drops its request on close and when the room or chat target changes', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openTurnPreviewSheet('turn-0'));
+      act(() => result.current.applyTextSheet('edited'));
+      expect(props.addContextText).not.toHaveBeenCalled();
+      expect(result.current.textSheet?.mode.kind).toBe('turn-preview');
+
+      act(() => result.current.closeTextSheet());
+      expect(props.clearTurnPreview).toHaveBeenCalledTimes(1);
+
+      act(() => result.current.openTurnPreviewSheet('turn-0'));
+      props.readInScopeKey = 'room:1\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
+      expect(props.clearTurnPreview).toHaveBeenCalledTimes(2);
+
+      act(() => result.current.openTurnPreviewSheet('turn-0'));
+      props.readInScopeKey = 'room:2\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
     });
   });
 });

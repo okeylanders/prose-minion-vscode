@@ -4,7 +4,10 @@
  * useWorkshopTurnJump (ADR 2026-11-03 D3, D4): one scroll-and-focus path for a
  * turn. From inside a sheet it hands the jump to the overlay's focus restore,
  * which runs it in place of the opener once the sheet is gone (PR #187 F-01).
- * The full path through the real sheet is in `WorkshopApp.readInProvenance`.
+ * A turn outside the window goes to the caller (the read-only preview,
+ * Slice 5); from inside a sheet it goes there with the sheet still open, so
+ * the preview replaces it in place. The full paths through the real sheet
+ * are in `WorkshopApp.readInProvenance` and `WorkshopApp.bookmarks`.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -56,17 +59,27 @@ describe('useWorkshopTurnJump', () => {
     expect(props.onOutsideWindow).not.toHaveBeenCalled();
   });
 
-  it('reports a turn outside the reload window instead', () => {
+  it('hands a turn outside the reload window to the caller, with the label it was given', () => {
     const props = options();
     const { result } = renderHook(() => useWorkshopTurnJump(props));
 
     let took = true;
-    act(() => { took = result.current.jumpToTurn('turn-1-assistant-0'); });
+    act(() => { took = result.current.jumpToTurn('turn-1-assistant-0', 'Jill · An older reply'); });
 
-    // Taking no focus leaves the overlay's opener restore to run.
     expect(took).toBe(false);
-    expect(props.onOutsideWindow).toHaveBeenCalledTimes(1);
+    expect(props.onOutsideWindow).toHaveBeenCalledWith('turn-1-assistant-0', 'Jill · An older reply');
     expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('from inside an overlay, hands a turn outside the window over without closing the overlay', () => {
+    const props = options();
+    const { result } = renderHook(() => useWorkshopTurnJump(props));
+
+    act(() => result.current.jumpAfterClosing('turn-1-assistant-0'));
+
+    expect(props.onOutsideWindow).toHaveBeenCalledWith('turn-1-assistant-0');
+    expect(props.closeOverlay).not.toHaveBeenCalled();
+    expect(focusAfterOverlaysClose).not.toHaveBeenCalled();
   });
 
   it('matches the turn id exactly, never as a selector', () => {

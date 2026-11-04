@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 is built and in review (PR #188).
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 is in progress.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -51,8 +51,8 @@ the ADR:
 | 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | Done: PR #184, merged at `d45d57c` |
 | 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Done: PR #186, merged at `d59b651` |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Done: PR #187, merged at `89d6f26` |
-| 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Built; in review on PR #188 |
-| 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
+| 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Done: PR #188, merged at `356c751` |
+| 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | In progress |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
@@ -542,4 +542,99 @@ the ADR:
       passing. Typecheck clean. Lint 0 errors, 1,140 warnings, unchanged.
     - *Sizes.* `WorkshopBookmarkLedger.ts` 279 → 324; no over-500 file
       changed.
+  - **Merged.** Astra's re-review at `c42abe1` resolved F-01. CI was green on
+    `59e145c`, and the coordinator merged PR #188 into the epic at `356c751`.
+  - **Coordinator calls.** Tool-run requests stay ineligible; the tool report
+    that answers one is bookmarkable. Whether Rewind's summary names the
+    bookmarks it removes is left to Slice 5.
+- **2026-11-04. Slice 5 (bookmarks in the rail and thread).** Started on
+  `epic/workshop-wayfinding-slice-5-bookmarks-ui`, cut from the epic at
+  `356c751`. The slice doc's [Since Slice 4](slice-5-bookmarks-ui.md#since-slice-4)
+  section lists what the earlier slices settled for it.
+- **2026-11-04. Slice 5 built.** The
+  [slice doc](slice-5-bookmarks-ui.md#built) has the full map.
+  - **Commits.**
+    - `d295bcd`: `isWorkshopBookmarkableTurn` moves to
+      `shared/constants/workshopBookmarks.ts`; the ledger, the codec and the
+      bubble read the one rule.
+    - `bba9a43`: `WORKSHOP_REQUEST_TURN_PREVIEW` → `WORKSHOP_TURN_PREVIEW`,
+      correlated by a webview-minted `requestId`. `WorkshopBookmarkHandler`
+      serves it as a direct read: it waits out a room replacement, reads
+      `readRoomLedger()`, and sends the turn only through
+      `projectWorkshopTranscriptTurn` (`WorkshopTurnPreview`).
+      `useWorkshopBookmarks` is the transport.
+    - `3823135`: `WorkshopBookmarkToggle` in the bubble; the Notes badge
+      counts bookmarks by id.
+    - `5a59a0c`: `WorkshopBookmarkList` under To-dos, rename through
+      `useWorkshopBookmarkRename`, remove, the Notes count. A writer message
+      now carries its turn id, so a jump to one lands.
+    - `47326e1`: the `turn-preview` sheet mode; `useWorkshopTurnJump` opens
+      it for any unrendered turn (bookmarks, to-do sources, read-in card
+      rows), and the out-of-window toast is gone.
+    - `9b2a605`: why the export's bookmark mark stays export-only.
+    - The docs commit with this note also splits the App tests into
+      `WorkshopApp.bookmarks` and `WorkshopApp.turnPreview`, so neither
+      passes 500 lines.
+  - **Counts.**
+    - Before, at `356c751`: 621 suites / 8,814 tests / 59 snapshots.
+    - After, at `9b2a605` on a clean tree: 625 / 8,891 / 59, all passing.
+      With the test split: 626 / 8,891 / 59.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,140 → 1,146, all
+      `naming-convention`: `WorkshopBookmarkList`, `WorkshopBookmarkToggle`,
+      the two new `MessageType` members, and the two new App tests' `PmLogo`
+      mocks.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by the seam:
+    - `WorkshopApp.tsx` 1,713 → 1,737: the hook, the sheet's three preview
+      options, `openBookmark`, the rail's `bookmarks` props and the thread's
+      three toggle props.
+    - `WorkshopTurnBubble.tsx` 754 → 779: three props, the toggle, its two
+      placements, and the writer bubble's turn id.
+    - `styles/workshop/shell.css` 2,673 → 2,792: the toggle and list rules.
+      A new stylesheet would need a Jest mock in every `WorkshopApp` test.
 
+    New files are all under 500 lines.
+  - **Decisions recorded in the slice doc.** Rewind names no removed
+    bookmarks, because its confirmation and result name no removed to-dos.
+    No export rule moved to the mirrored layer, because the thread's mark is
+    an action-row control that export never renders.
+  - **PR #189 review (Astra, 2026-11-04).** Two P2s, both fixed in
+    `e944375`, and one P3, N-01, fixed in `c97d947`. The ledger is in
+    [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
+    - **F-01.** A rename refused under the session-operation gate lost the
+      writer's draft, because the field closed as soon as it posted. A
+      rename now names its request. `WORKSHOP_RENAME_BOOKMARK_RESULT`
+      answers it, and the field keeps the draft until then.
+    - **F-02.** During an Open whose rooms shared a turn id, a preview asked
+      for in the old room could be answered from the new one. The request
+      now names its `roomRevision`. The host waits out every pending
+      replacement and refuses once the room is another, and the webview
+      drops a reply from another room.
+    - **N-01 (P3).** The preview now names who heard a private exchange,
+      in the bubble's wording.
+    - *Counts.* At `e944375`: 628 suites / 8,910 tests / 59 snapshots, all
+      passing. At `c97d947`: 628 / 8,913 / 59; one Lightbox passages
+      wall-clock test failed under load in the full run and passed alone
+      ([tech debt](../../tech-debt/2026-11-03-lightbox-passages-wall-clock-test.md)).
+      With the N-01 App witness: 628 / 8,914 / 59, all passing. Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
+      `naming-convention`: one enum member, one `PmLogo` mock, and the jsdom
+      text-encoding shim's two names.
+    - *Sizes.* `WorkshopSessionService` 2,595 → 2,600 (`readRoomRevision`);
+      `WorkshopApp.tsx` 1,737 → 1,738; `shell.css` 2,792 → 2,797. New and
+      touched files otherwise stay under 500.
+  - **PR #189 re-review (Astra, 2026-11-04).** F-01's gate refusal, F-02's
+    successful-Open binding and N-01 confirmed. Two new P2s, both from those
+    fixes, both fixed.
+    - **`0659956`, F-03.** A second row's rename could take over the first
+      one's pending answer. The pending rename now records its owner, one
+      rename runs at a time (other rows' Rename is disabled), and Escape
+      while pending abandons the request.
+    - **`905f43b`, F-04.** A failed Open restored the room under a new
+      revision but posted no snapshot, so every later preview was refused.
+      Its failure path now posts the restored room, as New, Rewind and
+      Branch's did.
+    - *Counts.* At `905f43b`: 629 suites / 8,924 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,150 warnings, unchanged.
+    - *Sizes.* `WorkshopSessionMessageHandler` grew by 4 lines (the post and
+      its comment). New and touched files otherwise stay under 500.
