@@ -86,3 +86,16 @@ The original F-01 refusal witness now preserves its draft when left on that row.
 Prevent another row from replacing a pending editor, or separate each request's owner and draft from the currently edited row. Cover both accepted and refused A results after attempting to open B, as well as cancellation, room replacement and normal sequential renames. This re-review's cross-row witness is new; the original F-01 gate-refusal fix itself passes its direct reproduction. The subsequent `c78ca0e` changes tests/docs only, so production source remains the same.
 
 F-02 and N-01 are still being independently rechecked on the corrected source. No formal approval or merge was made.
+
+
+## F-04: P2: a failed Open leaves the preview bound to an obsolete room revision
+
+**Locations:** [`WorkshopBookmarkHandler.ts:95–110`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/application/handlers/domain/workshop/WorkshopBookmarkHandler.ts#L95-L110), [`WorkshopSessionMessageHandler.ts:371–376`](https://github.com/okeylanders/prose-minion-vscode/blob/13af9ddc9e7a0c856208116af3378fbb9590b97c/packages/core/src/application/handlers/domain/workshop/WorkshopSessionMessageHandler.ts#L371-L376).
+
+The F-02 correction binds preview requests to the webview's room revision and correctly refuses an old-room request after a successful Open. A different failure path leaves that revision stale: if Open hydrates the replacement room and a later `writeCurrent` fails, rollback restores the original ledger and bookmarks but advances the host room revision. The Open error path posts the failure without a `WORKSHOP_SESSION_STATE` snapshot, so the webview keeps its prior revision.
+
+An independent full-App test uses the real coordinator, store and production Open/preview handlers, forcing that durable write to fail. After the failure settles, closing and reopening an old bookmark twice sends the old revision both times; both previews say “The room changed before this message could be shown,” and no turn is returned. The App makes no refresh request. Delivering one later authoritative snapshot immediately repairs the revision and the next preview succeeds. Thus the preview remains broken until another snapshot happens; this is not the transient cross-room display from the original F-02.
+
+Publish the restored room's authoritative snapshot after rollback, or otherwise reconcile the webview revision before further reads, without allowing the original cross-room preview. Add the real post-hydration failed-Open path, repeated preview attempts, recovery after reconciliation and successful/failed replacement controls. Preserve the F-02 successful-Open room binding.
+
+The original successful-Open F-02 witness and N-01 private labels now pass independently; F-03 above and this rollback case remain open. No formal approval or merge was made.
