@@ -1,0 +1,25 @@
+# PR #191 review: Workshop Wayfinding live-pass checklist
+
+**Disposition: three nonblocking checklist corrections recommended before the human pass.** This is a documentation review, not live acceptance, a formal GitHub approval or authorization to merge.
+
+**Reviewed head:** `94a93e95bf1b85d15a2add898a0358c845b5ccf8`  
+**Base:** `6c12df5bece661912504ae5125928cf9afc904d0`  
+**PR:** [#191](https://github.com/okeylanders/prose-minion-vscode/pull/191) · **Reviewed:** 2026-11-04
+
+## N-01: Use an achievable to-do badge recipe
+
+[The checklist](https://github.com/okeylanders/prose-minion-vscode/blob/94a93e95bf1b85d15a2add898a0358c845b5ccf8/.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-8-live-pass.md#L32-L34) asks for a to-do the host adds while Notes is hidden. The amended D1 decision explicitly records that the current producer is the writer adding a finding; the earlier host-only rule badged nothing. Ask the writer to add a finding as a to-do while Notes is hidden, then check the badge and clearing. This makes the live step achievable and exercises the actual producer.
+
+## N-02: Separate JSON stamps from visual slices
+
+[The checklist](https://github.com/okeylanders/prose-minion-vscode/blob/94a93e95bf1b85d15a2add898a0358c845b5ccf8/.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-8-live-pass.md#L83-L86) says Markdown, HTML and JSON show the same slices. Slice 7 deliberately emits visual slice entries only in Markdown/HTML; JSON carries the per-turn `model` fields and no synthetic slice entries. Ask for Markdown/HTML placement parity and separately verify the JSON model stamps. Otherwise a correct JSON export would appear to fail.
+
+## N-03: Carry forward the specific native reader acceptance cases
+
+The earlier [Slice 2 re-review](https://github.com/okeylanders/prose-minion-vscode/blob/6c12df5bece661912504ae5125928cf9afc904d0/docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md) explicitly left native `details/summary`, disabled-fieldset traversal and screen-reader acceptance unverified after replacing manual Tab enumeration with inert background. The checklist has a generic forward-Tab step and a screen-reader check for the model divider, but not those reader cases. Include a rich-Markdown resource and test Tab/Shift+Tab reaches its summary, skips inherited-disabled controls, and keeps the Workshop background inert; include reader/rail screen-reader navigation.
+
+Also exercise **Show where it was read** when the card is outside the loaded window: the reader should hand off to the out-of-window preview without focus returning behind the active sheet. The current checklist covers the in-window card jump and a separate direct out-of-window preview, but not that sheet-to-sheet handoff.
+
+## Scope and limits
+
+These are checklist issues; no native VS Code pass, model call, implementation change, formal approval or merge was performed. All five listed writer decisions remain open and their built defaults are not treated as acceptance. The aggregate technical integration review is separate and in progress.
