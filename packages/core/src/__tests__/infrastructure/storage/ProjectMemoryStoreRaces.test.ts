@@ -219,6 +219,56 @@ describe('a delete deletes only the memory it was asked to (PR #194 F-02)', () =
   });
 });
 
+describe('a refused delete never loses the bytes it claimed, even when its saved name is taken (PR #194 F-02, re-review)', () => {
+  /** The review's steps: `claimed` put at the path just before the claim, then `occupant` at the path just after it. */
+  function claimThenOccupy(fileSystem: MemoryFileSystem, filePath: string, claimed: Uint8Array, occupant: Uint8Array) {
+    const rename = fileSystem.rename.bind(fileSystem);
+    jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+      const claiming = fromPath === filePath && toPath.includes('.claim-');
+      if (claiming) {
+        fileSystem.files.set(filePath, claimed);
+      }
+      await rename(fromPath, toPath, options);
+      if (claiming) {
+        fileSystem.files.set(filePath, occupant);
+      }
+    });
+  }
+  const withId = (bytes: Uint8Array | undefined, id: string) => new TextEncoder().encode(text(bytes).replace(/^id: .*$/m, `id: ${id}`));
+
+  it('another memory it claimed lands under a free name, and a lease-settling listing 31 seconds on keeps both', async () => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    claimThenOccupy(fileSystem, filePath, withId(original, 'mem-abcdef'), withId(original, 'mem-fedcba'));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    clock.at += 31_000;
+    const listing = await store.list();
+    expect(listing.kind === 'listed' && listing.memories.map((memory) => memory.memory.id).sort()).toEqual(['mem-abcdef', 'mem-fedcba']);
+    expect(everyFile(fileSystem).filter((name) => name.includes('.claim-'))).toEqual([]);
+  });
+
+  it('unreadable bytes it claimed land under a free name, and survive a lease-settling listing beside the occupant', async () => {
+    const { fileSystem, store, clock } = host();
+    const entry = await createdEntry(store);
+    const filePath = path.join(MEMORY, entry.fileName);
+    const original = fileSystem.files.get(filePath);
+    claimThenOccupy(fileSystem, filePath, new TextEncoder().encode('A note the writer half-typed.'), withId(original, 'mem-fedcba'));
+
+    expect(await store.delete(entry.memory.id)).toEqual({ kind: 'changed' });
+    clock.at += 31_000;
+    const listing = await store.list();
+    expect(listing).toMatchObject({
+      kind: 'listed',
+      memories: [{ memory: { id: 'mem-fedcba' } }],
+      unreadable: [{ reason: 'no-frontmatter' }]
+    });
+    expect([...fileSystem.files.values()].map((bytes) => text(bytes))).toContain('A note the writer half-typed.');
+  });
+});
+
 describe('shutdown drains owed writes', () => {
   it('waits for a write in flight, and for one started while it waits', async () => {
     const { fileSystem, store } = host();

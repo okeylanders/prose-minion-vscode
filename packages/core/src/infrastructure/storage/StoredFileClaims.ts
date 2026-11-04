@@ -59,6 +59,16 @@ export const STORED_FILE_CLAIM_LEASE_MS = 30_000;
  */
 export type StoredFileClaimState = 'present' | 'absent' | 'busy' | 'unknown';
 
+/** A delete's check of the bytes it claimed, and where refused bytes go when their saved name is taken (`deleteClaimed`). */
+export interface StoredFileDeleteCheck {
+  readonly verify: (claimed: Uint8Array) => boolean;
+  /** A free name in the saved file's folder, looked up when it is needed. */
+  readonly fallbackPath: () => Promise<string>;
+}
+
+/** Free names a refused delete tries, after its saved name, before it keeps its bytes under the claim. */
+const REFUSED_RELEASE_FALLBACKS = 3;
+
 /**
  * What a delete under a claim did (`StoredFileClaims.deleteClaimed`):
  * `changed` when the claimed bytes were not the file the caller meant, so
@@ -192,34 +202,37 @@ export class StoredFileClaims {
    * or a folder that could not be read again, puts the file back as it was
    * and says the delete `failed`. `label` names the file in logs.
    *
-   * With `verify`, the claimed bytes are checked before anything goes
+   * With `check`, the claimed bytes are checked before anything goes
    * (PR #194 F-02): the path a listing named may hold another file by the
-   * time it is claimed. Bytes `verify` refuses are put back, never
-   * deleted, and the delete says `changed`.
+   * time it is claimed. Bytes `check.verify` refuses are never deleted, and
+   * the delete says `changed`. They go back under the saved name, or,
+   * should another file stand there by then, under a free name
+   * (`check.fallbackPath`), as an ordinary file: never left under a claim,
+   * where a later settling would remove them as a rewrite's leftover (the
+   * re-review).
    */
   deleteClaimed(filePath: string, label: string, id: string): Promise<Exclude<StoredFileClaimedDelete, 'changed'>>;
-  deleteClaimed(filePath: string, label: string, id: string, verify: (claimed: Uint8Array) => boolean): Promise<StoredFileClaimedDelete>;
+  deleteClaimed(filePath: string, label: string, id: string, check: StoredFileDeleteCheck): Promise<StoredFileClaimedDelete>;
   async deleteClaimed(
     filePath: string,
     label: string,
     id: string,
-    verify?: (claimed: Uint8Array) => boolean
+    check?: StoredFileDeleteCheck
   ): Promise<StoredFileClaimedDelete> {
     const claimPath = await this.take(filePath, id);
     if (!claimPath) {
       const state = await this.settle(filePath);
       return state === 'busy' ? 'busy' : state === 'absent' ? 'missing' : 'failed';
     }
-    if (verify) {
+    if (check) {
       let claimed: Uint8Array | undefined;
       try {
         claimed = await this.fileSystem.readFile(claimPath);
       } catch {
         claimed = undefined;
       }
-      if (!claimed || !verify(claimed)) {
-        await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
-          .catch(() => this.log.appendLine(`${this.config.logPrefix} ${label} could not be put back at once; it comes back once its claim is older than the lease.`));
+      if (!claimed || !check.verify(claimed)) {
+        await this.releaseRefused(claimPath, filePath, label, check);
         this.log.appendLine(`${this.config.logPrefix} ${label} was not deleted: its file changed before it was claimed.`);
         return 'changed';
       }
@@ -238,6 +251,25 @@ export class StoredFileClaims {
       return 'failed';
     }
     return 'deleted';
+  }
+
+  /**
+   * Refused bytes back as an ordinary file: under the saved name, else the
+   * first free fallback name, never over anything. Only when every name is
+   * taken in turn (another writer naming files at each step) do they stay
+   * under the claim, and the log says so.
+   */
+  private async releaseRefused(claimPath: string, filePath: string, label: string, check: StoredFileDeleteCheck): Promise<void> {
+    const destinations = [async () => filePath, ...Array.from({ length: REFUSED_RELEASE_FALLBACKS }, () => check.fallbackPath)];
+    for (const destination of destinations) {
+      try {
+        await this.fileSystem.rename(claimPath, await destination(), { overwrite: false });
+        return;
+      } catch {
+        // Taken: try the next.
+      }
+    }
+    this.log.appendLine(`${this.config.logPrefix} The file claimed for ${label} could not be put back under any free name; it is kept under its claim.`);
   }
 
   private async settleName(folder: string, saved: string, entries: readonly string[]): Promise<{ state: StoredFileClaimState; changed: boolean }> {

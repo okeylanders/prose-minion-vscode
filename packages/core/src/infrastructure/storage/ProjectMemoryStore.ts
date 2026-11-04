@@ -290,9 +290,14 @@ export class ProjectMemoryStore {
         return notFound(found.kind);
       }
       // The claimed bytes must still be this memory, readable (PR #194 F-02): never another file put at its path.
-      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId(), (claimed) => {
-        const decoded = decodeProjectMemoryBytes(claimed);
-        return decoded.kind === 'memory' && decoded.memory.id === id;
+      const folder = path.dirname(found.filePath);
+      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId(), {
+        verify: (claimed) => {
+          const decoded = decodeProjectMemoryBytes(claimed);
+          return decoded.kind === 'memory' && decoded.memory.id === id;
+        },
+        // Refused bytes whose saved name another file took go under a free name, never left under the claim (the re-review).
+        fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName))
       });
       if (deleted === 'deleted') {
         this.log.appendLine(`${LOG} Deleted ${id}.`);
