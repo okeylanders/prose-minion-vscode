@@ -1,7 +1,8 @@
 /**
  * The project-memory library (ADR 2026-11-04 D1, D3, D5, D8, D10, D13):
- * what the frame builder, the persona capability and, later, the handlers
- * read memory through. It answers data, never prose, and it never writes.
+ * what the frame builder, the persona capability and the handlers read
+ * memory through. It answers data, never prose. Its writes (Slice 3) are the
+ * writer's alone, in `ProjectMemoryWrites`.
  *
  * - **Access is read live, on every call.** The global mode
  *   (`proseMinion.workshop.projectMemory`, through `SettingsStore`), the
@@ -53,6 +54,15 @@ import {
   searchProjectMemories,
   type ProjectMemorySearchOutcome
 } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
+import {
+  ProjectMemoryWrites,
+  type ProjectMemoryEditDataResult,
+  type ProjectMemoryEstimateResult,
+  type ProjectMemorySaveProvenance,
+  type ProjectMemoryWriteResult,
+  type ProjectMemoryWriteStorePort
+} from '@/application/services/workshop/memory/ProjectMemoryWrites';
+import type { WorkshopMemoryDraft } from '@messages';
 import type {
   WorkshopReplyMemoryContext,
   WorkshopReplyMemoryPort
@@ -61,6 +71,9 @@ import { hasWorkshopMemoryProposalText } from '@/utils/workshopReplyControls';
 
 /** The store's read-only methods; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryReadPort = Pick<ProjectMemoryStore, 'availability' | 'list' | 'read'>;
+
+/** The store's methods the library uses, writes included (Slice 3); satisfied by ProjectMemoryStore. */
+export type ProjectMemoryStorePort = ProjectMemoryReadPort & ProjectMemoryWriteStorePort;
 
 /** Session recall's one question for memory (D3); satisfied by WorkshopTranscriptRecallService. */
 export interface ProjectMemoryPositionsPort {
@@ -98,9 +111,10 @@ export interface ProjectMemoryGrammarPort {
 
 export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort, WorkshopReplyMemoryPort {
   private readonly now: () => Date;
+  private readonly writes: ProjectMemoryWrites;
 
   constructor(
-    private readonly store: ProjectMemoryReadPort,
+    private readonly store: ProjectMemoryStorePort,
     private readonly scope: WorkshopRecallScopePort,
     private readonly recall: ProjectMemoryPositionsPort,
     private readonly settings: SettingsStore,
@@ -108,6 +122,40 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     options: ProjectMemoryLibraryOptions = {}
   ) {
     this.now = options.now ?? (() => new Date());
+    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), this.now, outputChannel);
+  }
+
+  /**
+   * The writer's writes (Slice 3; `ProjectMemoryWrites`): never a model's.
+   * Each is owed until it settles; `shutDown` drains them at deactivation.
+   */
+  save(draft: WorkshopMemoryDraft, provenance: ProjectMemorySaveProvenance): Promise<ProjectMemoryWriteResult> {
+    return this.writes.save(draft, provenance);
+  }
+
+  update(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
+    return this.writes.update(id, patch);
+  }
+
+  forget(id: string): Promise<ProjectMemoryWriteResult> {
+    return this.writes.forget(id);
+  }
+
+  restore(id: string): Promise<ProjectMemoryWriteResult> {
+    return this.writes.restore(id);
+  }
+
+  editData(id: string): Promise<ProjectMemoryEditDataResult> {
+    return this.writes.editData(id);
+  }
+
+  estimatePinned(id: string | undefined, draft: WorkshopMemoryDraft): Promise<ProjectMemoryEstimateResult> {
+    return this.writes.estimate(id, draft);
+  }
+
+  /** Wait for every owed write (D10; joined to `shutDownExtension`). */
+  shutDown(): Promise<void> {
+    return this.writes.shutDown();
   }
 
   /** The global mode, read now; anything unknown reads as off. */

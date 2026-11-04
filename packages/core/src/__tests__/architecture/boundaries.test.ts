@@ -1008,6 +1008,8 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryCatalogFrame.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryReceiptVersion.ts',
+  'ProjectMemoryWrites.ts',
   'WorkshopMemoryProposalPhrasing.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',

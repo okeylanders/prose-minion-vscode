@@ -125,6 +125,7 @@ let workshopPanelProvider: WorkshopPanelProvider | undefined;
 let lightboxPanelProvider: LightboxPanelProvider | undefined;
 let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 let lightboxBoardLibrary: LightboxBoardLibrary | undefined;
+let projectMemoryLibraryForShutdown: ProjectMemoryLibrary | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Create output channel for logging
@@ -343,7 +344,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // library, from the coordinator's accepted workspace and recall's
   // provenance. Slice 2 only reads: the library feeds the persona
   // capabilities (the catalog frame and `memory.*`) and the persona prompts'
-  // grammar check.
+  // grammar check; Slice 3 gives the Workshop's memory handler its writes,
+  // through CoreServices.
   const projectMemoryStore = new ProjectMemoryStore(
     platform.fileSystem,
     platform.workspace,
@@ -357,6 +359,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
   assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());
+  // Its writes (Slice 3) are owed until they settle; deactivation drains them.
+  projectMemoryLibraryForShutdown = projectMemoryLibrary;
   // Persona capabilities are minted per turn by this factory, after the
   // store, the coordinator, and the recall and memory services built from them.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
@@ -560,7 +564,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lightboxReadingRunner,
     lightboxContextShelf,
     lightboxBoardStore,
-    lightboxBoardLibrary
+    lightboxBoardLibrary,
+    projectMemory: projectMemoryLibrary
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -866,12 +871,14 @@ export async function deactivate(): Promise<void> {
     workshopPanel: workshopPanelProvider,
     lightboxPanel: lightboxPanelProvider,
     workshopSessions: workshopSessionPersistenceCoordinator,
-    lightboxBoards: lightboxBoardLibrary
+    lightboxBoards: lightboxBoardLibrary,
+    projectMemory: projectMemoryLibraryForShutdown
   };
   workshopPanelProvider = undefined;
   lightboxPanelProvider = undefined;
   workshopSessionPersistenceCoordinator = undefined;
   lightboxBoardLibrary = undefined;
+  projectMemoryLibraryForShutdown = undefined;
   await shutDownExtension(parts);
   console.log('Prose Minion extension is now deactivated');
 }

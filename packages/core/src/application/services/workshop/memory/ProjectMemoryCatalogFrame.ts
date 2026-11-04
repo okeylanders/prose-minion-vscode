@@ -147,6 +147,15 @@ export function estimateProjectMemoryFrameOf(set: ProjectMemorySet, options: Pro
   };
 }
 
+/**
+ * What one memory's body costs loaded in full: its `<pinned>` line, by the
+ * frame's own renderer and estimator, so the sheet's refusal and the frame
+ * agree (D5, PR #192 F-04).
+ */
+export function projectMemoryPinnedTokens(listed: ProjectMemoryListed): number {
+  return estimateTextTokens(pinnedLine(listed));
+}
+
 function pinnedLine({ memory }: ProjectMemoryListed): string {
   return `<pinned id="${memory.id}" kind="${memory.kind}" updated="${projectMemoryDay(memory.updated)}" ` +
     `title="${escapeProjectMemoryXml(memory.title)}">${escapeProjectMemoryXml(memory.body.trim())}</pinned>`;
