@@ -123,6 +123,29 @@ session browser and the Lightbox board browser use.
   service's ports, the way recall does: `list()` and `readNamed()`, cached.
   It never writes, and never joins the mutation gate.
 
+## Compatibility: every bookmark made today stays readable
+
+This is a hard requirement, from Okey on 2026-11-04.
+
+**The feature reads bookmarks exactly as Wayfinding Slice 4 stores them.** It
+creates no new storage and changes no format.
+- A saved bookmark already holds `{ id, turnId, label?, createdAt }`, and its
+  turn holds the full message. That covers every ask above:
+  - `createdAt` supports the date range;
+  - the label, or the turn's text, supports match;
+  - the turn supports the full message;
+  - the turn's participant supports the persona filter.
+- A bookmark without a label keeps its default label. The default is computed
+  when it's read, never stored.
+
+**If the feature does need a new field,** say a note on a bookmark, the field
+is optional and added under ADR 2026-07-30's rules. A bookmark saved without it
+reads unchanged, and a fixture recorded before the feature shipped proves it.
+
+**What doesn't come back** is what Wayfinding already removes by design:
+- bookmarks pruned by Rewind past their turn;
+- bookmarks cleared by New.
+
 ## Decisions to make in the ADR
 
 - **D5 and D10 change.** Bookmarks would reach a persona, but on request only
@@ -193,3 +216,5 @@ Following `transcript.todos` closely keeps it safe.
       and session, and opens the session or jumps to the turn.
 - [ ] Bookmarks never enter a room frame or a per-turn prompt. A test pins
       this.
+- [ ] A session saved by the Wayfinding release, with bookmarks, reads into
+      every new surface unchanged. A fixture test pins this.
