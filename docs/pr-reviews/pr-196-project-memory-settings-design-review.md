@@ -2,9 +2,10 @@
 
 ## Latest review status
 
-**APPROVE for the documentation/design scope at `8a1828ef`.** The four initial
-findings are resolved; see the re-review below. No formal GitHub approval or
-merge was performed.
+**Changes requested at `8737686b`: one new overflow-count copy issue (F-05).**
+The requested “Always load in full” rename is retained. F-01 through F-04
+remain resolved. See the latest re-review below; the earlier approval
+applied to the head before this rename.
 
 ## Initial target and verdict
 
@@ -286,3 +287,75 @@ evidence of responsive behavior.
 The PR description still quotes the original hold string and lists 14
 decisions; it can be refreshed to match the corrected files and new decision
 15. This is stale summary text, not a remaining implementation-spec blocker.
+
+## Rename re-review at 8737686b
+
+- Exact target: `8737686b6a563d8aead4c447bd15a05b19771930`.
+- Base remains `9ba38154e883c2b29dce3d5455fef45b8271f80e`.
+- Scope: 11 documentation/design files since `8ec4b165`.
+- **Verdict: changes requested for F-05 below.** The user-requested rename
+  itself is consistent across the affected tab, manager, sheet, slice
+  instructions, canvas index and ADR note. It does not change file keys,
+  budgets, capability behavior, or model-facing framing.
+
+### F-05 (P2): the overflow summary counts selected memories as loaded ones
+
+**Locations:** `docs/design/workshop-project-memory/Manager.dc.html:230`;
+`slice-0d-settings-design.md`, decision 16 and the loaded-in-full overflow
+state.
+
+The previous summary, “4 pinned · ≈ 5,600 of 5,000 tokens”, counted four
+memories selected for full loading. The rename makes it “4 in full” while
+the same overflow state correctly marks one of those four “Doesn't fit in
+full”. D5 never loads more than the budget and the design already requires
+the actual builder result to determine the row badges.
+
+**Executed witness:** rendering the exact prototype with
+`overPinned: true` gives:
+
+- summary: `4 in full · ≈ 5,600 of 5,000 tokens`;
+- rows badged `Loaded in full`: **3**;
+- rows badged `Doesn't fit in full`: **1**.
+
+Thus the summary says four are in full while the rows say only three are.
+Likewise, the 5,600-token number describes selected demand, not tokens
+actually delivered. A green code pipeline does not resolve this mismatch.
+
+**Correction:** preserve “Always load in full” as the action and distinguish
+the selected count/demand from the actual result in overflow. For example,
+“4 set to load in full · ≈ 5,600 requested / 5,000 budget”, with the existing
+per-row result; or show the builder's actual loaded count separately from
+the requested count. Apply the same distinction to the specified tab
+overflow meter. Do not relabel selected demand as actual delivered tokens.
+
+**Acceptance witness:** with four selected bodies and only three fitting,
+the summary must not claim four loaded in full. Its requested/actual token
+meaning is explicit, and the builder, summary, and badges agree. The normal
+in-budget state may retain the shorter “N in full” wording.
+
+### Other checks
+
+- The renamed toggle keeps a stable accessible label, “Always load in full:
+  [title]”, plus its pressed state. The sheet uses the same action name and
+  retains its checked state and refused-save behavior.
+- The manager uses the eye glyph; storage keys/fixture properties remain
+  `pinned`, as intended.
+- F-01 through F-04 remain fixed. Receipt behavior, source fallback, global
+  mode, unavailable states, and the comparison well are unchanged.
+- The PR description has been refreshed and no longer repeats the old hold
+  copy or decision count.
+
+### Verification
+
+- Read all 11 changed files and checked exact remote blob hashes when
+  materializing them.
+- Updated the prototype harness for the intentional label changes:
+  **332 assertions passed**, including the explicit inconsistent-count
+  witness above. Passing those checks documents existing behavior; it does
+  not mean F-05 is correct.
+- The prior 296 checks remain covered. These are state/callback and source
+  checks, not a browser rendering, screen-reader, or production integration
+  test.
+- Exact-head CI was in progress:
+  https://github.com/okeylanders/prose-minion-vscode/actions/runs/41874162248.
+- No formal GitHub approval or merge was performed.
