@@ -12,7 +12,7 @@ Slice 8's live pass is docs only), with `main` at `24d9d6e` merged in
 merges into this epic again before anything else lands. Each slice is built
 on its own branch, `epic/workshop-project-memory-slice-<N>-<slug>`, and merges
 into the epic through a reviewed PR.
-**Decision:** ADR 2026-11-04: Workshop Project Memory (Proposed; in PR #192)
+**Decision:** [ADR 2026-11-04: Workshop Project Memory](../../../docs/adr/2026-11-04-workshop-project-memory.md) (Proposed, all six questions decided; Accepted after Slice 6)
 **Design:** `docs/design/workshop-project-memory/` (Slice 0, not yet
 captured)
 **Realizes:** [Workshop Project Memory](../../features/feature-workshop-project-memory/README.md)
@@ -37,8 +37,8 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | In review: PR #192 (green; merges after Okey's answers) |
-| 0d | Settings design | The Memory tab and the memory manager designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | With Okey: first canvas published |
+| 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
+| 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Approved by Okey (one change: an expandable receipt in Save and tell me); snapshot in progress |
 | 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194 (merges after #192) |
 | 2 | Read path | The catalog frame at a room's first turn, `memory.catalog` / `search` / `read`, every list that widens with the family | — | Waits on Slice 0 and 1 |
 | 3 | Write path | Proposal trailer, card on the bubble, receipt turns, supersession, "Save to memory…" | — | Waits on Slice 2 |
