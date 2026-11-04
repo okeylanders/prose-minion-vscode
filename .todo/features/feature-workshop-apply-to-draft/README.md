@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-07
 **Source**: Workshop editor-tab Sprint 04 parked item; expanded 2026-10-21 (Okey)
-**Status**: Parked. Builds on the Draft Edit foundation planned in
+**Status**: Next (the writer's pick, 2026-11-04), as Slice 5 of the [Draft Edit epic](../../epics/epic-draft-edit-2026-10-25/README.md); it needs Slice 4's Workshop write target first. Builds on the Draft Edit foundation planned in
 [Feature: Proofread](../feature-proofread/README.md). Its passes' shape is
 fixed by [ADR 2026-10-21 D11](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md#d11-reserved-passes-constraints-fixed-now-built-later).
 **Priority**: Medium

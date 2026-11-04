@@ -2,7 +2,7 @@
 
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D3 (`DocumentEditor.applyEdits`), D4, D5 (gesture), D7 (quick fixes), D8 (Fix)
-**Status:** Built 2026-10-25, in review. The writer ran Flag in their editor and reported it working,
+**Status:** Merged (PR #172); released in v2.12.0. Built 2026-10-25. The writer ran Flag in their editor and reported it working,
 so the default Proofread model stays.
 
 ## Outcome

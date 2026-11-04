@@ -1,10 +1,12 @@
 # Slice 3b: Proofread coverage
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Parts 1 and 2 merged (PRs #174, #176, 2026-10-26). Part 3
-(quotation marks and consistency) built 2026-10-27; in review. Then the
-fixture run. The immediate follow-up to Slice 3 (the writer's call,
-2026-10-26), before the Workshop slices.
+**Status:** Merged (PRs #174, #176, #182) and released in v2.12.0.
+The fixture run, which decides whether any new category may write, is not
+scheduled: the writer will judge the categories by using them and circle
+back (epic README, 2026-11-04). Until then every new category stays a flag.
+The immediate follow-up to Slice 3 (the writer's call, 2026-10-26), before
+the Workshop slices.
 **Priority:** High
 **Needs first:** an ADR amendment. Several items extend D6's closed
 category list, the guard, and the reply format, and two add deterministic

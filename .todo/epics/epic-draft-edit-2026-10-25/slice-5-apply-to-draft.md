@@ -3,7 +3,11 @@
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D11
 **Design:** [Feature: Workshop Apply to Draft](../../features/feature-workshop-apply-to-draft/README.md)
-**Status:** Planned
+**Status:** Planned. The writer's pick for what comes next (2026-11-04).
+It shares `WorkshopExcerptWriteTarget`, the excerpt replacer and the
+`WorkshopDraftEditHandler` route owner that Slice 4 introduces; none exists
+in code yet. Decide first whether to build all of Slice 4 or only its write
+target.
 
 ## Outcome
 

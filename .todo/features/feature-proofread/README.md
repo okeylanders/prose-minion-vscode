@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-19
 **Source**: User request (Okey)
-**Status**: In progress. Tracked by the [Draft Edit epic](../../epics/epic-draft-edit-2026-10-25/README.md);
+**Status**: Shipped in v2.12.0 (Proofread, Fix and Craft Flags); the Workshop button follows as Slice 4. Tracked by the [Draft Edit epic](../../epics/epic-draft-edit-2026-10-25/README.md);
 decided by [ADR 2026-10-21 — Draft Edit Engine and Document Write-Back](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md) (Accepted).
 Where this note and the ADR differ, the ADR wins. Where this note and the
 epic differ on sequencing, the epic wins.

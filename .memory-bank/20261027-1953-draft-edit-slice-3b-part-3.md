@@ -78,7 +78,12 @@ is never asked. Measured on a 2,000-part compound (10,012 characters): the
 word scanner is handed 10,012 characters (28,011 with an unrelated list),
 against 20,016,012 before.
 
-## Next
+## Closed (2026-11-04)
+
+PR #182 merged as `5042767d`; v2.12.0 shipped 2026-11-02. What came after is
+in `20261104-0109-draft-edit-status-after-2.12.0.md`.
+
+## Next (as written on 2026-10-27)
 
 The PR into `epic/lightbox`, then release prep (2.12.0) on the writer's
 go-ahead, then the fixture run.

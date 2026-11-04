@@ -1,7 +1,7 @@
 # Slice 3: Polish
 
 **Epic:** [Draft Edit](README.md)
-**Status:** Built; in review (2026-10-26)
+**Status:** Merged (PR #173); released in v2.12.0. Built 2026-10-26.
 
 ## Scope
 

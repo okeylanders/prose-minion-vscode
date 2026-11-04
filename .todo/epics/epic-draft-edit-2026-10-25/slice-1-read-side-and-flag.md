@@ -2,7 +2,7 @@
 
 **Epic:** [Draft Edit](README.md)
 **Decision:** [ADR 2026-10-21](../../../docs/adr/2026-10-21-draft-edit-engine-and-document-write-back.md): D1, D2, D3 (`IssueAnnotator`, `DocumentEditor.watch`; planned as `snapshot`, changed after PR #171 F-03/F-04), D6, D7, D8 (Flag, Clear), D10
-**Status:** Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, `f1a6e79f`). In review. The writer's manual Flag run on seeded public-domain fixtures is pending.
+**Status:** Merged (PR #171); released in v2.12.0. Built 2026-10-25 (`5e07d91d`, `c97fcbfd`, `e50c2b36`, `fd5f3133`, `f1a6e79f`). The writer ran Flag in their editor and reported it working (Slice 2); a recorded fixture run with rates is not scheduled (epic README, 2026-11-04).
 
 ## Outcome
 

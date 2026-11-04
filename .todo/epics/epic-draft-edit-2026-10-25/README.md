@@ -1,10 +1,14 @@
 # Epic: Draft Edit
 
-**Status:** In progress. Slices 1 to 3 merged (PRs #171, #172, #173); Slice
-3b (Proofread coverage) parts 1 and 2 merged (PRs #174, #176), part 3
-(quotation marks and consistency) built and in review; Slice 3c (Craft
-Flags) parts 1 to 4 merged (PRs #177 to #180); reasoning levels merged (PR
-#181). Next: the release, then the fixture run.
+**Status:** In progress. Slices 1 to 3c and the reasoning levels (3d) are
+merged and **shipped in v2.12.0** (2026-11-02): Proofread and Craft Flags,
+with their commands, settings and reasoning levels. Slices 1 to 3 are PRs
+#171 to #173; Slice 3b, PRs #174, #176 and #182; Slice 3c, PRs #177 to #180;
+reasoning levels, PR #181. Left: Slice 4 (the Workshop Proofread button) and
+Slice 5 (Apply to Draft), both planned. Apply to Draft is the writer's pick
+(2026-11-04) and needs Slice 4's groundwork first (see Slice 5). The fixture
+run is not scheduled: the writer will judge the categories by using them and
+circle back.
 **Priority:** Medium
 **Created:** 2026-10-25
 **Integration branch:** `epic/lightbox`. Draft Edit branches from it, to keep
@@ -67,11 +71,11 @@ bubbles, then Apply Recommendations and Apply Variation.
 | 1 | [Read side + Proofread and Flag](slice-1-read-side-and-flag.md) | Flag a file or selection as diagnostics; Clear; long-file confirm | Merged (PR #171) |
 | 2 | [Write side + Proofread and Fix](slice-2-write-side-and-fix.md) | `DocumentEditor`, the applier, Fix with Refactor Preview, quick fixes | Merged (PR #172) |
 | 3 | [Polish](slice-3-polish.md) | Submenu, spelling convention, a selection run replacing only its own flags | Merged (PR #173) |
-| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Parts 1 and 2 merged (PRs #174, #176); part 3 in review |
-| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Parts 1 to 4 (the pass and cliché, register shift, gesture strain, continuity) merged (PRs #177 to #180); then the fixture run |
-| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | Merged (PR #181) |
-| 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned |
-| 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned |
+| 3b | [Proofread coverage](slice-3b-proofread-coverage.md) | Names, wrong and missing words, a tense baseline, quotes, consistency | Merged (PRs #174, #176, #182); released in v2.12.0 |
+| 3c | [Craft flags](slice-3c-craft-flags.md) | Cliché, gesture strain, in-chapter continuity, register shift: flags with a recommendation, never edits | Merged (PRs #177 to #180: the pass and cliché, register shift, gesture strain, continuity); released in v2.12.0 |
+| 3d | Reasoning levels (ADR, "Amendment 2026-10-27: reasoning levels") | A named thinking level per pass, its budget on top of the reply's own ceiling; a reply the thinking cut off says so | Merged (PR #181); released in v2.12.0 |
+| 4 | [Workshop Proofread button](slice-4-workshop-proofread.md) | Bubble action, confined write target, re-pin | Planned; Slice 5 needs its write target |
+| 5 | [Apply to Draft](slice-5-apply-to-draft.md) | Apply Recommendations, then Apply Variation | Planned; the writer's pick (2026-11-04) |
 
 Each slice builds on the one before. Slice 2 needs Slice 1's anchoring and
 issue ledger. Slice 4 needs Slice 2's write side. Slice 3b comes before the
@@ -250,3 +254,29 @@ and the test inventory in `.ai/central-agent-setup.md` (`AGENTS.md`).
   (`consistency`), two host checks over the whole document, flag-only. The
   writer's call: finish 3b before the release, "a better stopping point".
   See the slice doc's "Part 3: as built".
+- **2026-10-27. Slice 3b, part 3 merged** (PR #182, `5042767d`), after
+  Astra's review (F-01 to F-03: a compound's parts placed by the lowered
+  word, a listed compound's part still flagged, emphasis misreading a
+  quotation mark's place) and a re-review (F-04: work growing with the
+  square of a long compound's length), then clear.
+- **2026-10-28. Aggregate review of `epic/lightbox` into `main`** (PR #183)
+  found two Draft Edit defects that slipped between the slices' guards. Both
+  are decided in the ADR's "Amendment 2026-10-28": a full reference link's
+  label is protected, and Proofread's gesture is held as Craft Flags' is.
+- **2026-11-02. v2.12.0 released** (tag `v2.12.0`), with Lightbox and Draft
+  Edit: Proofread and Fix, Proofread and Flag, Craft Flags, the word list,
+  the spelling convention and the reasoning levels. The release notes say
+  native VS Code acceptance and live-provider quality are separate from the
+  automated checks, and keep the Refactor Preview lifetime limit (PR #172
+  F-02) and the other documented limits.
+- **2026-11-04. Direction (the writer).** The fixture run is not scheduled.
+  The writer will find false positives and weak defaults by using the tools
+  and come back to them; Slice 3's thresholds, Slice 3b's rule that a
+  category earns a fix only after a recorded run, and Slice 3c's defaults
+  stand as they are until then. Apply to Draft is the next thing the writer
+  wants. It needs Slice 4's groundwork first: `WorkshopExcerptWriteTarget`,
+  the excerpt replacer and the `WorkshopDraftEditHandler` route owner exist
+  only in the docs, and Slice 5 shares them. Whether that is all of Slice 4
+  or only its write target is the first thing to decide. Not recorded in the
+  repo: whether the writer ran the `off` and `light` reasoning pair the ADR
+  asked for before the release.

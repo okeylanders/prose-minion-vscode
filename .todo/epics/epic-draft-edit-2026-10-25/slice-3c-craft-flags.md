@@ -1,11 +1,11 @@
 # Slice 3c: Craft flags
 
 **Epic:** [Draft Edit](README.md)
-**Status:** In progress (2026-10-27): part 1, the pass and cliché, merged
-(PR #177); part 2, register shift, merged (PR #178); part 3, gesture
-strain, merged (PR #179); part 4, continuity, built. Every category is
-built; the fixture run remains. After Slice 3b, before the
-Workshop slices, at the writer's request. The pass, its
+**Status:** Merged (PRs #177 to #180: the pass and cliché, register shift,
+gesture strain, continuity) and released in v2.12.0. The fixture run, which
+confirms each category's default, is not scheduled: the writer will judge
+them by using them and circle back (epic README, 2026-11-04). After Slice
+3b, before the Workshop slices, at the writer's request. The pass, its
 name, each category's approach and the six recommendations under "Decide in
 the ADR" are decided (the writer, 2026-10-26; see "Decided").
 **Priority:** High
