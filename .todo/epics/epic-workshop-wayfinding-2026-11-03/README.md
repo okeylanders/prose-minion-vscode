@@ -375,3 +375,15 @@ the ADR:
     handles every Tab itself, in its own browser-ordered stops.
     - *Counts.* At `cf1b8c4`: 606 suites / 8,611 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 fourth re-review (Astra, 2026-11-04).** N-02 confirmed. N-03
+    (P3): the manual traversal missed `<summary>` and stuck on buttons inside
+    `<fieldset disabled>`. The coordinator decided to change approach, and
+    `e69125b` deletes the trap (superseding the N-01 and N-02 traversal
+    code). While any text sheet is open, `FullTabShell`'s new opt-in
+    `inertBehindOverlay` marks the header and split `inert`, and the
+    Workshop's banners carry `inert` in an always-present `display: contents`
+    wrapper. The browser handles tab order inside the sheet.
+    - Tab past the last stop may reach VS Code's chrome, as a native modal's
+      does. Native traversal is Slice 8's live check.
+    - *Counts.* At `e69125b`: 606 suites / 8,610 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.

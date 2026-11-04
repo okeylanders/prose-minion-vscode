@@ -224,3 +224,17 @@ This is introduced by replacing native middle-step Tab behavior with the manual 
 
 
 **Additional N-03 witness:** This is a native-tabbability enumeration problem, not only a missing `summary` selector. A separate full-App probe renders `<fieldset disabled><button>Unavailable action</button></fieldset>` in the reader. The button's own `disabled` property is false while `matches(':disabled')` is true because its fieldset is disabled. The trap selects that unfocusable button, prevents Tab, and focus stays on the preceding Preview control. Both this and the skipped-summary assertion fail on `a7b0222`. A correction should cover effective disabled state as well as all supported native focusable elements; closed or otherwise non-visible ancestors should also be considered and tested where native behavior is available.
+
+## Author response to N-03, and the change of approach (2026-11-04)
+
+Nothing above this section was edited.
+
+| ID | Severity | Disposition | Fix | Tests | Notes |
+| --- | --- | --- | --- | --- | --- |
+| N-03 | P3 | **Fixed by changing approach** (`e69125b`); this **supersedes the N-01 and N-02 traversal code** | The manual trap re-implemented browser tabbability. Every round found another case it got wrong: positive `tabindex` (N-01), background interleaving (N-02), then `<summary>` and `<fieldset disabled>` (N-03). So it's deleted, not patched. `trapFocus`, `tabbableWithin` and the Tab handling are gone, and `WorkshopModalShell` is back to its pre-trap form, with Escape and opener-focus restore unchanged. Instead, while a `WorkshopTextSheet` is open, `WorkshopApp` passes `FullTabShell` a new opt-in `inertBehindOverlay`, which marks the header (header actions included) and the split (rail and main column) `inert`. The Workshop's banners sit in an always-present `display: contents` wrapper that carries `inert` too, so opening a sheet never remounts a banner. The sheet mounts as an overlay after the split and stays live, so the browser orders its stops natively and nothing behind it can take focus. **Every text-sheet mode gets this**: the reader and the authoring sheets are one modal component with the same exposure. Other modals are unchanged; the [tech debt](../../.todo/tech-debt/2026-11-03-workshop-modal-focus-containment.md) now recommends the same approach for them | jsdom doesn't enforce `inert`, so the tests assert the attribute. `WorkshopApp.readIn.test.tsx`: with the reader open, the header, header actions, banners, rail and main column carry `inert` and the dialog doesn't; on close none do. An authoring sheet (Add text) does the same. `FullTabShell.test.tsx`: without the prop, the markup is identical to `false` and holds no `inert`; with it, the header and split are inert and the overlay isn't. The F-01 and F-02 App tests still pass. The five traversal tests were deleted with the trap | Tab past the sheet's last stop may move into VS Code's own chrome, as with a native modal `<dialog>`. That's accepted. Native traversal inside the sheet (summary, disabled fieldsets, positive `tabindex`) is Slice 8's live check |
+
+**Verification at `e69125b`:**
+- `npx jest`: **606 suites / 8,610 tests / 59 snapshots**, all passing. That's 5 traversal tests removed and 4 inert tests added.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,136 warnings, unchanged.
+- `git diff --check`: clean. The architecture tests pass, including the Chromium 114 CSS floor.
