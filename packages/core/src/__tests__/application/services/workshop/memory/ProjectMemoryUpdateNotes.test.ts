@@ -13,6 +13,9 @@ import type { ContextResourceProviderFactory } from '@/domain/models/ContextGene
 import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
 import { projectMemoryBody } from '@shared/types/projectMemory';
 import { claimOf } from '@/__tests__/infrastructure/storage/projectMemoryStoreHost';
+import { parseWorkshopPersistedSession } from '@/application/services/workshop/WorkshopPersistedSession';
+import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import { projectMemoryDeliveredView } from '@/application/services/workshop/memory/ProjectMemoryDeliveredView';
 import { libraryHost, writerMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 
 /** A host room over `host`'s folder; `say` runs one writer message to the host and returns what the model received. */
@@ -52,7 +55,11 @@ function room(host: ReturnType<typeof libraryHost>) {
     session.completeRun(requestId, 'Reply.', undefined, false, `${key}-conv`);
     return message;
   };
-  return { session, say };
+  const dismiss = (guest: 'cliff'): void => {
+    session.dismissPersonaGuest(guest);
+    started.delete(guest);
+  };
+  return { session, say, dismiss };
 }
 
 const noteOf = (message: string): string | undefined => /<project-memory-update[\s\S]*<\/project-memory-update>/.exec(message)?.[0];
@@ -173,6 +180,75 @@ describe('each conversation is told on its own record', () => {
   });
 });
 
+describe('a re-invited guest is a new conversation (PR #198 F-02)', () => {
+  it.each([
+    ['an unchanged set', false],
+    ['a partly changed set', true]
+  ])('invited with memory on, dismissed, re-invited while off, then on: the whole current set (%s)', async (_name, change) => {
+    const host = libraryHost();
+    host.put(writerMemory());
+    host.put(writerMemory({ id: 'mem-1a9e04', title: 'Second' }));
+    const { say, dismiss } = room(host);
+    await say('Hello.');
+    expect(await say('Join us.', 'cliff')).toContain('<entry id="mem-7f3c2a"');
+    dismiss('cliff');
+    host.state.mode = 'off';
+    expect(await say('Join us again.', 'cliff')).not.toContain('<project-memory');
+    if (change) {
+      host.put(writerMemory({ id: 'mem-0d0d0d', title: 'New', updated: '2026-11-04T08:00:00Z' }));
+    }
+    host.state.mode = 'ask';
+    expect(items(noteOf(await say('Cliff, memory is on.', 'cliff'))).sort())
+      .toEqual(['entry:mem-1a9e04', 'entry:mem-7f3c2a', ...(change ? ['entry:mem-0d0d0d'] : [])].sort());
+    expect(noteOf(await say('Cliff, again.', 'cliff'))).toBeUndefined();
+  });
+
+  it('re-invited with memory on: the fresh conversation gets its own frame, and no note for what its frame held', async () => {
+    const host = libraryHost();
+    host.put(writerMemory());
+    const { say, dismiss } = room(host);
+    await say('Hello.');
+    await say('Join us.', 'cliff');
+    dismiss('cliff');
+    host.put(writerMemory({ id: 'mem-0d0d0d', title: 'New', updated: '2026-11-04T08:00:00Z' }));
+    expect(await say('Join us again.', 'cliff')).toContain('<entry id="mem-0d0d0d"');
+    expect(noteOf(await say('Cliff, anything new?', 'cliff'))).toBeUndefined();
+  });
+
+  it('a guest who joins while the workspace is unavailable gets the whole set once it is available', async () => {
+    const host = libraryHost();
+    host.put(writerMemory());
+    const { say } = room(host);
+    await say('Hello.');
+    host.state.scope = { available: false, reason: 'not-ready' };
+    expect(await say('Join us.', 'cliff')).not.toContain('<project-memory');
+    host.state.scope = { available: true, liveSessionId: 'live-room-0001' };
+    expect(items(noteOf(await say('Cliff, now?', 'cliff')))).toEqual(['entry:mem-7f3c2a']);
+  });
+
+  it('keeps the new membership\'s empty frame through save and reopen', async () => {
+    const host = libraryHost({ mode: 'off' });
+    host.put(writerMemory());
+    const { say, session } = room(host);
+    await say('Hello.');
+    await say('Join us.', 'cliff');
+    const workshop = session.exportCommittedState();
+    const reopened = parseWorkshopPersistedSession(JSON.parse(JSON.stringify({
+      schemaVersion: 2,
+      sessionId: 'tea-party',
+      title: 'Tea party',
+      createdAt: '2026-11-04T10:00:00.000Z',
+      updatedAt: '2026-11-04T10:00:00.000Z',
+      temporal: new WorkshopSessionTimeService({ now: () => new Date('2026-11-04T10:00:00.000Z') }).exportState(),
+      summary: { hostPersonaId: 'jill', participantPersonaIds: ['jill', 'cliff'], turnCount: workshop.turns.length, excerptWordCount: 0 },
+      workshop,
+      conversations: []
+    })));
+    const view = projectMemoryDeliveredView(reopened.workshop.turns, { kind: 'personaGuest', personaId: 'cliff' });
+    expect(view).toEqual({ memories: new Map(), recorded: true });
+  });
+});
+
 describe('mid-room switches (ADR 2026-11-04 D8)', () => {
   it('Off → on sends the whole catalog as a note; on → off sends nothing and keeps the record; on again sends only what changed', async () => {
     const host = libraryHost({ mode: 'off' });
@@ -180,7 +256,9 @@ describe('mid-room switches (ADR 2026-11-04 D8)', () => {
     host.put(writerMemory({ id: 'mem-1a9e04', title: 'Pinned', pinned: true }));
     const { say, session } = room(host);
     expect(await say('Hello.')).not.toContain('<project-memory');
-    expect(session.readRoomLedger().some((turn) => turn.projectMemoryDelivery)).toBe(false);
+    // A conversation that started with memory off was told nothing: an empty frame (PR #198 F-02).
+    expect(session.readRoomLedger().flatMap((turn) => turn.projectMemoryDelivery ?? []))
+      .toEqual([{ participant: { kind: 'host' }, kind: 'frame', memories: [] }]);
 
     host.state.mode = 'ask';
     expect(items(noteOf(await say('Memory is on now.')))).toEqual(['pinned:mem-1a9e04', 'entry:mem-7f3c2a']);

@@ -90,9 +90,12 @@ export class WorkshopProjectMemoryCapability {
    * (D5), or none: memory off, an unaccepted or unavailable workspace, a
    * folder that could not be listed, or nothing in it. Only the run that
    * starts a conversation asks, so a retained conversation keeps the frame
-   * it was given. What it delivered (the whole set in effect, an empty one
-   * included) is staged for the writer turn's record (D14). A failure sends
-   * no frame and records nothing, logged by reason; a cancellation
+   * it was given. What it delivered (the whole set in effect) is staged for
+   * the reply's record (D14). A conversation that starts with nothing (memory
+   * off, the workspace unavailable, the folder unlisted, or a failure)
+   * records an empty frame: it begins a new conversation's view, so a
+   * re-invited guest never inherits an earlier membership's (PR #198 F-02),
+   * and turning memory on later sends it the whole catalog. A cancellation
    * propagates.
    */
   async frame(): Promise<string | undefined> {
@@ -101,7 +104,7 @@ export class WorkshopProjectMemoryCapability {
       if (result.kind === 'frame' || result.kind === 'empty') {
         return { snapshot: result.snapshot, text: result.kind === 'frame' ? result.frame.text : undefined };
       }
-      return { refused: result.kind === 'closed' ? result.reason : result.kind };
+      return { snapshot: [], refused: result.kind === 'closed' ? result.reason : result.kind };
     });
   }
 
@@ -145,6 +148,10 @@ export class WorkshopProjectMemoryCapability {
         throw error;
       }
       this.log(`${kind} none reason=failed (${error instanceof Error ? error.name : 'unknown'})`);
+      if (kind === 'frame') {
+        // A conversation that starts with nothing is told nothing (PR #198 F-02).
+        this.session.stageProjectMemoryDelivery(this.turn.requestId, { participant: { ...this.turn.owner }, kind, memories: [] });
+      }
       return undefined;
     }
   }
