@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slices 1–7 are done; Slice 8, the live pass, waits on Okey.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slice 7b merged (PR #195, `4578b71`). Slices 1–7b are done; Slice 8, the live pass, waits on Okey.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -55,6 +55,7 @@ the ADR:
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Done: PR #189, merged at `4a180ab` |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Done: PR #190, merged at `6c12df5` |
+| 7b | [The model in the bubble header](slice-7b-model-in-header.md) | "Jill · Opus 5.5" in the thread and export headers, "via" when another model served; the under-body note retired | D8, D10 (2026-11-04 amendment) | Done: PR #195, merged at `4578b71` |
 | 8 | [Verify live](slice-8-live-pass.md) | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Waiting on Okey: [checklist](slice-8-live-pass.md#checklist) and [decisions](slice-8-live-pass.md#decisions-for-okey) |
 
 **Order.** Two chains run side by side:
@@ -690,3 +691,31 @@ the ADR:
   collected every item earlier slices left for the live pass, the writer's
   open decisions, and the close-out steps into
   [Slice 8's doc](slice-8-live-pass.md).
+- **2026-11-04. Slice 7b (the model in the bubble header).** Okey decided it
+  at the Slice 8 decision review; it is recorded in the ADR's 2026-11-04
+  amendment to D8 and D10. PR #195 merged into the epic at `4578b71`. The
+  [slice doc](slice-7b-model-in-header.md#built) has the full map.
+  - **What changed.**
+    - A stamped reply's header reads "Jill · Opus 5.5". When another model
+      served it, the header says "via {requested}".
+    - The under-body served-by note is retired.
+    - Markdown and HTML export headers, and capability cards' export lines,
+      use the same shared rule. JSON, recall, prompts and the turn preview
+      are unchanged.
+  - **Review.**
+    - Astra's plan review raised one wording fix and five watchpoints, all
+      addressed.
+    - Her implementation review at `3e0b172` approved it with no blocking
+      finding.
+    - CI was green on `588cb03`.
+  - **Counts.** At `3e0b172`:
+    - 641 suites / 9,011 tests / 59 snapshots, all passing (from 636 / 8,977
+      at `6c12df5`);
+    - typecheck clean;
+    - lint 0 errors, 1,155 warnings (two new, both `PmLogo` mocks).
+  - **Sizes.**
+    - `WorkshopTurnBubble.tsx` went from 792 to 789 lines.
+    - `WorkshopTranscriptHtmlStyles.ts` went from 645 to 660 lines, by the
+      mirrored rules only.
+  - **Left for Slice 8.** Check the header in the editor's webview at a narrow
+    width, and how the model text weighs beside the name.

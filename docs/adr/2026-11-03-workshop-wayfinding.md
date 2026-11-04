@@ -1,6 +1,6 @@
 # ADR 2026-11-03: Workshop Wayfinding
 
-**Status:** Proposed (2026-11-03); D1 amended and D9 confirmed by the writer on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed))
+**Status:** Proposed (2026-11-03). The writer amended D1 and confirmed D9 on 2026-11-03 ([amendment](#amendment-2026-11-03-one-badge-rule-and-d9-confirmed)), and amended D8 and D10 on 2026-11-04 ([amendment](#amendment-2026-11-04-the-model-in-the-bubble-header)).
 **Date:** 2026-11-03
 **Epic:** [Workshop Wayfinding](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/README.md)
 **Design:** [`docs/design/workshop-wayfinding/`](../design/workshop-wayfinding/README.md), a snapshot of the planning canvas
@@ -260,6 +260,40 @@ turn's `model` from D7.
   D1 now says that, and nothing toasts. Read-in rows (Slice 2) badge the
   Material tab by the same rule.
 - **D9.** The writer accepted forward-only compatibility before Slice 3.
+
+## Amendment 2026-11-04: the model in the bubble header
+
+The writer decided this on 2026-11-04, at the Slice 8 decision review. It is
+built in [Slice 7b](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md).
+
+**D8: every stamped reply names its model in its header.** The bubble's
+participant label is followed by the model that served the reply.
+
+- **The form.** "Jill · Opus 5.5", with the thread's middle dot.
+- **When a different model served it.** If the provider named models and
+  none of them is the one requested, the label names them and adds
+  "via {requested}", as in "Jill · Claude Sonnet 5 via Auto router". If the
+  requested model served among others, the label names them all, in order,
+  without "via": "Jill · Opus 5.5, Sonnet 5". This replaces the under-body
+  served-by note, which is retired, so there is one place to look. The
+  [slice doc](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md#the-rule)
+  holds the full table.
+- **Capability cards.** A stamped dictionary or analysis card names its model
+  in its thread header by the same rule; in Markdown and HTML export, where it
+  is a one-line event, the line ends with the same text.
+- **When the provider named no model.** The label names the requested model.
+- **When there's no stamp.** An unstamped turn names no model: a writer
+  turn, a host-written fallback, or a turn saved before this epic.
+- **Look.** The model is muted and smaller than the participant's name. In
+  a narrow column it is cut short first, never the name. The label's
+  tooltip keeps the raw ids.
+- **Slices stay.** The header says who wrote this reply. The slice says
+  when the requested model changed.
+
+**D10: export headers follow the same rule.** Markdown and HTML export turn
+headers name the model in the same form, built by the same shared function
+as the thread. JSON is unchanged: it already carries each turn's `model`.
+Recall and prompts still never carry a model.
 
 ## Out of Scope (follow-ups)
 

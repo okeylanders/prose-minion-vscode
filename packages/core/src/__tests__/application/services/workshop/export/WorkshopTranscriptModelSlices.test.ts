@@ -172,7 +172,8 @@ describe('model slices in each export format', () => {
   });
 
   it('draws slices in Markdown as dividers', () => {
-    const markdown = renderWorkshopTranscriptMarkdown(transcript(room, (id) => NAMES[id]));
+    // The headers' lookup names the same models, so no raw id of a named model is printed.
+    const markdown = renderWorkshopTranscriptMarkdown(transcript(room, (id) => NAMES[id]), { modelLabel: (id) => NAMES[id] });
     expect(markdown).toContain('---\n\n_Model · Model A → Model B_\n\n---\n\n### Writer\n\nSecond question.');
     expect(markdown).toContain(`_Model · ${C} → Model A_\n`);
     expect(markdown).not.toContain(A);
