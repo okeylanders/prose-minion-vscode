@@ -472,6 +472,11 @@
   height: 1px;
   background: var(--pm-border-soft);
 }
+[data-pm-surface="workshop"] .pm-ws-model-slice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
 [data-pm-surface="workshop"] .pm-ws-thread-empty svg {
   color: var(--pm-accent-hi);
   opacity: 0.8;

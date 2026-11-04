@@ -211,6 +211,7 @@ describe('the window seed and the window’s slices', () => {
 
 describe('workshopModelSliceText', () => {
   it('writes the copy the thread and the export share', () => {
-    expect(workshopModelSliceText('Claude Sonnet 5', 'GPT-5')).toBe('Model · Claude Sonnet 5 → GPT-5');
+    expect(workshopModelSliceText('assistant', 'Claude Sonnet 5', 'GPT-5')).toBe('Model · Claude Sonnet 5 → GPT-5');
+    expect(workshopModelSliceText('dictionary', 'Model A', 'Model B')).toBe('Dictionary model · Model A → Model B');
   });
 });

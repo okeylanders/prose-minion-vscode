@@ -117,9 +117,25 @@ export function workshopModelSlicesInWindow(
   });
 }
 
+/**
+ * What a slice in each scope is called. The room's own model is "Model"; a
+ * dictionary lookup's change says whose model it was, so it never reads as the
+ * room's.
+ */
+const WORKSHOP_MODEL_SLICE_SCOPE_LABELS: Readonly<Record<ModelScope, string>> = {
+  assistant: 'Model',
+  dictionary: 'Dictionary model',
+  context: 'Context model',
+  category: 'Category model',
+  widget: 'Widget model',
+  lightbox: 'Lightbox model',
+  proofread: 'Proofread model',
+  craft: 'Craft model'
+};
+
 /** The slice's copy, as the thread and the export both write it. */
-export function workshopModelSliceText(fromLabel: string, toLabel: string): string {
-  return `Model · ${fromLabel} → ${toLabel}`;
+export function workshopModelSliceText(scope: ModelScope, fromLabel: string, toLabel: string): string {
+  return `${WORKSHOP_MODEL_SLICE_SCOPE_LABELS[scope]} · ${fromLabel} → ${toLabel}`;
 }
 
 function stampOf(turn: WorkshopModelSliceTurn): WorkshopTurn['model'] {
