@@ -61,6 +61,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_TODO_ACTION)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SET_TURN_BOOKMARK)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_RENAME_BOOKMARK)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REREAD_EXCERPT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)).toBe(true);
@@ -86,8 +88,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_EXPORT_SESSION)).toBe(true);
     // 56 until Lightbox Slice 3 added WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD; Slice 4 added
     // WORKSHOP_STAGE_LIGHTBOX_TILE and WORKSHOP_ACCEPT_LIGHTBOX_TILE; Wayfinding Slice 2
-    // added WORKSHOP_REQUEST_READ_IN_RESOURCE and WORKSHOP_OPEN_READ_IN_RESOURCE.
-    expect(router.handlerCount).toBe(61);
+    // added WORKSHOP_REQUEST_READ_IN_RESOURCE and WORKSHOP_OPEN_READ_IN_RESOURCE;
+    // Wayfinding Slice 4 added WORKSHOP_SET_TURN_BOOKMARK and WORKSHOP_RENAME_BOOKMARK.
+    expect(router.handlerCount).toBe(63);
   });
 
   it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {
