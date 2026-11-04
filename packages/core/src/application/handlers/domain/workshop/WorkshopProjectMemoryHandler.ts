@@ -289,6 +289,11 @@ export class WorkshopProjectMemoryHandler {
     return this.autoSaves.save(turnId, signal);
   }
 
+  /** The room's automatic saves: its receipts, and the saves admitted but not yet recorded (PR #201 F-04). */
+  autoSavesInRoom(): number {
+    return this.autoSaves.inRoom();
+  }
+
   async handleRequestEdit(message: WorkshopMemoryRequestEditMessage): Promise<void> {
     const requestId = requestIdOf(message.payload);
     const memoryId = message.payload?.memoryId;

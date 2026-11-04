@@ -13,6 +13,14 @@
  *   before the save, when its turn in the write queue comes, and at the
  *   store's commit point with nothing awaited before the rename. Withdrawn,
  *   nothing is written and the card waits for the writer.
+ * - **The cap counts what is under way** (PR #201 F-04). A save reserves
+ *   its place, by room revision, from the moment completion hands it over
+ *   until the same synchronous step that records its receipt, or until it is
+ *   withdrawn, refused or fails. The room's count is its `by: 'auto'`
+ *   receipts plus this revision's reservations, so a reply admitted while an
+ *   earlier save is committed but unrecorded is held at the cap. The permit
+ *   checks the count again before the commit. A replaced room's reservations
+ *   don't count in the new one, and Rewind still counts from receipts.
  * - **One save per card.** It holds the card's save in the handler's
  *   in-flight map, so an unedited Save of the same card joins it (one file,
  *   one receipt) and a Dismiss waits it out. An edited Save never joins: it
@@ -28,6 +36,10 @@ import type { WorkshopSessionService } from '@/application/services/workshop/Wor
 import type { ProjectMemoryLibrary } from '@/application/services/workshop/memory/ProjectMemoryLibrary';
 import type { ProjectMemorySaveProvenance } from '@/application/services/workshop/memory/ProjectMemoryWrites';
 import { workshopMemoryProposalDraft } from '@shared/constants/workshopProjectMemoryWrites';
+import {
+  countWorkshopRoomAutoSaves,
+  WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM
+} from '@/application/services/workshop/memory/WorkshopMemoryAutoSave';
 
 export type WorkshopMemoryAutoSaveLibrary = Pick<ProjectMemoryLibrary, 'save' | 'mode'>;
 
@@ -43,6 +55,9 @@ export interface WorkshopMemoryAutoSaveHooks {
 }
 
 export class WorkshopMemoryAutoSaves {
+  /** Saves admitted and not yet recorded or released, by turn id, with the room revision they belong to. */
+  private readonly reservations = new Map<string, number>();
+
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly library: WorkshopMemoryAutoSaveLibrary,
@@ -52,17 +67,32 @@ export class WorkshopMemoryAutoSaves {
     private readonly hooks: WorkshopMemoryAutoSaveHooks
   ) {}
 
+  /** The room's automatic saves: its receipts, and this room's saves still under way. */
+  inRoom(exceptTurnId?: string): number {
+    const revision = this.session.readRoomRevision();
+    let reserved = 0;
+    this.reservations.forEach((reservedIn, turnId) => {
+      if (reservedIn === revision && turnId !== exceptTurnId) {
+        reserved += 1;
+      }
+    });
+    return countWorkshopRoomAutoSaves(this.session.readRoomLedger()) + reserved;
+  }
+
   /** Save the card on `turnId` for the run `signal` belongs to; resolves once saved or withdrawn, and never rejects. */
   save(turnId: string, signal: AbortSignal): Promise<void> {
     const existing = this.proposalSaves.get(turnId);
     if (existing) {
       return existing.then(() => undefined, () => undefined);
     }
+    // Reserved synchronously, as completion hands the card over: the next admission counts it.
+    this.reservations.set(turnId, this.session.readRoomRevision());
     const saving = this.saveCard(turnId, signal);
     this.proposalSaves.set(turnId, saving);
     return saving.then(() => undefined, (error: unknown) => {
       this.hooks.log(`auto save failed turnId=${turnId} reason=${error instanceof Error ? error.name : 'unknown'}`);
     }).finally(() => {
+      this.reservations.delete(turnId);
       if (this.proposalSaves.get(turnId) === saving) {
         this.proposalSaves.delete(turnId);
       }
@@ -88,13 +118,15 @@ export class WorkshopMemoryAutoSaves {
     const permitted = (): boolean => this.library.mode() === 'auto'
       && !signal.aborted
       && this.session.readRoomRevision() === revision
-      && pendingCard() !== undefined;
+      && pendingCard() !== undefined
+      && this.reservations.get(turnId) === revision
+      && this.inRoom(turnId) < WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM;
     if (!permitted()) {
-      return waits(this.withdrawnReason(signal, revision));
+      return this.withdrawn(turnId, signal, revision, waits);
     }
     const result = await this.library.save(workshopMemoryProposalDraft(proposal), this.hooks.provenance(turn), { permit: permitted });
     if (result.kind === 'refused') {
-      return waits(result.reason === 'withdrawn' ? this.withdrawnReason(signal, revision) : result.reason);
+      return result.reason === 'withdrawn' ? this.withdrawn(turnId, signal, revision, waits) : waits(result.reason);
     }
     while (this.room.isSessionOperationPending()) {
       await this.room.waitForSessionOperations();
@@ -106,6 +138,8 @@ export class WorkshopMemoryAutoSaves {
       this.hooks.log(`${target} written memoryId=${result.memory.id}; receipt not recorded reason=room-changed`);
       return { requestId: '', ok: true, memoryId: result.memory.id };
     }
+    // Released in the same synchronous step that records the receipt: the count never dips between them.
+    this.reservations.delete(turnId);
     this.session.setMemoryProposalState(turn.id, 'saved', result.memory.id);
     this.session.appendMemoryReceipt({
       action: 'saved',
@@ -120,13 +154,32 @@ export class WorkshopMemoryAutoSaves {
     return { requestId: '', ok: true, memoryId: result.memory.id };
   }
 
+  /** A withdrawn save: the card waits, held at the room's cap when that is why (PR #201 F-04). */
+  private withdrawn(
+    turnId: string,
+    signal: AbortSignal,
+    revision: number,
+    waits: (reason: string) => WorkshopMemoryWriteResultPayload
+  ): WorkshopMemoryWriteResultPayload {
+    const reason = this.withdrawnReason(turnId, signal, revision);
+    if (reason === 'withdrawn:room-cap') {
+      this.reservations.delete(turnId);
+      this.session.holdMemoryProposal(turnId, 'room-cap');
+      this.hooks.settleRoom();
+    }
+    return waits(reason);
+  }
+
   /** Why a save's permission was withdrawn, for the log: a fact, never text. */
-  private withdrawnReason(signal: AbortSignal, revision: number): string {
+  private withdrawnReason(turnId: string, signal: AbortSignal, revision: number): string {
     if (this.library.mode() !== 'auto') {
       return 'withdrawn:mode';
     }
     if (signal.aborted) {
       return 'withdrawn:run-stopped';
+    }
+    if (this.session.readRoomRevision() === revision && this.inRoom(turnId) >= WORKSHOP_MEMORY_AUTO_SAVES_PER_ROOM) {
+      return 'withdrawn:room-cap';
     }
     return this.session.readRoomRevision() !== revision ? 'withdrawn:room-changed' : 'withdrawn:card-settled';
   }

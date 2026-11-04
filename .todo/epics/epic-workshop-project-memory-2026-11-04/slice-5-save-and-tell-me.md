@@ -221,3 +221,42 @@ abort, 2).
 - Sizes: `WorkshopMemoryAutoSaves.ts` 133, `WorkshopProjectMemoryHandler.ts`
   447, `ProjectMemoryWrites.ts` 415, `RunWorkshopToolSidePass.ts` 378;
   `WorkshopRoomHandler.ts` (already past 500) is 1,648, 24 over the base.
+
+## PR #201 re-review: F-04, the cap counts saves under way
+
+Astra closed F-01–F-03 and the accessibility change at `0da80c5` and found
+F-04: with the save now its run's tail, a later reply could be admitted
+while an earlier save had committed its file but not yet recorded its
+receipt, so a sixth file could be written at `autoSavesPerRoom` 5.
+
+- **Fix: reservations by room revision** (the coordinator's suggested
+  shape). `WorkshopMemoryAutoSaves` reserves a save's place synchronously
+  as completion hands the card over, keyed by the room revision. The
+  room's count (`inRoom`) is its `by: 'auto'` receipts plus this
+  revision's reservations, and completion's decision reads it
+  (`memoryAutoSavesInRoom`, through the room handler, composition and the
+  tool side-pass). The permit also requires the reservation to stand and
+  the receipts plus the other reservations to be under the cap, so the
+  count is checked again at the commit. A reservation is released in the
+  same synchronous step that records the receipt, or when the save is
+  withdrawn, refused or fails. A replaced room's reservations don't count
+  in the new one, and Rewind still counts from receipts.
+- **Withdrawn at the cap** (only reachable if the room reached the cap
+  after admission): the card is held with `room-cap`
+  (`WorkshopSessionService.holdMemoryProposal`) and nothing is written.
+- **Tests** (`WorkshopProjectMemoryAutoSaveRaces.test.ts`): Astra's
+  witness. Four saves, then the fifth file commits while the listing that
+  reads its receipt's version is held, and a sixth reply is admitted: it is
+  held with `room-cap`; on release there are five files and five `auto`
+  receipts. Also: the cap rechecked at the commit (the room at the cap by
+  then: held, nothing written), and a withdrawn or refused save giving its
+  place back (five saves still go through after it, then the next is held).
+  Taking out the reservation count fails the witness (by timeout, as the
+  sixth save queues behind the held read), and taking out the commit-time
+  check fails its test (checked).
+- **Verification:** typecheck clean; lint 0 errors, 1,170 warnings;
+  **681 suites / 9,601 tests / 59 snapshots**, all passing on two
+  consecutive full runs. `WorkshopMemoryAutoSaves.ts` is 186 lines;
+  `WorkshopSessionService.ts` (already past 500) grew by 9 for
+  `holdMemoryProposal`, `WorkshopRoomHandler.ts` by 8, and
+  `WorkshopRunCompletion.ts` is 470.

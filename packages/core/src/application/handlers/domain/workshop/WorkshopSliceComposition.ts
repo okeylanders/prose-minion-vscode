@@ -328,6 +328,11 @@ export class WorkshopSliceComposition {
     return this.projectMemoryHandler.autoSaveProposal(turn.id, signal);
   }
 
+  /** The room's automatic saves, landed and in flight, for Save and tell me's cap (PR #201 F-04). */
+  memoryAutoSavesInRoom(): number {
+    return this.projectMemoryHandler.autoSavesInRoom();
+  }
+
   isContextRunActive(): boolean {
     return this.contextHandler.isRunning();
   }

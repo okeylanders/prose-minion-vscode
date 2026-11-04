@@ -67,7 +67,20 @@ describe('Workshop routes — Save and tell me races', () => {
     return { sending, turn: card()! };
   }
 
+  let sends = 0;
+  /** Like sendCarded, for any send in the room: the host's first reply starts its conversation, later ones continue it. */
+  async function sendCardedAgain(title: string): Promise<{ sending: Promise<void>; turn: WorkshopTurn }> {
+    sends += 1;
+    const call = harness.session.getHostConversationId() ? harness.service.continueConversation : harness.service.startWorkshopPersonaConversation;
+    call.mockResolvedValueOnce(analysisResult(`Good.\n\n${memoryFrame({ title })}`, { conversationId: 'host-conv' }) as never);
+    const before = ledger().filter((candidate) => candidate.memoryProposal).length;
+    const sending = route(MessageType.WORKSHOP_SEND_MESSAGE, { text: `What did we settle? (${sends})` });
+    await until(() => ledger().filter((candidate) => candidate.memoryProposal).length > before);
+    return { sending, turn: ledger().filter((candidate) => candidate.memoryProposal).at(-1)! };
+  }
+
   beforeEach(async () => {
+    sends = 0;
     harness = createWorkshopRouteTestHarness();
     harness.memory.state.mode = 'auto';
     await harness.pin();
@@ -175,6 +188,87 @@ describe('Workshop routes — Save and tell me races', () => {
       expect(results()).toEqual([{ requestId: 'u1', ok: true, memoryId }, { requestId: 'u2', ok: true, memoryId }]);
       expect(memoryFiles()).toHaveLength(1);
       expect(receipts()).toHaveLength(1);
+    });
+  });
+
+  describe('F-04: the room\'s cap counts saves under way', () => {
+    it('a reply admitted while the fifth save is committed but its receipt unrecorded is held at the cap', async () => {
+      for (let n = 1; n <= 4; n += 1) {
+        const { sending } = await sendCardedAgain(`Tea is served at six, take ${n}`);
+        await sending;
+      }
+      expect(receipts()).toHaveLength(4);
+
+      // The fifth file commits; the listing that reads its receipt's version is held.
+      const store = harness.memory.store;
+      const realCreate = store.create.bind(store);
+      const realList = store.list.bind(store);
+      let releaseList!: () => void;
+      const listGate = new Promise<void>((resolve) => { releaseList = resolve; });
+      let committed = false;
+      jest.spyOn(store, 'create').mockImplementationOnce(async (draft, options) => {
+        const created = await realCreate(draft, options);
+        committed = true;
+        jest.spyOn(store, 'list').mockImplementationOnce(async () => {
+          await listGate;
+          return realList();
+        });
+        return created;
+      });
+      const fifth = await sendCardedAgain('Tea is served at six, take 5');
+      await until(() => committed);
+      expect(memoryFiles()).toHaveLength(5);
+
+      const sixth = await sendCardedAgain('Tea is served at six, take 6');
+      await sixth.sending;
+      expect(sixth.turn.memoryProposal).toBeDefined();
+      expect(ledger().find((candidate) => candidate.id === sixth.turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+
+      releaseList();
+      await fifth.sending;
+      expect(memoryFiles()).toHaveLength(5);
+      expect(receipts().map((receipt) => receipt.projectMemoryReceipt?.by)).toEqual(['auto', 'auto', 'auto', 'auto', 'auto']);
+      expect(ledger().find((candidate) => candidate.id === fifth.turn.id)?.memoryProposal).toMatchObject({ state: 'saved' });
+    });
+
+    it('the cap is checked again at the commit: a room at the cap by then holds the card with room-cap, and writes nothing', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+      for (let n = 1; n <= 5; n += 1) {
+        harness.session.appendMemoryReceipt({
+          action: 'saved', memoryId: `mem-00000${n}`, title: 'Elsewhere', version: '0123456789ab', by: 'auto', proposedBy: 'jill'
+        });
+      }
+      held.release();
+      await sending;
+
+      expect(memoryFiles()).toEqual([]);
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+      expect(harness.memory.lines.join('\n') + (harness.log.appendLine as jest.Mock).mock.calls.join('\n')).toContain('reason=withdrawn:room-cap');
+    });
+
+    it('a withdrawn or refused save gives its place back', async () => {
+      const held = holdNextCreate();
+      const { sending, turn } = await sendCarded();
+      await until(held.reached);
+      harness.memory.state.mode = 'ask';
+      held.release();
+      await sending;
+      expect(ledger().find((candidate) => candidate.id === turn.id)?.memoryProposal?.held).toBeUndefined();
+
+      harness.memory.state.mode = 'auto';
+      jest.spyOn(harness.memory.library, 'save').mockResolvedValueOnce({ kind: 'refused', reason: 'busy' });
+      await (await sendCardedAgain('Tea is served at six, refused')).sending;
+      for (let n = 1; n <= 5; n += 1) {
+        const next = await sendCardedAgain(`Tea is served at six, take ${n}`);
+        await next.sending;
+        expect(ledger().find((candidate) => candidate.id === next.turn.id)?.memoryProposal?.state).toBe('saved');
+      }
+      const over = await sendCardedAgain('Tea is served at six, over');
+      await over.sending;
+      expect(ledger().find((candidate) => candidate.id === over.turn.id)?.memoryProposal).toMatchObject({ state: 'pending', held: 'room-cap' });
+      expect(memoryFiles()).toHaveLength(5);
     });
   });
 

@@ -129,6 +129,8 @@ export interface WorkshopRunCompletionInput {
   memory?: WorkshopReplyMemoryContext;
   /** Save and tell me (Slice 5): the recorded reply whose card is saved at once; absent, the card waits. */
   memoryAutoSave?: (turn: WorkshopTurn) => void;
+  /** The room's automatic saves, landed and in flight (PR #201 F-04); absent, its landed receipts. */
+  memoryAutoSavesInRoom?: () => number;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -276,7 +278,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   const controls = extractWorkshopReplyControls(result.content, { memoryOpen: memoryContext.open });
   const memory = settleWorkshopMemoryProposal(controls.memory, memoryContext, input.memoryAutoSave && {
     webResearchAttached: result.webResearchAttached === true,
-    autoSavesInRoom: () => countWorkshopRoomAutoSaves(session.readRoomLedger())
+    autoSavesInRoom: input.memoryAutoSavesInRoom ?? (() => countWorkshopRoomAutoSaves(session.readRoomLedger()))
   });
   if (memory.log) {
     input.log(`${memory.log} (${label})`);

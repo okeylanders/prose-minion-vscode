@@ -70,6 +70,8 @@ export interface WorkshopToolSidePassEvents {
   widgetRecommendationRejected: (message: string, details?: string) => void;
   /** Save and tell me (Slice 5): the synthesis whose card is saved now; the pass awaits it as its tail (PR #201 F-03). */
   memoryAutoSave?: (turn: WorkshopTurn) => Promise<void>;
+  /** The room's automatic saves, landed and in flight, for the cap (PR #201 F-04). */
+  memoryAutoSavesInRoom?: () => number;
   settled: (requestId: string) => void;
 }
 
@@ -276,6 +278,7 @@ export class RunWorkshopToolSidePass {
       let memorySave: Promise<void> | undefined;
       const synthesisTurn = completeWorkshopRun({
         memory: replyMemory,
+        memoryAutoSavesInRoom: events.memoryAutoSavesInRoom,
         memoryAutoSave: events.memoryAutoSave && ((turn) => {
           memorySave = events.memoryAutoSave!(turn);
         }),

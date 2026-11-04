@@ -396,6 +396,7 @@ export class WorkshopRoomHandler {
       widgetRecommendationRejected: (errorMessage, details) =>
         this.sendError('workshop.widget_recommendation', errorMessage, details),
       memoryAutoSave: (turn) => this.sliceComposition.autoSaveMemoryProposal(turn, controller.signal),
+      memoryAutoSavesInRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -647,6 +648,7 @@ export class WorkshopRoomHandler {
         const assistantTurn = completeWorkshopRun({
           memory: replyMemory,
           memoryAutoSave: memoryAutoSave.hand,
+          memoryAutoSavesInRoom: memoryAutoSave.inRoom,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1181,6 +1183,7 @@ export class WorkshopRoomHandler {
       const assistantTurn = completeWorkshopRun({
         memory: replyMemory,
         memoryAutoSave: memoryAutoSave.hand,
+        memoryAutoSavesInRoom: memoryAutoSave.inRoom,
         session: this.session,
         requestId,
         label,
@@ -1378,9 +1381,14 @@ export class WorkshopRoomHandler {
    * waits on a save, and New, Open, a preempting run and disposal stop it
    * as they stop any running run (its permission is withdrawn).
    */
-  private memoryAutoSaveFor(signal: AbortSignal): { hand: (turn: WorkshopTurn) => void; settled: () => Promise<void> | undefined } {
+  private memoryAutoSaveFor(signal: AbortSignal): {
+    hand: (turn: WorkshopTurn) => void;
+    inRoom: () => number;
+    settled: () => Promise<void> | undefined;
+  } {
     let saving: Promise<void> | undefined;
     return {
+      inRoom: () => this.sliceComposition.memoryAutoSavesInRoom(),
       hand: (turn) => {
         saving = this.sliceComposition.autoSaveMemoryProposal(turn, signal);
       },
