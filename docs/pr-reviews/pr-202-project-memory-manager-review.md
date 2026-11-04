@@ -21,7 +21,7 @@
 - **F02:** listing, source-title resolution, folder creation and key resolution retain their root binding across awaits. The original stale-scope and stronger root-identity replays pass.
 - **F03:** rollback is limited to the apply's own successful changed write while its value remains current; newer external choices survive. Ordinary rollback and rollback-refusal messages/snapshots are consistent.
 - **F04:** a folder failure is shown in the settings panel that initiated it, with retry/pending state.
-- **N01/N02:** manual saves refresh visible settings, and saved cards open/focus their manager row.
+- **N01/N02:** manual saves refresh visible settings and manager listings, and saved cards open/focus their manager row.
 - **N03:** only the newest folder request controls its result. Late and duplicate older replies do not replace it.
 - **N04:** newly observed automatic-save receipts refresh visible listings. Duplicate/restored snapshots avoid redundant requests, search is preserved, and closed surfaces remain quiet.
 
@@ -48,7 +48,7 @@ No formal GitHub approval or merge was performed. Continue checking the report-o
 
 ## Historical re-review — 2c549f9c, 2026-11-04 22:37 UTC
 
-**Current verdict: request changes for the remaining pin-toggle portion of F01.** This head incorporates the merged Slice 5 implementation and is reviewed against epic `87ec7a9a`. The sections below retain earlier evidence; this section is the current status.
+**Historical verdict at 2c549f9c: request changes for the remaining pin-toggle portion of F01.** That head incorporated the merged Slice 5 implementation and was reviewed against epic `87ec7a9a`. This section retains the earlier evidence; the final verification above supersedes its open-finding status.
 
 ### F01 partially closed: delete fixed; the same queued pin witness still fails
 
