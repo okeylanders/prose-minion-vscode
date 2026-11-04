@@ -544,6 +544,12 @@ export interface WorkshopSessionSnapshot {
   /** Older turns omitted from this snapshot's window. */
   truncatedTurns: number;
   /**
+   * The last stamped requested model per scope among the omitted turns (ADR
+   * 2026-11-03 D8), so the window's first reply can still draw a model slice.
+   * Present only when the window truncates and an omitted turn is stamped.
+   */
+  modelsBeforeWindow?: Partial<Record<ModelScope, string>>;
+  /**
    * True when any participant holds a conversation — host, tool sidecar, or
    * persona guest. This is ALSO the scope lock (ADR 2026-07-25): every surface
    * that offers to change the session path must hide that offer once this is
