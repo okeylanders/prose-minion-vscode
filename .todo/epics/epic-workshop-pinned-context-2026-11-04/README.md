@@ -1,8 +1,8 @@
 # Epic: Workshop Pinned Context
 
 **Status:** Slice 0 (spec) written, with five questions waiting on Okey.
-Slice 0d (tab design): second pass drawn after Okey's first notes, waiting
-on his review. Code
+Slice 0d (tab design): third pass drawn after Okey's notes, waiting on his
+approval. Code
 slices are gated on Project Memory reaching `main` (see [Order](#order)).
 **Priority:** Medium
 **Created:** 2026-11-04
@@ -44,7 +44,7 @@ every conversation through Choose from project, and wants to stop.
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Written; five questions open for Okey |
-| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | Second pass drawn (12 artboards), waiting on Okey ([doc](slice-0d-tab-design.md)) |
+| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | Third pass drawn (13 artboards), waiting on Okey's approval ([doc](slice-0d-tab-design.md)) |
 | 1 | Format and store | `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes), with fixtures. No UI, no seeding | `…-slice-1-format-store` | Codec can start now. The store waits on `StoredFileClaims` on `main` ([doc](slice-1-format-and-store.md)) |
 | 2 | Room seed | `WorkshopPinnedContextLibrary`, the `WorkshopRoomSeed` port, seeding on first room / New / full reset, the New result's report, the full reset's copy | `…-slice-2-room-seed` | Waits on 1 ([doc](slice-2-room-seed.md)) |
 | 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open | `…-slice-3-settings-tab` | Waits on 0d, 2, and 4a on `main` ([doc](slice-3-settings-tab.md)) |
@@ -188,3 +188,12 @@ the repo:
   - Drawn as Slice 0d's second pass and snapshotted. Slice 2's doc gains the
     payload change, the menu item and their tests; Slice 5 gains a live
     check.
+- **2026-11-04. Okey's second design notes** ("This looks good"):
+  - the file list moves into a scrollable well, so the dialog doesn't grow
+    with it;
+  - the template note collapses, starting open. The choice is remembered
+    as the hook's one UI preference (ADR D8, D9).
+
+  Drawn as 0d's third pass, with a Collapsed board (13 in all), and
+  snapshotted. Slice 3's doc gains the preference and its tests. Waiting on
+  Okey's approval.

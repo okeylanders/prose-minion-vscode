@@ -7,7 +7,7 @@
 `.todo/epics/epic-workshop-project-memory-2026-11-04/slice-0d-settings-design.md`
 on `epic/workshop-project-memory-slice-0-design`
 **Canvas:** https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to Okey), snapshotted in `docs/design/workshop-pinned-context/`
-**Status:** Second pass drawn and published (12 artboards), after Okey's first notes. Waiting on his review.
+**Status:** Third pass drawn and published (13 artboards). Okey said "this looks good" to the second pass and asked for two refinements, both drawn. Waiting on his approval.
 
 ## Outcome
 
@@ -187,6 +187,37 @@ Choices the brief left open, made here for Okey to accept or change:
 Every tab state grew by the well's height (about 140px). The frames and the
 picker's backdrop grew with it.
 
+## Third pass (2026-11-04, Okey's notes)
+
+Okey: "This looks good." Two refinements:
+
+1. **The file list is a scrollable well,** so the dialog doesn't get too
+   tall.
+   - The rows sit in an inset box (`--inset`, the frame's border, 10px
+     radius) with a 340px maximum height, about six rows. It scrolls
+     inside the tab.
+   - The heading gains the count: "Files, in order · 10".
+   - The dialog's height no longer depends on the list. The tab states with
+     a list came down by 160–220px.
+   - Nothing hides under the scroll: the amber line above the well already
+     counts every row that won't attach. In the Problems and Over budget
+     boards the well starts scrolled to the bottom, to show those rows.
+   - In the build, a row moved past the fold scrolls into view, with focus
+     kept on its Move button (Slice 3's tests).
+2. **The template note collapses, and starts open.**
+   - Its heading is a disclosure button: the info glyph, **Pinned context
+     is a starting template.**, the one-line gist, and a chevron at the
+     end. It has `aria-expanded` and `aria-controls`.
+   - Collapsed, the heading line stays and the comparison and last line
+     hide.
+   - The choice is remembered as one UI preference in the hook's persisted
+     state, so a writer who collapses it isn't shown it again on every
+     visit. This goes slightly past "starts out visible"; if Okey wants it
+     open on every visit instead, the preference goes and nothing else
+     changes.
+   - A new board, `Collapsed.dc.html`, shows the collapsed state. In
+     `Main.dc.html` the toggle works.
+
 ## Progress
 
 - **2026-11-04.** Brief written with the spec.
@@ -200,3 +231,7 @@ picker's backdrop grew with it.
 - **2026-11-04. Second pass.** Two notes from Okey are drawn: the template
   well at the top of the tab, and the empty-context New in the sessions
   menu with its result line. Snapshotted again. Waiting on his review.
+- **2026-11-04. Third pass.** Okey liked the second pass. Drawn: the file
+  list in a scrollable well, and the template note as a disclosure that
+  starts open, with a new Collapsed board (13 artboards in all).
+  Snapshotted again. Waiting on his approval.

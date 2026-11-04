@@ -53,8 +53,8 @@ body{margin:0}
 .pk-primary:disabled{opacity:.5;cursor:not-allowed;}
 </style>
 </helmet>
-<div style="position: relative; width: 940px; height: 1520px; overflow: hidden; background: #15110d">
-<dc-import name="Main" view-state="listed" min-h="1520" hint-size="940px,1520px"></dc-import>
+<div style="position: relative; width: 940px; height: 1340px; overflow: hidden; background: #15110d">
+<dc-import name="Main" view-state="listed" min-h="1340" hint-size="940px,1340px"></dc-import>
 <div style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.48)"></div>
 <div class="pk" style="position: absolute; top: 150px; left: 140px; width: 660px">
 <div class="pk-modal" role="dialog" aria-labelledby="pm-pin-picker-title">
@@ -122,7 +122,7 @@ body{margin:0}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["browse","refused"],"default":"browse"},"$preview":{"width":940,"height":1520}}'>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["browse","refused"],"default":"browse"},"$preview":{"width":940,"height":1340}}'>
 class Component extends DCLogic {
   renderVals() {
     const variant = this.props.variant ?? 'browse';

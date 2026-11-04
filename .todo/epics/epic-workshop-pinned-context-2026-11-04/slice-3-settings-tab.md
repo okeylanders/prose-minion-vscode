@@ -61,8 +61,10 @@ it back only as a key into the list it just read (ADR D8).
 ### Hook (`hooks/domain/workshop/useWorkshopPinnedContext.ts`)
 
 - Tripartite. Its state is the last answer. Its actions are request, pin by
-  keys, pin attachments, unpin, move, attach missing and open. Its
-  persistence is `{}`.
+  keys, pin attachments, unpin, move, attach missing, open, and toggle the
+  template well. Its persistence is one UI preference,
+  `{ pinnedContextNoteOpen: boolean }`, starting `true`. It never holds the
+  list, a path or a word count.
 - It takes only the answer for the request it is waiting on. A push
   (`requestId: null`) replaces state only when no request is pending.
 - It derives "in this conversation" and the missing count from the session
@@ -95,8 +97,15 @@ it back only as a key into the list it just read (ADR D8).
   catalog, and a `ctx-N` not in the room are each refused without a read.
 - **Hook:** request correlation ignores a stale answer, and the derived
   "in this conversation" follows the snapshot.
-- **Panel:** every 0d state renders, and the tab strip's arrow keys and
-  Home/End cover five tabs.
+- **Panel:**
+  - every 0d state renders, and the tab strip's arrow keys and Home/End
+    cover five tabs;
+  - the template well toggles, with `aria-expanded` and `aria-controls`
+    true to its state, and its preference survives a reload of the webview
+    state;
+  - the list well's height stays the same from 6 rows to 20;
+  - a row moved past the fold is scrolled into view, with focus kept on its
+    Move button.
 - **Parity:** the shared picker's Workshop tests run unchanged.
 - **Settings round trip:** not applicable. This is not a VS Code setting;
   say so in the PR.

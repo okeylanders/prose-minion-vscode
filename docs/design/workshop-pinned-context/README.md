@@ -6,9 +6,12 @@ and [ADR 2026-11-04](../../adr/2026-11-04-workshop-pinned-context.md). The
 brief, states and open questions are in
 [Slice 0d's doc](../../../.todo/epics/epic-workshop-pinned-context-2026-11-04/slice-0d-tab-design.md).
 
-- **Status: second pass, waiting on Okey's review.** It adds his two notes:
-  the template well, and the empty-context New. Nothing here is approved
-  yet. Once it is, the canvas is copied here again and this line says so.
+- **Status: third pass, waiting on Okey's approval.**
+  - Second pass: the template well, and the empty-context New.
+  - Third pass: the file list in a scrollable well, and the template well
+    collapsible, starting open.
+  - Nothing here is approved yet. Once it is, the canvas is copied here
+    again and this line says so.
 - **Source:** a Claude Design canvas artifact,
   https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to its owner).
   Drawn on 2026-11-04 and copied here the same day.
@@ -35,10 +38,11 @@ brief, states and open questions are in
 
 | Board | Builds in | What it shows |
 |---|---|---|
-| `Main.dc.html` | 3 | The tab, with 10 files pinned, headed in every state by the template well ("Pinned context is a starting template"). Interactive: Move up, Move down and Unpin work. Its `viewState` prop drives every tab state below |
+| `Main.dc.html` | 3 | The tab, with 10 files pinned in a scrollable well (about six rows tall), headed in every state by the collapsible template well ("Pinned context is a starting template"). Interactive: Move up, Move down, Unpin and the well's toggle work, and the list scrolls. Its `viewState` and `noteOpen` props drive every tab state below |
+| `Collapsed.dc.html` | 3 | The template well collapsed to its heading line |
 | `Empty.dc.html` | 3 | Nothing pinned yet |
-| `Problems.dc.html` | 3 | One pinned file not found, one that can't be read (over the 5 MB file limit). 8 of 10 attach |
-| `OverBudget.dc.html` | 3 | An 84,200-word manuscript pinned by a hand edit: about 107,600 of 100,000 words. It doesn't fit, so it's left out, and nothing is unpinned |
+| `Problems.dc.html` | 3 | One pinned file not found, one that can't be read (over the 5 MB file limit). 8 of 10 attach. The list starts scrolled to the bottom, to show them |
+| `OverBudget.dc.html` | 3 | An 84,200-word manuscript pinned by a hand edit: about 107,600 of 100,000 words. It doesn't fit, so it's left out, and nothing is unpinned. The list starts scrolled to the bottom |
 | `Changed.dc.html` | 3 | A write refused because another window changed the list. The current list is shown |
 | `Running.dc.html` | 3 | A reply is running: Attach missing is disabled and says why. Pinning still works |
 | `Unreadable.dc.html` | 3 | `pinned-context.json` itself can't be read (a path listed twice). Only Open file works |

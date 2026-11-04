@@ -339,6 +339,12 @@ fixes what the tab does:
   - Its last line: "Removing a file from a conversation doesn't unpin it.
     Unpinning a file doesn't remove it from conversations that have already
     started."
+  - **It collapses** (Okey, 2026-11-04). Its heading is a disclosure button
+    (`aria-expanded`, `aria-controls`, a chevron). The heading line stays
+    when collapsed, and the comparison and last line hide.
+  - It starts open. The writer's choice is remembered as one UI preference
+    in the hook's persisted state (D9), so it stays collapsed once
+    collapsed.
 - **Changes save right away,** like the memory manager's actions, not on
   Apply. The list is project data in a file, not a draft setting. The footer
   says so: "Pinned context saves as you change it and applies to new
@@ -349,7 +355,13 @@ fixes what the tab does:
     chip when there is one, words, the state ("Not found", "Can't read: …",
     or "Attached as its first N of M words"), and "In this conversation"
     when D4 matches;
-  - the row's actions: Move up, Move down, Open file, **Unpin**.
+  - the row's actions: Move up, Move down, Open file, **Unpin**;
+  - **the rows sit in a scrollable well** (Okey, 2026-11-04). It's an inset
+    box about six rows tall, headed "Files, in order · N", so the dialog
+    doesn't grow with the list.
+    - Every problem a row below the fold holds is counted in the amber line
+      above the well, so none is hidden by the scroll.
+    - Moving a row keeps it in view.
 - **What it can do:**
   - **Add from project…** opens the shared `ProjectResourcePickerModal` over
     the settings dialog, with a pin footer ("Pin 3 files"). The webview names
@@ -406,8 +418,9 @@ fixes what the tab does:
   (through `registerMutation`), and open file.
 - **Messages** live in `core/shared/types/messages/workshop/pinnedContext.ts`
   and are exported through the Workshop barrel.
-- **`useWorkshopPinnedContext`** follows the tripartite interface. Its
-  persistence is empty, because the host owns the truth.
+- **`useWorkshopPinnedContext`** follows the tripartite interface. The host
+  owns the list, so the hook persists none of it. Its persistence holds one
+  UI preference: whether the template well is open (D8).
 - **The tab** is `settings/WorkshopPinnedContextSettingsPanel.tsx`. It is
   presentational: it takes state and callbacks, and posts nothing itself.
 

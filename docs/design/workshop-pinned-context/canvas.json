@@ -5,21 +5,23 @@
   "launch": { "view": "canvas" },
   "pages": [],
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 940, "h": 1520, "title": "Listed · 10 files (Move, Unpin work)", "is_interactive": true },
-    "Empty.dc.html": { "x": 1020, "y": 0, "w": 940, "h": 960, "title": "Nothing pinned yet" },
-    "Problems.dc.html": { "x": 2040, "y": 0, "w": 940, "h": 1600, "title": "A missing file and an unreadable file" },
-    "OverBudget.dc.html": { "x": 0, "y": 1720, "w": 940, "h": 1640, "title": "Over the 100,000-word context limit" },
-    "Changed.dc.html": { "x": 1020, "y": 1720, "w": 940, "h": 1580, "title": "Changed in another window" },
-    "Running.dc.html": { "x": 2040, "y": 1720, "w": 940, "h": 1560, "title": "A reply is running" },
-    "Unreadable.dc.html": { "x": 0, "y": 3480, "w": 940, "h": 1040, "title": "pinned-context.json can't be read" },
-    "NoFolder.dc.html": { "x": 1020, "y": 3480, "w": 940, "h": 1040, "title": "Unavailable · no folder" },
-    "MultiRoot.dc.html": { "x": 2040, "y": 3480, "w": 940, "h": 1040, "title": "Unavailable · several folders" },
-    "Picker.dc.html": { "x": 0, "y": 4940, "w": 940, "h": 1520, "title": "Add from project… in pin mode (click files)", "is_interactive": true },
-    "PickerRefused.dc.html": { "x": 1020, "y": 4940, "w": 940, "h": 1520, "title": "A pin refused past the limit" },
-    "Workshop.dc.html": { "x": 2040, "y": 4940, "w": 940, "h": 1080, "title": "In the Workshop: the pill's mark, the New session menu, the New result" }
+    "Main.dc.html": { "x": 0, "y": 0, "w": 940, "h": 1340, "title": "Listed · 10 files (Move, Unpin, the note's toggle work; the list scrolls)", "is_interactive": true },
+    "Collapsed.dc.html": { "x": 1020, "y": 0, "w": 940, "h": 1240, "title": "Template note collapsed" },
+    "Empty.dc.html": { "x": 2040, "y": 0, "w": 940, "h": 960, "title": "Nothing pinned yet" },
+    "Problems.dc.html": { "x": 3060, "y": 0, "w": 940, "h": 1400, "title": "A missing file and an unreadable file" },
+    "OverBudget.dc.html": { "x": 0, "y": 1520, "w": 940, "h": 1420, "title": "Over the 100,000-word context limit" },
+    "Changed.dc.html": { "x": 1020, "y": 1520, "w": 940, "h": 1400, "title": "Changed in another window" },
+    "Running.dc.html": { "x": 2040, "y": 1520, "w": 940, "h": 1380, "title": "A reply is running" },
+    "Unreadable.dc.html": { "x": 0, "y": 3060, "w": 940, "h": 1040, "title": "pinned-context.json can't be read" },
+    "NoFolder.dc.html": { "x": 1020, "y": 3060, "w": 940, "h": 1040, "title": "Unavailable · no folder" },
+    "MultiRoot.dc.html": { "x": 2040, "y": 3060, "w": 940, "h": 1040, "title": "Unavailable · several folders" },
+    "Picker.dc.html": { "x": 0, "y": 4520, "w": 940, "h": 1340, "title": "Add from project… in pin mode (click files)", "is_interactive": true },
+    "PickerRefused.dc.html": { "x": 1020, "y": 4520, "w": 940, "h": 1340, "title": "A pin refused past the limit" },
+    "Workshop.dc.html": { "x": 2040, "y": 4520, "w": 940, "h": 1080, "title": "In the Workshop: the pill's mark, the New session menu, the New result" }
   },
   "order": [
     "Main.dc.html",
+    "Collapsed.dc.html",
     "Empty.dc.html",
     "Problems.dc.html",
     "OverBudget.dc.html",
@@ -33,8 +35,8 @@
     "Workshop.dc.html"
   ],
   "notes": {
-    "tabTitle": { "x": 0, "y": -300, "text": "Conversation settings · Pinned context tab", "kind": "title1", "maxW": 2980 },
-    "flowTitle": { "x": 0, "y": 4640, "text": "Adding files, and the rest of the Workshop", "kind": "title1", "maxW": 2980 }
+    "tabTitle": { "x": 0, "y": -300, "text": "Conversation settings · Pinned context tab", "kind": "title1", "maxW": 4000 },
+    "flowTitle": { "x": 0, "y": 4220, "text": "Adding files, and the rest of the Workshop", "kind": "title1", "maxW": 2980 }
   },
   "designSystems": []
 }

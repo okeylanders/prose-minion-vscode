@@ -53,6 +53,13 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 .vs-grid dd{margin:0;color:var(--muted);}
 .vs-grid .vs-col{color:var(--text2);font-weight:600;}
 .vs-foot{margin:9px 0 0 22px;font-size:11px;line-height:1.45;color:var(--dim);}
+.vs-toggle{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;padding:0;border:0;background:none;font-family:inherit;font-size:12px;color:var(--dim);text-align:left;cursor:pointer;}
+.vs-toggle:focus-visible{outline:2px solid var(--accentHi);outline-offset:3px;border-radius:4px;}
+.vs-toggle b{color:var(--text);font-weight:600;}
+.vs-info{flex:none;color:var(--accentHi);}
+.vs-chev{flex:none;margin-left:auto;color:var(--muted);}
+.vs-chev.open{transform:rotate(180deg);}
+.pwell{max-height:340px;overflow-y:auto;padding:6px;background:var(--inset);border:1px solid var(--border);border-radius:10px;}
 .path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--text);}
 .btns{display:flex;gap:8px;flex:none;align-items:center;}
 .btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
@@ -114,7 +121,8 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </sc-if>
 
 <section class="vs" aria-labelledby="pm-pin-vs-title">
-<div class="vs-head"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><b id="pm-pin-vs-title">Pinned context is a starting template.</b><span>Each new conversation copies it once, then keeps its own.</span></div>
+<button class="vs-toggle" type="button" aria-expanded="{{noteExpanded}}" aria-controls="pm-pin-vs-body" onClick="{{toggleNote}}"><svg class="vs-info" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><b id="pm-pin-vs-title">Pinned context is a starting template.</b><span>Each new conversation copies it once, then keeps its own.</span><svg class="vs-chev {{noteChevCls}}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+<div id="pm-pin-vs-body" hidden="{{noteHidden}}">
 <dl class="vs-grid">
 <dt class="vs-corner"></dt><dd class="vs-col">Pinned context</dd><dd class="vs-col">A conversation’s context</dd>
 <dt>Change it</dt><dd>Here, in this tab</dd><dd>In that conversation’s Context panel, any time</dd>
@@ -122,6 +130,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 <dt>Holds</dt><dd>Files most conversations need: characters, places, the project brief</dd><dd>Whatever the conversation needs, starting with the pinned files</dd>
 </dl>
 <p class="vs-foot">Removing a file from a conversation doesn’t unpin it. Unpinning a file doesn’t remove it from conversations that have already started.</p>
+</div>
 </section>
 
 <sc-if value="{{hasChanged}}" hint-placeholder-val="{{ false }}">
@@ -156,7 +165,8 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </sc-if>
 
 <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
-<div class="rule"><span class="eyebrow">Files, in order</span><hr></div>
+<div class="rule"><span class="eyebrow">Files, in order · {{rowCount}}</span><hr></div>
+<div class="pwell" ref="{{setWell}}">
 <ol class="plist" aria-label="Pinned files, in the order new conversations attach them">
 <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
 <li class="prow {{r.cls}}">
@@ -183,6 +193,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </li>
 </sc-for>
 </ol>
+</div>
 </sc-if>
 
 <div class="actions">
@@ -220,11 +231,11 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["listed","empty","problems","over","changed","running","unreadable","nofolder","multiroot"],"default":"listed"},"minH":{"editor":null,"default":"1520"},"$preview":{"width":940,"height":1520}}'>
+<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["listed","empty","problems","over","changed","running","unreadable","nofolder","multiroot"],"default":"listed"},"noteOpen":{"editor":"enum","options":["open","closed"],"default":"open"},"minH":{"editor":null,"default":"1340"},"$preview":{"width":940,"height":1340}}'>
 class Component extends DCLogic {
   renderVals() {
     const view = this.props.viewState ?? 'listed';
-    const minHeight = (this.props.minH ?? '1520') + 'px';
+    const minHeight = (this.props.minH ?? '1340') + 'px';
     const limit = 100000;
     const fmt = (n) => n.toLocaleString('en-US');
     const unavailable = view === 'nofolder' || view === 'multiroot';
@@ -374,8 +385,16 @@ class Component extends DCLogic {
     if (fileBroken) { fileDesc = 'Open it to fix it. Prose Minion never rewrites a file it can’t read.'; }
 
     const listShown = !unavailable && !fileBroken && !empty && rows.length > 0;
+    const noteOpen = st.noteOpen === undefined ? (this.props.noteOpen ?? 'open') !== 'closed' : st.noteOpen;
+    const scrollToEnd = view === 'over' || view === 'problems';
     return {
       minHeight: minHeight,
+      noteExpanded: noteOpen ? 'true' : 'false',
+      noteHidden: !noteOpen,
+      noteChevCls: noteOpen ? 'open' : '',
+      toggleNote: () => this.setState({ noteOpen: !noteOpen }),
+      rowCount: String(rows.length),
+      setWell: (el) => { if (el && scrollToEnd) { el.scrollTop = el.scrollHeight; } },
       hasNotice: noticeTitle.length > 0,
       noticeTitle: noticeTitle,
       noticeText: noticeText,
