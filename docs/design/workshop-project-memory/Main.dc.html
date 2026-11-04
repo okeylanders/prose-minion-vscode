@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Conversation settings · Memory tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#ee7d49}a:hover{color:#e0673a}
+.pm-dark{
+  --bg:#15110d;--surface:#221a13;--s2:#2b2017;--s3:#36281b;--inset:#1b150f;
+  --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
+  --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
+  --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--accentSoft:rgba(224,103,58,.14);
+  --amber:#e2b24a;--backdrop:rgba(0,0,0,.48);--shadow:0 28px 90px rgba(0,0,0,.55);
+}
+.pm-light{
+  --bg:#efe6da;--surface:#fbf6ef;--s2:#f4ece1;--s3:#e9ddcd;--inset:#fffdf9;
+  --border:#ddcdb9;--border2:#cbb79f;--soft:#e8dccc;
+  --text:#2a1f16;--text2:#47382b;--muted:#6a5846;--dim:#6f5d4b;--faint:#7d6a57;
+  --accent:#c8552c;--accentHi:#b44a22;--accentLo:#a8431e;--accentSoft:rgba(200,85,44,.10);
+  --amber:#8a6210;--backdrop:rgba(60,40,20,.18);--shadow:0 22px 60px rgba(80,50,20,.18);
+}
+.root{width:940px;min-height:1040px;box-sizing:border-box;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.eyebrow{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0;}
+.rule{display:flex;align-items:center;gap:12px;margin:22px 0 9px;}
+.rule:first-child{margin-top:14px;}
+.rule hr{flex:1;border:0;border-top:1px solid var(--border);margin:0;}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.card{display:flex;flex-direction:column;gap:5px;text-align:left;border:1px solid var(--border);border-radius:9px;background:var(--s2);font-family:inherit;padding:11px 12px;cursor:pointer;}
+.card:not(:disabled):hover{border-color:var(--border2);}
+.card:disabled{cursor:not-allowed;opacity:.55;}
+.card-top{display:flex;align-items:center;gap:7px;color:var(--muted);}
+.card-name{font-size:13px;font-weight:600;color:var(--text2);}
+.card-desc{font-size:11px;line-height:1.5;color:var(--dim);}
+.rec{margin-left:auto;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 6px;}
+.card.sel .rec{color:var(--accentHi);border-color:color-mix(in srgb,var(--accent) 45%,transparent);}
+.card.sel{background:var(--accentSoft);border-color:color-mix(in srgb,var(--accent) 50%,transparent);}
+.card.sel .card-top{color:var(--accentHi);}
+.card.sel .card-name{color:var(--text);}
+.card.sel .card-desc{color:var(--muted);}
+.note{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--dim);}
+.row{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;background:var(--s2);border:1px solid var(--border);border-radius:9px;}
+.row + .row{margin-top:8px;}
+.row-text{flex:1;min-width:0;}
+.row-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);}
+.row-desc{margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--dim);}
+.readout{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:330px;}
+.chip{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text2);background:var(--inset);border:1px solid var(--border);border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.chip.quiet{color:var(--dim);}
+.meter{margin-top:10px;height:5px;border-radius:999px;background:var(--s3);overflow:hidden;}
+.meter-fill{height:100%;border-radius:999px;background:var(--accent);}
+.meter-fill.full{background:var(--amber);}
+.meter-cap{display:flex;justify-content:space-between;margin-top:5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--faint);}
+.more{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:9px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:11.5px;line-height:1.5;color:var(--muted);}
+.more svg{flex:none;margin-top:2px;color:var(--amber);}
+.notice{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));background:color-mix(in srgb,var(--amber) 8%,transparent);font-size:12px;line-height:1.5;color:var(--muted);}
+.notice svg{flex:none;margin-top:2px;color:var(--amber);}
+.notice b{color:var(--text);font-weight:600;}
+.vs{margin-top:16px;padding:10px 12px 11px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);}
+.vs-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim);}
+.vs-head svg{flex:none;color:var(--accentHi);}
+.vs-head b{color:var(--text);font-weight:600;}
+.vs-grid{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);column-gap:14px;row-gap:5px;margin:9px 0 0 22px;font-size:11px;line-height:1.45;}
+.vs-grid dt{margin:0;color:var(--faint);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;padding-top:1px;}
+.vs-grid dd{margin:0;color:var(--muted);}
+.vs-grid .vs-col{color:var(--text2);font-weight:600;}
+.path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--text);}
+.btns{display:flex;gap:8px;flex:none;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
+.row .btn{background:var(--surface);}
+.btn:not(:disabled):hover{border-color:var(--accentHi);color:var(--text);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.primary{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;font-family:inherit;color:#fff;background:linear-gradient(180deg,var(--accentHi),var(--accentLo));cursor:pointer;}
+.files{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px;}
+.files li{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--text2);}
+.files span{color:var(--dim);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
+.tabs{display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--soft);}
+.tab{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--dim);font-family:inherit;font-size:12px;font-weight:600;padding:10px 12px 9px;cursor:pointer;}
+.tab.on{color:var(--text);border-bottom-color:var(--accent);}
+.close{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border2);border-radius:8px;background:var(--s2);color:var(--muted);cursor:pointer;}
+</style>
+</helmet>
+<div class="root {{themeClass}}" style="padding: 40px 0 0 0">
+<div class="modal" role="dialog" aria-labelledby="pm-ws-settings-title">
+
+<div style="display: flex; justify-content: space-between; gap: 20px; padding: 20px 20px 16px">
+<div>
+<div class="eyebrow">Workshop · Room settings</div>
+<h2 id="pm-ws-settings-title" style="font-size: 20px; line-height: 1.2; margin: 7px 0 4px; color: var(--text)">Conversation settings</h2>
+<p style="color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0">Choose how Workshop personas respond, what they may proactively offer, what you explicitly share, what they remember about this project, and whether they may research the live web.</p>
+</div>
+<button class="close" type="button" aria-label="Close conversation settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+</div>
+
+<div class="tabs" role="tablist" aria-label="Conversation settings sections">
+<button class="tab" type="button" role="tab" aria-selected="false">Behavior</button>
+<button class="tab" type="button" role="tab" aria-selected="false">About you</button>
+<button class="tab on" type="button" role="tab" aria-selected="true">Memory</button>
+<button class="tab" type="button" role="tab" aria-selected="false">Advanced</button>
+</div>
+
+<div role="tabpanel" aria-label="Memory" style="padding: 2px 20px 8px">
+
+<sc-if value="{{hasNotice}}" hint-placeholder-val="{{ false }}">
+<div class="notice" role="status">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+<span><b>{{noticeTitle}}</b> {{noticeText}}</span>
+</div>
+</sc-if>
+
+<section class="vs" aria-labelledby="pm-mem-vs-title">
+<div class="vs-head"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><b id="pm-mem-vs-title">Memory isn’t context.</b><span>They reach personas differently.</span></div>
+<dl class="vs-grid">
+<dt class="vs-corner"></dt><dd class="vs-col">Project memory</dd><dd class="vs-col">Context</dd>
+<dt>Reaches</dt><dd>Every conversation in this project</dd><dd>The conversation it’s attached to</dd>
+<dt>Holds</dt><dd>A one-line summary of each memory, plus the few set to load in full. Personas open a full note only when they need it</dd><dd>Whole files and passages, sent in full</dd>
+<dt>Size</dt><dd>Kept small: about 7,000 tokens in all</dd><dd>Much larger: up to 100,000 words</dd>
+</dl>
+</section>
+
+<div class="rule"><span class="eyebrow">Project memory</span><hr></div>
+<div class="cards">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="3">
+<button class="card {{c.selClass}}" type="button" aria-pressed="{{c.pressed}}" disabled="{{c.disabled}}" onClick="{{c.pick}}">
+<span class="card-top">
+<sc-if value="{{c.isOff}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M6 18 18 6"></path></svg></sc-if>
+<sc-if value="{{c.isAsk}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg></sc-if>
+<sc-if value="{{c.isAuto}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22h14M6 18h12v-2a2 2 0 0 0-2-2h-1l.6-3.6A3 3 0 0 0 12.7 5h-1.4a3 3 0 0 0-2.9 2.4L9 11H8a2 2 0 0 0-2 2z"></path></svg></sc-if>
+<span class="card-name">{{c.name}}</span>
+<sc-if value="{{c.recommended}}" hint-placeholder-val="{{ false }}"><span class="rec">Recommended</span></sc-if>
+</span>
+<span class="card-desc">{{c.desc}}</span>
+</button>
+</sc-for>
+</div>
+<p class="note">This setting applies to all your projects. Each project keeps its own memories, in its own folder.</p>
+
+<div class="rule"><span class="eyebrow">At the start of each conversation</span><hr></div>
+<div class="row">
+<div class="row-text">
+<div class="row-name">{{load.name}}</div>
+<div class="row-desc">{{load.desc}}</div>
+<sc-if value="{{load.showMeter}}" hint-placeholder-val="{{ true }}">
+<sc-for list="{{load.meters}}" as="m" hint-placeholder-count="2">
+<div class="meter" role="img" aria-label="{{m.label}}"><div class="meter-fill {{m.cls}}" style="width: {{m.width}}"></div></div>
+<div class="meter-cap"><span>{{m.left}}</span><span>{{m.right}}</span></div>
+</sc-for>
+</sc-if>
+</div>
+<div class="readout">
+<sc-for list="{{load.chips}}" as="ch" hint-placeholder-count="3"><span class="chip {{ch.cls}}">{{ch.text}}</span></sc-for>
+</div>
+</div>
+<sc-if value="{{load.hasMore}}" hint-placeholder-val="{{ false }}">
+<div class="more">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+<span>{{load.moreText}}</span>
+</div>
+</sc-if>
+
+<div class="rule"><span class="eyebrow">Your memories</span><hr></div>
+<div class="row" style="align-items: center">
+<div class="row-text">
+<div class="row-name"><span class="path">prose-minion/memory/</span></div>
+<div class="row-desc">{{folderDesc}}</div>
+</div>
+<div class="btns">
+<button class="btn" type="button" disabled="{{folderLocked}}">Open memory folder</button>
+<button class="btn" type="button" disabled="{{manageLocked}}">Manage memories…</button>
+</div>
+</div>
+<sc-if value="{{hasUnreadable}}" hint-placeholder-val="{{ false }}">
+<div class="row" style="border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); background: color-mix(in srgb, var(--amber) 7%, var(--s2))">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px; color: var(--amber)"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg>
+<div class="row-text">
+<div class="row-name">2 files can't be read</div>
+<div class="row-desc">They aren't loaded, and personas can't find them. Fix the frontmatter in the editor, or move the file out of the folder. Nothing else is affected.</div>
+<ul class="files">
+<li>rabbit-watch-runs-backward-7f3c2a.md <span>· no closing --- line</span></li>
+<li>tea-party-seating-1a9e04.md <span>· “kind” isn't one Memory knows</span></li>
+</ul>
+</div>
+<div class="btns"><button class="btn" type="button">Show in manager</button></div>
+</div>
+</sc-if>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px 20px; margin-top: 10px; border-top: 1px solid var(--soft)">
+<span style="flex: 1; font-size: 11px; line-height: 1.5; color: var(--faint)">Applies the Behavior, About You, Memory, and Advanced drafts together. Memory and live web research take effect on your next message.</span>
+<button class="btn" type="button">Cancel</button>
+<button class="primary" type="button">Apply to next turn</button>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["memories","off","empty","over","fullover","unreadable","nofolder","multiroot"],"default":"memories"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":940,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const view = this.props.viewState ?? 'memories';
+    const theme = this.props.theme ?? 'dark';
+    const unavailable = view === 'nofolder' || view === 'multiroot';
+    const startMode = view === 'off' ? 'off' : 'ask';
+    const mode = (this.state && this.state.mode) || startMode;
+    const catalog = view === 'empty' ? 'empty' : view === 'over' ? 'over' : 'normal';
+
+    const defs = [
+      { id: 'off', name: 'Off', desc: 'Personas start each conversation without project memory, and they don’t suggest new ones.' },
+      { id: 'ask', name: 'Ask first', desc: 'A persona can suggest a memory under its reply. It’s saved only when you choose Save.' },
+      { id: 'auto', name: 'Save and tell me', desc: 'Personas save what’s worth keeping and say so in the thread. Edit or forget any of it there.' }
+    ];
+    const cards = defs.map((d) => ({
+      name: d.name,
+      desc: d.desc,
+      isOff: d.id === 'off',
+      isAsk: d.id === 'ask',
+      isAuto: d.id === 'auto',
+      selClass: mode === d.id ? 'sel' : '',
+      pressed: mode === d.id ? 'true' : 'false',
+      disabled: false,
+      recommended: d.id === 'ask',
+      pick: () => this.setState({ mode: d.id })
+    }));
+
+    let load;
+    if (unavailable) {
+      load = {
+        name: 'Nothing loads',
+        desc: 'Personas in this workspace get no project memory, whatever the mode above says.',
+        showMeter: false,
+        chips: [{ text: 'unavailable', cls: 'quiet' }],
+        hasMore: false
+      };
+    } else if (mode === 'off') {
+      load = {
+        name: 'Nothing loads while memory is off',
+        desc: catalog === 'empty'
+          ? 'There are no saved memories yet.'
+          : 'Memory is off in every project. This project’s memories stay in its folder, and you can still manage them.',
+        showMeter: false,
+        chips: catalog === 'empty' ? [{ text: 'no memories', cls: 'quiet' }] : [{ text: catalog === 'over' ? '40 saved' : '12 saved', cls: 'quiet' }],
+        hasMore: false
+      };
+    } else if (catalog === 'empty') {
+      load = {
+        name: 'No memories yet',
+        desc: mode === 'auto'
+          ? 'Personas save what’s worth keeping as you work. You can also say “remember that…”, or choose Save to memory… on any message.'
+          : 'When a persona suggests a memory, it appears under its reply for you to save. You can also say “remember that…”, or choose Save to memory… on any message.',
+        showMeter: false,
+        chips: [{ text: '0 memories', cls: 'quiet' }],
+        hasMore: false
+      };
+    } else if (view === 'fullover') {
+      load = {
+        name: 'Memories set to load in full first, then the rest',
+        desc: 'Each persona sees the 3 of them that fit in full, and the title and summary of every other memory.',
+        showMeter: true,
+        meters: [
+          { cls: 'full', width: '100%', label: 'Set to load in full: 4, about 5,600 tokens requested; about 4,400 of 5,000 loaded; 1 doesn\u2019t fit', left: 'Set to load in full \u00b7 4 \u00b7 1 doesn\u2019t fit', right: 'about 5,600 requested \u00b7 4,400 of 5,000 loaded' },
+          { cls: '', width: '40%', label: 'Catalog: about 800 of 2,000 tokens, all 9 fit', left: 'Titles and summaries \u00b7 all 9 fit', right: 'about 800 of 2,000 tokens' }
+        ],
+        chips: [{ text: '12 memories', cls: '' }, { text: '3 of 4 in full', cls: '' }, { text: '\u2248 5,200 tokens at the start', cls: '' }],
+        hasMore: true,
+        moreText: '1 memory set to load in full doesn\u2019t fit, so it loads as a list entry. Turn off Always load in full on one in Manage memories\u2026 to make room.'
+      };
+    } else if (catalog === 'over') {
+      load = {
+        name: 'Memories loaded in full first, then the most recent',
+        desc: 'Each persona sees the title and summary of the memories that fit, and the 3 set to load in full. Choose Always load in full for the ones every conversation needs.',
+        showMeter: true,
+        meters: [
+          { cls: '', width: '48%', label: 'Loaded in full: about 2,400 of 5,000 tokens', left: 'Loaded in full · 3', right: 'about 2,400 of 5,000 tokens' },
+          { cls: 'full', width: '100%', label: 'Catalog: about 2,000 of 2,000 tokens, 25 of 37 fit', left: 'Titles and summaries · 25 of 37 fit', right: 'about 2,000 of 2,000 tokens' }
+        ],
+        chips: [{ text: '40 memories', cls: '' }, { text: '3 in full', cls: '' }, { text: '≈ 4,400 tokens', cls: '' }],
+        hasMore: true,
+        moreText: '12 more are searchable. Personas find them with memory search when the conversation needs them.'
+      };
+    } else {
+      load = {
+        name: 'Every memory’s title and summary',
+        desc: 'Each persona also sees the 2 memories set to load in full, and opens the rest when the conversation needs them.',
+        showMeter: true,
+        meters: [
+          { cls: '', width: '22%', label: 'Loaded in full: about 1,100 of 5,000 tokens', left: 'Loaded in full · 2', right: 'about 1,100 of 5,000 tokens' },
+          { cls: '', width: '35%', label: 'Catalog: about 700 of 2,000 tokens, all 10 fit', left: 'Titles and summaries · all 10 fit', right: 'about 700 of 2,000 tokens' }
+        ],
+        chips: [{ text: '12 memories', cls: '' }, { text: '2 in full', cls: '' }, { text: '≈ 1,800 tokens', cls: '' }],
+        hasMore: false
+      };
+    }
+
+    const notices = {
+      nofolder: { t: 'Project memory isn’t available here.', x: 'No folder is open, so there’s no project to keep memories in. Open a single folder to use project memory. The mode above still applies to your other projects.' },
+      multiroot: { t: 'Project memory isn’t available here.', x: 'This workspace has several folders, so memory can’t tell which project it belongs to. Open a single folder to use project memory. The mode above still applies to your other projects.' }
+    };
+    const n = notices[view];
+
+    return {
+      themeClass: theme === 'light' ? 'pm-light' : 'pm-dark',
+      cards,
+      load,
+      hasNotice: Boolean(n),
+      noticeTitle: n ? n.t : '',
+      noticeText: n ? n.x : '',
+      hasUnreadable: view === 'unreadable',
+      folderDesc: unavailable
+        ? 'Available once memory belongs to one project folder.'
+        : catalog === 'empty'
+          ? 'One Markdown file per memory. The folder is made when the first memory is saved, or when you open it.'
+          : 'One Markdown file per memory. You can read and edit them in VS Code.',
+      folderLocked: unavailable,
+      manageLocked: unavailable
+    };
+  }
+}
+</script>
+</body>
+</html>

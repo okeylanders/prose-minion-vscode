@@ -366,7 +366,7 @@ in the system prompt (Context 1).
   when the coordinator's accepted-workspace rule holds (`recallScope()`, ADR
   2026-10-05 §2). A changed root never shows another project's memories.
 - **The estimate.** The settings tab shows the frame's size, computed from the
-  same builder ("12 memories · 2 pinned · about 1,800 tokens at the start of
+  same builder ("12 memories · 2 in full · about 1,800 tokens at the start of
   each conversation").
 - **It records what it delivered** (D14), so later notes carry only changes.
 
@@ -375,6 +375,8 @@ settings change and at archive import, so the cache would break and a reopened
 room would silently get a new catalog. (b) Re-render the frame on each save:
 rejected for the cache; D14 appends instead. (c) No frame, `memory.catalog` only: rejected, it's
 option C of the feature note, "too lazy".
+
+- **UI words.** The UI calls a pinned memory "Always load in full" (the action) and "Loaded in full" (the badge); the format and code keep `pinned`.
 
 ### D6. Proposals are a stripped reply trailer, at most one per reply
 
