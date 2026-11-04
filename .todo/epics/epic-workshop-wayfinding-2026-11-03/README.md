@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 is in progress.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 merged (PR #188, `356c751`). Slice 5 merged (PR #189, `4a180ab`). Slice 7 merged (PR #190, `6c12df5`). Slices 1–7 are done; Slice 8, the live pass, waits on Okey.
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -54,8 +54,8 @@ the ADR:
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Done: PR #188, merged at `356c751` |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Done: PR #189, merged at `4a180ab` |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
-| 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | In progress |
-| 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
+| 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Done: PR #190, merged at `6c12df5` |
+| 8 | [Verify live](slice-8-live-pass.md) | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Waiting on Okey: [checklist](slice-8-live-pass.md#checklist) and [decisions](slice-8-live-pass.md#decisions-for-okey) |
 
 **Order.** Two chains run side by side:
 
@@ -683,4 +683,10 @@ the ADR:
 
     New files are all under 500 lines.
   - **Filed:** [divider accessible names](../../tech-debt/2026-11-04-workshop-thread-divider-accessible-names.md).
-
+  - **Merged.** Astra's review at `f9a6ab7` found no actionable issues. CI was
+    green on `b47fa10`, and the coordinator merged PR #190 into the epic at
+    `6c12df5`.
+- **2026-11-04. Build slices done.** Slices 1–7 are merged. The coordinator
+  collected every item earlier slices left for the live pass, the writer's
+  open decisions, and the close-out steps into
+  [Slice 8's doc](slice-8-live-pass.md).
