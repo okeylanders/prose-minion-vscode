@@ -100,6 +100,7 @@ export function managerLibrary(over = false): WorkshopMemoryLibrary {
         pinned: true,
         // Created last, and the frame builder loaded it last: whether it fits is its result alone.
         fullLoad: over ? 'doesnt-fit' : 'loaded',
+        residency: over ? 'listed' : 'full',
         origin: 'auto',
         proposedByLabel: 'Jill',
         source: { kind: 'unnamed' },

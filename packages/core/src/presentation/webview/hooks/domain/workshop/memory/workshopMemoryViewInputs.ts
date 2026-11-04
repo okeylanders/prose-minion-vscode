@@ -129,7 +129,17 @@ export interface WorkshopMemoryEntry {
    * every other memory. Never inferred from dates (PR #196 F-03).
    */
   readonly fullLoad: 'loaded' | 'doesnt-fit' | null;
+  /**
+   * Where the frame builder put a memory in effect (PR #199 F-02): its body
+   * `full`, `listed` as an entry, or `searchable` only (not in the starting
+   * frame at all). A memory that doesn't fit in full is only a list
+   * candidate, so this is the renderer's own result, never inferred.
+   * Absent when the host doesn't say; the words then promise nothing.
+   */
+  readonly residency?: WorkshopMemoryResidency;
 }
+
+export type WorkshopMemoryResidency = 'full' | 'listed' | 'searchable';
 
 /** The folder as the manager lists it: every row the host can name. */
 export interface WorkshopMemoryLibrary {

@@ -174,13 +174,23 @@ describe('workshopMemoryManagerView', () => {
   });
 
   it('two or more that don’t fit: named, then counted', () => {
-    const two = [memoryEntry({ title: 'A', pinned: true, fullLoad: 'doesnt-fit' }), memoryEntry({ title: 'B', pinned: true, fullLoad: 'doesnt-fit' })];
+    const two = [
+      memoryEntry({ title: 'A', pinned: true, fullLoad: 'doesnt-fit', residency: 'listed' }),
+      memoryEntry({ title: 'B', pinned: true, fullLoad: 'doesnt-fit', residency: 'listed' })
+    ];
     const over = { ...FULL_OVER };
     const named = workshopMemoryManagerView({ mode: 'ask', library: { memories: two, unreadable: [], conflicts: [] }, estimate: over });
     expect(named.overNote).toContain('“A” and “B” don’t fit, so they load as list entries instead.');
-    const three = [...two, memoryEntry({ title: 'C', pinned: true, fullLoad: 'doesnt-fit' })];
+    const three = [...two, memoryEntry({ title: 'C', pinned: true, fullLoad: 'doesnt-fit', residency: 'listed' })];
     const counted = workshopMemoryManagerView({ mode: 'ask', library: { memories: three, unreadable: [], conflicts: [] }, estimate: over });
     expect(counted.overNote).toContain('3 of them don’t fit, so they load as list entries instead.');
+  });
+
+  it('one that doesn’t fit and isn’t listed either: searchable only, named in the status line and on its row', () => {
+    const library = { memories: [memoryEntry({ title: 'The Duchess sneezes', pinned: true, fullLoad: 'doesnt-fit', residency: 'searchable' })], unreadable: [], conflicts: [] };
+    const view = workshopMemoryManagerView({ mode: 'ask', library, estimate: FULL_OVER });
+    expect(view.overNote).toContain('“The Duchess sneezes” doesn’t fit, and the list is full too, so it’s searchable only.');
+    expect(view.active[0].notes).toEqual(['Doesn’t fit at the start: not in full, and the list is full too. Personas can still find it with memory search. Turn off Always load in full on another to make room.']);
   });
 
   it('a refused Always load in full: the note under that row, with the total it would have made', () => {

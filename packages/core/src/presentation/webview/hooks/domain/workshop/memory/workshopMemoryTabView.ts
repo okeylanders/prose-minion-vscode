@@ -216,13 +216,17 @@ function estimateLoadView(estimate: WorkshopMemoryFrameEstimate, budgets: Worksh
   const notLoaded = Math.max(0, estimate.pinned - estimate.pinnedLoaded);
   const candidates = Math.max(0, estimate.memories - estimate.pinnedLoaded);
   const listOver = estimate.catalogEntries < candidates;
-  const hidden = candidates - estimate.catalogEntries;
+  // The bodies that didn't fit lead the list (ADR D5), so the first entries are theirs; the rest of them are
+  // searchable only, and every other memory past the list is "more" (PR #199 F-02).
+  const pinnedListed = Math.min(notLoaded, estimate.catalogEntries);
+  const pinnedSearchable = notLoaded - pinnedListed;
+  const hidden = Math.max(0, candidates - estimate.catalogEntries - pinnedSearchable);
   const meters = [fullMeter(estimate, notLoaded, budgets), listMeter(estimate, candidates, listOver, budgets)];
   const more = [
     ...(estimate.pinnedOver && notLoaded > 0
-      ? [`${notLoaded === 1 ? '1 memory set to load in full doesn’t fit, so it loads as a list entry' : `${memoryCount(notLoaded)} memories set to load in full don’t fit, so they load as list entries`}. Turn off Always load in full on one in Manage memories… to make room.`]
+      ? [`${notFittingLine(notLoaded, pinnedListed, pinnedSearchable)} Turn off Always load in full on one in Manage memories… to make room.`]
       : []),
-    ...(listOver
+    ...(hidden > 0
       ? [`${memoryCount(hidden)} more ${hidden === 1 ? 'is' : 'are'} searchable. Personas find them with memory search when the conversation needs them.`]
       : [])
   ];
@@ -266,6 +270,19 @@ function estimateLoadView(estimate: WorkshopMemoryFrameEstimate, budgets: Worksh
     meters,
     more
   };
+}
+
+/** What became of the memories set to load in full that didn't fit: listed, searchable only, or both. */
+function notFittingLine(notLoaded: number, listed: number, searchable: number): string {
+  const subject = notLoaded === 1 ? '1 memory set to load in full doesn’t fit' : `${memoryCount(notLoaded)} memories set to load in full don’t fit`;
+  if (searchable === 0) {
+    return `${subject}, so ${notLoaded === 1 ? 'it loads as a list entry' : 'they load as list entries'}.`;
+  }
+  if (listed === 0) {
+    return `${subject}, and the list is full too, so ${notLoaded === 1 ? 'it’s' : 'they’re'} searchable only.`;
+  }
+  return `${subject}: ${listed === 1 ? '1 loads as a list entry' : `${memoryCount(listed)} load as list entries`}, ` +
+    `and ${searchable === 1 ? '1 is' : `${memoryCount(searchable)} are`} searchable only.`;
 }
 
 function fullMeter(estimate: WorkshopMemoryFrameEstimate, notLoaded: number, budgets: WorkshopMemoryBudgets): WorkshopMemoryMeterView {

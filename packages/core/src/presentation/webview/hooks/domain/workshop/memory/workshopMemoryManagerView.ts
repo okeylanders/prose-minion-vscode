@@ -176,11 +176,23 @@ function chips(
 }
 
 function overNote(doesntFit: readonly WorkshopMemoryEntry[], budgets: WorkshopMemoryBudgets): string {
-  const which = doesntFit.length <= 2
-    ? `${quotedList(doesntFit.map((entry) => entry.title))} ${doesntFit.length === 1 ? 'doesn’t fit, so it loads as a list entry' : 'don’t fit, so they load as list entries'}`
-    : `${memoryCount(doesntFit.length)} of them don’t fit, so they load as list entries`;
+  const one = doesntFit.length === 1;
+  const subject = doesntFit.length <= 2 ? quotedList(doesntFit.map((entry) => entry.title)) : `${memoryCount(doesntFit.length)} of them`;
+  const fit = one ? 'doesn’t fit' : 'don’t fit';
+  // What became of them is the renderer's per row; a row the host says nothing of promises nothing (PR #199 F-02).
+  const known = doesntFit.every((entry) => entry.residency === 'listed' || entry.residency === 'searchable');
+  const listed = doesntFit.filter((entry) => entry.residency === 'listed').length;
+  const searchable = doesntFit.length - listed;
+  const which = !known
+    ? `${subject} ${fit}, so ${one ? 'it doesn’t' : 'they don’t'} load whole`
+    : searchable === 0
+      ? `${subject} ${fit}, so ${one ? 'it loads as a list entry' : 'they load as list entries'} instead`
+      : listed === 0
+        ? `${subject} ${fit}, and the list is full too, so ${one ? 'it’s' : 'they’re'} searchable only`
+        : `${memoryCount(doesntFit.length)} of them don’t fit: ${listed === 1 ? '1 loads as a list entry' : `${memoryCount(listed)} load as list entries`}, ` +
+          `and ${searchable === 1 ? '1 is' : `${memoryCount(searchable)} are`} searchable only`;
   return `Memories set to load in full are over their ${memoryCount(budgets.pinnedTokens)}-token budget, probably from an edit outside the manager. ` +
-    `They’re considered oldest-created first, and ${which} instead. Turn off Always load in full on one to make room. Nothing is changed for you.`;
+    `They’re considered oldest-created first, and ${which}. Turn off Always load in full on one to make room. Nothing is changed for you.`;
 }
 
 function attentionRows(library: WorkshopMemoryLibrary): WorkshopMemoryAttentionRow[] {
@@ -235,7 +247,11 @@ function rowView(
     notes.push(`Can’t load this one in full: memories loaded in full would come to about ${aboutTokens(refusal.wouldBeTokens, true)} of ${budget} tokens. Turn it off on another, or shorten this note.`);
   }
   if (inEffect && entry.fullLoad === 'doesnt-fit') {
-    notes.push(`Doesn’t fit in the ${budget} tokens loaded in full, so it loads as a list entry. Turn off Always load in full on it or another to make room.`);
+    notes.push(entry.residency === 'listed'
+      ? `Doesn’t fit in the ${budget} tokens loaded in full, so it loads as a list entry. Turn off Always load in full on it or another to make room.`
+      : entry.residency === 'searchable'
+        ? 'Doesn’t fit at the start: not in full, and the list is full too. Personas can still find it with memory search. Turn off Always load in full on another to make room.'
+        : `Doesn’t fit in the ${budget} tokens loaded in full, so it doesn’t load whole. Turn off Always load in full on it or another to make room.`);
   }
   if (entry.busy) {
     notes.push('Another VS Code window is changing this memory. Edit, archive and delete come back when it’s done.');
