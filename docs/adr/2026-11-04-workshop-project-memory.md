@@ -197,7 +197,10 @@ We settled this while working chapter 3's tea-party scene. …
 
 - The first line is exactly `---`, and frontmatter ends at the next line that is
   exactly `---`.
-- Each line between is `key: value`, split at the first `: `.
+- Each line between is a key, a colon, and a value. It's read leniently for hand
+  edits: a space before the colon, or `key:value` with no space after it, reads
+  the same. The value is everything after the first colon, trimmed. Lines are
+  always written canonically as `key: value`.
 - Values are literal, not YAML: no quoting, no nesting, no multi-line values.
 - Each key appears once, and an unknown key makes the file unreadable.
 - CRLF is read; LF is written.
@@ -216,14 +219,15 @@ We settled this while working chapter 3's tea-party scene. …
 | `status` | yes | `active` \| `archived` |
 | `created`, `updated` | yes | ISO 8601 UTC, second precision |
 | `origin` | yes | `writer` \| `proposed` \| `auto` |
-| `pinned` | no | `true` \| `false`; absent is `false` |
+| `pinned` | no on read, always written | `true` \| `false`; absent (a hand-made file) reads as `false`; always written, `pinned: false` included |
 | `proposed-by` | with `proposed` / `auto` | a persona id |
 | `source-session` | with `proposed` / `auto`; optional for `writer` | a session id |
 | `source-turns` | with `source-session` | comma-separated turn ids, `turn-<n>-<role>-<ms>` |
 | `supersedes` | no | one memory id |
 
 - An optional key that is absent, or present with an empty value, reads as
-  none. The codec writes only the optional keys that hold a value.
+  none. The codec writes only the optional keys that hold a value, except
+  `pinned`, which it always writes.
 - `origin` says who saved the memory: `writer` (New memory, Save to memory…, or a
   hand-made file), `proposed` (a persona proposed it and the writer saved it),
   `auto` (saved under Save and tell me).
@@ -514,15 +518,24 @@ personal-domain word.
     abandoned claim goes back under its saved name, or is removed beside a
     standing file. A folder read error is `unknown`, never empty;
   - **files it can't read** are never written or deleted.
-- **Memory-owned modules, not a refactor of the Lightbox's.** The board
-  modules are board-shaped (Context 6). Slice 1 writes `ProjectMemoryClaims`,
-  `ProjectMemoryRewrite` and `ProjectMemoryNewFile` with claim names of the
-  form `.<file>.claim-<epoch ms>-<writer id>`. They follow the Lightbox's rules
-  and tests case for case. A tech-debt note records extracting one shared
-  claimed-file primitive once both have shipped.
-  - **Why not now:** the Lightbox's modules are a long-reviewed seam (PR #163,
-    #164, #167). Generalizing them inside this epic puts their behavior at risk
-    for a second consumer that isn't proven yet.
+- **One shared claim primitive, configured per store.** The board modules
+  were board-shaped (Context 6). Slice 1 extracted their mechanics into
+  neutral modules in `infrastructure/storage/` (`768b41f`):
+  - `StoredFileClaims` holds the claim lifecycle: taking a claim, the 30-second
+    lease, put-back and remove when settling, and a delete under a claim that
+    retires every other claim;
+  - `StoredFileRewrite` holds the stage-claim-commit half of a rewrite.
+
+  `LightboxBoardClaims` is now `StoredFileClaims` configured with the board's
+  claim pattern and log prefix. Its behavior, log lines and staging-id order are
+  unchanged, and every Lightbox test passes unchanged. `ProjectMemoryStore`
+  configures the same primitive with its own pattern,
+  `.<file>.claim-<epoch ms>-<writer id>`. Each store keeps what is its own: file
+  naming, listing, decoding, and what a rewrite checks before it commits.
+  - *Alternative considered:* memory-owned sibling modules, leaving the
+    Lightbox's untouched. Rejected once the extraction landed with the
+    Lightbox's tests unchanged: two copies of subtle concurrency code would
+    drift.
 - **Owed writes drain at deactivation.** Every write the library starts is owed
   until it settles. `ExtensionShutdownParts`
   (`apps/vscode-extension/src/application/extensionShutdown.ts:24-29`) gains
@@ -640,14 +653,16 @@ setting, the platform port widens; with a global one, nothing does.
   - the widened lists' save-and-reopen test.
 - **Docs:** `AGENTS.md` and `docs/ARCHITECTURE.md` gain the family and the store,
   updated by the coordinator when slices merge.
+- **The Lightbox's claims are shared code now** (D10). AGENTS.md's Lightbox Saved
+  Boards rule ("Never move, delete or put back a claim except through
+  `LightboxBoardClaims`") is reworded at integration to name `StoredFileClaims`,
+  as configured by each store.
 
 ## Out of scope
 
 - Semantic search; a persisted search index (the folder is small).
 - Anything outside the Workshop reading memory (open question 6).
 - "Promote to story bible" on a `canon` memory: decided in the story bible's ADR.
-- Extracting a shared claimed-file primitive from the Lightbox and memory stores
-  (tech debt).
 - Cross-workspace memory.
 
 ## Open questions for the writer

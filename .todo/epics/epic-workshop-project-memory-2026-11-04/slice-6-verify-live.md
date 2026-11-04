@@ -77,8 +77,7 @@ anything screenshotted or recorded.
       questions and any amendment the live pass needs.
 - [ ] The feature note is archived under `.todo/archive/features/` with an archive
       note linking the epic and PRs. Follow-ups are split into `.todo` first
-      (tech debt: a shared claimed-file primitive; INDEX.md or the delta frame if
-      deferred).
+      (INDEX.md or the delta frame, if deferred).
 - [ ] A memory-bank entry: `.memory-bank/YYYYMMDD-HHMM-workshop-project-memory.md`.
 - [ ] The coordinator updates `AGENTS.md` (tree, inventory, a Project Memory
       section) and `docs/ARCHITECTURE.md`.
