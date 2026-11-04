@@ -1,6 +1,40 @@
 # PR #198 review: Project Memory update notes (Slice 2b)
 
-## Current re-review verdict at `29b41de1`
+## Current integration verdict at `081e4776`
+
+- **Verdict: APPROVE. No open runtime findings remain in the reviewed code.**
+- Exact reviewed head: `081e4776ac7acebf66db2f9b262f632358558afa`.
+- The branch includes final corrected #197 implementation
+  `94fcabb7f6b64fd3a82432353d8865f31ced2e3d` as an ancestor. The prior
+  inherited-code gate is closed, including the archived-intermediate
+  supersession traversal, global setting scope, log privacy, provenance
+  disclosure, and cycle-aware attribution corrections.
+- The `ProjectMemoryLibraryContracts` merge preserves D14 version
+  attachment and corrected accepted-edge traversal. The production delta
+  against corrected #197 is still Slice 2b's intended delta.
+- **10 focused Jest suites / 95 tests passed** against this integrated
+  head. This includes the three independent D14 regression witnesses and
+  the added base privacy, setting, prompt, and supersession suites.
+- The **52 earlier positive assertions and 24 digest/transition assertions**
+  passed again on hash-verified exact-head modules.
+- Exact-head [CI 41897602265](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41897602265)
+  is **successful**. The prior integrated head `f45cc0d6` also passed
+  10 suites / 92 tests and CI before the final traversal correction.
+- The nonblocking implementation-table and test-header ownership summaries
+  were corrected in `f45cc0d6`. The PR description should likewise reflect
+  the final reply-owned record.
+- **Stack order remains:** #197 is still open at this review. Merge #197
+  first and retarget #198 from its temporary Slice 2a base to
+  `epic/workshop-project-memory`, preserving the final base review report.
+  Verify the resulting head and CI after any conflict resolution or code
+  change. The previously reported GitHub conflict has cleared.
+- This is a written code-review verdict, not a formal GitHub approval or
+  authorization to merge. No merge was performed. Local verification
+  limitations below remain unchanged.
+
+## Earlier re-review at `29b41de1` (historical)
+
+
 
 - Re-reviewed exact head: `29b41de14fe438755b2aab7566d0af142c4da4af`.
 - **Verdict: APPROVE the Slice 2b delta. F-01, F-02, and F-03 are verified resolved.**
