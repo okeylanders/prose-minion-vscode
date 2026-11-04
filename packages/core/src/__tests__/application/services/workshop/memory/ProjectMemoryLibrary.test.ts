@@ -6,6 +6,8 @@
  */
 import { libraryHost, memory, writerMemory, allLines } from '@/__tests__/application/services/workshop/memory/projectMemoryLibraryHost';
 import { projectMemoryBody } from '@shared/types/projectMemory';
+import { encodeProjectMemory } from '@/infrastructure/storage/ProjectMemoryCodec';
+import { claimOf } from '@/__tests__/infrastructure/storage/projectMemoryStoreHost';
 
 describe('ProjectMemoryLibrary', () => {
   it('reads the mode on every call: off, then on, then off again', async () => {
@@ -58,6 +60,24 @@ describe('ProjectMemoryLibrary', () => {
     expect(frame.kind === 'frame' && frame.frame.estimate).toEqual(figures);
     host.state.folders = [];
     expect(await host.library.estimateProjectMemoryFrame()).toEqual({ kind: 'closed', reason: 'no-workspace' });
+  });
+
+  it('treats a set-aside row (another memory\'s bytes under a claim beside a standing file) as unreadable: counted, never shown', async () => {
+    const host = libraryHost();
+    const file = host.put(writerMemory());
+    const fileName = file.split('/').pop()!;
+    const setAside = writerMemory({ id: 'mem-abcdef', title: 'SENTINEL-SET-ASIDE', summary: 'SENTINEL-SET-ASIDE' });
+    host.fileSystem.files.set(claimOf(fileName, Date.parse('2026-11-04T09:29:50Z'), 'other'), new TextEncoder().encode(encodeProjectMemory(setAside)));
+    expect(await host.store.list()).toMatchObject({ kind: 'listed', unreadable: [{ reason: 'set-aside' }] });
+
+    const catalog = await host.library.catalog();
+    expect(catalog.kind === 'catalog' && catalog.set.unreadable).toBe(1);
+    expect(catalog.kind === 'catalog' && catalog.set.memories.map(({ memory }) => memory.id)).toEqual(['mem-7f3c2a']);
+    const frame = await host.library.frame();
+    const search = await host.library.search('SENTINEL', 'all');
+    const read = await host.library.read(['mem-abcdef']);
+    expect(JSON.stringify([frame, search, read])).not.toContain('SENTINEL-SET-ASIDE');
+    expect(read).toEqual({ kind: 'read', items: [{ kind: 'unknown', id: 'mem-abcdef' }] });
   });
 
   it('logs ids, counts and reasons, never a title, summary or body (D9)', async () => {
