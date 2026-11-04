@@ -1,8 +1,8 @@
 # Epic: Workshop Project Memory
 
-**Status:** Slice 0 (spec and design) in progress. Slice 1 (store and codec)
-and Slice 4a (settings panel extraction) are running in the background
-alongside it.
+**Status:** Slice 0 in review (PR #192, waiting on Okey's six answers).
+Slice 1 in review (PR #194). Slice 4a in review (PR #193). Slice 0d (settings
+design) is with Okey.
 **Priority:** Medium
 **Created:** 2026-11-04
 **Integration branch:** `epic/workshop-project-memory`, cut from
@@ -12,8 +12,7 @@ Slice 8's live pass is docs only), with `main` at `24d9d6e` merged in
 merges into this epic again before anything else lands. Each slice is built
 on its own branch, `epic/workshop-project-memory-slice-<N>-<slug>`, and merges
 into the epic through a reviewed PR.
-**Decision:** ADR 2026-11-04: Workshop Project Memory (Slice 0, not yet
-written)
+**Decision:** ADR 2026-11-04: Workshop Project Memory (Proposed; in PR #192)
 **Design:** `docs/design/workshop-project-memory/` (Slice 0, not yet
 captured)
 **Realizes:** [Workshop Project Memory](../../features/feature-workshop-project-memory/README.md)
@@ -38,12 +37,12 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, slice docs 1–6, open questions put to Okey | `…-slice-0-spec` | In progress |
-| 0d | Settings design | The Memory tab and the memory manager designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | In progress |
-| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` with the Lightbox board store's write discipline, fixtures. No model, no UI | `…-slice-1-store` | In progress (provisional on the ADR) |
+| 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | In review: PR #192 (green; merges after Okey's answers) |
+| 0d | Settings design | The Memory tab and the memory manager designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | With Okey: first canvas published |
+| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194 (merges after #192) |
 | 2 | Read path | The catalog frame at a room's first turn, `memory.catalog` / `search` / `read`, every list that widens with the family | — | Waits on Slice 0 and 1 |
 | 3 | Write path | Proposal trailer, card on the bubble, receipt turns, supersession, "Save to memory…" | — | Waits on Slice 2 |
-| 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | In progress |
+| 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | In review: PR #193 (green) |
 | 4b | Memory tab and manager | The approved design built on 4a, wired to the host | — | Waits on 0d, 4a, Slice 2 |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, derived `INDEX.md` | — | Waits on Slice 3 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
@@ -105,3 +104,31 @@ From the feature note; Slice 0 puts each to Okey with a recommendation:
   work. Branch cut from `epic/workshop-wayfinding` at `6c12df5`, `main`
   merged in at `4280ef2`. Threads started: Slice 0 (spec), 0d (settings
   design), 1 (store and codec), 4a (settings panels).
+- **2026-11-04. First pass of the threads.**
+  - **Slice 0 (spec).** The ADR is Proposed, D1–D13, with a runway and slice
+    docs 2–6 (PR #192). It departs from the feature note in several places:
+    - the catalog frame goes in the first user message, not the system
+      prompt (every settings change rebuilds it);
+    - "superseded" is derived, and `origin` is `writer | proposed | auto`;
+    - the trailer is stripped like a widget recommendation;
+    - receipts are divider turns;
+    - the mode defaults to Off;
+    - memory turned on mid-room is lookup only (D8);
+    - budgets are in tokens (`pinnedTokens` 1,500, `catalogTokens` 2,000).
+
+    Six questions wait on Okey.
+  - **Slice 0d (design).** The first canvas is published to Okey, with 9
+    artboards of the Memory tab. Unavailable is drawn as off with a reason.
+  - **Slice 4a (settings panels).** The modal went from 587 to 234 lines
+    plus three panels, driven by `WORKSHOP_CONVERSATION_SETTINGS_TABS`.
+    Existing tests pass unedited. Counts: 637 / 8,982 / 59 (PR #193).
+  - **Slice 1 (store and codec).**
+    - The coordinator kept the thread's behavior-preserving extraction of
+      the board store's claims into a neutral `StoredFileClaims` /
+      `StoredFileRewrite` (`768b41f`): Lightbox tests are unchanged, and a
+      boundary guard keeps the primitive neutral.
+    - Format 1 follows the ADR.
+    - Counts: 639 / 9,071 / 59 (PR #194).
+    - At integration, AGENTS.md's claim rule is reworded to name
+      `StoredFileClaims`.
+
