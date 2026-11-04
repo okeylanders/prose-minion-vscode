@@ -27,7 +27,8 @@ import {
   type WorkshopMemoryListingMessage,
   type WorkshopMemoryListingPayload,
   type WorkshopMemoryManagerResultMessage,
-  type WorkshopMemoryWriteResultMessage
+  type WorkshopMemoryWriteResultMessage,
+  type WorkshopSessionStateMessage
 } from '@messages';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import type { WorkshopMemoryLoadInFullRefusal } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
@@ -75,6 +76,8 @@ export interface WorkshopMemoryManagerActions {
   handleManagerResult: (message: WorkshopMemoryManagerResultMessage) => void;
   /** Slice 3's write answers: this hook's own, and a refresh after any write that landed while the manager or the settings show the listing. */
   noteWriteResult: (message: WorkshopMemoryWriteResultMessage) => void;
+  /** The room's snapshot: a Save and tell me receipt not seen before refreshes a visible listing (PR #202 N04). */
+  noteSessionState: (message: WorkshopSessionStateMessage) => void;
   /** Slice 3's edit data: a rename's read. */
   noteEditData: (message: WorkshopMemoryEditDataMessage) => void;
 }
@@ -108,6 +111,8 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
   const [folder, setFolder] = React.useState<WorkshopMemoryFolderStatus>({ pending: false });
   const [focusMemoryId, setFocusMemoryId] = React.useState<string | undefined>(undefined);
   const settingsVisibleRef = React.useRef(false);
+  /** Save and tell me's receipts already seen, by turn id: only a new one means the folder moved. */
+  const autoReceipts = React.useRef(new Set<string>());
   /** The newest Open memory folder press: only its answer says how the folder went (PR #202 N03). */
   const folderRequest = React.useRef<string | undefined>(undefined);
   const listRequest = React.useRef<string | undefined>(undefined);
@@ -263,6 +268,19 @@ export function useWorkshopMemoryManager(): UseWorkshopMemoryManagerReturn {
       }
       // A write from the sheet or a card that landed while the manager or the settings show the listing: what they show moved.
       if (message.payload.ok && (managerOpenRef.current || settingsVisibleRef.current)) {
+        requestListing();
+      }
+    },
+    noteSessionState: (message) => {
+      let landed = false;
+      for (const turn of message.payload.session.turns) {
+        if (turn.projectMemoryReceipt?.by === 'auto' && !autoReceipts.current.has(turn.id)) {
+          autoReceipts.current.add(turn.id);
+          landed = true;
+        }
+      }
+      // An automatic save writes no WORKSHOP_MEMORY_WRITE_RESULT; its receipt in the snapshot is the sign.
+      if (landed && (managerOpenRef.current || settingsVisibleRef.current)) {
         requestListing();
       }
     },

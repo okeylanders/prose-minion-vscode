@@ -202,5 +202,21 @@ describe('useWorkshopMemoryManager', () => {
     expect(result.current.actionError).toBeUndefined();
     expect(result.current.actionPending).toBe(false);
   });
+
+  it('a new Save and tell me receipt in a snapshot refreshes a visible listing, once (PR #202 N04)', () => {
+    const { result } = renderHook(() => useWorkshopMemoryManager());
+    const receipt = (id: string) => ({ id, role: 'system', projectMemoryReceipt: { action: 'saved', memoryId: 'mem-7f3c21', title: 'T', version: '0123456789ab', by: 'auto' } });
+    const writerReceipt = { id: 'turn-3-system', role: 'system', projectMemoryReceipt: { action: 'saved', memoryId: 'mem-1a9e04', title: 'T', version: '0123456789ab', by: 'writer' } };
+    const snapshot = (turns: unknown[]) => envelope(MessageType.WORKSHOP_SESSION_STATE, { session: { turns } });
+    act(() => result.current.noteSessionState(snapshot([receipt('turn-5-system')])));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(0);
+    act(() => result.current.setSettingsVisible(true));
+    act(() => result.current.noteSessionState(snapshot([receipt('turn-5-system'), writerReceipt])));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(0);
+    act(() => result.current.noteSessionState(snapshot([receipt('turn-5-system'), receipt('turn-7-system')])));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(1);
+    act(() => result.current.noteSessionState(snapshot([receipt('turn-5-system'), receipt('turn-7-system')])));
+    expect(posted(MessageType.WORKSHOP_MEMORY_LIST)).toHaveLength(1);
+  });
 });
 

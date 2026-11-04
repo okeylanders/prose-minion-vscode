@@ -40,7 +40,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleListing: jest.fn(),
     handleManagerResult: jest.fn(),
     noteWriteResult: jest.fn(),
-    noteEditData: jest.fn()
+    noteEditData: jest.fn(),
+    noteSessionState: jest.fn()
   },
   widgetHost: {
     handleWidgetConfigData: jest.fn(),
@@ -133,7 +134,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
   });
 
-  it('mirrors each session snapshot to the room, the bookmarks and the generic widget host', () => {
+  it('mirrors each session snapshot to the room, the bookmarks, the generic widget host and the memory manager', () => {
     const deps = makeDeps();
     const routes = buildWorkshopAppMessageRoutes(deps);
     const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
@@ -143,6 +144,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.bookmarks.handleSessionState).toHaveBeenCalledWith(message);
     expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.memoryManager.noteSessionState).toHaveBeenCalledWith(message);
   });
 
   it('routes a turn preview to the bookmarks transport', () => {

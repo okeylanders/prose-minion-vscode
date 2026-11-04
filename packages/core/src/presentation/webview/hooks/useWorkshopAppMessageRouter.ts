@@ -75,7 +75,7 @@ export interface WorkshopAppMessageRouterDeps {
   /** Project memory's write answers and the sheet's reads (Project Memory Slice 3). */
   projectMemory: Pick<UseWorkshopProjectMemoryReturn, 'handleWriteResult' | 'handleEditData' | 'handleEstimateResult'>;
   /** The Memory tab's listing and the manager's answers (Project Memory Slice 4b). */
-  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData'>;
+  memoryManager: Pick<UseWorkshopMemoryManagerReturn, 'handleListing' | 'handleManagerResult' | 'noteWriteResult' | 'noteEditData' | 'noteSessionState'>;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -130,6 +130,7 @@ export function buildWorkshopAppMessageRoutes(
       workshopRoom.handleSessionState(message);
       bookmarks.handleSessionState(message);
       widgetHost.handleSessionState(message);
+      memoryManager.noteSessionState(message);
     },
     [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
