@@ -65,6 +65,15 @@ export interface CapabilityDeliveredSource {
   readonly label: string;
   readonly configuredResource?: { readonly group: ContextPathGroup; readonly path: string };
   readonly sizeChars: number;
+  /**
+   * The capability card turn that recorded this call (Workshop Wayfinding
+   * D4). Only a capability that mints a card sets it.
+   */
+  readonly turnId?: string;
+  /** The lines a range read returned, 1-based and inclusive. */
+  readonly lineRange?: { readonly start: number; readonly end: number };
+  /** SHA-256 (hex) of the whole file's text at read time. Host-private. */
+  readonly sourceFingerprint?: string;
 }
 
 /**

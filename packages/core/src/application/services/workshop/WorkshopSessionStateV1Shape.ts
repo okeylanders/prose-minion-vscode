@@ -23,6 +23,7 @@ import {
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -517,7 +518,11 @@ function assertContextSource(value: unknown, path: string): void {
       'promptTokensDelta',
       'excerptVersion',
       'stale',
-      'artifactId'
+      'artifactId',
+      // Read-in provenance (ADR 2026-11-03 D4; additive, D9).
+      'turnId',
+      'lineRange',
+      'sourceFingerprint'
     ]
   );
   enumAt(source.kind, `${path}.kind`, CONTEXT_SOURCE_KINDS);
@@ -531,7 +536,17 @@ function assertContextSource(value: unknown, path: string): void {
   optionalNumberAt(source.excerptVersion, `${path}.excerptVersion`);
   optionalBooleanAt(source.stale, `${path}.stale`);
   optionalStringAt(source.artifactId, `${path}.artifactId`);
+  const fault = contextSourceProvenanceFault(source);
+  if (fault) {
+    shapeError(`${path}.${fault}`, CONTEXT_SOURCE_PROVENANCE_EXPECTED[fault]);
+  }
 }
+
+const CONTEXT_SOURCE_PROVENANCE_EXPECTED = {
+  turnId: 'a non-empty string',
+  lineRange: 'positive integer lines { start, end } with start <= end',
+  sourceFingerprint: 'a 64-character lowercase hex SHA-256'
+} as const;
 
 function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(

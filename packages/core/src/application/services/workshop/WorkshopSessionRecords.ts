@@ -35,6 +35,7 @@ import type {
   WorkshopTurnKind,
   WorkshopWidgetRecommendation
 } from '@messages';
+import { cloneStoredContextSource } from '@orchestration/ContextSourceRecord';
 import type {
   WorkshopCapabilityArtifactDetails,
   WorkshopCapabilityResult
@@ -281,10 +282,7 @@ export function cloneWidgetRecommendation(
 }
 
 export function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {
-  return {
-    ...entry,
-    configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-  };
+  return cloneStoredContextSource(entry);
 }
 
 export function cloneMessageAttachmentSnapshot(

@@ -19,7 +19,10 @@ import {
   workshopTranscriptRecallStatusMessage,
   workshopTranscriptRecallStatusTicker
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
-import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
+import {
+  resourceReadLineRange,
+  WorkshopResourceCapability
+} from '@/application/services/workshop/WorkshopResourceCapability';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { LogSink } from '@/platform';
@@ -226,7 +229,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       deliveredItems: request.capability === 'resource.read' && result.status === 'success'
         ? [typeof result.metadata?.path === 'string' ? result.metadata.path : request.path]
         : [`${request.capability}:${result.status}`],
-      deliveredSources: this.toDeliveredSources(request, result),
+      deliveredSources: this.toDeliveredSources(request, result, completedTurn?.id),
       usage: result.usage
     };
   }
@@ -235,9 +238,20 @@ export class WorkshopPersonaCapability implements AgentCapability<
    * Manifest rows for what this call put into the HOST's context (Phase 7):
    * resource reads, analysis reports, and dictionary evidence — the material
    * classes the sprint enumerates. Failed/rejected/cancelled calls delivered
-   * nothing and contribute nothing.
+   * nothing and contribute nothing. Every row names `cardTurnId`, the card
+   * `recordCompletedTurn` just appended, so Read in can jump to it (Wayfinding
+   * D4); a call the session refused minted no card, and its rows name none.
    */
   private toDeliveredSources(
+    request: WorkshopCapabilityRequest,
+    result: WorkshopCapabilityResult,
+    cardTurnId: string | undefined
+  ): CapabilityDeliveredSource[] {
+    const rows = this.deliveredSourceRows(request, result);
+    return cardTurnId ? rows.map((row) => ({ ...row, turnId: cardTurnId })) : rows;
+  }
+
+  private deliveredSourceRows(
     request: WorkshopCapabilityRequest,
     result: WorkshopCapabilityResult
   ): CapabilityDeliveredSource[] {
@@ -256,11 +270,14 @@ export class WorkshopPersonaCapability implements AgentCapability<
         const group = typeof result.metadata?.group === 'string' && isContextPathGroup(result.metadata.group)
           ? result.metadata.group
           : isContextPathGroup(request.group) ? request.group : undefined;
+        const lineRange = resourceReadLineRange(result.metadata);
         return [{
           kind: 'resource',
           label: path,
           configuredResource: group ? { group, path } : undefined,
-          sizeChars
+          sizeChars,
+          ...(lineRange ? { lineRange } : {}),
+          ...(result.sourceFingerprint ? { sourceFingerprint: result.sourceFingerprint } : {})
         }];
       }
       case 'resource.catalog':

@@ -1575,6 +1575,45 @@ describe('AgentRunEngine', () => {
       ]);
     });
 
+    it('stores a source\'s provenance only when the capability observed it, and keeps the fingerprint host-side (Wayfinding D4)', async () => {
+      const fingerprint = 'c'.repeat(64);
+      const guides = capability();
+      guides.fulfill.mockResolvedValueOnce({
+        evidence: 'Evidence',
+        deliveredItems: ['characters/rabbit.md', 'Dialogue Tags'],
+        artifacts: [],
+        deliveredSources: [
+          {
+            kind: 'resource',
+            label: 'characters/rabbit.md',
+            configuredResource: { group: 'characters', path: 'characters/rabbit.md' },
+            sizeChars: 300,
+            turnId: 'turn-4-assistant-1',
+            lineRange: { start: 2, end: 9 },
+            sourceFingerprint: fingerprint
+          },
+          { kind: 'resource', label: 'Dialogue Tags', sizeChars: 100 }
+        ]
+      });
+      client.createChatCompletion
+        .mockResolvedValueOnce({ content: GUIDE_REQUEST, observation: observation(38, 1) })
+        .mockResolvedValueOnce({ content: 'Final response.', observation: observation(41, 2) });
+
+      const result = await engine.runInitial({
+        toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+        policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
+      });
+
+      const [read, guide] = conversations.getContextSources(result.conversationId);
+      expect(read).toMatchObject({ turnId: 'turn-4-assistant-1', lineRange: { start: 2, end: 9 } });
+      expect(read).not.toHaveProperty('sourceFingerprint');
+      expect(guide).not.toHaveProperty('turnId');
+      expect(guide).not.toHaveProperty('lineRange');
+      expect(engine.findConversationContextSourceRead(result.conversationId, {
+        group: 'characters', path: 'characters/rabbit.md', deliveredAt: read.deliveredAt
+      })).toEqual({ lineRange: { start: 2, end: 9 }, sourceFingerprint: fingerprint });
+    });
+
     it('apportions a multi-source round by size share and stays an estimate', async () => {
       const guides = capability();
       guides.fulfill.mockResolvedValueOnce({
