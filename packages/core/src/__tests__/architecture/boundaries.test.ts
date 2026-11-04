@@ -85,6 +85,8 @@ const WORKSHOP_BOOKMARK_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
 const WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopProjectMemoryHandler.ts';
+const WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER =
+  'application/handlers/domain/workshop/WorkshopProjectMemoryManagerHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -203,6 +205,12 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_PROJECT_MEMORY_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['WORKSHOP_MEMORY_REQUEST_EDIT', 'WORKSHOP_MEMORY_ESTIMATE']
+  },
+  // Slice 4b's manager routes change no room state (no receipt, no snapshot), so none waits on the gate.
+  {
+    owner: WORKSHOP_PROJECT_MEMORY_MANAGER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_MEMORY_LIST', 'WORKSHOP_MEMORY_MANAGER_ACTION']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -350,6 +358,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopProjectMemoryHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopProjectMemoryManagerHandler.ts'),
+    reference: /WorkshopProjectMemoryManagerHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
     reference: /WorkshopSessionExportHandler/
   }
@@ -363,6 +375,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopLexicalGravityHandler',
   'WorkshopLightboxTileHandler',
   'WorkshopProjectMemoryHandler',
+  'WorkshopProjectMemoryManagerHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopShowVsTellHandler',
@@ -1034,8 +1047,10 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryDeliveredView.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'ProjectMemoryManager.ts',
   'ProjectMemoryUpdateNote.ts',
   'ProjectMemoryVersion.ts',
+  'ProjectMemoryWorkspaceIdentity.ts',
   'ProjectMemoryWrites.ts',
   'WorkshopMemoryAutoSave.ts',
   'WorkshopMemoryProposalPhrasing.ts',
@@ -1818,11 +1833,12 @@ describe('architectural boundaries', () => {
     // Wayfinding Slice 4 added the bookmark set and rename (mutation).
     // Wayfinding Slice 5 added the read-only turn preview (direct).
     // Project Memory Slice 3 added five writes (mutation) and the sheet's two reads (direct).
-    expect(expectedOwnerPairs).toHaveLength(71);
+    // Project Memory Slice 4b added the manager's listing and actions (direct).
+    expect(expectedOwnerPairs).toHaveLength(73);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(45);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(26);
+      .toHaveLength(28);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1919,7 +1935,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(7);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(8);
     expect(offenders).toEqual([]);
   });
 
@@ -2442,6 +2458,7 @@ describe('architectural boundaries', () => {
       'lightboxTiles.ts',
       'participants.ts',
       'projectMemory.ts',
+      'projectMemoryManager.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',

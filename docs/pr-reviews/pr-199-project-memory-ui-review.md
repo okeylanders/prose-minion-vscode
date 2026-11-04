@@ -4,10 +4,32 @@
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/199
 - **Original implementation head:** `dbd57243703d370e5636f60be17b93b804332ca2`
 - **Comparison base:** `27da6fee5d7ca97119b563f1b6d121eef524bf9f` (`epic/workshop-project-memory-slice-2a-read-path`, PR #197)
-- **Intended landing:** the current #197 stack; after #197 lands, retarget and recheck against `epic/workshop-project-memory`.
-- **Current verdict:** **APPROVED at `3a2db4a` for the presentation-only slice on the current #197 stack.** F-01, F-02 and N-01 are closed. See the independent re-review below; no formal GitHub approval or merge was performed.
+- **Landing target:** `epic/workshop-project-memory` at `f8b2359187762cc93b97f1ec3bf4aa25299c7108`; the retargeted integration was re-reviewed at `119cd49a4fe25e6850519a091493a77969534484`.
+- **Current verdict:** **APPROVED at `119cd49a` for the presentation-only slice against epic target `f8b2359`.** F-01, F-02 and N-01 are closed, integration checks pass, and exact-head CI is green. No formal GitHub approval or merge was performed.
 
-## Independent re-review · 2026-11-04
+## Landed-tree check · 2026-11-04
+
+PR #199 merged from reviewed head `119cd49a` as `09945578f40e9cee2e0345c00ad58213a997225b` at 19:57:49 UTC. The actual merge also contains #198's update-note/delivery work, which landed after the earlier `f8b2359` comparison.
+
+A final read-only check reconstructed and Git-blob-verified all **1,554 core files** at that merge. **23 focused suites / 260 tests passed**, including the Memory UI, real-renderer residency and supersession checks, frame stability, update notes, whole-room memory delivery, and shared browser/architecture regressions. Core-host and webview typechecks also passed. No new actionable interaction defect was found. This is a focused landed-tree check, not a new full-repository or native-host verification claim.
+
+**Publication timing:** GitHub's PR metadata lagged the merge. The epic-target approval update was therefore committed to the PR branch after merge (`9621ee99`), and this landed-tree note is also branch-only documentation. Neither post-merge report update is part of `09945578`. No production change or merge was performed by this review.
+
+## Epic-target integration re-review · 2026-11-04
+
+**Reviewed head:** `119cd49a4fe25e6850519a091493a77969534484`. **Target and merge base:** `f8b2359187762cc93b97f1ec3bf4aa25299c7108` on `epic/workshop-project-memory`, containing the reviewed #197 corrections.
+
+**Verdict: APPROVED for the presentation-only slice against this epic target.** The earlier stack-only limitation is resolved for these exact commits; F-01, F-02 and N-01 remain closed. This is a written review opinion, not a formal GitHub approval or a merge.
+
+- Verified that the updated head includes the target: comparison is ahead with **0 commits behind** and merge base `f8b2359`.
+- Since the preceding approved UI head, production changes are the already-reviewed #197 corrections. The additional UI-specific change is a library-to-manager supersession regression covering a cycle, an ignored cyclic edge beside a valid replacement, and an archived intermediary in a chain. These tests correctly follow the library's accepted links rather than re-deriving them in the view.
+- Reconstructed and Git-blob-verified all **1,548 core source/test files** and the app manifest against `119cd49a`.
+- **20 suites / 233 tests passed**, including the original reviewer transitions, memory view/component tests, real-renderer residency tests, the new supersession integration tests, #197 log/supersession/global-setting tests, shared browser regressions and architecture/style guards.
+- Core-host and webview typechecks passed locally.
+- Exact-head [CI run 41900691777](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41900691777) completed **successfully**: dependency installation, all three typechecks, full tests, lint and both-bundle build.
+- No new actionable integration defect found. Native VS Code/visual QA and the deferred 4b-wire work remain outside this approval, as detailed below.
+
+## Earlier independent re-review · 2026-11-04
 
 **Reviewed correction head:** `3a2db4a73d5a2eab7850b4238f290a3957626524`, against the unchanged #197 base `27da6fee5d7ca97119b563f1b6d121eef524bf9f`.
 

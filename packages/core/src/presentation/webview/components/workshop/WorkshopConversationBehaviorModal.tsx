@@ -14,7 +14,8 @@ import {
   WorkshopConversationBehavior,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
-  workshopWebResearchSettingsEqual
+  workshopWebResearchSettingsEqual,
+  type WorkshopProjectMemoryMode
 } from '@messages';
 import {
   WORKSHOP_CONVERSATION_SETTINGS_TABS,
@@ -24,6 +25,9 @@ import {
 import { WorkshopBehaviorSettingsPanel } from './settings/WorkshopBehaviorSettingsPanel';
 import { WorkshopAboutYouSettingsPanel } from './settings/WorkshopAboutYouSettingsPanel';
 import { WorkshopAdvancedSettingsPanel } from './settings/WorkshopAdvancedSettingsPanel';
+import { WorkshopMemorySettingsPanel } from './settings/WorkshopMemorySettingsPanel';
+import type { WorkshopMemoryTabInput } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
+import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 
 interface PendingApply {
   submittedBehavior: WorkshopConversationBehavior;
@@ -31,6 +35,7 @@ interface PendingApply {
   baselineBehavior: WorkshopConversationBehavior;
   baselineProfile: WorkshopWriterProfile;
   submittedWebResearch: WorkshopWebResearchSettings;
+  submittedMemoryMode: WorkshopProjectMemoryMode;
 }
 
 interface WorkshopConversationBehaviorModalProps {
@@ -38,9 +43,23 @@ interface WorkshopConversationBehaviorModalProps {
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
   webResearch: WorkshopWebResearchSettings;
+  /** The global project-memory mode, as the host has it (ADR 2026-11-04 D8). */
+  projectMemoryMode: WorkshopProjectMemoryMode;
+  /** What the Memory tab draws from the host's listing; the mode is the modal's draft. */
+  memory: Omit<WorkshopMemoryTabInput, 'mode'>;
+  /** Open memory folder's status, shown in the Memory tab (PR #202 F04). */
+  memoryFolder?: WorkshopMemoryFolderStatus;
   isRunning: boolean;
   errorMessage?: string;
-  onApply: (behavior: WorkshopConversationBehavior, writerProfile: WorkshopWriterProfile, webResearch: WorkshopWebResearchSettings) => void;
+  onApply: (
+    behavior: WorkshopConversationBehavior,
+    writerProfile: WorkshopWriterProfile,
+    webResearch: WorkshopWebResearchSettings,
+    projectMemoryMode: WorkshopProjectMemoryMode
+  ) => void;
+  /** Manage memories… and Show in manager: the manager opens over these settings, which keep their drafts. */
+  onOpenMemoryManager: () => void;
+  onOpenMemoryFolder: () => void;
   onClose: () => void;
 }
 
@@ -51,15 +70,21 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
   behavior,
   writerProfile,
   webResearch,
+  projectMemoryMode,
+  memory,
+  memoryFolder,
   isRunning,
   errorMessage,
   onApply,
+  onOpenMemoryManager,
+  onOpenMemoryFolder,
   onClose
 }) => {
   const [tab, setTab] = React.useState<WorkshopConversationSettingsTab>(FIRST_TAB);
   const [behaviorDraft, setBehaviorDraft] = React.useState({ ...behavior });
   const [profileDraft, setProfileDraft] = React.useState({ ...writerProfile });
   const [webResearchDraft, setWebResearchDraft] = React.useState({ ...webResearch });
+  const [memoryDraft, setMemoryDraft] = React.useState<WorkshopProjectMemoryMode>(projectMemoryMode);
   const [pending, setPending] = React.useState<PendingApply | null>(null);
   const [confirmClear, setConfirmClear] = React.useState(false);
   const tabRefs = React.useRef<Partial<Record<WorkshopConversationSettingsTab, HTMLButtonElement | null>>>({});
@@ -70,6 +95,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       setBehaviorDraft({ ...behavior });
       setProfileDraft({ ...writerProfile });
       setWebResearchDraft({ ...webResearch });
+      setMemoryDraft(projectMemoryMode);
       setPending(null);
       setConfirmClear(false);
     }
@@ -85,6 +111,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       workshopConversationBehaviorsEqual(behavior, pending.submittedBehavior)
       && workshopWriterProfilesEqual(writerProfile, pending.submittedProfile)
       && workshopWebResearchSettingsEqual(webResearch, pending.submittedWebResearch)
+      && projectMemoryMode === pending.submittedMemoryMode
     ) {
       setPending(null);
       onClose();
@@ -94,7 +121,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
     ) {
       setPending(null);
     }
-  }, [behavior, onClose, open, pending, webResearch, writerProfile]);
+  }, [behavior, onClose, open, pending, projectMemoryMode, webResearch, writerProfile]);
 
   React.useEffect(() => {
     if (pending && errorMessage) setPending(null);
@@ -121,13 +148,14 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
       preferredAddress: profileDraft.preferredAddress.trim(),
       bio: profileDraft.bio.trim()
     };
-    onApply(submittedBehavior, submittedProfile, webResearchDraft);
+    onApply(submittedBehavior, submittedProfile, webResearchDraft, memoryDraft);
     setPending({
       submittedBehavior,
       submittedProfile,
       baselineBehavior: { ...behavior },
       baselineProfile: { ...writerProfile },
-      submittedWebResearch: { ...webResearchDraft }
+      submittedWebResearch: { ...webResearchDraft },
+      submittedMemoryMode: memoryDraft
     });
   };
 
@@ -148,6 +176,17 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         onDraftChange={setProfileDraft}
         confirmClear={confirmClear}
         onConfirmClearChange={setConfirmClear}
+      />
+    ),
+    memory: () => (
+      <WorkshopMemorySettingsPanel
+        {...memory}
+        mode={memoryDraft}
+        disabled={editingLocked}
+        {...(memoryFolder ? { folderStatus: memoryFolder } : {})}
+        onSelectMode={setMemoryDraft}
+        onOpenManager={onOpenMemoryManager}
+        onOpenFolder={onOpenMemoryFolder}
       />
     ),
     advanced: () => (
@@ -173,7 +212,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
           <h2 id="pm-ws-settings-title">Conversation settings</h2>
-          <p>Choose how Workshop personas respond, what they may proactively offer, what you explicitly share, and whether they may research the live web.</p>
+          <p>Choose how Workshop personas respond, what they may proactively offer, what you explicitly share, what they remember about this project, and whether they may research the live web.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -223,7 +262,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
           </span>
         ) : (
           <span className="pm-ws-behavior-foot-note">
-            Applies the Behavior, About You, and Advanced drafts together. Live web research takes effect on your next message.
+            Applies the Behavior, About You, Memory, and Advanced drafts together. Memory and live web research take effect on your next message.
           </span>
         )}
         <button className="pm-ws-action-btn" type="button" onClick={onClose}>Cancel</button>

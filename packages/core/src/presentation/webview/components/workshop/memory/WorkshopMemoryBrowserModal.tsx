@@ -37,6 +37,10 @@ export interface WorkshopMemoryBrowserModalProps extends WorkshopMemoryManagerIn
   query: string;
   /** A manager action is in flight: rows' writes wait for it. */
   actionPending: boolean;
+  /** The latest refused action, in the host's words. */
+  actionError?: string;
+  /** The memory a card's Open in manager named: its row is marked and scrolled to (PR #202 N02). */
+  focusMemoryId?: string;
   /** The clock the date groups read; now by default. */
   now?: Date;
   onQueryChange: (query: string) => void;
@@ -52,11 +56,14 @@ const UNAVAILABLE: Record<'no-workspace' | 'multi-root', string> = {
   'multi-root': 'Project memory isn’t available here: this workspace has several folders. Open a single folder to use project memory.'
 };
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProps> = ({
   open,
   workspace,
   query,
   actionPending,
+  actionError,
+  focusMemoryId,
   now,
   onQueryChange,
   onRename,
@@ -126,6 +133,11 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
               <Icon name="x" size={14} /> The memory folder couldn’t be listed just now. Your memory files weren’t touched.
             </div>
           )}
+          {actionError && (
+            <div className="pm-ws-sessions-unavailable" role="alert">
+              <Icon name="alert" size={14} /> {actionError}
+            </div>
+          )}
           {view.offNote && (
             <div className="pm-ws-memory-status-note" role="status">
               <Icon name="info" size={14} /> <span>{view.offNote}</span>
@@ -170,6 +182,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
           controls={controls}
           disabled={writesLocked || row.entry.busy}
           openDisabled={!available}
+          focused={row.entry.id === focusMemoryId}
           {...actions}
         />
       )}

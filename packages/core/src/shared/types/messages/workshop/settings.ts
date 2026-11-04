@@ -309,6 +309,8 @@ export interface WorkshopSetConversationSettingsPayload {
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
   webResearch: WorkshopWebResearchSettings;
+  /** The Memory tab's mode draft (ADR 2026-11-04 D8): global, written to the writer's settings. */
+  projectMemory: WorkshopProjectMemoryMode;
 }
 
 export interface WorkshopSetConversationSettingsMessage

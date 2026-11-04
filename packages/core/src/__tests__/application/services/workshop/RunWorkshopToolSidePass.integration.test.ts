@@ -109,7 +109,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
           pinnedLoaded: [],
           entries: ['mem-7f3c2a'],
           more: 0,
-          estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30 }
+          estimate: { memories: 1, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 20, frameTokens: 30, pinnedLoadedTokens: 0, catalogEntries: 1 }
         },
         snapshot: [{ id: 'mem-7f3c2a', version: '0123456789ab' }]
       })),

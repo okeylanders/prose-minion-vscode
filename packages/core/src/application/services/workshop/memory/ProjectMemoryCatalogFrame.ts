@@ -129,7 +129,9 @@ export function renderProjectMemoryFrame(
       pinnedTokens: pinnedTotal,
       pinnedOver: pinnedTotal > budgets.pinnedTokens,
       catalogTokens: catalogSpent,
-      frameTokens: estimateTextTokens(text)
+      frameTokens: estimateTextTokens(text),
+      pinnedLoadedTokens: pinnedSpent,
+      catalogEntries: entries.length
     }
   };
 }
@@ -151,7 +153,9 @@ export function estimateProjectMemoryFrameOf(set: ProjectMemorySet, options: Pro
     pinnedTokens: 0,
     pinnedOver: false,
     catalogTokens: 0,
-    frameTokens: 0
+    frameTokens: 0,
+    pinnedLoadedTokens: 0,
+    catalogEntries: 0
   };
 }
 

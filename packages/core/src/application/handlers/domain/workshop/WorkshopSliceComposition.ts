@@ -18,6 +18,7 @@ import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/Work
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
 import { WorkshopProjectMemoryHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import { WorkshopProjectMemoryManagerHandler } from '@handlers/domain/workshop/WorkshopProjectMemoryManagerHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
@@ -69,6 +70,7 @@ export class WorkshopSliceComposition {
   private readonly todoHandler: WorkshopTodoHandler;
   private readonly bookmarkHandler: WorkshopBookmarkHandler;
   private readonly projectMemoryHandler: WorkshopProjectMemoryHandler;
+  private readonly projectMemoryManagerHandler: WorkshopProjectMemoryManagerHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
@@ -267,6 +269,14 @@ export class WorkshopSliceComposition {
       postMessage,
       outputChannel
     );
+    // The memory manager's own routes beside them (Slice 4b): listing, Always load in full, Delete, Open file and folder.
+    this.projectMemoryManagerHandler = new WorkshopProjectMemoryManagerHandler(
+      projectMemory,
+      shell,
+      postMessage,
+      outputChannel,
+      (message) => host.reportRouteError('workshop', message, undefined, 'WorkshopProjectMemoryManagerHandler')
+    );
   }
 
   registerRoutes(
@@ -321,6 +331,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopProjectMemoryHandler')
     );
+    this.projectMemoryManagerHandler.registerRoutes(router);
   }
 
   /** Save and tell me (Slice 5): a recorded reply's card, saved now, as the tail of the run `signal` belongs to. */

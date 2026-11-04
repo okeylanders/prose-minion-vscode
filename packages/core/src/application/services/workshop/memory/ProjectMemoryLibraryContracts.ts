@@ -179,6 +179,10 @@ export interface ProjectMemoryFrameEstimate {
   readonly pinnedOver: boolean;
   readonly catalogTokens: number;
   readonly frameTokens: number;
+  /** The bodies that loaded whole: their tokens, never above the pinned budget (Slice 4b's meter). */
+  readonly pinnedLoadedTokens: number;
+  /** The list entries the frame showed (Slice 4b's "25 of 37 fit"). */
+  readonly catalogEntries: number;
 }
 
 export type ProjectMemoryFrameEstimateResult =

@@ -18,6 +18,7 @@
 export * from './participants';
 export * from './bookmarks';
 export * from './projectMemory';
+export * from './projectMemoryManager';
 export * from './settings';
 export * from './context';
 export * from './creativeVariations';

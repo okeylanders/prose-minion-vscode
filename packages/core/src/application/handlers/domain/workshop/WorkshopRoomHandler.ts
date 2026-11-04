@@ -17,7 +17,7 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
-import type { WorkshopProjectMemoryWritePort } from '@handlers/domain/workshop/WorkshopProjectMemoryHandler';
+import type { WorkshopProjectMemoryPort } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import {
   hasWorkshopMemoryProposalText
 } from '@/utils/workshopReplyControls';
@@ -116,6 +116,11 @@ import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
+import type { WorkshopProjectMemoryMode } from '@messages';
+import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+
+/** The mode's names as the Memory tab's cards give them. */
+const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -239,7 +244,7 @@ export class WorkshopRoomHandler {
     transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
     private readonly outputChannel: LogSink,
-    projectMemory: WorkshopProjectMemoryWritePort
+    projectMemory: WorkshopProjectMemoryPort
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
     // flight — the service is shared with the sidebar's AnalysisHandler, and
@@ -417,7 +422,8 @@ export class WorkshopRoomHandler {
       const result = await this.conversationSettingsService.applyFromWebview(
         message.payload?.behavior,
         message.payload?.writerProfile,
-        message.payload?.webResearch
+        message.payload?.webResearch,
+        message.payload?.projectMemory
       );
       if (result.persistenceErrors) {
         const persistenceDetails = [
@@ -429,7 +435,8 @@ export class WorkshopRoomHandler {
             : undefined,
           result.persistenceErrors.webResearch
             ? `web research: ${result.persistenceErrors.webResearch}`
-            : undefined
+            : undefined,
+          result.persistenceErrors.projectMemory ? `project memory: ${result.persistenceErrors.projectMemory}` : undefined
         ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
@@ -451,7 +458,9 @@ export class WorkshopRoomHandler {
       );
       this.sendError(
         'workshop',
-        'Could not change conversation settings. The previous settings are still active.',
+        error instanceof WorkshopConversationSettingsPartialApplyError
+          ? `Could not change conversation settings. Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}: it couldn't be set back. Your other previous settings are still active.`
+          : 'Could not change conversation settings. The previous settings are still active.',
         details
       );
       this.postSessionState();
@@ -1527,6 +1536,7 @@ export class WorkshopRoomHandler {
         session,
         writerProfile: this.conversationSettingsService.getWriterProfile(),
         webResearch: this.conversationSettingsService.getWebResearch(),
+        projectMemory: this.conversationSettingsService.getProjectMemoryMode(),
         persistence: {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,

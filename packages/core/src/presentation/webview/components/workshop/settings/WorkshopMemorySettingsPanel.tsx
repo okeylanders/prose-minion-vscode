@@ -4,9 +4,8 @@
  * the host's estimate and listing, and callbacks, and posts nothing. The
  * words come from `workshopMemoryTabView`.
  *
- * Not yet in `WORKSHOP_CONVERSATION_SETTINGS_TABS`: Slice 4b-wire registers
- * it there with `WORKSHOP_MEMORY_SETTINGS_TAB_IDS`, between About you and
- * Advanced, and the modal draws its tabpanel wrapper as for every tab.
+ * Its entry in `WORKSHOP_CONVERSATION_SETTINGS_TABS` sits between About
+ * you and Advanced; the modal draws its tabpanel wrapper as for every tab.
  *
  * The mode cards are a draft, applied with the other tabs' drafts; the
  * folder and manager buttons act at once. Unavailable never disables the
@@ -21,15 +20,8 @@ import {
   type WorkshopMemoryTabInput
 } from '@hooks/domain/workshop/memory/workshopMemoryTabView';
 import type { WorkshopProjectMemoryMode } from '@hooks/domain/workshop/memory/workshopMemoryViewInputs';
+import type { WorkshopMemoryFolderStatus } from '@hooks/domain/workshop/useWorkshopMemoryManager';
 import { OptionCard, SettingsRule } from './WorkshopConversationSettingsControls';
-
-/** The ids and class 4b-wire gives the Memory entry in the tab list. */
-export const WORKSHOP_MEMORY_SETTINGS_TAB_IDS = Object.freeze({
-  label: 'Memory',
-  tabElementId: 'pm-ws-memory-tab',
-  panelElementId: 'pm-ws-memory-panel',
-  panelClassName: 'pm-ws-behavior-body pm-ws-memory-body'
-});
 
 const MODE_ICONS: Record<WorkshopProjectMemoryMode, IconName> = {
   off: 'circleSlash',
@@ -40,13 +32,17 @@ const MODE_ICONS: Record<WorkshopProjectMemoryMode, IconName> = {
 export interface WorkshopMemorySettingsPanelProps extends WorkshopMemoryTabInput {
   /** The modal's apply is pending: the draft can't change. */
   disabled: boolean;
+  /** Open memory folder, pressed here or in the manager: waiting, or why it didn't open (PR #202 F04). */
+  folderStatus?: WorkshopMemoryFolderStatus;
   onSelectMode: (mode: WorkshopProjectMemoryMode) => void;
   onOpenManager: () => void;
   onOpenFolder: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelProps> = ({
   disabled,
+  folderStatus,
   onSelectMode,
   onOpenManager,
   onOpenFolder,
@@ -54,6 +50,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
 }) => {
   const view = workshopMemoryTabView(input);
   const noticeId = React.useId();
+  const folderErrorId = React.useId();
   return (
     <>
       {view.notice && (
@@ -137,8 +134,13 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
             className="pm-ws-action-btn"
             type="button"
             disabled={view.folder.locked}
-            aria-describedby={view.folder.locked && view.notice ? noticeId : undefined}
-            onClick={onOpenFolder}
+            aria-describedby={view.folder.locked && view.notice ? noticeId : folderStatus?.error ? folderErrorId : undefined}
+            aria-busy={folderStatus?.pending || undefined}
+            onClick={() => {
+              if (!folderStatus?.pending) {
+                onOpenFolder();
+              }
+            }}
           >
             Open memory folder
           </button>
@@ -153,6 +155,12 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
           </button>
         </div>
       </div>
+      {folderStatus?.error && (
+        <div className="pm-ws-memory-notice" role="alert">
+          <Icon name="alert" size={14} />
+          <span id={folderErrorId}><b>The memory folder didn’t open.</b> {folderStatus.error}</span>
+        </div>
+      )}
       {view.attention && (
         <div className="pm-ws-behavior-row pm-ws-memory-attention">
           <Icon name="doc" size={14} />
@@ -175,6 +183,7 @@ export const WorkshopMemorySettingsPanel: React.FC<WorkshopMemorySettingsPanelPr
 };
 
 /** A budget meter: a `meter` role with the budget's figures, and its caption. */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 const MemoryMeter: React.FC<{ meter: WorkshopMemoryMeterView }> = ({ meter }) => (
   <>
     <div

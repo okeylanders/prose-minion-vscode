@@ -87,6 +87,8 @@ export type ProjectMemoryDeleteResult =
   | { kind: 'changed' }
   /** More than one file holds the id: left as they are. */
   | { kind: 'conflict' }
+  /** The workspace moved, or `beforeCommit` said no, before anything was removed: put back (PR #202 F01). */
+  | { kind: 'withdrawn' }
   | { kind: 'unavailable'; reason: ProjectMemoryUnavailableReason }
   | { kind: 'failed' };
 
@@ -96,6 +98,17 @@ export type ProjectMemoryUpdate = (memory: ProjectMemory) => ProjectMemory | und
 export interface ProjectMemoryWriteOptions {
   /** The commit point: called synchronously immediately before the rename that commits. `false` withdraws the write. */
   beforeCommit?: () => boolean;
+}
+
+/** A rewrite's or a delete's options: the commit point, and the folder it was asked for. */
+export interface ProjectMemoryTargetOptions extends ProjectMemoryWriteOptions {
+  /**
+   * The memory folder the writer asked about, captured at the request
+   * (PR #202 F01). Absent, the folder at the call. A rewrite or delete whose
+   * turn comes under another folder is withdrawn, even if that folder holds
+   * the same id.
+   */
+  directory?: string;
 }
 
 export interface ProjectMemoryStoreOptions {

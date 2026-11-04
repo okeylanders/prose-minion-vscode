@@ -61,13 +61,22 @@ import {
 } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
 import {
   ProjectMemoryWrites,
+  type ProjectMemoryDeleteResult,
   type ProjectMemoryEditDataResult,
   type ProjectMemoryEstimateResult,
   type ProjectMemorySaveProvenance,
   type ProjectMemoryWriteResult,
   type ProjectMemoryWriteStorePort
 } from '@/application/services/workshop/memory/ProjectMemoryWrites';
+import type { ProjectMemoryWorkspaceIdentity } from '@/application/services/workshop/memory/ProjectMemoryWorkspaceIdentity';
 import type { WorkshopMemoryDraft } from '@messages';
+import {
+  ProjectMemoryManager,
+  type ProjectMemoryManagerFile,
+  type ProjectMemoryManagerFolder,
+  type ProjectMemoryManagerListing,
+  type ProjectMemoryManagerStorePort
+} from '@/application/services/workshop/memory/ProjectMemoryManager';
 import type {
   WorkshopReplyMemoryContext,
   WorkshopReplyMemoryPort
@@ -78,7 +87,7 @@ import { hasWorkshopMemoryProposalText } from '@/utils/workshopReplyControls';
 export type ProjectMemoryReadPort = Pick<ProjectMemoryStore, 'availability' | 'list' | 'read'>;
 
 /** The store's methods the library uses, writes included (Slice 3); satisfied by ProjectMemoryStore. */
-export type ProjectMemoryStorePort = ProjectMemoryReadPort & ProjectMemoryWriteStorePort;
+export type ProjectMemoryStorePort = ProjectMemoryReadPort & ProjectMemoryWriteStorePort & ProjectMemoryManagerStorePort;
 
 /** Session recall's one question for memory (D3); satisfied by WorkshopTranscriptRecallService. */
 export interface ProjectMemoryPositionsPort {
@@ -126,6 +135,7 @@ export interface ProjectMemoryGrammarPort {
 export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort, WorkshopReplyMemoryPort {
   private readonly now: () => Date;
   private readonly writes: ProjectMemoryWrites;
+  private readonly manager: ProjectMemoryManager;
 
   constructor(
     private readonly store: ProjectMemoryStorePort,
@@ -136,7 +146,30 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     options: ProjectMemoryLibraryOptions = {}
   ) {
     this.now = options.now ?? (() => new Date());
-    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), this.now, outputChannel);
+    this.writes = new ProjectMemoryWrites(store, () => this.workspaceReason(), () => this.workspaceIdentity(), this.now, outputChannel);
+    this.manager = new ProjectMemoryManager(store, () => this.workspaceReason(), recall, this.now, outputChannel);
+  }
+
+  /** The manager's own writes (Slice 4b): Always load in full, budget-checked, and Delete. */
+  setLoadInFull(id: string, loadInFull: boolean): Promise<ProjectMemoryWriteResult> {
+    return this.writes.setPinned(id, loadInFull);
+  }
+
+  remove(id: string): Promise<ProjectMemoryDeleteResult> {
+    return this.writes.remove(id);
+  }
+
+  /** The folder as the tab and the manager draw it (Slice 4b; `ProjectMemoryManager`). */
+  managerListing(query: string): Promise<ProjectMemoryManagerListing> {
+    return this.manager.listing(query);
+  }
+
+  managerFile(entryKey: string): Promise<ProjectMemoryManagerFile> {
+    return this.manager.fileOf(entryKey);
+  }
+
+  memoryFolder(): Promise<ProjectMemoryManagerFolder> {
+    return this.manager.folder();
   }
 
   /**
@@ -427,6 +460,13 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     }
     const availability = this.store.availability();
     return availability.available ? undefined : availability.reason;
+  }
+
+  /** The accepted workspace as a write names it: the live room and the memory folder (PR #202 F01). */
+  private workspaceIdentity(): ProjectMemoryWorkspaceIdentity | undefined {
+    const scope = this.scope.recallScope();
+    const availability = this.store.availability();
+    return scope.available && availability.available ? { room: scope.liveSessionId, directory: availability.directory } : undefined;
   }
 
   private log(line: string): void {

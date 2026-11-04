@@ -141,6 +141,7 @@ packages/core/src/
                 ├── participants.ts
                 ├── bookmarks.ts
                 ├── projectMemory.ts
+                ├── projectMemoryManager.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
                 ├── creativeVariations.ts

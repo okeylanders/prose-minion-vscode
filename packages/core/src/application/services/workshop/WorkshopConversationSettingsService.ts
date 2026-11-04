@@ -10,12 +10,12 @@ import {
   workshopWriterProfilesEqual,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
-  WORKSHOP_PROJECT_MEMORY_SETTING,
   coerceWorkshopProjectMemoryMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
+  WorkshopProjectMemoryMode,
   coerceWorkshopWebResearchSettings,
   isValidWorkshopWebResearchSettings,
   workshopWebResearchSettingsEqual
@@ -23,11 +23,13 @@ import {
 import {
   renderWorkshopStandingDirectiveFrames
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+import { WorkshopProjectMemoryModeSetting } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
   writerProfile?: string;
   webResearch?: string;
+  projectMemory?: string;
 }
 
 export interface WorkshopConversationSettingsUpdate {
@@ -58,6 +60,8 @@ interface PendingPersistence<T> {
  * preserves the between-run system-message replacement invariant.
  */
 export class WorkshopConversationSettingsService {
+  /** The global project-memory mode: read live, written by an apply, and that write undone when the apply fails. */
+  private readonly projectMemoryMode: WorkshopProjectMemoryModeSetting;
   private queue: Promise<void> = Promise.resolve();
   private externalSyncPending = false;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
@@ -78,22 +82,34 @@ export class WorkshopConversationSettingsService {
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
+    this.projectMemoryMode = new WorkshopProjectMemoryModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
     this.projectMemoryPrompted = this.projectMemoryOn();
   }
 
-  /** Apply and persist the modal's complete Behavior, About You, and Advanced submission. */
+  /**
+   * Apply and persist the modal's complete Behavior, About You, Memory and
+   * Advanced submission. The project-memory mode is global and read live
+   * (ADR 2026-11-04 D8), so it is written first: the prompt rebuild below
+   * then sees the mode the writer chose. Absent (`undefined`), it is left
+   * as it is.
+   */
   applyFromWebview(
     rawBehavior: unknown,
     rawWriterProfile: unknown,
-    rawWebResearch: unknown = undefined
+    rawWebResearch: unknown = undefined,
+    rawProjectMemory: unknown = undefined
   ): Promise<WorkshopConversationSettingsUpdate> {
     const nextBehavior = coerceWorkshopConversationBehavior(rawBehavior);
     const nextProfile = coerceWorkshopWriterProfile(rawWriterProfile);
     const nextWebResearch = coerceWorkshopWebResearchSettings(rawWebResearch);
+    const nextProjectMemory = rawProjectMemory === undefined ? undefined : coerceWorkshopProjectMemoryMode(rawProjectMemory);
     return this.serialize(async () => {
       this.assertBetweenRuns();
-      const result = await this.apply(nextBehavior, nextProfile);
+      const projectMemoryWrite = await this.projectMemoryMode.write(nextProjectMemory);
+      const projectMemoryError = projectMemoryWrite.error;
+      const result = await this.apply(nextBehavior, nextProfile)
+        .catch((error: unknown) => this.projectMemoryMode.undo(projectMemoryWrite, error));
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
@@ -111,10 +127,12 @@ export class WorkshopConversationSettingsService {
       this.webResearch = nextWebResearch;
       const changed = result.changed || webResearchChanged;
       if (!persistBehavior && !persistProfile && !persistWebResearch) {
-        return this.publicResult({ ...result, changed });
+        return this.publicResult(projectMemoryError
+          ? { ...result, changed, persistenceErrors: { projectMemory: projectMemoryError } }
+          : { ...result, changed });
       }
 
-      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = {};
+      const persistenceErrors: WorkshopConversationSettingsPersistenceErrors = projectMemoryError ? { projectMemory: projectMemoryError } : {};
       if (persistBehavior) {
         try {
           await this.settings.update(
@@ -300,10 +318,13 @@ export class WorkshopConversationSettingsService {
     return { ...this.webResearch };
   }
 
+  /** The global project-memory mode, read live (D8): the Memory tab's draft starts from it. */
+  getProjectMemoryMode(): WorkshopProjectMemoryMode {
+    return this.projectMemoryMode.get();
+  }
+
   private projectMemoryOn(): boolean {
-    return coerceWorkshopProjectMemoryMode(
-      this.settings.get<unknown>(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key)
-    ) !== 'off';
+    return this.getProjectMemoryMode() !== 'off';
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {

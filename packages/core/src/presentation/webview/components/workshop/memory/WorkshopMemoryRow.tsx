@@ -42,13 +42,17 @@ interface WorkshopMemoryRowProps extends WorkshopMemoryRowActions {
   disabled: boolean;
   /** Open file is off: no workspace. */
   openDisabled: boolean;
+  /** The memory a card's Open in manager named: marked and scrolled to. */
+  focused?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
   row,
   controls,
   disabled,
   openDisabled,
+  focused = false,
   onEdit,
   onRestore,
   onArchive,
@@ -64,8 +68,18 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
       cancelRename();
     }
   }, [cancelRename, disabled, editing]);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (focused) {
+      rowRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }
+  }, [focused]);
   return (
-    <div className={`pm-ws-memory-row${past ? ' pm-ws-memory-row-past' : ''}`}>
+    <div
+      ref={rowRef}
+      className={`pm-ws-memory-row${past ? ' pm-ws-memory-row-past' : ''}${focused ? ' pm-ws-memory-row-focus' : ''}`}
+      aria-current={focused ? 'true' : undefined}
+    >
       <SavedItemRow
         title={entry.title}
         disabled={disabled}
@@ -158,6 +172,7 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
 };
 
 /** A conflicting or unreadable file: the row classes, its reason, and Open file only (none for a set-aside copy). */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const WorkshopMemoryAttentionRow: React.FC<{
   row: AttentionRowView;
   disabled: boolean;

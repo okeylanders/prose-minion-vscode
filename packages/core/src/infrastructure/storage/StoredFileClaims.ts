@@ -64,6 +64,13 @@ export interface StoredFileDeleteCheck {
   readonly verify: (claimed: Uint8Array) => boolean;
   /** A free name in the saved file's folder, looked up when it is needed. */
   readonly fallbackPath: () => Promise<string>;
+  /**
+   * The caller may still remove the file (PR #202 F01): asked synchronously,
+   * with nothing awaited after it, before leftovers are retired and again
+   * before the claimed bytes are deleted. `false` puts the file back, as a
+   * refused one is, and the delete says `withdrawn`.
+   */
+  readonly stillPermitted?: () => boolean;
 }
 
 /** Free names a refused delete tries, after its saved name, before it keeps its bytes under the claim. */
@@ -72,9 +79,10 @@ const REFUSED_RELEASE_FALLBACKS = 3;
 /**
  * What a delete under a claim did (`StoredFileClaims.deleteClaimed`):
  * `changed` when the claimed bytes were not the file the caller meant, so
- * they were put back and nothing was deleted.
+ * they were put back and nothing was deleted; `withdrawn` when the caller's
+ * `stillPermitted` said no at a commit point, so the file was put back.
  */
-export type StoredFileClaimedDelete = 'deleted' | 'missing' | 'busy' | 'changed' | 'failed';
+export type StoredFileClaimedDelete = 'deleted' | 'missing' | 'busy' | 'changed' | 'withdrawn' | 'failed';
 
 export interface StoredFileClaimsConfig {
   /**
@@ -238,7 +246,7 @@ export class StoredFileClaims {
    * where a later settling would remove them as a rewrite's leftover (the
    * re-review).
    */
-  deleteClaimed(filePath: string, label: string, id: string): Promise<Exclude<StoredFileClaimedDelete, 'changed'>>;
+  deleteClaimed(filePath: string, label: string, id: string): Promise<Exclude<StoredFileClaimedDelete, 'changed' | 'withdrawn'>>;
   deleteClaimed(filePath: string, label: string, id: string, check: StoredFileDeleteCheck): Promise<StoredFileClaimedDelete>;
   async deleteClaimed(
     filePath: string,
@@ -264,10 +272,16 @@ export class StoredFileClaims {
         return 'changed';
       }
     }
+    if (check?.stillPermitted && !check.stillPermitted()) {
+      return this.withdraw(claimPath, filePath, label, check);
+    }
     if (!(await this.retire(filePath, claimPath))) {
       await this.fileSystem.rename(claimPath, filePath, { overwrite: false })
         .catch(() => this.log.appendLine(`${this.config.logPrefix} ${label} could not be put back at once; it comes back once its claim is older than the lease.`));
       return 'failed';
+    }
+    if (check?.stillPermitted && !check.stillPermitted()) {
+      return this.withdraw(claimPath, filePath, label, check);
     }
     try {
       await this.fileSystem.delete(claimPath);
@@ -278,6 +292,12 @@ export class StoredFileClaims {
       return 'failed';
     }
     return 'deleted';
+  }
+
+  private async withdraw(claimPath: string, filePath: string, label: string, check: StoredFileDeleteCheck): Promise<'withdrawn'> {
+    await this.releaseRefused(claimPath, filePath, label, check);
+    this.log.appendLine(`${this.config.logPrefix} ${label} was not deleted: the delete was withdrawn before it committed.`);
+    return 'withdrawn';
   }
 
   /**
