@@ -34,3 +34,18 @@ Independent checks on `21e5f3d`:
 - The separate F-01 observations confirm the bad outcome and are not counted as a fix. Report-only commit `42155dce` changes no implementation.
 
 F-01 remains open despite green CI. Correct it and re-review the new exact head. No formal approval or merge was made.
+
+## Author response
+
+F-01 is fixed on `epic/workshop-wayfinding-slice-4-bookmarks-host` in `5d0b5fc`. Its regression test fails without the fix.
+
+| Finding | Status | Commit | What changed | Covered by |
+|---|---|---|---|---|
+| F-01 (P2) | Fixed | `5d0b5fc` | **Grammar:** `parseWorkshopBookmarkId` (in `WorkshopBookmarkLedger.ts`) accepts `bookmark-<n>-<ms>` only when each part is a canonical decimal from 1 to `Number.MAX_SAFE_INTEGER`: no leading zero, no zero, no sign, no fraction. The codec (`WorkshopBookmarkRecords.ts`) refuses anything else at parse, as an invalid session, the same way `numericIdSuffix` bounds the to-do and turn ids. **Hydration:** `prepareState` installs a parsed counter only when `Number.isSafeInteger` holds, a second guard behind the codec. **Mint:** `mintId` moves the counter only when it takes an id. A set that would pass `MAX_SAFE_INTEGER`, or whose clock would make an id the grammar refuses, is refused as `ids-exhausted`. It makes no change, and the handler logs it without turn content, as it does an ineligible turn. | `WorkshopBookmarkIdBounds.test.ts`, through the real parser, checkpoint decode, aggregate hydration, set and strict save. Both of the review's ids are refused at parse, on open and on save. So are a counter one past the safe maximum, a leading zero, zero, a sign and a fraction, and the same cases for the time part. Both parts at exactly `MAX_SAFE_INTEGER` are accepted. At the maximum counter, the next set is refused with no change and the room still saves. A non-positive clock is refused the same way. The ledger installs no unsafe counter, even from ids given behind the codec's back. **Recovery control**, through the real coordinator and store: the bad checkpoint's Open is refused and nothing is installed. New then sets and saves `bookmark-1-…`, and a clean Open in the same aggregate sets and saves `bookmark-2-…`. |
+
+**Verification at `5d0b5fc`, on a clean tree:**
+- 621 suites / 8,814 tests / 59 snapshots, all passing.
+- `npm run typecheck` is clean.
+- `npm run lint` has 0 errors and 1,140 warnings, unchanged.
+- `packages/core/src` has no `from 'vscode'` outside test string literals.
+

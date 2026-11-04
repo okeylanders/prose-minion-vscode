@@ -527,4 +527,19 @@ the ADR:
     - Default labels read through the transcript projection, so a capability
       card is named by its request, never its evidence.
     - A rolled-back provisional turn takes its bookmark with it.
+  - **PR #188 review (Astra, 2026-11-04).** One P2, F-01, fixed in `5d0b5fc`.
+    The ledger is in
+    [the review](../../../docs/pr-reviews/pr-188-workshop-wayfinding-bookmarks-host-review.md).
+    - The id grammar accepted a counter of any length. Hydration turned an
+      oversized one into `Infinity` or an exponent, the next set minted an id
+      the codec refuses, and every later save failed.
+    - Both id parts are now canonical safe integers of at least 1. Hydration
+      installs only a safe counter. A set past the maximum is refused with no
+      change.
+    - Regressions run through the real parser, decode, hydration, set and
+      strict save, plus a real-coordinator recovery control.
+    - *Counts.* At `5d0b5fc`: 621 suites / 8,814 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,140 warnings, unchanged.
+    - *Sizes.* `WorkshopBookmarkLedger.ts` 279 → 324; no over-500 file
+      changed.
 

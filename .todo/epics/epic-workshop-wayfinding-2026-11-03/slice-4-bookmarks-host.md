@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D5, D6, D9, and D10 (bookmarks)
-**Status:** Built, on `epic/workshop-wayfinding-slice-4-bookmarks-host` (cut from the epic at `89d6f26`), verified at `87c089a`; in review on PR #188.
+**Status:** Built, on `epic/workshop-wayfinding-slice-4-bookmarks-host` (cut from the epic at `89d6f26`); review fix F-01 verified at `5d0b5fc`; in review on PR #188.
 
 ## Outcome
 
@@ -186,6 +186,7 @@ Commits on `epic/workshop-wayfinding-slice-4-bookmarks-host`, after `dc5ed54`:
 | `c813fb4` | Export marks bookmarked turns; recall and prompt isolation witnesses |
 | `852e023` | Lint: the slice's avoidable warnings removed |
 | `87c089a` | The room handler's seam witness counts the two new routes |
+| `5d0b5fc` | PR #188 F-01: bookmark ids bounded to canonical safe integers (`WorkshopBookmarkIdBounds.test.ts`) |
 
 ### Where each piece lives
 
@@ -234,7 +235,10 @@ Commits on `epic/workshop-wayfinding-slice-4-bookmarks-host`, after `dc5ed54`:
 ### Deviations
 
 - **Ids carry their number** (`bookmark-<n>-<ms>`), and the codec requires
-  that grammar. There's no persisted counter: hydration resumes numbering past
+  that grammar. Since PR #188 F-01, each part must be a canonical decimal from
+  1 to `Number.MAX_SAFE_INTEGER` (`parseWorkshopBookmarkId`). Hydration
+  installs only a safe counter. A set that would pass the maximum is refused
+  as `ids-exhausted`, with no change. There's no persisted counter: hydration resumes numbering past
   every loaded id, and the counter never goes back within an aggregate's
   lifetime. This avoids a new `counters.bookmark` key.
 - **The label limit's name** is `WORKSHOP_BOOKMARK_LABEL_CHARACTERS`, not
