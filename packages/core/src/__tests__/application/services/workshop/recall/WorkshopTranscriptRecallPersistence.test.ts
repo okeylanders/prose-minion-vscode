@@ -9,6 +9,7 @@
  * store, and opening the saved session imports every conversation.
  */
 
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -60,7 +61,8 @@ describe('a room that used session recall', () => {
       { createProvider: jest.fn() } as unknown as ContextResourceProviderFactory,
       session,
       log,
-      new WorkshopTranscriptRecallService(store, coordinator, log)
+      new WorkshopTranscriptRecallService(store, coordinator, log),
+      offProjectMemory
     );
     const capabilityFor = (requestId: string, owner: WorkshopCapabilityPrincipal) => factory.create({
       requestId,

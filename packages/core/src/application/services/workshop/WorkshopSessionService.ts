@@ -1486,6 +1486,9 @@ export class WorkshopSessionService {
         case 'transcript.search': return 'transcript_search';
         case 'transcript.read': return 'transcript_read';
         case 'transcript.todos': return 'transcript_todos';
+        case 'memory.catalog': return 'memory_catalog';
+        case 'memory.search': return 'memory_search';
+        case 'memory.read': return 'memory_read';
         default: return assertNever(input.details.operation);
       }
     })();

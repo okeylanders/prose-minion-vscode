@@ -21,19 +21,24 @@ describe('workshopCapabilityFamily', () => {
       ['transcript.catalog', 'transcript'],
       ['transcript.search', 'transcript'],
       ['transcript.read', 'transcript'],
-      ['transcript.todos', 'transcript']
+      ['transcript.todos', 'transcript'],
+      ['memory.catalog', 'memory'],
+      ['memory.search', 'memory'],
+      ['memory.read', 'memory']
     ]);
   });
 
   it('refuses an operation outside the list rather than guessing a family', () => {
-    // `memory.*` is reserved for derived material (ADR 2026-10-05) and listed nowhere.
-    expect(() => workshopCapabilityFamily('memory.read' as WorkshopCapabilityOperation))
-      .toThrow('Unhandled Workshop capability operation: memory.read');
+    // `memory.*` is read-only (ADR 2026-11-04 D1): a write operation is listed nowhere.
+    expect(() => workshopCapabilityFamily('memory.save' as WorkshopCapabilityOperation))
+      .toThrow('Unhandled Workshop capability operation: memory.save');
   });
 
   it('recognizes only listed operations', () => {
     expect(WORKSHOP_CAPABILITY_OPERATIONS.every(isWorkshopCapabilityOperation)).toBe(true);
-    expect(isWorkshopCapabilityOperation('memory.read')).toBe(false);
+    // The family was reserved by ADR 2026-10-05 and is listed now (ADR 2026-11-04 D12).
+    expect(isWorkshopCapabilityOperation('memory.read')).toBe(true);
+    expect(isWorkshopCapabilityOperation('memory.save')).toBe(false);
     expect(isWorkshopCapabilityOperation('transcript')).toBe(false);
     expect(isWorkshopCapabilityOperation(undefined)).toBe(false);
   });
@@ -44,5 +49,6 @@ describe('workshopCapabilityFamily', () => {
     expect(workshopCapabilityFamilyLabel('dictionary.lookup', 'Continuity')).toBe("Writer's Dictionary");
     expect(workshopCapabilityFamilyLabel('resource.read', 'Continuity')).toBe('Project Resources');
     expect(workshopCapabilityFamilyLabel('transcript.read', 'Continuity')).toBe('Session Recall');
+    expect(workshopCapabilityFamilyLabel('memory.read', 'Continuity')).toBe('Project Memory');
   });
 });

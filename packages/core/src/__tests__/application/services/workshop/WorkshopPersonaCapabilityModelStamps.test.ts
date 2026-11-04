@@ -5,6 +5,7 @@
  * stand-in carries none (F-02), and the stamp never reaches the evidence the
  * persona reads.
  */
+import { offProjectMemory } from '@/__tests__/application/services/workshop/memory/projectMemoryTestPorts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -96,7 +97,8 @@ describe('persona capability model stamps', () => {
       resourceProviderFactory,
       session,
       log,
-      unusedRecall
+      unusedRecall,
+      offProjectMemory
     ).create({
       requestId: 'host-request',
       excerptVersion: session.getExcerptVersion(),

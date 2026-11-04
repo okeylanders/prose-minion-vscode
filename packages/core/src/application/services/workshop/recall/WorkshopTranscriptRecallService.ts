@@ -56,6 +56,7 @@ import type {
   WorkshopRecallSearchResult,
   WorkshopRecallTodosBounds,
   WorkshopRecallTodosRequest,
+  WorkshopRecallPositions,
   WorkshopRecallTodosResult,
   WorkshopRecallUnavailable,
   WorkshopRecallUnavailableReason
@@ -286,6 +287,33 @@ export class WorkshopTranscriptRecallService {
       );
       return { available: true, outcome: 'read', detail, sessions, bounds };
     });
+  }
+
+  /**
+   * Where `turnIds` stand in a saved session now (ADR 2026-11-04 D3), from
+   * the same documents and cache as a read: project memory's provenance.
+   * Read-only, bounded by one session's read, and never of the live room.
+   */
+  async positionsOf(sessionId: string, turnIds: readonly string[], signal?: AbortSignal): Promise<WorkshopRecallPositions> {
+    const result = await this.withCorpus(signal, async (corpus): Promise<WorkshopRecallPositions> => {
+      if (sessionId === corpus.scope.liveSessionId) {
+        return { kind: 'live-session' };
+      }
+      const summary = corpus.sessions.find((session) => session.sessionId === sessionId);
+      if (!summary) {
+        return { kind: 'unknown-session' };
+      }
+      const loaded = await this.loader.loadAll([summary], PROMPT_BUDGETS.workshopTranscriptRecall.searchSourceBytes, corpus.scope, signal);
+      const document = loaded.documents[0];
+      if (!document) {
+        return { kind: 'unreadable' };
+      }
+      const wanted = new Set(turnIds);
+      const positions = document.entries.filter((entry) => wanted.has(entry.turnId)).map((entry) => entry.position);
+      this.log(`positions turns=${turnIds.length} found=${positions.length} cacheHits=${loaded.cost.cacheHits}`);
+      return { kind: 'positions', sessionId, title: document.header.title, positions: positions.sort((left, right) => left - right) };
+    });
+    return 'available' in result && !result.available ? { kind: 'unavailable', ...result } : result as WorkshopRecallPositions;
   }
 
   /**

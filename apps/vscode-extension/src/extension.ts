@@ -51,6 +51,8 @@ import {
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
   WorkshopTranscriptRecallService,
+  ProjectMemoryStore,
+  ProjectMemoryLibrary,
   WorkshopTranscriptExportService,
   WorkshopTranscriptExportStore,
   OpenRouterModels,
@@ -337,15 +339,34 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionPersistenceCoordinator,
     outputChannel
   );
+  // Project memory (ADR 2026-11-04 D10, D13): one store, then the one
+  // library, from the coordinator's accepted workspace and recall's
+  // provenance. Slice 2 only reads: the library feeds the persona
+  // capabilities (the catalog frame and `memory.*`) and the persona prompts'
+  // grammar check.
+  const projectMemoryStore = new ProjectMemoryStore(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+  const projectMemoryLibrary = new ProjectMemoryLibrary(
+    projectMemoryStore,
+    workshopSessionPersistenceCoordinator,
+    workshopTranscriptRecallService,
+    platform.settings,
+    outputChannel
+  );
+  assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());
   // Persona capabilities are minted per turn by this factory, after the
-  // store, the coordinator, and the recall service built from them.
+  // store, the coordinator, and the recall and memory services built from them.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
     contextResourceResolver,
     workshopSessionService,
     outputChannel,
-    workshopTranscriptRecallService
+    workshopTranscriptRecallService,
+    projectMemoryLibrary
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,

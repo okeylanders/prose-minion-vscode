@@ -505,15 +505,32 @@ describe('ConversationManager', () => {
       ])[0]).toMatchObject({ key: 'host', status: 'imported' });
     });
 
+    it('imports an archive carrying a Project note row (ADR 2026-11-04 D12)', () => {
+      const id = completeConversation(manager);
+      const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      entry.contextSources = [{
+        kind: 'memory',
+        origin: 'host',
+        label: 'The Rabbit\'s watch runs backward',
+        sizeChars: 40,
+        isEstimate: true,
+        deliveredAt: 22
+      }];
+
+      expect(new ConversationManager().importConversations([
+        { entry, systemMessage: 'Rebuilt current system prompt' }
+      ])[0]).toMatchObject({ key: 'host', status: 'imported' });
+    });
+
     it('degrades an archive whose context source names an unlisted kind', () => {
       // Archive kinds are checked only here, at reopen: the session codec keeps
       // archives as opaque JSON. A kind the product writes without listing it
       // here saves cleanly and then drops that participant's history on reopen.
       const id = completeConversation(manager);
       const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
-      // 'memory' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
+      // 'memory' is listed now (ADR 2026-11-04 D12); a later index is not.
       entry.contextSources = [{
-        kind: 'memory',
+        kind: 'index',
         origin: 'host',
         label: '“Chapter 6-8” · digest',
         sizeChars: 40,

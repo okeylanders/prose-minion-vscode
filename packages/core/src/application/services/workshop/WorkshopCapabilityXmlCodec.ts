@@ -10,7 +10,20 @@ import {
   inspectWorkshopTranscriptRecallCall,
   WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY
 } from '@/application/services/workshop/WorkshopTranscriptRecallXmlCodec';
+import {
+  inspectWorkshopProjectMemoryCall,
+  WORKSHOP_PROJECT_MEMORY_FIELD_POLICY
+} from '@/application/services/workshop/memory/WorkshopProjectMemoryXmlCodec';
+import type { WorkshopCapabilityXmlFieldPolicy } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
 import { countWords } from '@/utils/textUtils';
+
+/** Each family's repeatable fields and attributes; every other field is unique and bare. */
+const FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
+  repeatable: (operation, field) =>
+    WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.repeatable(operation, field) ||
+    WORKSHOP_PROJECT_MEMORY_FIELD_POLICY.repeatable(operation, field),
+  attributes: (operation, field) => WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY.attributes(operation, field)
+};
 import { isSafeConfiguredResourcePath } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
 
 export type WorkshopCapabilityRejectionReason =
@@ -47,7 +60,12 @@ export type WorkshopCapabilityRejectionReason =
   | 'unknown-source'
   | 'invalid-status'
   | 'invalid-recent'
-  | 'conflicting-session-selection';
+  | 'conflicting-session-selection'
+  // Project memory (WorkshopProjectMemoryXmlCodec).
+  | 'invalid-kind'
+  | 'invalid-memory-id'
+  | 'too-many-memories'
+  | 'duplicate-memory';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }
@@ -159,7 +177,7 @@ export const createWorkshopCapabilityInstruction = (
 /** Strict single-root decoder for the closed Workshop operation set. */
 export class WorkshopCapabilityXmlCodec {
   inspect(candidate: string): WorkshopCapabilityInspection {
-    const document = parseWorkshopCapabilityXmlDocument(candidate, WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY);
+    const document = parseWorkshopCapabilityXmlDocument(candidate, FIELD_POLICY);
     if (document.kind !== 'call') return document;
     const { operation, fields } = document;
     switch (operation) {
@@ -179,6 +197,11 @@ export class WorkshopCapabilityXmlCodec {
       case 'transcript.read':
       case 'transcript.todos':
         return inspectWorkshopTranscriptRecallCall(operation, document);
+      // The family's codec, by hand: this switch has no `never` guard (ADR 2026-11-04 D12).
+      case 'memory.catalog':
+      case 'memory.search':
+      case 'memory.read':
+        return inspectWorkshopProjectMemoryCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }

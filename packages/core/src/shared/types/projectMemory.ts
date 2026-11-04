@@ -10,6 +10,8 @@
  * `format` (ADR 2026-07-30's release rule).
  */
 
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+
 /** The one format this build reads and writes. */
 export const PROJECT_MEMORY_FORMAT = 1;
 
@@ -44,13 +46,15 @@ export type ProjectMemoryOrigin = typeof PROJECT_MEMORY_ORIGINS[number];
 
 /**
  * Field bounds, in UTF-16 code units (as a text field's `maxLength` counts):
- * title and summary are one line each; the body is free Markdown.
+ * title and summary are one line each; the body is free Markdown. The
+ * prompts state them, so they are PROMPT_BUDGETS.workshopProjectMemory's
+ * (ADR 2026-11-04 D4, D11): the codec and the prompts read one number.
  */
-export const PROJECT_MEMORY_FIELD_CHARACTERS = {
-  title: 120,
-  summary: 280,
-  body: 8_000
-} as const;
+export const PROJECT_MEMORY_FIELD_CHARACTERS = Object.freeze({
+  title: PROMPT_BUDGETS.workshopProjectMemory.titleCharacters,
+  summary: PROMPT_BUDGETS.workshopProjectMemory.summaryCharacters,
+  body: PROMPT_BUDGETS.workshopProjectMemory.bodyCharacters
+});
 
 /** At most this many source turns, and this many superseded memories, per memory. */
 export const PROJECT_MEMORY_LIST_ENTRIES = {

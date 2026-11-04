@@ -6,6 +6,7 @@ import { WORKSHOP_LIGHTBOX_TILE_LIMITS } from '@messages';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { PROJECT_MEMORY_FIELD_CHARACTERS } from '@shared/types/projectMemory';
 import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
@@ -231,6 +232,32 @@ describe('prompt budgets', () => {
     // Recall shares the per-turn call ceiling; its reads stay inside it.
     expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
+  it('pins the Project Memory starting budgets (ADR 2026-11-04 D11)', () => {
+    expect(PROMPT_BUDGETS.workshopProjectMemory).toEqual({
+      titleCharacters: 120,
+      summaryCharacters: 280,
+      bodyCharacters: 8_000,
+      catalogEntries: 40,
+      catalogTokens: 2_000,
+      pinnedTokens: 5_000,
+      queryCharacters: 200,
+      memoryIdCharacters: 16,
+      searchHits: 20,
+      snippetCharacters: 280,
+      readMemories: 5,
+      readCharacters: 40_000,
+      readsPerTurn: 2,
+      autoSavesPerRoom: 5
+    });
+    // Memory shares the per-turn call ceiling; its reads stay inside it.
+    expect(PROMPT_BUDGETS.workshopProjectMemory.readsPerTurn)
+      .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+    // The codec reads the same field bounds (D4).
+    expect(PROJECT_MEMORY_FIELD_CHARACTERS).toEqual({ title: 120, summary: 280, body: 8_000 });
+    // A memory id fits its own ceiling.
+    expect('mem-7f3c2a'.length).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopProjectMemory.memoryIdCharacters);
   });
 
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {

@@ -25,6 +25,7 @@ import {
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WRITER_PROFILE_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
+  WORKSHOP_PROJECT_MEMORY_SETTING,
   LightboxSetSourcePayload
 } from '@messages';
 import {
@@ -698,7 +699,10 @@ export class MessageHandler {
       WORKSHOP_WRITER_PROFILE_SETTING.key;
     const workshopWebResearchKey = `${WORKSHOP_WEB_RESEARCH_SETTING.section}.` +
       WORKSHOP_WEB_RESEARCH_SETTING.key;
-    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)) {
+    const workshopProjectMemoryKey = `${WORKSHOP_PROJECT_MEMORY_SETTING.section}.` +
+      WORKSHOP_PROJECT_MEMORY_SETTING.key;
+    if (affects(workshopBehaviorKey) || affects(workshopWriterProfileKey) || affects(workshopWebResearchKey)
+      || affects(workshopProjectMemoryKey)) {
       void this.workshopHandler.syncConversationSettingsFromSettings();
     }
 
