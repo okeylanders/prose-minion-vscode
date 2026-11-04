@@ -40,11 +40,11 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
 | 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Done: PR #196, merged at `913e715` (Astra: F-01–F-05 closed, approved) |
 | 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | Done: PR #194, merged at `c7f738b` (Astra: F-01–F-06, N-01, N-02 closed over three rounds) |
-| 2a | Read path | Library, the catalog frame (first user message via `appendContract`), `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | Built and green at `7ec50ba` (652 / 9,228 / 59); PR opens after #194 merges |
-| 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress (same thread as 2a) |
-| 3 | Write path | Tail extractor and redaction, proposal trailer, card, receipts, supersession, the memory sheet, "Save to memory…", library writes and shutdown drain | `…-slice-3-write-path` | In progress from 2a's head; joins receipts to 2b's fold last |
+| 2a | Read path | Library, the catalog frame (first user message via `appendContract`), `memory.*` (catalog, search, read), every D12 list widened, budgets, the application-scoped mode | `…-slice-2a-read-path` | Done: PR #197, merged at `f8b2359` (Astra: F-01–F-03, N-01, N-02 closed over two rounds) |
+| 2b | Update notes | D14: memory versions, the per-participant delivery record (on the reply that received it), the appended update note, mid-room Off→On, digest past 4,096 | `…-slice-2b-update-notes` | In review: PR #198, approved; final epic-based CI, then merge |
+| 3 | Write path | Tail extractor and redaction, proposal trailer, card, receipts and their fold into D14, supersession, the memory sheet, "Save to memory…", library writes and shutdown drain | `…-slice-3-write-path` | In review: PR #200; F-01, F-02 and F-04–F-06 verified; F-03's overlapping-token case in progress |
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
-| 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | In progress from 2a's head |
+| 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | In review: PR #199, approved; final epic-based CI, then merge |
 | 4b-wire | Memory tab and manager, wiring | Manager routes on Slice 3's handler, the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New | — | Waits on Slice 3 and 4b-ui |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, derived `INDEX.md` | — | Waits on Slice 3 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
@@ -201,4 +201,16 @@ The feature note's six open questions, plus the design scope:
     `7c574a2`; the design thread reviewed the copy for its four undrawn
     states, and six strings were replaced.
   - **PR order:** 2a now, then 2b and 4b-ui once 2a merges.
+- **2026-11-04. 2a merged; the stack retargeted.**
+  - **#197 (2a)** merged at `f8b2359` after two rounds. It made the mode
+    `application`-scoped, so a workspace can't override the global Off, and
+    made in-effect successors follow accepted links through archived
+    intermediates.
+  - **#198, #199 and #200** are retargeted to the epic. Each thread merges
+    the epic in, so CI runs against it before merge.
+  - **Outside this epic:** the same workspace-override gap exists on the
+    shipped `proseMinion.workshop.webResearch`. It was filed as a separate
+    suggested task for Okey.
+  - **The `memory.css` add/add between #199 and #200** has no shared
+    classes. Whichever merges second combines the two files.
 
