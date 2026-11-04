@@ -551,3 +551,51 @@ the ADR:
   `epic/workshop-wayfinding-slice-5-bookmarks-ui`, cut from the epic at
   `356c751`. The slice doc's [Since Slice 4](slice-5-bookmarks-ui.md#since-slice-4)
   section lists what the earlier slices settled for it.
+- **2026-11-04. Slice 5 built.** The
+  [slice doc](slice-5-bookmarks-ui.md#built) has the full map.
+  - **Commits.**
+    - `d295bcd`: `isWorkshopBookmarkableTurn` moves to
+      `shared/constants/workshopBookmarks.ts`; the ledger, the codec and the
+      bubble read the one rule.
+    - `bba9a43`: `WORKSHOP_REQUEST_TURN_PREVIEW` → `WORKSHOP_TURN_PREVIEW`,
+      correlated by a webview-minted `requestId`. `WorkshopBookmarkHandler`
+      serves it as a direct read: it waits out a room replacement, reads
+      `readRoomLedger()`, and sends the turn only through
+      `projectWorkshopTranscriptTurn` (`WorkshopTurnPreview`).
+      `useWorkshopBookmarks` is the transport.
+    - `3823135`: `WorkshopBookmarkToggle` in the bubble; the Notes badge
+      counts bookmarks by id.
+    - `5a59a0c`: `WorkshopBookmarkList` under To-dos, rename through
+      `useWorkshopBookmarkRename`, remove, the Notes count. A writer message
+      now carries its turn id, so a jump to one lands.
+    - `47326e1`: the `turn-preview` sheet mode; `useWorkshopTurnJump` opens
+      it for any unrendered turn (bookmarks, to-do sources, read-in card
+      rows), and the out-of-window toast is gone.
+    - `9b2a605`: why the export's bookmark mark stays export-only.
+    - The docs commit with this note also splits the App tests into
+      `WorkshopApp.bookmarks` and `WorkshopApp.turnPreview`, so neither
+      passes 500 lines.
+  - **Counts.**
+    - Before, at `356c751`: 621 suites / 8,814 tests / 59 snapshots.
+    - After, at `9b2a605` on a clean tree: 625 / 8,891 / 59, all passing.
+      With the test split: 626 / 8,891 / 59.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,140 → 1,146, all
+      `naming-convention`: `WorkshopBookmarkList`, `WorkshopBookmarkToggle`,
+      the two new `MessageType` members, and the two new App tests' `PmLogo`
+      mocks.
+    - `packages/core/src` has no `from 'vscode'`.
+  - **Files over 500 lines that grew.** Each grew only by the seam:
+    - `WorkshopApp.tsx` 1,713 → 1,737: the hook, the sheet's three preview
+      options, `openBookmark`, the rail's `bookmarks` props and the thread's
+      three toggle props.
+    - `WorkshopTurnBubble.tsx` 754 → 779: three props, the toggle, its two
+      placements, and the writer bubble's turn id.
+    - `styles/workshop/shell.css` 2,673 → 2,792: the toggle and list rules.
+      A new stylesheet would need a Jest mock in every `WorkshopApp` test.
+
+    New files are all under 500 lines.
+  - **Decisions recorded in the slice doc.** Rewind names no removed
+    bookmarks, because its confirmation and result name no removed to-dos.
+    No export rule moved to the mirrored layer, because the thread's mark is
+    an action-row control that export never renders.

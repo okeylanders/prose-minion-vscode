@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (amended: badge, no toast), D5, and D6
 **Design:** `Main.dc.html` (the Bookmark button and the Notes tab) in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** In progress, on `epic/workshop-wayfinding-slice-5-bookmarks-ui`, cut from the epic at `356c751` (Slice 4 merged).
+**Status:** Built on `epic/workshop-wayfinding-slice-5-bookmarks-ui` (cut from the epic at `356c751`, Slice 4 merged); in review on PR #189.
 
 ## Outcome
 
@@ -201,7 +201,55 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
 
 ## Completion Criteria
 
-- [ ] Writers can bookmark, rename, and jump from the thread and the Notes tab.
-- [ ] Out-of-window bookmarks and to-do sources open in the read-only preview.
-- [ ] A bookmark added while Notes is hidden badges it, and nothing switches tabs.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+- [x] Writers can bookmark, rename, and jump from the thread and the Notes tab.
+  - Toggle: `WorkshopTurnBubble.test.tsx` ("Bookmark toggle": eligible and ineligible turns, `aria-pressed`, the lock) and `WorkshopApp.bookmarks.test.tsx` ("the bubble toggle").
+  - Rename: `WorkshopBookmarkList.test.tsx` (save, cancel, reset, refused labels, focus return), `WorkshopRail.test.tsx` (an open rename survives a tab switch; a new room drops it), `WorkshopApp.bookmarks.test.tsx` ("renames, resets, and removes through the host").
+  - Jump: `WorkshopApp.bookmarks.test.tsx` ("focuses an in-window bookmark's bubble…", "focuses a bookmarked writer message…"), with microtasks settled.
+- [x] Out-of-window bookmarks and to-do sources open in the read-only preview.
+  - `WorkshopApp.turnPreview.test.tsx`: a bookmark, a to-do source and a read-in card row; correlation; focus back to the opener; room and chat-target changes close it.
+  - `WorkshopApp.readInProvenance.test.tsx`: "Show where it was read" on an out-of-window card replaces the reader with the preview.
+  - Host: `WorkshopRoutes.bookmarks.test.tsx` ("turn preview") and `WorkshopTurnPreview.test.ts` (no host-private field on any path).
+  - Correlation: `useWorkshopBookmarks.test.ts`, `useWorkshopContextSheet.test.ts`.
+  - Native focus in a real webview: Slice 8's live pass.
+- [x] A bookmark added while Notes is hidden badges it, and nothing switches tabs.
+  - `useWorkshopRailTabs.test.ts` ("bookmarks on the Notes badge") and `WorkshopApp.bookmarks.test.tsx` ("the Notes badge").
+- [x] The epic's per-slice verification passes. Counts are recorded in the epic README's progress notes.
+
+## Built
+
+### Where each piece lives
+
+| Piece | Where |
+|---|---|
+| Eligibility, one rule | `isWorkshopBookmarkableTurn` moved into `shared/constants/workshopBookmarks.ts` (pure over `role`, `kind`, `participant`). The ledger and the codec import it; the bubble reads the same function. The host stays the authority. |
+| Preview contracts | `WORKSHOP_REQUEST_TURN_PREVIEW` `{ requestId, turnId }` → `WORKSHOP_TURN_PREVIEW` `{ requestId, turnId, turn?, error? }`, and `WorkshopTurnPreview`, in `shared/types/messages/workshop/bookmarks.ts`. |
+| Preview projection | `application/services/workshop/transcript/WorkshopTurnPreview.ts`: reads a turn only through `projectWorkshopTranscriptTurn`, and copies only `kind`, `speaker`, `content`, `timestamp`, `privateWith`, `truncated`. |
+| Preview route | `WorkshopBookmarkHandler.handleRequestTurnPreview`, registered directly (a read, outside the mutation gate). It waits out a room replacement (`waitForSessionOperations` when one is pending), reads `readRoomLedger()`, and logs the turn id and outcome only. `WorkshopRoomHandler` is unchanged. |
+| Transport | `hooks/domain/workshop/useWorkshopBookmarks.ts`: the snapshot's summaries, set and rename, and the preview's request id (minted per webview, first reply to the pending id only). Persists nothing. |
+| Toggle | `components/workshop/WorkshopBookmarkToggle.tsx`: `<button aria-pressed>`, named by its visible label. Mounted from `WorkshopTurnBubble` in the action row (after Save) and in the writer's footer. |
+| Badge | `useWorkshopRailTabs` gains `bookmarks`; a second seen set (by `id`, baseline the room key) adds to `unseenNotesCount`. |
+| List | `components/workshop/WorkshopBookmarkList.tsx`, under To-dos in `WorkshopRail`'s Notes panel, keyed by room. |
+| Rename state | `hooks/domain/workshop/controllers/useWorkshopBookmarkRename.ts` (tripartite, empty persistence). |
+| Preview sheet | Mode `{ kind: 'turn-preview'; turnId; requestId; label? }` in `useWorkshopContextSheet`, sheet key `turn-preview:<requestId>`, closed by the same room-and-chat-target scope key as the reader. Copy in `WorkshopTextSheet`. |
+| Jump | `useWorkshopTurnJump.onOutsideWindow(turnId, label?)` opens the preview. `jumpAfterClosing` hands an unrendered turn to it with the reader still open, so the preview replaces the reader in place. |
+| Styles | `styles/workshop/shell.css` (toggle and list rules). |
+| Tests | `WorkshopApp.bookmarks.test.tsx` (toggle, badge, list) and `WorkshopApp.turnPreview.test.tsx` (the preview), both through the real App. |
+
+### Deviations
+
+- **Preview shape.** The slice doc said `turn?: <projected turn>`. The webview cannot import `application/`, so the message carries `WorkshopTurnPreview`, a named subset of the projected entry. The writer is "You" (the thread's word, as the bookmark default label uses), and a one-line notice is "Session".
+- **A malformed preview request.** One without a usable `requestId` (missing, empty, over 128 characters) has no sheet to answer, so it reports through `workshop.bookmark`. A bad `turnId` under a good id is answered under that id with the unknown-turn refusal.
+- **A writer message now carries its turn id** (`data-workshop-turn-id`, `tabIndex={-1}`), as replies did. Without it a jump to a bookmarked writer message found nothing and fell through to the preview.
+- **Remove from the list** (optional in the doc) is built: the only way to clear a bookmark whose bubble is outside the window. It reuses `WORKSHOP_SET_TURN_BOOKMARK`.
+- **Meta line.** Summaries carry no turn number, so the meta line names the participant kind ("Host reply", "Your message"), not "turn 12" as the canvas does.
+- **Accessible names.** A row is named "{label}: show it in the thread" or "{label}: open it in the reader", and described by its meta line; rename and remove are "Rename bookmark: {label}" and "Remove bookmark: {label}", so each name is unique in the list.
+- **The Notes tab** counts bookmarks too: "Notes, 1 open, 2 bookmarks", with the visible count the sum. With none, the name is unchanged.
+- **Rename and remove are disabled while the room's lock is held**, like the toggle. The to-do list's actions are not; the lock is the toggle's rule, applied to the same change from the list.
+- **The rename field has no `maxLength`.** The shared rule says what is wrong ("at most 80 characters") instead of silently cutting a paste.
+- **The identity color** goes through a custom property (`--pm-ws-bookmark-identity`) that `.pm-ws-bookmark-icon` reads. jsdom drops `var()` in an inline `color`, so the property is also what the test can see.
+- **Export.** No rule moved to the mirrored layer: the thread's mark is the action row's pressed toggle, which export never renders. `WorkshopTranscriptHtmlBookmarkStyles.ts` now says so.
+- **Rewind.** Neither its confirmation nor its result names removed to-dos (only the host's log line counts them), so neither names removed bookmarks.
+
+### Follow-ups
+
+- None filed. Slice 8's live pass should check the preview's focus in a real webview (open, Escape, and "Show where it was read" on an out-of-window card), and the toggle's pressed look in both themes.
