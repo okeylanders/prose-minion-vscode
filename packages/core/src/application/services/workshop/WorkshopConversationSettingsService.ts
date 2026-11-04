@@ -24,6 +24,7 @@ import {
 import {
   renderWorkshopStandingDirectiveFrames
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
@@ -103,8 +104,10 @@ export class WorkshopConversationSettingsService {
     const nextProjectMemory = rawProjectMemory === undefined ? undefined : coerceWorkshopProjectMemoryMode(rawProjectMemory);
     return this.serialize(async () => {
       this.assertBetweenRuns();
+      const previousProjectMemory = this.getProjectMemoryMode();
       const projectMemoryError = await this.persistProjectMemoryMode(nextProjectMemory);
-      const result = await this.apply(nextBehavior, nextProfile);
+      const result = await this.apply(nextBehavior, nextProfile)
+        .catch((error: unknown) => this.restoreProjectMemoryMode(previousProjectMemory, error));
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
@@ -336,6 +339,17 @@ export class WorkshopConversationSettingsService {
     } catch (error) {
       return this.errorMessage(error);
     }
+  }
+
+  /** A failed apply sets the mode back before it rethrows; a mode that would not go back is said (PR #202 F03). */
+  private async restoreProjectMemoryMode(previous: WorkshopProjectMemoryMode, error: unknown): Promise<never> {
+    if (this.getProjectMemoryMode() !== previous) {
+      const rollbackError = await this.persistProjectMemoryMode(previous);
+      if (rollbackError) {
+        throw new WorkshopConversationSettingsPartialApplyError(this.getProjectMemoryMode(), error, rollbackError);
+      }
+    }
+    throw error;
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {

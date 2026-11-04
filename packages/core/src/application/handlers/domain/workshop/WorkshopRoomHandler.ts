@@ -116,6 +116,11 @@ import type {
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
+import type { WorkshopProjectMemoryMode } from '@messages';
+import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+
+/** The mode's names as the Memory tab's cards give them. */
+const PROJECT_MEMORY_MODE_WORDS: Record<WorkshopProjectMemoryMode, string> = { off: 'Off', ask: 'Ask first', auto: 'Save and tell me' };
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -451,7 +456,9 @@ export class WorkshopRoomHandler {
       );
       this.sendError(
         'workshop',
-        'Could not change conversation settings. The previous settings are still active.',
+        error instanceof WorkshopConversationSettingsPartialApplyError
+          ? `Could not change conversation settings. Project memory is now ${PROJECT_MEMORY_MODE_WORDS[error.projectMemory]}: it couldn't be set back. Your other previous settings are still active.`
+          : 'Could not change conversation settings. The previous settings are still active.',
         details
       );
       this.postSessionState();
