@@ -2416,3 +2416,21 @@ describe('architectural boundaries', () => {
     expect(observed).toEqual([]);
   });
 });
+
+describe('the shared claimed-file primitive (Workshop Project Memory, Slice 1)', () => {
+  it('keeps StoredFileClaims and StoredFileRewrite neutral: they import no Lightbox or project memory module', () => {
+    const modules = ['infrastructure/storage/StoredFileClaims.ts', 'infrastructure/storage/StoredFileRewrite.ts'];
+    const imports = (file: string) => [...fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')
+      .matchAll(/^\s*import\s[^;]*?from\s+['"]([^'"]+)['"]/gms)].map((match) => match[1]);
+    const feature = /(?:^|\/)(?:Lightbox|lightbox|ProjectMemory|projectMemory)[^/]*$|\/lightbox\//;
+    expect(modules.flatMap((file) => imports(file).filter((specifier) => feature.test(specifier)).map((specifier) => `${file} → ${specifier}`)))
+      .toEqual([]);
+    // Each still imports something, so the scan reads what it means to.
+    expect(modules.every((file) => imports(file).length > 0)).toBe(true);
+    // Both stores reach the primitive; no other module builds its claims.
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => /\bnew\s+StoredFileClaims\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual(['infrastructure/storage/ProjectMemoryStore.ts']);
+  });
+});
