@@ -13,6 +13,7 @@ import type { ContextResourceContent } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { MessageType } from '@messages';
 import type { LogSink, ShellService } from '@/platform';
+import { createHash } from 'crypto';
 import {
   createFakeFileSystem,
   createFakeShellService,
@@ -48,6 +49,7 @@ describe('Read in reader routes', () => {
   let postMessage: jest.Mock;
   let log: { appendLine: jest.Mock };
   let effects: jest.Mocked<WorkshopRoomEffects>;
+  let findReadInRecord: jest.Mock;
   let resources: ContextResourceContent[];
   let loadResources: jest.Mock;
 
@@ -79,6 +81,7 @@ describe('Read in reader routes', () => {
       sendStatus: jest.fn(),
       discardConversations: jest.fn()
     };
+    findReadInRecord = jest.fn(() => undefined);
     resources = [resource('characters/rabbit.md', RABBIT_NOTES)];
     loadResources = jest.fn(async (paths: string[]) =>
       resources.filter((entry) => paths.includes(entry.path))
@@ -100,7 +103,7 @@ describe('Read in reader routes', () => {
       intake,
       postMessage,
       log as unknown as LogSink,
-      effects
+      { ...effects, findReadInRecord }
     );
     handler.registerRoutes(router, (type, route) => router.register(type, route as never));
   });
@@ -243,5 +246,90 @@ describe('Read in reader routes', () => {
       'Could not open rabbit.md in an editor tab.',
       'no editor'
     );
+  });
+  describe('provenance for the row the reader opened (Wayfinding Slice 3)', () => {
+    const DELIVERED_AT = 1_793_632_440_000;
+    const fingerprintOf = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+    const rabbitRow = { group: 'characters', path: 'characters/rabbit.md', deliveredAt: DELIVERED_AT };
+
+    it('says the file is unchanged when it still matches what was read, with the lines read', async () => {
+      findReadInRecord.mockReturnValue({ lineRange: { start: 1, end: 2 }, sourceFingerprint: fingerprintOf(RABBIT_NOTES) });
+
+      await requestContent(rabbitRow);
+
+      expect(findReadInRecord).toHaveBeenCalledWith(rabbitRow);
+      expect(contentReplies()).toEqual([{
+        requestId: 'readin-1',
+        group: 'characters',
+        path: 'characters/rabbit.md',
+        content: RABBIT_NOTES,
+        lineRange: { start: 1, end: 2 },
+        changedSinceRead: false,
+        canOpenInEditor: true
+      }]);
+    });
+
+    it('says the file changed after it was edited, and never sends the fingerprint', async () => {
+      const readFingerprint = fingerprintOf(RABBIT_NOTES);
+      findReadInRecord.mockReturnValue({ lineRange: { start: 1, end: 2 }, sourceFingerprint: readFingerprint });
+      resources = [resource('characters/rabbit.md', `${RABBIT_NOTES}\nThe Queen is waiting.`)];
+
+      await requestContent(rabbitRow);
+
+      expect(contentReplies()[0]).toMatchObject({ changedSinceRead: true, lineRange: { start: 1, end: 2 } });
+      const posted = JSON.stringify(postMessage.mock.calls);
+      expect(posted).not.toContain(readFingerprint);
+      expect(posted).not.toContain(fingerprintOf(`${RABBIT_NOTES}\nThe Queen is waiting.`));
+      expect(logged()).not.toContain(readFingerprint);
+    });
+
+    it('says nothing about change for a row that recorded no fingerprint', async () => {
+      findReadInRecord.mockReturnValue({});
+
+      await requestContent(rabbitRow);
+
+      expect(contentReplies()[0]).not.toHaveProperty('changedSinceRead');
+      expect(contentReplies()[0]).not.toHaveProperty('lineRange');
+    });
+
+    it('says nothing about change when no manifest row matches', async () => {
+      findReadInRecord.mockReturnValue(undefined);
+
+      await requestContent(rabbitRow);
+
+      expect(contentReplies()[0]).toMatchObject({ content: RABBIT_NOTES, canOpenInEditor: true });
+      expect(contentReplies()[0]).not.toHaveProperty('changedSinceRead');
+      expect(logged()).toContain('No manifest row matched the read-in request');
+    });
+
+    it.each([
+      ['no delivery time', {}],
+      ['a delivery time that is not a whole number', { deliveredAt: 1.5 }],
+      ['a delivery time that is a string', { deliveredAt: '1793632440000' }]
+    ])('looks up no row for a request with %s', async (_case, extra) => {
+      await requestContent({ group: 'characters', path: 'characters/rabbit.md', ...extra });
+
+      expect(findReadInRecord).not.toHaveBeenCalled();
+      expect(contentReplies()[0]).not.toHaveProperty('changedSinceRead');
+    });
+
+    it('looks the row up by the resolved file, not the spelling the webview sent', async () => {
+      await requestContent({ group: 'characters', path: 'Characters/Rabbit.md', deliveredAt: DELIVERED_AT });
+
+      expect(findReadInRecord).toHaveBeenCalledWith(rabbitRow);
+    });
+
+    it('reports an error, and no provenance, when the file is gone', async () => {
+      findReadInRecord.mockReturnValue({ lineRange: { start: 1, end: 2 }, sourceFingerprint: fingerprintOf(RABBIT_NOTES) });
+      resources = [];
+
+      await requestContent(rabbitRow);
+
+      const [reply] = contentReplies();
+      expect(reply.error).toEqual(expect.any(String));
+      expect(reply).not.toHaveProperty('content');
+      expect(reply).not.toHaveProperty('changedSinceRead');
+      expect(reply).not.toHaveProperty('lineRange');
+    });
   });
 });

@@ -280,6 +280,10 @@ export class WorkshopRoomHandler {
         sendRoomMessage: (text, displayText, executeOptions) =>
           this.executeMessage(text, displayText, undefined, executeOptions),
         isRoomRunActive: () => this.activeRun !== undefined,
+        findReadInRecord: (identity) => this.assistantToolService.findConversationContextSourceRead(
+          this.chatTargetConversation().conversationId,
+          identity
+        ),
         disposeRoomSubscriptions: () => {
           this.disposeStatusListener();
           this.disposeSessionSaveStatusListener();
@@ -1477,9 +1481,10 @@ export class WorkshopRoomHandler {
     void this.postMessage(message);
   }
 
-  private activeContextBudget(): LabeledContextBudgetSnapshot {
+  /** The chat target's manifest name and retained conversation; the id never leaves the host. */
+  private chatTargetConversation(): { label: string; conversationId: string | undefined } {
     const target = this.session.getChatTarget();
-    const { label, conversationId } = target.kind === 'tool'
+    return target.kind === 'tool'
       ? {
           label: `${workshopToolLabel(target.toolId)} context`,
           conversationId: this.session.getToolSidecarConversationId(target.toolId)
@@ -1493,6 +1498,11 @@ export class WorkshopRoomHandler {
             label: `${workshopPersonaLabel(this.session.getSelectedPersonaId())} context`,
             conversationId: this.session.getHostConversationId()
           };
+  }
+
+  private activeContextBudget(): LabeledContextBudgetSnapshot {
+    const target = this.session.getChatTarget();
+    const { label, conversationId } = this.chatTargetConversation();
     // The Phase 7 manifest: writer-declared rows first, then this
     // conversation's agent-fetched deliveries in delivery order. Both sides
     // are display-safe; the conversation id never leaves this method.

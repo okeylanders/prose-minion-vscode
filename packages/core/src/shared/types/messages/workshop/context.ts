@@ -210,6 +210,11 @@ export interface WorkshopOpenContextAttachmentFileMessage
  */
 export interface WorkshopRequestReadInResourcePayload extends ConfiguredResourceRef {
   requestId: string;
+  /**
+   * The row the reader opened, by its delivery time (Wayfinding D4). With it
+   * the host answers `lineRange` and `changedSinceRead` from that row.
+   */
+  deliveredAt?: number;
 }
 
 export interface WorkshopRequestReadInResourceMessage
@@ -227,6 +232,13 @@ export interface WorkshopReadInResourceContentPayload {
   content?: string;
   /** True when `content` stopped at that ceiling. */
   truncated?: boolean;
+  /** The lines the participant read, from the row the request named. */
+  lineRange?: { start: number; end: number };
+  /**
+   * True when the file no longer matches what was read, false when it does;
+   * absent when the row recorded no fingerprint. The fingerprint stays host-side.
+   */
+  changedSinceRead?: boolean;
   /** Display-safe reason the file could not be read; never its content. */
   error?: string;
   /** True when the host can open the file beside the Workshop. */
