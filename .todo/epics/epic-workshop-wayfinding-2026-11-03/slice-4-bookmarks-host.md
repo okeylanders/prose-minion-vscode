@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D5, D6, D9, and D10 (bookmarks)
-**Status:** Planned (after Slice 3)
+**Status:** In progress, on `epic/workshop-wayfinding-slice-4-bookmarks-host`, cut from the epic at `89d6f26` (Slice 3 merged).
 
 ## Outcome
 
@@ -11,6 +11,60 @@ eligible turn and rename one. Bookmarks persist with the session and follow New,
 Open, Rewind, and Branch. The snapshot carries bookmark summaries in thread
 order, including bookmarks outside the window, and transcript export marks
 bookmarked turns. Nothing in the webview uses them yet.
+
+## Since Slice 3
+
+Slices 3 and 6 added the epic's first persisted fields, and their reviews
+settled how a host-owned addition should be built.
+
+- **Optional fields, written only when present.** Slice 6's turn `model` and
+  Slice 3's row provenance are both optional keys. The strict codec accepts
+  them, validates them, and writes them only when they are present.
+  - Bookmarks follow the same rule: a session without them reads and saves
+    byte for byte. Use a released-shape fixture beside
+    `workshop-session-v1-released.json` and
+    `workshop-session-v2-read-in-before-provenance.json` in
+    `__tests__/fixtures/`.
+  - Refuse a key on a record that can't legitimately carry it. Slice 3's
+    F-02 fix made the codec refuse `sourceFingerprint` on writer-source rows.
+- **Keep the codec in its own module.** `WorkshopSessionStateV1Shape.ts` is
+  already 1,055 lines. Slice 6 kept the stamp's codec in
+  `WorkshopTurnModel.ts`, and Slice 3 kept the row logic in
+  `ContextSourceRecord.ts`. Put the bookmark entry validation beside the
+  ledger, or in its own codec module, and only call it from the shape file.
+- **The dangling-turn drop is a checkpoint normalization**, per ADR
+  2026-07-30. It goes in `WorkshopSessionCheckpointNormalization`, is named,
+  is logged without content, and has a regression test. It is not a version
+  migration.
+- **One projection to the webview.** Slice 3's F-02 was a host field reaching
+  `WORKSHOP_SESSION_STATE` through a second path that skipped the projection.
+  - The stored `WorkshopTurnBookmark` (with `createdAt`) and the projected
+    `WorkshopBookmarkSummary` are different shapes.
+  - Every snapshot post goes through the one projection in `getSnapshot()`:
+    route replies, whole-room operations, hydration.
+  - Test it through the real routes, the way
+    `WorkshopWriterSourcePrivacy.integration.test.ts` does, not only on the
+    ledger.
+- **`inWindow` is the snapshot's own window.** Slice 5 jumps through
+  `useWorkshopTurnJump` (Slice 3), which shows the outside-window notice for a
+  turn the thread doesn't hold. Compute `inWindow` against exactly the turns
+  the same snapshot sends, so Slice 5 can trust it without re-deriving it.
+- **Large files grow only by a seam.** `WorkshopSessionService` is 2,562
+  lines, `WorkshopRoomHandler` 1,597, and `WorkshopSessionRewind` 555.
+  - The ledger, its label default and its eligibility rule live in
+    `session/WorkshopBookmarkLedger.ts` (and a sibling, if needed).
+  - The routes live in their own owner (`WorkshopBookmarkHandler`, beside
+    `WorkshopTodoHandler`), wired through `WorkshopSliceComposition`.
+  - The big files get only the calls into them.
+- **Astra checks** for:
+  - exact-head verification;
+  - host-private data on every path to the webview;
+  - codec strictness and fixtures;
+  - whole-room operations (New, Open, Rewind, Branch) through the
+    coordinator's transaction;
+  - the mutation gate.
+
+  See the PR #186 and PR #187 reports in `docs/pr-reviews/`.
 
 ## Build
 
