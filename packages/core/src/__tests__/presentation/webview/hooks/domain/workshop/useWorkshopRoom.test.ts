@@ -33,6 +33,7 @@ const stateWithTurns = (turns: WorkshopTurn[], totalTurns = turns.length): Works
       widgetConfigs: [],
       standingDirectives: [],
       todos: [],
+      bookmarks: [],
       turns,
       turnRewindability: {},
       totalTurns,

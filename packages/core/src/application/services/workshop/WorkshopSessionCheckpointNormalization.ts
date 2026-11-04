@@ -21,6 +21,10 @@ import {
   withoutRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import { repairPendingLightboxTiles } from '@/application/services/workshop/WorkshopMessageAttachmentIdentity';
+import {
+  danglingWorkshopBookmarks,
+  workshopBookmarksWithin
+} from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -41,7 +45,10 @@ export type WorkshopSessionCheckpointNormalization =
   // Not development drift: ADR 2026-09-30 §3 degrades a mark that cannot be
   // trusted by dropping its key's marks, so it can never refuse a session.
   | 'dropped-inconsistent-retained-history-marks'
-  | 'dropped-unverifiable-retained-history-marks';
+  | 'dropped-unverifiable-retained-history-marks'
+  // Workshop Wayfinding Slice 4 (ADR 2026-11-03 D9): a bookmark whose turn is
+  // gone marks nothing, so it goes rather than refusing the session.
+  | 'dropped-dangling-bookmarks';
 
 export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
@@ -223,8 +230,16 @@ export function normalizeWorkshopSessionCheckpointForHydration(
     normalizations.push('restored-lightbox-tile-source-keys');
   }
 
+  const danglingBookmarks = danglingWorkshopBookmarks(state.bookmarks, turns);
+  if (danglingBookmarks.length > 0) {
+    normalizations.push('dropped-dangling-bookmarks');
+  }
+
   const normalized: WorkshopSessionStateV1 = {
     ...state,
+    ...(danglingBookmarks.length > 0
+      ? { bookmarks: workshopBookmarksWithin(state.bookmarks, new Set(turns.map((turn) => turn.id))) }
+      : {}),
     pendingMessageAttachments: pendingTiles.pending,
     turns,
     excerpt,

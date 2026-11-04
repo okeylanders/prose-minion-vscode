@@ -21,6 +21,9 @@
  * - Context-change dividers are context details and stay out entirely, as do
  *   token usage, action buttons, actionable-finding chips, and widget
  *   recommendation chips.
+ * - A turn the writer bookmarked carries `bookmarked: true` when the caller
+ *   names its bookmarks (export does; ADR 2026-11-03 D10). The mark is the
+ *   only bookmark fact a transcript holds: never an id or a label.
  *
  * Pure and deterministic: the caller supplies the turns and the clock.
  */
@@ -44,6 +47,7 @@ export interface WorkshopTranscriptWriterEntry {
   attachmentLabels: string[];
   /** The widget that composed this message. Its committed payload is never exported. */
   widget?: { label: string; detail: string };
+  bookmarked?: true;
 }
 
 /** One participant reply: host persona, guest persona, or analysis tool. */
@@ -60,6 +64,7 @@ export interface WorkshopTranscriptReplyEntry {
   truncated: boolean;
   /** Provider-returned web sources, de-duplicated by URL. */
   sources: WorkshopTranscriptSource[];
+  bookmarked?: true;
 }
 
 export interface WorkshopTranscriptSource {
@@ -74,6 +79,7 @@ export interface WorkshopTranscriptEventEntry {
   turnId: string;
   timestamp: number;
   text: string;
+  bookmarked?: true;
 }
 
 export type WorkshopTranscriptEntry =
@@ -92,6 +98,8 @@ export interface WorkshopTranscript {
 export interface WorkshopTranscriptMeta {
   title: string;
   exportedAt: number;
+  /** The writer's bookmarked turns; their entries carry `bookmarked: true`. */
+  bookmarkedTurnIds?: ReadonlySet<string>;
 }
 
 export const WORKSHOP_TRANSCRIPT_WRITER_LABEL = 'Writer';
@@ -100,9 +108,12 @@ export function projectWorkshopTranscript(
   turns: readonly WorkshopTurn[],
   meta: WorkshopTranscriptMeta
 ): WorkshopTranscript {
-  const entries = turns.flatMap((turn) => {
+  const entries = turns.flatMap((turn): WorkshopTranscriptEntry[] => {
     const entry = projectWorkshopTranscriptTurn(turn);
-    return entry ? [entry] : [];
+    if (!entry) {
+      return [];
+    }
+    return meta.bookmarkedTurnIds?.has(turn.id) ? [{ ...entry, bookmarked: true }] : [entry];
   });
   const participants: string[] = [];
   for (const entry of entries) {

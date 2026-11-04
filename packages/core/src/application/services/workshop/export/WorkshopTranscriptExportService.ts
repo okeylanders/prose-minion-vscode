@@ -24,9 +24,10 @@ import { renderWorkshopTranscriptHtml } from './WorkshopTranscriptHtml';
 import { renderWorkshopTranscriptJson } from './WorkshopTranscriptJson';
 import { renderWorkshopTranscriptMarkdown } from './WorkshopTranscriptMarkdown';
 
-/** The one aggregate read export needs: a defensive copy of every turn. */
+/** The aggregate reads export needs: a defensive copy of every turn, and which the writer bookmarked. */
 export interface WorkshopTranscriptLedgerPort {
   readRoomLedger(): WorkshopTurn[];
+  readBookmarkedTurnIds(): ReadonlySet<string>;
 }
 
 export interface WorkshopTranscriptFilePort {
@@ -85,7 +86,8 @@ export class WorkshopTranscriptExportService {
     }
     const transcript = projectWorkshopTranscript(this.ledger.readRoomLedger(), {
       title,
-      exportedAt: this.now()
+      exportedAt: this.now(),
+      bookmarkedTurnIds: this.ledger.readBookmarkedTurnIds()
     });
     const messageCount = countWorkshopTranscriptMessages(transcript);
     if (messageCount === 0) {

@@ -38,6 +38,7 @@ import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
 import { clonePersistedJson } from '@/application/services/workshop/persistedJson';
+import { workshopBookmarksWithin } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
 import {
   sameWorkshopMessageAttachmentSource,
   withWorkshopMessageAttachmentSourceKey
@@ -219,6 +220,8 @@ export function rewindWorkshopSession(
       )
     },
     todos,
+    // A bookmark goes with its turn (ADR 2026-11-03 D6); none left, no key.
+    bookmarks: workshopBookmarksWithin(source.bookmarks, keptTurnIds),
     retainedHistoryMarks: source.retainedHistoryMarks === undefined
       ? undefined
       : marks.filter((mark) =>

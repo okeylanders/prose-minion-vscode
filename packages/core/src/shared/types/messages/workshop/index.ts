@@ -16,6 +16,7 @@
  */
 
 export * from './participants';
+export * from './bookmarks';
 export * from './settings';
 export * from './context';
 export * from './creativeVariations';

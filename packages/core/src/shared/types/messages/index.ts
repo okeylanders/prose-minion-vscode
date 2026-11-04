@@ -174,6 +174,8 @@ import {
   WorkshopSetExcerptResourceMessage,
   WorkshopRunContextWizardMessage,
   WorkshopTodoActionMessage,
+  WorkshopSetTurnBookmarkMessage,
+  WorkshopRenameBookmarkMessage,
   WorkshopPickExcerptFileMessage,
   WorkshopRereadExcerptMessage,
   WorkshopSetSessionScopeMessage,
@@ -317,6 +319,8 @@ export type WebviewToExtensionMessage =
   | WorkshopSetExcerptResourceMessage
   | WorkshopRunContextWizardMessage
   | WorkshopTodoActionMessage
+  | WorkshopSetTurnBookmarkMessage
+  | WorkshopRenameBookmarkMessage
   | WorkshopPickExcerptFileMessage
   | WorkshopRereadExcerptMessage
   | WorkshopSetSessionScopeMessage

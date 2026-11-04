@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** Built (`e36e4af`, `3b23a92`, `2163cb9`; review fixes `6575bbb`, `16aa38c`, `9801e01`), PR #187 in review. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
+**Status:** Done. Merged into the epic through PR #187 (`89d6f26`) after Astra's re-review resolved F-01, F-02 and N-01 ([review](../../../docs/pr-reviews/pr-187-workshop-wayfinding-read-in-provenance-review.md)). Built in `e36e4af`, `3b23a92`, `2163cb9`; review fixes `6575bbb`, `16aa38c`, `9801e01`. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 

@@ -80,6 +80,7 @@ const session = (
       widgetConfigs: [],
       standingDirectives: [],
       todos: [],
+      bookmarks: [],
       turns: [hostTurn],
       turnRewindability: {},
       totalTurns: 1,

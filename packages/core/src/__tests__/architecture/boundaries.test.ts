@@ -81,6 +81,8 @@ const WORKSHOP_SESSION_EXPORT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopSessionExportHandler.ts';
 const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
+const WORKSHOP_BOOKMARK_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopBookmarkHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopContextHandler.ts';
 const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
@@ -171,6 +173,11 @@ const WORKSHOP_ROUTE_OWNERS = [
     owner: WORKSHOP_TODO_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_TODO_ACTION']
+  },
+  {
+    owner: WORKSHOP_BOOKMARK_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_SET_TURN_BOOKMARK', 'WORKSHOP_RENAME_BOOKMARK']
   },
   {
     owner: WORKSHOP_SESSION_HANDLER_OWNER,
@@ -310,11 +317,16 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopTodoHandler/
   },
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopBookmarkHandler.ts'),
+    reference: /WorkshopBookmarkHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
     reference: /WorkshopSessionExportHandler/
   }
 ] as const;
 const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
+  'WorkshopBookmarkHandler',
   'WorkshopContextHandler',
   'WorkshopExcerptScopeHandler',
   'WorkshopCreativeVariationsHandler',
@@ -1714,9 +1726,10 @@ describe('architectural boundaries', () => {
 
     // Lightbox Slice 4 added one of each: the tile offer (direct) and its staging (mutation).
     // Wayfinding Slice 2 added the Read in reader's two reads (direct).
-    expect(expectedOwnerPairs).toHaveLength(61);
+    // Wayfinding Slice 4 added the bookmark set and rename (mutation).
+    expect(expectedOwnerPairs).toHaveLength(63);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(38);
+      .toHaveLength(40);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(23);
     expect(duplicateLedgerEntries).toEqual([]);
@@ -1815,7 +1828,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(5);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(6);
     expect(offenders).toEqual([]);
   });
 
@@ -2329,6 +2342,7 @@ describe('architectural boundaries', () => {
     ];
 
     expect(messageModules).toEqual([
+      'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',
       'gesturePlayground.ts',

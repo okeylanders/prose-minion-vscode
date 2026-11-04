@@ -5,6 +5,7 @@ import { TokenUsage } from '../tokenUsage';
 import { UrlCitation } from '../citations';
 import type { LabeledContextBudgetSnapshot } from '../inferenceContext';
 import type { ModelScope } from '../configuration';
+import type { WorkshopBookmarkSummary } from './bookmarks';
 import type {
   WorkshopAnalysisInputProvenance,
   WorkshopCapabilityArtifactDetails
@@ -520,6 +521,11 @@ export interface WorkshopSessionSnapshot {
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
+  /**
+   * The writer's bookmarks in thread order, with resolved labels, including
+   * those whose bubble is outside `turns` (ADR 2026-11-03 D5).
+   */
+  bookmarks: WorkshopBookmarkSummary[];
   /** Bounded widget identities for chips in the visible turn window. */
   widgetConfigs: WorkshopWidgetConfigSummary[];
   /** Active passage-scoped prose directives; one entry per closed family. */

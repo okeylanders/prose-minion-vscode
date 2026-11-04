@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 is built, PR #187 in review.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 merged (PR #186, `d59b651`). Slice 3 merged (PR #187, `89d6f26`). Slice 4 is built and in review (PR #188).
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -50,8 +50,8 @@ the ADR:
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
 | 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | Done: PR #184, merged at `d45d57c` |
 | 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Done: PR #186, merged at `d59b651` |
-| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Built, PR #187 in review |
-| 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
+| 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Done: PR #187, merged at `89d6f26` |
+| 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Built; in review on PR #188 |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
 | 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
@@ -480,3 +480,66 @@ the ADR:
     - **Sizes.** `WorkshopRoomHandler` 1,593 → 1,597 (the projection) and
       `WorkshopSessionStateV1Shape` 1,052 → 1,055 (the comment).
       `WorkshopApp.tsx` went 1,714 → 1,713.
+  - **Merged.** Astra's re-review at `119a0ce` resolved all three findings.
+    CI was green on `bcf6c1d`, and the coordinator merged PR #187 into the
+    epic at `89d6f26`.
+- **2026-11-04. Slice 4 (bookmarks on the host).** Started on
+  `epic/workshop-wayfinding-slice-4-bookmarks-host`, cut from the epic at
+  `89d6f26`. The slice doc's [Since Slice 3](slice-4-bookmarks-host.md#since-slice-3)
+  section lists what the earlier slices settled for it.
+- **2026-11-04. Slice 4 built.** The
+  [slice doc](slice-4-bookmarks-host.md#built) has the full map.
+  - **Commits.**
+    - `1ed59f5`: contracts, the shared label rule, the ledger.
+    - `9f3b261`: the aggregate seam, the optional `bookmarks` key and its
+      codec (`session/WorkshopBookmarkRecords.ts`), the
+      `dropped-dangling-bookmarks` normalization, a pre-bookmark fixture
+      recorded by the real aggregate.
+    - `b476e99`: `WorkshopBookmarkHandler`, both routes behind the mutation
+      gate.
+    - `c72906d`: Rewind's prune in `rewindWorkshopSession`; New, Open, Rewind
+      and Branch tested through the real coordinator.
+    - `c813fb4`: export marks bookmarked turns; recall and prompt witnesses.
+    - `852e023`, `87c089a`: lint and the seam witness's route count.
+  - **Counts.**
+    - Before, at `89d6f26` (as recorded at `9801e01`; `dc5ed54` is docs
+      only): 613 suites / 8,695 tests / 59 snapshots.
+    - After, at `87c089a` on a clean tree: 620 / 8,796 / 59, all passing.
+    - `npm run typecheck` is clean.
+    - `npm run lint` has 0 errors. Warnings went 1,138 → 1,140, both new ones
+      the `naming-convention` kind of the `MessageType` enum's own members
+      (`WORKSHOP_SET_TURN_BOOKMARK`, `WORKSHOP_RENAME_BOOKMARK`).
+    - `packages/core/src` has no `from 'vscode'` outside test string literals.
+  - **Files over 500 lines that grew.** Each grew only by the calls into the
+    new modules:
+    - `WorkshopSessionService` 2,562 → 2,595;
+    - `WorkshopSessionStateV1Shape` 1,055 → 1,061;
+    - `WorkshopSessionStateV1Integrity` 651 → 657;
+    - `WorkshopSessionRewind` 555 → 558;
+    - `WorkshopTranscriptHtmlStyles` 637 → 640 (the mark's rules live in the
+      new `WorkshopTranscriptHtmlBookmarkStyles.ts`);
+    - `shared/types/messages/workshop/session.ts` 942 → 948.
+
+    `WorkshopRoomHandler` didn't change. New files are all under 500 lines.
+  - **Deviations.** Listed in the slice doc. The ones a reviewer should know:
+    - Ids carry their number, and no counter is persisted.
+    - The writer's tool-run request isn't bookmarkable.
+    - Default labels read through the transcript projection, so a capability
+      card is named by its request, never its evidence.
+    - A rolled-back provisional turn takes its bookmark with it.
+  - **PR #188 review (Astra, 2026-11-04).** One P2, F-01, fixed in `5d0b5fc`.
+    The ledger is in
+    [the review](../../../docs/pr-reviews/pr-188-workshop-wayfinding-bookmarks-host-review.md).
+    - The id grammar accepted a counter of any length. Hydration turned an
+      oversized one into `Infinity` or an exponent, the next set minted an id
+      the codec refuses, and every later save failed.
+    - Both id parts are now canonical safe integers of at least 1. Hydration
+      installs only a safe counter. A set past the maximum is refused with no
+      change.
+    - Regressions run through the real parser, decode, hydration, set and
+      strict save, plus a real-coordinator recovery control.
+    - *Counts.* At `5d0b5fc`: 621 suites / 8,814 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,140 warnings, unchanged.
+    - *Sizes.* `WorkshopBookmarkLedger.ts` 279 → 324; no over-500 file
+      changed.
+

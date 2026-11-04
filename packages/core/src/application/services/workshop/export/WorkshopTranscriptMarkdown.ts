@@ -29,12 +29,12 @@ export function renderWorkshopTranscriptMarkdown(transcript: WorkshopTranscript)
 function renderEntry(entry: WorkshopTranscriptEntry): string {
   switch (entry.kind) {
     case 'event':
-      return `_${escapeInline(entry.text)}_`;
+      return `_${entry.bookmarked ? `${BOOKMARKED} · ` : ''}${escapeInline(entry.text)}_`;
     case 'writer': {
       const lines = [
         `### ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${
           entry.privateWith ? ` · private with ${escapeInline(entry.privateWith)}` : ''
-        }`
+        }${bookmarkSuffix(entry)}`
       ];
       if (entry.attachmentLabels.length > 0) {
         lines.push(`_Attached: ${entry.attachmentLabels.map(escapeInline).join(', ')}_`);
@@ -53,7 +53,7 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
       const lines = [
         `### ${escapeInline(entry.speaker)}${
           entry.privateWith ? ' · private' : ''
-        }`
+        }${bookmarkSuffix(entry)}`
       ];
       if (entry.truncated) {
         lines.push('_Response hit the max-token limit and was truncated._');
@@ -71,6 +71,13 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
       return lines.join('\n\n');
     }
   }
+}
+
+/** A bookmarked turn's heading ends with the mark (ADR 2026-11-03 D10). */
+const BOOKMARKED = 'Bookmarked';
+
+function bookmarkSuffix(entry: WorkshopTranscriptEntry): string {
+  return entry.bookmarked ? ` · ${BOOKMARKED}` : '';
 }
 
 /** An angle-bracket link destination cannot itself contain angle brackets. */

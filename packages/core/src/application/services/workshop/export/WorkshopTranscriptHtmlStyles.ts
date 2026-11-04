@@ -26,6 +26,8 @@
  * layers (Lightbox Slice 1) come before the Workshop's, as in the webview.
  */
 
+import { WORKSHOP_TRANSCRIPT_BOOKMARK_CSS } from './WorkshopTranscriptHtmlBookmarkStyles';
+
 export interface WorkshopTranscriptMirroredStyles {
   /** Source stylesheet, relative to packages/core/src/presentation/webview/. */
   source: string;
@@ -633,5 +635,6 @@ body {
 export const WORKSHOP_TRANSCRIPT_HTML_CSS = [
   WORKSHOP_TRANSCRIPT_PREFLIGHT_CSS,
   ...WORKSHOP_TRANSCRIPT_MIRRORED_STYLES.map(({ css }) => css),
-  WORKSHOP_TRANSCRIPT_PAGE_CSS
+  WORKSHOP_TRANSCRIPT_PAGE_CSS,
+  WORKSHOP_TRANSCRIPT_BOOKMARK_CSS
 ].map((layer) => layer.trim()).join('\n');

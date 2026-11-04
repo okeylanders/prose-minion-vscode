@@ -58,6 +58,7 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopSessionMessageHandler'
   | 'WorkshopStandingDirectiveHandler'
   | 'WorkshopTodoHandler'
+  | 'WorkshopBookmarkHandler'
   | 'WorkshopWidgetHostHandler';
 
 /**

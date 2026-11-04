@@ -21,7 +21,7 @@ describe('WorkshopTranscriptExportService', () => {
     );
     const disk = files();
     const service = new WorkshopTranscriptExportService(
-      { readRoomLedger: () => turns },
+      { readRoomLedger: () => turns, readBookmarkedTurnIds: () => new Set<string>() },
       disk,
       () => FIXTURE_EPOCH
     );
@@ -41,7 +41,7 @@ describe('WorkshopTranscriptExportService', () => {
   ] as const)('renders %s to a .%s file', async (format, extension, marker) => {
     const disk = files();
     const service = new WorkshopTranscriptExportService(
-      { readRoomLedger: () => [writerTurn('u-1', { content: 'Hello.' })] },
+      { readRoomLedger: () => [writerTurn('u-1', { content: 'Hello.' })], readBookmarkedTurnIds: () => new Set<string>() },
       disk,
       () => FIXTURE_EPOCH
     );
@@ -61,6 +61,7 @@ describe('WorkshopTranscriptExportService', () => {
   it('refuses a room whose thread holds only dividers', async () => {
     const service = new WorkshopTranscriptExportService(
       {
+        readBookmarkedTurnIds: () => new Set<string>(),
         readRoomLedger: () => [fixtureTurn('s-1', {
           role: 'system',
           kind: 'divider',
