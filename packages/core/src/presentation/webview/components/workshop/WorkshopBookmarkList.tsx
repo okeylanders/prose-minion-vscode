@@ -33,6 +33,9 @@ export interface WorkshopBookmarkListProps {
   onRemove: (turnId: string) => void;
 }
 
+/** Why another row's Rename waits (PR #189 F-03). */
+const RENAME_PENDING = 'Wait for the rename in progress to finish';
+
 const PARTICIPANT_WORDS: Record<WorkshopBookmarkSummary['participant'], string> = {
   host: 'Host reply',
   guest: 'Guest reply',
@@ -160,8 +163,8 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                     <button
                       ref={(element) => { renameButtons.current.set(bookmark.id, element); }}
                       type="button"
-                      disabled={disabled}
-                      title="Rename bookmark"
+                      disabled={disabled || rename.renamePending}
+                      title={rename.renamePending ? RENAME_PENDING : 'Rename bookmark'}
                       aria-label={`Rename bookmark: ${bookmark.label}`}
                       onClick={() => rename.beginRename(bookmark)}
                     >

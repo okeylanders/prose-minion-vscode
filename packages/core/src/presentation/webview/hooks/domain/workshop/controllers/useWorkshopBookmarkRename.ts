@@ -12,6 +12,13 @@
  * the host's reason (PR #189 F-01). A later snapshot's label is never read
  * as the answer: a reset, or a name the bookmark already had, looks the same.
  *
+ * One rename at a time (PR #189 F-03). The pending request records its owner
+ * (`requestId`, `bookmarkId`, `draft`), and an answer applies only while that
+ * owner's field is the open one. While it is pending, no other row's field
+ * can open (`renamePending`). Escape or Cancel while it is pending closes the
+ * field and abandons the request: its late answer is dropped, and touches no
+ * row.
+ *
  * One field is open at a time. Its draft belongs to its bookmark: once that
  * bookmark leaves the list, the draft is dropped rather than shown on
  * another (PR #184 F-01's rule for to-dos). The list that mounts this stays
@@ -42,8 +49,10 @@ export interface WorkshopBookmarkRenameState {
   draft: string;
   /** Why the draft was refused, in the writer's words; cleared on typing. */
   fault?: string;
-  /** True from Save until the host answers: Save cannot send twice. */
+  /** True from Save until the host answers, on the field that sent it: Save cannot send twice. */
   saving: boolean;
+  /** True while any rename waits for its answer: no other field may open. */
+  renamePending: boolean;
   /**
    * The bookmark whose field just closed, so the list can return focus to
    * its Rename button; cleared once the list has done so.
@@ -70,6 +79,14 @@ export type UseWorkshopBookmarkRenameReturn = WorkshopBookmarkRenameState &
     persistedState: WorkshopBookmarkRenamePersistence;
   };
 
+/** The rename waiting for its answer, and whose it is. */
+interface PendingRename {
+  requestId: string;
+  bookmarkId: string;
+  /** The draft as sent, given back if the host refuses it. */
+  draft: string;
+}
+
 export function useWorkshopBookmarkRename({
   bookmarks,
   onRename,
@@ -79,13 +96,13 @@ export function useWorkshopBookmarkRename({
   const [draft, setDraft] = React.useState('');
   const [fault, setFault] = React.useState<string>();
   const [closedId, setClosedId] = React.useState<string>();
-  const [submittedRequestId, setSubmittedRequestId] = React.useState<string>();
+  const [pending, setPending] = React.useState<PendingRename>();
 
   const close = React.useCallback((id: string | undefined) => {
     setEditingId(undefined);
     setDraft('');
     setFault(undefined);
-    setSubmittedRequestId(undefined);
+    setPending(undefined);
     setClosedId(id);
   }, []);
 
@@ -94,30 +111,40 @@ export function useWorkshopBookmarkRename({
       setEditingId(undefined);
       setDraft('');
       setFault(undefined);
-      setSubmittedRequestId(undefined);
+      setPending(undefined);
     }
   }, [bookmarks, editingId]);
   React.useEffect(clearDraftWhenBookmarkGone, [clearDraftWhenBookmarkGone]);
 
   const settleWhenHostAnswered = React.useCallback(() => {
-    if (submittedRequestId === undefined || outcome?.requestId !== submittedRequestId) {
+    if (pending === undefined || outcome?.requestId !== pending.requestId) {
+      return;
+    }
+    if (editingId !== pending.bookmarkId || outcome.bookmarkId !== pending.bookmarkId) {
+      // Not the owner's answer to give: drop the request, touch no field.
+      setPending(undefined);
       return;
     }
     if (outcome.accepted) {
-      close(editingId);
+      close(pending.bookmarkId);
       return;
     }
-    setSubmittedRequestId(undefined);
+    setPending(undefined);
+    setDraft(pending.draft);
     setFault(outcome.error ?? 'The bookmark was not renamed.');
-  }, [close, editingId, outcome, submittedRequestId]);
+  }, [close, editingId, outcome, pending]);
   React.useEffect(settleWhenHostAnswered, [settleWhenHostAnswered]);
 
   const beginRename = React.useCallback((bookmark: WorkshopBookmarkSummary) => {
+    if (pending !== undefined) {
+      // One rename at a time: another row's answer is still owed.
+      return;
+    }
     setEditingId(bookmark.id);
     setDraft(bookmark.label);
     setFault(undefined);
     setClosedId(undefined);
-  }, []);
+  }, [pending]);
 
   const changeDraft = React.useCallback((value: string) => {
     setDraft(value);
@@ -125,7 +152,7 @@ export function useWorkshopBookmarkRename({
   }, []);
 
   const saveRename = React.useCallback(() => {
-    if (editingId === undefined || submittedRequestId !== undefined) {
+    if (editingId === undefined || pending !== undefined) {
       return;
     }
     const check = checkWorkshopBookmarkLabel(draft);
@@ -134,8 +161,9 @@ export function useWorkshopBookmarkRename({
       return;
     }
     setFault(undefined);
-    setSubmittedRequestId(onRename(editingId, check.kind === 'named' ? check.label : null));
-  }, [draft, editingId, onRename, submittedRequestId]);
+    const requestId = onRename(editingId, check.kind === 'named' ? check.label : null);
+    setPending({ requestId, bookmarkId: editingId, draft });
+  }, [draft, editingId, onRename, pending]);
 
   const cancelRename = React.useCallback(() => close(editingId), [close, editingId]);
   const acknowledgeClosed = React.useCallback(() => setClosedId(undefined), []);
@@ -144,7 +172,8 @@ export function useWorkshopBookmarkRename({
     editingId,
     draft,
     fault,
-    saving: submittedRequestId !== undefined,
+    saving: pending !== undefined && pending.bookmarkId === editingId,
+    renamePending: pending !== undefined,
     closedId,
     beginRename,
     changeDraft,

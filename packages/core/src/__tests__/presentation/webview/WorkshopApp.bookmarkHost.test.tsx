@@ -79,12 +79,16 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
   });
 
   /** A room with one bookmarked reply, its snapshot on screen, and Notes open. */
-  const bridged = async () => {
+  const bridged = async ({ writerToo = false } = {}) => {
     const harness = createWorkshopRouteTestHarness();
     await harness.pin();
     await harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Look at the lantern beat.' }) as never);
-    const reply = harness.session.readRoomLedger().find((turn) => turn.participant === 'host')!;
-    await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_BOOKMARK, { turnId: reply.id, bookmarked: true }) as never);
+    const ledger = harness.session.readRoomLedger();
+    const reply = ledger.find((turn) => turn.participant === 'host')!;
+    const writer = ledger.find((turn) => turn.participant === 'writer' && turn.kind === 'message')!;
+    for (const turn of writerToo ? [writer, reply] : [reply]) {
+      await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_BOOKMARK, { turnId: turn.id, bookmarked: true }) as never);
+    }
 
     let delivered = 0;
     /** Carries the webview's bookmark messages to the host, then the host's replies back. */
@@ -106,8 +110,10 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
     render(<WorkshopApp />);
     await pump();
     fireEvent.click(screen.getByRole('tab', { name: /^Notes/ }));
-    const [bookmark] = harness.session.getSnapshot().bookmarks;
-    return { harness, bookmark, pump };
+    const bookmarks = harness.session.getSnapshot().bookmarks;
+    // With the writer's message too, the reply is second in thread order.
+    const bookmark = bookmarks.at(-1)!;
+    return { harness, bookmark, bookmarks, pump };
   };
 
   const rail = () => screen.getByLabelText('Session rail');
@@ -191,6 +197,99 @@ describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () 
     await pump();
 
     expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+  });
+
+  describe('one rename at a time, bound to its row (PR #189 F-03)', () => {
+    const renameButton = (label: string) =>
+      within(rail()).getByRole('button', { name: `Rename bookmark: ${label}` }) as HTMLButtonElement;
+    const labels = (harness: { session: { getSnapshot: () => { bookmarks: Array<{ label: string }> } } }) =>
+      harness.session.getSnapshot().bookmarks.map((entry) => entry.label);
+
+    it('while A waits, B cannot open; A\'s acceptance closes A and leaves B as it was', async () => {
+      const { harness, bookmarks, pump } = await bridged({ writerToo: true });
+      const [first, second] = bookmarks;
+      startRename(second.label, 'The quiet father');
+      fireEvent.submit(field().form!);
+
+      const other = renameButton(first.label);
+      expect(other.disabled).toBe(true);
+      expect(other.title).toBe('Wait for the rename in progress to finish');
+      fireEvent.click(other);
+      // Still A's field, with A's draft, saving.
+      expect(within(rail()).getAllByRole('textbox', { name: 'Bookmark name' })).toHaveLength(1);
+      expect(field().value).toBe('The quiet father');
+      expect(field().readOnly).toBe(true);
+
+      await pump();
+      expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+      expect(labels(harness)).toEqual([first.label, 'The quiet father']);
+      expect(document.activeElement).toBe(renameButton('The quiet father'));
+      expect(renameButton(first.label).disabled).toBe(false);
+    });
+
+    it('while A waits, B cannot open; A\'s refusal comes back to A, with A\'s draft', async () => {
+      const { harness, bookmarks, pump } = await bridged({ writerToo: true });
+      const [first, second] = bookmarks;
+      startRename(second.label, 'The quiet father');
+      harness.persistence.isSessionOperationPending.mockReturnValue(true);
+      fireEvent.submit(field().form!);
+      fireEvent.click(renameButton(first.label));
+
+      await pump();
+      expect(within(rail()).getAllByRole('textbox', { name: 'Bookmark name' })).toHaveLength(1);
+      expect(field().value).toBe('The quiet father');
+      expect(within(rail()).getByRole('alert').textContent).toBe(GATE);
+      // The open field is A's: B's row still offers its own Rename.
+      expect(renameButton(first.label).disabled).toBe(false);
+      expect(within(rail()).queryByRole('button', { name: `Rename bookmark: ${second.label}` })).toBeNull();
+      expect(labels(harness)).toEqual([first.label, second.label]);
+    });
+
+    it('Escape while A waits closes A and drops its late answer, touching no other row', async () => {
+      const { harness, bookmarks, pump } = await bridged({ writerToo: true });
+      const [first, second] = bookmarks;
+      startRename(second.label, 'Second thoughts');
+      fireEvent.submit(field().form!);
+      fireEvent.keyDown(field(), { key: 'Escape' });
+      expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+
+      startRename(first.label, 'Draft for B');
+      await pump();
+
+      // The host kept A's name; its answer reached no field.
+      expect(labels(harness)).toEqual([first.label, 'Second thoughts']);
+      expect(field().value).toBe('Draft for B');
+      expect(field().readOnly).toBe(false);
+      expect(within(rail()).queryByRole('alert')).toBeNull();
+    });
+
+    it('a room replacement while A waits closes the field, and the answer opens nothing', async () => {
+      const { harness, bookmark, pump } = await bridged();
+      startRename(bookmark.label, 'Old room draft');
+      fireEvent.submit(field().form!);
+
+      await act(async () => {
+        await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as never);
+      });
+      await pump();
+
+      expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+      expect(within(rail()).queryByRole('alert')).toBeNull();
+    });
+
+    it('renames one row, then the other, each in turn', async () => {
+      const { harness, bookmarks, pump } = await bridged({ writerToo: true });
+      const [first, second] = bookmarks;
+      startRename(first.label, 'The question');
+      fireEvent.submit(field().form!);
+      await pump();
+      startRename(second.label, 'The answer');
+      fireEvent.submit(field().form!);
+      await pump();
+
+      expect(labels(harness)).toEqual(['The question', 'The answer']);
+      expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+    });
   });
 
   describe('a private exchange out of the window (PR #189 N-01)', () => {
