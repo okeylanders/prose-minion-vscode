@@ -84,18 +84,33 @@ The Wayfinding epic's process, unchanged:
 - No new file over 500 lines, and a touched file does not grow past 500.
 - Fixtures and tests use *Alice* or made-up names, never a writer's text.
 
-## Open Questions for Okey
+## Decisions (Okey, 2026-11-04)
 
-From the feature note; Slice 0 puts each to Okey with a recommendation:
+The feature note's six open questions, plus the design scope:
 
-1. Memory's mode per project (widen `SettingsStore.update` with a target) or
-   global with per-project storage.
-2. Whether `INDEX.md` exists at all.
-3. A delta frame when a room is reopened after new memories land.
-4. The pinned budget: a count or a token budget.
-5. Whether `memory.read` results are private to the reader, as
-   `transcript.read`'s are.
-6. Whether anything outside the Workshop reads memory (not in v1).
+1. **Mode scope: global.** One `proseMinion.workshop.projectMemory` switch for
+   every project, written globally like the other Conversation settings.
+   Memories stay per project. There is no `SettingsStore` port change.
+   (Against the recommendation, which was per project.)
+2. **`INDEX.md`: not in v1.**
+3. **Memory update note.** This is Okey's refinement; it replaces both "not in
+   v1" and D8's lookup-only rule.
+   - When a persona's conversation is behind the project's memory set
+     (reopened, turned on mid-room, saved in another window), the host
+     appends one note to the writer's next message: new entries, changed
+     entries (the later one wins), and entries no longer in effect.
+   - It is computed per participant from a delivered record kept on the
+     delivering turn.
+   - It is cache-safe and bounded. Past the budget it says "N memories
+     changed; call memory.catalog".
+   - It lands in Slice 2.
+4. **Pinned budget: tokens, with the meter and a refused pin, at
+   `pinnedTokens: 5_000`.** `catalogTokens` stays 2,000, so the frame is at
+   most about 7,000 tokens. Slice 6 checks that cost.
+5. **`memory.read` is published to the room.**
+6. **Workshop only in v1.**
+7. **Design scope (0d):** the Memory tab, the memory manager, and the
+   suggestion card with its receipt line, all in this pass.
 
 ## Progress Notes
 
