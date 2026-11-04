@@ -599,3 +599,22 @@ the ADR:
     bookmarks, because its confirmation and result name no removed to-dos.
     No export rule moved to the mirrored layer, because the thread's mark is
     an action-row control that export never renders.
+  - **PR #189 review (Astra, 2026-11-04).** Two P2s, both fixed in
+    `10e4f4b`. The ledger is in
+    [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
+    - **F-01.** A rename refused under the session-operation gate lost the
+      writer's draft, because the field closed as soon as it posted. A
+      rename now names its request. `WORKSHOP_RENAME_BOOKMARK_RESULT`
+      answers it, and the field keeps the draft until then.
+    - **F-02.** During an Open whose rooms shared a turn id, a preview asked
+      for in the old room could be answered from the new one. The request
+      now names its `roomRevision`. The host waits out every pending
+      replacement and refuses once the room is another, and the webview
+      drops a reply from another room.
+    - *Counts.* At `10e4f4b`: 628 suites / 8,910 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,146 → 1,150 warnings, all
+      `naming-convention`: one enum member, one `PmLogo` mock, and the jsdom
+      text-encoding shim's two names.
+    - *Sizes.* `WorkshopSessionService` 2,595 → 2,600 (`readRoomRevision`);
+      `WorkshopApp.tsx` 1,737 → 1,738; `shell.css` 2,792 → 2,797. New and
+      touched files otherwise stay under 500.

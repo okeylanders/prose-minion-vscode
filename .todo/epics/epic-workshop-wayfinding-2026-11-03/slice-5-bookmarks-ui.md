@@ -250,6 +250,16 @@ See `docs/pr-reviews/` for PRs #186, #187 and #188.
 - **Export.** No rule moved to the mirrored layer: the thread's mark is the action row's pressed toggle, which export never renders. `WorkshopTranscriptHtmlBookmarkStyles.ts` now says so.
 - **Rewind.** Neither its confirmation nor its result names removed to-dos (only the host's log line counts them), so neither names removed bookmarks.
 
+### PR #189 review fixes (`10e4f4b`)
+
+- **F-01: a rename waits for its answer.** `WORKSHOP_RENAME_BOOKMARK` gains `requestId`. `WORKSHOP_RENAME_BOOKMARK_RESULT` answers it: accepted, or refused with the host's reason, the session-operation gate's refusal included. The field holds the submitted draft, "Saving…", until then. Accepted closes it; refused gives the draft back with the reason. With a request id, a refused rename shows in the field, not on the room's error banner.
+- **F-02: a preview is bound to its room.** The request carries the snapshot's `roomRevision`. The host waits while any session operation is pending, then refuses ("The room changed…") when the room is another. The webview drops a reply naming another room, or arriving once its room is off screen. `WorkshopSessionService.readRoomRevision()` is the one-line read it compares against.
+- **Tests.**
+  - `WorkshopApp.bookmarkHost.test.tsx`: the real App bridged to the real host routes.
+  - `WorkshopTurnPreviewRoomBinding.test.ts`: the real coordinator and store.
+  - `WorkshopApp.turnPreview.test.tsx`: the observed message order.
+  - The ledger is in [the review](../../../docs/pr-reviews/pr-189-workshop-wayfinding-bookmarks-ui-review.md#author-response).
+
 ### Follow-ups
 
 - None filed. Slice 8's live pass should check the preview's focus in a real webview (open, Escape, and "Show where it was read" on an out-of-window card), and the toggle's pressed look in both themes.
