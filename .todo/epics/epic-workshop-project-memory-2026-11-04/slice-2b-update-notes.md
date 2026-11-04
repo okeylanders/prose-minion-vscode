@@ -63,7 +63,9 @@ Past either budget:
 - `npm run lint`: 0 errors; 1,158 warnings, unchanged from 2a.
 - `npx jest`: before (2a's head, `7ec50ba4`) **652 suites / 9,228 tests / 59
   snapshots**. After: **654 suites / 9,246 tests / 59 snapshots**, all
-  passing (2 new suites, 18 new tests).
+  passing (2 new suites, 18 new tests). After merging the updated 2a (the
+  epic at `c7f738b`, PR #194 merged): **654 suites / 9,257 tests / 59
+  snapshots**, all passing.
 - No `from 'vscode'` in core. No new file over 500 lines. Touched files
   already past 500 grew a little: `WorkshopSessionService.ts` 2,610 → 2,655
   (staging and the commit-time write), `session.ts` 957 → 982 (the record's
