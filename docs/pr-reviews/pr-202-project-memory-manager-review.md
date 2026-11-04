@@ -5,11 +5,60 @@
 **REQUEST CHANGES** before merging into `epic/workshop-project-memory`.
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/202
-- Reviewed implementation: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`
-- Reviewed epic base: `6a964813583d6e7bffec853a301f1ddfcfac5687`
+- Latest reviewed implementation: `d57734ac458e6eb4b3cebf1efee840ea9c869f7d` (original review: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`)
+- Latest epic base: `43d9df0d0f2b809be9138bd84654af0702b6feb7` (original base: `6a964813583d6e7bffec853a301f1ddfcfac5687`)
 - Review date: 2026-11-04 UTC.
-- Four P2 findings remain open; two P3 integration follow-ups are also recorded.
+- **Two P2 findings remain open: F01 and F03, narrowed below. F02, F04, N01 and N02 are verified closed at the latest implementation.**
 - This is an advisory review report, not a GitHub approval or merge. It evaluates Slice 4b-wire on its actual epic target, not main and not an unmerged Slice 5 trial merge.
+
+## Independent re-review — d57734ac, 2026-11-04 21:49 UTC
+
+The original findings below are historical evidence. This section is the current reviewer verdict; the author's resolution ledger records proposed corrections, not independent clearance.
+
+### F01 remains open: capture the requested root before entering either queue
+
+The original directory-read and claimed-byte withdrawal cases now preserve the file. A newer saved-name occupant is also preserved when withdrawal restores the claimed memory under a free name. However, `ProjectMemoryStore.delete` captures `where` **inside** `enqueue` (lines 302–304), after a queued request may have changed projects.
+
+Independent real-library/store witness:
+1. Root A has memory `mem-000001`. Pause a `store.list()` directory read, holding the store queue.
+2. Start `library.remove('mem-000001')` and confirm it has entered `store.delete` while A is still accepted.
+3. Switch to and accept root B, containing a different memory with the same id and filename (as copied projects can).
+4. Release the queue.
+
+**Observed: `deleted`; A's file survives, B's file is deleted.** Capturing B when the queued operation finally executes makes every new still-permitted check pass, but the user requested deletion in A. The exact production-module witness used 111 hash-verified imports.
+
+Capture request root/generation before either the library write queue or store queue can wait, and require that captured identity at execution and commit. Add a regression behind a real queued list and one behind the library's write queue; verify neither project's file is deleted after the original target changes.
+
+### F03 remains open: rollback must own the mode change it undoes
+
+The original partial-apply case now restores the old value, and rollback failure is reported honestly. The new catch path at `WorkshopConversationSettingsService.ts:107–110,344–352` nevertheless restores *any* difference from the old value, even when this apply never wrote memory.
+
+Independent expected-failing regression:
+1. Start with global memory Auto.
+2. Apply a Behavior-only change, leaving the mode Auto, so `persistProjectMemoryMode` makes no write.
+3. While retained-prompt assembly is pending, the user sets global memory Off in VS Code Settings.
+4. Reject prompt replacement.
+
+**Expected: Off remains, and this apply performs no memory write. Observed: rollback writes Auto**, undoing the newer external Off. This also applies to newer external changes after an apply that did own an earlier write.
+
+Track whether this operation actually changed the mode and the value/generation it owns. Do not roll back an unchanged/omitted/refused mode write or overwrite a newer external choice. Reconcile live prompts with the actual surviving value and describe partial outcomes accurately. Add unchanged-mode and changed-mode concurrent external-edit tests, including an external Off.
+
+### Closures verified
+
+- **F02:** original listing/title, folder and queued cross-root key witnesses now refuse safely. Accepted-new-root variants also pass. Eighteen identity/privacy controls still pass.
+- **F04:** settings-tab folder refusal is visible at the initiating panel; its pending/error state is separate from ordinary manager actions.
+- **N01:** a successful pending card save refreshes the visible settings consumer.
+- **N02:** saved cards open the manager at the named row; focused-row tests pass.
+- Original reviewer UI regressions and targeted rollback-failure/focus tests pass (4 suites / 11 tests in the independent rerun).
+
+### Re-review validation so far
+
+- Exact core/extension source/config/resource materialization checked against d57734ac: 1,921 files checked, only non-executable root guide terminal-newline differences.
+- Core/webview/extension typechecks pass; lint 0 errors / 1,165 warnings.
+- Delete/store selection including independent withdrawal and occupied-name restoration probes: **5 suites / 69 tests passed**.
+- CI for d57734ac: **success**, [run 41918468608](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41918468608).
+- Full local production suite is running. Reviewer-only regressions are excluded. Passing production coverage does not close the two independently reproduced residuals.
+- Same validation limits apply: in-memory filesystem and jsdom; no native extension/screen-reader/OS-shell validation.
 
 ## Resolution ledger (author, 2026-11-04)
 
@@ -98,7 +147,7 @@ A reachable WorkshopApp probe clicks a proposal's Save, opens Memory settings wh
 
 ## Validation evidence
 
-At the reviewed implementation:
+At the original reviewed implementation (87e14f6):
 - `npm run typecheck`: **passed** core, webview and extension.
 - `npm run lint`: **passed**, 0 errors / 1,165 existing warnings.
 - Focused production selection `(ProjectMemory|Workshop.*Memory|useWorkshopAppMessageRouter)`: **38 suites / 513 tests passed**.
@@ -117,4 +166,4 @@ The tests use an in-memory filesystem, mocked scope/recall/shell and jsdom. No n
 
 ## Follow-up gate
 
-Keep F01–F04 open until corrections and targeted regressions are reviewed on their new exact head, followed by affected tests/typechecks/CI. Recheck integration if the epic base or overlapping Slice 5 implementation changes. No formal GitHub approval or merge was performed.
+Keep residual F01 and F03 open until corrections and targeted regressions are reviewed on their new exact head, followed by affected tests/typechecks/CI. Recheck integration if the epic base or overlapping Slice 5 implementation changes. No formal GitHub approval or merge was performed.
