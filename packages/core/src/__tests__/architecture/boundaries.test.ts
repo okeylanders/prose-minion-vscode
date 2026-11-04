@@ -997,6 +997,26 @@ const RECALL_TYPE_ONLY_MODULE = /(?:^|\/)(?:WorkshopSessionStore|WorkshopSession
 /** These render thread-artifact bodies, which recall must never emit (runway F11). */
 const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopThreadArtifactFrame)$/;
 
+/**
+ * Project memory's read path (ADR 2026-11-04 D10, D12, D13): capability
+ * code, like recall. It may know the store and the coordinator only as
+ * types, so the library's read-only ports stay its only path to memory
+ * files and the accepted workspace.
+ */
+const WORKSHOP_MEMORY_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'memory');
+const WORKSHOP_MEMORY_MODULES = [
+  'ProjectMemoryCatalogFrame.ts',
+  'ProjectMemoryLibrary.ts',
+  'ProjectMemoryLibraryContracts.ts',
+  'WorkshopProjectMemoryCapability.ts',
+  'WorkshopProjectMemoryCopy.ts',
+  'WorkshopProjectMemoryRenderer.ts',
+  'WorkshopProjectMemoryRequestCopy.ts',
+  'WorkshopProjectMemorySearch.ts',
+  'WorkshopProjectMemoryXmlCodec.ts'
+];
+const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
+
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
@@ -1005,7 +1025,8 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityResultLog.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopTranscriptRecallXmlCodec.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
-  ...collectSourceFiles(WORKSHOP_RECALL_ROOT)
+  ...collectSourceFiles(WORKSHOP_RECALL_ROOT),
+  ...collectSourceFiles(WORKSHOP_MEMORY_ROOT)
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -1015,7 +1036,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|ProjectMemoryLibrary|ProjectMemoryStore|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf|LightboxBoardStore|LightboxBoardLibrary)\b`
 );
 
 /**
@@ -1597,6 +1618,37 @@ describe('architectural boundaries', () => {
     expect(imports
       .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
       .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+  });
+
+  it('keeps project memory on its read-only ports and off the room-frame renderers (ADR 2026-11-04 D10, D12)', () => {
+    const memoryFiles = collectSourceFiles(WORKSHOP_MEMORY_ROOT);
+    const imports = memoryFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+
+    expect(memoryFiles.map((file) => path.basename(file)).sort()).toEqual(WORKSHOP_MEMORY_MODULES);
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(memoryFiles));
+    expect(imports
+      .filter(({ module, typeOnly }) => MEMORY_TYPE_ONLY_MODULE.test(module) && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    // Each module stays under 500 lines.
+    expect(memoryFiles.filter((file) => fs.readFileSync(file, 'utf8').split('\n').length > 500)
+      .map((file) => path.relative(SRC_ROOT, file))).toEqual([]);
+  });
+
+  it('builds the project-memory store and library only at the composition root (ADR 2026-11-04 D10, D13)', () => {
+    const constructions = collectSourceFiles(SRC_ROOT)
+      .filter((file) => !file.includes(`${path.sep}__tests__${path.sep}`))
+      .filter((file) => /\bnew\s+ProjectMemory(?:Library|Store)\s*\(/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    expect(constructions).toEqual([]);
+    const extension = fs.readFileSync(path.resolve(SRC_ROOT, '../../../apps/vscode-extension/src/extension.ts'), 'utf8');
+    expect(extension.match(/\bnew\s+ProjectMemoryStore\s*\(/g)).toHaveLength(1);
+    expect(extension.match(/\bnew\s+ProjectMemoryLibrary\s*\(/g)).toHaveLength(1);
   });
 
   it('tells a value import of a module from a type-only one', () => {

@@ -650,12 +650,33 @@ describe('app-shell provider assembly', () => {
     const factoryArgs = factory.slice(0, factory.indexOf(');'));
 
     expect(recallArgs).toMatch(/\(\s*workshopSessionStore,\s*workshopSessionPersistenceCoordinator,\s*outputChannel\s*$/);
-    expect(factoryArgs).toMatch(/workshopTranscriptRecallService\s*$/);
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService,\s*projectMemoryLibrary\s*$/);
     expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
     expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));
     expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
     expect(at('new WorkshopPersonaCapabilityFactory(')).toBeLessThan(at('new RunWorkshopToolSidePass('));
-    // One consumer: no CoreServices field carries it.
-    expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(2);
+    // Two consumers, the factory and project memory's provenance: no CoreServices field carries it.
+    expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(3);
+  });
+
+  it('builds project memory\'s store, then its library, before the factory and the grammar check that read it (ADR 2026-11-04 D13)', () => {
+    const source = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const at = (needle: string): number => {
+      const index = source.indexOf(needle);
+      expect(index).toBeGreaterThan(-1);
+      return index;
+    };
+    const library = source.slice(at('new ProjectMemoryLibrary('));
+    const libraryArgs = library.slice(0, library.indexOf(');'));
+
+    expect(libraryArgs).toMatch(
+      /\(\s*projectMemoryStore,\s*workshopSessionPersistenceCoordinator,\s*workshopTranscriptRecallService,\s*platform\.settings,\s*outputChannel\s*$/
+    );
+    expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new ProjectMemoryStore('));
+    expect(at('new ProjectMemoryStore(')).toBeLessThan(at('new ProjectMemoryLibrary('));
+    expect(at('new ProjectMemoryLibrary(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
+    expect(source).toContain('assistantToolService.setWorkshopProjectMemoryGrammar(() => projectMemoryLibrary.teachesGrammar());');
+    // The store has one consumer in 2a, the library.
+    expect(source.match(/projectMemoryStore\b/g)).toHaveLength(2);
   });
 });

@@ -49,6 +49,13 @@ export function isWorkshopProjectMemoryOperation(operation: string | undefined):
   return operation === 'memory.catalog' || operation === 'memory.search' || operation === 'memory.read';
 }
 
+/** Each operation's fields: those it allows, and those it requires. */
+const OPERATION_FIELDS: ReadonlyMap<MemoryOperation, { readonly allowed: readonly string[]; readonly required: readonly string[] }> = new Map([
+  ['memory.catalog', { allowed: ['kind'], required: [] }],
+  ['memory.search', { allowed: ['query', 'status'], required: ['query'] }],
+  ['memory.read', { allowed: ['memory'], required: ['memory'] }]
+]);
+
 export function inspectWorkshopProjectMemoryCall(
   operation: MemoryOperation,
   call: Pick<WorkshopCapabilityXmlCall, 'fields' | 'elements'>
@@ -56,35 +63,38 @@ export function inspectWorkshopProjectMemoryCall(
   const budgets = PROMPT_BUDGETS.workshopProjectMemory;
   const reject = (reason: WorkshopCapabilityRejectionReason, field?: string): WorkshopProjectMemoryRejection =>
     ({ kind: 'invalid', reason, operation, ...(field !== undefined ? { field } : {}) });
-  const allowed: Record<MemoryOperation, readonly string[]> = {
-    'memory.catalog': ['kind'],
-    'memory.search': ['query', 'status'],
-    'memory.read': ['memory']
-  };
-  const required: Record<MemoryOperation, readonly string[]> = {
-    'memory.catalog': [],
-    'memory.search': ['query'],
-    'memory.read': ['memory']
-  };
-  const unexpected = call.elements.find((element) => !allowed[operation].includes(element.name));
-  if (unexpected) return reject('unexpected-field', unexpected.name);
-  const missing = required[operation].find((field) => !call.elements.some((element) => element.name === field));
-  if (missing) return reject('missing-field', missing);
+  const { allowed, required } = OPERATION_FIELDS.get(operation)!;
+  const unexpected = call.elements.find((element) => !allowed.includes(element.name));
+  if (unexpected) {
+    return reject('unexpected-field', unexpected.name);
+  }
+  const missing = required.find((field) => !call.elements.some((element) => element.name === field));
+  if (missing) {
+    return reject('missing-field', missing);
+  }
   const empty = call.elements.find((element) => element.value.length === 0);
-  if (empty) return reject('empty-field', empty.name);
+  if (empty) {
+    return reject('empty-field', empty.name);
+  }
 
   switch (operation) {
     case 'memory.catalog': {
       const kind = call.fields.get('kind');
-      if (kind === undefined) return { kind: 'request', request: { capability: operation } };
+      if (kind === undefined) {
+        return { kind: 'request', request: { capability: operation } };
+      }
       const known = PROJECT_MEMORY_KINDS.find((candidate) => candidate === kind.toLowerCase());
       return known ? { kind: 'request', request: { capability: operation, kind: known as ProjectMemoryKind } } : reject('invalid-kind', 'kind');
     }
     case 'memory.search': {
       const query = call.fields.get('query')!;
-      if (query.length > budgets.queryCharacters) return reject('oversized-input', 'query');
+      if (query.length > budgets.queryCharacters) {
+        return reject('oversized-input', 'query');
+      }
       const status = call.fields.get('status');
-      if (status === undefined) return { kind: 'request', request: { capability: operation, query } };
+      if (status === undefined) {
+        return { kind: 'request', request: { capability: operation, query } };
+      }
       const known = WORKSHOP_MEMORY_SEARCH_STATUSES.find((candidate) => candidate === status.toLowerCase());
       return known
         ? { kind: 'request', request: { capability: operation, query, status: known as WorkshopMemorySearchStatus } }
@@ -92,13 +102,21 @@ export function inspectWorkshopProjectMemoryCall(
     }
     case 'memory.read': {
       const named = call.elements.filter((element) => element.name === 'memory');
-      if (named.length > budgets.readMemories) return reject('too-many-memories', 'memory');
+      if (named.length > budgets.readMemories) {
+        return reject('too-many-memories', 'memory');
+      }
       const memories: string[] = [];
       for (const { value } of named) {
-        if (value.length > budgets.memoryIdCharacters) return reject('oversized-input', 'memory');
+        if (value.length > budgets.memoryIdCharacters) {
+          return reject('oversized-input', 'memory');
+        }
         const id = value.toLowerCase();
-        if (!PROJECT_MEMORY_ID.test(id)) return reject('invalid-memory-id', 'memory');
-        if (memories.includes(id)) return reject('duplicate-memory', 'memory');
+        if (!PROJECT_MEMORY_ID.test(id)) {
+          return reject('invalid-memory-id', 'memory');
+        }
+        if (memories.includes(id)) {
+          return reject('duplicate-memory', 'memory');
+        }
         memories.push(id);
       }
       return { kind: 'request', request: { capability: operation, memories } };
