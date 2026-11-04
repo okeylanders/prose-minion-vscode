@@ -222,6 +222,53 @@ describe('WorkshopMemoryBrowserModal', () => {
     expect(screen.getByRole('alert').textContent?.trim()).toBe('The memory folder couldn’t be listed just now. Your memory files weren’t touched.');
   });
 
+  describe('an open rename after its row locks (PR #199 F-01)', () => {
+    const LOCKS: Array<[string, (given: WorkshopMemoryBrowserModalProps, title: string) => Partial<WorkshopMemoryBrowserModalProps>]> = [
+      ['the memory goes busy', (given, title) => ({
+        library: { ...given.library, memories: given.library.memories.map((entry) => (entry.title === title ? { ...entry, busy: true } : entry)) }
+      })],
+      ['an action starts', () => ({ actionPending: true })],
+      ['the workspace goes', () => ({ workspace: { kind: 'unavailable', reason: 'multi-root' } })]
+    ];
+    const ROWS = [['Active', 'The Rabbit’s watch runs backward'], ['Past', 'The Rabbit’s watch stops at six']] as const;
+
+    for (const [section, title] of ROWS) {
+      for (const [lock, locked] of LOCKS) {
+        for (const how of ['Enter', 'blur'] as const) {
+          it(`${section} row: ${how} after ${lock} sends nothing`, () => {
+            const given = props();
+            const view = render(<WorkshopMemoryBrowserModal {...given} />);
+            act(() => {
+              jest.runOnlyPendingTimers();
+            });
+            fireEvent.click(within(rowOf(title)).getByRole('button', { name: `Rename ${title}` }));
+            const field = screen.getByRole('textbox', { name: 'Rename memory' }) as HTMLInputElement;
+            fireEvent.change(field, { target: { value: 'Changed while free' } });
+
+            view.rerender(<WorkshopMemoryBrowserModal {...given} {...locked(given, title)} />);
+            if (how === 'Enter') {
+              fireEvent.keyDown(field, { key: 'Enter' });
+            } else {
+              fireEvent.blur(field);
+            }
+            expect(given.onRename).not.toHaveBeenCalled();
+            expect(screen.queryByRole('textbox', { name: 'Rename memory' })).toBeNull();
+          });
+        }
+      }
+    }
+
+    it('a busy memory still opens its file', () => {
+      const given = props();
+      const library = { ...given.library, memories: given.library.memories.map((entry) => (entry.entryKey === 'key-watch' ? { ...entry, busy: true } : entry)) };
+      render(<WorkshopMemoryBrowserModal {...given} library={library} />);
+      const open = within(rowOf('The Rabbit’s watch runs backward')).getByRole('button', { name: /^Open the file/ }) as HTMLButtonElement;
+      expect(open.disabled).toBe(false);
+      fireEvent.click(open);
+      expect(given.onOpenFile).toHaveBeenCalledWith('key-watch');
+    });
+  });
+
   it('closing returns focus to what opened it', () => {
     const Harness: React.FC = () => {
       const [open, setOpen] = React.useState(false);

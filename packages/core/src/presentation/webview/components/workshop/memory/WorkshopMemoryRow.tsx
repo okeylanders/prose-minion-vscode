@@ -57,6 +57,13 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
 }) => {
   const { entry } = row;
   const past = !row.activeActions;
+  // A rename open when the row locks is cancelled, so neither Enter nor the blur that follows sends it (PR #199 F-01).
+  const { editing, cancelRename } = controls;
+  React.useEffect(() => {
+    if (editing && disabled) {
+      cancelRename();
+    }
+  }, [cancelRename, disabled, editing]);
   return (
     <div className={`pm-ws-memory-row${past ? ' pm-ws-memory-row-past' : ''}`}>
       <SavedItemRow

@@ -74,8 +74,11 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
   const view = workshopMemoryManagerView(input);
   const available = workspace.kind === 'available';
   const writesLocked = actionPending || !available;
-  // Rows are keyed by entry handle; a mutation names the memory's id.
-  const idOf = new Map([...view.active, ...view.past].map((row) => [row.entry.entryKey, row.entry.id]));
+  // Rows are keyed by entry handle; a mutation names the memory's id, and is sent only while
+  // this render's row may be written: listed, not busy, nothing pending, the workspace there (PR #199 F-01).
+  const writable = new Map([...view.active, ...view.past]
+    .filter((row) => !writesLocked && !row.entry.busy)
+    .map((row) => [row.entry.entryKey, row.entry.id]));
   const groupings = React.useMemo<ReadonlyArray<SavedItemGrouping<WorkshopMemoryRowView>>>(() => [
     { key: 'kind', label: 'Kind', group: (rows) => groupMemoriesByKind(rows) },
     { key: 'date', label: 'Date', group: (rows) => groupMemoriesByDate(rows, now) }
@@ -83,7 +86,7 @@ export const WorkshopMemoryBrowserModal: React.FC<WorkshopMemoryBrowserModalProp
   const titleRule = React.useMemo(() => workshopMemoryTitleRule(WORKSHOP_MEMORY_TITLE_CHARACTERS), []);
   const actions: WorkshopMemoryRowActions = { onEdit, onRestore, onArchive, onToggleLoadInFull, onOpenFile };
   const byId = (send: (id: string) => void) => (entryKey: string) => {
-    const id = idOf.get(entryKey);
+    const id = writable.get(entryKey);
     if (id) {
       send(id);
     }
