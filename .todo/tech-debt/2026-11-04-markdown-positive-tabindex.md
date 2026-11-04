@@ -17,9 +17,10 @@ WAI-ARIA guidance is never to use a positive `tabindex`.
 
 ## What Slice 2 did
 
-`WorkshopModalShell`'s opt-in focus trap orders stops by the browser's tab
-order, so a positive `tabindex` no longer slips past the wrap (PR #186 N-01).
-The content itself is unchanged.
+Nothing in the content. The text sheet now makes the frame behind it `inert`
+(PR #186 N-03, which replaced the N-01 trap), so a positive `tabindex` behind
+the sheet can't take focus. One inside the sheet still leads the sheet's own
+tab order.
 
 ## Smallest credible improvement
 
@@ -35,4 +36,3 @@ notes, and the rule only makes such elements follow document order.
 ## Related files
 
 - `packages/core/src/presentation/webview/components/shared/MarkdownRenderer.tsx`
-- `packages/core/src/presentation/webview/components/workshop/WorkshopModalShell.tsx`

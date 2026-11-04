@@ -31,21 +31,13 @@ interface WorkshopModalShellProps {
    * scrolling itself; the caller's `.pm-ws-sheet-body` owns the scroll.
    */
   variant?: 'panel' | 'sheet';
-  /**
-   * Keep Tab and Shift+Tab inside the dialog (PR #186 F-02): every Tab steps
-   * through the dialog's own stops in browser order, wrapping at the ends
-   * (N-01, N-02). Opt-in: the
-   * shell neither traps focus nor makes the background inert by default
-   * (tech debt 2026-11-03-workshop-modal-focus-containment).
-   */
-  trapFocus?: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }
 
 export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
   CloseButton: typeof WorkshopModalCloseButton;
-} = ({ open, titleId, closeLabel, className, variant = 'panel', trapFocus = false, onClose, children }) => {
+} = ({ open, titleId, closeLabel, className, variant = 'panel', onClose, children }) => {
   /* Escape + focus capture/return live in the shared hook, so this shell and
      the full-surface guide cannot drift apart — or fight over focus when one
      hands off to the other (PR #94 review). */
@@ -60,26 +52,6 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
     [onClose]
   );
 
-  // With the trap on, the dialog moves focus on every Tab itself, through
-  // its own stops in browser order, so the page-wide order (which a
-  // positive tabindex outside the dialog can interleave) never takes part
-  // (PR #186 N-02).
-  const keepTabInside = React.useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab') {
-      return;
-    }
-    event.preventDefault();
-    const focusable = tabbableWithin(event.currentTarget);
-    if (focusable.length === 0) {
-      return;
-    }
-    const index = focusable.indexOf(document.activeElement as HTMLElement);
-    const next = index === -1
-      ? (event.shiftKey ? focusable.length - 1 : 0)
-      : (index + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length;
-    focusable[next].focus();
-  }, []);
-
   if (!open) {
     return null;
   }
@@ -91,7 +63,6 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onKeyDown={trapFocus ? keepTabInside : undefined}
       >
         <WorkshopModalShellContext.Provider value={{ closeButtonRef, closeLabel, onClose }}>
           {children}
@@ -100,27 +71,6 @@ export const WorkshopModalShell: React.FC<WorkshopModalShellProps> & {
     </div>
   );
 };
-
-const TABBABLE = 'button, [href], input, select, textarea, [tabindex]';
-
-/**
- * The dialog's Tab stops (enabled, shown, not tabindex -1) in the browser's
- * own tab order: positive tabIndex first, ascending, ties in document order,
- * then tabIndex 0 in document order. Rendered Markdown may carry a positive
- * tabindex, so document order alone would wrap at the wrong stop (PR #186
- * N-01).
- */
-function tabbableWithin(root: HTMLElement): HTMLElement[] {
-  const inDocumentOrder = [...root.querySelectorAll<HTMLElement>(TABBABLE)].filter((element) =>
-    element.tabIndex >= 0
-    && !(element as HTMLButtonElement).disabled
-    && element.closest('[hidden]') === null
-  );
-  const positive = inDocumentOrder
-    .filter((element) => element.tabIndex > 0)
-    .sort((left, right) => left.tabIndex - right.tabIndex);
-  return [...positive, ...inDocumentOrder.filter((element) => element.tabIndex === 0)];
-}
 
 interface ShellContextValue {
   closeButtonRef: React.RefObject<HTMLButtonElement>;

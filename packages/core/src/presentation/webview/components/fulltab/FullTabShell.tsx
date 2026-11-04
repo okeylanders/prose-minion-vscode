@@ -50,6 +50,14 @@ export interface FullTabShellProps {
   onBoundaryError?: FullTabBoundaryErrorHandler;
   /** Overlays mounted inside the frame after the split. */
   children?: React.ReactNode;
+  /**
+   * Marks the header and the split `inert` while a modal overlay is open, so
+   * the browser keeps focus, Tab and pointer input in the overlay natively
+   * (PR #186 N-03). Banners belong to the tab, which inerts its own (a
+   * wrapper toggled here would remount them). Opt-in; without it the markup
+   * is exactly as before.
+   */
+  inertBehindOverlay?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
@@ -61,12 +69,17 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
   main,
   aside,
   onBoundaryError,
-  children
-}) => (
+  children,
+  inertBehindOverlay = false
+}) => {
+  // `inert` is spread so React 18 passes it through as a plain attribute
+  // (its typings don't list it), as WorkshopApp's loading state does.
+  const behind = inertBehindOverlay ? { inert: '' } : {};
+  return (
   // The root's aside modifier lets the frame scroll as one page at narrow
   // widths (styles/fulltab/shell.css); tabs without an aside are unchanged.
   <div className={aside ? 'pm-ws pm-ws-with-aside' : 'pm-ws'}>
-    <header className="pm-ws-header">
+    <header className="pm-ws-header" {...behind}>
       <div className="pm-ws-brand">
         <div className="pm-ws-logo">
           <PmLogo />
@@ -82,7 +95,7 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
 
     {banners}
 
-    <div className={aside ? 'pm-ws-split pm-ws-split-with-aside' : 'pm-ws-split'}>
+    <div className={aside ? 'pm-ws-split pm-ws-split-with-aside' : 'pm-ws-split'} {...behind}>
       <FullTabRail
         label={rail.label}
         boundaryName={rail.boundaryName}
@@ -109,4 +122,5 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
 
     {children}
   </div>
-);
+  );
+};

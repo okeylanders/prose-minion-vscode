@@ -2665,3 +2665,9 @@
   margin: 12px 0 0;
   color: var(--pm-muted);
 }
+
+/* The banner wrapper exists only to carry `inert` while a text sheet is
+   open (PR #186 N-03); it adds no box, so the banners lay out as before. */
+[data-pm-surface="workshop"] .pm-ws-banners {
+  display: contents;
+}

@@ -997,8 +997,14 @@ export const WorkshopApp: React.FC = () => {
     </>
   );
 
+  // The reader and every text sheet are modal: while one is open, the
+  // whole frame behind it is inert (PR #186 N-03), so the browser keeps the
+  // keyboard and pointer in the sheet. The banner wrapper is always there,
+  // laid out with `display: contents`, so opening a sheet never remounts a
+  // banner.
+  const behindTextSheet = textSheet ? { inert: '' } : {};
   const banners = (
-    <>
+    <div className="pm-ws-banners" {...behindTextSheet}>
       {chrome.providerPaused && (
         <ProviderPausedBanner
           availabilityNote="Your Workshop sessions and local context remain available."
@@ -1043,7 +1049,7 @@ export const WorkshopApp: React.FC = () => {
             : ' Check the Prose Minion output for details.'}
         </div>
       )}
-    </>
+    </div>
   );
 
   const railContent = (
@@ -1372,6 +1378,7 @@ export const WorkshopApp: React.FC = () => {
       rail={{ label: 'Session rail', boundaryName: 'Workshop rail', content: railContent }}
       main={{ label: 'Session thread', content: mainContent }}
       onBoundaryError={handleBoundaryError}
+      inertBehindOverlay={textSheet !== null}
     >
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file

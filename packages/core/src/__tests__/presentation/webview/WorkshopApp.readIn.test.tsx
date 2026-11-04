@@ -379,4 +379,45 @@ describe('WorkshopApp Read in', () => {
       expect(within(sheet).queryAllByText('The Rabbit\'s file.')).toEqual([]);
     });
   });
+
+  describe('everything behind an open sheet is inert (PR #186 N-03)', () => {
+    // jsdom doesn't enforce `inert`, so these assert the attribute; native
+    // traversal is Slice 8's live check.
+    const behind = () => {
+      const header = document.querySelector('.pm-ws-header')!;
+      return {
+        header: header.hasAttribute('inert'),
+        headerActions: header.querySelector('.pm-ws-header-actions')!.closest('[inert]') !== null,
+        banners: document.querySelector('.pm-ws-banners')!.hasAttribute('inert'),
+        rail: rail().closest('[inert]') !== null,
+        main: screen.getByLabelText('Session thread').closest('[inert]') !== null
+      };
+    };
+    const allInert = { header: true, headerActions: true, banners: true, rail: true, main: true };
+    const noneInert = { header: false, headerActions: false, banners: false, rail: false, main: false };
+
+    it('while the reader is open, and not after it closes', () => {
+      render(<WorkshopApp />);
+      deliver(session([resourceRow('characters/rabbit.md', 1_000)]));
+      expect(behind()).toEqual(noneInert);
+
+      openRabbit();
+      expect(behind()).toEqual(allInert);
+      expect(screen.getByRole('dialog').closest('[inert]')).toBeNull();
+
+      closeReader();
+      expect(behind()).toEqual(noneInert);
+    });
+
+    it('for an authoring sheet too, consistently', () => {
+      render(<WorkshopApp />);
+      deliver(session([]));
+      fireEvent.click(within(rail()).getByRole('button', { name: /Add text/ }));
+      expect(screen.getByRole('dialog').closest('[inert]')).toBeNull();
+      expect(behind()).toEqual(allInert);
+
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+      expect(behind()).toEqual(noneInert);
+    });
+  });
 });

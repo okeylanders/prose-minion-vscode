@@ -273,7 +273,6 @@ export const WorkshopTextSheet: React.FC<WorkshopTextSheetProps> = ({
       titleId={TITLE_ID}
       closeLabel={`Close ${copy.title}`}
       className="pm-ws-text-sheet"
-      trapFocus
       onClose={onClose}
     >
       <div className="pm-ws-session-sheet-head">
