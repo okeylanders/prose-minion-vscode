@@ -154,6 +154,8 @@ export enum MessageType {
   WORKSHOP_SET_EXCERPT_RESOURCE = 'workshop_set_excerpt_resource',
   WORKSHOP_RUN_CONTEXT_WIZARD = 'workshop_run_context_wizard',
   WORKSHOP_TODO_ACTION = 'workshop_todo_action',
+  WORKSHOP_SET_TURN_BOOKMARK = 'workshop_set_turn_bookmark',
+  WORKSHOP_RENAME_BOOKMARK = 'workshop_rename_bookmark',
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',
   WORKSHOP_SET_SESSION_SCOPE = 'workshop_set_session_scope',

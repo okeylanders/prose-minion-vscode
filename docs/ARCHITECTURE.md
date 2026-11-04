@@ -302,6 +302,7 @@ workshop/
 ├── session.ts               # Snapshot, turns, excerpt, session IPC
 ├── context.ts               # Context and message-attachment contracts
 ├── participants.ts          # Persona/tool ids and participant IPC
+├── bookmarks.ts             # The writer's bookmarks: stored entry, summary, set and rename
 ├── widgets.ts               # Explicit family unions and generic widget IPC
 ├── standingDirectives.ts    # Standing family snapshot/summary/change
 ├── creativeVariations.ts    # Creative authoring, workup, overlap, and selection grammar

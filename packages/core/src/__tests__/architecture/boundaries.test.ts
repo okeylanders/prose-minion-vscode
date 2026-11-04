@@ -2329,6 +2329,7 @@ describe('architectural boundaries', () => {
     ];
 
     expect(messageModules).toEqual([
+      'bookmarks.ts',
       'context.ts',
       'creativeVariations.ts',
       'gesturePlayground.ts',

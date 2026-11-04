@@ -139,6 +139,8 @@ packages/core/src/
                 ├── session.ts
                 ├── context.ts
                 ├── participants.ts
+                ├── bookmarks.ts
+                ├── bookmarks.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
                 ├── creativeVariations.ts
