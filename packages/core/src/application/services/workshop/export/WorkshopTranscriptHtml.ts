@@ -111,7 +111,9 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
 function renderEntry(entry: WorkshopTranscriptEntry): string {
   switch (entry.kind) {
     case 'event':
-      return `<div class="pm-ws-revision-divider" role="separator"><span>${escapeHtml(entry.text)}</span></div>`;
+      return `<div class="pm-ws-revision-divider" role="separator"><span>${
+        escapeHtml(entry.text)
+      }${bookmarkMark(entry)}</span></div>`;
     case 'writer':
       return renderWriter(entry);
     case 'reply':
@@ -120,7 +122,7 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
 }
 
 function renderWriter(entry: WorkshopTranscriptWriterEntry): string {
-  const parts: string[] = [];
+  const parts: string[] = [bookmarkMark(entry)];
   if (entry.attachmentLabels.length > 0) {
     parts.push(
       '<div class="pm-ws-turn-attachments" aria-label="Message attachments">' +
@@ -156,6 +158,7 @@ function renderReply(entry: WorkshopTranscriptReplyEntry): string {
       escapeHtml(entry.speaker)
     }</span>` +
     (entry.privateWith ? privateLabel(entry.privateWith) : '') +
+    bookmarkMark(entry) +
     '</div>';
   const truncated = entry.truncated
     ? '<p class="pm-ws-turn-truncated">Response hit the max-token limit and was truncated.</p>'
@@ -188,6 +191,13 @@ function renderSources(entry: WorkshopTranscriptReplyEntry): string {
     '<div class="pm-ws-eyebrow">Web sources</div>' +
     `<div class="pm-ws-turn-citation-pills">${pills.join('')}</div>` +
     '</div>';
+}
+
+/** The writer's bookmark on a turn (ADR 2026-11-03 D10); its rules are export-only. */
+function bookmarkMark(entry: WorkshopTranscriptEntry): string {
+  return entry.bookmarked
+    ? `<span class="pm-ws-export-bookmark">${icon('bookmark', 11)} Bookmarked</span>`
+    : '';
 }
 
 function privateLabel(instrument: string): string {

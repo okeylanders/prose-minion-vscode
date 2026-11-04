@@ -5,6 +5,7 @@
  * This is a transcript projection, NOT the session codec: it cannot be opened
  * as a session and carries no host-private state. `formatVersion` versions
  * this shape only; bump it when a field changes meaning or disappears.
+ * `bookmarked` (ADR 2026-11-03 D10) is additive, so the version stands.
  */
 
 import {
@@ -35,6 +36,7 @@ export type WorkshopTranscriptJsonEntry =
       privateWith?: string;
       attachments: string[];
       widget?: { label: string; detail: string };
+      bookmarked?: true;
     }
   | {
       kind: 'reply';
@@ -45,11 +47,13 @@ export type WorkshopTranscriptJsonEntry =
       privateWith?: string;
       truncated: boolean;
       sources: Array<{ url: string; label: string }>;
+      bookmarked?: true;
     }
   | {
       kind: 'event';
       timestamp: string;
       text: string;
+      bookmarked?: true;
     };
 
 export function buildWorkshopTranscriptJsonDocument(
@@ -74,7 +78,7 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
   const timestamp = new Date(entry.timestamp).toISOString();
   switch (entry.kind) {
     case 'event':
-      return { kind: 'event', timestamp, text: entry.text };
+      return { kind: 'event', timestamp, text: entry.text, ...bookmarked(entry) };
     case 'writer':
       return {
         kind: 'writer',
@@ -82,7 +86,8 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
         content: entry.content,
         ...(entry.privateWith ? { privateWith: entry.privateWith } : {}),
         attachments: [...entry.attachmentLabels],
-        ...(entry.widget ? { widget: { ...entry.widget } } : {})
+        ...(entry.widget ? { widget: { ...entry.widget } } : {}),
+        ...bookmarked(entry)
       };
     case 'reply':
       return {
@@ -93,7 +98,12 @@ function toJsonEntry(entry: WorkshopTranscriptEntry): WorkshopTranscriptJsonEntr
         content: entry.content,
         ...(entry.privateWith ? { privateWith: entry.privateWith } : {}),
         truncated: entry.truncated,
-        sources: entry.sources.map((source) => ({ ...source }))
+        sources: entry.sources.map((source) => ({ ...source })),
+        ...bookmarked(entry)
       };
   }
+}
+
+function bookmarked(entry: WorkshopTranscriptEntry): { bookmarked?: true } {
+  return entry.bookmarked ? { bookmarked: true } : {};
 }
