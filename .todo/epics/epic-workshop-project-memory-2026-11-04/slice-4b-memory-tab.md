@@ -3,7 +3,13 @@
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), D5 (the estimate), D8 (the modes), D10 (manager operations), D13 (the handler); decided questions 1 (global mode) and 4 (pinned budget)
 **Design:** `docs/design/workshop-project-memory/` (Slice 0d). **The design doc owns the layout, copy and states**; this doc owns the wiring.
-**Status:** Waiting on Slice 0d (approved design), Slice 4a (panels split), Slice 2 (library reads, estimate) and **Slice 3** (the memory sheet and the write routes; PR #192 F-03).
+**Status:** Split in two.
+- **4b-ui** (the presentation, as tested components and pure view models,
+  with no host wiring) is done: [slice-4b-1-ui.md](slice-4b-1-ui.md), on
+  `epic/workshop-project-memory-slice-4b-ui`.
+- **4b-wire** waits on **Slice 3** (the memory sheet and the write routes;
+  PR #192 F-03). It covers the routes, `useWorkshopProjectMemory`, mounting
+  the tab, and reusing Slice 3's sheet.
 
 ## Outcome
 

@@ -24,6 +24,12 @@
  *   back to Delete; a confirmed delete keeps focus on the row's Delete
  *   until the row goes, then moves it to the next row's Delete, or to the
  *   search field when none is below.
+ *
+ * One opt-in the Workshop's project memory takes (Project Memory Slice
+ * 4b-ui), so its manager can show memories that never load apart from the
+ * grouped list:
+ * - `afterSection`: a second section of the same markup after the list, its
+ *   rows ungrouped, with the same rename and delete state and focus order.
  */
 
 import * as React from 'react';
@@ -64,6 +70,8 @@ export interface SavedItemBrowserModalProps<T> {
   /** A section above the list (the Workshop's current room). */
   leading?: React.ReactNode;
   section: { id: string; title: string; note: string };
+  /** A second, ungrouped section after the list; its rows share the list's rename, delete and focus order. */
+  afterSection?: { id: string; title: string; note: string; items: readonly T[] };
   emptyText: string;
   items: readonly T[];
   itemKey: (item: T) => string;
@@ -95,6 +103,7 @@ export function SavedItemBrowserModal<T>({
   status,
   leading,
   section,
+  afterSection,
   emptyText,
   items,
   itemKey,
@@ -137,11 +146,15 @@ export function SavedItemBrowserModal<T>({
 
   const grouping = groupings.find((entry) => entry.key === groupBy) ?? groupings[0];
   const groups = React.useMemo(() => grouping?.group(items) ?? [], [grouping, items]);
-  const keys = React.useMemo(() => groups.flatMap((group) => group.items.map(itemKey)), [groups, itemKey]);
+  const afterItems = afterSection?.items;
+  const keys = React.useMemo(
+    () => [...groups.flatMap((group) => group.items.map(itemKey)), ...(afterItems ?? []).map(itemKey)],
+    [afterItems, groups, itemKey]
+  );
   const titleOf = React.useCallback((key: string) => {
-    const item = items.find((entry) => itemKey(entry) === key);
+    const item = items.find((entry) => itemKey(entry) === key) ?? afterItems?.find((entry) => itemKey(entry) === key);
     return item === undefined ? undefined : itemTitle(item);
-  }, [itemKey, itemTitle, items]);
+  }, [afterItems, itemKey, itemTitle, items]);
 
   const focusLater = React.useCallback((target: FocusTarget) => {
     if (returnFocus) {
@@ -379,6 +392,17 @@ export function SavedItemBrowserModal<T>({
               <div className="pm-ws-sessions-empty">{emptyText}</div>
             )}
           </section>
+
+          {afterSection && afterSection.items.length > 0 && (
+            <section className="pm-ws-session-browser-section" aria-labelledby={afterSection.id}>
+              <div className="pm-ws-sessions-section-title" id={afterSection.id}>
+                {`${afterSection.title} `}<span>{afterSection.note}</span>
+              </div>
+              {afterSection.items.map((item) => (
+                <React.Fragment key={itemKey(item)}>{renderRow(item, controlsFor(item))}</React.Fragment>
+              ))}
+            </section>
+          )}
         </div>
 
         <footer className="pm-ws-session-sheet-foot pm-ws-session-browser-foot">

@@ -15,6 +15,8 @@ interface OptionCardProps {
   icon: React.ReactNode;
   name: string;
   description: string;
+  /** A small tag after the name (the Memory tab's "Recommended"); none draws nothing. */
+  tag?: string;
   onClick: () => void;
 }
 
@@ -24,6 +26,7 @@ export const OptionCard: React.FC<OptionCardProps> = ({
   icon,
   name,
   description,
+  tag,
   onClick
 }) => (
   <button
@@ -36,6 +39,7 @@ export const OptionCard: React.FC<OptionCardProps> = ({
     <span className="pm-ws-behavior-card-top">
       {icon}
       <span className="pm-ws-behavior-card-name">{name}</span>
+      {tag && <span className="pm-ws-behavior-card-tag">{tag}</span>}
     </span>
     <span className="pm-ws-behavior-card-desc">{description}</span>
   </button>

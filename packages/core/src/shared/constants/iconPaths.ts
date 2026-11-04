@@ -14,7 +14,8 @@ export type IconName =
   | 'dialogue' | 'pen' | 'hand' | 'repeat' | 'branch' | 'scale' | 'move'
   | 'stamp' | 'palette' | 'link' | 'share' | 'sprout' | 'eye' | 'target' | 'list' | 'wave'
   | 'stop' | 'person' | 'trash' | 'alert' | 'info'
-  | 'orbit' | 'sliders' | 'cap' | 'history' | 'clock' | 'bookmark' | 'chip';
+  | 'orbit' | 'sliders' | 'cap' | 'history' | 'clock' | 'bookmark' | 'chip'
+  | 'archive' | 'circleSlash';
 
 export const ICON_PATHS: Record<IconName, string> = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
@@ -67,5 +68,9 @@ export const ICON_PATHS: Record<IconName, string> = {
   cap: '<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
   history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',
-  chip: '<path d="M7 7h10v10H7z"/><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"/>'
+  chip: '<path d="M7 7h10v10H7z"/><path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+  /** Workshop Project Memory: the manager's Archive (Slice 0d). */
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
+  /** Workshop Project Memory: the Off mode card (Slice 0d). */
+  circleSlash: '<circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/>'
 };
