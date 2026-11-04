@@ -344,7 +344,7 @@ capability's redaction: `WorkshopRunCompletionMemory.test.ts`.
 suites / 9,415 tests / 59 snapshots**, all passing. No `vscode` in core; no
 new file over 500 lines.
 
-## PR #200 review fixes (Astra, `docs/pr-reviews/pr-200-project-memory-write-path-review.md`)
+## PR #200 review fixes (Astra, `docs/pr-reviews/pr-200-project-memory-write-path-review.md`; F-06 from the re-review)
 
 Each fix has a regression test that fails with the fix taken out (checked
 by reverting the fix and running its test).
@@ -398,6 +398,19 @@ by reverting the fix and running its test).
     the answer); the sheet (Escape ignored while saving). One older hook
     test, which closed a sheet mid-save, now answers first.
 
+- **F-06 (re-review): digest equality over a contradicted receipt.** Past
+  4,096 memories, the update note took "the folder hashes to the digest" as
+  "nothing changed", even when a receipt folded after the digest had told
+  this conversation something the folder now contradicts (a Forget restored
+  outside the room, an edit reverted outside it). The note now accepts
+  digest equality, or a save the receipts explain, only when every such
+  receipt names the state the folder holds now. Otherwise it sends the
+  count line once and records a fresh digest.
+  - Tests: Forget → external Restore and Edit → external revert both give
+    the count line. A Forget then a Restore in the room gives no note. A
+    Forget receipt reads the same whether it was delivered earlier or
+    arrives in this turn's catch-up.
+
 **Files over 500 lines** that these fixes touched were all already over
 before them, and grew by a few lines each: `AgentRunEngine.ts` (+5),
 `WorkshopPersonaCapability.ts` (+4), `WorkshopApp.tsx` (+2), and the
@@ -406,6 +419,6 @@ engine's test (+41).
 **Verification after the fixes:**
 - Typecheck is clean.
 - Lint shows 1,158 warnings, the baseline.
-- Jest: **665 suites / 9,439 tests / 59 snapshots**, all passing (before:
+- Jest: **665 suites / 9,441 tests / 59 snapshots**, all passing (before:
   664 / 9,415 / 59).
 - No `vscode` import in core.

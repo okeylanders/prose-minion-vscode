@@ -284,6 +284,31 @@ describe('a receipt beside a digest (PR #198 F-03)', () => {
     expect(renderProjectMemoryUpdateNote(viewWith([[entry(1).id, null]]), setOf(BIG.slice(1))).text).toContain('call memory.catalog');
   });
 
+  it('never takes digest equality over a receipt the folder now contradicts (PR #200 F-06)', () => {
+    const a = entry(1);
+    // Forget in this room, then restored outside it: the folder is the digest again.
+    const restored = renderProjectMemoryUpdateNote(viewWith([[a.id, null]]), setOf(BIG));
+    expect(restored.text).toContain('call memory.catalog');
+    expect(restored.changed).toBeGreaterThan(0);
+    // Edited in this room to V2, then reverted to V1 outside it.
+    expect(renderProjectMemoryUpdateNote(viewWith([[a.id, 'cccccccccccc']]), setOf(BIG)).text).toContain('call memory.catalog');
+    // A Forget then a Restore, both in this room: the last receipt agrees, so no note.
+    expect(renderProjectMemoryUpdateNote(viewWith([[a.id, a.version]]), setOf(BIG)).text).toBeUndefined();
+  });
+
+  it('reads a receipt the same whether it was delivered before or arrives in this catch-up (PR #200 F-06)', () => {
+    const turns = (through: string) => projectMemoryDeliveredView([
+      { id: 'turn-2-assistant-1', role: 'assistant', kind: 'message', participant: 'host', artifact: 'persona_message', content: '', timestamp: 1, excerptVersion: 0,
+        projectMemoryDelivery: [{ participant: { kind: 'host' }, kind: 'frame', memories: [], digest: workshopProjectMemorySetDigest(BIG) }] },
+      { id: 'turn-3-system-2', role: 'system', kind: 'divider', participant: 'session', artifact: 'memory_receipt', content: '', timestamp: 2, excerptVersion: 0,
+        projectMemoryReceipt: { action: 'forgotten', memoryId: entry(1).id, title: 'T', version: 'aaaaaaaaaaaa', by: 'writer' } },
+      { id: 'turn-4-user-3', role: 'user', kind: 'message', participant: 'writer', artifact: 'persona_message', content: 'Next.', timestamp: 3, excerptVersion: 0 }
+    ] as WorkshopTurn[], { kind: 'host' }, { deliveredThroughTurnId: through });
+    for (const through of ['turn-3-system-2', 'turn-4-user-3']) {
+      expect(renderProjectMemoryUpdateNote(turns(through), setOf(BIG)).text).toContain('call memory.catalog');
+    }
+  });
+
   it('the fold keeps the digest and carries the receipts beside it, cleared by the next snapshot', () => {
     const turns = [
       { id: 'turn-2-assistant-1', role: 'assistant', kind: 'message', participant: 'host', artifact: 'persona_message', content: '', timestamp: 1, excerptVersion: 0,
