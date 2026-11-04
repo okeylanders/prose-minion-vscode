@@ -30,7 +30,8 @@ import { ContextAssistantService } from '@services/analysis/ContextAssistantServ
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import {
-  WorkshopRoomDeliveryService
+  WorkshopRoomDeliveryService,
+  workshopRoomDeliveredThrough
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -1109,6 +1110,7 @@ export class WorkshopRoomHandler {
             : personaId,
           owner: participantOwner,
           conversationId,
+          roomDeliveredThrough: workshopRoomDeliveredThrough(roomDelivery),
           excerpt,
           excerptVersion: this.session.getExcerptVersion(),
           signal: controller.signal,

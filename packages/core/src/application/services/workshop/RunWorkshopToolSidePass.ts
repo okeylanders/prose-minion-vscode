@@ -6,7 +6,8 @@ import {
 import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  WorkshopRoomDeliveryService
+  WorkshopRoomDeliveryService,
+  workshopRoomDeliveredThrough
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
@@ -224,6 +225,7 @@ export class RunWorkshopToolSidePass {
         personaId,
         owner: { kind: 'host' },
         conversationId: hostConversationId,
+        roomDeliveredThrough: workshopRoomDeliveredThrough(pendingRoomDelivery),
         excerpt,
         excerptVersion: excerpt.version,
         signal: controller.signal,

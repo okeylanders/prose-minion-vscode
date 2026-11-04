@@ -100,6 +100,12 @@ export interface WorkshopPersonaCapabilityTurn {
   /** The retained provider conversation this turn continues, when one exists. */
   conversationId?: string;
   /**
+   * The last room turn this conversation has been, or is now being, handed
+   * (`workshopRoomDeliveredThrough`): how far memory receipts have reached it
+   * (ADR 2026-11-04 D7, D14).
+   */
+  roomDeliveredThrough?: string;
+  /**
    * The pinned passage — ABSENT in an open conversation (Sprint 13A §1).
    * `analysis.run` may inherit it when present or use persona-selected local
    * material when absent; the room itself is never changed by that choice.

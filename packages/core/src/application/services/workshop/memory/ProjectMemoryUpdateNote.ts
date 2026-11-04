@@ -60,6 +60,9 @@ export function renderProjectMemoryUpdateNote(
     if (current.count === view.digest.count && current.hash === view.digest.hash) {
       return { snapshot, changed: 0, overBudget: false };
     }
+    if (receiptsExplainDigest(view, snapshot)) {
+      return { snapshot, changed: 0, overBudget: false };
+    }
     return {
       text: `<project-memory-update note="${escapeProjectMemoryXml(PROJECT_MEMORY_UPDATE_NOTE)}">This project's notes changed ` +
         'since this conversation last saw them; call memory.catalog.</project-memory-update>',
@@ -89,6 +92,32 @@ export function renderProjectMemoryUpdateNote(
       'call memory.catalog.</project-memory-update>'
     : [`${open}>`, ...[...pinnedLines, ...entryLines, ...goneLines].map((line) => `  ${line}`), '</project-memory-update>'].join('\n');
   return { text, snapshot, changed: count, overBudget };
+}
+
+/**
+ * Receipts after a digest snapshot (Slice 3): a digest can't take a receipt
+ * in, since it doesn't keep the set it hashed. The one case it can check is
+ * the common one, a save in this room: when the set without the memories the
+ * receipts told of, at the versions they told, hashes to the digest, the
+ * receipts explain every change, and there is no note. Any other change (an
+ * edit or a Forget past the digest's bound, or a change the receipts don't
+ * cover) is 2b's count line, once; its snapshot records a fresh digest.
+ */
+function receiptsExplainDigest(
+  view: ProjectMemoryDeliveredView,
+  snapshot: ReadonlyArray<{ id: string; version: string }>
+): boolean {
+  if (!view.digest || !view.receipted || view.receipted.size === 0) {
+    return false;
+  }
+  const told = new Set([...view.receipted]
+    .filter(([id, version]) => version !== null && snapshot.some((entry) => entry.id === id && entry.version === version))
+    .map(([id]) => id));
+  if (told.size === 0) {
+    return false;
+  }
+  const rest = workshopProjectMemorySetDigest(snapshot.filter(({ id }) => !told.has(id)));
+  return rest.count === view.digest.count && rest.hash === view.digest.hash;
 }
 
 function goneReason(listed: ProjectMemorySet['memories'][number] | undefined): string {
