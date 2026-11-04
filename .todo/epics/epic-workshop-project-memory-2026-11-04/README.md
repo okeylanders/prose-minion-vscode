@@ -42,8 +42,8 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194 (merges after #192) |
 | 2 | Read path | The catalog frame at a room's first turn, `memory.catalog` / `search` / `read`, every list that widens with the family | — | Waits on Slice 0 and 1 |
 | 3 | Write path | Proposal trailer, card on the bubble, receipt turns, supersession, "Save to memory…" | — | Waits on Slice 2 |
-| 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | In review: PR #193 (green) |
-| 4b | Memory tab and manager | The approved design built on 4a, wired to the host | — | Waits on 0d, 4a, Slice 2 |
+| 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
+| 4b | Memory tab and manager | The approved design built on 4a, wired to the host | — | Waits on 0d, Slice 2 and Slice 3 (Slice 3 owns the Save/Edit/New sheet and the write handler; #192 F-03) |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, derived `INDEX.md` | — | Waits on Slice 3 |
 | 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
 
@@ -146,4 +146,26 @@ The feature note's six open questions, plus the design scope:
     - Counts: 639 / 9,071 / 59 (PR #194).
     - At integration, AGENTS.md's claim rule is reworded to name
       `StoredFileClaims`.
+- **2026-11-04. Astra's reviews.** Astra delivers each review as a report
+  committed to the PR branch under `docs/pr-reviews/`.
+  - **#193 (4a):** no findings. Merged at `efc2788`.
+  - **#192 (spec): changes requested.**
+    - F-01: one owner for the reply's tail. The memory frame comes last, and
+      its payload is redacted before every diagnostic, the widget rejection
+      log included.
+    - F-02: an opaque entry handle for manager rows, separate from the
+      `mem-` id.
+    - F-03: 4b depends on Slice 3.
+    - F-04: pinned overflow. Edits are rechecked; when hand edits or races
+      overflow, pinned bodies load oldest pin first, the rest show "pinned,
+      not loaded", and nothing is unpinned automatically.
+    - N-01: Forget versus Delete.
+
+    The coordinator's direction went to the spec thread.
+  - **#194 (store): changes requested.** F-01–F-05 are reproduced bugs:
+    frontmatter injection, delete revalidation, uppercase claims, paths in
+    logs, the byte ceiling at write. There is also N-01 (supersession
+    cycles) and N-02. The coordinator decided N-02: a memory under a live
+    claim stays listed with its metadata, so D14's update note never
+    announces a transient removal.
 
