@@ -3,20 +3,62 @@
 ## Review identity and verdict
 
 - **PR:** [#192, Workshop Project Memory Slice 0: ADR, runway and slice docs](https://github.com/okeylanders/prose-minion-vscode/pull/192)
-- **Reviewed specification head:** `c1fb84d12e6d2580caa4d511ffc05de6d64f9522`
+- **Latest reviewed specification head:** `089897d282d20a1c3c06218ac221c5fd9ea07d79`
 - **Primary finding line-link snapshot:** `9cca60598e813a2dde53648dcd02a958f8a46b42` (findings unchanged by the later availability clarification)
 - **Compared base:** `8fb016fa3e767964fe8c53c778d6453f8507667d`
 - **PR source branch / report destination:** `epic/workshop-project-memory-slice-0-spec`
 - **PR target branch:** `epic/workshop-project-memory`
 - **Reviewed:** 2026-11-04
-- **Verdict:** Changes requested to the implementation contract before treating Slice 0 as settled. Four Standard/P2 findings and one nonblocking wording correction.
+- **Latest verdict:** No remaining actionable findings in the reviewed specification. F-01 through F-04 and N-01 are closed at the design level after re-review. The original changes-requested review remains below as history.
 - This document is the review report. It does not submit a formal GitHub approval, change the ADR's status, or authorize a merge.
 
 Commit `9cca6059` now records the writer's six decisions. They are no longer
 reported as unanswered gates. The findings below concern conflicts or missing
 mechanisms in the chosen design; this review does not change those choices.
 
-## Resolution ledger
+## Re-review, 2026-11-04 16:34 UTC
+
+**Head:** `089897d282d20a1c3c06218ac221c5fd9ea07d79`, including correction commit
+`29254beaa2818852cc6a62c9941699a5d0c5b426` and the author's resolution ledger.
+The complete delta from published report head
+`49c22c2b07bdf0d00a7ad073b6bdb00f119646ee` was reviewed, followed by the
+updated ADR and Slice 3/4b contracts in context.
+
+- **F-01 closed at design level.** [D6](https://github.com/okeylanders/prose-minion-vscode/blob/089897d282d20a1c3c06218ac221c5fd9ea07d79/docs/adr/2026-11-04-workshop-project-memory.md#L398-L437)
+  now places memory last after any widget, gives one extractor ownership before
+  other readers, and specifies misplaced, duplicate, malformed/unclosed, Off,
+  and control-only outcomes. Diagnostics take the redacted copy. Slice 3 names
+  the widget-prompt change and sentinel tests across those paths.
+- **F-02 closed at design level.** [D10](https://github.com/okeylanders/prose-minion-vscode/blob/089897d282d20a1c3c06218ac221c5fd9ea07d79/docs/adr/2026-11-04-workshop-project-memory.md#L649-L663)
+  separates a host-issued file entry handle from unique memory identity,
+  resolves it against the current contained listing, and refuses stale, forged
+  and cross-workspace keys. The unreadable/conflict cases have explicit tests.
+- **F-03 closed at design level.** [Slice 4b](https://github.com/okeylanders/prose-minion-vscode/blob/089897d282d20a1c3c06218ac221c5fd9ea07d79/.todo/epics/epic-workshop-project-memory-2026-11-04/slice-4b-memory-tab.md#L6-L27)
+  now depends on Slice 3 and reuses its named sheet and write routes. The
+  integration branch's epic README was also checked: its 4b dependency row now
+  includes Slice 3.
+- **F-04 closed at design level.** [D5](https://github.com/okeylanders/prose-minion-vscode/blob/089897d282d20a1c3c06218ac221c5fd9ea07d79/docs/adr/2026-11-04-workshop-project-memory.md#L328-L358)
+  now checks edits of pinned memories, specifies whole-body admission in
+  `created`/id order, exposes “pinned, not loaded” and an over-budget meter,
+  and states the absence of a cross-window lock. Hand edits and races no
+  longer imply silently guaranteed loading. Slice 2/3/4b specify the relevant
+  renderer, edit-refusal and manager tests.
+- **N-01 closed.** [D4](https://github.com/okeylanders/prose-minion-vscode/blob/089897d282d20a1c3c06218ac221c5fd9ea07d79/docs/adr/2026-11-04-workshop-project-memory.md#L248-L253)
+  distinguishes Forget/archive from physical Delete, with separate tests.
+- The additional live-claim clarification was checked: claimed memories stay
+  in the catalog/frame/delivery view while exact read returns busy. This is
+  consistent with the existing listing discipline and prevents a transient
+  rewrite from being announced as a removed memory.
+
+**Verification limits.** This closes specification findings, not implementation
+tests. The memory feature remains to be built and tested in its later slices;
+no runtime/full-suite result is claimed here. CI for this reviewed head was
+in progress at the re-review check
+([run 41867966250](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41867966250)).
+The verdict is a written review conclusion only. No formal GitHub approval or
+merge is submitted, and the ADR still reaches Accepted after the live pass.
+
+## Resolution ledger (author responses, verified in re-review)
 
 | Finding | Status | How |
 |---|---|---|
@@ -27,7 +69,7 @@ mechanisms in the chosen design; this review does not change those choices.
 | N-01 · Forget vs Delete | Fixed in `29254bea` | ADR D4 names the actions exactly. Forget (archive) or archiving the newer memory doesn't revive the old one; Delete of the newer file does. Slice 3 tests Forget and Slice 4b tests Delete, separately |
 | #194 N-02 · live claim and D14 | Fixed in `29254bea` | ADR D10: a memory under a live claim stays in the listing, catalog, frame and D14 view, decoded from the claim's bytes, and only `read` answers busy. Slice 2 has the test |
 
-## Scope and evidence
+## Original review scope and evidence
 
 The review covered all seven changed files at the reviewed head:
 
@@ -54,7 +96,7 @@ delta was reviewed: it clarifies that an unavailable workspace disables that
 workspace's memory access/manager but leaves the global mode cards usable,
 and adds corresponding slice tests. It changes none of F-01 through F-04 or
 N-01. The immutable finding links retain the decision-bearing snapshot so their
-line references remain exact. The latest reviewed specification head is now
+line references remain exact. The latest reviewed specification head at first publication was
 `c1fb84d12e6d2580caa4d511ffc05de6d64f9522`.
 
 This is a specification and integration review, not a test run of the planned
@@ -66,7 +108,7 @@ The earlier head's green CI is not a pass for this new commit. CI and
 mergeability are transient and are not established by this report. Publication
 triggered another CI run; no passing result for the report commit is asserted.
 
-## Findings
+## Original findings (resolved by the re-review above)
 
 ### F-01 · Standard / P2 · Define a joint trailer contract and redact memory text before widget rejection logging
 
@@ -235,7 +277,7 @@ its propagated slice changes were read in the delta review. Its implementation,
 including exact delivery commits, rollback, Rewind/Branch, receipt folding and
 budget handling, still requires the tests its slice plan calls for.
 
-## Completion needed for re-review
+## Original completion criteria (satisfied at the design level)
 
 - Resolve F-01 through F-04, or document a specific accepted alternative that
   closes each conflicting contract.
