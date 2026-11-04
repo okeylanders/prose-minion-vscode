@@ -45,9 +45,9 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 | 3 | Write path | Tail extractor and redaction everywhere (replay, retention, logs, streaming), proposal trailer, card, receipts folded into D14, supersession, the memory sheet, "Save to memory…", single-writer library writes, shutdown drain | `…-slice-3-write-path` | Done: PR #200, merged at `7bd1d9a` (Astra: F-01–F-06, N-01 closed over three rounds) |
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
 | 4b-ui | Memory tab and manager, presentation | Tab panel, the "Memory isn't context" well, meters with residency, the manager modal and every design state, as tested components and pure view models; no host wiring | `…-slice-4b-ui` | Done: PR #199, merged at `0994557` (Astra: F-01, F-02, N-01 closed) |
-| 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | In review: PR #202 |
+| 4b-wire | Memory tab and manager, wiring | Manager routes (sibling route owner), the hook, mounting the tab, the mode draft in apply-together, Slice 3's sheet for Edit and New, per-id residency, estimate fields, distinct set-aside `entryKey`s | `…-slice-4b-ui` (reused: the session may push only there) | Done: PR #202, merged at `4d57f52` (Astra: F01–F04, N01–N04 closed over three rounds) |
 | 5 | Save and tell me | Automatic saves, caps, the web-research hold, the expandable read-only receipt, Edit/Forget on auto receipts, the poisoning witness | `…-slice-5-save-and-tell-me` | Done: PR #201, merged at `d7fd159` (Astra: F-01–F-04 closed) |
-| 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Needs a human with VS Code |
+| 6 | Verify live | Extension Development Host pass; ADR → Accepted; feature note archived; memory bank | — | Next: Okey's live pass ([checklist](slice-6-verify-live.md)) |
 
 **Order.** Slices 0, 0d, 1 and 4a start together on 2026-11-04. They touch
 different files: Slice 0 writes docs, 0d works in a design artifact and then
@@ -272,3 +272,23 @@ The feature note's six open questions, plus the design scope:
     wins). The thread is also merging the epic, now with Slice 5.
   - Rename's read-then-whole-draft write is filed as tech debt
     (`.todo/tech-debt/2026-11-04-workshop-memory-title-only-rename.md`).
+- **2026-11-04. 4b-wire merged; every code slice is in.**
+  - **#202** merged at `4d57f52`, after three rounds. The epic's tree matches
+    the reviewed and CI-tested head, `69946b7` (691 suites, 9,696 tests).
+  - **Every memory write is bound to its project.** Save, edit, archive,
+    restore, load in full and delete each capture the requested workspace
+    before the library queue. The store's create, replace and delete then
+    withdraw any turn or commit that would run under another folder.
+  - Astra notes this is defense in depth. The session coordinator fixes its
+    workspace root at startup, so a root switch inside one extension host
+    can't happen today.
+  - **Other fixes:**
+    - Manager results are bound to the root that produced them.
+    - A failed settings apply undoes only its own mode write.
+    - Folder errors show where the action began, and the newest request
+      wins.
+    - Visible listings refresh after manual saves and after Save and tell
+      me saves.
+    - A saved card opens the manager at its row.
+  - **What's left is Slice 6:** Okey's live pass in an Extension
+    Development Host, then the ADR moves to Accepted and the epic closes out.

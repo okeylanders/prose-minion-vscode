@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), all decisions; D11's budgets are tuned here
-**Status:** Waiting on #202 (4b-wire) and #201 (Slice 5); everything else is merged. **Needs a human with VS Code** (Extension Development Host) and a real OpenRouter key; billable calls are made by the writer, never by tests.
+**Status:** Ready. Every code slice is merged (the epic is at `4d57f52`, with #202 the last). **Needs a human with VS Code** (Extension Development Host) and a real OpenRouter key; billable calls are made by the writer, never by tests.
 
 ## Outcome
 
