@@ -61,8 +61,11 @@ widens with the family widens here, together.
     message. Follow-up turns never call it.
 - Add the D5 and D6 tag names to `RESERVED_PERSONA_FRAME`
   (`utils/workshopPromptFrames.ts:5-16`).
-- `estimateProjectMemoryFrame()` on the library returns counts and an estimated
-  token figure from the same renderer, for Slice 4b's tab.
+- Budgets are in tokens, measured with the engine's `estimateTextTokens`
+  (`RequestContextPreflight.ts:7`) over the rendered elements, so the tab's
+  meter and the frame's cut agree.
+- `estimateProjectMemoryFrame()` on the library returns counts and the pinned
+  and catalog token figures from the same renderer, for Slice 4b's tab.
 
 ### The capability (D1, D2, D3)
 
@@ -84,7 +87,9 @@ widens with the family widens here, together.
 - Prompt: `resources/system-prompts/workshop-personas/project-memory-capability.md`
   holds the grammar, when to use it, and the limits.
   `workshopPersonaSystemPromptPaths` includes it only when the mode isn't `off`.
-  `base.md` and `guest-base.md` name the family. The interaction contract says a
+  `base.md` and `guest-base.md` name the family. The grammar file says that a
+  conversation with no `<project-memory>` frame calls `memory.catalog` before
+  relying on project memory (ADR D8, memory turned on mid-room). The interaction contract says a
   memory is a saved note the persona looked up, never something it remembers.
 
 ### Every list that widens (D12)
@@ -129,6 +134,9 @@ in `promptBudgets.test.ts` (including `readsPerTurn < callsPerTurn`), and add
     sentinel text).
 - **Provenance:** recallable source → hint with positions; the live room, an
   unnamed room or a missing session → the host's reason.
+- **Mid-room switches (D8):** Off → on adds no frame to a running
+  conversation, and the rebuilt system prompt teaches the grammar; on → Off
+  leaves the delivered frame in history and refuses every call.
 - **Accepted workspace:** a changed root yields no frame and rejects every
   call.
 - **Widened lists:** one test saves **and reopens** a session holding every

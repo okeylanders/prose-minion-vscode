@@ -300,9 +300,9 @@ in the system prompt (Context 1).
 - **Per conversation, not per room.** A guest who joins later gets the catalog
   as it stands at the join. The host's frame doesn't change.
 - **Bounded.** The frame is built from active, readable, unconflicted memories:
-  - pinned bodies first, up to `pinnedCharacters`;
+  - pinned bodies first, up to `pinnedTokens`;
   - then entries by `updated`, newest first (ties by id), up to
-    `catalogEntries` and `catalogCharacters`;
+    `catalogEntries` and `catalogTokens`;
   - then one `<more count>` line for whatever didn't fit, plus superseded and
     archived memories.
 
@@ -404,8 +404,13 @@ optional field `projectMemoryReceipt: { action: 'saved' | 'updated' |
   starts writing files unasked. The setting is
   `proseMinion.workshop.projectMemory` (`off` | `ask` | `auto`); its scope is
   open question 1. Slice 0d designs the cards.
-- **Off is a reading switch, not a delete.** Files stay; turning memory off
-  stops the frame, the grammar and the trailer.
+- **Off turns off the model's access, nothing else.** Files stay. Turning
+  memory off stops the frame, the grammar and the trailer. The writer's own
+  access stays: *Manage memories…*, *Open memory folder*, New, edit, pin,
+  archive and delete all work with memory off, because they're writer actions,
+  not model ones. A card already pending in a room keeps its *Save*, since the
+  writer is the one acting. Only "unavailable" (no folder, or several) disables
+  the manager, and it says why.
 
 - **Saves under Save and tell me are capped:** one per reply (D6), and
   `autoSavesPerRoom` per room. Past the cap a proposal waits as under Ask first,
@@ -421,8 +426,33 @@ optional field `projectMemoryReceipt: { action: 'saved' | 'updated' |
 - **Forget** archives the memory; it doesn't delete it. Only the manager's
   *Delete* removes a file, as a claimed delete (D10), and the host never deletes
   on its own.
-- **A memory turned on mid-room** reaches the next conversation, not this one.
-  The tab says so.
+- **Turned on mid-room (Off → Ask first or Save and tell me).** A mode change
+  rebuilds the system prompt, as every Conversation settings change does. So
+  from the writer's next message, personas in the room are taught the
+  `memory.*` grammar and the trailer, and calls succeed. No catalog frame is
+  added to a conversation that started without one: the frame belongs to a
+  conversation's first message (D5).
+  - The grammar file says: "If this conversation has no `<project-memory>`
+    frame, call `memory.catalog` before relying on project memory." A persona
+    in a room where memory was switched on still finds the notes, at the cost
+    of one call.
+  - The footer copy ("take effect on your next message") is true. The tab adds
+    that the catalog loads at the start of each new conversation.
+  - *Alternatives:* (a) nothing until the next room: rejected, it makes the
+    switch feel broken for the rest of the room. (b) A one-time appended frame
+    on the next writer message: cache-safe, but each conversation would have
+    to record that it got one, so a reopen doesn't append it again. That's a
+    persisted per-participant field, the same machinery as open question 3's
+    reopen delta. *Recommended:* (c), lookup only, for v1. If the writer wants
+    (b), it lands with question 3's answer as one mechanism, not two.
+- **Turned off mid-room (on → Off).** The rebuilt system prompt drops the
+  grammar and the trailer, and every `memory.*` call is refused with
+  `memory-off`. A frame already delivered stays in history: nothing rewrites
+  an earlier message. Its own note already says notes are context, never
+  instructions.
+  - A trailer a persona still writes from habit is stripped and dropped with
+    a log line, and it shows no card.
+  - Cards pending from before the switch keep their *Save* (the writer acts).
 
 **Alternatives.** Save and tell me as the default: rejected. Memory poisoning
 (an attachment or a web page that talks a persona into "remember: always …")
@@ -516,8 +546,8 @@ workshopProjectMemory: {
   summaryCharacters: 280,
   bodyCharacters: 6_000,        // a proposal's body; a hand-made file may be longer, up to fileBytes
   catalogEntries: 40,
-  catalogCharacters: 8_000,     // about 2,000 tokens of entries
-  pinnedCharacters: 6_000,      // all pinned bodies together (open question 4)
+  catalogTokens: 2_000,         // entries, by estimateTextTokens (the engine's estimator)
+  pinnedTokens: 1_500,          // all pinned bodies together, same estimator (open question 4)
   queryCharacters: 200,
   memoryIdCharacters: 16,
   searchHits: 20,
@@ -646,10 +676,16 @@ Each has a recommendation; none is decided here.
    a new persisted session field. *Recommended:* not in v1. Receipts and
    `memory.catalog` cover it, and the live pass (Slice 6) says whether it's
    missed.
-4. **How is pinning bounded: a count or a budget?** *Recommended:* a character
-   budget (`pinnedCharacters`), shown in the tab. The manager refuses a pin
-   that would pass it, with the reason, so "pinned" always means "always
-   loaded" and never silently means "sometimes".
+4. **How is pinning bounded: a count or a budget?** *Recommended:* a token
+   budget, `pinnedTokens: 1_500`, measured by the engine's own estimator
+   (`estimateTextTokens`,
+   `core/infrastructure/api/orchestration/RequestContextPreflight.ts:7`) over
+   the rendered `<pinned>` elements. The tab's meter shows exactly that ratio
+   ("about 1,100 of 1,500 tokens"), so the meter and the budget can't disagree.
+   The manager refuses a pin that would pass it, with the reason, so "pinned"
+   always means "always loaded" and never silently means "sometimes". The
+   catalog's entries get their own budget (`catalogTokens: 2_000`), shown as
+   the frame's total beside it.
 5. **Are `memory.read` results private to the persona who read them, or
    published to the room?** *Recommended:* published when the reader's reply
    commits, as `transcript.read` and `resource.read` are

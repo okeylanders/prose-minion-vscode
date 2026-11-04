@@ -62,7 +62,7 @@ delete, and it has **New memory**.
   webview-minted `requestId` the host echoes, as the Lightbox's catalog routes
   are:
   - list;
-  - pin and unpin, refused past `pinnedCharacters` with the reason (question 4);
+  - pin and unpin, refused past `pinnedTokens` with the reason (question 4);
   - archive and restore;
   - delete (claimed, with a confirmation);
   - new;

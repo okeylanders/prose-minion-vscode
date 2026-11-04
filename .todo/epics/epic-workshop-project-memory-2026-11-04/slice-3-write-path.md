@@ -41,6 +41,9 @@ under `auto` a proposal behaves as under `ask` until Slice 5.
 - The phrasing fence (D9): `WorkshopMemoryProposalPhrasing` reads only
   sentences about the writer, and withholds with a logged reason (never text).
   Its stated limits go in its header.
+- With memory Off, a trailer is still stripped from the bubble and history,
+  then dropped with a log line and no card (ADR D8). A card pending from
+  before the switch keeps its *Save*.
 - Wire it where completion strips the widget block (`WorkshopRunCompletion.ts:253-315`)
   for host and guest replies.
 

@@ -67,7 +67,7 @@ anything screenshotted or recorded.
 
 - [ ] Record the frame's size for 10, 40 and 80 memories, and compare the tab's
       estimate with the provider's prompt tokens.
-- [ ] Tune `catalogEntries`, `catalogCharacters`, `pinnedCharacters`,
+- [ ] Tune `catalogEntries`, `catalogTokens`, `pinnedTokens`,
       `readCharacters` and `autoSavesPerRoom` if needed. Changes go through
       `PROMPT_BUDGETS` and the sync tests.
 
