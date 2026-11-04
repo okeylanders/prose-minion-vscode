@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D3, D4 (provenance and honesty), and D9
-**Status:** In progress, on `epic/workshop-wayfinding-slice-3-read-in-provenance`. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
+**Status:** Built (`e36e4af`, `3b23a92`, `2163cb9`), PR #187 in review. D9 (forward-only compatibility) was confirmed by Okey on 2026-11-03.
 
 ## Outcome
 
@@ -119,8 +119,109 @@ Never hash files on every snapshot.
 
 ## Completion Criteria
 
-- [ ] Rows record `turnId`, `lineRange`, and the host-private fingerprint.
+- [x] Rows record `turnId`, `lineRange`, and the host-private fingerprint.
       Sessions without these fields are unchanged on read and write.
-- [ ] The reader marks the lines read and says when the file has changed.
-- [ ] Card-backed rows jump to their card.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+      (`WorkshopPersonaCapabilityReadInProvenance`, `AgentRunEngine` Phase 7
+      block, `WorkshopToolContextCapability`, `WorkshopTranscriptRecallWiring`,
+      `WorkshopReadInProvenanceCodec` with the
+      `workshop-session-v2-read-in-before-provenance.json` fixture.)
+- [x] The reader marks the lines read and says when the file has changed.
+      (`WorkshopReadInRoutes` provenance block,
+      `WorkshopReadInProvenance.integration`, `WorkshopTextSheet` Slice 3
+      block, `WorkshopApp.readInProvenance`.)
+- [x] Card-backed rows jump to their card. (`contextSources`,
+      `WorkshopReadInPanel`, `useWorkshopTurnJump`,
+      `WorkshopApp.readInProvenance`.) The live check of scrolling in VS Code
+      is Slice 8's.
+- [x] The epic's per-slice verification passes. Counts are recorded in the
+      epic's progress notes.
+
+## Built
+
+### Where each piece lives
+
+- **Contract.** `ContextSourceEntry.turnId?` and `lineRange?`
+  (`ContextSourceLineRange`).
+- **Host-only row.** `StoredContextSourceEntry` adds `sourceFingerprint?`.
+  It lives in `infrastructure/api/orchestration/ContextSourceRecord.ts`, with
+  the validator, the deep clone, the projection, and the row lookup.
+  - `ConversationManager` stores host rows and validates the new fields on
+    import.
+  - `getContextSources` projects the fingerprint away. That is the one path
+    to the snapshot (`WorkshopRoomHandler.activeContextBudget`).
+- **Recording.**
+  - `WorkshopPersonaCapability.toDeliveredSources` takes the id of the card
+    that `recordCompletedTurn` appended a moment before. It stamps that id
+    on every family's rows, recall's included.
+  - `resource.read` reports its range through its existing
+    `startLine`/`endLine` metadata (`resourceReadLineRange`), and its
+    fingerprint through `configuredResourceFingerprint`.
+  - The engine copies each field only when it is present.
+- **Codec.**
+  - `assertContextSource` accepts and checks the three keys.
+  - Archive rows are checked by `ConversationManager.validateContextSources`
+    at import, as every other row field is. Checkpoint equality compares
+    the decoded JSON, so it needed no change.
+  - `cloneSourceEntry` now deep-clones through `cloneStoredContextSource`.
+- **Reader honesty.**
+  - The request carries `deliveredAt`.
+  - The room's `findReadInRecord` effect looks up the row in the chat
+    target's conversation, through `AssistantToolService` and
+    `AgentRunEngine`.
+  - `WorkshopReadInRoutes` compares fingerprints and answers `lineRange` and
+    `changedSinceRead`.
+  - The webview takes provenance only from a reply for the same reading
+    (`readInReplyFor`: same file, same `deliveredAt`).
+- **Sheet.**
+  - `WorkshopReadInLines` holds the band, the marker, and the scroll to the
+    start of the range.
+  - The amber banner and "Show where it was read" are in `WorkshopTextSheet`.
+- **Jump.** `useWorkshopTurnJump` replaces `showTodoSource`. Its
+  `jumpAfterClosing` closes the sheet, then jumps from an effect once the
+  frame is no longer inert.
+
+### Paths that mint no card
+
+- **A refused call.** When the session refuses a persona's call (a late
+  request, or a principal or excerpt mismatch), it records no card, so the
+  row carries no `turnId`. The row is still recorded, because the evidence
+  still reached the model.
+- **A tool side-pass.** `WorkshopToolContextCapability` (origin `tool`) never
+  mints a card.
+
+Each has a test.
+
+### Deviations
+
+- **The fingerprint rides beside `metadata`, not in it.**
+  `WorkshopCapabilityResult.sourceFingerprint` holds it. A capability's
+  `metadata` is copied onto the card, which is persisted and shown in the
+  thread, and `formatEvidence` prints it into the persona's evidence. So the
+  doc's "add both to its result metadata" would have leaked the fingerprint
+  to both. The range was already in `metadata` as `startLine`/`endLine`.
+- **`turnId` is stamped centrally.** It is set once in
+  `toDeliveredSources`, not passed into recall's `deliveredSources`, so
+  every family shares one rule.
+- **Row identity.** A row has no id, so the reader names it by `deliveredAt`
+  plus the file it already sends, and the host takes the newest match.
+  Two rows sharing a millisecond are
+  [tech debt](../../tech-debt/2026-11-04-read-in-row-identity.md).
+  - The lookup uses the file as the catalog resolves it, the path
+    `resource.read` recorded, not the webview's spelling.
+- **"Changed since" is only said when it is known.** `changedSinceRead` is
+  absent, not `false`, when the row has no fingerprint: a whole-file tool
+  read, or a row stored before this slice.
+- **Where the band is drawn.** It goes on the **Source** tab, as numbered
+  lines (the design's view), and a ranged read opens there. Rendered
+  Markdown has no lines to mark. A row without a range keeps Slice 2's
+  rendered Preview.
+- **The marker** is left out when the text no longer reaches the last line
+  read, because the file shrank or the view stopped at its byte ceiling. It
+  is never placed elsewhere.
+- **Header line.** It reads "Read at 3:14 PM · lines 2–4". The design's
+  "of 71" and group are omitted.
+- **Jump rows' names.** A jump row is named "Show the card for {label} in
+  the thread". "Read" didn't fit a tool report.
+- **Optional rail tag.** The "changed since" tag on the rail row is not
+  built. No existing scan covers read-in files, and the doc rules out
+  hashing on every snapshot.
