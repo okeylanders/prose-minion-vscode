@@ -110,7 +110,15 @@ export class ProjectMemoryStore {
       claimPattern: PROJECT_MEMORY_CLAIM,
       logPrefix: LOG,
       logName: projectMemoryLogName,
-      formatError: fileSystemErrorCategory
+      formatError: fileSystemErrorCategory,
+      // A claim beside a standing memory is a leftover only if it holds the same memory; otherwise it is restored, never removed.
+      leftovers: {
+        isEarlierVersion: (claimed, standing) => {
+          const [older, newer] = [decodeProjectMemoryBytes(claimed), decodeProjectMemoryBytes(standing)];
+          return older.kind === 'memory' && newer.kind === 'memory' && older.memory.id === newer.memory.id;
+        },
+        freeName: (folder, saved) => freeProjectMemoryFileName(fileSystem, folder, saved)
+      }
     });
     this.rewritePorts = { fileSystem, claims: this.claims, log, logPrefix: LOG, noun: 'memory', mintStagingId: this.mintStagingId };
   }
@@ -290,9 +298,14 @@ export class ProjectMemoryStore {
         return notFound(found.kind);
       }
       // The claimed bytes must still be this memory, readable (PR #194 F-02): never another file put at its path.
-      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId(), (claimed) => {
-        const decoded = decodeProjectMemoryBytes(claimed);
-        return decoded.kind === 'memory' && decoded.memory.id === id;
+      const folder = path.dirname(found.filePath);
+      const deleted = await this.claims.deleteClaimed(found.filePath, id, this.mintStagingId(), {
+        verify: (claimed) => {
+          const decoded = decodeProjectMemoryBytes(claimed);
+          return decoded.kind === 'memory' && decoded.memory.id === id;
+        },
+        // Refused bytes whose saved name another file took go under a free name, never left under the claim (the re-review).
+        fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName))
       });
       if (deleted === 'deleted') {
         this.log.appendLine(`${LOG} Deleted ${id}.`);

@@ -56,7 +56,13 @@ export type ProjectMemoryUnreadableReason =
   /** Not UTF-8 text. */
   | 'not-text'
   /** Listed, but could not be read. */
-  | 'read-failed';
+  | 'read-failed'
+  /**
+   * Bytes kept under a claim beside the standing file of this name, that are
+   * not its earlier version: a refused delete's, which a release could not
+   * move yet. Restored as a file of their own once they can be; never removed.
+   */
+  | 'set-aside';
 
 /** A memory file that reads, with the bytes it was read from (a rewrite claims only these). */
 export interface ProjectMemoryFile {
@@ -109,11 +115,13 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
     .filter(([name, type]) => type === FileType.File && isMemoryFileName(name))
     .map(([name]) => name);
   const claims = names.flatMap((name) => {
-    const saved = PROJECT_MEMORY_CLAIM.exec(name)?.[1];
-    return saved ? [{ claim: name, saved }] : [];
+    const match = PROJECT_MEMORY_CLAIM.exec(name);
+    return match ? [{ claim: name, saved: match[1], at: Number(match[2]) }] : [];
   });
   // A claim whose saved name stands empty holds the memory now (another window's rewrite or delete): read its bytes.
-  const heldClaims = claims.filter(({ saved }, index) => !names.includes(saved) && claims.findIndex((other) => other.saved === saved) === index);
+  // Of several, the newest holds the latest version (PR #194 F-06): by its time, then, as recovery breaks a tie, the greater name.
+  const newestFirst = [...claims].sort((left, right) => right.at - left.at || (left.claim < right.claim ? 1 : left.claim > right.claim ? -1 : 0));
+  const heldClaims = newestFirst.filter(({ saved }, index) => !names.includes(saved) && newestFirst.findIndex((other) => other.saved === saved) === index);
   const standing = await Promise.all(memoryNames.map((fileName) => readOne(fileSystem, path.join(folder, fileName), fileName)));
   const claimed = await Promise.all(heldClaims.map(({ claim, saved }) => readOne(fileSystem, path.join(folder, claim), saved)));
   const read = [...standing.map((result) => ({ result, busy: false })), ...claimed.map((result) => ({ result, busy: true }))]
@@ -135,6 +143,17 @@ export async function readProjectMemoryFolder(fileSystem: FileSystem, folder: st
       }
     } else if ((counts.get(result.memory.id) ?? 0) <= 1) {
       (busy ? held : files).push(result);
+    }
+  }
+  // A claim beside a standing file that holds another memory, or unreadable bytes, was set aside (a refused delete's
+  // bytes its release could not move yet: PR #194 F-02, second re-review). It is shown, never hidden, and never read as a memory.
+  for (const { claim, saved } of claims.filter((entry) => names.includes(entry.saved))) {
+    const beside = standing.find((result) => result.fileName === saved);
+    const bytes = await fileSystem.readFile(path.join(folder, claim)).catch(() => undefined);
+    const decoded = bytes ? decodeProjectMemoryBytes(bytes) : undefined;
+    const sameMemory = decoded?.kind === 'memory' && beside !== undefined && 'memory' in beside && beside.memory.id === decoded.memory.id;
+    if (bytes && !sameMemory && !unreadable.some((row) => row.fileName === saved && row.reason === 'set-aside')) {
+      unreadable.push({ fileName: saved, reason: 'set-aside' });
     }
   }
   const conflicts = [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort().map((id) => ({
