@@ -235,6 +235,9 @@ production codec.
   927, `WorkshopSessionStateV1Shape.ts` 1,061 → 1,068, `session.ts` 957 →
   964, `MessageHandler.ts` 982 → 984. `promptBudgets.test.ts` stays at 500.
 - *Alice* and made-up ids in fixtures; no live provider calls.
+- **After merging the epic** (PR #196 merged: the design snapshot, Slice 0d's
+  doc, and Slice 1's store fixes): typecheck clean, lint 1,158 warnings,
+  **661 suites / 9,373 tests / 59 snapshots**, all passing.
 
 ## Deviations
 
