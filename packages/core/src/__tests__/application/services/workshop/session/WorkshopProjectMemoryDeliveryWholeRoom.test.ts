@@ -1,16 +1,16 @@
 /**
  * The project-memory delivery record across whole-room operations (ADR
  * 2026-11-04 D14), through the real coordinator and store over the
- * scripted room. The record lives on the writer turn that delivered it, so
- * every operation is right by construction:
+ * scripted room. The record lives on the persona reply that received the
+ * delivery (PR #198 F-01), so every operation is right by construction:
  *
  * - Open loads it with the session; a session without it reads and saves
  *   unchanged.
  * - Rewind before a note cuts the note's record, so the note is sent again.
  * - Branch keeps the records up to the cut.
- * - A rolled-back, abandoned or cancelled writer turn takes its record.
+ * - A rolled-back, abandoned or cancelled run never writes one.
  * - New starts with none.
- * - The codec refuses it on any turn but a writer turn.
+ * - The codec refuses it on any turn but a persona reply, or for another participant.
  */
 
 import type { WorkshopProjectMemoryDelivery } from '@messages';
