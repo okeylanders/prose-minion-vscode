@@ -10,7 +10,7 @@ import {
   WorkshopBookmarkLedger,
   workshopBookmarkDefaultLabel
 } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
-import { WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH, WorkshopTurn } from '@messages';
+import { WORKSHOP_BOOKMARK_LABEL_CHARACTERS, WorkshopTurn } from '@messages';
 
 const turn = (overrides: Partial<WorkshopTurn> = {}): WorkshopTurn => ({
   id: 'turn-2-assistant-1',
@@ -185,10 +185,10 @@ describe('WorkshopBookmarkLedger', () => {
     it('accepts a label at the limit and refuses one past it', () => {
       const { ledger, id } = marked();
 
-      expect(ledger.rename(id, 'x'.repeat(WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH))).toBe('set');
-      expect(() => ledger.rename(id, 'y'.repeat(WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH + 1)))
+      expect(ledger.rename(id, 'x'.repeat(WORKSHOP_BOOKMARK_LABEL_CHARACTERS))).toBe('set');
+      expect(() => ledger.rename(id, 'y'.repeat(WORKSHOP_BOOKMARK_LABEL_CHARACTERS + 1)))
         .toThrow(expect.objectContaining({ reason: 'invalid-label' }));
-      expect(ledger.list()[0].label).toBe('x'.repeat(WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH));
+      expect(ledger.list()[0].label).toBe('x'.repeat(WORKSHOP_BOOKMARK_LABEL_CHARACTERS));
     });
 
     it.each(['two\nlines', 'a\ttab', 'line\u2028separator', 'carriage\rreturn'])(

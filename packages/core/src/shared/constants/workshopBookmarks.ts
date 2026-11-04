@@ -8,13 +8,13 @@
  * - trimmed; empty means "use the default";
  * - one line: no control character (a tab or a line break among them) and
  *   no line or paragraph separator;
- * - at most `WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH` characters, counted as a
+ * - at most `WORKSHOP_BOOKMARK_LABEL_CHARACTERS` characters, counted as a
  *   field's `maxLength` counts them (UTF-16 code units).
  *
  * A label is writer text: never in a log.
  */
 
-import { WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH } from '@messages';
+import { WORKSHOP_BOOKMARK_LABEL_CHARACTERS } from '@messages';
 
 export type WorkshopBookmarkLabelFault = 'too-long' | 'not-one-line';
 
@@ -26,7 +26,7 @@ export type WorkshopBookmarkLabelCheck =
 /* eslint-disable @typescript-eslint/naming-convention -- keyed by the faults' kebab-case words. */
 /** What the writer is told when a label is refused. */
 export const WORKSHOP_BOOKMARK_LABEL_FAULTS: Readonly<Record<WorkshopBookmarkLabelFault, string>> = {
-  'too-long': `A bookmark's name is at most ${WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH} characters.`,
+  'too-long': `A bookmark's name is at most ${WORKSHOP_BOOKMARK_LABEL_CHARACTERS} characters.`,
   'not-one-line': 'A bookmark\'s name is one line, with no tabs or line breaks.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -42,7 +42,7 @@ export function checkWorkshopBookmarkLabel(value: string | null): WorkshopBookma
   if (NOT_ONE_LINE.test(label)) {
     return { kind: 'invalid', fault: 'not-one-line' };
   }
-  if (label.length > WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH) {
+  if (label.length > WORKSHOP_BOOKMARK_LABEL_CHARACTERS) {
     return { kind: 'invalid', fault: 'too-long' };
   }
   return { kind: 'named', label };

@@ -12,7 +12,7 @@ import type { WorkshopPersonaId, WorkshopToolId } from './participants';
 import type { WorkshopTurnParticipant } from './session';
 
 /** The longest label a writer may give a bookmark, after trimming. */
-export const WORKSHOP_BOOKMARK_LABEL_MAX_LENGTH = 80;
+export const WORKSHOP_BOOKMARK_LABEL_CHARACTERS = 80;
 
 /**
  * One bookmark as the session stores it. `label` is present only when the

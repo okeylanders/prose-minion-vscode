@@ -16,6 +16,7 @@ import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/Worksho
 import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
+import { WorkshopBookmarkHandler } from '@handlers/domain/workshop/WorkshopBookmarkHandler';
 import { WorkshopLightboxTileHandler } from '@handlers/domain/workshop/WorkshopLightboxTileHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
@@ -65,6 +66,7 @@ export class WorkshopSliceComposition {
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
   private readonly todoHandler: WorkshopTodoHandler;
+  private readonly bookmarkHandler: WorkshopBookmarkHandler;
   private readonly lightboxTileHandler: WorkshopLightboxTileHandler;
   private readonly contextHandler: WorkshopContextHandler;
   private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
@@ -228,6 +230,16 @@ export class WorkshopSliceComposition {
           host.reportRouteError('workshop.todo', message, details, 'WorkshopTodoHandler')
       }
     );
+    this.bookmarkHandler = new WorkshopBookmarkHandler(
+      session,
+      outputChannel,
+      {
+        postSessionState: host.postSessionState,
+        markDirty,
+        reportError: (message, details) =>
+          host.reportRouteError('workshop.bookmark', message, details, 'WorkshopBookmarkHandler')
+      }
+    );
   }
 
   registerRoutes(
@@ -269,6 +281,10 @@ export class WorkshopSliceComposition {
     this.todoHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopTodoHandler')
+    );
+    this.bookmarkHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopBookmarkHandler')
     );
     this.lightboxTileHandler.registerRoutes(
       router,
