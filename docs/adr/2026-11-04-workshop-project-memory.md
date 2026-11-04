@@ -122,7 +122,9 @@ as a per-turn `WorkshopProjectMemoryCapability` sub-adapter inside
   source session is recallable (D3).
 - **Ids are checked against the listing,** never resolved as paths (the
   allow-list rule of `resource.read` and `transcript.read`). An unknown id is
-  reported as unknown.
+  reported as unknown. An id whose file a live claim holds (another window is
+  rewriting it; the store's `read` answers `busy`) is reported per id as "being
+  edited; try again", and the rest of the call goes ahead.
 - **Off means rejected.** With memory Off (D8), every `memory.*` call records a
   rejected artifact with the reason `memory-off`, and no grammar is taught.
 - **No write operation.** A write is not evidence (D6).
@@ -213,21 +215,25 @@ We settled this while working chapter 3's tea-party scene. …
 |---|---|---|
 | `format` | yes | `1` |
 | `id` | yes | `mem-` + 6 lowercase hex |
-| `title` | yes | one line, at most `titleCharacters` |
+| `title` | yes | one line, at most `titleCharacters` (120) |
 | `kind` | yes | `decision` \| `canon` \| `preference` \| `open-thread` |
-| `summary` | yes | one line, at most `summaryCharacters` |
+| `summary` | yes | one line, at most `summaryCharacters` (280) |
 | `status` | yes | `active` \| `archived` |
 | `created`, `updated` | yes | ISO 8601 UTC, second precision |
 | `origin` | yes | `writer` \| `proposed` \| `auto` |
 | `pinned` | no on read, always written | `true` \| `false`; absent (a hand-made file) reads as `false`; always written, `pinned: false` included |
 | `proposed-by` | with `proposed` / `auto` | a persona id |
 | `source-session` | with `proposed` / `auto`; optional for `writer` | a session id |
-| `source-turns` | with `source-session` | comma-separated turn ids, `turn-<n>-<role>-<ms>` |
-| `supersedes` | no | one memory id |
+| `source-turns` | no; only with `source-session` (refused without it) | comma-separated turn ids, `turn-<n>-<user\|assistant\|system>-<ms>`, at most 32 |
+| `supersedes` | no | comma-separated memory ids, at most 8: one memory can replace several (a decision that settles two open threads) |
 
 - An optional key that is absent, or present with an empty value, reads as
   none. The codec writes only the optional keys that hold a value, except
   `pinned`, which it always writes.
+- **Bounds.** The body is at most 8,000 characters and the whole file at most
+  256 KiB. Slice 1 keeps the bounds as named constants in the codec; the ones a
+  prompt states move into `PROMPT_BUDGETS.workshopProjectMemory` in Slice 2
+  (D11), and a sync test then holds the codec to them.
 - `origin` says who saved the memory: `writer` (New memory, Save to memory…, or a
   hand-made file), `proposed` (a persona proposed it and the writer saved it),
   `auto` (saved under Save and tell me).
@@ -257,9 +263,20 @@ set: `active` or `archived`. This departs from the feature note, which stores
 - Ids are minted inside the store's queue against the folder's listing. A
   6-hex id is short enough for a fast model to copy; recall's open question 7
   saw UUIDs garbled.
+- **Stated limit: a cross-window id collision.** The listing check covers one
+  window's queue. Two windows that mint the same id at the same moment, for
+  different titles, write two files (different slugs, so neither rename
+  fails), and both become a conflict. Nothing is lost, and neither reaches a
+  model. The odds are about 1 in 16.7 million per pair of simultaneous saves.
+- **How the manager shows a conflict.** Each conflicting file gets its own row,
+  marked "Same id as *other file*", with *Open file*. It offers no pin,
+  archive or edit. The writer resolves it by hand, by changing one file's
+  `id` or deleting one. Slice 4b may add *Give this one a new id*: a writer
+  action, done as a claimed rewrite of that file alone, that mints a fresh id
+  inside the queue.
 
 **Unreadable files.** A file that does not decode, or is larger than
-`fileBytes`, is listed as unreadable with its reason. It never reaches a model,
+`fileBytes` (256 KiB), is listed as unreadable with its reason. It never reaches a model,
 and the host never rewrites or deletes it. The writer fixes it by hand.
 
 **Codec evolution.** ADR 2026-07-30's rule, applied to a second writer-data
@@ -341,7 +358,7 @@ A persona proposes a memory with a trailer at the end of its reply:
   <kind>canon</kind>
   <summary>From chapter 3 on, …</summary>
   <body>We settled this while working chapter 3's tea-party scene. …</body>
-  <supersedes>mem-1a9e04</supersedes>   <!-- optional -->
+  <supersedes>mem-1a9e04</supersedes>   <!-- optional; repeatable, up to 8 -->
 </prose-minion-memory-proposal>
 ```
 
@@ -361,10 +378,10 @@ A persona proposes a memory with a trailer at the end of its reply:
   `source-turns` (the reply's turn id and the writer turn that prompted it),
   `proposed-by`, `created` and `updated`. A trailer that names any of them is
   rejected.
-- **`supersedes`** must name a memory the catalog lists, or it's dropped from the
-  proposal with a note on the card.
+- **`supersedes`** may repeat, up to 8. Each must name a memory the catalog
+  lists, or it's dropped from the proposal with a note on the card.
 - **Persisted on the turn** as an optional `memoryProposal` field:
-  `{ title, kind, summary, body, supersedes?, state: 'pending' | 'saved' |
+  `{ title, kind, summary, body, supersedes?: string[], state: 'pending' | 'saved' |
   'dismissed', memoryId? }`. The card survives a reload, and Rewind and Branch
   carry it with the turn they cut or keep. It's additive with no
   `schemaVersion` bump (ADR 2026-07-30; ADR 2026-11-03 D9).
@@ -517,7 +534,15 @@ personal-domain word.
   - **claims** are live for a 30-second lease and abandoned after it. An
     abandoned claim goes back under its saved name, or is removed beside a
     standing file. A folder read error is `unknown`, never empty;
-  - **files it can't read** are never written or deleted.
+  - **files it can't read** are never written or deleted;
+  - **`updated` is the caller's.** The store's `replace` doesn't stamp it. The
+    library stamps `updated` for a change to what the memory says (title,
+    kind, summary, body, supersedes). It leaves `updated` alone for a pin
+    toggle or an archive, so pinning never reorders the catalog, which sorts
+    by `updated`;
+  - **a live claim is `busy`.** A listing reads a claimed file's bytes, so the
+    memory stays listed and in the catalog, but `read` answers `busy` while
+    another window rewrites it. `memory.read` says so per id (D1).
 - **One shared claim primitive, configured per store.** The board modules
   were board-shaped (Context 6). Slice 1 extracted their mechanics into
   neutral modules in `infrastructure/storage/` (`768b41f`):
@@ -557,7 +582,7 @@ and the capability grammar):
 workshopProjectMemory: {
   titleCharacters: 120,
   summaryCharacters: 280,
-  bodyCharacters: 6_000,        // a proposal's body; a hand-made file may be longer, up to fileBytes
+  bodyCharacters: 8_000,        // a memory's body, the codec's bound too
   catalogEntries: 40,
   catalogTokens: 2_000,         // entries, by estimateTextTokens (the engine's estimator)
   pinnedTokens: 1_500,          // all pinned bodies together, same estimator (open question 4)
