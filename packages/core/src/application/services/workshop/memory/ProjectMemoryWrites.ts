@@ -41,7 +41,7 @@ import { projectMemoryPinnedTokens } from '@/application/services/workshop/memor
 import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 
 /** The store's methods the writes use; satisfied by ProjectMemoryStore. */
-export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'read' | 'create' | 'replace' | 'shutDown'>;
+export type ProjectMemoryWriteStorePort = Pick<ProjectMemoryStore, 'list' | 'read' | 'create' | 'replace' | 'delete' | 'shutDown'>;
 
 /** Who a new memory came from; the host fills it, never a model (D6). */
 export interface ProjectMemorySaveProvenance {
@@ -61,6 +61,17 @@ export type ProjectMemoryWriteRefusalReason =
   | 'invalid'
   | 'failed'
   | 'pinned-budget';
+
+/**
+ * Why a delete did nothing: a write's reasons, or `changed`, when the file
+ * once claimed held something else (another id, or unreadable bytes) and was
+ * put back (PR #194 F-02).
+ */
+export type ProjectMemoryDeleteRefusalReason = ProjectMemoryWriteRefusalReason | 'changed';
+
+export type ProjectMemoryDeleteResult =
+  | { readonly kind: 'deleted' }
+  | { readonly kind: 'refused'; readonly reason: ProjectMemoryDeleteRefusalReason };
 
 export type ProjectMemoryWriteResult =
   | {
@@ -190,6 +201,56 @@ export class ProjectMemoryWrites {
         return changedMeaning || next.pinned !== memory.pinned ? next : undefined;
       }, { beforeCommit: () => this.workspaceReason() === undefined });
       return this.settled('update', id, replaced, changedMeaning);
+    });
+  }
+
+  /**
+   * The manager's Always load in full (Slice 4b): only `pinned` changes,
+   * read under the store's claim, so no other field is overwritten. Turning
+   * it on is checked against the pinned budget as an edit is; turning it
+   * off is always allowed. `updated` doesn't move (D10).
+   */
+  setPinned(id: string, pinned: boolean): Promise<ProjectMemoryWriteResult> {
+    return this.owe('load-in-full', async () => {
+      const listed = await this.listed();
+      if (listed.kind === 'refused') {
+        return listed;
+      }
+      const current = listed.memories.find(({ memory }) => memory.id === id);
+      if (!current) {
+        return this.refused('load-in-full', 'missing', id);
+      }
+      const budget = pinnedBudget(listed.memories, { ...current.memory, pinned }, id);
+      if (budget.refused) {
+        this.log(`load-in-full refused id=${id} reason=pinned-budget total=${budget.totalTokens}`);
+        return { kind: 'refused', reason: 'pinned-budget', budget };
+      }
+      const replaced = await this.store.replace(id, (memory) => memory.pinned === pinned ? undefined : { ...memory, pinned },
+        { beforeCommit: () => this.workspaceReason() === undefined });
+      return this.settled('load-in-full', id, replaced, false);
+    });
+  }
+
+  /**
+   * Delete a memory's file (D8: only Delete removes one). The store claims
+   * it and checks the claimed bytes still read as this memory, else puts
+   * them back (`changed`). A memory it superseded is in effect again (D4).
+   */
+  remove(id: string): Promise<ProjectMemoryDeleteResult> {
+    return this.owe('delete', async () => {
+      const closed = this.workspaceReason();
+      if (closed) {
+        this.refused('delete', closed, id);
+        return { kind: 'refused' as const, reason: closed };
+      }
+      const deleted = await this.store.delete(id);
+      if (deleted.kind === 'deleted') {
+        this.log(`delete deleted id=${id}`);
+        return { kind: 'deleted' as const };
+      }
+      const reason: ProjectMemoryDeleteRefusalReason = deleted.kind === 'unavailable' ? deleted.reason : deleted.kind;
+      this.log(`delete refused id=${id} reason=${reason}`);
+      return { kind: 'refused' as const, reason };
     });
   }
 

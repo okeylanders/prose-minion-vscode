@@ -170,6 +170,11 @@ export enum MessageType {
   WORKSHOP_MEMORY_EDIT_DATA = 'workshop_memory_edit_data',
   WORKSHOP_MEMORY_ESTIMATE = 'workshop_memory_estimate',
   WORKSHOP_MEMORY_ESTIMATE_RESULT = 'workshop_memory_estimate_result',
+  // Workshop Project Memory: the manager (epic Slice 4b)
+  WORKSHOP_MEMORY_LIST = 'workshop_memory_list',
+  WORKSHOP_MEMORY_LISTING = 'workshop_memory_listing',
+  WORKSHOP_MEMORY_MANAGER_ACTION = 'workshop_memory_manager_action',
+  WORKSHOP_MEMORY_MANAGER_RESULT = 'workshop_memory_manager_result',
   /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_PICK_EXCERPT_FILE = 'workshop_pick_excerpt_file',
   WORKSHOP_REREAD_EXCERPT = 'workshop_reread_excerpt',

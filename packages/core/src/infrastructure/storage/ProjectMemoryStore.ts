@@ -136,6 +136,15 @@ export class ProjectMemoryStore {
     return { available: true, rootPath, directory: path.join(rootPath, 'prose-minion', 'memory'), displayPath: PROJECT_MEMORY_DISPLAY_PATH };
   }
 
+  /** The memory folder, made if it isn't there yet (the manager's Open memory folder; Slice 0d), or why there is none. */
+  async ensureFolder(): Promise<ProjectMemoryAvailability> {
+    const availability = this.availability();
+    if (availability.available) {
+      await this.fileSystem.createDirectory(availability.directory);
+    }
+    return availability;
+  }
+
   /** Every memory file, decoded; unreadable ones with their reasons, and ones another window holds now. */
   list(): Promise<ProjectMemoryListing> {
     return this.enqueue(async () => {
