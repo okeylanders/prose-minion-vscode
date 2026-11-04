@@ -92,3 +92,22 @@ export function libraryHost(options: LibraryHostOptions = {}) {
 
 /** Every log line the host wrote, joined: what a sentinel must never appear in. */
 export const allLines = (lines: readonly string[]): string => lines.join('\n');
+
+/** Hold the first call `matches` picks until `release` is called. */
+export function holdOnce<T extends (...args: never[]) => Promise<unknown>>(target: { [key: string]: unknown }, method: string, matches: (...args: Parameters<T>) => boolean) {
+  const original = (target[method] as T).bind(target);
+  let release: () => void = () => undefined;
+  let reached: () => void = () => undefined;
+  const arrived = new Promise<void>((resolve) => { reached = resolve; });
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  let held = false;
+  jest.spyOn(target as never, method as never).mockImplementation((async (...args: Parameters<T>) => {
+    if (!held && matches(...args)) {
+      held = true;
+      reached();
+      await gate;
+    }
+    return original(...args);
+  }) as never);
+  return { arrived, release: () => release() };
+}

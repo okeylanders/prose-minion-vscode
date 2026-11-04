@@ -6,26 +6,7 @@
  * file system. *Alice*, made-up ids.
  */
 import * as path from 'node:path';
-import { libraryHost, MEMORY, writerMemory } from './projectMemoryLibraryHost';
-
-/** Hold the first call `matches` picks until `release` is called. */
-function holdOnce<T extends (...args: never[]) => Promise<unknown>>(target: { [key: string]: unknown }, method: string, matches: (...args: Parameters<T>) => boolean) {
-  const original = (target[method] as T).bind(target);
-  let release: () => void = () => undefined;
-  let reached: () => void = () => undefined;
-  const arrived = new Promise<void>((resolve) => { reached = resolve; });
-  const gate = new Promise<void>((resolve) => { release = resolve; });
-  let held = false;
-  jest.spyOn(target as never, method as never).mockImplementation((async (...args: Parameters<T>) => {
-    if (!held && matches(...args)) {
-      held = true;
-      reached();
-      await gate;
-    }
-    return original(...args);
-  }) as never);
-  return { arrived, release: () => release() };
-}
+import { holdOnce, libraryHost, MEMORY, writerMemory } from './projectMemoryLibraryHost';
 
 function withdraw(host: ReturnType<typeof libraryHost>): void {
   host.state.scope = { available: false, reason: 'workspace-changed' } as never;

@@ -84,6 +84,11 @@ export class ProjectMemoryManager {
       ? listed
       : searchProjectMemories(listed, query, 'all', { hits: listed.length, snippetCharacters: 1 }).hits.map((hit) => hit.listed);
     const titles = await this.sessionTitles(matched);
+    // Titles are awaited after the folder was read: a root that moved meanwhile drops the rows (PR #202 F02).
+    const moved = this.moved(directory);
+    if (moved) {
+      return { ...empty, workspace: moved };
+    }
     const memories = matched.map((item): WorkshopMemoryManagerEntry => {
       const inEffect = isProjectMemoryInEffect(item);
       const residency: WorkshopMemoryResidency = loaded.has(item.memory.id) ? 'full' : entries.has(item.memory.id) ? 'listed' : 'searchable';
@@ -158,7 +163,11 @@ export class ProjectMemoryManager {
     }
     try {
       const availability = await this.store.ensureFolder();
-      return availability.available ? { kind: 'folder', path: availability.directory } : { kind: 'refused', reason: 'unavailable' };
+      // Made for the root asked about: one withdrawn or moved meanwhile hands the shell nothing (PR #202 F02).
+      if (!availability.available || this.moved(availability.directory)) {
+        return { kind: 'refused', reason: 'unavailable' };
+      }
+      return { kind: 'folder', path: availability.directory };
     } catch (error) {
       this.log(`folder failed (${error instanceof Error ? error.name : 'error'})`);
       return { kind: 'refused', reason: 'failed' };
@@ -175,9 +184,10 @@ export class ProjectMemoryManager {
       return { kind: 'closed', workspace: workspaceOf(before, availability.available ? undefined : availability.reason) };
     }
     const listing = await this.store.list();
-    const after = this.workspaceReason();
-    if (after) {
-      return { kind: 'closed', workspace: workspaceOf(after, undefined) };
+    // The queued list may have read another root by its turn: the rows pair with the folder only while it is still the one captured (PR #202 F02).
+    const moved = this.moved(availability.directory);
+    if (moved) {
+      return { kind: 'closed', workspace: moved };
     }
     if (listing.kind === 'unavailable') {
       return { kind: 'closed', workspace: { kind: 'unavailable', reason: listing.reason } };
@@ -187,6 +197,20 @@ export class ProjectMemoryManager {
       return { kind: 'closed', workspace: { kind: 'unknown' } };
     }
     return { kind: 'read', listed: listProjectMemories(listing.memories), directory: availability.directory, listing };
+  }
+
+  /**
+   * Why rows read for `directory` may no longer be shown: the room's scope
+   * closed, the store has no folder, or its folder is another root's now.
+   * Undefined while `directory` is still this workspace's memory folder.
+   */
+  private moved(directory: string): ProjectMemoryManagerListing['workspace'] | undefined {
+    const reason = this.workspaceReason();
+    const now = this.store.availability();
+    if (reason || !now.available) {
+      return workspaceOf(reason, now.available ? undefined : now.reason);
+    }
+    return now.directory === directory ? undefined : { kind: 'unknown' };
   }
 
   /** Each named source session's title, asked once per session; anything else can't be named now. */
