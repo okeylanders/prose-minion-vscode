@@ -921,6 +921,41 @@ describe('AgentRunEngine', () => {
     expect(output.appendLine.mock.calls.flat().join('\n')).not.toContain('MEMORY-SENTINEL');
   });
 
+  it.each([true, false])('never replays, retains or logs an overlapping-tag proposal (PR #200 F-03 recheck; debug %s)', async (debug) => {
+    const redact = (content: string) => extractWorkshopReplyControls(content, { memoryOpen: false }).redacted;
+    const guides = {
+      ...capability(),
+      catalog: 'workshopToolContext' as const,
+      inspectRequest: jest.fn((candidate: string) => guideGate.inspect(extractWorkshopReplyControls(candidate, { memoryOpen: false }).rest)),
+      redactPrivateControls: redact
+    };
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    const debugSettings = { get: jest.fn().mockReturnValue(debug) };
+    const retaining = new AgentRunEngine(client as never, conversations, undefined, output, undefined, debugSettings as never);
+    const invalid = '<prose-minion-tool-call name="resource.read"><paths><path>outside-catalog.md</path></paths></prose-minion-tool-call>';
+    const witness = '<prose-minion-memory-proposal data-x="</prose-minion-memory-proposal>">PRIVATE_MEMORY_SENTINEL_71bb</prose-minion-memory-proposal>';
+    client.createStreamingChatCompletion
+      .mockReturnValueOnce(stream([`${invalid}\n\n${witness}`]))
+      .mockReturnValueOnce(stream([`${GUIDE_REQUEST}\n\n${witness}`]))
+      .mockReturnValueOnce(stream(['Final prose.']));
+
+    let result;
+    try {
+      result = await retaining.runInitial({
+        toolName: 'workshop-tool', systemMessage: 'System', userMessage: 'Analyze this.',
+        policy: AGENT_RUN_POLICIES.workshopTool, capability: guides,
+        options: { onToken: jest.fn() }
+      });
+    } finally {
+      retaining.dispose();
+    }
+
+    expect(guides.fulfill).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(client.createStreamingChatCompletion.mock.calls.slice(1))).not.toContain('PRIVATE_MEMORY_SENTINEL');
+    expect(JSON.stringify(conversations.getMessages(result.conversationId!))).not.toContain('PRIVATE_MEMORY_SENTINEL');
+    expect(output.appendLine.mock.calls.flat().join('\n')).not.toContain('PRIVATE_MEMORY_SENTINEL');
+  });
+
   it('withholds the full rejected-response dump by default and says how to enable it', async () => {
     const guides = capability();
     const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };

@@ -38,7 +38,7 @@ export type WorkshopReplyMemoryRejection =
   | 'misplaced'
   | 'duplicate'
   | 'memory-off'
-  | `malformed:${'unclosed' | 'unopened' | 'nested' | WorkshopMemoryProposalFault}`;
+  | `malformed:${'unclosed' | 'unopened' | 'nested' | 'tag' | WorkshopMemoryProposalFault}`;
 
 export type WorkshopReplyMemoryControl =
   | { readonly kind: 'none' }
@@ -56,8 +56,8 @@ export interface WorkshopReplyControlsOptions {
   readonly memoryOpen: boolean;
 }
 
-const OPEN = new RegExp(`<${WORKSHOP_MEMORY_PROPOSAL_TAG}(?:\\s[^>]*)?>`, 'gi');
-const CLOSE = new RegExp(`</${WORKSHOP_MEMORY_PROPOSAL_TAG}\\s*>`, 'gi');
+/** A tag marker: `<` or `</`, then the whole tag name (not a longer name). */
+const MARKER = new RegExp(`<(/?)${WORKSHOP_MEMORY_PROPOSAL_TAG}(?![a-z0-9_-])`, 'gi');
 
 interface Frame {
   readonly start: number;
@@ -68,6 +68,8 @@ interface Frame {
   readonly closed: boolean;
   /** Whether another frame opened inside it: never a proposal (PR #200 F-03). */
   readonly nested?: boolean;
+  /** A marker that was not exactly `<tag>` or `</tag>`: removed to the reply's end (PR #200 F-03 recheck). */
+  readonly malformedTag?: boolean;
 }
 
 /** Split a reply into its prose (and any widget control) and its memory frames. */
@@ -136,6 +138,9 @@ function judge(reply: string, frames: readonly Frame[], options: WorkshopReplyCo
     return rejected('duplicate');
   }
   const frame = opened[0];
+  if (frame.malformedTag) {
+    return rejected('malformed:tag');
+  }
   if (!frame.closed) {
     return rejected('malformed:unclosed');
   }
@@ -159,10 +164,20 @@ function findFrames(reply: string): Frame[] {
   let depth = 0;
   let opening: { start: number; innerStart: number } | undefined;
   let nested = false;
-  for (const tag of tagsOf(reply)) {
-    if (tag.open) {
+  // One pass, left to right: each search resumes after the marker it found,
+  // so no token is ever read inside another's bytes (PR #200 F-03 recheck).
+  for (let marker = nextMarker(reply, 0); marker; marker = nextMarker(reply, marker.end)) {
+    if (!marker.exact) {
+      // Not exactly `<tag>` or `</tag>` (attributes, a missing `>`, a marker
+      // inside the tag): malformed, and everything from here is removed.
+      const start = opening ? opening.start : marker.start;
+      const innerStart = opening ? opening.innerStart : marker.start;
+      frames.push({ start, end: reply.length, inner: reply.slice(innerStart), closed: false, nested, malformedTag: true });
+      return frames;
+    }
+    if (marker.open) {
       if (depth === 0) {
-        opening = { start: tag.start, innerStart: tag.end };
+        opening = { start: marker.start, innerStart: marker.end };
         nested = false;
       } else {
         nested = true;
@@ -172,7 +187,7 @@ function findFrames(reply: string): Frame[] {
     }
     if (depth === 0) {
       // A closing tag with no frame open: debris, removed with no inside.
-      frames.push({ start: tag.start, end: tag.end, closed: true });
+      frames.push({ start: marker.start, end: marker.end, closed: true });
       continue;
     }
     depth -= 1;
@@ -181,8 +196,8 @@ function findFrames(reply: string): Frame[] {
       // inside a nested frame is ever read as text after it (PR #200 F-03).
       frames.push({
         start: opening.start,
-        end: tag.end,
-        inner: reply.slice(opening.innerStart, tag.start),
+        end: marker.end,
+        inner: reply.slice(opening.innerStart, marker.start),
         closed: true,
         nested
       });
@@ -196,16 +211,23 @@ function findFrames(reply: string): Frame[] {
   return frames;
 }
 
-/** Every opening and closing tag, in order. */
-function tagsOf(reply: string): Array<{ readonly open: boolean; readonly start: number; readonly end: number }> {
-  const tags: Array<{ open: boolean; start: number; end: number }> = [];
-  for (const [pattern, open] of [[OPEN, true], [CLOSE, false]] as const) {
-    pattern.lastIndex = 0;
-    for (let match = pattern.exec(reply); match; match = pattern.exec(reply)) {
-      tags.push({ open, start: match.index, end: match.index + match[0].length });
-    }
+/**
+ * The next `<tag` or `</tag` at or after `from` (the tag name whole, any
+ * case), and whether it is exactly `<tag>` or `</tag>`: the only forms the
+ * grammar writes.
+ */
+function nextMarker(
+  reply: string,
+  from: number
+): { readonly open: boolean; readonly exact: boolean; readonly start: number; readonly end: number } | undefined {
+  MARKER.lastIndex = from;
+  const match = MARKER.exec(reply);
+  if (!match) {
+    return undefined;
   }
-  return tags.sort((a, b) => a.start - b.start);
+  const open = match[1] === '';
+  const exact = reply[match.index + match[0].length] === '>';
+  return { open, exact, start: match.index, end: match.index + match[0].length + (exact ? 1 : 0) };
 }
 
 /**

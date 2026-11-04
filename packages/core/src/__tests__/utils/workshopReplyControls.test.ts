@@ -101,10 +101,14 @@ describe('extractWorkshopReplyControls', () => {
     expect(controls.rest).toBe('First.\n\n    indented code\nLast.');
   });
 
-  it('reads the tags in any case, with whitespace before the closing bracket', () => {
-    const frame = memoryFrame().replace('<prose-minion-memory-proposal>', '<PROSE-MINION-MEMORY-PROPOSAL >')
-      .replace('</prose-minion-memory-proposal>', '</prose-minion-memory-proposal >');
-    expect(extractWorkshopReplyControls(`${PROSE}\n${frame}`, OPEN).memory.kind).toBe('proposal');
+  it('reads the tags in any case, but only exactly as the grammar writes them (PR #200 F-03 recheck)', () => {
+    const upper = memoryFrame().replace('<prose-minion-memory-proposal>', '<PROSE-MINION-MEMORY-PROPOSAL>')
+      .replace('</prose-minion-memory-proposal>', '</Prose-Minion-Memory-Proposal>');
+    expect(extractWorkshopReplyControls(`${PROSE}\n${upper}`, OPEN).memory.kind).toBe('proposal');
+    const spaced = memoryFrame().replace('</prose-minion-memory-proposal>', '</prose-minion-memory-proposal >');
+    const controls = extractWorkshopReplyControls(`${PROSE}\n${spaced}\nAfter.`, OPEN);
+    expect(controls.memory).toEqual({ kind: 'rejected', reason: 'malformed:tag' });
+    expect(controls.rest).toBe(PROSE);
   });
 });
 
@@ -227,5 +231,36 @@ describe('a streaming reply never shows a memory frame (PR #200 F-02)', () => {
     expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} </prose-minion-memory`)).toBe(PROSE);
     expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <em>`)).toBe(`${PROSE} <em>`);
     expect(stripWorkshopMemoryProposalForStreaming(`${PROSE} <prose-minion-memory-proposalx`)).toBe(`${PROSE} <prose-minion-memory-proposalx`);
+  });
+});
+
+describe('a marker that is not exactly the grammar\'s tag hides everything after it (PR #200 F-03 recheck)', () => {
+  const C = '</prose-minion-memory-proposal>';
+  const witnesses: Array<[string, string]> = [
+    ['a close marker inside a double-quoted attribute', `<prose-minion-memory-proposal data-x="${C}">PRIVATE_MEMORY_SENTINEL${C}`],
+    ['a close marker inside a single-quoted attribute', `<prose-minion-memory-proposal data-x='${C}'>PRIVATE_MEMORY_SENTINEL${C}`],
+    ['an unquoted close marker in the tag', `<prose-minion-memory-proposal ${C}>PRIVATE_MEMORY_SENTINEL${C}`],
+    ['a nested open inside an attribute', `<prose-minion-memory-proposal data-x="<prose-minion-memory-proposal>">PRIVATE_MEMORY_SENTINEL${C}${C}`],
+    ['an opening tag with no closing bracket', `<prose-minion-memory-proposal PRIVATE_MEMORY_SENTINEL${C}`],
+    ['a malformed close inside a frame', `<prose-minion-memory-proposal><title>PRIVATE_MEMORY_SENTINEL</title></prose-minion-memory-proposal x>PRIVATE_MEMORY_SENTINEL`]
+  ];
+
+  it.each(witnesses)('%s', (_label, frame) => {
+    const reply = `${PROSE}\n\n${frame}\n\nPRIVATE_MEMORY_SENTINEL trailing.`;
+    for (const memoryOpen of [true, false]) {
+      const controls = extractWorkshopReplyControls(reply, { memoryOpen });
+      expect(controls.rest).toBe(PROSE);
+      expect(controls.redacted).toBe(`${PROSE}\n\n${WORKSHOP_MEMORY_PROPOSAL_REDACTION}`);
+      expect(controls.memory).toEqual({ kind: 'rejected', reason: memoryOpen ? 'malformed:tag' : 'memory-off' });
+      expect(sanitizeWorkshopReplyForRetention(reply)).toBe(PROSE);
+    }
+    for (let length = 0; length <= reply.length; length += 1) {
+      expect(stripWorkshopMemoryProposalForStreaming(reply.slice(0, length))).not.toMatch(/PRIVATE_MEMORY|<\/?prose-minion-mem/i);
+    }
+  });
+
+  it('leaves a longer tag name alone: it is not a marker', () => {
+    const reply = `${PROSE} <prose-minion-memory-proposals> stays.`;
+    expect(extractWorkshopReplyControls(reply, OPEN)).toEqual({ rest: reply, redacted: reply, memory: { kind: 'none' } });
   });
 });

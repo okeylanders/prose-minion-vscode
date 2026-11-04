@@ -428,3 +428,19 @@ engine's test (+41).
 and `supersededBy` and adds 2b's `version` beside them. After the merge:
 typecheck clean, lint 1,158, **668 suites / 9,452 tests / 59 snapshots**,
 all passing.
+
+**F-03 recheck (Astra at `f87b38c8`): overlapping tokens.** The depth scanner
+collected opening and closing matches independently, so a closing token
+could sit inside an opening tag's own bytes (`<tag data-x="</tag>">`).
+- **Fix:** markers are now read in one left-to-right pass, each search
+  resuming after the marker it found. Only exactly `<tag>` and `</tag>` (any
+  case) are tags. Any other marker (attributes, whitespace, a missing `>`, a
+  marker inside the tag) removes everything from it, or from the frame it
+  is in, to the end of the reply, and is rejected as `malformed:tag`. The
+  streaming stripper reads `rest`, so it follows the same rule.
+- **Behaviour change:** whitespace before `>` is no longer accepted. The
+  prompt never writes it.
+- **Tests:** the witness plus five variants through the extractor,
+  retention sanitizer, every streaming prefix, and the engine's correction
+  replay, history and logs, with memory on and off and debug on and off.
+  All failed on the earlier scanner.
