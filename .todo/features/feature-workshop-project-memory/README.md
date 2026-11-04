@@ -1,8 +1,10 @@
 # Feature: Workshop Project Memory
 
 **Date Identified:** 2026-11-03
-**Status:** Idea. Needs an ADR before any code (it opens the reserved
-`memory.*` family and adds a new writer-data format)
+**Status:** In an epic since 2026-11-04:
+[epic-workshop-project-memory-2026-11-04](../../epics/epic-workshop-project-memory-2026-11-04/README.md)
+(ADR first: it opens the reserved `memory.*` family and adds a new
+writer-data format)
 **Priority:** Medium
 **Origin:** Okey, from the Conversation settings screen
 **Related:**
