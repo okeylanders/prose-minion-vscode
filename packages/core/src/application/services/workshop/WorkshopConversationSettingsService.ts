@@ -10,7 +10,6 @@ import {
   workshopWriterProfilesEqual,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WEB_RESEARCH_SETTING,
-  WORKSHOP_PROJECT_MEMORY_SETTING,
   coerceWorkshopProjectMemoryMode,
   WorkshopConversationBehavior,
   WorkshopPersonaId,
@@ -24,7 +23,7 @@ import {
 import {
   renderWorkshopStandingDirectiveFrames
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
-import { WorkshopConversationSettingsPartialApplyError } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
+import { WorkshopProjectMemoryModeSetting } from '@/application/services/workshop/WorkshopConversationSettingsPartialApply';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
@@ -61,6 +60,8 @@ interface PendingPersistence<T> {
  * preserves the between-run system-message replacement invariant.
  */
 export class WorkshopConversationSettingsService {
+  /** The global project-memory mode: read live, written by an apply, and that write undone when the apply fails. */
+  private readonly projectMemoryMode: WorkshopProjectMemoryModeSetting;
   private queue: Promise<void> = Promise.resolve();
   private externalSyncPending = false;
   private pendingBehaviorPersistence?: PendingPersistence<WorkshopConversationBehavior>;
@@ -81,6 +82,7 @@ export class WorkshopConversationSettingsService {
     private readonly outputChannel: LogSink,
     private readonly writerProfileService: WorkshopWriterProfileService
   ) {
+    this.projectMemoryMode = new WorkshopProjectMemoryModeSetting(settings, outputChannel);
     this.webResearch = this.readWebResearchSetting();
     this.projectMemoryPrompted = this.projectMemoryOn();
   }
@@ -104,10 +106,10 @@ export class WorkshopConversationSettingsService {
     const nextProjectMemory = rawProjectMemory === undefined ? undefined : coerceWorkshopProjectMemoryMode(rawProjectMemory);
     return this.serialize(async () => {
       this.assertBetweenRuns();
-      const previousProjectMemory = this.getProjectMemoryMode();
-      const projectMemoryError = await this.persistProjectMemoryMode(nextProjectMemory);
+      const projectMemoryWrite = await this.projectMemoryMode.write(nextProjectMemory);
+      const projectMemoryError = projectMemoryWrite.error;
       const result = await this.apply(nextBehavior, nextProfile)
-        .catch((error: unknown) => this.restoreProjectMemoryMode(previousProjectMemory, error));
+        .catch((error: unknown) => this.projectMemoryMode.undo(projectMemoryWrite, error));
       this.externalSyncPending = false;
       const pendingBehavior = this.pendingBehaviorPersistence;
       const pendingProfile = this.pendingProfilePersistence;
@@ -318,38 +320,11 @@ export class WorkshopConversationSettingsService {
 
   /** The global project-memory mode, read live (D8): the Memory tab's draft starts from it. */
   getProjectMemoryMode(): WorkshopProjectMemoryMode {
-    return coerceWorkshopProjectMemoryMode(
-      this.settings.get<unknown>(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key)
-    );
+    return this.projectMemoryMode.get();
   }
 
   private projectMemoryOn(): boolean {
     return this.getProjectMemoryMode() !== 'off';
-  }
-
-  /** Write the mode when the draft changed it; the error, when VS Code couldn't save it (the mode then stays as it was). */
-  private async persistProjectMemoryMode(next: WorkshopProjectMemoryMode | undefined): Promise<string | undefined> {
-    if (next === undefined || next === this.getProjectMemoryMode()) {
-      return undefined;
-    }
-    try {
-      await this.settings.update(WORKSHOP_PROJECT_MEMORY_SETTING.section, WORKSHOP_PROJECT_MEMORY_SETTING.key, next);
-      this.outputChannel.appendLine(`[WorkshopConversationSettingsService] Project memory mode set to ${next}`);
-      return undefined;
-    } catch (error) {
-      return this.errorMessage(error);
-    }
-  }
-
-  /** A failed apply sets the mode back before it rethrows; a mode that would not go back is said (PR #202 F03). */
-  private async restoreProjectMemoryMode(previous: WorkshopProjectMemoryMode, error: unknown): Promise<never> {
-    if (this.getProjectMemoryMode() !== previous) {
-      const rollbackError = await this.persistProjectMemoryMode(previous);
-      if (rollbackError) {
-        throw new WorkshopConversationSettingsPartialApplyError(this.getProjectMemoryMode(), error, rollbackError);
-      }
-    }
-    throw error;
   }
 
   private readWebResearchSetting(): WorkshopWebResearchSettings {

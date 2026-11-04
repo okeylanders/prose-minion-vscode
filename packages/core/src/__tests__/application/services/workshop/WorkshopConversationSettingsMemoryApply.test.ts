@@ -150,4 +150,45 @@ describe('the Memory tab\'s mode through Conversation settings', () => {
       expect(service.getProjectMemoryMode()).toBe('auto');
     });
   });
+
+  describe('the rollback undoes only its own write (PR #202 F03 re-review)', () => {
+    const rejected = new Error('the retained prompts could not be replaced');
+    const changedBehavior = { ...behavior, interactionMode: 'analysis' } as WorkshopConversationBehavior;
+    /** The writer edits VS Code Settings while the retained prompts are being replaced, then the replacement fails. */
+    const externalEditDuring = (room: ReturnType<typeof setUp>, mode: string) =>
+      room.assistant.replaceWorkshopConversationSettings.mockImplementationOnce(async () => {
+        room.state.mode = mode;
+        throw rejected;
+      });
+    const setUp = (mode: string) => room(mode);
+
+    it.each([[undefined], ['auto']])('a Behavior-only apply (mode draft %s) leaves an external Off standing, and the watcher rebuilds for it', async (draft) => {
+      const host = setUp('auto');
+      externalEditDuring(host, 'off');
+      await expect(host.service.applyFromWebview(changedBehavior, DEFAULT_WORKSHOP_WRITER_PROFILE, DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS, draft)).rejects.toBe(rejected);
+      expect(memoryWrites(host.settings)).toEqual([]);
+      expect(host.service.getProjectMemoryMode()).toBe('off');
+      const synced = await host.service.syncFromSettings();
+      expect(synced.changed).toBe(true);
+      expect(host.assistant.replaceWorkshopConversationSettings).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['off', 'ask'])('a changed mode leaves a newer external %s standing', async (external) => {
+      const host = setUp('off');
+      externalEditDuring(host, external);
+      await expect(host.service.applyFromWebview(behavior, DEFAULT_WORKSHOP_WRITER_PROFILE, DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS, 'auto')).rejects.toBe(rejected);
+      expect(memoryWrites(host.settings).map(([, , value]) => value)).toEqual(['auto']);
+      expect(host.service.getProjectMemoryMode()).toBe(external);
+    });
+
+    it('a write VS Code refused is never rolled back', async () => {
+      const host = setUp('off');
+      host.state.refuse = (value) => value === 'auto';
+      host.assistant.replaceWorkshopConversationSettings.mockRejectedValueOnce(rejected);
+      await expect(host.service.applyFromWebview(changedBehavior, DEFAULT_WORKSHOP_WRITER_PROFILE, DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS, 'auto')).rejects.toBe(rejected);
+      expect(memoryWrites(host.settings).map(([, , value]) => value)).toEqual(['auto']);
+      expect(host.service.getProjectMemoryMode()).toBe('off');
+    });
+  });
 });
+
