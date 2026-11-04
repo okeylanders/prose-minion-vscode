@@ -167,6 +167,14 @@ Its ledger records the corrections:
 
 The new strings are in Slice 0d's doc, under "added after review".
 
+On the epic with PR #197 merged, the Past rows follow its accepted
+supersession links (N-02). The view derives no supersession: it reads the
+listing's `superseded` and `supersededBy`. `workshopMemorySupersession.test.ts`
+feeds it `listProjectMemories`' real output:
+- a cycle supersedes nothing;
+- a line names only the accepted links;
+- a chain through an archived note says both on that note.
+
 ## For 4b-wire
 
 - Register the tab: add `'memory'` to `WorkshopConversationSettingsTab` and
@@ -197,6 +205,7 @@ Node 22, on this branch:
 | Before (`7ec50ba`) | 652 | 9,228 | 59 |
 | After (with 2a at `27da6fee` merged) | 658 | 9,307 | 59 |
 | After the PR #199 fixes | 659 | 9,326 | 59 |
+| On the epic (`f8b2359`, 2a's PR #197 merged) | 663 | 9,340 | 59 |
 
 - `npm ci`, then `npm run typecheck`: clean.
 - `npm run lint`: 0 errors. 12 new warnings, all `naming-convention`:
