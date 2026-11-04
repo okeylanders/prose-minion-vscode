@@ -366,7 +366,7 @@ in the system prompt (Context 1).
   when the coordinator's accepted-workspace rule holds (`recallScope()`, ADR
   2026-10-05 §2). A changed root never shows another project's memories.
 - **The estimate.** The settings tab shows the frame's size, computed from the
-  same builder ("12 memories · 2 pinned · about 1,800 tokens at the start of
+  same builder ("12 memories · 2 in full · about 1,800 tokens at the start of
   each conversation").
 - **It records what it delivered** (D14), so later notes carry only changes.
 
