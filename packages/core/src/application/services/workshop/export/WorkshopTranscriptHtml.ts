@@ -31,6 +31,10 @@ import {
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import { WORKSHOP_TRANSCRIPT_HTML_CSS } from './WorkshopTranscriptHtmlStyles';
+import {
+  workshopTranscriptReplyModel,
+  type WorkshopTranscriptRenderOptions
+} from './WorkshopTranscriptModelHeader';
 
 const CONTENT_SECURITY_POLICY = "default-src 'none'; style-src 'unsafe-inline'";
 const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
@@ -76,7 +80,10 @@ export function safeLinkDestination(href: string): string | undefined {
   }
 }
 
-export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): string {
+export function renderWorkshopTranscriptHtml(
+  transcript: WorkshopTranscript,
+  options: WorkshopTranscriptRenderOptions = {}
+): string {
   const title = escapeHtml(transcript.title);
   const description = escapeHtml(
     describeWorkshopTranscript(transcript, countWorkshopTranscriptMessages(transcript))
@@ -100,7 +107,7 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
     `<p class="pm-ws-export-meta">${description}</p>`,
     '</header>',
     '<main class="pm-ws-thread">',
-    ...transcript.entries.map(renderEntry),
+    ...transcript.entries.map((entry) => renderEntry(entry, options)),
     '</main>',
     '<footer class="pm-ws-export-footer">Exported from Prose Minion</footer>',
     '</div>',
@@ -110,7 +117,7 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
   ].join('\n');
 }
 
-function renderEntry(entry: WorkshopTranscriptLine): string {
+function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptRenderOptions): string {
   switch (entry.kind) {
     case 'model-slice':
       return renderModelSlice(entry);
@@ -121,7 +128,7 @@ function renderEntry(entry: WorkshopTranscriptLine): string {
     case 'writer':
       return renderWriter(entry);
     case 'reply':
-      return renderReply(entry);
+      return renderReply(entry, options);
   }
 }
 
@@ -166,12 +173,15 @@ function renderWriter(entry: WorkshopTranscriptWriterEntry): string {
   }" aria-label="${WORKSHOP_TRANSCRIPT_WRITER_LABEL}">${parts.join('')}</article>`;
 }
 
-function renderReply(entry: WorkshopTranscriptReplyEntry): string {
+function renderReply(entry: WorkshopTranscriptReplyEntry, options: WorkshopTranscriptRenderOptions): string {
+  // The thread's header markup (WorkshopTurnBubble): the model's span is the
+  // part a narrow column cuts short, by mirrored thread rules (D10).
+  const model = workshopTranscriptReplyModel(entry, options);
   const head =
     '<div class="pm-ws-turn-head">' +
     `<span class="pm-ws-eyebrow">${icon(entry.participant === 'tool' ? 'sparkle' : 'person', 12)} ${
       escapeHtml(entry.speaker)
-    }</span>` +
+    }${model ? ` <span class="pm-ws-turn-model">· ${escapeHtml(model)}</span>` : ''}</span>` +
     (entry.privateWith ? privateLabel(entry.privateWith) : '') +
     bookmarkMark(entry) +
     '</div>';

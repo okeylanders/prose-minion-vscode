@@ -17,17 +17,25 @@ import {
   countWorkshopTranscriptMessages
 } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
+import {
+  workshopTranscriptReplyModel,
+  type WorkshopTranscriptRenderOptions
+} from './WorkshopTranscriptModelHeader';
+import { WORKSHOP_TURN_MODEL_SEPARATOR } from '@shared/workshop/workshopTurnModelLabel';
 
-export function renderWorkshopTranscriptMarkdown(transcript: WorkshopTranscript): string {
+export function renderWorkshopTranscriptMarkdown(
+  transcript: WorkshopTranscript,
+  options: WorkshopTranscriptRenderOptions = {}
+): string {
   const blocks = [
     `# ${escapeInline(transcript.title)}`,
     `_${escapeInline(describeWorkshopTranscript(transcript, countWorkshopTranscriptMessages(transcript)))}_`,
-    ...transcript.entries.map((entry) => `---\n\n${renderEntry(entry)}`)
+    ...transcript.entries.map((entry) => `---\n\n${renderEntry(entry, options)}`)
   ];
   return `${blocks.join('\n\n')}\n`;
 }
 
-function renderEntry(entry: WorkshopTranscriptLine): string {
+function renderEntry(entry: WorkshopTranscriptLine, options: WorkshopTranscriptRenderOptions): string {
   switch (entry.kind) {
     // A model slice (ADR 2026-11-03 D8) reads like the thread's other dividers.
     case 'model-slice':
@@ -54,8 +62,12 @@ function renderEntry(entry: WorkshopTranscriptLine): string {
       return lines.join('\n\n');
     }
     case 'reply': {
+      // The reply's model follows its speaker, as in the thread's header (D10).
+      const model = workshopTranscriptReplyModel(entry, options);
       const lines = [
         `### ${escapeInline(entry.speaker)}${
+          model ? `${WORKSHOP_TURN_MODEL_SEPARATOR}${escapeInline(model)}` : ''
+        }${
           entry.privateWith ? ' · private' : ''
         }${bookmarkSuffix(entry)}`
       ];

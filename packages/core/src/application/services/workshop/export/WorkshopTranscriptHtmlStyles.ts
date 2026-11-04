@@ -384,6 +384,18 @@ export const WORKSHOP_TRANSCRIPT_MIRRORED_STYLES: readonly WorkshopTranscriptMir
   flex-wrap: wrap;
   gap: 10px;
 }
+[data-pm-surface="workshop"] .pm-ws-turn-head > .pm-ws-eyebrow {
+  min-width: 0;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
 [data-pm-surface="workshop"] .pm-ws-private-thread-label {
   display: inline-flex;
   align-items: center;
