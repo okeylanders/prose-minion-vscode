@@ -938,6 +938,15 @@
   justify-content: flex-end;
   margin-top: 4px;
 }
+/* Bookmark (ADR 2026-11-03 D5): pressed reads as the accent, icon filled. */
+[data-pm-surface="workshop"] .pm-ws-turn-actions .pm-ws-bookmark-toggle-on {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 14%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-bookmark-toggle-on svg {
+  fill: currentColor;
+}
 
 /* Quick actions */
 [data-pm-surface="workshop"] .pm-ws-qbar {

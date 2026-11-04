@@ -42,7 +42,14 @@ interface WorkshopThreadProps {
   /** Why branching is paused for the whole room right now, if it is. */
   branchPausedReason?: string;
   onBranch?: (turn: WorkshopTurn) => void;
+  /** Turns that carry a bookmark (ADR 2026-11-03 D5). */
+  bookmarkedTurnIds?: ReadonlySet<string>;
+  /** True while the room's mutation lock is held. */
+  bookmarkDisabled?: boolean;
+  onToggleBookmark?: (turnId: string, bookmarked: boolean) => void;
 }
+
+const NO_BOOKMARKS: ReadonlySet<string> = new Set();
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   turns,
@@ -63,7 +70,10 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onRewind,
   turnBranchability = {},
   branchPausedReason,
-  onBranch
+  onBranch,
+  bookmarkedTurnIds = NO_BOOKMARKS,
+  bookmarkDisabled = false,
+  onToggleBookmark
 }) => (
   <>
     {turns.map((turn) => {
@@ -110,6 +120,9 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           branchability={turnBranchability[turn.id]}
           branchPausedReason={branchPausedReason}
           onBranch={onBranch}
+          bookmarked={bookmarkedTurnIds.has(turn.id)}
+          bookmarkDisabled={bookmarkDisabled}
+          onToggleBookmark={onToggleBookmark}
         />
       );
     })}

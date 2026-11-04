@@ -13,7 +13,7 @@ import {
   useWorkshopRailTabs,
   UseWorkshopRailTabsOptions
 } from '@hooks/domain/workshop/controllers/useWorkshopRailTabs';
-import { WorkshopTodoItem } from '@messages';
+import { WorkshopBookmarkSummary, WorkshopTodoItem } from '@messages';
 import type { ContextSourceEntry } from '@shared/types';
 
 const row = (label: string, overrides: Partial<ContextSourceEntry> = {}): ContextSourceEntry => ({
@@ -43,6 +43,15 @@ const todo = (id: string, overrides: Partial<WorkshopTodoItem> = {}): WorkshopTo
   createdAt: 1,
   stale: false,
   ...overrides
+});
+
+const bookmark = (id: string, inWindow = true): WorkshopBookmarkSummary => ({
+  id,
+  turnId: `turn-${id}`,
+  label: `Jill · ${id}`,
+  participant: 'host',
+  personaId: 'jill',
+  inWindow
 });
 
 const renderTabs = (initial: Partial<UseWorkshopRailTabsOptions> = {}) =>
@@ -229,6 +238,45 @@ describe('useWorkshopRailTabs', () => {
       rerender({ todos: [todo('a'), todo('b')], roomKey: 'room:1', readInKey: 'jill', readIn: [row('characters/rabbit.md')] });
       expect(result.current.unseenNotesCount).toBe(1);
       expect(result.current.unseenMaterialCount).toBe(0);
+    });
+  });
+
+  describe('bookmarks on the Notes badge (Slice 5)', () => {
+    it('badges a bookmark set while Notes is hidden, beside the to-dos, and clears on selecting Notes', () => {
+      const { result, rerender } = renderTabs({ todos: [todo('a')], bookmarks: [bookmark('bookmark-1-1')] });
+      expect(result.current.unseenNotesCount).toBe(0);
+
+      rerender({ todos: [todo('a'), todo('b')], roomKey: 'room:1', bookmarks: [bookmark('bookmark-1-1'), bookmark('bookmark-2-1')] });
+      expect(result.current.unseenNotesCount).toBe(2);
+      expect(result.current.activeTab).toBe('material');
+
+      act(() => result.current.selectTab('notes'));
+      expect(result.current.unseenNotesCount).toBe(0);
+    });
+
+    it('never badges a bookmark set while Notes is showing', () => {
+      const { result, rerender } = renderTabs({ initialTab: 'notes' });
+      rerender({ todos: [], roomKey: 'room:1', bookmarks: [bookmark('bookmark-1-1')] });
+      act(() => result.current.selectTab('material'));
+      expect(result.current.unseenNotesCount).toBe(0);
+    });
+
+    it('drops the badge of a bookmark cleared before it was seen, and never for a rename', () => {
+      const { result, rerender } = renderTabs({ bookmarks: [bookmark('bookmark-1-1')] });
+      rerender({ todos: [], roomKey: 'room:1', bookmarks: [bookmark('bookmark-1-1'), bookmark('bookmark-2-1')] });
+      expect(result.current.unseenNotesCount).toBe(1);
+
+      rerender({ todos: [], roomKey: 'room:1', bookmarks: [{ ...bookmark('bookmark-1-1'), label: 'Renamed' }] });
+      expect(result.current.unseenNotesCount).toBe(0);
+    });
+
+    it('never badges the bookmarks a reload or a replaced room brings in', () => {
+      const { result, rerender } = renderTabs({ roomKey: 'pending' });
+      rerender({ todos: [], roomKey: 'room:3', bookmarks: [bookmark('bookmark-1-1'), bookmark('bookmark-2-1')] });
+      expect(result.current.unseenNotesCount).toBe(0);
+
+      rerender({ todos: [], roomKey: 'room:4', bookmarks: [bookmark('bookmark-1-9')] });
+      expect(result.current.unseenNotesCount).toBe(0);
     });
   });
 });

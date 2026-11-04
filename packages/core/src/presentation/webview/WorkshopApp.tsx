@@ -44,6 +44,7 @@ import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { WorkshopRail } from './components/workshop/WorkshopRail';
 import { partitionContextSources } from '@utils/workshop/contextSources';
 import { useWorkshopReadIn } from '@hooks/domain/workshop/useWorkshopReadIn';
+import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmarks';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
 import { WorkshopParticipantRail } from './components/workshop/WorkshopParticipantRail';
 import { ContextBudget } from './components/shared/ContextBudget';
@@ -233,6 +234,7 @@ export const WorkshopApp: React.FC = () => {
     [contextSources]
   );
   const readIn = useWorkshopReadIn();
+  const bookmarks = useWorkshopBookmarks({ onBeforeChange: workshop.clearError });
   // The rail's tab is this viewer's preference (webview state, never the
   // session file); the controller re-baselines its badges on each new room,
   // and Material's on each new chat target.
@@ -243,6 +245,7 @@ export const WorkshopApp: React.FC = () => {
     roomKey: railRoomKey,
     readIn: readInSources,
     readInKey: chatTargetIdentity,
+    bookmarks: bookmarks.bookmarks,
     initialTab: persistedRailTab?.workshopRailTab
   });
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
@@ -414,6 +417,7 @@ export const WorkshopApp: React.FC = () => {
 
   useWorkshopAppMessageRouter({
     readIn,
+    bookmarks,
     workshopRoom: workshop,
     workshopSessions,
     widgetHost,
@@ -1226,6 +1230,9 @@ export const WorkshopApp: React.FC = () => {
             turnBranchability={workshop.turnRewindability}
             branchPausedReason={branchPausedReason}
             onBranch={requestBranch}
+            bookmarkedTurnIds={bookmarks.bookmarkedTurnIds}
+            bookmarkDisabled={roomMutationLocked}
+            onToggleBookmark={bookmarks.setTurnBookmark}
           />
 
           {showLiveTurn && (

@@ -24,6 +24,8 @@ import {
   citationDisplayLabel
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
+import { WorkshopBookmarkToggle } from './WorkshopBookmarkToggle';
+import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -85,6 +87,12 @@ interface WorkshopTurnBubbleProps {
   /** Why branching is paused for the whole room right now, if it is. */
   branchPausedReason?: string;
   onBranch?: (turn: WorkshopTurn) => void;
+  /** Whether this turn carries a bookmark (ADR 2026-11-03 D5). */
+  bookmarked?: boolean;
+  /** True while the room's mutation lock is held. */
+  bookmarkDisabled?: boolean;
+  /** Offered only on turns the host would accept. */
+  onToggleBookmark?: (turnId: string, bookmarked: boolean) => void;
 }
 
 /**
@@ -349,8 +357,21 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onRewind,
   branchability,
   branchPausedReason,
-  onBranch
+  onBranch,
+  bookmarked = false,
+  bookmarkDisabled = false,
+  onToggleBookmark
 }) => {
+  const bookmarkAction = onToggleBookmark && isWorkshopBookmarkableTurn(turn)
+    ? (
+        <WorkshopBookmarkToggle
+          turnId={turn.id}
+          bookmarked={bookmarked}
+          disabled={bookmarkDisabled}
+          onToggle={onToggleBookmark}
+        />
+      )
+    : null;
   const rewindAction = rewindability && onRewind
     ? (
         <WorkshopRewindAction
@@ -511,8 +532,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               </div>
             );
           })()}
-          {(rewindAction || branchAction) && (
+          {(bookmarkAction || rewindAction || branchAction) && (
             <div className="pm-ws-turn-actions pm-ws-turn-actions-writer">
+              {bookmarkAction}
               {rewindAction}
               {branchAction}
             </div>
@@ -713,6 +735,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           <button type="button" onClick={() => onSave(turn.content, turn)}>
             <Icon name="save" size={13} /> Save to notes
           </button>
+          {bookmarkAction}
           {canTalkDirectly && turn.toolId && (
             <button type="button" onClick={() => onTalkDirectly(turn.toolId!)}>
               <Icon name="dialogue" size={13} /> Talk directly to {turn.toolLabel}
