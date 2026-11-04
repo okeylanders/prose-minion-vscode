@@ -13,6 +13,17 @@ import {
   WorkshopRailTab
 } from '@hooks/domain/workshop/controllers/useWorkshopRailTabs';
 import { WorkshopContextAttachmentSnapshot, WorkshopTodoItem } from '@messages';
+import type { ContextSourceEntry } from '@shared/types';
+
+const readInRow = (label: string, deliveredAt = 1_000): ContextSourceEntry => ({
+  kind: 'resource',
+  origin: 'host',
+  label,
+  configuredResource: { group: 'characters', path: label },
+  sizeChars: 120,
+  isEstimate: true,
+  deliveredAt
+});
 
 const attachment: WorkshopContextAttachmentSnapshot = {
   id: 'ctx-1',
@@ -42,7 +53,10 @@ const todo = (id: string, overrides: Partial<WorkshopTodoItem> = {}): WorkshopTo
   ...overrides
 });
 
-const panelProps = (todos: WorkshopTodoItem[] = []): Omit<WorkshopRailProps, 'tabs' | 'roomKey'> => ({
+const panelProps = (
+  todos: WorkshopTodoItem[] = [],
+  readIn: ContextSourceEntry[] = []
+): Omit<WorkshopRailProps, 'tabs' | 'roomKey'> => ({
   excerpt: {
     excerpt: null,
     shelvedExcerpt: null,
@@ -71,6 +85,12 @@ const panelProps = (todos: WorkshopTodoItem[] = []): Omit<WorkshopRailProps, 'ta
     onRunWizard: jest.fn(),
     onCancelWizard: jest.fn()
   },
+  readIn: {
+    entries: readIn,
+    participantIdentity: 'jill',
+    participantLabel: 'Jill',
+    onOpenReader: jest.fn()
+  },
   todos: { todos, onAction: jest.fn(), onShowSource: jest.fn() }
 });
 
@@ -79,7 +99,13 @@ const StatefulRail: React.FC<{
   initialTab?: WorkshopRailTab;
   roomKey?: string;
 }> = ({ props, initialTab, roomKey = 'room:1' }) => {
-  const tabs = useWorkshopRailTabs({ todos: props.todos.todos, roomKey, initialTab });
+  const tabs = useWorkshopRailTabs({
+    todos: props.todos.todos,
+    roomKey,
+    readIn: props.readIn.entries,
+    readInKey: props.readIn.participantIdentity,
+    initialTab
+  });
   return <WorkshopRail tabs={tabs} roomKey={roomKey} {...props} />;
 };
 
@@ -261,5 +287,51 @@ describe('WorkshopRail', () => {
     fireEvent.click(notes);
     expect(screen.getByRole('tab', { name: 'Notes, 3 open' })).toBeTruthy();
     expect(screen.queryByText('2 new')).toBeNull();
+  });
+
+  it('shows Read in under Context on Material, and counts its rows as material', () => {
+    const props = panelProps([], [readInRow('characters/rabbit.md')]);
+    render(<StatefulRail props={props} />);
+    const panel = screen.getByRole('tabpanel', { name: /Material/ });
+    const readIn = within(panel).getByRole('region', { name: 'Read in by Jill' });
+    expect(within(readIn).getByText('characters/rabbit.md')).toBeTruthy();
+    expect(tab(/^Material/).getAttribute('aria-label')).toBe('Material, 2 items');
+
+    fireEvent.click(within(readIn).getByRole('button', { name: 'Open characters/rabbit.md in the reader' }));
+    expect(props.readIn.onOpenReader).toHaveBeenCalledWith(props.readIn.entries[0]);
+  });
+
+  it('badges Material for a row read while Notes is showing, and never switches the tab', () => {
+    const props = panelProps([], [readInRow('characters/rabbit.md')]);
+    const { rerender } = render(<StatefulRail props={props} initialTab="notes" />);
+    expect(tab(/^Material/).getAttribute('aria-label')).toBe('Material, 2 items');
+
+    const next = {
+      ...props,
+      readIn: { ...props.readIn, entries: [...props.readIn.entries, readInRow('characters/duchess.md', 2_000)] }
+    };
+    rerender(<StatefulRail props={next} initialTab="notes" />);
+    const material = screen.getByRole('tab', { name: 'Material, 3 items, 1 new' });
+    expect(within(material).getByText('1 new')).toBeTruthy();
+    expect(tab(/^Notes/).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(material);
+    expect(screen.getByRole('tab', { name: 'Material, 3 items' })).toBeTruthy();
+  });
+
+  it('does not badge Material when the chat target changes', () => {
+    const props = panelProps([], [readInRow('characters/rabbit.md')]);
+    const { rerender } = render(<StatefulRail props={props} initialTab="notes" />);
+    const guest = {
+      ...props,
+      readIn: {
+        ...props.readIn,
+        participantIdentity: 'tool:continuity',
+        participantLabel: 'Continuity',
+        entries: [readInRow('characters/hatter.md', 5_000), readInRow('characters/queen.md', 6_000)]
+      }
+    };
+    rerender(<StatefulRail props={guest} initialTab="notes" />);
+    expect(screen.getByRole('tab', { name: 'Material, 3 items' })).toBeTruthy();
   });
 });

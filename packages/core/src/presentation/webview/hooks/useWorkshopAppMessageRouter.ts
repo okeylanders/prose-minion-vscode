@@ -20,6 +20,7 @@ import {
 } from '@hooks/fulltab/useFullTabChrome';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
+import type { UseWorkshopReadInReturn } from '@hooks/domain/workshop/useWorkshopReadIn';
 import type {
   UseWorkshopExcerptVerifyReturn
 } from '@hooks/domain/useWorkshopExcerptVerify';
@@ -64,6 +65,8 @@ import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 export interface WorkshopAppMessageRouterDeps {
   workshopRoom: UseWorkshopRoomReturn;
   workshopSessions: UseWorkshopSessionsReturn;
+  /** The Read in reader's file content (Wayfinding Slice 2). */
+  readIn: UseWorkshopReadInReturn;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -90,6 +93,7 @@ export function buildWorkshopAppMessageRoutes(
   const {
     workshopRoom,
     workshopSessions,
+    readIn,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -134,6 +138,7 @@ export function buildWorkshopAppMessageRoutes(
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_READ_IN_RESOURCE_CONTENT]: readIn.handleReadInResourceContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,

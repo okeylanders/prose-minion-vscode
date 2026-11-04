@@ -11,7 +11,7 @@ import {
   WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY
 } from '@/application/services/workshop/WorkshopTranscriptRecallXmlCodec';
 import { countWords } from '@/utils/textUtils';
-import * as path from 'path';
+import { isSafeConfiguredResourcePath } from '@/application/services/workshop/WorkshopConfiguredResourceLookup';
 
 export type WorkshopCapabilityRejectionReason =
   | 'xml-declaration'
@@ -352,7 +352,7 @@ export class WorkshopCapabilityXmlCodec {
         operation: 'resource.read'
       };
     }
-    if (!this.isSafeResourcePath(resourcePath)) {
+    if (!isSafeConfiguredResourcePath(resourcePath)) {
       return {
         kind: 'invalid',
         reason: 'invalid-resource-path',
@@ -414,14 +414,6 @@ export class WorkshopCapabilityXmlCodec {
     return group !== undefined && !isContextPathGroup(group)
       ? { kind: 'invalid', reason: 'unknown-resource-group', field: 'group' }
       : undefined;
-  }
-
-  private isSafeResourcePath(value: string): boolean {
-    if (!value || value.includes('\\') || value.includes('\0')) return false;
-    if (path.posix.isAbsolute(value) || path.win32.isAbsolute(value)) return false;
-    if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return false;
-    const segments = value.split('/');
-    return segments.every(segment => segment.length > 0 && segment !== '.' && segment !== '..');
   }
 
   private validateFields(

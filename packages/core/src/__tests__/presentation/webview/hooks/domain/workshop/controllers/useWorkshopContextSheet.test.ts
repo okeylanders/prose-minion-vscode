@@ -6,6 +6,18 @@ import {
   UseWorkshopContextSheetOptions
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 import { WorkshopContextAttachmentSnapshot } from '@messages';
+import type { ContextSourceEntry } from '@shared/types';
+
+const readInRow = (overrides: Partial<ContextSourceEntry> = {}): ContextSourceEntry => ({
+  kind: 'resource',
+  origin: 'host',
+  label: 'characters/rabbit.md',
+  configuredResource: { group: 'characters', path: 'characters/rabbit.md' },
+  sizeChars: 240,
+  isEstimate: true,
+  deliveredAt: 5_000,
+  ...overrides
+});
 
 const fileAttachment: WorkshopContextAttachmentSnapshot = {
   id: 'ctx-file',
@@ -33,6 +45,11 @@ const options = (
   updateContextText: jest.fn(),
   openExcerptSelector: jest.fn(),
   requestShelfReplacement: jest.fn(),
+  readInContent: null,
+  requestReadInResource: jest.fn(),
+  openReadInResource: jest.fn(),
+  clearReadInContent: jest.fn(),
+  readInScopeKey: 'room:1\u0000jill',
   ...overrides
 });
 
@@ -107,5 +124,150 @@ describe('useWorkshopContextSheet', () => {
     expect(props.requestShelfReplacement).toHaveBeenNthCalledWith(2, 'choose');
     expect(result.current.textSheet).toBeNull();
     expect(props.openExcerptSelector).not.toHaveBeenCalled();
+  });
+
+  describe('the Read in reader (Wayfinding Slice 2)', () => {
+    const rabbit = { group: 'characters' as const, path: 'characters/rabbit.md' };
+
+    it('opens a read-in row read-only and asks the host for that file', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+
+      expect(props.requestReadInResource).toHaveBeenCalledWith(rabbit);
+      expect(result.current.textSheet?.mode).toEqual({
+        kind: 'read-in',
+        label: 'characters/rabbit.md',
+        group: 'characters',
+        path: 'characters/rabbit.md',
+        participantLabel: 'Jill',
+        deliveredAt: 5_000
+      });
+      expect(result.current.sheetBody).toEqual({
+        value: undefined,
+        loading: true,
+        error: undefined,
+        truncated: undefined,
+        canOpenInEditor: false
+      });
+    });
+
+    it('opens nothing for a row with no configured file', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow({ configuredResource: undefined }), 'Jill'));
+      act(() => result.current.openReadInSheet(readInRow({ kind: 'dictionary' }), 'Jill'));
+      expect(result.current.textSheet).toBeNull();
+      expect(props.requestReadInResource).not.toHaveBeenCalled();
+    });
+
+    it('shows only the reply for the file on screen, with its truncation and error', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+
+      props.readInContent = {
+        requestId: 'readin-2',
+        group: 'characters',
+        path: 'characters/hatter.md',
+        content: 'The wrong file.',
+        canOpenInEditor: true
+      };
+      rerender();
+      expect(result.current.sheetBody?.loading).toBe(true);
+      expect(result.current.sheetBody?.value).toBeUndefined();
+
+      props.readInContent = { requestId: 'readin-1', ...rabbit, content: 'Down the hole.', truncated: true, canOpenInEditor: true };
+      rerender();
+      expect(result.current.sheetBody).toEqual({
+        value: 'Down the hole.',
+        loading: false,
+        error: undefined,
+        truncated: true,
+        canOpenInEditor: true
+      });
+
+      props.readInContent = { requestId: 'readin-1', ...rabbit, error: 'That file could not be read.', canOpenInEditor: false };
+      rerender();
+      expect(result.current.sheetBody).toMatchObject({ loading: false, error: 'That file could not be read.' });
+    });
+
+    it('opens the file beside through the reader transport, never as an attachment', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+      act(() => result.current.openAttachmentInEditor());
+      expect(props.openReadInResource).toHaveBeenCalledWith(rabbit);
+      expect(props.openContextAttachmentFile).not.toHaveBeenCalled();
+    });
+
+    it('applies nothing, and clears the reader on close', () => {
+      const props = options();
+      const { result } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+      act(() => result.current.applyTextSheet('Anything at all'));
+      expect(props.addContextText).not.toHaveBeenCalled();
+      expect(props.updateContextText).not.toHaveBeenCalled();
+      expect(props.pinExcerpt).not.toHaveBeenCalled();
+      expect(result.current.textSheet).not.toBeNull();
+
+      act(() => result.current.closeTextSheet());
+      expect(props.clearReadInContent).toHaveBeenCalledTimes(1);
+      expect(result.current.textSheet).toBeNull();
+      expect(result.current.sheetBody).toBeUndefined();
+    });
+
+    it('closes the reader and drops its request when the room or chat target changes', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+
+      props.readInScopeKey = 'room:1\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
+      expect(props.clearReadInContent).toHaveBeenCalledTimes(1);
+
+      act(() => result.current.openReadInSheet(readInRow(), 'Cliff'));
+      props.readInScopeKey = 'room:2\u0000cliff';
+      rerender();
+      expect(result.current.textSheet).toBeNull();
+      expect(props.clearReadInContent).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves another sheet open when the scope changes', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+      act(() => result.current.openAddTextSheet());
+      props.readInScopeKey = 'room:2\u0000jill';
+      rerender();
+      expect(result.current.textSheet?.mode).toEqual({ kind: 'context-new' });
+    });
+
+    it('gives each reader request its own sheet key, and every authoring mode one shared key (PR #186 F-02)', () => {
+      const props = options();
+      const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
+
+      act(() => result.current.openAddTextSheet());
+      expect(result.current.sheetKey).toBe('sheet');
+      act(() => result.current.openPasteSheet());
+      expect(result.current.sheetKey).toBe('sheet');
+
+      act(() => result.current.openReadInSheet(readInRow(), 'Jill'));
+      props.readInContent = { requestId: 'readin-1', ...rabbit, canOpenInEditor: false };
+      rerender();
+      const first = result.current.sheetKey;
+      expect(first).toBe('read-in:readin-1');
+
+      act(() => result.current.openReadInSheet(readInRow({
+        label: 'characters/hatter.md',
+        configuredResource: { group: 'characters', path: 'characters/hatter.md' }
+      }), 'Jill'));
+      // Before the hook's state for B lands, B still keys apart from A.
+      expect(result.current.sheetKey).not.toBe(first);
+      props.readInContent = { requestId: 'readin-2', group: 'characters', path: 'characters/hatter.md', canOpenInEditor: false };
+      rerender();
+      expect(result.current.sheetKey).toBe('read-in:readin-2');
+    });
   });
 });

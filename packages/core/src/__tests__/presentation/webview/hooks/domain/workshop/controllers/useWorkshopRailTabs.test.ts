@@ -3,8 +3,8 @@
 /**
  * useWorkshopRailTabs (ADR 2026-11-03 D1): the rail's tab is restored and
  * persisted per viewer, and the Notes badge counts open, current to-dos that
- * arrived while Notes was hidden, whoever added them. Nothing ever switches
- * the tab.
+ * arrived while Notes was hidden, whoever added them. Slice 2: the Material
+ * badge counts read-in rows by the same rule. Nothing ever switches the tab.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -14,6 +14,18 @@ import {
   UseWorkshopRailTabsOptions
 } from '@hooks/domain/workshop/controllers/useWorkshopRailTabs';
 import { WorkshopTodoItem } from '@messages';
+import type { ContextSourceEntry } from '@shared/types';
+
+const row = (label: string, overrides: Partial<ContextSourceEntry> = {}): ContextSourceEntry => ({
+  kind: 'resource',
+  origin: 'host',
+  label,
+  configuredResource: { group: 'characters', path: label },
+  sizeChars: 120,
+  isEstimate: true,
+  deliveredAt: 1_000,
+  ...overrides
+});
 
 const todo = (id: string, overrides: Partial<WorkshopTodoItem> = {}): WorkshopTodoItem => ({
   id,
@@ -132,5 +144,91 @@ describe('useWorkshopRailTabs', () => {
     rerender({ todos: [...todos], roomKey: 'room:1' });
     rerender({ todos: [...todos, todo('b')], roomKey: 'room:1' });
     expect(result.current.unseenNotesCount).toBe(2);
+  });
+
+  describe('the Material badge (Slice 2)', () => {
+    const onNotes = (initial: Partial<UseWorkshopRailTabsOptions> = {}) =>
+      renderTabs({ initialTab: 'notes', readInKey: 'jill', ...initial });
+
+    it('badges a read-in row that arrives while Material is hidden, and clears on selecting it', () => {
+      const first = row('characters/rabbit.md');
+      const { result, rerender } = onNotes({ readIn: [first] });
+      expect(result.current.unseenMaterialCount).toBe(0);
+
+      rerender({ todos: [], roomKey: 'room:1', readInKey: 'jill', readIn: [first, row('characters/duchess.md')] });
+      expect(result.current.unseenMaterialCount).toBe(1);
+      expect(result.current.unseenNotesCount).toBe(0);
+      expect(result.current.activeTab).toBe('notes');
+
+      act(() => result.current.selectTab('material'));
+      expect(result.current.unseenMaterialCount).toBe(0);
+    });
+
+    it('never badges while Material is showing', () => {
+      const { result, rerender } = renderTabs({ readInKey: 'jill', readIn: [] });
+      rerender({ todos: [], roomKey: 'room:1', readInKey: 'jill', readIn: [row('characters/rabbit.md')] });
+      expect(result.current.unseenMaterialCount).toBe(0);
+    });
+
+    it('does not badge a row for being superseded, and drops a badge whose row went stale', () => {
+      const early = row('characters/rabbit.md');
+      const { result, rerender } = onNotes({ readIn: [early] });
+      rerender({ todos: [], roomKey: 'room:1', readInKey: 'jill', readIn: [{ ...early, stale: true }] });
+      expect(result.current.unseenMaterialCount).toBe(0);
+
+      const reread = row('characters/rabbit.md', { deliveredAt: 2_000 });
+      rerender({ todos: [], roomKey: 'room:1', readInKey: 'jill', readIn: [{ ...early, stale: true }, reread] });
+      expect(result.current.unseenMaterialCount).toBe(1);
+
+      rerender({
+        todos: [],
+        roomKey: 'room:1',
+        readInKey: 'jill',
+        readIn: [{ ...early, stale: true }, { ...reread, stale: true }]
+      });
+      expect(result.current.unseenMaterialCount).toBe(0);
+    });
+
+    it('never badges what another chat target already read', () => {
+      const { result, rerender } = onNotes({ readIn: [row('characters/rabbit.md')] });
+      rerender({
+        todos: [],
+        roomKey: 'room:1',
+        readInKey: 'tool:continuity',
+        readIn: [row('Continuity report', { kind: 'tool-evidence', origin: 'tool' }), row('characters/hatter.md')]
+      });
+      expect(result.current.unseenMaterialCount).toBe(0);
+
+      rerender({
+        todos: [],
+        roomKey: 'room:1',
+        readInKey: 'tool:continuity',
+        readIn: [
+          row('Continuity report', { kind: 'tool-evidence', origin: 'tool' }),
+          row('characters/hatter.md'),
+          row('characters/queen.md', { deliveredAt: 3_000 })
+        ]
+      });
+      expect(result.current.unseenMaterialCount).toBe(1);
+    });
+
+    it('never badges the rows a replaced room brings in', () => {
+      const { result, rerender } = onNotes({ readIn: [] , roomKey: 'pending' });
+      rerender({ todos: [], roomKey: 'room:4', readInKey: 'jill', readIn: [row('characters/rabbit.md')] });
+      expect(result.current.unseenMaterialCount).toBe(0);
+    });
+
+    it('keeps the two tabs\' badges apart', () => {
+      const { result, rerender } = renderTabs({ readInKey: 'jill', readIn: [] });
+      act(() => result.current.selectTab('notes'));
+      rerender({ todos: [todo('a')], roomKey: 'room:1', readInKey: 'jill', readIn: [row('characters/rabbit.md')] });
+      expect(result.current.unseenNotesCount).toBe(0);
+      expect(result.current.unseenMaterialCount).toBe(1);
+
+      act(() => result.current.selectTab('material'));
+      rerender({ todos: [todo('a'), todo('b')], roomKey: 'room:1', readInKey: 'jill', readIn: [row('characters/rabbit.md')] });
+      expect(result.current.unseenNotesCount).toBe(1);
+      expect(result.current.unseenMaterialCount).toBe(0);
+    });
   });
 });

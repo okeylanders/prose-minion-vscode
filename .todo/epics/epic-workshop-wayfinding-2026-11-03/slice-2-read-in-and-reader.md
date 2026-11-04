@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Planned (after Slice 1)
+**Status:** Built (`a88ef63`, `e1111b2`; review fixes `7a153fd`, `1687b0a`, `3c184c2`, `fe0d47d`, `cf1b8c4`, `e69125b`; the last replaces the focus trap), on `epic/workshop-wayfinding-slice-2-read-in`; PR #186 in review
 
 ## Outcome
 
@@ -13,6 +13,15 @@ current chat target fetched on its own, and names that participant. A
 and an **Open beside** button. Every other row kind shows but doesn't open yet.
 
 The only contract change is two new message pairs. No persisted field changes.
+
+## Since Slice 1
+
+- `WorkshopRail` keeps both tab panels mounted and hides the inactive one
+  (PR #184 F-01). The Read in block mounts inside the Material panel, and
+  whatever local state it holds survives a tab switch.
+- `useWorkshopRailTabs` badges only Notes today (`unseenNotesCount`). The
+  Material badge below generalizes it per tab; keep the room re-baseline
+  (`roomKey`) and the rule that nothing switches a tab.
 
 ## Build
 
@@ -119,12 +128,20 @@ The only contract change is two new message pairs. No persisted field changes.
 
 ## Completion Criteria
 
-- [ ] The Read in block lists the chat target's fetched rows and names the
+- [x] The Read in block lists the chat target's fetched rows and names the
       participant. It changes when the chat target changes.
-- [ ] Resource rows open in the read-only sheet, and Open beside opens the file
-      beside the Workshop.
-- [ ] The host serves only configured resources, and refusals are tested.
-- [ ] The popover and the rail use one partition.
-- [ ] Read-in rows that arrive while Material is hidden badge it; a change of
-      chat target doesn't.
-- [ ] The epic's per-slice verification passes. Counts are recorded.
+      (`WorkshopReadInPanel.test.tsx`, `WorkshopApp.readIn.test.tsx`)
+- [x] Resource rows open in the read-only sheet, and Open beside opens the file
+      beside the Workshop. (`WorkshopTextSheet.test.tsx`,
+      `useWorkshopContextSheet.test.ts`, `useWorkshopReadIn.test.ts`,
+      `WorkshopReadInRoutes.test.ts`, `WorkshopApp.readIn.test.tsx`; the
+      editor column itself is the Slice 8 live pass)
+- [x] The host serves only configured resources, and refusals are tested.
+      (`WorkshopReadInRoutes.test.ts`)
+- [x] The popover and the rail use one partition. (`contextSources.test.ts`,
+      `ContextBudget.test.tsx`)
+- [x] Read-in rows that arrive while Material is hidden badge it; a change of
+      chat target doesn't. (`useWorkshopRailTabs.test.ts`,
+      `WorkshopRail.test.tsx`, `WorkshopApp.readIn.test.tsx`)
+- [x] The epic's per-slice verification passes. Counts are recorded (README
+      progress notes).

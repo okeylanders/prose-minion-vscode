@@ -1,6 +1,6 @@
 # Epic: Workshop Wayfinding
 
-**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 is in review as a PR into the epic.
+**Status:** Slice 0 (spec) on `epic/workshop-wayfinding`, from `main` at `cfac12b` (v2.12.0). Okey approved starting on 2026-11-03 and confirmed D9 the same day. Slice 1 merged (PR #184, `d45d57c`). Slice 6 merged (PR #185, `07d24e7`). Slice 2 is built and in review (PR #186).
 **Priority:** Medium
 **Created:** 2026-11-03
 **Integration branch:** `epic/workshop-wayfinding`. Each slice is built on its own branch, `epic/workshop-wayfinding-slice-<N>-<slug>`, and merges into the epic through a reviewed PR.
@@ -48,12 +48,12 @@ the ADR:
 | # | Slice | Outcome | Decisions | Status |
 |---|---|---|---|---|
 | 0 | Spec | ADR, this epic, slice docs, design snapshot, feature notes linked | All | Done |
-| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | In review (PR); built in `94d6b86`, `e188ea9` |
-| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Planned |
+| 1 | [Rail tabs](slice-1-rail-tabs.md) | `WorkshopRail` with Material and Notes tabs, the Tools block retired, a Notes badge for to-dos added while it's hidden | D1 | Done: PR #184, merged at `d45d57c` |
+| 2 | [Read in and the reader](slice-2-read-in-and-reader.md) | The Read in block, badging Material while it's hidden; resource rows open in the reader sheet and beside the Workshop | D1, D2, D3, D4 (access) | Built, PR #186 in review |
 | 3 | [Read-in provenance](slice-3-read-in-provenance.md) | Rows record their card, line range, and fingerprint; jump to the card; "changed since" | D3, D4, D9 | Planned (D9 confirmed 2026-11-03) |
 | 4 | [Bookmarks on the host](slice-4-bookmarks-host.md) | Bookmark ledger, routes, persistence, whole-room operations, export | D5, D6, D9, D10 | Planned |
 | 5 | [Bookmarks in the rail and thread](slice-5-bookmarks-ui.md) | Bubble toggle, Notes list, rename, jump, out-of-window reader | D5, D6 | Planned |
-| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | In review (PR #185), review fixes pushed |
+| 6 | [Model stamps](slice-6-model-stamps.md) | Every reply records requested and served models | D7, D9 | Done: PR #185, merged at `07d24e7` |
 | 7 | [Model slices](slice-7-model-slices.md) | Derived slices in the thread and in export; served-by note | D8, D10 | Planned |
 | 8 | Verify live | Extension Development Host pass; ADR → Accepted; feature notes archived; memory bank | — | Pending (needs a human with VS Code) |
 
@@ -276,3 +276,114 @@ the ADR:
       ADR is unchanged.
   - **Counts.** 598 suites / 8,480 tests / 59 snapshots, all passing.
     Typecheck is clean, and lint has 0 errors and 1,133 warnings.
+- **2026-11-03. Slice 2 (Read in and the reader).** Landed in `a88ef63` (host
+  routes) and `e1111b2` (webview), on PR #186.
+  - **What landed.**
+    - `WORKSHOP_REQUEST_READ_IN_RESOURCE` → `WORKSHOP_READ_IN_RESOURCE_CONTENT`
+      and `WORKSHOP_OPEN_READ_IN_RESOURCE`, registered as reads by
+      `WorkshopContextHandler` beside the attachment content and open-file
+      routes, served by `WorkshopReadInRoutes`.
+    - Resolution is `resource.read`'s, now one module
+      (`WorkshopConfiguredResourceLookup`: the safe-path rule the codec used,
+      exact-then-unique-case-folded matching, UTF-8 slicing), over the intake
+      catalog, which is built on the same `ContextResourceResolver` instance
+      as the persona capability. Refused by reason, with no content echoed
+      and no path or content logged: an unknown group, an unlisted file
+      (including a known group with nothing configured at that path), an
+      absolute POSIX or Windows path, a URI, `..`, a file over
+      `readSourceBytes`. Content stops at `readBytes` and says `truncated`.
+    - `partitionContextSources` and `readInOpenAction`
+      (`utils/workshop/contextSources.ts`); `WorkshopReadInPanel` in the
+      Material panel; the per-tab badge in `useWorkshopRailTabs`; the
+      `read-in` sheet mode; `useWorkshopReadIn` for transport.
+  - **Counts.** Before, at `2108bdc`: 594 suites / 8,425 tests / 59
+    snapshots. After: 599 / 8,499 / 59, all passing. `npm run typecheck`
+    clean. `npm run lint`: 0 errors, 1,133 → 1,133 warnings: three new
+    PascalCase `naming-convention` warnings (`WorkshopReadInPanel`,
+    `RowBody`, the new App test's `PmLogo` mock) and three `curly` warnings
+    gone with the safe-path rule's move out of the codec. No `from 'vscode'`
+    in core.
+  - **Sizes.** New files are all under 500 lines. Files already over 500
+    that grew: `WorkshopApp.tsx` 1,673 → 1,699 (the read-in wiring; the
+    sheet-body derivation moved out to the controller;
+    [tech debt](../../tech-debt/2026-11-03-workshop-app-root-size.md));
+    `WorkshopContextHandler.ts` 977 → 993 (two registrations and the
+    collaborator; the route bodies live in `WorkshopReadInRoutes`);
+    `WorkshopContextIntakeService.ts` 590 → 595 (`readText`, which `load`
+    now uses too); `styles/workshop/context.css` 782 → 892 (the Read in
+    rules; Jest maps no CSS, so a new stylesheet would need a mock in every
+    `WorkshopApp` test).
+  - **Deviations.**
+    - *Reply shape.* `WORKSHOP_READ_IN_RESOURCE_CONTENT` echoes `group` and
+      `path` as plain strings, exactly as sent, so the sheet matches its
+      reply even when the host refuses a malformed pair. The requests use
+      `ConfiguredResourceRef`.
+    - *Material's count* now includes read-in rows ("Material, N items").
+    - *Badge identity* is `kind`, `origin`, `label`, `deliveredAt`; `stale`
+      is left out, so a row being superseded never badges, and a stale row
+      drops its badge (as a stale to-do does).
+    - *Accessible description.* A reader row's `aria-label` names the action;
+      its kind and time are its `aria-describedby`.
+    - *Sheet body.* `useWorkshopContextSheet` returns one `sheetBody`
+      (value, loading, error, truncated, canOpenInEditor) for every mode, so
+      `WorkshopApp` no longer works out attachment loading itself.
+    - *Refusal copy* comes from `workshopReadInRefusalMessage`, a switch with
+      a `never` default; opening a refused pair reports on the existing error
+      path, as its neighbors do.
+  - **Follow-ups.** None new. The live check that Open beside lands in the
+    column beside the Workshop is Slice 8's.
+  - **PR #186 review (Astra, 2026-11-03).** Changes requested on one P2
+    (F-01). Replies were matched by `{ group, path }`, which names a file,
+    not a request, so after Close → reopen a late reply to the first opening
+    seeded the reopened sheet. Fixed in `7a153fd` and `1687b0a`, after the
+    coordinator's merge of the epic (`8d27899`, Slice 6). The content request
+    now carries a webview-minted `requestId` that the host echoes, and only
+    the pending request's first reply is taken. A room replacement or a
+    chat-target change closes an open reader and drops its request.
+    - *Contract change.* The request payload gains `requestId` beyond the
+      slice doc's `{ group, path }`. It is a message field, not a persisted
+      one.
+    - *Counts.* At `1687b0a`: 606 suites / 8,601 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged
+      from the merged head. The ledger is in
+      [the review](../../../docs/pr-reviews/pr-186-workshop-wayfinding-read-in-review.md).
+  - **PR #186 re-review (Astra, 2026-11-03).** F-01 confirmed fixed. A new
+    P2, F-02, had been there since the slice was first built: activating
+    another row behind an open reader showed B's heading over A's body,
+    because the sheet seeds once per mount. Keyboard users could reach that
+    row because nothing kept Tab inside the dialog. Fixed in `3c184c2`.
+    - Each reader request keys its own sheet (`sheetKey`), and authoring
+      modes keep one shared key.
+    - `WorkshopModalShell` gains an opt-in `trapFocus`, which only the text
+      sheet turns on.
+    - The shared modal gap is
+      [tech debt](../../tech-debt/2026-11-03-workshop-modal-focus-containment.md).
+    - *Counts.* At `3c184c2`: 606 suites / 8,608 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 second re-review (Astra, 2026-11-04).** F-01 and F-02
+    resolved. One P3, N-01: the new focus trap ordered stops by document
+    position, so a positive `tabindex` in rendered Markdown escaped the
+    wrap. Fixed in `fe0d47d` by ordering stops as the browser does.
+    Stripping positive `tabindex` from rendered content is
+    [tech debt](../../tech-debt/2026-11-04-markdown-positive-tabindex.md).
+    - *Counts.* At `fe0d47d`: 606 suites / 8,609 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 third re-review (Astra, 2026-11-04).** N-01 confirmed. One P3,
+    N-02: the trap stepped in only at its own first and last stops, so a
+    positive `tabindex` behind the sheet could interleave with the page-wide
+    order. Fixed at the root in `cf1b8c4`: with the trap on, the dialog
+    handles every Tab itself, in its own browser-ordered stops.
+    - *Counts.* At `cf1b8c4`: 606 suites / 8,611 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 fourth re-review (Astra, 2026-11-04).** N-02 confirmed. N-03
+    (P3): the manual traversal missed `<summary>` and stuck on buttons inside
+    `<fieldset disabled>`. The coordinator decided to change approach, and
+    `e69125b` deletes the trap (superseding the N-01 and N-02 traversal
+    code). While any text sheet is open, `FullTabShell`'s new opt-in
+    `inertBehindOverlay` marks the header and split `inert`, and the
+    Workshop's banners carry `inert` in an always-present `display: contents`
+    wrapper. The browser handles tab order inside the sheet.
+    - Tab past the last stop may reach VS Code's chrome, as a native modal's
+      does. Native traversal is Slice 8's live check.
+    - *Counts.* At `e69125b`: 606 suites / 8,610 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.

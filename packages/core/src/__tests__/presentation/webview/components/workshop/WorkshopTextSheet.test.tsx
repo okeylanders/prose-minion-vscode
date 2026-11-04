@@ -20,6 +20,7 @@ import { WorkshopTextSheet } from '@components/workshop/WorkshopTextSheet';
 import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
+import { formatReadInTime } from '@utils/workshop/contextSources';
 
 const renderSheet = (
   overrides: Partial<React.ComponentProps<typeof WorkshopTextSheet>> = {}
@@ -217,5 +218,72 @@ describe('WorkshopTextSheet — verified excerpt provenance', () => {
 
     fireEvent.change(textarea, { target: { value: 'Pasted passage. Edited.' } });
     expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe('WorkshopTextSheet — the Read in reader (Wayfinding Slice 2)', () => {
+  const deliveredAt = Date.UTC(2026, 10, 3, 15, 14);
+  const readInMode: WorkshopTextSheetMode = {
+    kind: 'read-in',
+    label: 'rabbit.md',
+    group: 'characters',
+    path: 'characters/rabbit.md',
+    participantLabel: 'Jill',
+    deliveredAt
+  };
+
+  it('names who read it and when, and renders the file as it is now', () => {
+    renderSheet({ mode: readInMode, value: '# The Rabbit\n\nHe checks his watch.', canOpenInEditor: true });
+
+    expect(screen.getByText('Read in by Jill')).toBeTruthy();
+    expect(screen.getByText(`Read in at ${formatReadInTime(deliveredAt)} · read-only`)).toBeTruthy();
+    expect(screen.getByText(/The file as it is now\. Jill read it at/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'The Rabbit' })).toBeTruthy();
+    expect(screen.getByText('characters/rabbit.md')).toBeTruthy();
+  });
+
+  it('is read-only: no Apply, and the source cannot be edited', () => {
+    renderSheet({ mode: readInMode, value: 'Down the hole.' });
+    expect(screen.queryByRole('button', { name: /save changes|apply|add to context/i })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
+    expect(screen.getByRole('textbox', { name: 'Source: rabbit.md' })).toHaveProperty('readOnly', true);
+  });
+
+  it('offers Close and Open beside, and Open beside asks the host', () => {
+    const onOpenInEditor = jest.fn();
+    const { props } = renderSheet({ mode: readInMode, value: 'Down the hole.', canOpenInEditor: true, onOpenInEditor });
+
+    fireEvent.click(screen.getByRole('button', { name: /open beside/i }));
+    expect(onOpenInEditor).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /open in editor tab/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('says it is loading the file while the host answers', () => {
+    renderSheet({ mode: readInMode, value: undefined, loading: true });
+    expect(screen.getByRole('status').textContent).toContain('Loading the file…');
+    expect(screen.queryByRole('button', { name: /open beside/i })).toBeNull();
+  });
+
+  it('shows a refusal as an alert, with no content and no Open beside', () => {
+    renderSheet({
+      mode: readInMode,
+      value: undefined,
+      error: 'That file is not one of the configured project resources in its group.'
+    });
+    expect(screen.getByRole('alert').textContent).toContain('not one of the configured project resources');
+    expect(screen.queryByRole('button', { name: /open beside/i })).toBeNull();
+  });
+
+  it('reports truncation rather than hiding it', () => {
+    renderSheet({ mode: readInMode, value: 'The start of a long file.', truncated: true, canOpenInEditor: true });
+    expect(screen.getByRole('note').textContent).toContain('Showing the start of the file only');
+  });
+
+  it('says nothing about truncation for a whole file', () => {
+    renderSheet({ mode: readInMode, value: 'A short file.', canOpenInEditor: true });
+    expect(screen.queryByRole('note')).toBeNull();
   });
 });
