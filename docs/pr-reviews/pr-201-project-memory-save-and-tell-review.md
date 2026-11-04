@@ -2,13 +2,35 @@
 
 - **Reviewed:** 2026-11-04
 - **PR:** https://github.com/okeylanders/prose-minion-vscode/pull/201
-- **Latest reviewed head:** `0da80c5b1b81e6f40cc9bb93ae5548901138f8be`
+- **Latest reviewed head:** `cf506c354d7a1194d0e1f8beae3b04c952819ecd`
 - **Comparison base:** `685e6b4c07dd24cf63f24f9b60edc1ace0f6d8a4` (`epic/workshop-project-memory`)
-- **Verdict:** **Changes requested: F-04. F-01 through F-03 closed.** This is a written review verdict, not a formal GitHub review submission or merge.
+- **Verdict:** **Written approval; F-01 through F-04 closed.** This is a written review verdict, not a formal GitHub review submission or merge.
+
+## Final re-review at `cf506c354d7a1194d0e1f8beae3b04c952819ecd` (2026-11-04 21:43 UTC)
+
+**Current verdict: written approval. F-01 through F-04 are closed.** No remaining actionable defect was found in the reviewed scope. This is a committed written review verdict, not a formal GitHub approval or merge. Earlier sections preserve each finding at its historical head.
+
+**F-04 verified fixed:** automatic saves reserve capacity synchronously, scoped to their room revision. Completion counts both receipts and reservations; the live commit permission checks capacity again. A reservation becomes a receipt without an asynchronous gap, and refusal/withdrawal releases it. Room replacement does not carry the old room's reservations.
+
+The original independent witness now ends with **five files and five automatic receipts**, while the sixth card remains pending with `held: 'room-cap'`. A second independent probe disposes and recreates the real room handler over the same session/library while the fifth file is committed but its receipt-version read is delayed. The final commit check still prevents the sixth file and records the correct hold. This covers the lifecycle edge where the new handler cannot see the old handler's local reservation.
+
+The F-01/F-02/F-03 regressions remain green: mode withdrawal before queue/commit, writer Save with memory Off, preserving edited drafts through refusal and retry, equivalent-save coalescing, original-target capture, room replacement and disposal. The accessibility recommendation was incorporated as labelled groups for interactive receipts.
+
+### Final independent verification
+
+- The exact tracked tree was materialized and Git-blob verified.
+- **Full Jest:** **681 suites / 9,601 tests / 59 snapshots passed**, in 351 seconds; reviewer-only probes excluded.
+- **Focused production tests:** **six suites / 67 tests passed**.
+- **Independent corrected-behavior probes:** **two suites / five tests passed**, covering three run-ownership cases and the two post-commit cap cases.
+- **Typecheck:** core, webview and extension passed.
+- **Lint:** **0 errors / 1,170 warnings**, unchanged from the integrated base (reviewer-only probe files excluded).
+- **CI:** [Exact-head run 41917011324](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41917011324) passed.
+- GitHub reports the reviewed head mergeable against `685e6b4c07dd24cf63f24f9b60edc1ace0f6d8a4`.
+- No live provider, manual VS Code or native screen-reader validation was performed. The separately planned manager Restore wiring remains outside Slice 5.
 
 ## Re-review at `0da80c5b1b81e6f40cc9bb93ae5548901138f8be` (2026-11-04 21:18 UTC)
 
-**Current verdict: changes requested for F-04. F-01 through F-03 are closed.** The corrections address the original failures, but allowing the next run to proceed before an already-committed save records its receipt exposes the cap race below.
+**Verdict at this historical head: changes requested for F-04. F-01 through F-03 are closed.** The corrections address the original failures, but allowing the next run to proceed before an already-committed save records its receipt exposes the cap race below.
 
 Verified corrections:
 - **F-01:** the automatic save passes a live permission callback into the library queue and the store's final commit check. It checks mode, run cancellation, room revision and pending-card state. Ask/Off withdrawal before the queue or commit now leaves the card pending; writer saves with memory Off still work.
