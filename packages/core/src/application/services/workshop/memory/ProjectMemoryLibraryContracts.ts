@@ -96,8 +96,10 @@ export function listProjectMemories(
 
 /**
  * The notes in effect a superseded memory's chain ends in: its superseders,
- * then theirs, stopping at each one in effect (PR #197 F-02). Empty when the
- * chain ends only in archived notes, or in nothing readable.
+ * then theirs, along the links standing counts, through every archived or
+ * superseded note in the middle, stopping at each one in effect (PR #197
+ * F-02). Each is named once, and a cycle ends. Empty when the chain ends
+ * only in archived notes, or in nothing readable.
  */
 export function projectMemoryInEffectSuccessors(memories: readonly ProjectMemoryListed[], id: string): string[] {
   const byId = new Map(memories.map((listed) => [listed.memory.id, listed]));
@@ -116,7 +118,8 @@ export function projectMemoryInEffectSuccessors(memories: readonly ProjectMemory
     }
     if (isProjectMemoryInEffect(listed)) {
       found.add(next);
-    } else if (listed.memory.status === 'active') {
+    } else {
+      // An archived or superseded note in the middle never ends the chain (PR #197 F-02 recheck).
       queue.push(...listed.supersededBy);
     }
   }

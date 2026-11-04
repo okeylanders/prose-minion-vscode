@@ -46,6 +46,34 @@ describe('a superseded note, read', () => {
     expect(text).not.toContain('mem-00000b is the note in effect');
   });
 
+  it('follows the chain through an archived note in the middle to the note in effect beyond it', async () => {
+    const host = libraryHost();
+    host.put(writerMemory({ id: 'mem-00000a' }));
+    host.put(writerMemory({ id: 'mem-00000b', supersedes: ['mem-00000a'], status: 'archived' }));
+    host.put(writerMemory({ id: 'mem-00000c', supersedes: ['mem-00000b'] }));
+    expect(await readOf(host, 'mem-00000a')).toContain('superseded by: mem-00000b; mem-00000c is the note in effect now.');
+  });
+
+  it('names both notes in effect when one branch runs through an archived note', async () => {
+    const host = libraryHost();
+    host.put(writerMemory({ id: 'mem-00000a' }));
+    host.put(writerMemory({ id: 'mem-00000b', supersedes: ['mem-00000a'], status: 'archived' }));
+    host.put(writerMemory({ id: 'mem-00000c', supersedes: ['mem-00000b'] }));
+    host.put(writerMemory({ id: 'mem-00000d', supersedes: ['mem-00000a'] }));
+    expect(await readOf(host, 'mem-00000a')).toContain('superseded by: mem-00000b, mem-00000d; mem-00000c, mem-00000d are the notes in effect now.');
+  });
+
+  it('names every note in effect at the ends of a branching chain, each once', async () => {
+    const host = libraryHost();
+    host.put(writerMemory({ id: 'mem-00000a' }));
+    host.put(writerMemory({ id: 'mem-00000b', supersedes: ['mem-00000a'], status: 'archived' }));
+    host.put(writerMemory({ id: 'mem-00000c', supersedes: ['mem-00000b'] }));
+    host.put(writerMemory({ id: 'mem-00000d', supersedes: ['mem-00000a'] }));
+    host.put(writerMemory({ id: 'mem-00000e', supersedes: ['mem-00000c', 'mem-00000d'], status: 'archived' }));
+    host.put(writerMemory({ id: 'mem-00000f', supersedes: ['mem-00000e'] }));
+    expect(await readOf(host, 'mem-00000a')).toContain('superseded by: mem-00000b, mem-00000d; mem-00000f is the note in effect now.');
+  });
+
   it('names only the edges standing counts: a cycle\'s edge is ignored (N-02)', () => {
     const listed = listProjectMemories([
       { memory: writerMemory({ id: 'mem-00000a', supersedes: ['mem-00000b'] }) },
