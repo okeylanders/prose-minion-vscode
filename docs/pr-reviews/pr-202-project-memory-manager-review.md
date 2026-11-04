@@ -2,16 +2,51 @@
 
 ## Verdict and exact target
 
-**REQUEST CHANGES** before merging into `epic/workshop-project-memory`.
+**WRITTEN APPROVAL** for merging into `epic/workshop-project-memory`; F01–F04 and N01–N04 are verified closed. This is not a formal GitHub approval or merge.
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/202
-- Latest reviewed implementation: `2c549f9c325c7d97b83502a009b6dbffaceb7e57` (original review: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`)
+- Latest reviewed implementation: `ee4e56b509488d9550a27855afff6189eccb0e8f` (original review: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`)
 - Latest epic base: `87ec7a9a90378aa4572bae885254cc2ea8f77354` (original base: `6a964813583d6e7bffec853a301f1ddfcfac5687`)
 - Review date: 2026-11-04 UTC.
-- **One P2 remains open: F01's previously reported wrong-project pin toggle. Delete, F02, F03, F04, N01 and N02 are verified fixed. N03 and N04 are nonblocking P3 follow-ups.**
+- **All four blocking findings and all four P3 follow-ups are closed at the latest implementation. No remaining actionable defect was found in the reviewed scope.**
 - This is an advisory review report, not a GitHub approval or merge. It evaluates Slice 4b-wire on its actual epic target, not main and not an unmerged Slice 5 trial merge.
 
-## Independent re-review — 2c549f9c, 2026-11-04 22:37 UTC
+## Final independent verification — ee4e56b5, 2026-11-04 23:08 UTC
+
+**Written approval.** The exact integrated implementation `ee4e56b509488d9550a27855afff6189eccb0e8f` was reviewed against epic `87ec7a9a90378aa4572bae885254cc2ea8f77354`, including merged Slice 5. All findings below are now historical; this section is the current verdict.
+
+### Closed findings
+
+- **F01:** a shared write boundary captures accepted room/directory before the library queue, and store create/replace/delete capture their target before the store queue. Pin/delete and the additional Save/Edit/Archive/Restore hardening refuse stale targets through queue, listing, staging and claim boundaries. Current and other-project bytes remain intact; normal writes still succeed. Automatic-save permission withdrawal still prevents commit.
+- **F02:** listing, source-title resolution, folder creation and key resolution retain their root binding across awaits. The original stale-scope and stronger root-identity replays pass.
+- **F03:** rollback is limited to the apply's own successful changed write while its value remains current; newer external choices survive. Ordinary rollback and rollback-refusal messages/snapshots are consistent.
+- **F04:** a folder failure is shown in the settings panel that initiated it, with retry/pending state.
+- **N01/N02:** manual saves refresh visible settings, and saved cards open/focus their manager row.
+- **N03:** only the newest folder request controls its result. Late and duplicate older replies do not replace it.
+- **N04:** newly observed automatic-save receipts refresh visible listings. Duplicate/restored snapshots avoid redundant requests, search is preserved, and closed surfaces remain quiet.
+
+### Exact-head validation
+
+- **Full production Jest: 691 suites / 9,696 tests / 59 snapshots passed.** Executed as four sequential bounded-memory shards, each exit 0, excluding reviewer-only probes. Shards covered 173/173/173/172 suites with 2,471/2,407/2,457/2,361 tests. Earlier overlapping unsharded runs were killed before completion; the successful complete retry is the evidence used for this verdict.
+- **Typecheck:** core, webview and extension passed.
+- **Lint:** 0 errors / 1,165 existing warnings.
+- **CI:** exact-head [run 41929447775](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41929447775) passed.
+- Focused storage/write/autosave selection at ee4e56b5: **7 suites / 115 tests passed**.
+- Independent all-write boundary audit: **21 additional scenarios**, **5 focused suites / 52 tests**, and **18 identity/privacy controls** passed. These overlap other selections and are not summed into the full-suite total.
+- UI/settings closure and ordering/freshness controls: **11 suites / 59 tests passed** at 0a0226b3; those UI/router source files are unchanged at ee4e56b5 and the full final-head run also covers their production suites.
+- Final source materialization: 1,932 selected files checked; all core/extension source, config and resources match their Git blobs. Only non-executable root guide terminal-newline materialization differences remain. Local runtime: Node 24.22.1.
+
+### Scope and retained limitations
+
+The production session coordinator fixes its accepted workspace root at initialization and requires extension-host reload to accept a different root. The tests that synthesize acceptance of root B while a root-A request waits are **lower-layer port-contract/defense-in-depth probes**, not a demonstrated same-instance native VS Code switch. The original scope-withdrawal cases and ordinary lifecycle tests remain separately covered.
+
+No live provider, native Extension Development Host, OS shell, screen reader or screenshot-based validation was performed; filesystem and shell tests use controlled ports/in-memory fixtures. Actual cross-window atomicity and visual polish are not newly certified by these tests.
+
+Rename still uses the disclosed read/whole-draft edit behavior, so it can overwrite another window's intervening non-title edit. That accepted limitation is now separately tracked in [the title-only Rename follow-up](../../.todo/tech-debt/2026-11-04-workshop-memory-title-only-rename.md). Pin budgets retain their documented per-window scope.
+
+No formal GitHub approval or merge was performed. Continue checking the report-only head's CI and any subsequent implementation or target-base changes.
+
+## Historical re-review — 2c549f9c, 2026-11-04 22:37 UTC
 
 **Current verdict: request changes for the remaining pin-toggle portion of F01.** This head incorporates the merged Slice 5 implementation and is reviewed against epic `87ec7a9a`. The sections below retain earlier evidence; this section is the current status.
 
@@ -218,4 +253,4 @@ The tests use an in-memory filesystem, mocked scope/recall/shell and jsdom. No n
 
 ## Follow-up gate
 
-Keep residual F01 (pin toggle) open until its correction and targeted regressions are reviewed on their new exact head, followed by affected tests/typechecks/CI. Recheck integration if the epic base or overlapping Slice 5 implementation changes. No formal GitHub approval or merge was performed.
+F01–F04 and N01–N04 are closed at ee4e56b5. Watch report-only CI and recheck any subsequent implementation or target-base change. No formal GitHub approval or merge was performed.
