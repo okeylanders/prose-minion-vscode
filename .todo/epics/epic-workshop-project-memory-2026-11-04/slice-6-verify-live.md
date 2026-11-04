@@ -2,7 +2,7 @@
 
 **Epic:** [Workshop Project Memory](README.md)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md), all decisions; D11's budgets are tuned here
-**Status:** Waiting on Slices 2–5. **Needs a human with VS Code** (Extension Development Host) and a real OpenRouter key; billable calls are made by the writer, never by tests.
+**Status:** Waiting on #202 (4b-wire) and #201 (Slice 5); everything else is merged. **Needs a human with VS Code** (Extension Development Host) and a real OpenRouter key; billable calls are made by the writer, never by tests.
 
 ## Outcome
 
@@ -62,11 +62,49 @@ anything screenshotted or recorded.
       never torn, and any claim older than the lease is settled on the next
       listing.
 
-### Save and tell me
+### Memory tab and manager (4b-wire, #202)
 
-- [ ] Saves at once with a receipt. Forget archives.
-- [ ] With web research on, a proposal is held with its reason.
-- [ ] The room cap holds.
+- [ ] The Memory tab sits between About you and Advanced. It shows the
+      "Memory isn't context" well, and its meter shows each memory's
+      residency (Loaded in full, Listed or Searchable).
+- [ ] Change the mode and Apply: the global setting changes. Edit
+      `proseMinion.workshop.projectMemory` in VS Code Settings while the tab
+      is open: the tab follows.
+- [ ] Manager: search; Always load in full on and off (a memory that doesn't
+      fit is refused on its row, with the reason); Archive and Restore (each
+      leaves a receipt); Rename; Delete.
+- [ ] Edit and New open the sheet over the manager. Close both: the
+      Conversation settings' unsaved drafts are still there.
+- [ ] Open file and Open memory folder open the right place. Make one fail
+      (for example a read-only parent folder): the error shows where it was
+      pressed, in the settings tab or the manager.
+- [ ] Make a conflict, so a set-aside copy exists. It lists apart from the
+      standing file and opens no file of its own.
+- [ ] The saved card's Open in manager opens the manager.
+- [ ] Save a card while the Memory tab is open: the tab's counts refresh.
+- [ ] Remove the workspace folder while the manager is open: the next action
+      is refused and nothing is deleted.
+
+### Save and tell me (Slice 5, #201)
+
+- [ ] A proposal saves at once with a receipt. The receipt is collapsed by
+      default; its chevron opens the read-only card, which has no buttons.
+      Edit and Forget sit on the receipt, and Forget archives.
+- [ ] With web research on, a proposal is held with its reason. Save on a
+      held card works.
+- [ ] The room cap (`autoSavesPerRoom`) holds: the next proposal is held with
+      the cap's reason. Rewind past an automatic receipt, and the room can
+      save again.
+- [ ] Switch to Ask first, or Off, while a reply is finishing: nothing is
+      written for it and the card waits.
+- [ ] Edit a card and Save it while its reply is still finishing: refused
+      with "Wait for the reply to finish, then save to memory.", and the
+      draft is kept. Save again once the reply settles: the memory is
+      updated, with an updated receipt.
+- [ ] New or Open while a reply is finishing: nothing from the old room lands
+      in the new one.
+- [ ] A screen reader reads a receipt with buttons as a group, named by its
+      line (optional; no automated test covers native assistive tech).
 
 ### Never-list
 
