@@ -15,10 +15,10 @@ This report covers Slice 2a against the parent epic, ADR D1–D5/D8/D10–D13, r
 
 | ID | Priority | Finding | Status |
 |---|---|---|---|
-| F-01 | P2 | Workspace configuration can override the intended global memory Off switch | Open |
-| F-02 | P2 | Read output endorses archived or already-superseded replacements as in effect | Open |
-| N-01 | P3 | Provenance silently truncates more than ten nonconsecutive source ranges | Open, nonblocking |
-| N-02 | P3 | `supersededBy` can include an edge excluded by cycle-aware standing | Open, nonblocking |
+| F-01 | P2 | Workspace configuration can override the intended global memory Off switch | Fixed in `b285942b`: `"scope": "application"`, as the writer profile is, so VS Code reads the switch from user settings alone and ignores a workspace value. `projectMemorySetting.test.ts` pins the scope, the modes and the default to the code's; it failed before the fix. No port change. The same gap on `workshop.webResearch` is filed outside this epic. |
+| F-02 | P2 | Read output endorses archived or already-superseded replacements as in effect | Fixed in `f6d5823c`: the library resolves a superseded note's chain to the notes in effect at its end (`projectMemoryInEffectSuccessors`), and the read names its direct superseders, then those notes, or says nothing that replaces it is in effect. An archived superseder still keeps the old note superseded (D4). `ProjectMemorySupersession.test.ts` covers an active successor, an archived one and a chain; they failed before the fix. |
+| N-01 | P3 | Provenance silently truncates more than ten nonconsecutive source ranges | Fixed in `843040c5`: the hint keeps its ten ranges, and the line names the rest (", and N more ranges (…)"). The sync test's 32-turn case asserts it; it failed before the fix. |
+| N-02 | P3 | `supersededBy` can include an edge excluded by cycle-aware standing | Fixed in `5db426ad`: standing and attribution both read `acceptedProjectMemorySupersessions`, and `supersededProjectMemoryIds` derives from it. The A ↔ B, C → A case is a regression; it failed before the fix. |
 
 ## F-01: P2: make the global memory switch user-only
 
