@@ -137,6 +137,11 @@ describe('pinned overflow (ADR 2026-11-04 D5, PR #192 F-04)', () => {
     expect(estimate).toMatchObject({ memories: 4, pinned: 4, pinnedLoaded: 2, pinnedOver: true });
     expect(estimate.pinnedTokens).toBeGreaterThan(5_000);
     expect(estimate.frameTokens).toBe(estimateTextTokens(frame.text));
+    // What loaded is apart from what was asked for, and never past the budget (Slice 4b's meter).
+    const loadedLines = frame.text.split('\n').filter((line) => line.trimStart().startsWith('<pinned '));
+    expect(estimate.pinnedLoadedTokens).toBe(loadedLines.reduce((sum, line) => sum + estimateTextTokens(line.trim()), 0));
+    expect(estimate.pinnedLoadedTokens).toBeLessThanOrEqual(5_000);
+    expect(estimate.catalogEntries).toBe(frame.entries.length);
   });
 
   it('reads under budget when every pinned body fits', () => {
@@ -147,7 +152,8 @@ describe('pinned overflow (ADR 2026-11-04 D5, PR #192 F-04)', () => {
 
   it('estimates an empty folder as nothing', () => {
     expect(estimateProjectMemoryFrameOf(set(), BUILT)).toEqual({
-      memories: 0, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 0, frameTokens: 0
+      memories: 0, pinned: 0, pinnedLoaded: 0, pinnedTokens: 0, pinnedOver: false, catalogTokens: 0, frameTokens: 0,
+      pinnedLoadedTokens: 0, catalogEntries: 0
     });
   });
 });
