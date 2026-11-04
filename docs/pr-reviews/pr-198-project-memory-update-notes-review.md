@@ -1,6 +1,80 @@
 # PR #198 review: Project Memory update notes (Slice 2b)
 
-## Target and verdict
+## Current re-review verdict at `29b41de1`
+
+- Re-reviewed exact head: `29b41de14fe438755b2aab7566d0af142c4da4af`.
+- **Verdict: APPROVE the Slice 2b delta. F-01, F-02, and F-03 are verified resolved.**
+- **Integration gate remains:** PR #197 is still open with its own outstanding
+  findings. This approval does not clear those inherited defects. Merge the
+  corrected #197, integrate its final code into this branch, retarget #198 to
+  `epic/workshop-project-memory`, and verify the resulting exact-head CI
+  before treating #198 as ready to merge.
+- This is a written review verdict only. No formal GitHub approval or merge
+  was performed. The original review and author ledger below are preserved.
+
+### Resolution verification
+
+**F-01:** the committed persona reply now owns the delivery record, with
+strict ownership checking in both staging and persistence. Removing a host
+synthesis removes its record. The independent original rewind witness now
+passes and still verifies retained provider history against the report's
+actual rest point. The author's additional coordinator Rewind and Branch
+coverage passes. Ordinary message rewind, rollback, abandon, stale-run
+rejection, and no-memory round trips remain green.
+
+**F-02:** every initial conversation frame now stages a snapshot, including
+an empty snapshot when Off, unavailable, unlisted, or failed. It commits only
+with that conversation's reply. An old guest membership can no longer fill
+the new membership's empty view. The independent original Off/re-invite/On
+witness passes, as do the author's unchanged and partially changed catalog,
+unavailable workspace, new On frame, and save/reopen regressions.
+
+**F-03:** the real capability now calls `workshopProjectMemoryDeliveryOf`,
+which records a list through 4,096 items and a bounded count/hash digest
+above that. The original independent capacity witness was adapted to call
+the actual capability instead of injecting a raw, now intentionally invalid
+over-limit list directly into the session. The actual 4,097-file frame
+commits a valid digest and passes strict persistence. The producer, fold,
+codec, and clone helper agree on the format.
+
+The digest is a documented tradeoff: after a set above 4,096 items, an
+unknown delta is a generic catalog reminder rather than invented per-id
+changes or a guessed changed-item count. The whole-set hash is insensitive
+to listing order, tracks id/version changes, and suppresses repeats.
+Additional independent probes verify 4,097 -> 4,096 restores list-based
+deltas, a subsequent single edit is granular again, deletion to an empty
+catalog clears the view, and subsequent turns stay quiet. Digest copies are
+isolated; malformed, unsafe, fractional, nonfinite, and under-bound counts
+are rejected. No additional runtime blocker found.
+
+### Re-review evidence and limits
+
+- **6 focused Jest suites / 68 tests passed**, including the five original
+  focused suites (now 65 tests) and three independent regression witnesses.
+- **52 prior positive runtime assertions passed** again against 194
+  hash-verified exact-head modules, with only the changed reply-owned codec
+  contract adapted.
+- **24 additional digest and transition assertions passed** through 159
+  exact-head modules.
+- Exact-head GitHub CI
+  [41889419529](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41889419529)
+  is **successful**, including typecheck, tests, lint, and both bundles.
+- Local verification used the same isolated exact-lockfile dependencies and
+  materialized source described below, not a complete Git checkout. No local
+  full-suite, live-provider, VS Code, or browser run is claimed.
+
+### Nonblocking documentation follow-up
+
+The updated Slice 2b deviations describe reply ownership correctly, but its
+implementation table still says the codec only permits writer turns and
+`completeRun` writes on a writer/tool-request turn. The PR description and
+whole-room test header also retain that older explanation. Align those
+summaries with the now-tested reply-owned record so later slices do not
+reintroduce the old anchoring assumption.
+
+## Original review at `cd995c9b`
+
+### Target and verdict
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/198
 - Reviewed head: `cd995c9bf1606ebe559010eba687ccdcc15d9bda`.
@@ -10,7 +84,7 @@
 - Reviewed on: 2026-11-04.
 - Scope: the 22-file Slice 2b delta, its D14/D8 contracts, and the real
   session, retained-history, rewind, library, store, and capability seams.
-- **Verdict: CHANGES REQUESTED.** Three reproduced defects below, one P1 and
+- **Original verdict: CHANGES REQUESTED.** Three reproduced defects below, one P1 and
   two P2. The green existing suites do not cover these cases. No formal
   GitHub approval or merge was performed.
 
