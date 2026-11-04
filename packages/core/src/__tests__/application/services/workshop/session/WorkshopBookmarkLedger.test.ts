@@ -5,11 +5,11 @@
  */
 
 import {
-  isWorkshopBookmarkableTurn,
   WORKSHOP_BOOKMARK_DEFAULT_LABEL_CHARACTERS,
   WorkshopBookmarkLedger,
   workshopBookmarkDefaultLabel
 } from '@/application/services/workshop/session/WorkshopBookmarkLedger';
+import { isWorkshopBookmarkableTurn } from '@shared/constants/workshopBookmarks';
 import { WORKSHOP_BOOKMARK_LABEL_CHARACTERS, WorkshopTurn } from '@messages';
 
 const turn = (overrides: Partial<WorkshopTurn> = {}): WorkshopTurn => ({

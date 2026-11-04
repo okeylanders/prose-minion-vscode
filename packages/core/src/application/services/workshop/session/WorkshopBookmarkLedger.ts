@@ -21,6 +21,7 @@ import type {
 } from '@messages';
 import {
   checkWorkshopBookmarkLabel,
+  isWorkshopBookmarkableTurn,
   WORKSHOP_BOOKMARK_LABEL_FAULTS
 } from '@shared/constants/workshopBookmarks';
 import { workshopCapabilityFamilyLabel } from '@shared/constants/workshopCapabilityLabels';
@@ -85,23 +86,6 @@ export interface WorkshopBookmarkLedgerState {
 
 /** What a set or clear did; an unchanged answer needs no save. */
 export type WorkshopBookmarkChange = 'set' | 'cleared' | 'unchanged';
-
-type BookmarkTurnFacts = Pick<WorkshopTurn, 'role' | 'kind' | 'participant'>;
-
-/**
- * Eligible: agent replies (host, guest, tool, including tool reports and
- * capability cards) and the writer's messages. Refused: dividers, session and
- * standing-directive markers, and the writer's direct tool-run requests.
- */
-export function isWorkshopBookmarkableTurn(turn: BookmarkTurnFacts): boolean {
-  if (turn.kind === 'divider' || turn.participant === 'session' || turn.role === 'system') {
-    return false;
-  }
-  if (turn.role === 'assistant') {
-    return turn.participant === 'host' || turn.participant === 'guest' || turn.participant === 'tool';
-  }
-  return turn.role === 'user' && turn.participant === 'writer' && turn.kind === 'message';
-}
 
 /**
  * The label a bookmark shows until the writer names it: the participant's

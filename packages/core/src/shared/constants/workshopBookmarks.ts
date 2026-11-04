@@ -3,8 +3,8 @@
  * bubble they mean to come back to. Optional: a bookmark without one shows
  * the host's deterministic default.
  *
- * One rule, shared by the codec, the host's rename route and (Slice 5) the
- * rail's field, so a label the rail accepts is one the session keeps:
+ * One rule, shared by the codec, the host's rename route and the rail's
+ * rename field, so a label the rail accepts is one the session keeps:
  * - trimmed; empty means "use the default";
  * - one line: no control character (a tab or a line break among them) and
  *   no line or paragraph separator;
@@ -15,6 +15,7 @@
  */
 
 import { WORKSHOP_BOOKMARK_LABEL_CHARACTERS } from '@messages';
+import type { WorkshopTurn } from '@messages';
 
 export type WorkshopBookmarkLabelFault = 'too-long' | 'not-one-line';
 
@@ -52,4 +53,26 @@ export function checkWorkshopBookmarkLabel(value: string | null): WorkshopBookma
 export function isStoredWorkshopBookmarkLabel(value: string): boolean {
   const check = checkWorkshopBookmarkLabel(value);
   return check.kind === 'named' && check.label === value;
+}
+
+/** The turn facts eligibility reads; the bubble and the host's ledger pass the same turn. */
+export type WorkshopBookmarkTurnFacts = Pick<WorkshopTurn, 'role' | 'kind' | 'participant'>;
+
+/**
+ * Which turns may carry a bookmark (ADR 2026-11-03 D5): one rule, read by the
+ * host's ledger (the authority, which refuses anything else) and by the
+ * bubble (which offers the toggle only where the host would accept it).
+ *
+ * Eligible: agent replies (host, guest, tool, including tool reports and
+ * capability cards) and the writer's messages. Refused: dividers, session and
+ * standing-directive markers, and the writer's direct tool-run requests.
+ */
+export function isWorkshopBookmarkableTurn(turn: WorkshopBookmarkTurnFacts): boolean {
+  if (turn.kind === 'divider' || turn.participant === 'session' || turn.role === 'system') {
+    return false;
+  }
+  if (turn.role === 'assistant') {
+    return turn.participant === 'host' || turn.participant === 'guest' || turn.participant === 'tool';
+  }
+  return turn.role === 'user' && turn.participant === 'writer' && turn.kind === 'message';
 }
