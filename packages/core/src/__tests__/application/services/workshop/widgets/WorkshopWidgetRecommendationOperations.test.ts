@@ -212,6 +212,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     });
   });
 
+  it('tells the persona a project-memory proposal is the one thing that may follow the frame (ADR 2026-11-04 D6)', () => {
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      'the widget frame must be the final content in the response, except a project-memory proposal, which comes after it when you write one.'
+    );
+  });
+
   it('rejects duplicate headings wholesale', () => {
     expect(
       inspectWithCatalog(`${recommendationFrame()}\n\n${recommendationFrame()}`)

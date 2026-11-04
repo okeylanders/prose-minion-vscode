@@ -372,7 +372,9 @@ describe('prompt budgets', () => {
   it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
     // 12,523 → 13,098 at Slice 7: the optional surrounding-context field, the
     // multi-reference rule, and the optional must-survive wording.
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_098);
+    // 13,098 → 13,173 at Project Memory Slice 3: a memory proposal may follow
+    // the frame (ADR 2026-11-04 D6).
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_173);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {

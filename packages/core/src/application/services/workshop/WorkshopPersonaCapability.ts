@@ -1,4 +1,5 @@
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
+import type { WorkshopReplyMemoryContext } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import {
   resolveWorkshopPersonaAnalysisInputs,
   WorkshopPersonaAnalysisRunInputs
@@ -138,6 +139,15 @@ export class WorkshopPersonaCapabilityFactory {
       this.recall,
       this.memory
     );
+  }
+
+  /**
+   * A reply's project-memory context, resolved before its run completes
+   * (ADR 2026-11-04 D6): every completion site asks here, so host, guest
+   * and synthesis replies are settled alike.
+   */
+  replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext> {
+    return this.memory.replyMemoryContext(reply, signal);
   }
 }
 

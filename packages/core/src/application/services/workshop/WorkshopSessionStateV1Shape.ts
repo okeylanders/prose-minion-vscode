@@ -25,6 +25,8 @@ import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import { assertWorkshopTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
 import { contextSourceProvenanceFault } from '@orchestration/ContextSourceRecord';
 import { assertWorkshopBookmarksShape } from '@/application/services/workshop/session/WorkshopBookmarkRecords';
+import { assertWorkshopMemoryProposalShape } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
+import { assertWorkshopMemoryReceiptShape } from '@/application/services/workshop/session/WorkshopMemoryReceiptRecords';
 import {
   isLiveWorkshopWidgetId,
   isWorkshopWidgetId
@@ -582,7 +584,10 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       // Conversation Widgets (ADR 2026-07-22).
       'widgetCommit',
       'widgetRecommendation',
-      'standingDirectiveChange'
+      'standingDirectiveChange',
+      // Project memory (ADR 2026-11-04 D6, D7; additive, no version bump).
+      'memoryProposal',
+      'projectMemoryReceipt'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -658,6 +663,8 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
       `${path}.standingDirectiveChange`
     );
   }
+  assertWorkshopMemoryProposalShape(turn, path, checkpoint);
+  assertWorkshopMemoryReceiptShape(turn, path);
 }
 
 function assertTurnWidgetCommit(value: unknown, path: string): void {

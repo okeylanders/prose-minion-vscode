@@ -17,6 +17,10 @@
  * in-flight one, reset aborts, and zombie completions are refused + logged.
  */
 
+import {
+  hasWorkshopMemoryProposalText
+} from '@/utils/workshopReplyControls';
+import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
@@ -632,7 +636,18 @@ export class WorkshopRoomHandler {
           capability: guestCapability,
           webResearch: this.conversationSettingsService.getWebResearch().enabled
         });
+        // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
+        // only a reply holding a frame reads the listing.
+        const replyMemory = hasWorkshopMemoryProposalText(result.content)
+          ? await resolveWorkshopReplyMemory(
+            this.capabilityFactory,
+            result.content,
+            controller.signal,
+            workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile())
+          )
+          : undefined;
         const assistantTurn = completeWorkshopRun({
+          memory: replyMemory,
           session: this.session,
           requestId,
           label: workshopPersonaLabel(personaId),
@@ -1159,7 +1174,18 @@ export class WorkshopRoomHandler {
             webResearch: this.conversationSettingsService.getWebResearch().enabled
           });
 
+      // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
+      // only a reply holding a frame reads the listing.
+      const replyMemory = hasWorkshopMemoryProposalText(result.content)
+        ? await resolveWorkshopReplyMemory(
+          this.capabilityFactory,
+          result.content,
+          controller.signal,
+          workshopWriterPreferredAddress(this.conversationSettingsService.getWriterProfile())
+        )
+        : undefined;
       const assistantTurn = completeWorkshopRun({
+        memory: replyMemory,
         session: this.session,
         requestId,
         label,

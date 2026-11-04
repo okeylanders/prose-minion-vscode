@@ -53,6 +53,11 @@ import {
   searchProjectMemories,
   type ProjectMemorySearchOutcome
 } from '@/application/services/workshop/memory/WorkshopProjectMemorySearch';
+import type {
+  WorkshopReplyMemoryContext,
+  WorkshopReplyMemoryPort
+} from '@/application/services/workshop/memory/WorkshopReplyMemory';
+import { hasWorkshopMemoryProposalText } from '@/utils/workshopReplyControls';
 
 /** The store's read-only methods; satisfied by ProjectMemoryStore. */
 export type ProjectMemoryReadPort = Pick<ProjectMemoryStore, 'availability' | 'list' | 'read'>;
@@ -91,7 +96,7 @@ export interface ProjectMemoryGrammarPort {
   teachesGrammar(): boolean;
 }
 
-export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort {
+export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemoryGrammarPort, WorkshopReplyMemoryPort {
   private readonly now: () => Date;
 
   constructor(
@@ -193,6 +198,32 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
     this.log(`read named=${ids.length} read=${items.filter((item) => item.kind === 'memory').length} ` +
       `unknown=${items.filter((item) => item.kind === 'unknown').length} busy=${items.filter((item) => item.kind === 'busy').length}`);
     return { kind: 'read', items };
+  }
+
+  /**
+   * What run completion needs to settle a reply's proposal (D6): whether
+   * personas may propose now, and, only when the reply holds a frame, the
+   * listed memories' titles, for `supersedes`. A listing that fails or is
+   * cancelled leaves `listed` out, so every `supersedes` is dropped and
+   * counted; it never fails the reply.
+   */
+  async replyMemoryContext(reply: string, signal?: AbortSignal): Promise<WorkshopReplyMemoryContext> {
+    if (!this.access().open) {
+      return { open: false };
+    }
+    if (!hasWorkshopMemoryProposalText(reply)) {
+      return { open: true };
+    }
+    try {
+      const set = await this.personaSet(signal);
+      if (set.kind !== 'set') {
+        return { open: set.kind !== 'closed' };
+      }
+      return { open: true, listed: new Map(set.memories.map(({ memory }) => [memory.id, memory.title])) };
+    } catch {
+      this.log('reply context listing cancelled');
+      return { open: true };
+    }
   }
 
   /** The `<project-memory>` frame for a conversation's first user message (D5), or why there is none. */

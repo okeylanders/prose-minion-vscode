@@ -36,7 +36,7 @@ import { workshopProjectMemoryRequestSummary } from '@/application/services/work
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 
 /** The library's questions a persona may ask; satisfied by ProjectMemoryLibrary. */
-export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame'>;
+export type WorkshopProjectMemoryPort = Pick<ProjectMemoryLibrary, 'catalog' | 'search' | 'read' | 'frame' | 'replyMemoryContext'>;
 
 export interface WorkshopProjectMemoryTurnContext {
   readonly requestId: string;

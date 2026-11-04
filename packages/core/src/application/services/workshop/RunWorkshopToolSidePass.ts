@@ -1,5 +1,9 @@
 /** Focused Sprint 06B use case: isolated tool report, then host synthesis. */
 
+import {
+  hasWorkshopMemoryProposalText
+} from '@/utils/workshopReplyControls';
+import { resolveWorkshopReplyMemory } from '@/application/services/workshop/memory/WorkshopReplyMemory';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService
@@ -255,7 +259,18 @@ export class RunWorkshopToolSidePass {
             capability: hostCapability,
             webResearch: this.webResearchEnabled()
           });
+      // A reply's memory proposal is settled at completion (ADR 2026-11-04 D6);
+      // only a reply holding a frame reads the listing.
+      const replyMemory = hasWorkshopMemoryProposalText(synthesis.content)
+        ? await resolveWorkshopReplyMemory(
+          this.capabilityFactory,
+          synthesis.content,
+          controller.signal,
+          workshopWriterPreferredAddress(this.writerProfileService.getProfile())
+        )
+        : undefined;
       const synthesisTurn = completeWorkshopRun({
+        memory: replyMemory,
         session: this.session,
         requestId: synthesisRequestId,
         label: `${personaLabel} synthesis`,

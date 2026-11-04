@@ -39,7 +39,8 @@ import {
   WorkshopTurnArtifact,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopMemoryProposal
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
@@ -135,6 +136,7 @@ import {
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import { cloneTurnModel } from '@/application/services/workshop/WorkshopTurnModel';
+import { cloneWorkshopMemoryProposal } from '@/application/services/workshop/session/WorkshopMemoryProposalRecords';
 import { workshopModelsBeforeWindow } from '@shared/workshop/workshopModelSlices';
 import {
   attachmentSnapshot,
@@ -1672,7 +1674,8 @@ export class WorkshopSessionService {
     actionableFindings: WorkshopActionableFinding[] = [],
     citations?: UrlCitation[],
     widgetRecommendation?: WorkshopWidgetRecommendation,
-    model?: WorkshopTurnModel
+    model?: WorkshopTurnModel,
+    memoryProposal?: WorkshopMemoryProposal
   ): WorkshopTurn | undefined {
     if (this.activeRun?.requestId !== requestId) {
       return undefined;
@@ -1720,6 +1723,10 @@ export class WorkshopSessionService {
       // Persona-only decoration: tool reports never carry recommendation chips.
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? cloneWidgetRecommendation(widgetRecommendation)
+        : undefined,
+      // A memory card belongs to a persona's reply (ADR 2026-11-04 D6).
+      memoryProposal: (isHost || isGuest) && memoryProposal
+        ? cloneWorkshopMemoryProposal(memoryProposal)
         : undefined
     };
 

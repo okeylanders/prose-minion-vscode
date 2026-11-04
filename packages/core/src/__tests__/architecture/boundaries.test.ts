@@ -1008,12 +1008,14 @@ const WORKSHOP_MEMORY_MODULES = [
   'ProjectMemoryCatalogFrame.ts',
   'ProjectMemoryLibrary.ts',
   'ProjectMemoryLibraryContracts.ts',
+  'WorkshopMemoryProposalPhrasing.ts',
   'WorkshopProjectMemoryCapability.ts',
   'WorkshopProjectMemoryCopy.ts',
   'WorkshopProjectMemoryRenderer.ts',
   'WorkshopProjectMemoryRequestCopy.ts',
   'WorkshopProjectMemorySearch.ts',
-  'WorkshopProjectMemoryXmlCodec.ts'
+  'WorkshopProjectMemoryXmlCodec.ts',
+  'WorkshopReplyMemory.ts'
 ];
 const MEMORY_TYPE_ONLY_MODULE = /(?:^|\/)(?:ProjectMemoryStore|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)$/;
 
@@ -2408,6 +2410,7 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'lightboxTiles.ts',
       'participants.ts',
+      'projectMemory.ts',
       'seedDelivery.ts',
       'session.ts',
       'settings.ts',
