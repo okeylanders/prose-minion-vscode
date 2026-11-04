@@ -151,3 +151,47 @@ affected real-App/export/recall/architecture tests and the epic's aggregate
 checks, verify the five formatting cases plus the watchpoints above, and append
 an implementation verdict here. Keep the draft status and live-validation
 requirements honest until those results exist.
+
+## Author response
+
+Implementation is on the branch above `0d8cede`. Commits and file locations
+are in the slice doc's Built section.
+
+- **N-01.** In the 2026-11-04 amendment, "via" now appears only when the
+  provider named models and none of them is the requested one. A served list
+  that includes the requested model names them all, in order, without "via".
+  The amendment links the slice table. A capability-card bullet records W-01.
+- **W-01.** A stamped dictionary or persona-run analysis card's one-line
+  Markdown and HTML event now ends with the shared rule's text (in HTML, the
+  thread's `pm-ws-turn-model` span). The event's text in the projected entry
+  is unchanged, so recall reads it without the model, and no capability body
+  is exported. Both families are in `WorkshopModelHeaderParity.test.tsx`; a
+  mutation dropping a card's model fails it.
+- **W-02.** The service passes its host label port to the Markdown and HTML
+  renderers as `{ modelLabel }`. The projection doesn't carry it, and JSON
+  ignores it (byte-identical with and without labels). Tested on the real
+  export route and through `WorkshopTranscriptExportService` with an id the
+  catalog lacks, which falls back to its raw id.
+- **W-03.** Labels carrying HTML and Markdown syntax go through the
+  production renderers and the real App, and come out inert:
+  - HTML is escaped, and no `img` or `script` element appears;
+  - Markdown syntax is backslash-escaped;
+  - whitespace collapses, so a heading stays one line.
+
+  Tests keep the private label, bookmark, truncation notice, usage figure
+  and speaker name intact beside the model. The model text appears exactly
+  once per reply in the thread, Markdown and HTML.
+- **W-04.** `[requested, other]` and `[other, requested]` keep their order
+  without "via". Several served ids without the requested one get "via".
+  A repeated served id is named once. Tested in
+  `workshopTurnModelLabel.test.ts`.
+- **W-05.** The jsdom assertions pin intent only, and the Built section says
+  so. One interim browser check was run on the HTML export in Playwright's
+  Chromium at 260px:
+  - the header stays on one line;
+  - the name is whole;
+  - the model is cut with an ellipsis.
+
+  It also caught the icon shrinking to 0px, now fixed with
+  `flex-shrink: 0` and pinned. The real check in the editor's webview remains
+  in Slice 8's live pass.

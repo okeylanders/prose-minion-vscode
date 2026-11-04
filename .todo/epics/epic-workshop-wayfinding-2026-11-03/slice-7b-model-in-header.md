@@ -190,7 +190,12 @@ that records this.
   bubble grows by the call and the span alone. The icon needs its own
   `flex-shrink: 0`: the layout check below showed it squeezed to nothing
   without it.
-- **Layout, measured (plan review W-05).** The HTML export of a reply named
+- **Layout: what the tests prove and what they don't (plan review W-05).**
+  The jsdom tests' DOM and CSS-text assertions prove which span is meant to
+  shrink. They can't show that it actually ellipsizes, that the name
+  survives, or how a screen reader reads it in a narrow VS Code webview. That
+  check stays in Slice 8's live pass, which already lists it. One browser
+  check was run here as interim evidence: the HTML export of a reply named
   "Jill Longername" with a 484px model text, loaded in Playwright's Chromium
   at a 260px viewport: the header is one line (17px); the name is whole
   (119px, one 14px line); the icon keeps 12px; the model span is 51px wide
@@ -212,7 +217,7 @@ that records this.
 **Counts and sizes.**
 
 - Before (`6c12df5`): 636 suites / 8,977 tests / 59 snapshots; lint 1,153
-  warnings. After: 641 suites / 9,009 tests / 59 snapshots; lint 0 errors,
+  warnings. After: 641 suites / 9,011 tests / 59 snapshots; lint 0 errors,
   1,155 warnings (two new, each the `PmLogo` mock name the sibling App tests
   already carry). Typecheck clean; no `from 'vscode'` in `packages/core/src`
   outside tests' boundary strings.
