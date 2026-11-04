@@ -11,6 +11,20 @@
 - Four P2 findings remain open; two P3 integration follow-ups are also recorded.
 - This is an advisory review report, not a GitHub approval or merge. It evaluates Slice 4b-wire on its actual epic target, not main and not an unmerged Slice 5 trial merge.
 
+## Resolution ledger (author, 2026-11-04)
+
+| Finding | Status | Commit | Correction |
+|---|---|---|---|
+| F01 | Fixed | `01eae439` | `StoredFileClaims.deleteClaimed` takes `stillPermitted`, asked with nothing awaited before retiring leftovers and again before removing the claimed bytes. The store's delete passes "the folder is still the one it read, and `beforeCommit` allows it"; the library's `beforeCommit` is the room's scope. Withdrawn, the file goes back under its name (or a free one) and the delete is refused with the workspace's reason. `ProjectMemoryDeleteScope.test.ts` pauses the folder read, the claimed-bytes read and the retirement. |
+| F02 | Fixed | `e0392dec` | `ProjectMemoryManager.moved(directory)` compares the store's folder now, and the scope, with the folder the rows were read for: after the queued list, after the titles, and after making the folder. A to B to available is caught by the folder comparison. `ProjectMemoryManagerScope.test.ts` covers the three probes. |
+| F03 | Fixed | `2548c577` | A failed apply writes the previous mode back before it rethrows. A refused rollback throws `WorkshopConversationSettingsPartialApplyError`, and the handler names the mode that stands. Tests: both directions, a combined behavior change, the watcher after the rollback, and a refused rollback (service and router). |
+| F04 | Fixed | `7f507259` | Open memory folder has its own status (`folder`: pending, the newest press's refusal). The Memory tab marks the button busy and shows the refusal beside it; a retry or closing the settings clears it. Tests: refused folder creation and a refused shell open through `WorkshopApp`, and stale answers in the hook. |
+| N01 | Fixed | `7f507259` | `setSettingsVisible` from WorkshopApp's open and close; another hook's write refreshes while the manager or the settings show the listing. |
+| N02 | Fixed | `7f507259` | `memoryControls.onOpenManager` opens the manager with that memory's row marked (`aria-current`) and scrolled to. |
+| Rename (title-only write) | Left as disclosed | | Still the sheet's read then whole-draft update. A title change writes a receipt (D7), so a host title-only write belongs with the receipt path, not this PR. Recorded in the slice doc's deviations. |
+
+F04, N01 and N02 share the hook and WorkshopApp's wiring, so they are one commit; each has its own tests, which fail on `87e14f6a`.
+
 ## F01 — P2 — Delete must honor workspace withdrawal at its commit boundary
 
 **Locations:** `packages/core/src/application/services/workshop/memory/ProjectMemoryWrites.ts:239–246`; `packages/core/src/infrastructure/storage/ProjectMemoryStore.ts:299–322`.

@@ -78,7 +78,7 @@ export const WorkshopMemoryRow: React.FC<WorkshopMemoryRowProps> = ({
     <div
       ref={rowRef}
       className={`pm-ws-memory-row${past ? ' pm-ws-memory-row-past' : ''}${focused ? ' pm-ws-memory-row-focus' : ''}`}
-      {...(focused ? { 'aria-current': 'true' as const } : {})}
+      aria-current={focused ? 'true' : undefined}
     >
       <SavedItemRow
         title={entry.title}

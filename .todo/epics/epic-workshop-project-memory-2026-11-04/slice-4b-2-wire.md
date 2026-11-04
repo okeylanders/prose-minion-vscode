@@ -4,7 +4,7 @@
 **Part of:** [Slice 4b](slice-4b-memory-tab.md), after [4b-ui](slice-4b-1-ui.md) (PR #199, merged)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D5, D8, D10, D13
 **Branch:** `epic/workshop-project-memory-slice-4b-ui`, fast-forwarded to Slice 3's head (`cbb1446c`, #200 with the epic and #199 merged in). The branch name is my session's designated one (see Deviations).
-**Status:** Built and verified, on the epic with #200 merged (`7bd1d9a`, head `6a96481`); ready for its PR.
+**Status:** PR #202. Astra's review (`docs/pr-reviews/pr-202-project-memory-manager-review.md`) found F01–F04 and N01–N02; all six are fixed (see Review fixes), for re-review.
 
 ## Scope
 
@@ -100,6 +100,37 @@ The coordinator's brief:
   and the manager's inputs. 4b-ui's view inputs now alias the wire shapes,
   so the two can't drift.
 
+## Review fixes (PR #202)
+
+- **F01: Delete checks the workspace at its commit points.** The shared
+  `StoredFileClaims.deleteClaimed` takes `stillPermitted` and asks it
+  synchronously, with nothing awaited after, before it retires leftovers
+  and again before it removes the claimed bytes. The store asks that its
+  folder is still the one it read, and the library's `beforeCommit` that
+  the room's scope holds. Withdrawn, the file goes back under its name and
+  the delete is refused with the workspace's reason. The Lightbox's calls
+  pass no check and are unchanged.
+- **F02: the manager's answers stay with their root.** `moved(directory)`
+  compares the scope and the store's folder now with the folder the rows
+  were read for, after each await (the queued list, the titles, making the
+  folder). A root that moved, A to B included, lists nothing, opens no file
+  and reveals no folder.
+- **F03: a failed apply sets the mode back.** The previous mode is written
+  back before the error is rethrown. A refused rollback raises
+  `WorkshopConversationSettingsPartialApplyError`, and the room handler
+  says which mode stands ("Project memory is now Save and tell me: it
+  couldn't be set back. Your other previous settings are still active.").
+- **F04: Open memory folder says why where it was pressed.** The hook keeps
+  the folder's own status (pending, and the newest press's refusal). The
+  Memory tab marks the button busy and shows the refusal beside it. A retry,
+  or closing the settings, clears it; the manager's alert shows it only
+  while the manager is open.
+- **N01:** WorkshopApp tells the hook when Conversation settings open and
+  close (`setSettingsVisible`). Another hook's write refreshes the listing
+  while the manager or the settings show it.
+- **N02:** a saved card's Open in manager opens the manager with that
+  memory's row marked (`aria-current`, an accent edge) and scrolled to.
+
 ## Deviations
 
 1. **The branch.** My session may push only to
@@ -112,18 +143,23 @@ The coordinator's brief:
 3. **Rename** is Slice 3's request-edit then whole-draft update: the same
    read-then-write the sheet's Edit does. Another window's edit between the
    two is overwritten, as with the sheet. Always load in full and Delete
-   avoid this because they are single atomic writes.
+   avoid this because they are single atomic writes. PR #202's review
+   suggested a title-only host write. It is left out because a title change
+   writes a receipt (D7), so a title-only write belongs with the receipt
+   path, not this PR.
 4. **The route owner is a `…Handler`** (the coordinator's call). It was
    first named `WorkshopProjectMemoryManagerRoutes`, which the
    composition-tier construction guard couldn't see. Renamed to
    `WorkshopProjectMemoryManagerHandler`, it is in that guard's list as well
    as the route ledger and the extracted-slice guard.
 5. **Files over 500 that grew.** Each was already past 500 lines:
-   - `WorkshopApp.tsx` (1,775 → 1,794): the hook, the mount, the modal's
-     props;
+   - `WorkshopApp.tsx` (1,775 → 1,801): the hook, the mount, the modal's
+     props, and the review's settings visibility and Open in manager;
    - `useWorkshopRoom.ts` (909 → 923): the mode, beside web research;
    - `session.ts` (1,002 → 1,009);
-   - `WorkshopRoomHandler.ts` (1,624 → 1,627).
+   - `WorkshopRoomHandler.ts` (1,624 → 1,634): the review's partial-apply
+     message (F03);
+   - `memory.css` (653 → 657): the marked row (N02).
 6. **The tests that pinned the three-tab modal now pin four.** 4a's modal
    test (tab order, the fourth `onApply` argument), the tab-list test, the
    room hook's settings payload and the router test's deps. The change is
@@ -152,7 +188,8 @@ Node 22, on this branch:
 | | Suites | Tests | Snapshots |
 |---|---|---|---|
 | Base (`cbb1446c`, a clean worktree) | 676 | 9,551 | 59 |
-| After | 682 | 9,598 | 59 |
+| After 4b-wire (`87e14f6a`) | 682 | 9,598 | 59 |
+| After the review fixes | 685 | 9,622 | 59 |
 
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors and no new warnings. The memory components mark
