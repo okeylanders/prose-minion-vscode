@@ -83,7 +83,7 @@ The Wayfinding epic's process, unchanged:
   after in the slice doc. Last recorded on the base: 636 suites / 8,977 tests
   / 59 snapshots (Wayfinding Slice 7, `a78afa6`).
 - No `from 'vscode'` in `packages/core/src`.
-- No new file over 500 lines, and a touched file does not grow past 500.
+- No new TS/TSX module over 500 lines, and a touched module does not grow past 500. Stylesheets follow the repo's precedent (the boundaries guard covers TS modules only).
 - Fixtures and tests use *Alice* or made-up names, never a writer's text.
 
 ## Decisions (Okey, 2026-11-04)
