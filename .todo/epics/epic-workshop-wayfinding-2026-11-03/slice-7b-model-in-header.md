@@ -116,9 +116,13 @@ Let `served` be the stamp's `servedModelIds` (distinct, in request order), and
 
 ## Built
 
-**Commits.** `db21a55` the shared rule; `3955530` the bubble header and the
-note's retirement; `769aefc` export headers and the mirror; `d44e458` header
-parity and the readers pin; `ee77473` a test's lint cleanup.
+**Commits.** `b1c66ab` the shared rule; `e3be337` the bubble header and the
+note's retirement; `0c7ac13` export headers and the mirror; `fe8bce0` header
+parity and the readers pin; `8028f68` a test's lint cleanup; after the plan
+review (`0d8cede`): `2b734e9` capability cards' export lines (W-01) and
+`0a6ea38` the header icon held in a narrow column (found by the W-05 layout
+check). The ADR amendment's "via" wording is tightened (N-01) in the commit
+that records this.
 
 **Where each piece lives.**
 
@@ -127,9 +131,9 @@ parity and the readers pin; `ee77473` a test's lint cleanup.
 | The rule | `shared/workshop/workshopTurnModelLabel.ts` (`workshopTurnModelLabel`, `WorkshopModelLabelLookup`) |
 | Tooltip | `utils/workshop/workshopTurnModelNote.ts` keeps `workshopTurnModelTitle` and `workshopRawModelId`; `workshopServedByNote` is deleted |
 | Thread | `WorkshopTurnBubble`: one call, and `<span className="pm-ws-turn-model">· …</span>` inside the participant label (`.pm-ws-eyebrow`); the under-body note block is removed |
-| Style | Two rules after `.pm-ws-turn-head` in `styles/workshop/shell.css`: `.pm-ws-turn-head > .pm-ws-eyebrow` (`min-width: 0; white-space: nowrap`) and `.pm-ws-turn-model` (`min-width: 0`, ellipsis, 10px, normal case) |
-| Export | `export/WorkshopTranscriptModelHeader.ts` (`WorkshopTranscriptRenderOptions`, `workshopTranscriptReplyModel`); Markdown and HTML renderers take the options; the service passes its model-label port to them |
-| Mirror | The two rules, verbatim, in `WorkshopTranscriptHtmlStyles.ts` after `.pm-ws-turn-head` |
+| Style | Three rules after `.pm-ws-turn-head` in `styles/workshop/shell.css`: `.pm-ws-turn-head > .pm-ws-eyebrow` (`min-width: 0; white-space: nowrap`), its `> svg` (`flex-shrink: 0`), and `.pm-ws-turn-model` (`min-width: 0`, ellipsis, 10px, normal case) |
+| Export | `export/WorkshopTranscriptModelHeader.ts` (`WorkshopTranscriptRenderOptions`, `workshopTranscriptEntryModel`); Markdown and HTML renderers take the options; the service passes its model-label port to them. A reply names the model after its speaker; a stamped capability card's one-line event ends with it |
+| Mirror | The three rules, verbatim, in `WorkshopTranscriptHtmlStyles.ts` after `.pm-ws-turn-head` |
 | JSON | Unchanged; its renderer ignores the options |
 
 **Tests.**
@@ -145,14 +149,17 @@ parity and the readers pin; `ee77473` a test's lint cleanup.
   model span (not the name) carrying the shrink rules, read from `shell.css`.
 - Export: `WorkshopTranscriptModelHeaders.test.ts`. Markdown and HTML headers
   for every row, with the bookmark and private suffixes; raw ids without a
-  lookup; a capability card's event line unchanged; unstamped rooms rendering
+  lookup; a stamped dictionary card's and analysis card's event line ending
+  with its model, an unstamped card's unchanged, and no card evidence; unstamped rooms rendering
   identically with and without labels; hostile ids escaped, and a Markdown
   heading kept to one line; the mirror; JSON byte-identical with and without
   labels; nothing in the per-turn entry; the real export route.
 - Parity: `WorkshopModelHeaderParity.test.tsx`, a sibling of the slice parity
-  test on an extended room. For every reply the HTML export prints, the
-  thread's header model text equals the export's, with names and with raw
-  ids. A mutation (the thread ignoring served ids) fails both cases.
+  test on an extended room. For every reply and capability card (dictionary
+  and persona-run analysis) the HTML export prints, the thread's header model
+  text equals the export's, with names and with raw ids. Two mutations fail
+  both cases: the thread ignoring served ids, and the export dropping a
+  card's model.
 - Readers: `architecture/workshopTurnModelLabelReaders.test.ts`. Only the
   bubble and the export's header helper import the rule, and only the
   Markdown and HTML renderers and the service import the helper.
@@ -163,12 +170,13 @@ parity and the readers pin; `ee77473` a test's lint cleanup.
 
 **Deviations and choices.**
 
-- **Capability cards in export.** A dictionary or analysis card names its
-  model in the thread's header, like any stamped turn. In Markdown and HTML it
-  is a one-line event with no header, so it names none there, and the parity
-  test compares replies only. JSON carries its `model`. Adding the model to the
-  event line would be a new copy decision; it is a one-line change if the
-  writer wants it.
+- **Capability cards in export (plan review W-01).** A dictionary or
+  analysis card names its model in the thread's header. In Markdown and HTML
+  it is a one-line event, so the line ends with the same text
+  ("Writer's Dictionary · liminal · requested by Jill · success · Model B"),
+  the model in the thread's span in HTML. The event's text in the projected
+  entry is unchanged, so recall reads the line without it. The ADR amendment
+  now says so.
 - **Whitespace.** The rule reads every run of whitespace in an id or label as
   one space, on both sides. Served ids come from the provider, and a newline
   would otherwise break a Markdown heading.
@@ -179,7 +187,19 @@ parity and the readers pin; `ee77473` a test's lint cleanup.
 - **The shrink.** The name stays a text node; held to one line by
   `white-space: nowrap`, its min-content is its whole width, so only the
   model span (`min-width: 0`) shrinks. No wrapper span for the name, so the
-  bubble grows by the call and the span alone.
+  bubble grows by the call and the span alone. The icon needs its own
+  `flex-shrink: 0`: the layout check below showed it squeezed to nothing
+  without it.
+- **Layout, measured (plan review W-05).** The HTML export of a reply named
+  "Jill Longername" with a 484px model text, loaded in Playwright's Chromium
+  at a 260px viewport: the header is one line (17px); the name is whole
+  (119px, one 14px line); the icon keeps 12px; the model span is 51px wide
+  with a 484px scroll width and `text-overflow: ellipsis`, 10px against the
+  name's 11px, `text-transform: none`. The export runs the thread's mirrored
+  rules, so this stands for the thread's CSS too. It is not the webview inside
+  VS Code, and that Chromium is newer than the 114 floor (the rules use only
+  long-standing features, and `webviewCssFloor.test.ts` passes); Slice 8's
+  live pass still looks at it in the editor.
 - **Screen readers.** The label had no accessible name before (a span with a
   tooltip); its text now reads "Jill · Opus 5.5" as one run, with the dot and
   a space in the DOM text.
@@ -192,20 +212,19 @@ parity and the readers pin; `ee77473` a test's lint cleanup.
 **Counts and sizes.**
 
 - Before (`6c12df5`): 636 suites / 8,977 tests / 59 snapshots; lint 1,153
-  warnings. After: 641 suites / 9,007 tests / 59 snapshots; lint 0 errors,
+  warnings. After: 641 suites / 9,009 tests / 59 snapshots; lint 0 errors,
   1,155 warnings (two new, each the `PmLogo` mock name the sibling App tests
   already carry). Typecheck clean; no `from 'vscode'` in `packages/core/src`
   outside tests' boundary strings.
 - `WorkshopTurnBubble.tsx` 792 → 789 (the doc's 782 was stale).
-  `workshopTurnModelLabel.ts` 55, `WorkshopTranscriptModelHeader.ts` 29,
-  `WorkshopTranscriptHtml.ts` 247, `WorkshopTranscriptMarkdown.ts` 106,
-  `WorkshopTranscriptExportService.ts` 120, `workshopTurnModelNote.ts` 31.
-  `WorkshopTranscriptHtmlStyles.ts` 645 → 657 (already over 500; it grows by
-  the mirrored rules only). Tests: parity 272, App header 269, export headers
-  226, rule 76, readers 45.
+  `workshopTurnModelLabel.ts` 55, `WorkshopTranscriptModelHeader.ts` 36,
+  `WorkshopTranscriptHtml.ts` 237 → 252, `WorkshopTranscriptMarkdown.ts` 95 → 111,
+  `WorkshopTranscriptExportService.ts` 115 → 120, `workshopTurnModelNote.ts` 46 → 31.
+  `WorkshopTranscriptHtmlStyles.ts` 645 → 660 (already over 500; it grows by
+  the mirrored rules only). Tests: parity 301, App header 271, export headers
+  281, rule 76, readers 45.
 
 **Follow-ups.**
 
-- Whether a capability card's export event line names its model (above).
-- Slice 8's live pass: the model span's ellipsis in a narrow column, and its
-  weight beside the name.
+- Slice 8's live pass: the header in the editor's webview at a narrow width,
+  and the model's weight beside the name (the color is the writer's eye).

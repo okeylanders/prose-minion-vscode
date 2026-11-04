@@ -270,10 +270,17 @@ built in [Slice 7b](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-
 participant label is followed by the model that served the reply.
 
 - **The form.** "Jill · Opus 5.5", with the thread's middle dot.
-- **When a different model served it.** If the provider served a model other
-  than the one requested, the label adds "via {requested}", as in
-  "Jill · Claude Sonnet 5 via Auto router". This replaces the under-body
-  served-by note, which is retired, so there is one place to look.
+- **When a different model served it.** If the provider named models and
+  none of them is the one requested, the label names them and adds
+  "via {requested}", as in "Jill · Claude Sonnet 5 via Auto router". If the
+  requested model served among others, the label names them all, in order,
+  without "via": "Jill · Opus 5.5, Sonnet 5". This replaces the under-body
+  served-by note, which is retired, so there is one place to look. The
+  [slice doc](../../.todo/epics/epic-workshop-wayfinding-2026-11-03/slice-7b-model-in-header.md#the-rule)
+  holds the full table.
+- **Capability cards.** A stamped dictionary or analysis card names its model
+  in its thread header by the same rule; in Markdown and HTML export, where it
+  is a one-line event, the line ends with the same text.
 - **When the provider named no model.** The label names the requested model.
 - **When there's no stamp.** An unstamped turn names no model: a writer
   turn, a host-written fallback, or a turn saved before this epic.
