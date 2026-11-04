@@ -10,7 +10,14 @@
  * The preview follows the Read in reader's correlation rule (PR #186 F-01):
  * one request is pending at a time, under an id this hook mints, and only the
  * first reply to that id is taken. A turn id names a turn, not a request, so
- * a late answer to an earlier opening never paints into a later one.
+ * a late answer to an earlier opening never paints into a later one. Each
+ * request names the room it was made in (the snapshot's `roomRevision`): the
+ * host answers only from that room, and a reply is dropped once the room on
+ * screen is another (PR #189 F-02).
+ *
+ * A rename names its request too, and the host answers it, accepted or
+ * refused; `renameOutcome` holds the answer to the pending one, so the field
+ * keeps the writer's draft until the host has kept the name (PR #189 F-01).
  *
  * Nothing here is persisted: the session file owns bookmarks, and a preview
  * is read again each time it opens.
@@ -20,6 +27,8 @@ import * as React from 'react';
 import {
   MessageType,
   WorkshopBookmarkSummary,
+  WorkshopRenameBookmarkResultMessage,
+  WorkshopRenameBookmarkResultPayload,
   WorkshopSessionStateMessage,
   WorkshopTurnPreview,
   WorkshopTurnPreviewMessage
@@ -30,6 +39,8 @@ export interface WorkshopTurnPreviewState {
   /** The request this state belongs to. */
   requestId: string;
   turnId: string;
+  /** The room the request was made in. */
+  roomRevision: number;
   /** Undefined until the host answers, or when it refused. */
   turn?: WorkshopTurnPreview;
   error?: string;
@@ -41,17 +52,23 @@ export interface WorkshopBookmarksState {
   /** Turn ids that carry a bookmark, for the thread's toggles. */
   bookmarkedTurnIds: ReadonlySet<string>;
   turnPreview: WorkshopTurnPreviewState | null;
+  /** The host's answer to the pending rename, once it has answered. */
+  renameOutcome: WorkshopRenameBookmarkResultPayload | null;
 }
 
 export interface WorkshopBookmarksActions {
   setTurnBookmark: (turnId: string, bookmarked: boolean) => void;
-  /** `null` restores the default label; the caller checks the label first. */
-  renameBookmark: (bookmarkId: string, label: string | null) => void;
+  /**
+   * `null` restores the default label; the caller checks the label first.
+   * Returns the request's id, which `renameOutcome` will answer.
+   */
+  renameBookmark: (bookmarkId: string, label: string | null) => string;
   /** Asks for one turn, read-only, and returns the request's id. */
   requestTurnPreview: (turnId: string) => string;
   clearTurnPreview: () => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleTurnPreview: (message: WorkshopTurnPreviewMessage) => void;
+  handleRenameResult: (message: WorkshopRenameBookmarkResultMessage) => void;
 }
 
 export interface WorkshopBookmarksPersistence {
@@ -80,9 +97,17 @@ export function useWorkshopBookmarks({
   const vscode = useVSCodeApi();
   const [bookmarks, setBookmarks] = React.useState<readonly WorkshopBookmarkSummary[]>(NO_BOOKMARKS);
   const [turnPreview, setTurnPreview] = React.useState<WorkshopTurnPreviewState | null>(null);
+  const [renameOutcome, setRenameOutcome] = React.useState<WorkshopRenameBookmarkResultPayload | null>(null);
+  // The room on screen, from the latest snapshot, and the rename awaiting its answer.
+  const roomRevisionRef = React.useRef<number | undefined>(undefined);
+  const pendingRenameRef = React.useRef<string | undefined>(undefined);
   // This webview's prefix, so a reloaded webview never takes an answer meant
   // for the one before it.
-  const ids = React.useRef({ prefix: `ws-preview-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
+  const ids = React.useRef({ prefix: `ws-bookmarks-${Math.random().toString(36).slice(2, 10)}`, count: 0 });
+  const mintRequestId = React.useCallback((): string => {
+    ids.current.count += 1;
+    return `${ids.current.prefix}-${ids.current.count}`;
+  }, []);
   const beforeChangeRef = React.useRef(onBeforeChange);
   beforeChangeRef.current = onBeforeChange;
 
@@ -95,31 +120,41 @@ export function useWorkshopBookmarks({
     post(MessageType.WORKSHOP_SET_TURN_BOOKMARK, { turnId, bookmarked });
   }, [post]);
 
-  const renameBookmark = React.useCallback((bookmarkId: string, label: string | null) => {
+  const renameBookmark = React.useCallback((bookmarkId: string, label: string | null): string => {
     beforeChangeRef.current?.();
-    post(MessageType.WORKSHOP_RENAME_BOOKMARK, { bookmarkId, label });
-  }, [post]);
+    const requestId = mintRequestId();
+    pendingRenameRef.current = requestId;
+    setRenameOutcome(null);
+    post(MessageType.WORKSHOP_RENAME_BOOKMARK, { requestId, bookmarkId, label });
+    return requestId;
+  }, [mintRequestId, post]);
 
   const requestTurnPreview = React.useCallback((turnId: string): string => {
-    ids.current.count += 1;
-    const requestId = `${ids.current.prefix}-${ids.current.count}`;
-    setTurnPreview({ requestId, turnId });
-    post(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, { requestId, turnId });
+    const requestId = mintRequestId();
+    // Before the first snapshot there is no room to name; the host refuses -1.
+    const roomRevision = roomRevisionRef.current ?? -1;
+    setTurnPreview({ requestId, turnId, roomRevision });
+    post(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW, { requestId, turnId, roomRevision });
     return requestId;
-  }, [post]);
+  }, [mintRequestId, post]);
 
   const clearTurnPreview = React.useCallback(() => setTurnPreview(null), []);
 
   const handleSessionState = React.useCallback((message: WorkshopSessionStateMessage) => {
-    setBookmarks(message.payload.session.bookmarks ?? NO_BOOKMARKS);
+    const { session } = message.payload;
+    roomRevisionRef.current = session.roomRevision;
+    setBookmarks(session.bookmarks ?? NO_BOOKMARKS);
   }, []);
 
   const handleTurnPreview = React.useCallback((message: WorkshopTurnPreviewMessage) => {
-    const { requestId, turnId, turn, error } = message.payload;
+    const { requestId, turnId, roomRevision, turn, error } = message.payload;
     setTurnPreview((current) =>
       current !== null
         && current.requestId === requestId
         && current.turnId === turnId
+        // A reply from another room, or for a room no longer on screen, is dropped.
+        && current.roomRevision === roomRevision
+        && current.roomRevision === roomRevisionRef.current
         && current.turn === undefined
         && current.error === undefined
         ? {
@@ -131,6 +166,14 @@ export function useWorkshopBookmarks({
     );
   }, []);
 
+  const handleRenameResult = React.useCallback((message: WorkshopRenameBookmarkResultMessage) => {
+    if (message.payload.requestId !== pendingRenameRef.current) {
+      return;
+    }
+    pendingRenameRef.current = undefined;
+    setRenameOutcome(message.payload);
+  }, []);
+
   const bookmarkedTurnIds = React.useMemo(
     () => new Set(bookmarks.map((bookmark) => bookmark.turnId)),
     [bookmarks]
@@ -140,12 +183,14 @@ export function useWorkshopBookmarks({
     bookmarks,
     bookmarkedTurnIds,
     turnPreview,
+    renameOutcome,
     setTurnBookmark,
     renameBookmark,
     requestTurnPreview,
     clearTurnPreview,
     handleSessionState,
     handleTurnPreview,
+    handleRenameResult,
     persistedState: {}
   };
 }

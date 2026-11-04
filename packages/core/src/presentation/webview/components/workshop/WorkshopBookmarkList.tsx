@@ -16,7 +16,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
-import type { WorkshopBookmarkSummary } from '@messages';
+import type { WorkshopBookmarkSummary, WorkshopRenameBookmarkResultPayload } from '@messages';
 import { useWorkshopBookmarkRename } from '@hooks/domain/workshop/controllers/useWorkshopBookmarkRename';
 import { participantIdentityColorIndex } from '@utils/contextBudget';
 
@@ -26,7 +26,10 @@ export interface WorkshopBookmarkListProps {
   disabled?: boolean;
   /** Opens a bookmark: a jump in the window, the preview outside it. */
   onOpen: (bookmark: WorkshopBookmarkSummary) => void;
-  onRename: (bookmarkId: string, label: string | null) => void;
+  /** Sends a rename and returns its request id, which `renameOutcome` answers. */
+  onRename: (bookmarkId: string, label: string | null) => string;
+  /** The host's answer to the latest rename. */
+  renameOutcome?: WorkshopRenameBookmarkResultPayload | null;
   onRemove: (turnId: string) => void;
 }
 
@@ -56,9 +59,10 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
   disabled = false,
   onOpen,
   onRename,
+  renameOutcome = null,
   onRemove
 }) => {
-  const rename = useWorkshopBookmarkRename({ bookmarks, onRename });
+  const rename = useWorkshopBookmarkRename({ bookmarks, onRename, outcome: renameOutcome });
   const idPrefix = React.useId();
   const renameButtons = React.useRef(new Map<string, HTMLButtonElement | null>());
   const { closedId, acknowledgeClosed } = rename;
@@ -101,6 +105,7 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                   >
                     <input
                       value={rename.draft}
+                      readOnly={rename.saving}
                       autoFocus
                       aria-label="Bookmark name"
                       aria-invalid={rename.fault !== undefined}
@@ -117,8 +122,11 @@ export const WorkshopBookmarkList: React.FC<WorkshopBookmarkListProps> = ({
                     {rename.fault ? (
                       <p className="pm-ws-bookmark-fault" id={faultId} role="alert">{rename.fault}</p>
                     ) : null}
+                    {rename.saving ? (
+                      <p className="pm-ws-bookmark-saving" role="status">Saving…</p>
+                    ) : null}
                     <div className="pm-ws-bookmark-rename-actions">
-                      <button type="submit" disabled={disabled}>Save</button>
+                      <button type="submit" disabled={disabled || rename.saving}>Save</button>
                       <button type="button" onClick={rename.cancelRename}>Cancel</button>
                     </div>
                   </form>

@@ -408,6 +408,11 @@
   padding: 4px 6px;
   font: 12px var(--pm-sans);
 }
+[data-pm-surface="workshop"] .pm-ws-bookmark-saving {
+  margin: 0;
+  color: var(--pm-dim);
+  font-size: 11px;
+}
 [data-pm-surface="workshop"] .pm-ws-bookmark-fault {
   margin: 0;
   color: var(--pm-red);

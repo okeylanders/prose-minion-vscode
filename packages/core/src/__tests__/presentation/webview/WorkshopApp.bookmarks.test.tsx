@@ -269,25 +269,38 @@ describe('WorkshopApp bookmarks', () => {
       expect(thread().contains(document.activeElement)).toBe(true);
     });
 
-    it('renames, resets, and removes through the host', () => {
+    it('renames, resets, and removes through the host, each rename closing on its own answer', () => {
       render(<WorkshopApp />);
       deliver(session({ bookmarks: [mark('bookmark-2-1', 'turn-2', 'Jill · Let the father')] }));
       openNotes();
+      const accept = () => {
+        const { requestId } = posted(MessageType.WORKSHOP_RENAME_BOOKMARK).at(-1) as { requestId: string };
+        deliver({
+          type: MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT,
+          source: 'extension.workshop',
+          payload: { requestId, bookmarkId: 'bookmark-2-1', accepted: true },
+          timestamp: 4
+        });
+      };
 
       fireEvent.click(within(rail()).getByRole('button', { name: 'Rename bookmark: Jill · Let the father' }));
       const input = within(rail()).getByRole('textbox', { name: 'Bookmark name' });
       fireEvent.change(input, { target: { value: 'The quiet father' } });
       fireEvent.submit(input.closest('form')!);
+      expect(within(rail()).getByRole('textbox', { name: 'Bookmark name' })).toBeTruthy();
+      accept();
+      expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
 
       fireEvent.click(within(rail()).getByRole('button', { name: 'Rename bookmark: Jill · Let the father' }));
       fireEvent.change(within(rail()).getByRole('textbox', { name: 'Bookmark name' }), { target: { value: '' } });
       fireEvent.click(within(rail()).getByRole('button', { name: 'Save' }));
+      accept();
 
       fireEvent.click(within(rail()).getByRole('button', { name: 'Remove bookmark: Jill · Let the father' }));
 
       expect(posted(MessageType.WORKSHOP_RENAME_BOOKMARK)).toEqual([
-        { bookmarkId: 'bookmark-2-1', label: 'The quiet father' },
-        { bookmarkId: 'bookmark-2-1', label: null }
+        { requestId: expect.any(String), bookmarkId: 'bookmark-2-1', label: 'The quiet father' },
+        { requestId: expect.any(String), bookmarkId: 'bookmark-2-1', label: null }
       ]);
       expect(posted(MessageType.WORKSHOP_SET_TURN_BOOKMARK)).toEqual([{ turnId: 'turn-2', bookmarked: false }]);
     });

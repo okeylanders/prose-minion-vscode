@@ -149,11 +149,11 @@ describe('WorkshopApp turn preview', () => {
 
   describe('the turn preview (D6)', () => {
     const openNotes = () => fireEvent.click(screen.getByRole('tab', { name: /^Notes/ }));
-    const previewRequests = () => posted(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW) as Array<{ requestId: string; turnId: string }>;
-    const answer = (requestId: string, turnId: string, content: string) => deliver({
+    const previewRequests = () => posted(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW) as Array<{ requestId: string; turnId: string; roomRevision: number }>;
+    const answer = (requestId: string, turnId: string, content: string, roomRevision = 1) => deliver({
       type: MessageType.WORKSHOP_TURN_PREVIEW,
       source: 'extension.workshop',
-      payload: { requestId, turnId, turn: { kind: 'reply', speaker: 'Jill', content, timestamp: 5 } },
+      payload: { requestId, turnId, roomRevision, turn: { kind: 'reply', speaker: 'Jill', content, timestamp: 5 } },
       timestamp: 6
     });
     const older = mark('bookmark-3-1', 'turn-0', 'Jill · An older reply', false);
@@ -172,7 +172,7 @@ describe('WorkshopApp turn preview', () => {
       openOlder();
       await settle();
 
-      expect(previewRequests()).toEqual([{ requestId: expect.any(String), turnId: 'turn-0' }]);
+      expect(previewRequests()).toEqual([{ requestId: expect.any(String), turnId: 'turn-0', roomRevision: 1 }]);
       const sheet = screen.getByRole('dialog', { name: 'Jill · An older reply' });
       expect(within(sheet).getByText('Loading the message…')).toBeTruthy();
       expect(thread().closest('[inert]')).not.toBeNull();
@@ -236,6 +236,53 @@ describe('WorkshopApp turn preview', () => {
 
       answer(request.requestId, 'turn-0', 'From the old room.');
       expect(screen.queryByText('From the old room.')).toBeNull();
+    });
+
+    describe('in the order the host posts during an Open: the preview, then the new room (PR #189 F-02)', () => {
+      it('shows the host\'s refusal, never the other room\'s turn, then closes on the new room', async () => {
+        render(<WorkshopApp />);
+        deliver(session({ bookmarks: [older] }));
+        openNotes();
+        openOlder();
+        await settle();
+        const [request] = previewRequests();
+        expect(request.roomRevision).toBe(1);
+
+        deliver({
+          type: MessageType.WORKSHOP_TURN_PREVIEW,
+          source: 'extension.workshop',
+          payload: {
+            requestId: request.requestId,
+            turnId: 'turn-0',
+            roomRevision: 1,
+            error: 'The room changed before this message could be shown.'
+          },
+          timestamp: 6
+        });
+        expect(within(screen.getByRole('dialog')).getByText(/The room changed before this message could be shown\./)).toBeTruthy();
+
+        deliver(session({ roomRevision: 2, bookmarks: [older] }));
+        await settle();
+        expect(screen.queryByRole('dialog')).toBeNull();
+      });
+
+      it('never shows a reply that names another room, whatever comes after it', async () => {
+        render(<WorkshopApp />);
+        deliver(session({ bookmarks: [older] }));
+        openNotes();
+        openOlder();
+        await settle();
+        const [request] = previewRequests();
+
+        answer(request.requestId, 'turn-0', 'The other room\'s turn.', 2);
+        expect(screen.queryByText('The other room\'s turn.')).toBeNull();
+        expect(within(screen.getByRole('dialog')).getByText('Loading the message…')).toBeTruthy();
+
+        deliver(session({ roomRevision: 2, bookmarks: [older] }));
+        await settle();
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(screen.queryByText('The other room\'s turn.')).toBeNull();
+      });
     });
 
     it('closes on a chat-target change', async () => {

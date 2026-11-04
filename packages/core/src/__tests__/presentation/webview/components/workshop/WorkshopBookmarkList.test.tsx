@@ -4,8 +4,9 @@
  * WorkshopBookmarkList (ADR 2026-11-03 D5, D6): the snapshot's bookmarks in
  * the order given, each row named first by its label, tagged "opens in
  * reader" outside the window; rename saves, cancels and resets to the
- * default with the shared label rule; remove reuses the set route; and the
- * empty state is one muted line.
+ * default with the shared label rule, keeping a submitted draft until the
+ * host answers it (PR #189 F-01); remove reuses the set route; and the empty
+ * state is one muted line.
  */
 
 import * as React from 'react';
@@ -37,7 +38,7 @@ const renderList = (
   bookmarks: WorkshopBookmarkSummary[] = rows,
   props: Partial<React.ComponentProps<typeof WorkshopBookmarkList>> = {}
 ) => {
-  const handlers = { onOpen: jest.fn(), onRename: jest.fn(), onRemove: jest.fn() };
+  const handlers = { onOpen: jest.fn(), onRename: jest.fn(() => 'rename-1'), onRemove: jest.fn() };
   const view = render(<WorkshopBookmarkList bookmarks={bookmarks} {...handlers} {...props} />);
   return { ...view, ...handlers };
 };
@@ -96,8 +97,8 @@ describe('WorkshopBookmarkList', () => {
     expect(onRemove).toHaveBeenCalledWith('turn-b-2');
   });
 
-  it('saves a rename on Enter, trimmed, and returns focus to its Rename button', () => {
-    const { onRename } = renderList();
+  it('sends a rename on Enter, trimmed, and keeps the draft, saving, until the host answers', () => {
+    const { onRename, rerender, onOpen, onRemove } = renderList();
     openRename('Dialogue & Beats · report');
     expect(field().value).toBe('Dialogue & Beats · report');
     expect(document.activeElement).toBe(field());
@@ -106,10 +107,48 @@ describe('WorkshopBookmarkList', () => {
     fireEvent.submit(field().form!);
 
     expect(onRename).toHaveBeenCalledWith('b-2', 'The father never answers');
+    expect(field().value).toBe('  The father never answers  ');
+    expect(field().readOnly).toBe(true);
+    expect(screen.getByRole('status').textContent).toBe('Saving…');
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(field().form!);
+    expect(onRename).toHaveBeenCalledTimes(1);
+
+    // Another request's answer is not this one's.
+    const props = { onOpen, onRename, onRemove };
+    rerender(<WorkshopBookmarkList bookmarks={rows} {...props} renameOutcome={{ requestId: 'rename-0', bookmarkId: 'b-2', accepted: true }} />);
+    expect(screen.getByRole('textbox', { name: 'Bookmark name' })).toBeTruthy();
+
+    rerender(<WorkshopBookmarkList bookmarks={rows} {...props} renameOutcome={{ requestId: 'rename-1', bookmarkId: 'b-2', accepted: true }} />);
     expect(screen.queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: 'Rename bookmark: Dialogue & Beats · report' })
     );
+  });
+
+  it('gives a refused draft back with the host\'s reason, ready to save again', () => {
+    const { onRename, rerender, onOpen, onRemove } = renderList();
+    openRename('Dialogue & Beats · report');
+    fireEvent.change(field(), { target: { value: 'The father never answers' } });
+    fireEvent.submit(field().form!);
+
+    rerender(
+      <WorkshopBookmarkList
+        bookmarks={rows}
+        onOpen={onOpen}
+        onRename={onRename}
+        onRemove={onRemove}
+        renameOutcome={{ requestId: 'rename-1', bookmarkId: 'b-2', accepted: false, error: 'Wait for the current session save or replacement to finish before changing the room.' }}
+      />
+    );
+
+    expect(field().value).toBe('The father never answers');
+    expect(field().readOnly).toBe(false);
+    expect(screen.getByRole('alert').textContent)
+      .toBe('Wait for the current session save or replacement to finish before changing the room.');
+    expect(field().getAttribute('aria-invalid')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onRename).toHaveBeenCalledTimes(2);
   });
 
   it('cancels on Escape and on Cancel, sending nothing', () => {

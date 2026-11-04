@@ -1,0 +1,188 @@
+/** @jest-environment jsdom */
+
+/**
+ * WorkshopApp bookmark renames against the real host (PR #189 F-01): the real
+ * App, with its bookmark messages routed through the real router, slice
+ * composition and session, and the host's replies delivered back to it.
+ *
+ * A submitted rename stays in its field, saving, until the host answers that
+ * request. A refusal under the session-operation gate (held at its gate seam,
+ * as a Refresh changed files waiting on persistence I/O holds it) gives the
+ * draft back with the host's reason, and the label is unchanged. An accepted
+ * rename closes the field onto the new label. Escape and a room replacement
+ * still close the field.
+ */
+
+import './support/jsdomTextEncoding';
+import * as React from 'react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MessageType } from '@messages';
+import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import {
+  createWorkshopRouteTestHarness,
+  message
+} from '@/__tests__/application/handlers/domain/workshop/WorkshopRouteTestHarness';
+
+jest.mock('../../../presentation/webview/hooks/useVSCodeApi');
+jest.mock('../../../presentation/webview/styles/workshop/tokens.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/workshop/shell.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/workshop/context.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/workshop/session.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
+jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
+
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
+import { WorkshopApp } from '@/presentation/webview/WorkshopApp';
+
+/** The webview messages this bridge carries to the host. */
+const TO_HOST = new Set<MessageType>([
+  MessageType.WORKSHOP_SET_TURN_BOOKMARK,
+  MessageType.WORKSHOP_RENAME_BOOKMARK,
+  MessageType.WORKSHOP_REQUEST_TURN_PREVIEW
+]);
+/** The host messages it carries back. */
+const TO_WEBVIEW = new Set<MessageType>([
+  MessageType.WORKSHOP_SESSION_STATE,
+  MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT,
+  MessageType.WORKSHOP_TURN_PREVIEW,
+  MessageType.ERROR
+]);
+
+const GATE = 'Wait for the current session save or replacement to finish before changing the room.';
+
+describe('WorkshopApp bookmark rename against the real host (PR #189 F-01)', () => {
+  let vscode: ReturnType<typeof createMockVSCode>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    Element.prototype.scrollIntoView = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.clearAllMocks();
+  });
+
+  /** A room with one bookmarked reply, its snapshot on screen, and Notes open. */
+  const bridged = async () => {
+    const harness = createWorkshopRouteTestHarness();
+    await harness.pin();
+    await harness.router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Look at the lantern beat.' }) as never);
+    const reply = harness.session.readRoomLedger().find((turn) => turn.participant === 'host')!;
+    await harness.router.route(message(MessageType.WORKSHOP_SET_TURN_BOOKMARK, { turnId: reply.id, bookmarked: true }) as never);
+
+    let delivered = 0;
+    /** Carries the webview's bookmark messages to the host, then the host's replies back. */
+    const pump = async () => {
+      await act(async () => {
+        const sent = vscode.postMessage.mock.calls.map(([entry]: [{ type: MessageType }]) => entry);
+        vscode.postMessage.mockClear();
+        for (const entry of sent.filter((candidate) => TO_HOST.has(candidate.type))) {
+          await harness.router.route(entry as never);
+        }
+        const replies = harness.postMessage.mock.calls.slice(delivered).map(([entry]) => entry);
+        delivered = harness.postMessage.mock.calls.length;
+        for (const entry of replies.filter((candidate) => TO_WEBVIEW.has(candidate.type))) {
+          window.dispatchEvent(new MessageEvent('message', { data: entry }));
+        }
+      });
+    };
+
+    render(<WorkshopApp />);
+    await pump();
+    fireEvent.click(screen.getByRole('tab', { name: /^Notes/ }));
+    const [bookmark] = harness.session.getSnapshot().bookmarks;
+    return { harness, bookmark, pump };
+  };
+
+  const rail = () => screen.getByLabelText('Session rail');
+  const field = () => within(rail()).getByRole('textbox', { name: 'Bookmark name' }) as HTMLInputElement;
+  const startRename = (label: string, draft: string) => {
+    fireEvent.click(within(rail()).getByRole('button', { name: `Rename bookmark: ${label}` }));
+    fireEvent.change(field(), { target: { value: draft } });
+  };
+
+  it('keeps the draft and shows the host\'s reason when the gate refuses it', async () => {
+    const { harness, bookmark, pump } = await bridged();
+    startRename(bookmark.label, 'The quiet father');
+    harness.persistence.isSessionOperationPending.mockReturnValue(true);
+
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Save' }));
+    // Sent and waiting: the field says so, and Save cannot send twice.
+    expect(within(rail()).getByRole('status').textContent).toBe('Saving…');
+    expect((within(rail()).getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await pump();
+
+    expect(field().value).toBe('The quiet father');
+    expect(within(rail()).getByRole('alert').textContent).toBe(GATE);
+    expect(harness.session.getSnapshot().bookmarks[0].label).toBe(bookmark.label);
+
+    // Once the gate is free, the same draft saves.
+    harness.persistence.isSessionOperationPending.mockReturnValue(false);
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Save' }));
+    await pump();
+    expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+    expect(harness.session.getSnapshot().bookmarks[0].label).toBe('The quiet father');
+    expect(within(rail()).getByRole('button', { name: 'Rename bookmark: The quiet father' })).toBeTruthy();
+  });
+
+  it('closes the field onto the new label once the host accepts it', async () => {
+    const { harness, bookmark, pump } = await bridged();
+    startRename(bookmark.label, 'The quiet father');
+
+    fireEvent.submit(field().form!);
+    expect(field().value).toBe('The quiet father');
+    await pump();
+
+    expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+    expect(harness.session.getSnapshot().bookmarks[0].label).toBe('The quiet father');
+    expect(document.activeElement).toBe(
+      within(rail()).getByRole('button', { name: 'Rename bookmark: The quiet father' })
+    );
+  });
+
+  it('closes on a reset to the default, which a snapshot alone could not tell from no change', async () => {
+    const { harness, bookmark, pump } = await bridged();
+    startRename(bookmark.label, 'Named');
+    fireEvent.submit(field().form!);
+    await pump();
+    startRename('Named', '');
+
+    fireEvent.submit(field().form!);
+    await pump();
+
+    expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+    expect(harness.session.getSnapshot().bookmarks[0].label).toBe(bookmark.label);
+  });
+
+  it('still closes on Escape, sending nothing', async () => {
+    const { harness, bookmark, pump } = await bridged();
+    startRename(bookmark.label, 'Second thoughts');
+
+    fireEvent.keyDown(field(), { key: 'Escape' });
+    await pump();
+
+    expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+    expect(harness.posted(MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT)).toEqual([]);
+  });
+
+  it('still closes the field when the room is replaced', async () => {
+    const { harness, bookmark, pump } = await bridged();
+    startRename(bookmark.label, 'Old room draft');
+
+    await act(async () => {
+      await harness.router.route(message(MessageType.WORKSHOP_RESET_SESSION, {}) as never);
+    });
+    await pump();
+
+    expect(within(rail()).queryByRole('textbox', { name: 'Bookmark name' })).toBeNull();
+  });
+});

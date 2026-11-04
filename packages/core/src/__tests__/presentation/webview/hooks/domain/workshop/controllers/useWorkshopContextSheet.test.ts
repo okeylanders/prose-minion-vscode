@@ -353,15 +353,15 @@ describe('useWorkshopContextSheet', () => {
       const { result, rerender } = renderHook(() => useWorkshopContextSheet(props));
       act(() => result.current.openTurnPreviewSheet('turn-0'));
 
-      props.turnPreview = { requestId: 'ws-preview-0', turnId: 'turn-0', turn: { ...preview, content: 'Late' } };
+      props.turnPreview = { requestId: 'ws-preview-0', turnId: 'turn-0', roomRevision: 1, turn: { ...preview, content: 'Late' } };
       rerender();
       expect(result.current.sheetBody?.value).toBeUndefined();
 
-      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', turn: preview };
+      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', roomRevision: 1, turn: preview };
       rerender();
       expect(result.current.sheetBody).toMatchObject({ loading: false, value: 'An older reply.', turnPreview: preview });
 
-      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', error: 'That message is no longer in this session.' };
+      props.turnPreview = { requestId: 'ws-preview-1', turnId: 'turn-0', roomRevision: 1, error: 'That message is no longer in this session.' };
       rerender();
       expect(result.current.sheetBody).toMatchObject({ loading: false, error: 'That message is no longer in this session.' });
     });

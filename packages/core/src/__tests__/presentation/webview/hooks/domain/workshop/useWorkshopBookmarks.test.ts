@@ -2,10 +2,11 @@
 
 /**
  * useWorkshopBookmarks (ADR 2026-11-03 D5, D6): the snapshot's summaries are
- * the only truth the hook keeps; set and rename post and wait for the next
- * snapshot; the turn preview takes only the first reply to the request it is
- * waiting on, so a late answer to an earlier opening never fills a later one.
- * Nothing persists.
+ * the only truth the hook keeps; set posts and waits for the next snapshot;
+ * a rename names its request and takes only the answer to the pending one
+ * (PR #189 F-01); the turn preview names the room it was asked in and takes
+ * only the first reply to the request it is waiting on, from that room,
+ * while that room is still on screen (PR #189 F-02). Nothing persists.
  */
 
 import { act, renderHook } from '@testing-library/react';
@@ -13,6 +14,7 @@ import { useWorkshopBookmarks } from '@hooks/domain/workshop/useWorkshopBookmark
 import {
   MessageType,
   WorkshopBookmarkSummary,
+  WorkshopRenameBookmarkResultMessage,
   WorkshopSessionStateMessage,
   WorkshopTurnPreviewMessage
 } from '@messages';
@@ -31,17 +33,26 @@ const summary = (id: string, turnId: string, inWindow = true): WorkshopBookmarkS
   inWindow
 });
 
-const snapshot = (bookmarks: WorkshopBookmarkSummary[]): WorkshopSessionStateMessage => ({
+const snapshot = (bookmarks: WorkshopBookmarkSummary[], roomRevision = 1): WorkshopSessionStateMessage => ({
   type: MessageType.WORKSHOP_SESSION_STATE,
   source: 'extension.workshop',
-  payload: { session: { bookmarks } }
+  payload: { session: { bookmarks, roomRevision } }
 } as unknown as WorkshopSessionStateMessage);
 
-const preview = (payload: WorkshopTurnPreviewMessage['payload']): WorkshopTurnPreviewMessage => ({
+const preview = (
+  payload: Omit<WorkshopTurnPreviewMessage['payload'], 'roomRevision'> & { roomRevision?: number }
+): WorkshopTurnPreviewMessage => ({
   type: MessageType.WORKSHOP_TURN_PREVIEW,
   source: 'extension.workshop',
-  payload,
+  payload: { roomRevision: 1, ...payload },
   timestamp: 2
+});
+
+const renameResult = (payload: WorkshopRenameBookmarkResultMessage['payload']): WorkshopRenameBookmarkResultMessage => ({
+  type: MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT,
+  source: 'extension.workshop',
+  payload,
+  timestamp: 3
 });
 
 const turn = (content: string) => ({ kind: 'reply' as const, speaker: 'Jill', content, timestamp: 1 });
@@ -52,6 +63,13 @@ describe('useWorkshopBookmarks', () => {
   const posted = (type: MessageType) => vscode.postMessage.mock.calls
     .map(([message]: [{ type: MessageType; source: string; payload: Record<string, unknown> }]) => message)
     .filter((message) => message.type === type);
+
+  /** A hook that has heard room 1's snapshot. */
+  const inRoom = (options: Parameters<typeof useWorkshopBookmarks>[0] = {}) => {
+    const view = renderHook(() => useWorkshopBookmarks(options));
+    act(() => view.result.current.handleSessionState(snapshot([])));
+    return view;
+  };
 
   beforeEach(() => {
     vscode = createMockVSCode();
@@ -73,32 +91,55 @@ describe('useWorkshopBookmarks', () => {
     expect(result.current.bookmarkedTurnIds.size).toBe(0);
   });
 
-  it('posts a set and a rename as asked, clearing the room error first, and changes nothing locally', () => {
+  it('posts a set and renames as asked, each rename under its own request id, clearing the room error first', () => {
     const onBeforeChange = jest.fn();
-    const { result } = renderHook(() => useWorkshopBookmarks({ onBeforeChange }));
+    const { result } = inRoom({ onBeforeChange });
 
     act(() => result.current.setTurnBookmark('turn-2', true));
-    act(() => result.current.renameBookmark('bookmark-1-1', null));
-    act(() => result.current.renameBookmark('bookmark-1-1', 'The lantern beat'));
+    let reset = '';
+    let named = '';
+    act(() => { reset = result.current.renameBookmark('bookmark-1-1', null); });
+    act(() => { named = result.current.renameBookmark('bookmark-1-1', 'The lantern beat'); });
 
     expect(posted(MessageType.WORKSHOP_SET_TURN_BOOKMARK).map((message) => message.payload))
       .toEqual([{ turnId: 'turn-2', bookmarked: true }]);
     expect(posted(MessageType.WORKSHOP_RENAME_BOOKMARK).map((message) => message.payload)).toEqual([
-      { bookmarkId: 'bookmark-1-1', label: null },
-      { bookmarkId: 'bookmark-1-1', label: 'The lantern beat' }
+      { requestId: reset, bookmarkId: 'bookmark-1-1', label: null },
+      { requestId: named, bookmarkId: 'bookmark-1-1', label: 'The lantern beat' }
     ]);
+    expect(named).not.toBe(reset);
     expect(onBeforeChange).toHaveBeenCalledTimes(3);
     expect(result.current.bookmarks).toEqual([]);
   });
 
-  it('asks for a preview under a fresh request id and takes its first reply only', () => {
-    const { result } = renderHook(() => useWorkshopBookmarks());
+  it('takes only the answer to the pending rename', () => {
+    const { result } = inRoom();
+    let first = '';
+    let second = '';
+    act(() => { first = result.current.renameBookmark('bookmark-1-1', 'One'); });
+    act(() => { second = result.current.renameBookmark('bookmark-1-1', 'Two'); });
+
+    act(() => result.current.handleRenameResult(renameResult({ requestId: first, bookmarkId: 'bookmark-1-1', accepted: true })));
+    expect(result.current.renameOutcome).toBeNull();
+
+    act(() => result.current.handleRenameResult(renameResult({
+      requestId: second, bookmarkId: 'bookmark-1-1', accepted: false, error: 'Wait.'
+    })));
+    expect(result.current.renameOutcome).toEqual({ requestId: second, bookmarkId: 'bookmark-1-1', accepted: false, error: 'Wait.' });
+
+    // Answered once: a repeat is not taken again.
+    act(() => result.current.handleRenameResult(renameResult({ requestId: second, bookmarkId: 'bookmark-1-1', accepted: true })));
+    expect(result.current.renameOutcome?.accepted).toBe(false);
+  });
+
+  it('asks for a preview in the room on screen, under a fresh request id, and takes its first reply only', () => {
+    const { result } = inRoom();
     let requestId = '';
     act(() => { requestId = result.current.requestTurnPreview('turn-2'); });
 
     const [request] = posted(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW);
-    expect(request.payload).toEqual({ requestId, turnId: 'turn-2' });
-    expect(result.current.turnPreview).toEqual({ requestId, turnId: 'turn-2' });
+    expect(request.payload).toEqual({ requestId, turnId: 'turn-2', roomRevision: 1 });
+    expect(result.current.turnPreview).toEqual({ requestId, turnId: 'turn-2', roomRevision: 1 });
 
     act(() => result.current.handleTurnPreview(preview({ requestId, turnId: 'turn-2', turn: turn('First') })));
     act(() => result.current.handleTurnPreview(preview({ requestId, turnId: 'turn-2', turn: turn('Second') })));
@@ -107,7 +148,7 @@ describe('useWorkshopBookmarks', () => {
   });
 
   it('never lets an earlier opening of the same turn fill a later one', () => {
-    const { result } = renderHook(() => useWorkshopBookmarks());
+    const { result } = inRoom();
     let first = '';
     let second = '';
     act(() => { first = result.current.requestTurnPreview('turn-2'); });
@@ -116,14 +157,27 @@ describe('useWorkshopBookmarks', () => {
     expect(second).not.toBe(first);
 
     act(() => result.current.handleTurnPreview(preview({ requestId: first, turnId: 'turn-2', turn: turn('Late') })));
-    expect(result.current.turnPreview).toEqual({ requestId: second, turnId: 'turn-2' });
+    expect(result.current.turnPreview?.turn).toBeUndefined();
 
     act(() => result.current.handleTurnPreview(preview({ requestId: second, turnId: 'turn-2', turn: turn('Current') })));
     expect(result.current.turnPreview?.turn?.content).toBe('Current');
   });
 
+  it('drops a reply from another room, and any reply once its room is no longer on screen', () => {
+    const { result } = inRoom();
+    let requestId = '';
+    act(() => { requestId = result.current.requestTurnPreview('turn-2'); });
+
+    act(() => result.current.handleTurnPreview(preview({ requestId, turnId: 'turn-2', roomRevision: 2, turn: turn('Other room') })));
+    expect(result.current.turnPreview?.turn).toBeUndefined();
+
+    act(() => result.current.handleSessionState(snapshot([], 2)));
+    act(() => result.current.handleTurnPreview(preview({ requestId, turnId: 'turn-2', roomRevision: 1, turn: turn('Old room') })));
+    expect(result.current.turnPreview?.turn).toBeUndefined();
+  });
+
   it('ignores replies once cleared, and a reply naming another turn under the same id', () => {
-    const { result } = renderHook(() => useWorkshopBookmarks());
+    const { result } = inRoom();
     let requestId = '';
     act(() => { requestId = result.current.requestTurnPreview('turn-2'); });
 
@@ -136,7 +190,7 @@ describe('useWorkshopBookmarks', () => {
   });
 
   it('keeps a refusal as the reply, with a fallback when the host gave no reason', () => {
-    const { result } = renderHook(() => useWorkshopBookmarks());
+    const { result } = inRoom();
     let requestId = '';
     act(() => { requestId = result.current.requestTurnPreview('turn-2'); });
     act(() => result.current.handleTurnPreview(preview({
@@ -147,12 +201,19 @@ describe('useWorkshopBookmarks', () => {
     expect(result.current.turnPreview).toEqual({
       requestId,
       turnId: 'turn-2',
+      roomRevision: 1,
       error: 'That message is no longer in this session.'
     });
 
     act(() => { requestId = result.current.requestTurnPreview('turn-3'); });
     act(() => result.current.handleTurnPreview(preview({ requestId, turnId: 'turn-3' })));
     expect(result.current.turnPreview?.error).toBe('That message could not be shown.');
+  });
+
+  it('names no room before the first snapshot, so the host refuses rather than guess', () => {
+    const { result } = renderHook(() => useWorkshopBookmarks());
+    act(() => { result.current.requestTurnPreview('turn-2'); });
+    expect(posted(MessageType.WORKSHOP_REQUEST_TURN_PREVIEW)[0].payload.roomRevision).toBe(-1);
   });
 
   it('persists nothing', () => {

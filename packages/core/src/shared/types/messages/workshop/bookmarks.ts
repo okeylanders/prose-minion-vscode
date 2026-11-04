@@ -56,8 +56,14 @@ export interface WorkshopSetTurnBookmarkMessage
   type: MessageType.WORKSHOP_SET_TURN_BOOKMARK;
 }
 
-/** Name a bookmark; `null` (or a blank label) restores the default. */
+/**
+ * Name a bookmark; `null` (or a blank label) restores the default.
+ * `requestId` is minted by the webview and echoed in
+ * `WORKSHOP_RENAME_BOOKMARK_RESULT`, so the field keeps the writer's draft
+ * until the host says whether it kept the name (PR #189 F-01).
+ */
 export interface WorkshopRenameBookmarkPayload {
+  requestId: string;
   bookmarkId: string;
   label: string | null;
 }
@@ -68,6 +74,23 @@ export interface WorkshopRenameBookmarkMessage
 }
 
 /**
+ * The host's answer to one rename: accepted (the next snapshot holds the
+ * label) or refused, with a reason that names no content. A refusal changed
+ * nothing.
+ */
+export interface WorkshopRenameBookmarkResultPayload {
+  requestId: string;
+  bookmarkId: string;
+  accepted: boolean;
+  error?: string;
+}
+
+export interface WorkshopRenameBookmarkResultMessage
+  extends MessageEnvelope<WorkshopRenameBookmarkResultPayload> {
+  type: MessageType.WORKSHOP_RENAME_BOOKMARK_RESULT;
+}
+
+/**
  * Ask for one turn of the room, read-only, for the preview sheet (ADR
  * 2026-11-03 D6). `requestId` is minted by the webview and echoed, so only
  * the answer to the pending request is taken (as the Read in reader's is).
@@ -75,6 +98,12 @@ export interface WorkshopRenameBookmarkMessage
 export interface WorkshopRequestTurnPreviewPayload {
   requestId: string;
   turnId: string;
+  /**
+   * The room the webview was showing (the snapshot's `roomRevision`). The
+   * host answers only from that room, and refuses once it has been replaced
+   * (PR #189 F-02).
+   */
+  roomRevision: number;
 }
 
 export interface WorkshopRequestTurnPreviewMessage
@@ -106,6 +135,8 @@ export interface WorkshopTurnPreview {
 export interface WorkshopTurnPreviewPayload {
   requestId: string;
   turnId: string;
+  /** The room the request named, echoed. */
+  roomRevision: number;
   /** Absent when the host refused; then `error` says why, naming no content. */
   turn?: WorkshopTurnPreview;
   error?: string;

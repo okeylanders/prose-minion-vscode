@@ -107,7 +107,7 @@ const panelProps = (
     onJump: jest.fn()
   },
   todos: { todos, onAction: jest.fn(), onShowSource: jest.fn() },
-  bookmarks: { bookmarks, onOpen: jest.fn(), onRename: jest.fn(), onRemove: jest.fn() }
+  bookmarks: { bookmarks, onOpen: jest.fn(), onRename: jest.fn(() => 'rename-1'), onRemove: jest.fn() }
 });
 
 const StatefulRail: React.FC<{

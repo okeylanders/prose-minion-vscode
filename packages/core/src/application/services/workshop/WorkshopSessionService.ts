@@ -1274,6 +1274,11 @@ export class WorkshopSessionService {
     return this.turnLedger.all();
   }
 
+  /** This room generation's identity, as the snapshot's `roomRevision` gives it. */
+  readRoomRevision(): number {
+    return this.roomRevision;
+  }
+
   /**
    * Compare-and-set the durable room offset after the delivery collaborator
    * has proved an exact contiguous receipt.

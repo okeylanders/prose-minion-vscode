@@ -1114,6 +1114,7 @@ export const WorkshopApp: React.FC = () => {
         disabled: roomMutationLocked,
         onOpen: openBookmark,
         onRename: bookmarks.renameBookmark,
+        renameOutcome: bookmarks.renameOutcome,
         onRemove: (turnId) => bookmarks.setTurnBookmark(turnId, false)
       }}
     />
