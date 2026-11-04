@@ -5,15 +5,57 @@
 **REQUEST CHANGES** before merging into `epic/workshop-project-memory`.
 
 - PR: https://github.com/okeylanders/prose-minion-vscode/pull/202
-- Latest reviewed implementation: `d57734ac458e6eb4b3cebf1efee840ea9c869f7d` (original review: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`)
-- Latest epic base: `43d9df0d0f2b809be9138bd84654af0702b6feb7` (original base: `6a964813583d6e7bffec853a301f1ddfcfac5687`)
+- Latest reviewed implementation: `2c549f9c325c7d97b83502a009b6dbffaceb7e57` (original review: `87e14f6ac64d2b56d2126b95db4c613dc0df0ab0`)
+- Latest epic base: `87ec7a9a90378aa4572bae885254cc2ea8f77354` (original base: `6a964813583d6e7bffec853a301f1ddfcfac5687`)
 - Review date: 2026-11-04 UTC.
-- **Two P2 findings remain open: F01 and F03, narrowed below. F02, F04, N01 and N02 are verified closed at the latest implementation.**
+- **One P2 remains open: F01's previously reported wrong-project pin toggle. Delete, F02, F03, F04, N01 and N02 are verified fixed. N03 and N04 are nonblocking P3 follow-ups.**
 - This is an advisory review report, not a GitHub approval or merge. It evaluates Slice 4b-wire on its actual epic target, not main and not an unmerged Slice 5 trial merge.
 
-## Independent re-review — d57734ac, 2026-11-04 21:49 UTC
+## Independent re-review — 2c549f9c, 2026-11-04 22:37 UTC
 
-The original findings below are historical evidence. This section is the current reviewer verdict; the author's resolution ledger records proposed corrections, not independent clearance.
+**Current verdict: request changes for the remaining pin-toggle portion of F01.** This head incorporates the merged Slice 5 implementation and is reviewed against epic `87ec7a9a`. The sections below retain earlier evidence; this section is the current status.
+
+### F01 partially closed: delete fixed; the same queued pin witness still fails
+
+Both queued-delete witnesses now refuse `workspace-changed` and preserve both projects' files. Delete captures the accepted room and directory before the library queue, and the store enforces its captured directory before and during commit. Original mid-read/claim guards still work.
+
+However, the previously reported `setLoadInFull` witness is unchanged. At [ProjectMemoryWrites.ts:244–265](https://github.com/okeylanders/prose-minion-vscode/blob/2c549f9c325c7d97b83502a009b6dbffaceb7e57/packages/core/src/application/services/workshop/memory/ProjectMemoryWrites.ts#L244-L265), `setPinned` waits in `owe` without capturing the request's accepted room/directory.
+
+Reproduction with the real library/store:
+1. Root A and copied project B each contain the same memory id, with different titles and both unpinned.
+2. Hold another root-A library write at its listing; enqueue `setLoadInFull(A-id, true)`.
+3. Switch to and accept B, then release the earlier write.
+4. **Observed: `written`, title `SECOND_PROJECT`, pinned true.** A stays unchanged; the toggle pins B's memory instead.
+
+This was explicitly included in the prior re-review, not a new scope request. Apply the same captured request identity to this manager mutation before it queues, preserve it through listing and replacement, and refuse rather than retarget when the workspace changes. Regression coverage must include both library/store waits and verify neither memory is changed after target replacement.
+
+### F03 closed; earlier UI/manager closures hold
+
+The mode-setting helper records only a successful changed write and undoes it only while the current value is its own. Replays now pass for Behavior-only apply with external Off, changed-mode apply with newer Off/Ask, refused forward writes, ordinary rollback and refused rollback reporting.
+
+F02 root/entry-key checks, F04 initiating-panel errors, N01 manual-write freshness and N02 saved-card manager navigation all remain verified. The selected row is marked and scrolled to.
+
+### N03 stays open (P3); N04 — auto-save receipts do not refresh visible listings (P3)
+
+N03's older folder failure can still overwrite the newer request's success; source is unchanged.
+
+After integrating Slice 5, a new automatic-save receipt updates the visible thread but does not refresh either an already-open Memory settings panel or manager. Auto-save publishes a session snapshot rather than `WORKSHOP_MEMORY_WRITE_RESULT`; [useWorkshopAppMessageRouter.ts:129–133](https://github.com/okeylanders/prose-minion-vscode/blob/2c549f9c325c7d97b83502a009b6dbffaceb7e57/packages/core/src/presentation/webview/hooks/useWorkshopAppMessageRouter.ts#L129-L133) does not tell the manager about that snapshot.
+
+Two actual WorkshopApp regression cases verify the receipt renders but listing counts stay at 1 instead of 2, and 2 instead of 3. Reopening or searching refreshes, so this is stale presentation rather than data loss. Refresh visible consumers when newly observed automatic-save receipts change the memory library, without reloading on every unrelated room snapshot.
+
+### Validation at this exact integrated head
+
+- 1,930 selected files checked: all core/extension source, config and resources match the Git tree. Only root guide terminal-newline materialization differences remain.
+- Core/webview/extension typechecks pass; lint 0 errors / 1,165 warnings.
+- Autosave/delete/store integration selection: **8 suites / 118 tests passed**.
+- Independent current manager/handler/scope/delete selection: **4 suites / 37 tests passed**, plus 18 identity/privacy controls.
+- UI/settings closure/control batch: **6 suites / 28 tests passed**. Expected-failing N03 and two N04 regression cases still fail as described.
+- Independent queued pin witness uses 111 hash-verified production modules.
+- Full local production suite and exact-head CI are running. No native VS Code, OS shell, provider or screen-reader validation; the prior test-environment limitations remain.
+
+## Historical re-review — d57734ac, 2026-11-04 21:49 UTC
+
+The original findings below are historical evidence. This historical section records the earlier reviewer verdict; the author's resolution ledger records proposed corrections, not independent clearance.
 
 ### F01 remains open: capture the requested root before entering either queue
 
@@ -174,4 +216,4 @@ The tests use an in-memory filesystem, mocked scope/recall/shell and jsdom. No n
 
 ## Follow-up gate
 
-Keep residual F01 and F03 open until corrections and targeted regressions are reviewed on their new exact head, followed by affected tests/typechecks/CI. Recheck integration if the epic base or overlapping Slice 5 implementation changes. No formal GitHub approval or merge was performed.
+Keep residual F01 (pin toggle) open until its correction and targeted regressions are reviewed on their new exact head, followed by affected tests/typechecks/CI. Recheck integration if the epic base or overlapping Slice 5 implementation changes. No formal GitHub approval or merge was performed.
