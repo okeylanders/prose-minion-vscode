@@ -132,12 +132,24 @@ function memoryBlock(item: Extract<ProjectMemoryReadItem, { kind: 'memory' }>): 
     `summary: ${memory.summary}`,
     `created: ${projectMemoryDay(memory.created)}; saved by: ${savedBy(memory.origin, memory.proposedBy)}`,
     ...(memory.supersedes.length > 0 ? [`supersedes: ${memory.supersedes.join(', ')}`] : []),
-    ...(supersededBy.length > 0 ? [`superseded by: ${supersededBy.join(', ')}; that note is the one in effect.`] : []),
+    ...(supersededBy.length > 0 ? [supersededLine(supersededBy, item.inEffectSuccessors)] : []),
     ...(provenance ? [provenance] : []),
     'body:',
     memory.body.trim().length > 0 ? memory.body.trim() : '(no body)',
     `end of note ${memory.id}`
   ].join('\n');
+}
+
+/**
+ * Its direct superseders, and which note is in effect now: only one whose
+ * own standing is in effect, at the end of the chain (PR #197 F-02).
+ */
+function supersededLine(supersededBy: readonly string[], inEffect: readonly string[]): string {
+  const direct = `superseded by: ${supersededBy.join(', ')}`;
+  if (inEffect.length === 0) {
+    return `${direct}; nothing that replaces it is in effect now.`;
+  }
+  return `${direct}; ${inEffect.join(', ')} ${inEffect.length === 1 ? 'is the note' : 'are the notes'} in effect now.`;
 }
 
 /** "mem-7f3c2a · canon · active · pinned · updated 2026-11-03". */

@@ -94,6 +94,35 @@ export function listProjectMemories(
     .sort((left, right) => (left.memory.id < right.memory.id ? -1 : left.memory.id > right.memory.id ? 1 : 0));
 }
 
+/**
+ * The notes in effect a superseded memory's chain ends in: its superseders,
+ * then theirs, stopping at each one in effect (PR #197 F-02). Empty when the
+ * chain ends only in archived notes, or in nothing readable.
+ */
+export function projectMemoryInEffectSuccessors(memories: readonly ProjectMemoryListed[], id: string): string[] {
+  const byId = new Map(memories.map((listed) => [listed.memory.id, listed]));
+  const found = new Set<string>();
+  const seen = new Set<string>([id]);
+  const queue = [...(byId.get(id)?.supersededBy ?? [])];
+  while (queue.length > 0) {
+    const next = queue.shift() as string;
+    if (seen.has(next)) {
+      continue;
+    }
+    seen.add(next);
+    const listed = byId.get(next);
+    if (!listed) {
+      continue;
+    }
+    if (isProjectMemoryInEffect(listed)) {
+      found.add(next);
+    } else if (listed.memory.status === 'active') {
+      queue.push(...listed.supersededBy);
+    }
+  }
+  return [...found].sort();
+}
+
 /** Where a memory's source session stands, for `memory.read`'s provenance (D3). */
 export type ProjectMemoryProvenance =
   /** Recallable: its turns' positions now (turns no longer in the record are counted, never guessed). */
@@ -111,7 +140,13 @@ export type ProjectMemoryProvenance =
 
 /** One id a `memory.read` named, in the order asked. */
 export type ProjectMemoryReadItem =
-  | { readonly kind: 'memory'; readonly listed: ProjectMemoryListed; readonly provenance: ProjectMemoryProvenance }
+  | {
+    readonly kind: 'memory';
+    readonly listed: ProjectMemoryListed;
+    readonly provenance: ProjectMemoryProvenance;
+    /** The notes in effect that its supersession chain ends in, sorted; empty when none is (PR #197 F-02). */
+    readonly inEffectSuccessors: readonly string[];
+  }
   /** No readable memory holds the id (a conflicting or unreadable file never answers one). */
   | { readonly kind: 'unknown'; readonly id: string }
   /** Another window holds it under a live claim now: "being edited; try again". */
