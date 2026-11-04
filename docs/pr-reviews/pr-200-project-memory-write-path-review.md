@@ -46,9 +46,11 @@ This is a regression introduced by the new independent token collection. Ordinar
 - **21 focused production suites / 339 tests pass.**
 - **Three independent Jest suites / five fixed-behavior witnesses pass**, covering F-04/F-05/F-06.
 - **Lint: 0 errors / 1,158 warnings**, matching the baseline.
-- The entire tracked tree was materialized with source/blob verification (the three repository instruction links preserved as symlinks). An independent full-suite run is in progress; it is not yet a pass claim.
+- The entire tracked tree was materialized with source/blob verification (the three repository instruction links preserved as symlinks). The independent full-suite run completed: **668 suites / 9,452 tests / 59 snapshots passed** (463 seconds; reviewer-only probe files excluded).
 - GitHub reports the new base `94fcabb7` mergeable. [CI run 41898362354](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41898362354) was still running at this check.
 - No formal approval, merge or deployment performed.
+
+**N-01 · P3 · Strengthen the rejected-proposal streaming regression.** [WorkshopApp.memoryStreaming.test.tsx:166–171](https://github.com/okeylanders/prose-minion-vscode/blob/f87b38c85566590736b6696be83bf95d74db5826/packages/core/src/__tests__/presentation/webview/WorkshopApp.memoryStreaming.test.tsx#L166-L171) injects `memoryProposal: { state: 'rejected', reason: 'memory-off' } as never`, which is not a valid proposal shape or state. The full run logs a `body.trim()` TypeError in `WorkshopMemoryCard`; the ErrorBoundary replaces the thread and the negative sentinel assertion still passes. Production rejection omits the card. Use that actual shape, assert the prose/thread remains rendered, and fail on unexpected render errors. This is a test-quality note, not an additional production blocker; F-02 was independently verified through the real renderer.
 
 ## Re-review at `edc5a6cb69cecb410e80861bbe1db4998eec99aa` (2026-11-04 19:08 UTC)
 
