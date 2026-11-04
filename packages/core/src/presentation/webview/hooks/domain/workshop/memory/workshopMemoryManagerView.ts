@@ -236,8 +236,12 @@ function rowView(
   } else if (inEffect && entry.fullLoad === 'doesnt-fit') {
     badges.push({ text: 'Doesn’t fit in full', tone: 'amber' });
   }
-  if (!inEffect) {
-    badges.push({ text: archived ? 'Archived' : 'Superseded', tone: 'muted' });
+  // Archived and superseded are independent (D4): a row can be both, and says both (PR #199 N-01).
+  if (archived) {
+    badges.push({ text: 'Archived', tone: 'muted' });
+  }
+  if (entry.superseded) {
+    badges.push({ text: 'Superseded', tone: 'muted' });
   }
   if (entry.busy) {
     badges.push({ text: 'Being edited', tone: 'muted' });
@@ -263,15 +267,28 @@ function rowView(
     day: memoryDay(entry.updated),
     source: memorySourceWords(entry.source),
     badges,
-    line: inEffect
-      ? entry.summary
-      : archived
-        ? 'Archived. Restore to make this memory active again.'
-        : `Superseded by ${quotedList(entry.supersededBy.map((id) => titles.get(id) ?? 'another memory'))}.`,
+    line: inEffect ? entry.summary : pastLine(entry, titles),
     notes,
     primary: archived ? 'restore' : 'edit',
     activeActions: inEffect
   };
+}
+
+/**
+ * Why a past row doesn't load. A superseded row keeps its "Superseded by",
+ * archived or not; restoring an archived one un-archives it, which makes it
+ * active only when nothing supersedes it (D4).
+ */
+function pastLine(entry: WorkshopMemoryEntry, titles: ReadonlyMap<string, string>): string {
+  if (!entry.superseded) {
+    return 'Archived. Restore to make this memory active again.';
+  }
+  const by = `Superseded by ${quotedList(entry.supersededBy.map((id) => titles.get(id) ?? 'another memory'))}.`;
+  if (entry.status !== 'archived') {
+    return by;
+  }
+  const newer = entry.supersededBy.length > 1 ? 'the newer memories still replace it' : 'the newer memory still replaces it';
+  return `${by} Restore un-archives it, but ${newer}.`;
 }
 
 /** By `updated`, newest first, ties by id: the catalog's order (D1). */

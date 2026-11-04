@@ -133,6 +133,23 @@ describe('workshopMemoryManagerView', () => {
     });
   });
 
+  it('archived and superseded: keeps why it’s replaced, and Restore promises no more than un-archiving (PR #199 N-01)', () => {
+    const library = {
+      memories: [
+        memoryEntry({ id: 'mem-0000aa', title: 'The Rabbit’s watch runs backward' }),
+        memoryEntry({ title: 'The Rabbit’s watch stops at six', status: 'archived', superseded: true, supersededBy: ['mem-0000aa'] })
+      ],
+      unreadable: [],
+      conflicts: []
+    };
+    const [row] = workshopMemoryManagerView({ mode: 'ask', library }).past;
+    expect(row).toMatchObject({
+      badges: [{ text: 'Archived', tone: 'muted' }, { text: 'Superseded', tone: 'muted' }],
+      line: 'Superseded by “The Rabbit’s watch runs backward”. Restore un-archives it, but the newer memory still replaces it.',
+      primary: 'restore'
+    });
+  });
+
   it('a superseding memory the manager can’t list is “another memory”; several are joined', () => {
     const library = {
       memories: [memoryEntry({ title: 'Old', superseded: true, supersededBy: ['mem-ffffff', 'mem-eeeeee'] })],
