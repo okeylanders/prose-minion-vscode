@@ -25,7 +25,7 @@ Independent real-library/store witness:
 3. Switch to and accept root B, containing a different memory with the same id and filename (as copied projects can).
 4. Release the queue.
 
-**Observed: `deleted`; A's file survives, B's file is deleted.** Capturing B when the queued operation finally executes makes every new still-permitted check pass, but the user requested deletion in A. The exact production-module witness used 111 hash-verified imports.
+**Observed: `deleted`; A's file survives, B's file is deleted.** Capturing B when the queued operation finally executes makes every new still-permitted check pass, but the user requested deletion in A. The exact production-module witness used 111 hash-verified imports. Two further real-queue witnesses also reproduce this: a delete queued behind another library write deletes B's same-id memory, and a queued `setLoadInFull(A-id, true)` pins B's same-id note instead. Bind both new manager mutations to their request root; protecting only entry into the store queue is insufficient.
 
 Capture request root/generation before either the library write queue or store queue can wait, and require that captured identity at execution and commit. Add a regression behind a real queued list and one behind the library's write queue; verify neither project's file is deleted after the original target changes.
 
@@ -51,13 +51,20 @@ Track whether this operation actually changed the mode and the value/generation 
 - **N02:** saved cards open the manager at the named row; focused-row tests pass.
 - Original reviewer UI regressions and targeted rollback-failure/focus tests pass (4 suites / 11 tests in the independent rerun).
 
-### Re-review validation so far
+### N03 — P3 — Correlate the newest folder result by request id
+
+At `useWorkshopMemoryManager.ts:223–227`, folder-result ownership waits for all pending folder requests to finish rather than checking which request was newest. The manager's Open memory folder button permits concurrent presses.
+
+An actual WorkshopApp regression opens settings then the manager, presses Open memory folder twice, receives success for the second request and then failure for the first. Closing the manager reveals the older failure as “The memory folder didn't open,” contradicting the newer success. Track the newest folder request id or prevent concurrent folder opens consistently. The expected-failing `Review202UiFolderOrder.test.tsx` reproduces this; it is a nonblocking P3 follow-up.
+
+### Re-review validation
 
 - Exact core/extension source/config/resource materialization checked against d57734ac: 1,921 files checked, only non-executable root guide terminal-newline differences.
 - Core/webview/extension typechecks pass; lint 0 errors / 1,165 warnings.
 - Delete/store selection including independent withdrawal and occupied-name restoration probes: **5 suites / 69 tests passed**.
 - CI for d57734ac: **success**, [run 41918468608](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41918468608).
-- Full local production suite is running. Reviewer-only regressions are excluded. Passing production coverage does not close the two independently reproduced residuals.
+- Full local production suite: **685 suites / 9,622 tests / 59 snapshots passed**, 435.519 seconds. Reviewer-only regressions were excluded. Passing production coverage does not close the two independently reproduced residuals.
+- Report-only head `20732a93` also has green CI, [run 41919704555](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41919704555).
 - Same validation limits apply: in-memory filesystem and jsdom; no native extension/screen-reader/OS-shell validation.
 
 ## Resolution ledger (author, 2026-11-04)
