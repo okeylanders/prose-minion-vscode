@@ -39,8 +39,9 @@ trailer, and three modes (Off, Ask first, Save and tell me).
 |---|---|---|---|---|
 | 0 | Spec | ADR, slice docs 2–6, open questions put to Okey | `…-slice-0-spec` | Done: PR #192, merged at `912ad58` (Astra: findings closed on re-review) |
 | 0d | Settings design | The Memory tab, the memory manager and the suggestion card, designed for Okey's review, then snapshotted under `docs/design/` | `…-slice-0-design` | Approved by Okey (one change: an expandable receipt in Save and tell me); snapshot in progress |
-| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194 (merges after #192) |
-| 2 | Read path | The catalog frame at a room's first turn, `memory.catalog` / `search` / `read`, every list that widens with the family | — | Waits on Slice 0 and 1 |
+| 1 | Store and codec | Format 1 codec (pure), `ProjectMemoryStore` on the shared `StoredFileClaims` primitive, fixtures. No model, no UI | `…-slice-1-store` | In review: PR #194, findings F-01–F-05, N-01 and N-02 fixed at `b8846c4`; waiting on Astra's re-review |
+| 2a | Read path | Library, the catalog frame, `memory.*` (catalog, search, read), every D12 list widened, budgets | `…-slice-2a-read-path` | In progress (on Slice 1's fixed branch; PR after #194 merges) |
+| 2b | Update notes | D14: memory versions, the per-participant delivery record, the appended update note, mid-room Off→On | `…-slice-2b-update-notes` | In progress after 2a (same thread) |
 | 3 | Write path | Proposal trailer, card on the bubble, receipt turns, supersession, "Save to memory…" | — | Waits on Slice 2 |
 | 4a | Settings panels | `WorkshopConversationBehaviorModal` split into one component per tab, behavior and markup unchanged | `…-slice-4a-settings-panels` | Done: PR #193, merged at `efc2788` |
 | 4b | Memory tab and manager | The approved design built on 4a, wired to the host | — | Waits on 0d, Slice 2 and Slice 3 (Slice 3 owns the Save/Edit/New sheet and the write handler; #192 F-03) |
@@ -168,4 +169,11 @@ The feature note's six open questions, plus the design scope:
     cycles) and N-02. The coordinator decided N-02: a memory under a live
     claim stays listed with its metadata, so D14's update note never
     announces a transient removal.
+- **2026-11-04. Slice 2 split.** The slice doc's scope is more than twice
+  Slice 1's, so one thread builds it as two PRs:
+  - **2a:** library, frame, capability and every D12 list.
+  - **2b:** D14 update notes, branched from 2a's head.
+
+  2a starts on the epic with Slice 1's fixed branch merged in, so it isn't
+  blocked on Astra's re-review of #194. Its PR opens after #194 merges.
 
