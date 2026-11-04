@@ -119,7 +119,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 <dl class="vs-grid">
 <dt class="vs-corner"></dt><dd class="vs-col">Project memory</dd><dd class="vs-col">Context</dd>
 <dt>Reaches</dt><dd>Every conversation in this project</dd><dd>The conversation it’s attached to</dd>
-<dt>Holds</dt><dd>A one-line summary of each memory, plus the few you pin. Personas open a full note only when they need it</dd><dd>Whole files and passages, sent in full</dd>
+<dt>Holds</dt><dd>A one-line summary of each memory, plus the few set to load in full. Personas open a full note only when they need it</dd><dd>Whole files and passages, sent in full</dd>
 <dt>Size</dt><dd>Kept small: about 7,000 tokens in all</dd><dd>Much larger: up to 100,000 words</dd>
 </dl>
 </section>
@@ -259,27 +259,27 @@ class Component extends DCLogic {
       };
     } else if (catalog === 'over') {
       load = {
-        name: 'Pinned memories first, then the most recent',
-        desc: 'Each persona sees the title and summary of the memories that fit, and the 3 pinned memories in full. Pin the ones that should always load.',
+        name: 'Memories loaded in full first, then the most recent',
+        desc: 'Each persona sees the title and summary of the memories that fit, and the 3 set to load in full. Choose Always load in full for the ones every conversation needs.',
         showMeter: true,
         meters: [
-          { cls: '', width: '48%', label: 'Pinned: about 2,400 of 5,000 tokens', left: 'Pinned, in full · 3', right: 'about 2,400 of 5,000 tokens' },
+          { cls: '', width: '48%', label: 'Loaded in full: about 2,400 of 5,000 tokens', left: 'Loaded in full · 3', right: 'about 2,400 of 5,000 tokens' },
           { cls: 'full', width: '100%', label: 'Catalog: about 2,000 of 2,000 tokens, 25 of 37 fit', left: 'Titles and summaries · 25 of 37 fit', right: 'about 2,000 of 2,000 tokens' }
         ],
-        chips: [{ text: '40 memories', cls: '' }, { text: '3 pinned', cls: '' }, { text: '≈ 4,400 tokens', cls: '' }],
+        chips: [{ text: '40 memories', cls: '' }, { text: '3 in full', cls: '' }, { text: '≈ 4,400 tokens', cls: '' }],
         hasMore: true,
         moreText: '12 more are searchable. Personas find them with memory search when the conversation needs them.'
       };
     } else {
       load = {
         name: 'Every memory’s title and summary',
-        desc: 'Each persona also sees the 2 pinned memories in full, and opens the rest when the conversation needs them.',
+        desc: 'Each persona also sees the 2 memories set to load in full, and opens the rest when the conversation needs them.',
         showMeter: true,
         meters: [
-          { cls: '', width: '22%', label: 'Pinned: about 1,100 of 5,000 tokens', left: 'Pinned, in full · 2', right: 'about 1,100 of 5,000 tokens' },
+          { cls: '', width: '22%', label: 'Loaded in full: about 1,100 of 5,000 tokens', left: 'Loaded in full · 2', right: 'about 1,100 of 5,000 tokens' },
           { cls: '', width: '35%', label: 'Catalog: about 700 of 2,000 tokens, all 10 fit', left: 'Titles and summaries · all 10 fit', right: 'about 700 of 2,000 tokens' }
         ],
-        chips: [{ text: '12 memories', cls: '' }, { text: '2 pinned', cls: '' }, { text: '≈ 1,800 tokens', cls: '' }],
+        chips: [{ text: '12 memories', cls: '' }, { text: '2 in full', cls: '' }, { text: '≈ 1,800 tokens', cls: '' }],
         hasMore: false
       };
     }

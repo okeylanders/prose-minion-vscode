@@ -376,6 +376,8 @@ room would silently get a new catalog. (b) Re-render the frame on each save:
 rejected for the cache; D14 appends instead. (c) No frame, `memory.catalog` only: rejected, it's
 option C of the feature note, "too lazy".
 
+- **UI words.** The UI calls a pinned memory "Always load in full" (the action) and "Loaded in full" (the badge); the format and code keep `pinned`.
+
 ### D6. Proposals are a stripped reply trailer, at most one per reply
 
 A persona proposes a memory with a trailer at the end of its reply:

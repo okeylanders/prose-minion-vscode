@@ -37,10 +37,16 @@ decisions, states and copy are written out in
 | `NoFolder.dc.html`, `MultiRoot.dc.html` | 4b | Memory unavailable in this workspace, with the reason. The mode cards stay choosable |
 | `LightMemories.dc.html`, `LightOver.dc.html` | — | Light-theme proposal, not built |
 | `Manager.dc.html` | 4b | The memory manager. Interactive: Group by Kind / Date |
-| `ManagerOverPinned.dc.html` | 4b | Pinned memories over 5,000 tokens: "Pinned, not loaded" |
+| `ManagerOverPinned.dc.html` | 4b | Memories set to load in full over 5,000 tokens: "Doesn't fit in full" |
 | `Thread.dc.html` | 3 | The suggestion card and its settled states, receipts (the Save-and-tell-me receipt expands; click the chevron), the held card, the update note, and Save to memory… |
 | `EditSheet.dc.html` | 3 | The Save to memory… / Edit… / New memory sheet |
-| `EditRefused.dc.html` | 3 | The sheet refusing an edit that would push pinned memories past their budget |
+| `EditRefused.dc.html` | 3 | The sheet refusing an edit that would push memories loaded in full past their budget |
+
+## Words
+
+The UI never says "pin": a pinned memory is **Always load in full** (the
+action and switch) and **Loaded in full** (the badge). The format keeps
+`pinned:` (Slice 0d decision 16, ADR D5).
 
 ## Where the build may differ from the canvas
 

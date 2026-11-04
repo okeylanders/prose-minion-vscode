@@ -37,7 +37,7 @@
       "y": 1340,
       "w": 940,
       "h": 1040,
-      "title": "Over budget: pinned first, the rest searchable"
+      "title": "Over budget: loaded-in-full first, the rest searchable"
     },
     "Unreadable.dc.html": {
       "x": 1020,
@@ -102,14 +102,14 @@
       "y": 6800,
       "w": 1180,
       "h": 1380,
-      "title": "Manager · pinned over budget (hand edit or two windows)"
+      "title": "Manager · loaded in full, over budget (hand edit or two windows)"
     },
     "EditRefused.dc.html": {
       "x": 2280,
       "y": 6420,
       "w": 760,
       "h": 1040,
-      "title": "Edit refused: a pinned memory's edit would pass the budget"
+      "title": "Edit refused: an always-load-in-full memory's edit would pass the budget"
     }
   },
   "order": [
@@ -168,7 +168,7 @@
       "x": 2120,
       "y": 1340,
       "w": 420,
-      "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Pinned 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.\n· 'Memory isn't context' well near the top of the tab, in every state (Okey, after approval).",
+      "text": "Approved by Okey, 2026-11-04.\n\n· Mode is global; memories stay per project.\n· Loaded in full 5,000 tokens, list 2,000.\n· Limits: title 120, summary 280, note 8,000.\n· Unavailable: no memory in this workspace, with the reason; the mode cards stay choosable.\n· Off keeps the manager.\n· An update note replaces 'loads at the start'.\n· No INDEX.md.\n· A Save-and-tell-me receipt expands to the saved memory, read-only.\n· 'Memory isn't context' well near the top of the tab, in every state (Okey, after approval).\n· 'Pin' is 'Always load in full' / 'Loaded in full' in the UI; the file keeps pinned: (Okey).",
       "fill": "orange",
       "size": "m"
     }

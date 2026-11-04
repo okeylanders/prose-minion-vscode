@@ -50,8 +50,10 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
    mode cards **stay choosable**, because the global mode still applies to the
    writer's other projects. There is no session-only memory.
 4. **Off keeps the writer's access** (D8). Manage memories…, Open memory
-   folder, New, edit, pin, archive and delete all work while memory is off.
-5. **Two budgets, two meters.** Pinned bodies load in full up to
+   folder, New, edit, Always load in full, archive and delete all work while
+   memory is off.
+5. **Two budgets, two meters.** Memories set to Always load in full
+   (`pinned: true`) load whole up to
    `pinnedTokens: 5_000`, and the list (title and summary of the rest) up to
    `catalogTokens: 2_000`. The tab shows a meter for each, plus the total. Both
    numbers are starting values that the live pass tunes (D11).
@@ -63,12 +65,12 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
    marks it once with a quiet divider. So the footer's "Memory … takes effect
    on your next message" is simply true.
 8. **No `INDEX.md` in v1**, so nothing offers to open one.
-9. **Nothing is ever unpinned for the writer.** Over the pinned budget,
-   pinned memories are considered oldest-created first, ties by id (ADR D5;
+9. **Nothing is ever turned off for the writer.** Over the loaded-in-full
+   budget, memories set to load in full are considered oldest-created first, ties by id (ADR D5;
    format 1 stores no pin time). Bodies that fit load in full; the rest load
    as list entries. The manager shows the shared builder's actual
-   loaded/not-loaded result, never a guess from dates, and the writer
-   unpins.
+   loaded/not-loaded result, never a guess from dates, and the writer turns
+   Always load in full off on one.
 10. **Forget archives; only Delete removes a file** (D8). Forget's receipt
     says "It's archived, not deleted" and offers Restore.
 11. **Superseded is derived** (D4): the manager shows "Superseded by '…'" from
@@ -103,6 +105,17 @@ read-only: no Save, Edit… or Dismiss. Slices 3 and 5 build it once.
       conversation ("The conversation it's attached to"). A future settings
       tab that attaches files automatically can then be referenced without
       rewording. The design names no such tab.
+16. **"Pin" is "Always load in full" in the UI** (Okey, after approval). An
+    upcoming feature will pin *context* (files attached to every new
+    session), and two kinds of pin would blur the line the "Memory isn't
+    context" well draws.
+    - The action and the sheet's switch are **Always load in full**. The row
+      badge is **Loaded in full**, and the overflow badge **Doesn't fit in
+      full**. Counts read "N in full", and meters read "Loaded in full · N".
+    - The toggle uses the `eye` glyph, never a pin.
+    - Only the words change. The file keeps `pinned:`, and code keeps
+      `pinned` and `pinnedTokens` (ADR D5's note). Elsewhere in this doc,
+      "pinned" names the key, and quoted copy uses the UI words.
 
 ## The Memory tab
 
@@ -119,7 +132,7 @@ The tab order is Behavior · About you · **Memory** · Advanced.
   | | Project memory | Context |
   |---|---|---|
   | **Reaches** | Every conversation in this project | The conversation it's attached to |
-  | **Holds** | A one-line summary of each memory, plus the few you pin. Personas open a full note only when they need it | Whole files and passages, sent in full |
+  | **Holds** | A one-line summary of each memory, plus the few set to load in full. Personas open a full note only when they need it | Whole files and passages, sent in full |
   | **Size** | Kept small: about 7,000 tokens in all | Much larger: up to 100,000 words |
 
   The 7,000 is `pinnedTokens` plus `catalogTokens`, and the 100,000 words is
@@ -137,12 +150,13 @@ The tab order is Behavior · About you · **Memory** · Advanced.
   - Note under them: "This setting applies to all your projects. Each
     project keeps its own memories, in its own folder."
 - **Section "At the start of each conversation".** One row, with labels for
-  the count, the pinned count and the token total (`12 memories`, `2 pinned`,
+  the count, the loaded-in-full count and the token total (`12 memories`,
+  `2 in full`,
   `≈ 1,800 tokens`), and two meters:
-  - "Pinned, in full · 2", "about 1,100 of 5,000 tokens";
+  - "Loaded in full · 2", "about 1,100 of 5,000 tokens";
   - "Titles and summaries · all 10 fit", "about 700 of 2,000 tokens".
   - Row name: "Every memory's title and summary". Help line: "Each persona
-    also sees the 2 pinned memories in full, and opens the rest when the
+    also sees the 2 memories set to load in full, and opens the rest when the
     conversation needs them."
 - **Section "Your memories".** A row with `prose-minion/memory/` in mono and
   "One Markdown file per memory. You can read and edit them in VS Code.", and
@@ -158,8 +172,8 @@ The tab order is Behavior · About you · **Memory** · Advanced.
 | **On, with memories** | As above |
 | **Off** | Row "Nothing loads while memory is off": "Memory is off in every project. This project's memories stay in its folder, and you can still manage them." Label `12 saved`. No meters |
 | **On, no memories yet** | Row "No memories yet". Under Ask first: "When a persona suggests a memory, it appears under its reply for you to save. You can also say "remember that…", or choose Save to memory… on any message." Under Save and tell me: "Personas save what's worth keeping as you work. …". Folder help line: "The folder is made when the first memory is saved, or when you open it." |
-| **List over its budget** | Row "Pinned memories first, then the most recent". The list meter turns amber and full: "Titles and summaries · 25 of 37 fit", "about 2,000 of 2,000 tokens". An amber line: "12 more are searchable. Personas find them with memory search when the conversation needs them." |
-| **Pinned over its budget** | Not drawn on the tab. The pinned meter takes the same amber, full treatment, "about 5,600 of 5,000 tokens", and the row's help line points to the manager. The manager state is drawn |
+| **List over its budget** | Row "Memories loaded in full first, then the most recent". The list meter turns amber and full: "Titles and summaries · 25 of 37 fit", "about 2,000 of 2,000 tokens". An amber line: "12 more are searchable. Personas find them with memory search when the conversation needs them." |
+| **Loaded in full, over its budget** | Not drawn on the tab. The loaded-in-full meter takes the same amber, full treatment, "about 5,600 of 5,000 tokens", and the row's help line points to the manager. The manager state is drawn |
 | **Unreadable files** | An amber row under "Your memories": "2 files can't be read". "They aren't loaded, and personas can't find them. Fix the frontmatter in the editor, or move the file out of the folder. Nothing else is affected." Each file is listed with its reason, plus **Show in manager** |
 | **Unavailable: no folder** | An amber notice at the top: "**Project memory isn't available here.** No folder is open, so there's no project to keep memories in. Open a single folder to use project memory. The mode above still applies to your other projects." Row "Nothing loads": "Personas in this workspace get no project memory, whatever the mode above says." Both buttons are disabled |
 | **Unavailable: several folders** | The same, with "This workspace has several folders, so memory can't tell which project it belongs to." |
@@ -171,18 +185,18 @@ markup and classes. It needs no new shared opt-in, and the Workshop's and the
 Lightbox's markup stay unchanged.
 
 - **Header:** eyebrow "Workshop · Project memory", title "Project memories",
-  and "What this project's personas start each conversation knowing. Pinned
-  memories load in full; the rest load as a title and summary, and a persona
+  and "What this project's personas start each conversation knowing. Memories
+  set to Always load in full arrive whole; the rest load as a title and summary, and a persona
   opens the full note when it needs it."
 - **Toolbar:**
   - Search: "Search titles, summaries and notes…", with the scope pill
     "searches notes".
   - Group by **Kind** | **Date**.
-- **Status labels:** `6 active`, `4 pinned · ≈ 4,300 of 5,000 tokens`,
+- **Status labels:** `6 active`, `4 in full · ≈ 4,300 of 5,000 tokens`,
   `list · ≈ 700 of 2,000 tokens`, and `3 files need attention` in amber.
   - With memory off, an info line comes first: "Memory is off, so personas
-    don't read these. You can still edit, pin, archive and delete them. Turn
-    memory on in Conversation settings."
+    don't read these. You can still edit, archive and delete them, and change
+    which load in full. Turn memory on in Conversation settings."
 - **Section "Needs attention"** ("Not loaded. Fix the file in the editor;
   Memory never rewrites it."). The rows show the file name in mono, an amber
   badge and the reason. Each offers **Open file** only.
@@ -194,24 +208,26 @@ Lightbox's markup stay unchanged.
   This week, Earlier).
   - Glyphs by kind: decision `stamp`, canon `book`, preference `sliders`,
     open thread `dialogue`.
-  - Badge: **Pinned**.
+  - Badge: **Loaded in full**.
   - Meta line: kind · origin in words · date · "from 'session title'".
   - The summary sits under the meta line.
-  - Hover or focus utilities: Rename, Pin/Unpin (`aria-pressed`), Archive
+  - Hover or focus utilities: Rename, **Always load in full** (a toggle
+    with `aria-pressed`, the `eye` glyph, never a pin), Archive
     (a new glyph), Open file, Delete. The primary button is **Edit**.
-- **A refused pin,** inline under the row: "Can't pin this one: pinned
-  memories would come to about 5,100 of 5,000 tokens. Unpin another, or
-  shorten this note."
-- **Pinned over budget** (hand edits, two windows; #192 F-04):
-  - The pinned label turns amber: `4 pinned · ≈ 5,600 of 5,000 tokens`.
-  - An amber status line: "Pinned memories are over their budget, probably
-    from an edit outside the manager. Pinned memories are considered
-    oldest-created first, and 'The Cheshire Cat is never seen arriving'
-    doesn't fit, so it loads as a list entry instead. Unpin one to make room.
-    Nothing is unpinned for you."
-  - Each memory the builder didn't load in full has the badge **Pinned, not
-    loaded** and the reason: "Doesn't fit the pinned budget, so it loads as a
-    list entry, not in full. Unpin it or another to make room." The row never
+- **A refused Always load in full,** inline under the row: "Can't load this
+  one in full: memories loaded in full would come to about 5,100 of 5,000
+  tokens. Turn it off on another, or shorten this note."
+- **Loaded in full, over budget** (hand edits, two windows; #192 F-04):
+  - The label turns amber: `4 in full · ≈ 5,600 of 5,000 tokens`.
+  - An amber status line: "Memories set to load in full are over their
+    5,000-token budget, probably from an edit outside the manager. They're
+    considered oldest-created first, and 'The Cheshire Cat is never seen
+    arriving' doesn't fit, so it loads as a list entry instead. Turn off
+    Always load in full on one to make room. Nothing is changed for you."
+  - Each memory the builder didn't load in full has the badge **Doesn't fit
+    in full** and the reason: "Doesn't fit in the 5,000 tokens loaded in
+    full, so it loads as a list entry. Turn off Always load in full on it or
+    another to make room." The row never
     infers why from a date (PR #196 F-03).
 - **Section "Superseded and archived"** ("Never loaded. Personas find them
   only by searching."), in muted rows:
@@ -277,9 +293,9 @@ Lightbox's markup stay unchanged.
   - Note ("· read in full only when a persona needs it"), `n / 8,000`.
   - Replaces: each superseded memory with "· stays searchable" and **Don't
     replace**.
-  - **Pin this memory** switch: "Pinned memories load in full at the start
-    of every conversation. This one adds about 60 tokens; pinned memories
-    would come to about 4,360 of 5,000."
+  - **Always load in full** switch: "Every conversation starts with this
+    memory's whole note, not just its summary. This one adds about 60 tokens;
+    memories loaded in full would come to about 4,360 of 5,000."
 - **Source line** (when the memory has a recallable source; a writer's new
   memory may have none, and a current, unnamed or deleted session shows ADR
   D3's reason instead): "From Jill's reply in 'Tea-party pacing', Nov 3. Personas
@@ -287,11 +303,12 @@ Lightbox's markup stay unchanged.
   prose-minion/memory/."
 - **Footer:** "Saving tells the room: 'Saved to project memory: …'". Buttons:
   Cancel, **Save to memory** (or **Save changes**).
-- **Refused edit** (a pinned memory's edit past the budget): an amber alert
-  under the note, "Can't save this edit: this memory is pinned, and the longer
-  note would bring pinned memories to about 5,300 of 5,000 tokens. Shorten the
-  note, or unpin this memory or another." **Save changes** is disabled. The
-  same rule applies to pinning in the sheet.
+- **Refused edit** (an edit to a memory that loads in full, past the budget):
+  an amber alert under the note, "Can't save this edit: this memory loads in
+  full, and the longer note would bring memories loaded in full to about
+  5,300 of 5,000 tokens. Shorten the note, or turn off Always load in full
+  here or on another memory." **Save changes** is disabled. The same rule
+  applies to turning the switch on.
 
 ## Reconciled with the ADR
 
