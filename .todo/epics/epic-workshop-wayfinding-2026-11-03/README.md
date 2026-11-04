@@ -368,3 +368,10 @@ the ADR:
     [tech debt](../../tech-debt/2026-11-04-markdown-positive-tabindex.md).
     - *Counts.* At `fe0d47d`: 606 suites / 8,609 tests / 59 snapshots, all
       passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.
+  - **PR #186 third re-review (Astra, 2026-11-04).** N-01 confirmed. One P3,
+    N-02: the trap stepped in only at its own first and last stops, so a
+    positive `tabindex` behind the sheet could interleave with the page-wide
+    order. Fixed at the root in `cf1b8c4`: with the trap on, the dialog
+    handles every Tab itself, in its own browser-ordered stops.
+    - *Counts.* At `cf1b8c4`: 606 suites / 8,611 tests / 59 snapshots, all
+      passing. Typecheck clean. Lint 0 errors, 1,136 warnings, unchanged.

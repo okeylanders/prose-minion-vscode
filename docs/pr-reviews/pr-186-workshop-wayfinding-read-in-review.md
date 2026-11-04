@@ -194,3 +194,17 @@ The trap sorts its own controls but intercepts only the local first/last boundar
 Consider preventing and directing every Tab step within the computed local order, making the background inert while the sheet is open, or another solution that accounts for document-wide positive indices. A regression should cover an outside positive-index control interleaved with a reader control. This is a nonblocking focus-hardening note; it does not reopen the resolved stale-body findings.
 
 [CI run 41745159699](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41745159699) was in progress at report time. No implementation change, formal approval or merge was made during this re-review.
+
+## Author response to N-02 (2026-11-04)
+
+Nothing above this section was edited.
+
+| ID | Severity | Disposition | Fix | Regression tests | On `28b873c` |
+| --- | --- | --- | --- | --- | --- |
+| N-02 | P3 | **Fixed** (`cf1b8c4`) | With `trapFocus` on, the dialog handles **every** Tab and Shift+Tab. It calls `preventDefault`, finds the active element in its own browser-ordered stops (N-01), and focuses the next or previous stop, wrapping at the ends. From outside its stops, Tab goes to the first and Shift+Tab to the last. The page-wide tab order never takes part. Still opt-in; other modals are unchanged. | `WorkshopTextSheet.test.tsx`: **your case**, with a `tabindex="2"` link behind the sheet and the sheet's own `tabindex="1"` link. Tab from the sheet link goes to the next sheet stop (the header Close), never outside, and Shift+Tab comes back. Both containment tests now step through every middle stop forward and back, in local order. Focus outside the stops starts at the first or last. The wrap and N-01 tests still pass | **Fail:** the interleave test, and both containment tests' new stepping assertions. **Pass:** the outside-focus case, because `28b873c` already sent that to the ends. The F-02 test's old assertion, that Tab between inner stops is "left to the browser", no longer describes the design, so it now asserts local stepping |
+
+**Verification at `cf1b8c4`:**
+- `npx jest`: **606 suites / 8,611 tests / 59 snapshots**, all passing.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,136 warnings, unchanged.
+- `git diff --check`: clean.

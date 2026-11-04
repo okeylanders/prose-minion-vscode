@@ -3,7 +3,7 @@
 **Epic:** [Workshop Wayfinding](README.md)
 **Decision:** [ADR 2026-11-03](../../../docs/adr/2026-11-03-workshop-wayfinding.md), D1 (the Material badge), D2, D3, and D4 (surface and access)
 **Design:** `Main.dc.html` (the Read in block) and `Reader.dc.html` in [`docs/design/workshop-wayfinding/`](../../../docs/design/workshop-wayfinding/README.md)
-**Status:** Built (`a88ef63`, `e1111b2`; review fixes `7a153fd`, `1687b0a`, `3c184c2`, `fe0d47d`), on `epic/workshop-wayfinding-slice-2-read-in`; PR #186 in review
+**Status:** Built (`a88ef63`, `e1111b2`; review fixes `7a153fd`, `1687b0a`, `3c184c2`, `fe0d47d`, `cf1b8c4`), on `epic/workshop-wayfinding-slice-2-read-in`; PR #186 in review
 
 ## Outcome
 
