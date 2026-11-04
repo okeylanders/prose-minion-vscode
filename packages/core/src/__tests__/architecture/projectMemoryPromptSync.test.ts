@@ -123,7 +123,11 @@ describe('when the prompt is taught (ADR 2026-11-04 D8)', () => {
     const off = workshopPersonaSystemPromptPaths(WORKSHOP_HOST_BASE_PROMPT_PATH, jill, behavior);
     const on = workshopPersonaSystemPromptPaths(WORKSHOP_HOST_BASE_PROMPT_PATH, jill, behavior, { projectMemory: true });
     expect(off).not.toContain('workshop-personas/project-memory-capability.md');
-    expect(on.filter((entry) => !off.includes(entry))).toEqual(['workshop-personas/project-memory-capability.md']);
+    // The proposal trailer (Slice 3) is taught beside it, under the same condition.
+    expect(on.filter((entry) => !off.includes(entry))).toEqual([
+      'workshop-personas/project-memory-capability.md',
+      'workshop-personas/project-memory-proposals.md'
+    ]);
     // It follows recall's grammar.
     expect(on.indexOf('workshop-personas/project-memory-capability.md'))
       .toBe(on.indexOf('workshop-personas/transcript-recall-capability.md') + 1);

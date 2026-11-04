@@ -109,6 +109,14 @@ export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
 export const WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH =
   'workshop-personas/project-memory-capability.md';
 
+/**
+ * The proposal trailer (ADR 2026-11-04 D6, D9): taught beside the grammar,
+ * under the same condition, so a persona never suggests a note while memory
+ * is off.
+ */
+export const WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH =
+  'workshop-personas/project-memory-proposals.md';
+
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
 > = Object.freeze({
@@ -149,7 +157,9 @@ export function workshopPersonaSystemPromptPaths(
     ...(participant
       ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH]
       : []),
-    ...(participant && options.projectMemory ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH] : []),
+    ...(participant && options.projectMemory
+      ? [WORKSHOP_PROJECT_MEMORY_CAPABILITY_PROMPT_PATH, WORKSHOP_PROJECT_MEMORY_PROPOSALS_PROMPT_PATH]
+      : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],
     WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
