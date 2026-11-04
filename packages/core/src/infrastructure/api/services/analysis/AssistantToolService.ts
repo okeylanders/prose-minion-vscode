@@ -603,6 +603,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop host ${persona.id} | Streaming: ${!!streamingOptions?.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_persona_${persona.id}`,
       systemMessage: systemPrompt,
@@ -614,7 +615,7 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
+        tools: webTools,
         retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
@@ -629,7 +630,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -670,6 +672,7 @@ export class AssistantToolService {
       `[AssistantToolService] Starting Workshop guest ${persona.id} | Streaming: ${!!streamingOptions.onToken}`
     );
 
+    const webTools = this.workshopWebSearchTools(streamingOptions.webResearch);
     const executionResult = await engine.runInitial({
       toolName: `workshop_guest_${persona.id}`,
       systemMessage: systemPrompt,
@@ -681,7 +684,7 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions.signal,
         onToken: streamingOptions.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions.webResearch),
+        tools: webTools,
         retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
@@ -696,7 +699,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
@@ -729,6 +733,7 @@ export class AssistantToolService {
     );
 
     const capability = streamingOptions?.capability;
+    const webTools = this.workshopWebSearchTools(streamingOptions?.webResearch);
     const executionResult = await engine.continueConversation({
       conversationId,
       userMessage,
@@ -739,7 +744,7 @@ export class AssistantToolService {
         maxTokens: options.maxTokens,
         signal: streamingOptions?.signal,
         onToken: streamingOptions?.onToken,
-        tools: this.workshopWebSearchTools(streamingOptions?.webResearch),
+        tools: webTools,
         retainedAssistantContentSanitizer: sanitizeWorkshopReplyForRetention
       }
     });
@@ -754,7 +759,8 @@ export class AssistantToolService {
         conversationId: executionResult.conversationId,
         model: assistantRunModel(executionResult),
         replySource: executionResult.replySource,
-        citations: executionResult.citations
+        citations: executionResult.citations,
+        ...(webTools ? { webResearchAttached: true as const } : {})
       }
     );
   }
