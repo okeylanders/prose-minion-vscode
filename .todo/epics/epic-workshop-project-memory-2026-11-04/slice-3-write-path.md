@@ -422,3 +422,9 @@ engine's test (+41).
 - Jest: **665 suites / 9,441 tests / 59 snapshots**, all passing (before:
   664 / 9,415 / 59).
 - No `vscode` import in core.
+
+**2a merged again** (`94fcabb7`, PR #197's F-02 recheck): one conflict, in
+`listProjectMemories`. The resolution keeps 2a's accepted-links standing
+and `supersededBy` and adds 2b's `version` beside them. After the merge:
+typecheck clean, lint 1,158, **668 suites / 9,452 tests / 59 snapshots**,
+all passing.

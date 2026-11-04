@@ -1,25 +1,63 @@
 # PR #197 review: Project Memory Slice 2a read path
 
-**Verdict: changes requested before merge into `epic/workshop-project-memory`. Three reproduced P2 findings remain open.**
+**Verdict: changes requested before merge into `epic/workshop-project-memory`. One P2 finding remains: F-02's successor traversal stops at an archived intermediate note. The other findings and notes are independently verified fixed.**
 
 **PR:** [#197](https://github.com/okeylanders/prose-minion-vscode/pull/197)  
 **Reviewed:** 2026-11-04  
-**Reviewed head:** `27da6fee5d7ca97119b563f1b6d121eef524bf9f`  
+**Current reviewed head:** `b609285d3298b95f0df294ffbb39b18a84dfe8d9`  
+**Initial reviewed head:** `27da6fee5d7ca97119b563f1b6d121eef524bf9f`  
 **Target branch:** `epic/workshop-project-memory`  
 **Base:** `067c804fd92edb4663a7058687d8ec3bc83ca252`  
-**Passing CI merge:** `09ea083a2a3809abc3d090fb0d43596295ab042d`
+**Initial passing CI merge:** `09ea083a2a3809abc3d090fb0d43596295ab042d`
 
 This report covers Slice 2a against the parent epic, ADR D1–D5/D8/D10–D13, repository architecture rules, and its explicit split from Slice 2b. D14 update notes are intentionally deferred to #198 and are not reported here as missing implementation. This is a branch report, not a formal GitHub approval or authorization to merge.
 
-## Resolution ledger
+## Independent re-review at b609285d
+
+**Current status:** F-01 and F-03 are closed; N-01 and N-02 are closed. F-02's original archived-terminal and active-chain examples are fixed, but the combination below remains incorrect.
+
+### F-02 remains open, P2: traverse archived intermediate successors
+
+**Location:** [ProjectMemoryLibraryContracts.ts:119–120](https://github.com/okeylanders/prose-minion-vscode/blob/b609285d3298b95f0df294ffbb39b18a84dfe8d9/packages/core/src/application/services/workshop/memory/ProjectMemoryLibraryContracts.ts#L119-L120).
+
+The new `projectMemoryInEffectSuccessors` helper follows a successor's own `supersededBy` only when its stored status is active. Archiving an intermediate note therefore cuts off the rest of its accepted supersession chain.
+
+**Exact-head real-store/library/read-renderer reproduction:**
+
+1. Create A (`mem-000001`).
+2. Create B (`mem-000002`) superseding A.
+3. Create C (`mem-000003`) superseding B; C is active and unsuperseded.
+4. Archive B and read A.
+5. The library returns `inEffectSuccessors: []`, and the host says `superseded by: mem-000002; nothing that replaces it is in effect now.`
+
+The same chain with B active correctly names C. D4 preserves supersession relations when a note is archived: B should not be returned as effective, but its accepted link to C must still be followed. With a second direct branch A←D, the helper reports only D and wrongly omits C through the archived branch.
+
+**Required correction:** continue through accepted successor links when an intermediate note is archived as well as when it is superseded. Return only active, unsuperseded endpoints. Alternatively, keep the original review's simpler neutral attribution without an exhaustive effectiveness claim. Add an archived-intermediate chain and a branching control; the new tests cover an archived terminal and active chain separately, but not their combination.
+
+### Fix verification
+
+- **F-01:** replayed the production settings-adapter→library→frame witness with the corrected manifest. Global Off defeats workspace Ask and Auto without a store listing. Global Ask remains on despite workspace Off. `scope: application` verified.
+- **F-03:** replayed the successful memory-read path through the actual engine/capability/library/store **without supplying a debug setting**. No title sentinel enters the log; the engine writes `memory:(a project note)`. The added Jest cases also verify debug off/on and preservation of the user-facing title.
+- **N-01:** the source line now names the extra provenance ranges while keeping its executable hint within ten ranges.
+- **N-02:** accepted links now drive both standing and `supersededBy`. The A↔B plus C→A witness attributes A only to C.
+- Graph controls pass for active chains, archived terminals, cyclic-edge exclusion and diamond deduplication. Archived-intermediate and branching witnesses reproduce the remaining F-02 issue.
+- **18 local Jest suites / 344 tests passed**, including the three new regression suites. Core and webview typechecks passed.
+- The initial-frame/continuation/tool-separation probe still passes through the real engine.
+- [CI run 41893325994](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41893325994) for `b609285d` was running at publication. Earlier green runs are not a substitute for this head's checks.
+
+## Initial review and author correction history
+
+The ledger and detailed original findings below are retained as history, including the author's fix notes. The independent current status above supersedes their open/closed wording.
+
+## Author resolution ledger
 
 | ID | Priority | Finding | Status |
 |---|---|---|---|
-| F-01 | P2 | Workspace configuration can override the intended global memory Off switch | Open |
-| F-02 | P2 | Read output endorses archived or already-superseded replacements as in effect | Open |
-| F-03 | P2 | Successful memory reads leak their titles through the engine's context-source log | Open |
-| N-01 | P3 | Provenance silently truncates more than ten nonconsecutive source ranges | Open, nonblocking |
-| N-02 | P3 | `supersededBy` can include an edge excluded by cycle-aware standing | Open, nonblocking |
+| F-01 | P2 | Workspace configuration can override the intended global memory Off switch | Fixed in `b285942b`: `"scope": "application"`, as the writer profile is, so VS Code reads the switch from user settings alone and ignores a workspace value. `projectMemorySetting.test.ts` pins the scope, the modes and the default to the code's; it failed before the fix. No port change. The same gap on `workshop.webResearch` is filed outside this epic. |
+| F-02 | P2 | Read output endorses archived or already-superseded replacements as in effect | Fixed in `f6d5823c`: the library resolves a superseded note's chain to the notes in effect at its end (`projectMemoryInEffectSuccessors`), and the read names its direct superseders, then those notes, or says nothing that replaces it is in effect. An archived superseder still keeps the old note superseded (D4). `ProjectMemorySupersession.test.ts` covers an active successor, an archived one and a chain; they failed before the fix. Re-review at `b609285d`: an archived note in the middle cut the chain. Fixed in `57ce420e`: the traversal follows the links standing counts through every archived or superseded note, names only notes in effect, each once, and ends on a cycle. Regressions (through the real store, library and read renderer): A ← B (archived) ← C names C; the branching control A ← B (archived) ← C plus A ← D names C and D; a diamond through an archived note names its one end once. The first two failed before the fix. |
+| F-03 | P2 | Successful memory reads leak their titles through the engine's context-source log | Fixed in `98a177a6`: the engine's "Context sources committed" line names a memory row by its kind alone (`memory:(a project note)`), and the manifest the writer sees keeps the title. `ProjectMemoryEngineLogs.test.ts` runs the real engine, persona capability, library and store with debug logging off and on; title, summary and body sentinels never reach any log. It failed before the fix. |
+| N-01 | P3 | Provenance silently truncates more than ten nonconsecutive source ranges | Fixed in `843040c5`: the hint keeps its ten ranges, and the line names the rest (", and N more ranges (…)"). The sync test's 32-turn case asserts it; it failed before the fix. |
+| N-02 | P3 | `supersededBy` can include an edge excluded by cycle-aware standing | Fixed in `5db426ad`: standing and attribution both read `acceptedProjectMemorySupersessions`, and `supersededProjectMemoryIds` derives from it. The A ↔ B, C → A case is a regression; it failed before the fix. |
 
 ## F-01: P2: make the global memory switch user-only
 

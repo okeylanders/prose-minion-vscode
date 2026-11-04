@@ -112,6 +112,8 @@ describe('the provenance hint, followed as written', () => {
     expect((decoded as Extract<WorkshopCapabilityInspection, { kind: 'request' }>).request).toMatchObject({
       sessions: [{ turns: expect.arrayContaining([{ from: 1, to: 1 }]) }]
     });
+    // The rest are never dropped silently (PR #197 N-01).
+    expect(line).toContain(`source: "Long", turns 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, and 22 more ranges (${positions.slice(10).join(', ')}).`);
   });
 });
 

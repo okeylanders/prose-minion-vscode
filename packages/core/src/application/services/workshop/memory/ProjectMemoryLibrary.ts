@@ -45,6 +45,7 @@ import {
 } from '@/application/services/workshop/memory/ProjectMemoryCatalogFrame';
 import {
   listProjectMemories,
+  projectMemoryInEffectSuccessors,
   type ProjectMemoryAccess,
   type ProjectMemoryClosedReason,
   type ProjectMemoryFrameEstimateResult,
@@ -246,7 +247,12 @@ export class ProjectMemoryLibrary implements ProjectMemoryFramePort, ProjectMemo
         items.push({ kind: 'busy', id });
       } else if (read.kind === 'memory') {
         const fresh = { ...listed, memory: read.entry.memory };
-        items.push({ kind: 'memory', listed: fresh, provenance: await this.provenance(fresh.memory, signal) });
+        items.push({
+          kind: 'memory',
+          listed: fresh,
+          provenance: await this.provenance(fresh.memory, signal),
+          inEffectSuccessors: projectMemoryInEffectSuccessors(set.memories, id)
+        });
       } else if (read.kind === 'missing' || read.kind === 'conflict') {
         items.push({ kind: 'unknown', id });
       } else {

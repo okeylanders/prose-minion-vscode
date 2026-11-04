@@ -6,7 +6,7 @@
  */
 
 import type { ProjectMemory } from '@shared/types/projectMemory';
-import { supersededProjectMemoryIds } from '@shared/types/projectMemory';
+import { acceptedProjectMemorySupersessions } from '@shared/types/projectMemory';
 import { projectMemoryVersion } from '@/application/services/workshop/memory/ProjectMemoryVersion';
 import type { WorkshopProjectMemoryMode } from '@messages';
 
@@ -84,18 +84,50 @@ export function listProjectMemories(
   entries: ReadonlyArray<{ readonly memory: ProjectMemory; readonly busy?: true }>
 ): ProjectMemoryListed[] {
   const memories = entries.map((entry) => entry.memory);
-  const superseded = supersededProjectMemoryIds(memories);
+  const links = acceptedProjectMemorySupersessions(memories);
+  const superseded = new Set(links.map(({ older }) => older));
   return entries
     .map(({ memory, busy }) => ({
       memory,
       superseded: superseded.has(memory.id),
-      supersededBy: superseded.has(memory.id)
-        ? memories.filter((other) => other.id !== memory.id && other.supersedes.includes(memory.id)).map((other) => other.id).sort()
-        : [],
+      // The same links as standing, so a cycle's ignored edge is never named (PR #197 N-02).
+      supersededBy: [...new Set(links.filter(({ older }) => older === memory.id).map(({ newer }) => newer))].sort(),
       busy: busy === true,
       version: projectMemoryVersion(memory, superseded.has(memory.id))
     }))
     .sort((left, right) => (left.memory.id < right.memory.id ? -1 : left.memory.id > right.memory.id ? 1 : 0));
+}
+
+/**
+ * The notes in effect a superseded memory's chain ends in: its superseders,
+ * then theirs, along the links standing counts, through every archived or
+ * superseded note in the middle, stopping at each one in effect (PR #197
+ * F-02). Each is named once, and a cycle ends. Empty when the chain ends
+ * only in archived notes, or in nothing readable.
+ */
+export function projectMemoryInEffectSuccessors(memories: readonly ProjectMemoryListed[], id: string): string[] {
+  const byId = new Map(memories.map((listed) => [listed.memory.id, listed]));
+  const found = new Set<string>();
+  const seen = new Set<string>([id]);
+  const queue = [...(byId.get(id)?.supersededBy ?? [])];
+  while (queue.length > 0) {
+    const next = queue.shift() as string;
+    if (seen.has(next)) {
+      continue;
+    }
+    seen.add(next);
+    const listed = byId.get(next);
+    if (!listed) {
+      continue;
+    }
+    if (isProjectMemoryInEffect(listed)) {
+      found.add(next);
+    } else {
+      // An archived or superseded note in the middle never ends the chain (PR #197 F-02 recheck).
+      queue.push(...listed.supersededBy);
+    }
+  }
+  return [...found].sort();
 }
 
 /** Where a memory's source session stands, for `memory.read`'s provenance (D3). */
@@ -115,7 +147,13 @@ export type ProjectMemoryProvenance =
 
 /** One id a `memory.read` named, in the order asked. */
 export type ProjectMemoryReadItem =
-  | { readonly kind: 'memory'; readonly listed: ProjectMemoryListed; readonly provenance: ProjectMemoryProvenance }
+  | {
+    readonly kind: 'memory';
+    readonly listed: ProjectMemoryListed;
+    readonly provenance: ProjectMemoryProvenance;
+    /** The notes in effect that its supersession chain ends in, sorted; empty when none is (PR #197 F-02). */
+    readonly inEffectSuccessors: readonly string[];
+  }
   /** No readable memory holds the id (a conflicting or unreadable file never answers one). */
   | { readonly kind: 'unknown'; readonly id: string }
   /** Another window holds it under a live claim now: "being edited; try again". */
