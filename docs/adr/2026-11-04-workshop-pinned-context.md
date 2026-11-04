@@ -1,6 +1,6 @@
 # ADR 2026-11-04: Workshop Pinned Context
 
-**Status:** Proposed (2026-11-04). Six questions are open for Okey ([Open questions](#open-questions)). Accepted after the live pass (Slice 5).
+**Status:** Proposed (2026-11-04). Okey decided question 5 on 2026-11-04; five questions are still open ([Open questions](#open-questions)). Accepted after the live pass (Slice 5).
 **Date:** 2026-11-04
 **Epic:** [Workshop Pinned Context](../../.todo/epics/epic-workshop-pinned-context-2026-11-04/README.md)
 **Design:** `docs/design/workshop-pinned-context/` (Slice 0d, not yet drawn). It follows Project Memory's approved settings design (PR #196, `docs/design/workshop-project-memory/` on `epic/workshop-project-memory-slice-0-design`).
@@ -123,11 +123,25 @@ Workshop room starts with, as ordinary context attachments.**
 |---|---|
 | **First room** in a project (no `current.json`) | Attached in pinned order |
 | **New session: full reset** | The working set is cleared, then pinned files are attached in pinned order |
+| **New session: full reset, empty context** | The working set is cleared and **nothing** is attached. The room starts empty |
 | **New session** | The carried working set stays. Pinned files already carried are re-read in place (D3). Any that are missing are appended in pinned order |
 | Open, Duplicate, Branch, Rewind, reload of `current.json` | **Never.** These are existing rooms |
 | A run in progress | New is already refused while running (`WorkshopSessionMessageHandler.ts:121`) |
 | No folder open, or several | Never. The tab says why (D8) |
 
+- **Three ways to start a new session** (Okey, 2026-11-04; question 5).
+  - The sessions menu gains **New session: full reset, empty context**,
+    directly under the full reset. The full reset now attaches pinned
+    context, so an empty room needs an item of its own.
+  - The item shows only while the list holds anything. With nothing
+    pinned, the full reset is already empty.
+  - The reset payload's `clearWorkingSet` flag
+    (`WorkshopResetSessionPayload`, `session.ts:631`) becomes one field,
+    `start: 'carry' | 'full-reset' | 'empty'`. A flag beside it would let
+    a request ask to carry the working set and skip pinned context, which
+    no menu item means.
+  - This is alpha, so the flag is removed, with no shim.
+  - `empty` never calls the seed port (D9).
 - **Changing the list never touches the open room.** Pinning or unpinning
   saves the list (D5) and nothing else. To bring a newly pinned file into
   the current room, the writer uses the tab's **Attach missing to this
@@ -281,9 +295,16 @@ the catalog key's path equals the entry's path. Otherwise it matches when
     attached: *alice-old.md* (not found)."
   - "… *manuscript.md* (doesn't fit in the 100,000-word context budget)."
 - **No thread turns at room start** (fact 5). The pills are the record.
-- **The full reset's subtitle** becomes "clears the excerpt and context, then
-  attaches pinned context" while the list holds anything. Its tooltip
-  changes to match. With an empty list, today's copy stays.
+- **The sessions menu,** while the list holds anything:
+  - **New session: full reset**, with the subtitle "clears the excerpt and
+    context, then attaches pinned context";
+  - **New session: full reset, empty context**, with the subtitle "clears
+    the excerpt and context, and leaves pinned context out". Its result
+    line: "Started an empty Workshop session: excerpt and context cleared,
+    and pinned context left out."
+
+  Tooltips change to match. With an empty list, the menu and its copy are
+  today's.
 - **A pinned pill gets a pin mark** (Slice 4), derived per D4. Its tooltip
   reads "Pinned: attached to every new session. Removing it here removes it
   from this conversation only." The pill's own Remove is unchanged.
@@ -300,6 +321,24 @@ fixes what the tab does:
   The "Memory isn't context" well then points straight to the tab beside it.
 - **Header copy gains it:** "… what you explicitly share and attach to every
   new conversation, what they remember about this project, …".
+- **A template well heads the tab** (Okey, 2026-11-04). It says what pinned
+  context is, beside what it isn't.
+  - It shows in every state, below any unavailable notice. It's the
+    counterpart of the Memory tab's "Memory isn't context" well, in the
+    same treatment.
+  - Its head: **Pinned context is a starting template.** "Each new
+    conversation copies it once, then keeps its own."
+  - It compares *Pinned context* with *A conversation's context*:
+    - **Change it:** here, in this tab · in that conversation's Context
+      panel, any time;
+    - **Reaches:** every new conversation in this project, as it starts ·
+      that conversation only;
+    - **Holds:** files most conversations need (characters, places, the
+      project brief) · whatever the conversation needs, starting with the
+      pinned files.
+  - Its last line: "Removing a file from a conversation doesn't unpin it.
+    Unpinning a file doesn't remove it from conversations that have already
+    started."
 - **Changes save right away,** like the memory manager's actions, not on
   Apply. The list is project data in a file, not a draft setting. The footer
   says so: "Pinned context saves as you change it and applies to new
@@ -381,10 +420,11 @@ fixes what the tab does:
 - **A New session does more I/O.** It reads up to 20 files before the room
   replaces. That is bounded, and a slow disk shows as a slower New. The live
   pass measures it.
-- **The full reset no longer means "empty"** while the list holds anything.
-  Its copy says so. A truly empty room means unpinning, or removing pills
-  after the reset. A third menu item ("start without pinned context") is
-  left out of v1 on purpose (open question 5).
+- **The full reset attaches pinned context now.** The empty room keeps its
+  own item, **New session: full reset, empty context** (D2). The sessions
+  menu grows by one item while the list holds anything.
+- **The reset payload changes shape.** `clearWorkingSet` gives way to
+  `start`, so `useWorkshopSessions` and its tests change with Slice 2.
 - **Builds on Project Memory's shared code.** The store uses
   `StoredFileClaims` / `StoredFileRewrite`, and the tab sits in 4a's panel
   list. Neither is on `main` yet. See the epic's order.
@@ -411,8 +451,8 @@ Recommendations are first in each list. Okey decides.
 3. **Over budget.** Attach each file that fits, in order (recommended), or
    stop at the first that doesn't fit.
 4. **The bound.** 20 files (recommended), or another number.
-5. **A third New item,** "start without pinned context". Not in v1
-   (recommended), or yes.
+5. **A third New item.** **Decided (Okey, 2026-11-04): yes.** It is
+   New session: full reset, empty context (D2, D7).
 6. **Pin from a pill.** Add Pin and Unpin to a context pill's menu in
    Slice 4 (recommended), or keep the tab as the only place to change the
    list.

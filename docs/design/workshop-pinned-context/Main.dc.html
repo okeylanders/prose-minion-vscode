@@ -44,6 +44,15 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 .well{display:flex;gap:8px;align-items:flex-start;margin-top:16px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);font-size:12px;line-height:1.5;color:var(--muted);}
 .well svg{flex:none;margin-top:2px;color:var(--accentHi);}
 .well b{color:var(--text);font-weight:600;}
+.vs{margin-top:16px;padding:10px 12px 11px;border-radius:9px;background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);}
+.vs-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim);}
+.vs-head svg{flex:none;color:var(--accentHi);}
+.vs-head b{color:var(--text);font-weight:600;}
+.vs-grid{display:grid;grid-template-columns:72px minmax(0,1fr) minmax(0,1fr);column-gap:14px;row-gap:5px;margin:9px 0 0 22px;font-size:11px;line-height:1.45;}
+.vs-grid dt{margin:0;color:var(--faint);font:10px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;padding-top:1px;}
+.vs-grid dd{margin:0;color:var(--muted);}
+.vs-grid .vs-col{color:var(--text2);font-weight:600;}
+.vs-foot{margin:9px 0 0 22px;font-size:11px;line-height:1.45;color:var(--dim);}
 .path{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--text);}
 .btns{display:flex;gap:8px;flex:none;align-items:center;}
 .btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;font-family:inherit;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 11px;cursor:pointer;}
@@ -104,6 +113,17 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </div>
 </sc-if>
 
+<section class="vs" aria-labelledby="pm-pin-vs-title">
+<div class="vs-head"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><b id="pm-pin-vs-title">Pinned context is a starting template.</b><span>Each new conversation copies it once, then keeps its own.</span></div>
+<dl class="vs-grid">
+<dt class="vs-corner"></dt><dd class="vs-col">Pinned context</dd><dd class="vs-col">A conversation’s context</dd>
+<dt>Change it</dt><dd>Here, in this tab</dd><dd>In that conversation’s Context panel, any time</dd>
+<dt>Reaches</dt><dd>Every new conversation in this project, as it starts</dd><dd>That conversation only</dd>
+<dt>Holds</dt><dd>Files most conversations need: characters, places, the project brief</dd><dd>Whatever the conversation needs, starting with the pinned files</dd>
+</dl>
+<p class="vs-foot">Removing a file from a conversation doesn’t unpin it. Unpinning a file doesn’t remove it from conversations that have already started.</p>
+</section>
+
 <sc-if value="{{hasChanged}}" hint-placeholder-val="{{ false }}">
 <div class="well" role="status">
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
@@ -132,7 +152,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </div>
 </sc-if>
 <sc-if value="{{showStartNote}}" hint-placeholder-val="{{ true }}">
-<p class="note">New session and New session: full reset both start with these files, in this order. Opening, branching or rewinding a saved session leaves its context as it was.</p>
+<p class="note">New session and New session: full reset start with these files, in this order. New session: full reset, empty context starts with none. Opening, branching or rewinding a saved session leaves its context as it was.</p>
 </sc-if>
 
 <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
@@ -176,7 +196,7 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 <p class="note" id="pm-pin-attach-why">Wait for the reply to finish to attach files to this conversation. Pinning and unpinning still work, and apply to new conversations.</p>
 </sc-if>
 <sc-if value="{{showSourceNote}}" hint-placeholder-val="{{ true }}">
-<p class="note">Pin files from this project only. Unpinning a file never removes it from a conversation it’s already in.</p>
+<p class="note">Pin files from this project only.</p>
 </sc-if>
 
 <div class="rule"><span class="eyebrow">Saved in this project</span><hr></div>
@@ -200,11 +220,11 @@ a{color:#ee7d49}a:hover{color:#e0673a}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["listed","empty","problems","over","changed","running","unreadable","nofolder","multiroot"],"default":"listed"},"minH":{"editor":null,"default":"1380"},"$preview":{"width":940,"height":1380}}'>
+<script type="text/x-dc" data-dc-script data-props='{"viewState":{"editor":"enum","options":["listed","empty","problems","over","changed","running","unreadable","nofolder","multiroot"],"default":"listed"},"minH":{"editor":null,"default":"1520"},"$preview":{"width":940,"height":1520}}'>
 class Component extends DCLogic {
   renderVals() {
     const view = this.props.viewState ?? 'listed';
-    const minHeight = (this.props.minH ?? '1380') + 'px';
+    const minHeight = (this.props.minH ?? '1520') + 'px';
     const limit = 100000;
     const fmt = (n) => n.toLocaleString('en-US');
     const unavailable = view === 'nofolder' || view === 'multiroot';

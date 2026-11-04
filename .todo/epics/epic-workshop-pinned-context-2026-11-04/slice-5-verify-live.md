@@ -22,30 +22,33 @@ Use a test project with *Alice*-style files, never a manuscript in progress.
 3. **New session: full reset.** The room starts with exactly the pinned
    files, in order, with no thread turns. The result line names the count
    and words.
-4. **New session** after removing one pinned pill: it comes back. A carried
+4. **New session: full reset, empty context.** The room starts with no
+   excerpt and no context, and nothing pinned is attached. Unpin everything:
+   the item disappears from the menu, and the full reset's copy is today's.
+5. **New session** after removing one pinned pill: it comes back. A carried
    pinned file edited on disk comes back with its new text.
-5. **First room.** Delete `prose-minion/sessions/current.json` with VS Code
+6. **First room.** Delete `prose-minion/sessions/current.json` with VS Code
    closed, then reopen. The first room has the pinned files.
-6. **Open, Branch and Rewind** a session: none of them gains a pinned file.
-7. **Missing file.** Rename a pinned file, then start a New session. The room
+7. **Open, Branch and Rewind** a session: none of them gains a pinned file.
+8. **Missing file.** Rename a pinned file, then start a New session. The room
    starts; the result names the file as not found; the tab says "Not found".
-8. **Over budget.** Pin a large file until the meter is over. New attaches
+9. **Over budget.** Pin a large file until the meter is over. New attaches
    the files that fit, in order, and names the rest.
-9. **Hand edit.** Break the JSON. The tab shows the unreadable notice with
+10. **Hand edit.** Break the JSON. The tab shows the unreadable notice with
    only Open file enabled, and New attaches nothing from it. Fix it, and
    everything returns.
-10. **Two windows** on the same folder: pin in one, then unpin in the other
+11. **Two windows** on the same folder: pin in one, then unpin in the other
     without refreshing. The second is refused with "changed in another
     window", and shows the current list.
-11. **Multi-root and no folder:** the tab's unavailable notice, and New
+12. **Multi-root and no folder:** the tab's unavailable notice, and New
     seeds nothing.
-12. **The prompt cache.** Send the first message after a seeded New, then a
+13. **The prompt cache.** Send the first message after a seeded New, then a
     second one. The cache indicator shows the second turn reading from the
     cache. A settings change mid-room doesn't resend the pinned files.
-13. **Timing.** Time New with ten pinned files against New with none. Record
+14. **Timing.** Time New with ten pinned files against New with none. Record
     both. If the difference is more than about half a second on a local
     disk, raise it with Okey.
-14. **Tune the bound** (`files: 20`) from what Okey actually pins.
+15. **Tune the bound** (`files: 20`) from what Okey actually pins.
 
 ## Close-out
 

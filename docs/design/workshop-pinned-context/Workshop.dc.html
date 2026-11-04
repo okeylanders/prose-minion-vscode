@@ -15,7 +15,7 @@ body{margin:0}
   --border:#3a2c1f;--border2:#4d3a28;--soft:#2e231a;
   --text:#f3ece1;--text2:#c9bbab;--muted:#a4937f;--dim:#7a6c5b;--faint:#5c5044;
   --accent:#e0673a;--accentHi:#ee7d49;--accentLo:#c8552c;--amber:#e2b24a;--blue:#5aa2f0;--red:#ef7d66;--green:#7cc08a;
-  width:940px;height:1000px;box-sizing:border-box;padding:40px;background:var(--bg);
+  width:940px;height:1080px;box-sizing:border-box;padding:40px;background:var(--bg);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--text);
 }
 .eyebrow{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
@@ -156,6 +156,10 @@ body{margin:0}
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 <span>New session: full reset<small>clears the excerpt and context, then attaches pinned context</small></span><kbd></kbd>
 </button>
+<button class="item danger" type="button" role="menuitem" title="Start over with no excerpt, no context attachments and no pinned context">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+<span>New session: full reset, empty context<small>clears the excerpt and context, and leaves pinned context out</small></span><kbd></kbd>
+</button>
 <button class="item" type="button" role="menuitem">
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
 <span>Save session…</span><kbd>⌘S</kbd>
@@ -180,12 +184,16 @@ body{margin:0}
 <svg class="warn" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
 <span>Started a new Workshop session. <b>10 of 11 pinned files attached;</b> not attached: <i>manuscript.md</i> (doesn’t fit in the 100,000-word context limit).</span>
 </div>
+<div class="status" role="status">
+<svg class="ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+<span>Started an empty Workshop session: <b>excerpt and context cleared,</b> and pinned context left out.</span>
+</div>
 </div>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":1000}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":1080}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }

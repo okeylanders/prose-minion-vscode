@@ -7,7 +7,7 @@
 `.todo/epics/epic-workshop-project-memory-2026-11-04/slice-0d-settings-design.md`
 on `epic/workshop-project-memory-slice-0-design`
 **Canvas:** https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to Okey), snapshotted in `docs/design/workshop-pinned-context/`
-**Status:** First pass drawn and published (12 artboards). Waiting on Okey's review.
+**Status:** Second pass drawn and published (12 artboards), after Okey's first notes. Waiting on his review.
 
 ## Outcome
 
@@ -152,6 +152,41 @@ Choices the brief left open, made here for Okey to accept or change:
   hovered, unpinned file pill. It's drawn so Okey can judge it, and is cut
   if the answer is no.
 
+## Second pass (2026-11-04, Okey's notes)
+
+1. **The tab says what pinned context is.** Okey asked for wording that
+   explains how pinned context differs from a conversation's context:
+   context is managed per session, character files and places are wanted in
+   most sessions, pinning saves the step, and files can still be added and
+   removed in the session's context panel.
+   - A **template well** now heads the tab in every state, the counterpart
+     of the Memory tab's "Memory isn't context" well, in the same accent
+     treatment.
+   - Head: **Pinned context is a starting template.** "Each new
+     conversation copies it once, then keeps its own."
+   - A two-column comparison:
+
+     | | Pinned context | A conversation's context |
+     |---|---|---|
+     | **Change it** | Here, in this tab | In that conversation's Context panel, any time |
+     | **Reaches** | Every new conversation in this project, as it starts | That conversation only |
+     | **Holds** | Files most conversations need: characters, places, the project brief | Whatever the conversation needs, starting with the pinned files |
+
+   - Last line: "Removing a file from a conversation doesn't unpin it.
+     Unpinning a file doesn't remove it from conversations that have
+     already started."
+   - The note under the actions, which said the unpinning half of that,
+     drops it and keeps "Pin files from this project only."
+2. **New session: full reset, empty context** (ADR question 5, now decided).
+   It is drawn in the sessions menu under the full reset, with "clears the
+   excerpt and context, and leaves pinned context out". Its result line is
+   drawn with the others: "Started an empty Workshop session: excerpt and
+   context cleared, and pinned context left out." The tab's start note now
+   names all three starts.
+
+Every tab state grew by the well's height (about 140px). The frames and the
+picker's backdrop grew with it.
+
 ## Progress
 
 - **2026-11-04.** Brief written with the spec.
@@ -162,3 +197,6 @@ Choices the brief left open, made here for Okey to accept or change:
   (pill mark, full reset copy, New result). It is published and snapshotted
   under `docs/design/workshop-pinned-context/`. Waiting on Okey's review.
   No production code; no tests run (docs only).
+- **2026-11-04. Second pass.** Two notes from Okey are drawn: the template
+  well at the top of the tab, and the empty-context New in the sessions
+  menu with its result line. Snapshotted again. Waiting on his review.

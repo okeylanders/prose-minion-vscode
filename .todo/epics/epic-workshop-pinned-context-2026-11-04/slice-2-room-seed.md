@@ -58,10 +58,22 @@ branching, rewinding and reloading a room never touch it.
   result message carries it (ADR D7).
 - The first room's report goes to the status ticker. There is no action
   result to carry it.
-- The sessions menu's full reset subtitle and tooltip change while the list
-  holds anything. The webview learns that from a `pinnedCount` on the
-  session snapshot, or from Slice 3's hook if that has landed. Pick
-  whichever adds less, and record it here.
+- **Three ways to start** (ADR D2, D7; Okey's decision on question 5):
+  - `WorkshopResetSessionPayload.clearWorkingSet` becomes `start: 'carry' |
+    'full-reset' | 'empty'`, and `WorkshopSessionPersistenceCoordinator
+    .resetSession` takes the same value. Remove the flag outright and
+    update `useWorkshopSessions.resetSession` and its callers.
+  - `empty` clears the working set as today's full reset does, and never
+    calls the seed port.
+  - The sessions menu (`WorkshopSessionsMenu`) gains **New session: full
+    reset, empty context**, directly under the full reset, with the 0d copy.
+    It renders only while the list holds anything.
+  - The full reset's subtitle and tooltip change in the same state.
+  - The webview learns the list holds anything from a `pinnedCount` on the
+    session snapshot, or from Slice 3's hook if that has landed. Pick
+    whichever adds less, and record it here.
+  - Each start's result line is the ADR D7 copy. A full reset with pinned
+    context no longer says "empty".
 - Logs carry counts and categories only, for example
   `[WorkshopPinnedContext] Seeded new room (attached=9, missing=1,
   over-budget=0)`.
@@ -82,7 +94,14 @@ branching, rewinding and reloading a room never touch it.
   - no divider turn is minted at room start.
 - **Delivery:** the first host turn after a seed sends the attachments as
   one `replace`, and the system message is unchanged.
-- **The full reset's copy** with and without pinned files.
+- **The three starts:**
+  - `carry`, `full-reset` and `empty` each produce the room ADR D2 says;
+  - `empty` reads no pinned file at all (the port is never called), even
+    when the list is full;
+  - a payload with the old `clearWorkingSet` field, or an unknown `start`,
+    is refused with a reason and starts nothing.
+- **The menu:** the empty-context item, and the full reset's new copy, show
+  only while something is pinned. With nothing pinned, the menu is today's.
 
 ## Completion criteria
 

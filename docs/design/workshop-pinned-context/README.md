@@ -6,7 +6,8 @@ and [ADR 2026-11-04](../../adr/2026-11-04-workshop-pinned-context.md). The
 brief, states and open questions are in
 [Slice 0d's doc](../../../.todo/epics/epic-workshop-pinned-context-2026-11-04/slice-0d-tab-design.md).
 
-- **Status: first pass, waiting on Okey's review.** Nothing here is approved
+- **Status: second pass, waiting on Okey's review.** It adds his two notes:
+  the template well, and the empty-context New. Nothing here is approved
   yet. Once it is, the canvas is copied here again and this line says so.
 - **Source:** a Claude Design canvas artifact,
   https://claude.ai/artifact/2dZHup6uEFKQML17dJeZqz (private to its owner).
@@ -34,7 +35,7 @@ brief, states and open questions are in
 
 | Board | Builds in | What it shows |
 |---|---|---|
-| `Main.dc.html` | 3 | The tab, with 10 files pinned. Interactive: Move up, Move down and Unpin work. Its `viewState` prop drives every tab state below |
+| `Main.dc.html` | 3 | The tab, with 10 files pinned, headed in every state by the template well ("Pinned context is a starting template"). Interactive: Move up, Move down and Unpin work. Its `viewState` prop drives every tab state below |
 | `Empty.dc.html` | 3 | Nothing pinned yet |
 | `Problems.dc.html` | 3 | One pinned file not found, one that can't be read (over the 5 MB file limit). 8 of 10 attach |
 | `OverBudget.dc.html` | 3 | An 84,200-word manuscript pinned by a hand edit: about 107,600 of 100,000 words. It doesn't fit, so it's left out, and nothing is unpinned |
@@ -44,7 +45,7 @@ brief, states and open questions are in
 | `NoFolder.dc.html`, `MultiRoot.dc.html` | 3 | Unavailable in this workspace, with the reason |
 | `Picker.dc.html` | 3 | Add from project… in pin mode, over the dialog. Interactive: click files. Already-pinned files are disabled and tagged "Pinned" |
 | `PickerRefused.dc.html` | 3 | The host refusing a pin past the 100,000-word limit |
-| `Workshop.dc.html` | 2, 4 | The context sheet's pin mark and tooltip; a Pin button on an unpinned pill (question 6); the full reset's new subtitle; the New result, full and partial |
+| `Workshop.dc.html` | 2, 4 | The context sheet's pin mark and tooltip; a Pin button on an unpinned pill (question 6); the sessions menu with the full reset's new subtitle and **New session: full reset, empty context**; the New result, full, partial and empty |
 
 ## Where the build may differ from the canvas
 

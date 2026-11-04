@@ -1,7 +1,8 @@
 # Epic: Workshop Pinned Context
 
-**Status:** Slice 0 (spec) written, with six questions waiting on Okey.
-Slice 0d (tab design), first pass drawn, waiting on Okey's review. Code
+**Status:** Slice 0 (spec) written, with five questions waiting on Okey.
+Slice 0d (tab design): second pass drawn after Okey's first notes, waiting
+on his review. Code
 slices are gated on Project Memory reaching `main` (see [Order](#order)).
 **Priority:** Medium
 **Created:** 2026-11-04
@@ -42,8 +43,8 @@ every conversation through Choose from project, and wants to stop.
 
 | # | Slice | Outcome | Branch | Status |
 |---|---|---|---|---|
-| 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Written; six questions open for Okey |
-| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | First pass drawn (12 artboards), waiting on Okey ([doc](slice-0d-tab-design.md)) |
+| 0 | Spec | ADR, this epic, slice docs 0d–5 | `epic-pinned-context` | Written; five questions open for Okey |
+| 0d | Tab design | The Pinned context tab in every state, drawn on the real theme beside the Memory tab, for Okey's approval, then snapshotted | `epic-pinned-context` | Second pass drawn (12 artboards), waiting on Okey ([doc](slice-0d-tab-design.md)) |
 | 1 | Format and store | `WorkshopPinnedContextCodec` (format 1, pure) and `WorkshopPinnedContextStore` (claimed writes), with fixtures. No UI, no seeding | `…-slice-1-format-store` | Codec can start now. The store waits on `StoredFileClaims` on `main` ([doc](slice-1-format-and-store.md)) |
 | 2 | Room seed | `WorkshopPinnedContextLibrary`, the `WorkshopRoomSeed` port, seeding on first room / New / full reset, the New result's report, the full reset's copy | `…-slice-2-room-seed` | Waits on 1 ([doc](slice-2-room-seed.md)) |
 | 3 | Settings tab | `WorkshopPinnedContextHandler`, its messages, `useWorkshopPinnedContext`, and the panel: add from project, pin what's attached, attach missing, move, unpin, open | `…-slice-3-settings-tab` | Waits on 0d, 2, and 4a on `main` ([doc](slice-3-settings-tab.md)) |
@@ -118,15 +119,25 @@ Project Memory's process, unchanged:
 landed there, otherwise the memory epic branch does (see
 [Order](#order)).
 
-The ADR's six [open questions](../../../docs/adr/2026-11-04-workshop-pinned-context.md#open-questions)
-are still for Okey:
+**An empty-context New (Okey, 2026-11-04; ADR question 5).** The sessions
+menu gains **New session: full reset, empty context**. It starts a new
+conversation with the working set cleared and no pinned context. It shows
+only while something is pinned. The reset payload's `clearWorkingSet` flag
+becomes `start: 'carry' | 'full-reset' | 'empty'` (ADR D2). Slice 2 builds
+it.
+
+**A template well heads the tab (Okey, 2026-11-04).** It explains that
+pinned context is a starting template, and that each conversation's context
+stays its own and is changed in its Context panel (ADR D8). Slice 3 builds
+it from the design.
+
+Of the ADR's [open questions](../../../docs/adr/2026-11-04-workshop-pinned-context.md#open-questions),
+five are still for Okey:
 
 1. The tab's position (after About you, recommended).
 2. Whether an ordinary New session tops up (yes, recommended).
 3. Over budget: attach each file that fits, in order (recommended).
 4. The bound: 20 files (recommended).
-5. A third New item, "start without pinned context" (not in v1,
-   recommended).
 6. Pin and Unpin from a pill in Slice 4 (yes, recommended).
 
 ### Direction relayed from the Project Memory thread (2026-11-04)
@@ -167,3 +178,13 @@ the repo:
     "Re-pin" button and marks a Lightbox tile among a message's
     attachments. ADR D1 is corrected, and the glyph is now a question for
     Okey (0d question 3).
+- **2026-11-04. Okey's first design notes.**
+  - The tab needs to explain that pinned context is a template, and that
+    each conversation's context is still managed in its own panel. A
+    template well now heads the tab (ADR D8).
+  - Add a **Full reset, empty context** New. It decides ADR question 5 as
+    yes (ADR D2, D7). The reset payload becomes
+    `start: 'carry' | 'full-reset' | 'empty'`.
+  - Drawn as Slice 0d's second pass and snapshotted. Slice 2's doc gains the
+    payload change, the menu item and their tests; Slice 5 gains a live
+    check.
