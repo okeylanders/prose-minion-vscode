@@ -2,11 +2,10 @@
 
 ## Latest review status
 
-**Changes requested at `8737686b`: one new overflow-count copy issue (F-05).**
-F-05 is marked fixed in `c8191018` (see its resolution below); awaiting re-review.
-The requested “Always load in full” rename is retained. F-01 through F-04
-remain resolved. See the latest re-review below; the earlier approval
-applied to the head before this rename.
+**APPROVE for the documentation/design scope at `de5e23f2`.** All five
+findings are resolved, including the rename's selected-versus-loaded count.
+The latest exact-head re-review below supersedes the earlier verdicts.
+No formal GitHub approval or merge was performed.
 
 ## Initial target and verdict
 
@@ -377,3 +376,60 @@ in-budget state may retain the shorter “N in full” wording.
 - Exact-head CI was in progress:
   https://github.com/okeylanders/prose-minion-vscode/actions/runs/41874162248.
 - No formal GitHub approval or merge was performed.
+
+## Final design re-review at de5e23f2
+
+- Exact target: `de5e23f29b78ec5c62ac6092811954b973051c17`.
+- Base remains `9ba38154e883c2b29dce3d5455fef45b8271f80e`.
+- **Verdict: APPROVE for this documentation/design scope.** F-01 through
+  F-05 are closed. This is a written review verdict, not a formal GitHub
+  approval; no merge was performed.
+
+### F-05 resolution verified
+
+The manager now says “4 set to load in full · 3 loaded · ≈ 5,600 requested
+of 5,000 tokens”. Its actual prototype rows agree: three “Loaded in full”
+badges and one “Doesn't fit in full” badge. Selected demand is no longer
+reported as delivered content.
+
+The new `OverFull.dc.html` board mounts the shared Main component's
+`fullover` state. The tab separately presents:
+
+- four selected, three loaded, one not fitting;
+- 5,600 tokens requested;
+- 4,400 of the 5,000-token full-load budget actually loaded;
+- 800 catalog tokens;
+- 5,200 tokens **at the start**, meaning the total frame, not full bodies.
+
+The sample arithmetic and limits are consistent: 4,400 + 800 = 5,200,
+while loaded full bodies stay below 5,000. The meter's accessible label
+carries the same requested/loaded distinction as its visible text.
+Decision 17 and Slice 4b's tests require the counts, badges, and actual
+frame to come from the same builder result. The normal shorter in-budget
+wording is retained, as is the requested “Always load in full” action.
+
+### Verification
+
+- Read the complete eight-file delta since report commit `18fbc738`,
+  including the author response in this report, and preserved that response.
+- Materialized each changed file at the exact target and verified its Git
+  blob hash. Board inventory is now **15**, with the new import and canvas
+  entry both present.
+- **384 prototype assertions passed**: prior coverage plus the new view in
+  all three mode choices, explicit requested/loaded counts and token text,
+  accessible meter label, board routing, and Off/Auto transitions in both
+  prototype themes.
+- The corrected manager witness reports three loaded rows and one not
+  fitting, matching its summary. Off hides the new tab meters; turning
+  memory back on restores the correct overflow explanation.
+- The earlier four corrections, receipt controls, no-folder/multi-root
+  behavior, and writer management while Off remain covered.
+- Exact-head CI was in progress at publication; its typecheck had passed:
+  https://github.com/okeylanders/prose-minion-vscode/actions/runs/41876151048.
+  The immediately previous report head `18fbc738` passed typecheck, tests,
+  lint, and both bundles in run 41874819999.
+- No actual canvas/browser rendering, screen-reader, live VS Code, or
+  production integration result is claimed. Those checks still belong to
+  the implementation and live-pass gates recorded above.
+
+No additional blocking design finding was found in this delta.
