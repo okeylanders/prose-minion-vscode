@@ -76,7 +76,7 @@ web research attached is always held for the writer.
 | Persisted reason | `WorkshopMemoryProposal.held?: 'web-research' \| 'room-cap'` (`WORKSHOP_MEMORY_HOLDS`), optional and additive in `WorkshopMemoryProposalRecords` (decoded strictly, cloned only when present). No `schemaVersion` bump; the pre-memory fixture reads and saves byte for byte. It stays after the writer saves or dismisses |
 | The save | `handlers/domain/workshop/WorkshopMemoryAutoSaves.ts`, owned by `WorkshopProjectMemoryHandler` (`autoSaveProposal`, `autoSavesSettled`): reads the mode again (it was read before the listing await), saves through `ProjectMemoryWrites`' single-writer queue with `origin: auto` and the host's provenance, then records the card as saved and a receipt `by: 'auto'` naming the persona. It holds the card's save in the handler's in-flight map (PR #200 F-05), so a writer's Save joins it and a Dismiss waits it out |
 | Provenance | `WorkshopProjectMemoryProvenance.ts`: the handler's two provenance helpers, moved out unchanged and given `origin` (`proposed` or `auto`) |
-| The room | `WorkshopRoomHandler` hands each completion (host message, guest join) and the tool side-pass's synthesis `memoryAutoSave`, through `WorkshopSliceComposition`. A new run (send, tool, invite) waits for saves in flight first, and only when there are any, so the receipt lands right after its reply and the next delivery carries it |
+| The room | `WorkshopRoomHandler` hands each completion (host message, guest join) and the tool side-pass's synthesis `memoryAutoSave`, through `WorkshopSliceComposition`, and the run awaits the save as its tail, under its own controller, before it settles (PR #201 F-03; see below) |
 | Held copy | `workshopMemoryHeldReason(held)` in `shared/constants/workshopProjectMemoryWrites.ts`, the design's two lines, N from the budget |
 | Webview | `WorkshopTurnMemory`: the held card ("Held for you to decide", the reason, Save · Edit… · Dismiss) on Slice 3's `WorkshopMemoryCard` `held` mode; a reply Save and tell me saved shows no settled line; the receipt's chevron (`aria-expanded`, `aria-controls`, "Show/Hide the saved memory") expands Slice 3's `WorkshopMemoryCard` read only, collapsed by default, and the line keeps Edit · Forget. `hooks/domain/workshop/memory/workshopMemoryAutoReceipts.ts` (pure) maps each automatic receipt to the saved card on its reply, from the snapshot's turns. `memory.css`: the chevron and the expanded card's width |
 
@@ -96,7 +96,8 @@ provenance call and the two delegating methods.
 | Forget from the receipt: archived, the file kept, a `forgotten` receipt; D14's delivered view drops it once delivered; the next frame doesn't list it | same |
 | Edit from the receipt: `updated` receipt, one file | same |
 | A writer's Save while the automatic save is in flight joins it (one file, one receipt, answered with its id) | same |
-| The next message waits for a save in flight (receipt before the next exchange); fails with the wait removed (checked) | same |
+| The save is its run's tail: the send settles with its receipt in place, before the next exchange; a tool synthesis and a guest's opening reply the same | same |
+| PR #201's races (F-01–F-03), the store's create held | `WorkshopProjectMemoryAutoSaveRaces.test.ts` (below) |
 | No memory text in any log; the held and saved log lines; a save that throws (text in its error) or is refused writes nothing, leaves the card waiting, and logs only ids and reasons | same |
 | The decision's order and the count; the held copy (claims no search, room-wide, N from the budget) | `services/.../memory/WorkshopMemoryAutoSave.test.ts` |
 | Completion: held puts `held` and calls no saver; unheld under `auto` calls the saver once, after the turn is recorded; `held` round-trips through save, reopen and hydrate; unknown reason refused; the fixture byte for byte; clone | `session/WorkshopMemoryHeldCard.test.ts` (with `ScriptedWorkshopRoom`'s two new optional knobs) |
@@ -127,11 +128,12 @@ provenance call and the two delegating methods.
 
 ## Deviations
 
-1. **A new run waits for an automatic save in flight.** Slice 3 refuses a
-   writer's save mid-reply so a receipt never lands inside an exchange.
-   An automatic save starts as its reply completes, so instead the room's
-   next send, tool run or invite waits for it (no await when none is out).
-2. **A room replaced while the file is written gets no receipt.** As with
+1. **The automatic save is its run's tail** (PR #201 F-03, replacing the
+   first version's wait at the start of the next run). The reply settles a
+   local file write later than before: milliseconds, longer behind another
+   window's or the writer's write.
+2. **A room replaced after the file committed gets no receipt.** Before the
+   commit, a replaced room withdraws the save (F-01's permit). As with
    Slice 3's writes (deviation 5), a New, Open, Rewind or Branch that lands
    mid-save keeps the memory (the manager lists it as saved by its
    persona) and records no receipt in the new room; it is logged.
@@ -139,9 +141,10 @@ provenance call and the two delegating methods.
 3. **A refused automatic save leaves Ask first's card.** The folder busy,
    the pinned budget, an unavailable workspace: nothing is written, the card
    stays pending with no hold, and the writer can Save it. Logged by reason.
-4. **The mode is read twice.** At the reply's context (before the listing
-   await) and again just before saving; a switch to Ask first in between
-   leaves the card waiting.
+4. **The mode is read live** (PR #201 F-01): at the reply's context, before
+   the save, when its turn in the queue comes, and at the store's commit
+   point. A switch to Ask first or Off before the commit leaves the card
+   waiting; one after it keeps the memory and its receipt.
 5. **`held` stays on a settled card,** saying why it waited; it is optional
    and decoded strictly, so nothing reads it as a state.
 6. **The expand shows the card as saved,** from the reply's own turn (what
@@ -151,10 +154,70 @@ provenance call and the two delegating methods.
    The route harness mocks the persistence coordinator, so the Rewind case
    cuts the room's receipts with `rewindWorkshopSession`, counts the cut
    room, and checks the decision resumes.
-8. **The receipt stays `role="separator"`.** Slice 3's receipt already holds
-   its Edit · Forget and Restore buttons inside the separator; the chevron
-   joins them, and the expanded card is a sibling outside it. Whether a
-   receipt with actions should be a `group` instead is left for review,
-   since changing it moves Slice 3's markup and tests.
+8. **A receipt with controls is a labelled `group`** (PR #201's
+   accessibility note): Save and tell me's (Edit, Forget, the expand) and
+   Forget's (Restore), labelled by the receipt's line, its rules drawn by
+   CSS and decorative. A receipt with no controls stays a `separator`.
+   Slice 3's receipt tests moved with it.
 9. **Provenance moved to its own module,** unchanged but for `origin`, to
    keep the handler well under 500 lines beside 4b-wire's routes.
+
+## PR #201 review fixes (Astra, `docs/pr-reviews/pr-201-project-memory-save-and-tell-review.md`)
+
+Each fix has a regression in `WorkshopProjectMemoryAutoSaveRaces.test.ts`
+that fails with the fix taken out (checked by reverting each fix and
+running the suite: F-01's permit, 8 fail; F-02's join rule, 1; F-03's
+abort, 2).
+
+- **F-01: permission at commit.** `ProjectMemoryWrites.save` takes an
+  optional `permit`, asked when the save's turn in the single-writer queue
+  comes and inside the store's `beforeCommit`, with nothing awaited before
+  the rename. A false permit writes nothing and refuses `withdrawn`. The
+  automatic save's permit is: the mode still `auto`, its run not aborted,
+  the same room revision, and the card still pending and unheld. A writer's
+  save passes none, so it works with memory Off as before.
+  - Tests: Ask first and Off, each while the save waits behind a held
+    writer save and while its own commit is delayed (nothing written, the
+    card pending, the writer's save written); then a writer's Save of the
+    card with memory Off.
+- **F-02: an edited Save never joins.** The handler joins an in-flight save
+  only for a Save whose draft is the card's own
+  (`workshopMemoryDraftsEqual` against `workshopMemoryProposalDraft`).
+  An edited Save waits it out and, once the card is saved, applies to the
+  saved memory through `edit` (an `updated` receipt). While the reply's run
+  is still settling, that write is refused in words ("Wait for the reply to
+  finish, then save to memory."), so the sheet keeps the writer's draft;
+  sent again after, it applies. A Save that ignored edits is never
+  acknowledged.
+  - Tests: the overlap with the create held (refused in words, the file
+    keeps the card's title, one receipt); sent again once settled (applied,
+    `saved` then `updated`, one file); an unedited Save and an edit equal to
+    the card still join (one file, one receipt, both answered).
+- **F-03: the save is its run's tail.** The coordinator's suggestion, taken.
+  The room handler (host message, guest join) and the tool side-pass
+  (synthesis) await the save after completion's own work and before the
+  run's `finally` settles it, under the run's controller
+  (`memoryAutoSaveFor(signal)`). The waits at the start of send, tool and
+  invite are gone, so no request (Send, tool, invite or widget commit)
+  waits on a save or resumes after one against a changed room, target or
+  attachments. A preempting run aborts the controller, New and Open move the
+  room revision, and disposal aborts the run: each withdraws a save that
+  hasn't committed (F-01's permit). Nothing in completion holds what the
+  write queue needs, so there was no reason to prefer the bound wait.
+  - Tests: a later send completes while the save is held, goes to
+    `host-conv`, and preempts the save (no file, the card pending); a room
+    reset while held writes nothing; disposal while held writes nothing and
+    starts no provider call after.
+  - Residual: a run preempted after the file committed still records its
+    receipt, which then lands after the new writer message; never silent.
+
+**Verification after the fixes** (`1cd862b`, then the accessibility commit):
+- Typecheck clean; lint 0 errors, 1,170 warnings, as the base.
+- Jest: **681 suites / 9,598 tests / 59 snapshots**, all passing on two
+  consecutive full runs, with no intermittent failure.
+- The unchanged scope rechecked by the suites: a writer's save with memory
+  Off, an unedited duplicate Save coalescing, the receipt delivered on the
+  next turn, and the web-research hold.
+- Sizes: `WorkshopMemoryAutoSaves.ts` 133, `WorkshopProjectMemoryHandler.ts`
+  447, `ProjectMemoryWrites.ts` 415, `RunWorkshopToolSidePass.ts` 378;
+  `WorkshopRoomHandler.ts` (already past 500) is 1,648, 24 over the base.
