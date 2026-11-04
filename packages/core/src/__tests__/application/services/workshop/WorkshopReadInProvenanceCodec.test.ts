@@ -152,8 +152,8 @@ describe('Read-in provenance in the session codec', () => {
       return session;
     };
 
-    it('accepts the new keys when well formed', () => {
-      const raw = writerRow({ turnId: 'turn-1', lineRange: { start: 2, end: 2 }, sourceFingerprint: FINGERPRINT });
+    it('accepts the display-safe keys when well formed', () => {
+      const raw = writerRow({ turnId: 'turn-1', lineRange: { start: 2, end: 2 } });
 
       expect(parseWorkshopPersistedSession(raw).workshop.writerSources.host[0]).toMatchObject({
         turnId: 'turn-1',
@@ -164,12 +164,28 @@ describe('Read-in provenance in the session codec', () => {
     it.each([
       [{ turnId: '' }, /writerSources\.host\[0\]\.turnId must be a non-empty string/],
       [{ lineRange: { start: 3, end: 1 } }, /writerSources\.host\[0\]\.lineRange must be positive integer lines/],
-      [{ sourceFingerprint: 'abc' }, /writerSources\.host\[0\]\.sourceFingerprint must be a 64-character/]
+      // Only a fetched row in a conversation archive may carry the host-private
+      // fingerprint; a writer row never does (PR #187 F-02).
+      [{ sourceFingerprint: FINGERPRINT }, /writerSources\.host\[0\] contains unknown field sourceFingerprint/],
+      [{ sourceFingerprint: 'abc' }, /writerSources\.host\[0\] contains unknown field sourceFingerprint/]
     ])('rejects %p on load and save', (extra, message) => {
       const raw = writerRow(extra);
 
       expect(() => parseWorkshopPersistedSession(raw)).toThrow(message);
       expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).toThrow(message);
+    });
+
+    it.each([
+      ['a tool', (sources: Record<string, unknown>, row: unknown) => { sources.tools = { prose: [row] }; }, /writerSources\.tools\.prose\[0\] contains unknown field sourceFingerprint/],
+      ['a guest', (sources: Record<string, unknown>, row: unknown) => { sources.guests = [{ personaId: 'margot', sources: [row] }]; }, /writerSources\.guests\[0\]\.sources\[0\] contains unknown field sourceFingerprint/]
+    ])('refuses a fingerprint on %s writer row too', (_label, place, message) => {
+      const raw = fixture() as unknown as { workshop: { writerSources: Record<string, unknown> } };
+      place(raw.workshop.writerSources, {
+        kind: 'attachment', origin: 'writer', label: 'Rabbit notes', sizeChars: 120, isEstimate: true,
+        deliveredAt: 1_793_632_440_000, sourceFingerprint: FINGERPRINT
+      });
+
+      expect(() => parseWorkshopPersistedSession(raw)).toThrow(message);
     });
 
     it('clones a row deeply, so a later edit to the copy never reaches the original', () => {

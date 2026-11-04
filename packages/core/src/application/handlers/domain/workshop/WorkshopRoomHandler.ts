@@ -20,6 +20,7 @@
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { projectContextSource } from '@orchestration/ContextSourceRecord';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
@@ -1506,10 +1507,13 @@ export class WorkshopRoomHandler {
     // The Phase 7 manifest: writer-declared rows first, then this
     // conversation's agent-fetched deliveries in delivery order. Both sides
     // are display-safe; the conversation id never leaves this method.
+    // Every row is projected on its way out, writer rows included, so no
+    // host-private field can reach the webview however a row was stored
+    // (PR #187 F-02).
     const sources = [
       ...this.session.collectWriterSources(target),
       ...this.assistantToolService.getConversationContextSources(conversationId)
-    ];
+    ].map(projectContextSource);
     return {
       label,
       snapshot: this.assistantToolService.getConversationContextBudget(conversationId),

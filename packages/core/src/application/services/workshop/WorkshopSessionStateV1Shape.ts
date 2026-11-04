@@ -519,10 +519,12 @@ function assertContextSource(value: unknown, path: string): void {
       'excerptVersion',
       'stale',
       'artifactId',
-      // Read-in provenance (ADR 2026-11-03 D4; additive, D9).
+      // Read-in provenance (ADR 2026-11-03 D4; additive, D9). A writer row
+      // never carries the host-private `sourceFingerprint`: only a fetched
+      // row in a conversation archive does, so the key is unknown here and
+      // refused (PR #187 F-02).
       'turnId',
-      'lineRange',
-      'sourceFingerprint'
+      'lineRange'
     ]
   );
   enumAt(source.kind, `${path}.kind`, CONTEXT_SOURCE_KINDS);
@@ -545,7 +547,8 @@ function assertContextSource(value: unknown, path: string): void {
 const CONTEXT_SOURCE_PROVENANCE_EXPECTED = {
   turnId: 'a non-empty string',
   lineRange: 'positive integer lines { start, end } with start <= end',
-  sourceFingerprint: 'a 64-character lowercase hex SHA-256'
+  // Unreachable while the key is refused above; kept so the record stays total.
+  sourceFingerprint: 'absent on a writer-source row'
 } as const;
 
 function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
