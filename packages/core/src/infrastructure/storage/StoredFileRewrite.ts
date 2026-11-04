@@ -150,7 +150,7 @@ async function release(
   }
   // A claim another window already put back (held past the lease) is not this write's to report.
   if (await storedFileExists(fileSystem, claimPath)) {
-    ports.log.appendLine(`${ports.logPrefix} A claimed ${ports.noun} could not be put back; it is kept as ${path.basename(claimPath)}.`);
+    ports.log.appendLine(`${ports.logPrefix} A claimed ${ports.noun} could not be put back; it is kept as ${ports.claims.logName(path.basename(claimPath))}.`);
   }
 }
 

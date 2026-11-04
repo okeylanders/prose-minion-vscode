@@ -34,7 +34,8 @@
  *   `unknown`, never `absent`.
  * - **Each store names its own claims** (`StoredFileClaimsConfig`): the
  *   pattern that knows its saved names, and the prefix its log lines carry.
- *   Logs carry file names, never the writer's text.
+ *   Logs carry file names (as `logName` gives them), never the writer's
+ *   text.
  *
  * The small file helpers at the end serve stores' new-file writes too.
  */
@@ -70,6 +71,12 @@ export interface StoredFileClaimsConfig {
   readonly claimPattern: RegExp;
   /** Every log line's prefix, such as `[LightboxBoardStore]`. */
   readonly logPrefix: string;
+  /**
+   * How a log line names a saved file or a claim; the name itself by
+   * default. A store whose file names carry writer text gives one that
+   * leaves it out.
+   */
+  readonly logName?: (name: string) => string;
 }
 
 interface Claim {
@@ -101,7 +108,7 @@ export class StoredFileClaims {
     const folder = path.dirname(filePath);
     const entries = await this.entriesOf(folder);
     if (!entries) {
-      this.log.appendLine(`${this.config.logPrefix} Could not look for ${path.basename(filePath)}'s claims; it is not taken for gone.`);
+      this.log.appendLine(`${this.config.logPrefix} Could not look for ${this.logName(path.basename(filePath))}'s claims; it is not taken for gone.`);
       return 'unknown';
     }
     return (await this.settleName(folder, path.basename(filePath), entries)).state;
@@ -124,6 +131,11 @@ export class StoredFileClaims {
     return changed;
   }
 
+  /** A saved file's or a claim's name, as a log line gives it. */
+  logName(name: string): string {
+    return this.config.logName ? this.config.logName(name) : name;
+  }
+
   /** Whether `name` is one of this store's claims. */
   isClaim(name: string): boolean {
     return this.config.claimPattern.test(name);
@@ -141,17 +153,17 @@ export class StoredFileClaims {
     const others = (entries: readonly string[]) => this.claimsOf(entries, saved).filter((claim) => claim.name !== path.basename(own));
     const entries = await this.entriesOf(folder);
     if (!entries) {
-      this.log.appendLine(`${this.config.logPrefix} Could not look for earlier versions of ${saved}; it was not deleted.`);
+      this.log.appendLine(`${this.config.logPrefix} Could not look for earlier versions of ${this.logName(saved)}; it was not deleted.`);
       return false;
     }
     for (const claim of others(entries)) {
       if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
-        this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${saved}, left by a rewrite, with it.`);
+        this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite, with it.`);
       }
     }
     const after = await this.entriesOf(folder);
     if (!after || others(after).length > 0) {
-      this.log.appendLine(`${this.config.logPrefix} An earlier version of ${saved} could not be removed, or the folder could not be read again; it was not deleted.`);
+      this.log.appendLine(`${this.config.logPrefix} An earlier version of ${this.logName(saved)} could not be removed, or the folder could not be read again; it was not deleted.`);
       return false;
     }
     return true;
@@ -209,7 +221,7 @@ export class StoredFileClaims {
         // Another writer put it back, or took the name: nothing more here until the next look.
         return { state: (await storedFileExists(this.fileSystem, path.join(folder, saved))) ? 'present' : 'busy', changed: false };
       }
-      this.log.appendLine(`${this.config.logPrefix} Put back ${saved}, left mid-rewrite.`);
+      this.log.appendLine(`${this.config.logPrefix} Put back ${this.logName(saved)}, left mid-rewrite.`);
       await this.removeLeftovers(folder, saved, older);
       return { state: 'present', changed: true };
     }
@@ -222,7 +234,7 @@ export class StoredFileClaims {
     for (const claim of leftovers) {
       if (await deleteStoredFileQuietly(this.fileSystem, path.join(folder, claim.name))) {
         removed = true;
-        this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${saved}, left by a rewrite.`);
+        this.log.appendLine(`${this.config.logPrefix} Removed an earlier version of ${this.logName(saved)}, left by a rewrite.`);
       }
     }
     return removed;
