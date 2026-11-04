@@ -10,7 +10,8 @@ import {
   workshopTurnModelTitle
 } from '@utils/workshop/workshopTurnModelNote';
 
-const label = (id: string) => ({ 'vendor/auto': 'Auto router', 'vendor/model-a': 'Model A' }[id] ?? id);
+const NAMES = new Map([['vendor/auto', 'Auto router'], ['vendor/model-a', 'Model A']]);
+const label = (id: string) => NAMES.get(id) ?? id;
 const model = (requestedModelId: string, servedModelIds: string[]) =>
   ({ scope: 'assistant' as const, requestedModelId, servedModelIds });
 
