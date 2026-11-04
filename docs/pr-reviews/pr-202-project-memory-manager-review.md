@@ -51,7 +51,8 @@ Two actual WorkshopApp regression cases verify the receipt renders but listing c
 - Independent current manager/handler/scope/delete selection: **4 suites / 37 tests passed**, plus 18 identity/privacy controls.
 - UI/settings closure/control batch: **6 suites / 28 tests passed**. Expected-failing N03 and two N04 regression cases still fail as described.
 - Independent queued pin witness uses 111 hash-verified production modules.
-- Full local production suite and exact-head CI are running. No native VS Code, OS shell, provider or screen-reader validation; the prior test-environment limitations remain.
+- Full local production suite: **690 suites / 9,679 tests / 59 snapshots passed**, 457.767 seconds; reviewer-only probes excluded. Exact implementation CI also passed: [run 41926221350](https://github.com/okeylanders/prose-minion-vscode/actions/runs/41926221350).
+- No native VS Code, OS shell, provider or screen-reader validation; the prior test-environment limitations remain.
 
 ## Historical re-review — d57734ac, 2026-11-04 21:49 UTC
 
