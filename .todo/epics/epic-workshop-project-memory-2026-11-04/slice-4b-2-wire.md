@@ -4,7 +4,7 @@
 **Part of:** [Slice 4b](slice-4b-memory-tab.md), after [4b-ui](slice-4b-1-ui.md) (PR #199, merged)
 **Decision:** [ADR 2026-11-04](../../../docs/adr/2026-11-04-workshop-project-memory.md) D5, D8, D10, D13
 **Branch:** `epic/workshop-project-memory-slice-4b-ui`, fast-forwarded to Slice 3's head (`cbb1446c`, #200 with the epic and #199 merged in). The branch name is my session's designated one (see Deviations).
-**Status:** PR #202. Astra's review (`docs/pr-reviews/pr-202-project-memory-manager-review.md`) found F01–F04 and N01–N02; all six are fixed (see Review fixes), for re-review.
+**Status:** PR #202. Astra's review (`docs/pr-reviews/pr-202-project-memory-manager-review.md`) found F01–F04 and N01–N02; all six are fixed (see Review fixes). The re-review at `d57734ac` closed F02, F04, N01 and N02 and narrowed F01 and F03, now fixed again (round 2). Slice 5 (#201) is merged in.
 
 ## Scope
 
@@ -110,6 +110,11 @@ The coordinator's brief:
   the room's scope holds. Withdrawn, the file goes back under its name and
   the delete is refused with the workspace's reason. The Lightbox's calls
   pass no check and are unchanged.
+  **Round 2:** the library's `remove` captures the workspace's identity
+  (live room and memory folder) at the request, before either queue can
+  wait, and the store compares its turn and every commit point with that
+  folder. A copied project with the same id and file name is never deleted
+  for a request about another.
 - **F02: the manager's answers stay with their root.** `moved(directory)`
   compares the scope and the store's folder now with the folder the rows
   were read for, after each await (the queued list, the titles, making the
@@ -120,6 +125,10 @@ The coordinator's brief:
   `WorkshopConversationSettingsPartialApplyError`, and the room handler
   says which mode stands ("Project memory is now Save and tell me: it
   couldn't be set back. Your other previous settings are still active.").
+  **Round 2:** the undo is the apply's own write only
+  (`WorkshopProjectMemoryModeSetting`): it writes back what it wrote over,
+  only while the setting still holds what it wrote, so a newer choice made
+  in VS Code Settings stands and the watcher's sync rebuilds for it.
 - **F04: Open memory folder says why where it was pressed.** The hook keeps
   the folder's own status (pending, and the newest press's refusal). The
   Memory tab marks the button busy and shows the refusal beside it. A retry,
@@ -146,7 +155,8 @@ The coordinator's brief:
    avoid this because they are single atomic writes. PR #202's review
    suggested a title-only host write. It is left out because a title change
    writes a receipt (D7), so a title-only write belongs with the receipt
-   path, not this PR.
+   path, not this PR. It is tracked in
+   [`.todo/tech-debt/2026-11-04-workshop-memory-title-only-rename.md`](../../tech-debt/2026-11-04-workshop-memory-title-only-rename.md).
 4. **The route owner is a `…Handler`** (the coordinator's call). It was
    first named `WorkshopProjectMemoryManagerRoutes`, which the
    composition-tier construction guard couldn't see. Renamed to
@@ -190,6 +200,7 @@ Node 22, on this branch:
 | Base (`cbb1446c`, a clean worktree) | 676 | 9,551 | 59 |
 | After 4b-wire (`87e14f6a`) | 682 | 9,598 | 59 |
 | After the review fixes | 685 | 9,622 | 59 |
+| Round 2, with Slice 5 (#201) merged in | 690 | 9,679 | 59 |
 
 - `npm run typecheck`: clean.
 - `npm run lint`: 0 errors and no new warnings. The memory components mark
