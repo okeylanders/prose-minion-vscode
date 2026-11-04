@@ -184,11 +184,15 @@ export class ProjectMemoryStore {
   }
 
   /** Save a new memory: its id and times minted here, staged, then committed by a rename that never overwrites. */
-  create(draft: ProjectMemoryDraft, options: ProjectMemoryWriteOptions = {}): Promise<ProjectMemoryCreateResult> {
+  create(draft: ProjectMemoryDraft, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryCreateResult> {
+    const permitted = this.targeted(options);
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
         return { kind: 'unavailable', reason: where.reason };
+      }
+      if (!permitted()) {
+        return { kind: 'withdrawn' };
       }
       const read = await this.settledRead(where.directory);
       if (read.kind === 'unknown') {
@@ -210,7 +214,7 @@ export class ProjectMemoryStore {
           return check.key ? { kind: 'invalid', reason: check.reason, key: check.key } : { kind: 'invalid', reason: check.reason };
         }
         const fileName = projectMemoryFileName(memory.title, id);
-        const outcome = await this.writeNew(where.directory, fileName, encoder.encode(check.text), options);
+        const outcome = await this.writeNew(where.directory, fileName, encoder.encode(check.text), { beforeCommit: permitted });
         if (outcome === 'taken') {
           continue;
         }
@@ -232,13 +236,7 @@ export class ProjectMemoryStore {
    * change; its `updated` time is the caller's to set.
    */
   replace(id: string, update: ProjectMemoryUpdate, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryReplaceResult> {
-    // The folder asked about is the one at the request, before the queue can wait (PR #202 F01).
-    const requested = this.availability();
-    const target = options.directory ?? (requested.available ? requested.directory : undefined);
-    const permitted = () => {
-      const now = this.availability();
-      return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
-    };
+    const permitted = this.targeted(options);
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
@@ -312,15 +310,13 @@ export class ProjectMemoryStore {
    * PR #202 F01).
    */
   delete(id: string, options: ProjectMemoryTargetOptions = {}): Promise<ProjectMemoryDeleteResult> {
-    // The folder asked about is the one at the request, before the queue can wait (PR #202 F01).
-    const requested = this.availability();
-    const target = options.directory ?? (requested.available ? requested.directory : undefined);
+    const permitted = this.targeted(options);
     return this.owe(this.enqueue(async () => {
       const where = this.availability();
       if (!where.available) {
         return { kind: 'unavailable', reason: where.reason };
       }
-      if (where.directory !== target || (options.beforeCommit && !options.beforeCommit())) {
+      if (!permitted()) {
         this.log.appendLine(`${LOG} ${id} was not deleted: the workspace changed before its turn.`);
         return { kind: 'withdrawn' };
       }
@@ -337,16 +333,27 @@ export class ProjectMemoryStore {
         },
         // Refused bytes whose saved name another file took go under a free name, never left under the claim (the re-review).
         fallbackPath: async () => path.join(folder, await freeProjectMemoryFileName(this.fileSystem, folder, found.file.fileName)),
-        stillPermitted: () => {
-          const now = this.availability();
-          return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
-        }
+        stillPermitted: permitted
       });
       if (deleted === 'deleted') {
         this.log.appendLine(`${LOG} Deleted ${id}.`);
       }
       return { kind: deleted };
     }));
+  }
+
+  /**
+   * A write's permission, from the folder it was asked for (the caller's, or
+   * the one at this call, before the queue can wait; PR #202 F01): the
+   * store's folder is still that one, and the caller's `beforeCommit` allows it.
+   */
+  private targeted(options: ProjectMemoryTargetOptions): () => boolean {
+    const requested = this.availability();
+    const target = options.directory ?? (requested.available ? requested.directory : undefined);
+    return () => {
+      const now = this.availability();
+      return now.available && now.directory === target && (options.beforeCommit?.() ?? true);
+    };
   }
 
   /** Settle every write owed, and any started while it waits (deactivation, PR #183 F-03). */

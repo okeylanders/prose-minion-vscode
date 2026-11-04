@@ -105,6 +105,16 @@ export type ProjectMemoryEstimateResult =
 
 type Listed = { readonly kind: 'listed'; readonly memories: ProjectMemoryListed[] } | { readonly kind: 'refused'; readonly reason: ProjectMemoryWriteRefusalReason };
 
+/** A queued write's workspace: the one it was asked in, whether it still is, and its commit check. */
+interface BoundWorkspace {
+  readonly asked: ProjectMemoryWorkspaceIdentity;
+  readonly still: () => boolean;
+  /** The workspace's reason to refuse now: closed, or another one accepted. */
+  readonly reason: () => ProjectMemoryClosedReason;
+  /** The store's commit point: the workspace is open and still the one asked. */
+  readonly commit: () => boolean;
+}
+
 const PINNED_BUDGET = PROMPT_BUDGETS.workshopProjectMemory.pinnedTokens;
 
 export class ProjectMemoryWrites {
@@ -135,11 +145,11 @@ export class ProjectMemoryWrites {
     options: { readonly permit?: () => boolean } = {}
   ): Promise<ProjectMemoryWriteResult> {
     const permitted = () => options.permit?.() ?? true;
-    return this.owe('save', async () => {
+    return this.owe('save', async (bound) => {
       if (!permitted()) {
         return this.refused('save', 'withdrawn');
       }
-      const listed = await this.listed();
+      const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
         return listed;
       }
@@ -171,13 +181,13 @@ export class ProjectMemoryWrites {
         return { kind: 'refused', reason: 'pinned-budget', budget };
       }
       const { id: _id, created: _created, updated: _updated, ...fields } = candidate;
-      const created = await this.store.create(fields, { beforeCommit: () => this.workspaceReason() === undefined && permitted() });
+      const created = await this.store.create(fields, { directory: bound.asked.directory, beforeCommit: () => bound.commit() && permitted() });
       if (created.kind === 'invalid') {
         this.log(`save invalid fault=${created.reason}${created.key ? ` key=${created.key}` : ''}`);
       }
       if (created.kind !== 'created') {
         return this.refused('save', created.kind === 'withdrawn'
-          ? (permitted() ? 'failed' : 'withdrawn')
+          ? (!bound.still() ? bound.reason() : permitted() ? 'failed' : 'withdrawn')
           : created.kind === 'unavailable' ? created.reason : created.kind);
       }
       const memory = created.entry.memory;
@@ -188,8 +198,8 @@ export class ProjectMemoryWrites {
 
   /** Edit a saved memory: the sheet's whole draft replaces what it says, and whether it loads in full. */
   update(id: string, patch: WorkshopMemoryDraft): Promise<ProjectMemoryWriteResult> {
-    return this.owe('update', async () => {
-      const listed = await this.listed();
+    return this.owe('update', async (bound) => {
+      const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
         return listed;
       }
@@ -221,8 +231,8 @@ export class ProjectMemoryWrites {
         const next = revise(memory);
         changedMeaning = saysSomethingElse(memory, next);
         return changedMeaning || next.pinned !== memory.pinned ? next : undefined;
-      }, { beforeCommit: () => this.workspaceReason() === undefined });
-      return this.settled('update', id, replaced, changedMeaning);
+      }, { directory: bound.asked.directory, beforeCommit: bound.commit });
+      return this.settled('update', id, replaced, changedMeaning, bound);
     });
   }
 
@@ -233,18 +243,10 @@ export class ProjectMemoryWrites {
    * off is always allowed. `updated` doesn't move (D10).
    */
   setPinned(id: string, pinned: boolean): Promise<ProjectMemoryWriteResult> {
-    // Bound to the workspace it was asked in, before this queue or the store's can wait (PR #202 F01).
-    const { asked, still } = askedProjectMemoryWorkspace(this.workspaceIdentity);
-    return this.owe('load-in-full', async () => {
-      if (!asked || !still()) {
-        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
-      }
-      const listed = await this.listed();
+    return this.owe('load-in-full', async (bound) => {
+      const listed = await this.listed(bound);
       if (listed.kind === 'refused') {
         return listed;
-      }
-      if (!still()) {
-        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
       }
       const current = listed.memories.find(({ memory }) => memory.id === id);
       if (!current) {
@@ -256,11 +258,8 @@ export class ProjectMemoryWrites {
         return { kind: 'refused', reason: 'pinned-budget', budget };
       }
       const replaced = await this.store.replace(id, (memory) => memory.pinned === pinned ? undefined : { ...memory, pinned },
-        { directory: asked.directory, beforeCommit: () => this.workspaceReason() === undefined && still() });
-      if (replaced.kind === 'withdrawn' && !still()) {
-        return this.refused('load-in-full', this.workspaceReason() ?? 'workspace-changed', id);
-      }
-      return this.settled('load-in-full', id, replaced, false);
+        { directory: bound.asked.directory, beforeCommit: bound.commit });
+      return this.settled('load-in-full', id, replaced, false, bound);
     });
   }
 
@@ -270,21 +269,14 @@ export class ProjectMemoryWrites {
    * them back (`changed`). A memory it superseded is in effect again (D4).
    */
   remove(id: string): Promise<ProjectMemoryDeleteResult> {
-    // The workspace the writer asked about, captured before this queue or the store's can wait (PR #202 F01).
-    const { asked, still } = askedProjectMemoryWorkspace(this.workspaceIdentity);
-    return this.owe('delete', async () => {
-      const closed = this.workspaceReason() ?? (still() ? undefined : 'workspace-changed');
-      if (closed || !asked) {
-        this.refused('delete', closed ?? 'workspace-changed', id);
-        return { kind: 'refused' as const, reason: closed ?? 'workspace-changed' };
-      }
-      const deleted = await this.store.delete(id, { directory: asked.directory, beforeCommit: still });
+    return this.owe('delete', async (bound): Promise<ProjectMemoryDeleteResult> => {
+      const deleted = await this.store.delete(id, { directory: bound.asked.directory, beforeCommit: bound.commit });
       if (deleted.kind === 'deleted') {
         this.log(`delete deleted id=${id}`);
         return { kind: 'deleted' as const };
       }
       const reason: ProjectMemoryDeleteRefusalReason = deleted.kind === 'unavailable' ? deleted.reason
-        : deleted.kind === 'withdrawn' ? this.workspaceReason() ?? 'workspace-changed' : deleted.kind;
+        : deleted.kind === 'withdrawn' ? (bound.still() ? 'failed' : bound.reason()) : deleted.kind;
       this.log(`delete refused id=${id} reason=${reason}`);
       return { kind: 'refused' as const, reason };
     });
@@ -350,17 +342,13 @@ export class ProjectMemoryWrites {
   }
 
   private setStatus(action: 'forget' | 'restore', id: string, status: ProjectMemory['status']): Promise<ProjectMemoryWriteResult> {
-    return this.owe(action, async () => {
-      const closed = this.workspaceReason();
-      if (closed) {
-        return this.refused(action, closed, id);
-      }
+    return this.owe(action, async (bound) => {
       const replaced = await this.store.replace(
         id,
         (memory) => memory.status === status ? undefined : { ...memory, status },
-        { beforeCommit: () => this.workspaceReason() === undefined }
+        { directory: bound.asked.directory, beforeCommit: bound.commit }
       );
-      return this.settled(action, id, replaced, false);
+      return this.settled(action, id, replaced, false, bound);
     });
   }
 
@@ -368,7 +356,8 @@ export class ProjectMemoryWrites {
     action: string,
     id: string,
     replaced: Awaited<ReturnType<ProjectMemoryWriteStorePort['replace']>>,
-    changedMeaning: boolean
+    changedMeaning: boolean,
+    bound: BoundWorkspace
   ): Promise<ProjectMemoryWriteResult> {
     switch (replaced.kind) {
       case 'replaced':
@@ -386,20 +375,20 @@ export class ProjectMemoryWrites {
       case 'unavailable':
         return this.refused(action, replaced.reason, id);
       case 'withdrawn':
-        return this.refused(action, this.workspaceReason() ?? 'failed', id);
+        return this.refused(action, bound.still() ? 'failed' : bound.reason(), id);
       default:
         return this.refused(action, replaced.kind, id);
     }
   }
 
-  /** The folder's memories with their standing, or why the writer can't write here now. */
-  private async listed(): Promise<Listed> {
+  /** The folder's memories with their standing, or why the writer can't write here now; with `bound`, only its workspace's. */
+  private async listed(bound?: BoundWorkspace): Promise<Listed> {
     const before = this.workspaceReason();
     if (before) {
       return { kind: 'refused', reason: before };
     }
     const listing = await this.store.list();
-    const after = this.workspaceReason();
+    const after = this.workspaceReason() ?? (bound && !bound.still() ? 'workspace-changed' : undefined);
     if (after) {
       return { kind: 'refused', reason: after };
     }
@@ -428,8 +417,23 @@ export class ProjectMemoryWrites {
    * writes never both pass a check that only one of them can keep
    * (PR #200 F-04). Another window's writes are the store's to order.
    */
-  private owe<T>(action: string, write: () => Promise<T>): Promise<T> {
-    const running = this.queue.then(write).catch((error: unknown) => {
+  /**
+   * Queue a write, bound to the workspace it was asked in (PR #202 F01): the
+   * identity is captured now, before this queue or the store's can wait. A
+   * write whose turn comes under another workspace, or none, is refused
+   * with its reason; the write itself checks `still` after each await and
+   * passes `commit` and the captured folder to the store.
+   */
+  private owe<T>(action: string, write: (bound: BoundWorkspace) => Promise<T>): Promise<T> {
+    const { asked, still } = askedProjectMemoryWorkspace(this.workspaceIdentity);
+    const reason = (): ProjectMemoryClosedReason => this.workspaceReason() ?? 'workspace-changed';
+    const turn = async (): Promise<T> => {
+      if (!asked || !still()) {
+        return this.refused(action, reason()) as unknown as T;
+      }
+      return write({ asked, still, reason, commit: () => this.workspaceReason() === undefined && still() });
+    };
+    const running = this.queue.then(turn).catch((error: unknown) => {
       this.log(`${action} failed (${error instanceof Error ? error.name : 'error'})`);
       return { kind: 'refused', reason: 'failed' } as unknown as T;
     });
